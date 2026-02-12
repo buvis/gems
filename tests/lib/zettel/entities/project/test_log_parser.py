@@ -62,8 +62,9 @@ class TestParseLog:
     @pytest.mark.parametrize(
         ("emoji", "expected"),
         [
-            ("\u23eb", "highest"),
-            ("\U0001f53c", "high"),
+            ("\U0001f53a", "highest"),
+            ("\u23eb", "high"),
+            ("\U0001f53c", "medium"),
             ("\U0001f53d", "low"),
             ("\u23ec", "lowest"),
         ],
@@ -72,9 +73,9 @@ class TestParseLog:
         raw = f"- [ ] 2026-02-10 13:08 - task {emoji}"
         assert parse_log(raw)[0].priority == expected
 
-    def test_priority_default_medium(self):
+    def test_priority_default_normal(self):
         raw = "- [ ] 2026-02-10 13:08 - task"
-        assert parse_log(raw)[0].priority == "medium"
+        assert parse_log(raw)[0].priority == "normal"
 
     @pytest.mark.parametrize(
         ("emoji", "attr", "expected"),
@@ -115,7 +116,7 @@ class TestParseLog:
         assert entries[1].state == "open task"
         assert entries[1].action == "do something"
         assert entries[1].gtd_list == "next"
-        assert entries[1].priority == "highest"
+        assert entries[1].priority == "high"
         assert entries[1].context == ["- detail 1"]
         assert entries[2].status == "done"
 
@@ -127,7 +128,18 @@ class TestParseLog:
         assert e.state == "state text"
         assert e.action == "action text"
         assert e.gtd_list == "next"
-        assert e.priority == "highest"
+        assert e.priority == "high"
         assert e.due_date == date(2026, 3, 1)
         assert e.start_date == date(2026, 2, 15)
         assert e.reminder_date == date(2026, 2, 20)
+
+    def test_recurrence_parsed_and_stripped(self):
+        raw = "- [ ] 2026-02-10 13:08 - water plants \U0001f501 every week on Tuesday \U0001f4c5 2026-03-01"
+        e = parse_log(raw)[0]
+        assert e.recurrence == "every week on Tuesday"
+        assert e.action == "water plants"
+        assert e.due_date == date(2026, 3, 1)
+
+    def test_no_recurrence(self):
+        raw = "- [ ] 2026-02-10 13:08 - plain task"
+        assert parse_log(raw)[0].recurrence is None

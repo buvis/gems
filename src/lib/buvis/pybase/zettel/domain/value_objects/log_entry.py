@@ -11,7 +11,8 @@ class LogEntry:
     state: str | None
     action: str | None
     gtd_list: str | None
-    priority: str  # "lowest" | "low" | "medium" | "high" | "highest"
+    priority: str  # "lowest" | "low" | "normal" | "medium" | "high" | "highest"
+    recurrence: str | None = None
     due_date: date | None = None
     start_date: date | None = None
     reminder_date: date | None = None

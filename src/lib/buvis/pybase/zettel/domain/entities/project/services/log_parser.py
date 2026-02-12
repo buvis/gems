@@ -20,9 +20,12 @@ _GTD_MAP: dict[str, str] = {
 _PRIORITY_MAP: dict[str, str] = {
     "\u23ec": "lowest",
     "\U0001f53d": "low",
-    "\U0001f53c": "high",
-    "\u23eb": "highest",
+    "\U0001f53c": "medium",
+    "\u23eb": "high",
+    "\U0001f53a": "highest",
 }
+
+_RECURRENCE_RE = re.compile(r"\U0001f501 [^\U0001f4c5\U0001f6eb\u23f3\u2705\u274c|#]*")
 
 _DATE_EMOJI_RE = re.compile(
     r"[\U0001f4c5\U0001f6eb\u23f3\u2705\u274c] \d{4}-\d{2}-\d{2}",
@@ -41,7 +44,14 @@ def _parse_priority(text: str) -> str:
     for emoji, level in _PRIORITY_MAP.items():
         if emoji in text:
             return level
-    return "medium"
+    return "normal"
+
+
+def _parse_recurrence(text: str) -> str | None:
+    m = _RECURRENCE_RE.search(text)
+    if m:
+        return m.group(0).removeprefix("\U0001f501 ").strip()
+    return None
 
 
 def _parse_date_emoji(text: str, emoji: str) -> date | None:
@@ -69,6 +79,7 @@ def _strip_metadata(text: str) -> str:
     for emoji in _PRIORITY_MAP:
         result = result.replace(emoji, "")
     result = re.sub(r"[📅🛫⏳✅❌] \d{4}-\d{2}-\d{2}", "", result)
+    result = _RECURRENCE_RE.sub("", result)
     result = re.sub(r"\|", "", result)
     return result.strip()
 
@@ -107,6 +118,7 @@ def parse_log(raw: str) -> list[LogEntry]:
         state, action = _parse_state_action(rest, status)
         gtd_list = _parse_gtd(rest)
         priority = _parse_priority(rest)
+        recurrence = _parse_recurrence(rest)
         due_date = _parse_date_emoji(rest, "\U0001f4c5")
         start_date = _parse_date_emoji(rest, "\U0001f6eb")
         reminder_date = _parse_date_emoji(rest, "\u23f3")
@@ -130,6 +142,7 @@ def parse_log(raw: str) -> list[LogEntry]:
                 action=action,
                 gtd_list=gtd_list,
                 priority=priority,
+                recurrence=recurrence,
                 due_date=due_date,
                 start_date=start_date,
                 reminder_date=reminder_date,
