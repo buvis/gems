@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from buvis.pybase.adapters.jira.exceptions import (
     JiraError,
     JiraLinkError,
@@ -11,76 +13,44 @@ from buvis.pybase.adapters.jira.exceptions import (
 
 
 class TestJiraError:
-    """Tests for the JiraError base class."""
-
     def test_raises_from_exception(self) -> None:
-        """JiraError inherits from Exception."""
         assert issubclass(JiraError, Exception)
 
     def test_string_represents_message(self) -> None:
-        """JiraError forwards its message to Exception."""
-        message = "jira failure"
-        exc = JiraError(message)
-        assert str(exc) == message
+        exc = JiraError("jira failure")
+        assert str(exc) == "jira failure"
 
 
 class TestJiraNotFoundError:
-    """Tests for JiraNotFoundError."""
-
     def test_message_contains_issue_key(self) -> None:
-        """Exception message includes the missing issue key."""
-        issue_key = "ABC-123"
-        exc = JiraNotFoundError(issue_key)
-        assert str(exc) == f"Issue not found: {issue_key}"
-        assert exc.issue_key == issue_key
-
-    def test_is_subclass_of_jira_error(self) -> None:
-        """JiraNotFoundError derives from JiraError."""
-        assert issubclass(JiraNotFoundError, JiraError)
+        exc = JiraNotFoundError("ABC-123")
+        assert str(exc) == "Issue not found: ABC-123"
+        assert exc.issue_key == "ABC-123"
 
 
 class TestJiraTransitionError:
-    """Tests for JiraTransitionError."""
-
     def test_message_includes_transition_and_issue(self) -> None:
-        """Transition name and issue key appear in the message."""
-        issue_key = "ABC-123"
-        transition = "Start Progress"
-        exc = JiraTransitionError(issue_key, transition)
-        assert str(exc) == f"Transition '{transition}' unavailable for {issue_key}"
-        assert exc.issue_key == issue_key
-        assert exc.transition == transition
-
-    def test_is_subclass_of_jira_error(self) -> None:
-        """JiraTransitionError derives from JiraError."""
-        assert issubclass(JiraTransitionError, JiraError)
+        exc = JiraTransitionError("ABC-123", "Start Progress")
+        assert str(exc) == "Transition 'Start Progress' unavailable for ABC-123"
+        assert exc.issue_key == "ABC-123"
+        assert exc.transition == "Start Progress"
 
 
 class TestJiraLinkError:
-    """Tests for JiraLinkError."""
-
     def test_message_lists_endpoints(self) -> None:
-        """Message shows the from/to keys and link type."""
-        from_key = "ABC-123"
-        to_key = "DEF-456"
-        link_type = "Depends On"
-        exc = JiraLinkError(from_key, to_key, link_type)
-        assert str(exc) == f"Failed to link {from_key} -> {to_key} ({link_type})"
-        assert exc.from_key == from_key
-        assert exc.to_key == to_key
-        assert exc.link_type == link_type
+        exc = JiraLinkError("ABC-123", "DEF-456", "Depends On")
+        assert str(exc) == "Failed to link ABC-123 -> DEF-456 (Depends On)"
         assert exc.reason is None
 
     def test_message_includes_reason_when_provided(self) -> None:
-        """Message appends reason when given."""
-        from_key = "ABC-123"
-        to_key = "DEF-456"
-        link_type = "Blocks"
-        reason = "Permission denied"
-        exc = JiraLinkError(from_key, to_key, link_type, reason=reason)
-        assert str(exc) == f"Failed to link {from_key} -> {to_key} ({link_type}): {reason}"
-        assert exc.reason == reason
+        exc = JiraLinkError("ABC-123", "DEF-456", "Blocks", reason="Permission denied")
+        assert str(exc) == "Failed to link ABC-123 -> DEF-456 (Blocks): Permission denied"
+        assert exc.reason == "Permission denied"
 
-    def test_is_subclass_of_jira_error(self) -> None:
-        """JiraLinkError derives from JiraError."""
-        assert issubclass(JiraLinkError, JiraError)
+
+@pytest.mark.parametrize(
+    "cls",
+    [JiraNotFoundError, JiraTransitionError, JiraLinkError],
+)
+def test_subclass_of_jira_error(cls: type) -> None:
+    assert issubclass(cls, JiraError)

@@ -6,6 +6,9 @@ from typing import Any
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 from buvis.pybase.zettel.domain.templates import discover_templates
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
+    MarkdownZettelFormatter,
+)
 
 
 class CommandCreateNote:
@@ -44,7 +47,7 @@ class CommandCreateNote:
             elif q.required:
                 console.failure(f"Missing required answer: {q.key}")
                 return
-        use_case = CreateZettelUseCase(self.path_zettelkasten)
+        use_case = CreateZettelUseCase(self.path_zettelkasten, MarkdownZettelFormatter())
         try:
             path = use_case.execute(template, answers)
         except FileExistsError as e:

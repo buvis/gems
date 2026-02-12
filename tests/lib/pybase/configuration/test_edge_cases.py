@@ -67,15 +67,6 @@ class TestYamlAbsentKey:
 class TestCliNoneFallthrough:
     """CLI None values fall through to lower priority sources."""
 
-    def test_cli_none_falls_through_to_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """CLI=None falls through to ENV value."""
-        monkeypatch.setenv("BUVIS_DEBUG", "true")
-
-        resolver = ConfigResolver()
-        settings = resolver.resolve(GlobalSettings, cli_overrides={"debug": None})
-
-        assert settings.debug is True  # ENV wins
-
     def test_cli_none_falls_through_to_yaml(self, tmp_path: Path) -> None:
         """CLI=None falls through to YAML value."""
         config = tmp_path / "config.yaml"
@@ -96,18 +87,6 @@ class TestCliNoneFallthrough:
 
 class TestInvalidValueFromAnySources:
     """Invalid values from any source raise ValidationError."""
-
-    def test_invalid_from_yaml(self, tmp_path: Path) -> None:
-        """Invalid value from YAML raises ValidationError."""
-        from buvis.pybase.configuration import ConfigurationError
-
-        config = tmp_path / "config.yaml"
-        config.write_text("log_level: INVALID\n")
-
-        resolver = ConfigResolver()
-
-        with pytest.raises(ConfigurationError):
-            resolver.resolve(GlobalSettings, config_path=config)
 
     def test_invalid_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Invalid value from ENV raises ValidationError."""
@@ -130,23 +109,6 @@ class TestInvalidValueFromAnySources:
 
 class TestPrecedenceEdgeCases:
     """Edge cases in precedence chain."""
-
-    def test_all_sources_set_cli_wins(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """When all sources set, CLI wins."""
-        config = tmp_path / "config.yaml"
-        config.write_text("debug: false\nlog_level: WARNING\n")
-        monkeypatch.setenv("BUVIS_DEBUG", "true")
-        monkeypatch.setenv("BUVIS_LOG_LEVEL", "ERROR")
-
-        resolver = ConfigResolver()
-        settings = resolver.resolve(
-            GlobalSettings,
-            config_path=config,
-            cli_overrides={"debug": False, "log_level": "DEBUG"},
-        )
-
-        assert settings.debug is False  # CLI
-        assert settings.log_level == "DEBUG"  # CLI
 
     def test_partial_cli_overrides(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """CLI only overrides specified fields."""

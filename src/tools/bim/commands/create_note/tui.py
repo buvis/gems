@@ -10,6 +10,9 @@ from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
 
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate, discover_templates
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
+    MarkdownZettelFormatter,
+)
 
 
 class CreateNoteApp(App[None]):
@@ -166,7 +169,7 @@ class CreateNoteApp(App[None]):
         if not self._current_template:
             return
         answers = self._gather_answers()
-        use_case = CreateZettelUseCase(self.path_zettelkasten)
+        use_case = CreateZettelUseCase(self.path_zettelkasten, MarkdownZettelFormatter())
         try:
             path = use_case.execute(self._current_template, answers)
         except FileExistsError as e:

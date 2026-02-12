@@ -1,5 +1,7 @@
 from datetime import date, datetime
 
+import pytest
+
 from buvis.pybase.zettel.domain.entities.project.services.log_parser import parse_log
 
 
@@ -29,80 +31,67 @@ class TestParseLog:
 
     def test_open_entry_without_arrow(self):
         raw = "- [ ] 2026-02-10 13:08 - just action text"
-        entries = parse_log(raw)
-        e = entries[0]
+        e = parse_log(raw)[0]
         assert e.status == "open"
         assert e.state is None
         assert e.action == "just action text"
 
     def test_done_entry(self):
         raw = "- [x] 2026-02-10 13:08 - done thing"
-        entries = parse_log(raw)
-        assert entries[0].status == "done"
-        assert entries[0].action == "done thing"
+        assert parse_log(raw)[0].status == "done"
+        assert parse_log(raw)[0].action == "done thing"
 
-    def test_gtd_act_now(self):
-        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/act/now"
-        assert parse_log(raw)[0].gtd_list == "now"
-
-    def test_gtd_act_next(self):
-        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/act/next"
-        assert parse_log(raw)[0].gtd_list == "next"
-
-    def test_gtd_wait(self):
-        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/wait"
-        assert parse_log(raw)[0].gtd_list == "wait"
-
-    def test_gtd_someday(self):
-        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/someday"
-        assert parse_log(raw)[0].gtd_list == "someday"
-
-    def test_gtd_act_later(self):
-        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/act/later"
-        assert parse_log(raw)[0].gtd_list == "later"
-
-    def test_gtd_unknown_defaults_to_now(self):
-        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/unknown/tag"
-        assert parse_log(raw)[0].gtd_list == "now"
+    @pytest.mark.parametrize(
+        ("gtd_tag", "expected"),
+        [
+            ("#gtd/act/now", "now"),
+            ("#gtd/act/next", "next"),
+            ("#gtd/wait", "wait"),
+            ("#gtd/someday", "someday"),
+            ("#gtd/act/later", "later"),
+            ("#gtd/unknown/tag", "now"),  # unknown defaults to now
+        ],
+    )
+    def test_gtd_list(self, gtd_tag: str, expected: str):
+        raw = f"- [ ] 2026-02-10 13:08 - task | {gtd_tag}"
+        assert parse_log(raw)[0].gtd_list == expected
 
     def test_no_gtd_tag(self):
         raw = "- [ ] 2026-02-10 13:08 - task"
         assert parse_log(raw)[0].gtd_list is None
 
-    def test_priority_highest(self):
-        raw = "- [ ] 2026-02-10 13:08 - task ⏫"
-        assert parse_log(raw)[0].priority == "highest"
-
-    def test_priority_high(self):
-        raw = "- [ ] 2026-02-10 13:08 - task 🔼"
-        assert parse_log(raw)[0].priority == "high"
-
-    def test_priority_low(self):
-        raw = "- [ ] 2026-02-10 13:08 - task 🔽"
-        assert parse_log(raw)[0].priority == "low"
-
-    def test_priority_lowest(self):
-        raw = "- [ ] 2026-02-10 13:08 - task ⏬"
-        assert parse_log(raw)[0].priority == "lowest"
+    @pytest.mark.parametrize(
+        ("emoji", "expected"),
+        [
+            ("\u23eb", "highest"),
+            ("\U0001f53c", "high"),
+            ("\U0001f53d", "low"),
+            ("\u23ec", "lowest"),
+        ],
+    )
+    def test_priority(self, emoji: str, expected: str):
+        raw = f"- [ ] 2026-02-10 13:08 - task {emoji}"
+        assert parse_log(raw)[0].priority == expected
 
     def test_priority_default_medium(self):
         raw = "- [ ] 2026-02-10 13:08 - task"
         assert parse_log(raw)[0].priority == "medium"
 
-    def test_due_date(self):
-        raw = "- [ ] 2026-02-10 13:08 - task 📅 2026-03-01"
-        assert parse_log(raw)[0].due_date == date(2026, 3, 1)
-
-    def test_start_date(self):
-        raw = "- [ ] 2026-02-10 13:08 - task 🛫 2026-02-15"
-        assert parse_log(raw)[0].start_date == date(2026, 2, 15)
-
-    def test_reminder_date(self):
-        raw = "- [ ] 2026-02-10 13:08 - task ⏳ 2026-02-20"
-        assert parse_log(raw)[0].reminder_date == date(2026, 2, 20)
+    @pytest.mark.parametrize(
+        ("emoji", "attr", "expected"),
+        [
+            ("\U0001f4c5", "due_date", date(2026, 3, 1)),
+            ("\U0001f6eb", "start_date", date(2026, 2, 15)),
+            ("\u23f3", "reminder_date", date(2026, 2, 20)),
+        ],
+    )
+    def test_date_field(self, emoji: str, attr: str, expected: date):
+        date_str = expected.isoformat()
+        raw = f"- [ ] 2026-02-10 13:08 - task {emoji} {date_str}"
+        assert getattr(parse_log(raw)[0], attr) == expected
 
     def test_all_dates(self):
-        raw = "- [ ] 2026-02-10 13:08 - task 📅 2026-03-01 🛫 2026-02-15 ⏳ 2026-02-20"
+        raw = "- [ ] 2026-02-10 13:08 - task \U0001f4c5 2026-03-01 \U0001f6eb 2026-02-15 \u23f3 2026-02-20"
         e = parse_log(raw)[0]
         assert e.due_date == date(2026, 3, 1)
         assert e.start_date == date(2026, 2, 15)
@@ -120,7 +109,7 @@ class TestParseLog:
     def test_multiple_entries_mixed(self):
         raw = (
             "- [i] 2026-02-10 13:08 - info entry\n"
-            "- [ ] 2026-02-11 09:00 - open task => do something | #gtd/act/next ⏫\n"
+            "- [ ] 2026-02-11 09:00 - open task => do something | #gtd/act/next \u23eb\n"
             "    - detail 1\n"
             "- [x] 2026-02-12 10:00 - completed task"
         )
@@ -136,7 +125,7 @@ class TestParseLog:
         assert entries[2].status == "done"
 
     def test_full_entry_with_all_fields(self):
-        raw = "- [ ] 2026-02-10 13:08 - state text => action text | #gtd/act/next ⏫ 📅 2026-03-01 🛫 2026-02-15 ⏳ 2026-02-20"
+        raw = "- [ ] 2026-02-10 13:08 - state text => action text | #gtd/act/next \u23eb \U0001f4c5 2026-03-01 \U0001f6eb 2026-02-15 \u23f3 2026-02-20"
         e = parse_log(raw)[0]
         assert e.timestamp == datetime(2026, 2, 10, 13, 8)
         assert e.status == "open"

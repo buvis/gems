@@ -18,11 +18,15 @@ class TestSafeEvalAllowed:
     def test_arithmetic(self):
         assert safe_eval("x + y", {"x": 3, "y": 4}) == 7
 
-    def test_len(self):
-        assert safe_eval("len(tags)", {"tags": ["a", "b", "c"]}) == 3
-
-    def test_len_none(self):
-        assert safe_eval("len(tags)", {"tags": None}) == 0
+    @pytest.mark.parametrize(
+        ("tags", "expected"),
+        [
+            (["a", "b", "c"], 3),
+            (None, 0),
+        ],
+    )
+    def test_len(self, tags, expected):
+        assert safe_eval("len(tags)", {"tags": tags}) == expected
 
     def test_comparison(self):
         assert safe_eval("x > 5", {"x": 10}) is True
@@ -40,11 +44,15 @@ class TestSafeEvalAllowed:
     def test_subscript(self):
         assert safe_eval("tags[0]", {"tags": ["a", "b"]}) == "a"
 
-    def test_upper(self):
-        assert safe_eval("upper(name)", {"name": "hello"}) == "HELLO"
-
-    def test_lower(self):
-        assert safe_eval("lower(name)", {"name": "HELLO"}) == "hello"
+    @pytest.mark.parametrize(
+        ("expr", "vars_", "expected"),
+        [
+            ("upper(name)", {"name": "hello"}, "HELLO"),
+            ("lower(name)", {"name": "HELLO"}, "hello"),
+        ],
+    )
+    def test_case_functions(self, expr, vars_, expected):
+        assert safe_eval(expr, vars_) == expected
 
     def test_concat(self):
         assert safe_eval("concat('a', 'b', 'c')", {}) == "abc"
@@ -58,30 +66,32 @@ class TestSafeEvalAllowed:
     def test_replace(self):
         assert safe_eval("replace(name, 'l', 'r')", {"name": "hello"}) == "herro"
 
-    def test_year(self):
+    @pytest.mark.parametrize(
+        ("func", "expected"),
+        [
+            ("year(date)", 2024),
+            ("month(date)", 3),
+            ("day(date)", 15),
+        ],
+    )
+    def test_date_accessors(self, func, expected):
         dt = datetime(2024, 3, 15, tzinfo=UTC)
-        assert safe_eval("year(date)", {"date": dt}) == 2024
-
-    def test_month(self):
-        dt = datetime(2024, 3, 15, tzinfo=UTC)
-        assert safe_eval("month(date)", {"date": dt}) == 3
-
-    def test_day(self):
-        dt = datetime(2024, 3, 15, tzinfo=UTC)
-        assert safe_eval("day(date)", {"date": dt}) == 15
+        assert safe_eval(func, {"date": dt}) == expected
 
     def test_format_date(self):
         dt = datetime(2024, 3, 15, tzinfo=UTC)
         assert safe_eval("format_date(date, '%Y-%m-%d')", {"date": dt}) == "2024-03-15"
 
-    def test_abs(self):
-        assert safe_eval("abs(x)", {"x": -5}) == 5
-
-    def test_str_function(self):
-        assert safe_eval("str(42)", {}) == "42"
-
-    def test_int_function(self):
-        assert safe_eval("int('42')", {}) == 42
+    @pytest.mark.parametrize(
+        ("expr", "vars_", "expected"),
+        [
+            ("abs(x)", {"x": -5}, 5),
+            ("str(42)", {}, "42"),
+            ("int('42')", {}, 42),
+        ],
+    )
+    def test_type_conversion_functions(self, expr, vars_, expected):
+        assert safe_eval(expr, vars_) == expected
 
     def test_nested_calls(self):
         assert safe_eval("len(join(', ', tags))", {"tags": ["a", "b"]}) == 4

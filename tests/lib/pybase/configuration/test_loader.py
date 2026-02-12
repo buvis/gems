@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import inspect
-import types
 from pathlib import Path
 
 import pytest
@@ -12,15 +10,6 @@ from buvis.pybase.configuration.loader import (
     ConfigurationLoader,
     _substitute,
 )
-
-
-class TestConfigurationLoaderScaffold:
-    def test_class_exists(self) -> None:
-        assert inspect.isclass(ConfigurationLoader)
-
-    def test_find_config_files_exists(self) -> None:
-        assert hasattr(ConfigurationLoader, "find_config_files")
-        assert isinstance(ConfigurationLoader.find_config_files, types.FunctionType)
 
 
 class TestFindConfigFiles:

@@ -4,22 +4,21 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
+from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
 from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 from buvis.pybase.zettel.domain.templates import ZettelTemplate
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
-    MarkdownZettelFormatter,
-)
 
 
 class CreateZettelUseCase:
-    def __init__(self, zettelkasten_path: Path) -> None:
+    def __init__(self, zettelkasten_path: Path, formatter: ZettelFormatter) -> None:
         self.zettelkasten_path = zettelkasten_path
+        self.formatter = formatter
 
     def execute(self, template: ZettelTemplate, answers: dict[str, Any]) -> Path:
         data = template.build_data(answers)
         zettel = Zettel(data)
         zettel = ZettelFactory.create(zettel)
-        content = MarkdownZettelFormatter.format(zettel.get_data())
+        content = self.formatter.format(zettel.get_data())
         path = self.zettelkasten_path / f"{zettel.id}.md"
         if path.exists():
             raise FileExistsError(f"Zettel already exists: {path}")
