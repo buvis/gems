@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from buvis.pybase.filesystem.dir_tree.delete_by_extension import delete_by_extension
 from buvis.pybase.filesystem.dir_tree.lowercase_file_extensions import (
@@ -17,9 +16,6 @@ from buvis.pybase.filesystem.dir_tree.rename_equivalent_extensions import (
     rename_equivalent_extensions,
 )
 from buvis.pybase.filesystem.dir_tree.safe_rglob import is_safe_path, safe_rglob
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class DirTree:
