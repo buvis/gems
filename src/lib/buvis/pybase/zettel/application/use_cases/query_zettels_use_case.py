@@ -39,14 +39,15 @@ class QueryZettelsUseCase:
         if remaining:
             zettels = [z for z in zettels if _matches(z, remaining, self.evaluator)]
 
-        if spec.sort:
-            zettels = _sort_zettels(zettels, spec.sort)
-
         columns = spec.columns or [QueryColumn(field=f) for f in _DEFAULT_COLUMNS]
 
         if spec.expand:
             rows = _expand(zettels, spec.expand, columns, self.evaluator)
+            if spec.sort:
+                rows = _sort_rows(rows, spec.sort)
         else:
+            if spec.sort:
+                zettels = _sort_zettels(zettels, spec.sort)
             rows = [_project(z, columns, self.evaluator) for z in zettels]
 
         if spec.output.limit:
@@ -164,6 +165,29 @@ def _sort_zettels(zettels: list[Zettel], sort_fields: list[Any]) -> list[Zettel]
         return 0
 
     return sorted(zettels, key=cmp_to_key(compare))
+
+
+def _sort_rows(rows: list[dict[str, Any]], sort_fields: list[Any]) -> list[dict[str, Any]]:
+    def compare(a: dict[str, Any], b: dict[str, Any]) -> int:
+        for sf in sort_fields:
+            va = a.get(sf.field)
+            vb = b.get(sf.field)
+            if va is None and vb is None:
+                continue
+            if va is None:
+                return 1
+            if vb is None:
+                return -1
+            if va < vb:
+                result = -1
+            elif va > vb:
+                result = 1
+            else:
+                continue
+            return result if sf.order == "asc" else -result
+        return 0
+
+    return sorted(rows, key=cmp_to_key(compare))
 
 
 def _expand(
