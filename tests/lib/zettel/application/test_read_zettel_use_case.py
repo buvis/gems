@@ -7,17 +7,9 @@ from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
 from buvis.pybase.zettel.domain.interfaces.zettel_repository_exceptions import (
     ZettelRepositoryZettelNotFoundError,
 )
-from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
-
-
 @pytest.fixture
 def mock_zettel_repository():
     return MagicMock(spec=ZettelReader)
-
-
-@pytest.fixture
-def mock_zettel_factory():
-    return MagicMock(spec=ZettelFactory)
 
 
 @pytest.fixture
