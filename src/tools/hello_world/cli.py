@@ -1,12 +1,9 @@
-import re
-import sys
-from importlib.metadata import distributions, requires
-from pathlib import Path
+from __future__ import annotations
 
 import click
-from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
 
+from hello_world.commands import CommandDiagnostics, CommandListFonts, CommandPrintFiglet
 from hello_world.settings import HelloWorldSettings
 
 
@@ -54,53 +51,26 @@ def cli(
     settings = get_settings(ctx, HelloWorldSettings)
 
     if diag:
-        console.print(f"Script: {Path(__file__).resolve()}", mode="raw")
-        console.print(f"Python: {sys.executable}", mode="raw")
-        console.print("\nDirect dependencies:", mode="raw")
-        reqs = requires("hello-world") or []
-        direct_deps = {re.split(r"[<>=!~\[;]", r)[0].lower().replace("-", "_") for r in reqs}
-        for dist in sorted(distributions(), key=lambda d: d.metadata["Name"].lower()):
-            name = dist.metadata["Name"]
-            normalized = name.lower().replace("-", "_")
-            if normalized in direct_deps:
-                version = dist.version
-                location = getattr(dist, "_path", None)
-                location = location.parent if location else "unknown"
-                console.print(f"  {name}=={version} ({location})", mode="raw")
+        CommandDiagnostics().execute()
         return
 
     try:
-        import pyfiglet
+        import pyfiglet  # noqa: F401
     except ImportError as _exc:
         raise ImportError(
             "hello-world requires the 'hello-world' extra. Install with: uv tool install buvis-gems[hello-world]"
         ) from _exc
 
-    from hello_world.commands.print_figlet.print_figlet import CommandPrintFiglet
-
     if list_fonts:
-        fonts: list[str] = pyfiglet.FigletFont.getFonts()  # type: ignore[no-untyped-call]
-        console.print("\n".join(sorted(fonts)), mode="raw")
+        CommandListFonts().execute()
         return
 
-    # Resolve font: CLI > settings
-    resolved_font = font if font is not None else settings.font
-    if random_font:
-        import random
-
-        all_fonts: list[str] = pyfiglet.FigletFont.getFonts()  # type: ignore[no-untyped-call]
-        resolved_font = random.choice(all_fonts)  # noqa: S311
-        console.print(f"Random font selected: {resolved_font}", mode="raw")
-
-    available_fonts: list[str] = pyfiglet.FigletFont.getFonts()  # type: ignore[no-untyped-call]
-    if resolved_font not in available_fonts:
-        resolved_font = settings.font
-
-    # Resolve text: CLI > settings
-    resolved_text = text if text is not None else settings.text
-
-    cmd = CommandPrintFiglet(font=resolved_font, text=resolved_text)
-    cmd.execute()
+    CommandPrintFiglet(
+        font=font,
+        text=text,
+        settings=settings,
+        random_font=random_font,
+    ).execute()
 
 
 if __name__ == "__main__":
