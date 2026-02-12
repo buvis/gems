@@ -40,7 +40,7 @@ class FileMetadataReader:
         else:
             stat = file_path.stat()
             try:
-                creation_time = stat.st_birthtime
+                creation_time = stat.st_birthtime  # type: ignore[attr-defined,unused-ignore]
             except AttributeError:
                 creation_time = stat.st_mtime
 
