@@ -15,4 +15,6 @@ class LogEntry:
     due_date: date | None = None
     start_date: date | None = None
     reminder_date: date | None = None
+    completed_date: date | None = None
+    cancelled_date: date | None = None
     context: list[str] = field(default_factory=list)

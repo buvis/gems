@@ -25,7 +25,7 @@ _PRIORITY_MAP: dict[str, str] = {
 }
 
 _DATE_EMOJI_RE = re.compile(
-    r"[\U0001f4c5\U0001f6eb\u23f3] \d{4}-\d{2}-\d{2}",
+    r"[\U0001f4c5\U0001f6eb\u23f3\u2705\u274c] \d{4}-\d{2}-\d{2}",
 )
 
 
@@ -68,7 +68,7 @@ def _strip_metadata(text: str) -> str:
     result = re.sub(r"#gtd/\S+", "", result)
     for emoji in _PRIORITY_MAP:
         result = result.replace(emoji, "")
-    result = re.sub(r"[📅🛫⏳] \d{4}-\d{2}-\d{2}", "", result)
+    result = re.sub(r"[📅🛫⏳✅❌] \d{4}-\d{2}-\d{2}", "", result)
     result = re.sub(r"\|", "", result)
     return result.strip()
 
@@ -110,6 +110,11 @@ def parse_log(raw: str) -> list[LogEntry]:
         due_date = _parse_date_emoji(rest, "\U0001f4c5")
         start_date = _parse_date_emoji(rest, "\U0001f6eb")
         reminder_date = _parse_date_emoji(rest, "\u23f3")
+        completed_date = _parse_date_emoji(rest, "\u2705")
+        cancelled_date = _parse_date_emoji(rest, "\u274c")
+
+        if completed_date or cancelled_date:
+            gtd_list = "completed"
 
         context: list[str] = []
         i += 1
@@ -128,6 +133,8 @@ def parse_log(raw: str) -> list[LogEntry]:
                 due_date=due_date,
                 start_date=start_date,
                 reminder_date=reminder_date,
+                completed_date=completed_date,
+                cancelled_date=cancelled_date,
                 context=context,
             ),
         )
