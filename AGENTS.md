@@ -54,6 +54,27 @@ dev/
 - **Hatch packages**: each `src/tools/<name>/` maps to top-level `<name>` in wheel
 - **Libraries are internal**: pybase + zettel not published separately
 
+## Tool Structure
+
+Every tool under `src/tools/<name>/` follows a base layout:
+
+```text
+tool_name/
+├── __init__.py
+├── __main__.py
+├── cli.py              # Click entry point
+├── settings.py         # Tool-specific settings
+└── commands/           # One module per CLI command
+```
+
+Add subdirs only when needed:
+
+| Dir | When | Example |
+|-----|------|---------|
+| `adapters/` | External service clients | fctracker, readerctl |
+| `domain/` | Business logic beyond simple commands | fctracker |
+| `shared/` | Code reused across commands | zseq |
+
 ## Code Conventions
 
 **Type hints** — modern style, no `Optional`:
