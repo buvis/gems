@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 from buvis.pybase.filesystem import FileMetadataReader
 
 PLATFORM_SYSTEM_PATH = "buvis.pybase.filesystem.file_metadata.file_metadata_reader.platform.system"

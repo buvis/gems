@@ -13,10 +13,10 @@ from .infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repo
 
 __all__ = [
     "CreateZettelUseCase",
-    "QueryZettelsUseCase",
     "MarkdownZettelFormatter",
     "MarkdownZettelRepository",
     "PrintZettelUseCase",
+    "QueryZettelsUseCase",
     "ReadZettelUseCase",
     "ZettelData",
 ]

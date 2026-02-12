@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 from buvis.pybase.filesystem import FileMetadataReader
-
 from buvis.pybase.zettel.infrastructure.persistence.file_parsers.parsers.markdown.markdown import (
     MarkdownZettelFileParser,
 )

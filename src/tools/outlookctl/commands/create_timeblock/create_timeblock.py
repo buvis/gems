@@ -17,7 +17,7 @@ class CommandCreateTimeblock:
 
             self.outlook = OutlookLocalAdapter()
         except Exception as e:
-            console.panic(e)
+            console.panic(str(e))
 
     def execute(self) -> None:
         console.print(f"Would create a timeblock of {self.duration} minutes", mode="raw")

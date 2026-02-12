@@ -5,4 +5,11 @@ from .parse_tags.parse_tags import CommandParseTags
 from .query.query import CommandQuery
 from .sync_note.sync_note import CommandSyncNote
 
-__all__ = ["CommandCreateNote", "CommandFormatNote", "CommandImportNote", "CommandParseTags", "CommandQuery", "CommandSyncNote"]
+__all__ = [
+    "CommandCreateNote",
+    "CommandFormatNote",
+    "CommandImportNote",
+    "CommandParseTags",
+    "CommandQuery",
+    "CommandSyncNote",
+]

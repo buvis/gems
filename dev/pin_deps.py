@@ -74,7 +74,7 @@ def _transform_deps_block(content: str, replacer: callable) -> str:
             lambda m: _replace_deps_in_bracket(m.group(0), replacer),
             body,
         )
-        content = content[:opt_match.start()] + header + transformed_body + content[opt_match.end():]
+        content = content[: opt_match.start()] + header + transformed_body + content[opt_match.end() :]
 
     return content
 

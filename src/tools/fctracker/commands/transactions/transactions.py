@@ -68,6 +68,6 @@ class CommandTransactions:
                                 inflow,
                             )
                             index -= 1
-                        console.print(table)
+                        console.console.print(table)
 
                         console.nl()

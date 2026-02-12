@@ -17,9 +17,7 @@ try:
     from jira import JIRA
     from jira.exceptions import JIRAError
 except ImportError as _exc:
-    raise ImportError(
-        "bim requires the 'bim' extra. Install with: uv tool install buvis-gems[bim]"
-    ) from _exc
+    raise ImportError("bim requires the 'bim' extra. Install with: uv tool install buvis-gems[bim]") from _exc
 
 if TYPE_CHECKING:
     from jira.resources import Issue

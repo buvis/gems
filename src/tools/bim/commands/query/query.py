@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel import MarkdownZettelRepository
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
+from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 from buvis.pybase.zettel.infrastructure.query.output_formatter import (
     format_csv,
     format_markdown,
     format_table,
 )
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
     parse_query_file,
     parse_query_string,

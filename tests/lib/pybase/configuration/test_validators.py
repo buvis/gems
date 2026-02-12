@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import BaseModel
-
 from buvis.pybase.configuration import (
     MAX_JSON_ENV_SIZE,
     MAX_NESTING_DEPTH,
@@ -13,6 +11,7 @@ from buvis.pybase.configuration import (
     validate_nesting_depth,
 )
 from buvis.pybase.configuration.validators import _iter_model_types
+from pydantic import BaseModel
 
 
 class Level0Valid(BaseModel):
@@ -108,9 +107,8 @@ class TestValidateJsonEnvSize:
 class TestSecureSettingsMixin:
     def test_validates_oversized_env_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Oversized prefixed env var raises ValueError."""
-        from pydantic_settings import BaseSettings, SettingsConfigDict
-
         from buvis.pybase.configuration import SecureSettingsMixin
+        from pydantic_settings import BaseSettings, SettingsConfigDict
 
         class TestSettings(SecureSettingsMixin, BaseSettings):
             model_config = SettingsConfigDict(env_prefix="TEST_SECURE_")
@@ -124,9 +122,8 @@ class TestSecureSettingsMixin:
 
     def test_allows_valid_sized_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Valid-sized prefixed env var is allowed."""
-        from pydantic_settings import BaseSettings, SettingsConfigDict
-
         from buvis.pybase.configuration import SecureSettingsMixin
+        from pydantic_settings import BaseSettings, SettingsConfigDict
 
         class TestSettings(SecureSettingsMixin, BaseSettings):
             model_config = SettingsConfigDict(env_prefix="TEST_SECURE_")
@@ -141,9 +138,8 @@ class TestSecureSettingsMixin:
 
     def test_ignores_non_prefixed_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Oversized non-prefixed env var is allowed."""
-        from pydantic_settings import BaseSettings, SettingsConfigDict
-
         from buvis.pybase.configuration import SecureSettingsMixin
+        from pydantic_settings import BaseSettings, SettingsConfigDict
 
         class TestSettings(SecureSettingsMixin, BaseSettings):
             model_config = SettingsConfigDict(env_prefix="TEST_SECURE_")
@@ -160,9 +156,8 @@ class TestSecureSettingsMixin:
 class TestSafeLoggingMixin:
     def test_masks_sensitive_scalar_field(self) -> None:
         """Scalar field with sensitive name is masked in repr."""
-        from pydantic_settings import BaseSettings
-
         from buvis.pybase.configuration import SafeLoggingMixin
+        from pydantic_settings import BaseSettings
 
         class TestSettings(SafeLoggingMixin, BaseSettings):
             api_key: str = "secret123"
@@ -177,9 +172,8 @@ class TestSafeLoggingMixin:
 
     def test_masks_sensitive_dict_keys(self) -> None:
         """Dict values with sensitive keys are masked."""
-        from pydantic_settings import BaseSettings
-
         from buvis.pybase.configuration import SafeLoggingMixin
+        from pydantic_settings import BaseSettings
 
         class TestSettings(SafeLoggingMixin, BaseSettings):
             headers: dict[str, str] = {
@@ -196,9 +190,8 @@ class TestSafeLoggingMixin:
 
     def test_various_sensitive_patterns(self) -> None:
         """Various sensitive field names are masked."""
-        from pydantic_settings import BaseSettings
-
         from buvis.pybase.configuration import SafeLoggingMixin
+        from pydantic_settings import BaseSettings
 
         class TestSettings(SafeLoggingMixin, BaseSettings):
             password: str = "pass123"
@@ -216,9 +209,8 @@ class TestSafeLoggingMixin:
 
     def test_non_sensitive_fields_shown(self) -> None:
         """Non-sensitive fields are shown normally."""
-        from pydantic_settings import BaseSettings
-
         from buvis.pybase.configuration import SafeLoggingMixin
+        from pydantic_settings import BaseSettings
 
         class TestSettings(SafeLoggingMixin, BaseSettings):
             username: str = "bob"

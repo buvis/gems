@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from buvis.pybase.adapters.outlook_local.exceptions import (
     OutlookAppointmentCreationFailedError,
 )

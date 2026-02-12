@@ -3,9 +3,8 @@ from io import StringIO
 from logging import LogRecord
 
 import pytest
-from rich.console import Console
-
 from buvis.pybase.adapters.console.capturing_rich_handler import CapturingRichHandler
+from rich.console import Console
 
 
 @pytest.fixture

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic_settings import SettingsConfigDict
-
 from buvis.pybase.configuration.settings import GlobalSettings
+from pydantic_settings import SettingsConfigDict
 
 
 class PhotoSettings(GlobalSettings):

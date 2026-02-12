@@ -1,9 +1,8 @@
 from unittest.mock import MagicMock, patch
 
+import buvis.pybase.zettel.domain.entities as zettel_entities
 import pytest
 from buvis.pybase.formatting import StringOperator
-
-import buvis.pybase.zettel.domain.entities as zettel_entities
 from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 
 

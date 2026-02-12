@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 import yaml
-
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 if TYPE_CHECKING:

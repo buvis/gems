@@ -1,7 +1,6 @@
 from datetime import datetime
 
 import pytest
-
 from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.helpers import (
     convert_datetimes,
     format_metadata,

@@ -3,7 +3,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-
 from buvis.pybase.formatting.string_operator.string_operator import StringOperator
 
 

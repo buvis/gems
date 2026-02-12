@@ -5,7 +5,6 @@ Tests for the Zettel class.
 from datetime import UTC, datetime
 
 import pytest
-
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 

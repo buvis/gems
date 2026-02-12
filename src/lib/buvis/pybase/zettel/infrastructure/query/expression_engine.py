@@ -131,11 +131,35 @@ def safe_eval(expr: str, variables: dict[str, Any]) -> Any:
         raise ValueError(msg) from e
 
     for node in ast.walk(tree):
-        if not isinstance(node, _ALLOWED_NODES + tuple(_SAFE_BINOPS) + tuple(_SAFE_UNARYOPS) + tuple(_SAFE_CMPOPS) + tuple(_SAFE_BOOLOPS)):
-            if not isinstance(node, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow,
-                                     ast.UAdd, ast.USub, ast.Not,
-                                     ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.In, ast.NotIn,
-                                     ast.And, ast.Or)):
+        if not isinstance(
+            node,
+            _ALLOWED_NODES + tuple(_SAFE_BINOPS) + tuple(_SAFE_UNARYOPS) + tuple(_SAFE_CMPOPS) + tuple(_SAFE_BOOLOPS),
+        ):
+            if not isinstance(
+                node,
+                (
+                    ast.Add,
+                    ast.Sub,
+                    ast.Mult,
+                    ast.Div,
+                    ast.FloorDiv,
+                    ast.Mod,
+                    ast.Pow,
+                    ast.UAdd,
+                    ast.USub,
+                    ast.Not,
+                    ast.Eq,
+                    ast.NotEq,
+                    ast.Lt,
+                    ast.LtE,
+                    ast.Gt,
+                    ast.GtE,
+                    ast.In,
+                    ast.NotIn,
+                    ast.And,
+                    ast.Or,
+                ),
+            ):
                 msg = f"Disallowed expression node: {type(node).__name__}"
                 raise ValueError(msg)
 
@@ -222,7 +246,7 @@ def _eval_node(node: ast.AST, variables: dict[str, Any]) -> Any:
     raise ValueError(msg)
 
 
-def python_eval(code: str, variables: dict[str, Any]) -> Any:
+def python_eval(expression: str, context: dict[str, Any]) -> Any:
     """Evaluate arbitrary Python code with full builtins.
 
     Tries single-expression eval first. On SyntaxError falls back to exec
@@ -230,13 +254,13 @@ def python_eval(code: str, variables: dict[str, Any]) -> Any:
     """
     ns: dict[str, Any] = {"__builtins__": __builtins__, "datetime": _datetime_mod}
     ns.update(_SAFE_FUNCTIONS)
-    ns.update(variables)
+    ns.update(context)
 
     try:
-        compiled = compile(code, "<expr>", "eval")
+        compiled = compile(expression, "<expr>", "eval")
         return eval(compiled, ns)  # noqa: S307
     except SyntaxError:
-        compiled = compile(code, "<expr>", "exec")
+        compiled = compile(expression, "<expr>", "exec")
         exec(compiled, ns)  # noqa: S102
         if "result" not in ns:
             msg = "exec-mode code must assign to 'result'"

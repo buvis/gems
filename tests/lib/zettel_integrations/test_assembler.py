@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue import (
     ProjectZettelJiraIssueDTOAssembler,
     _get_ticket_references,

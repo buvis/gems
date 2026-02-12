@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

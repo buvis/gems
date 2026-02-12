@@ -49,7 +49,7 @@ class CommandStatus:
                 logging.error("I don't understand this output: \n\n%s", out)
 
 
-def get_git_modified_files(git_output: str, relative_to: Path) -> list[str]:
+def get_git_modified_files(git_output: str, relative_to: Path) -> list[Path]:
     modified_files = []
 
     for line in git_output.split("\n"):

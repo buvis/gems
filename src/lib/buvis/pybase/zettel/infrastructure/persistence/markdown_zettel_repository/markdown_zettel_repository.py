@@ -65,4 +65,3 @@ class MarkdownZettelRepository(ZettelReader):
                 zettel_data.file_path = str(file_path)
                 zettels.append(Zettel(zettel_data))
         return zettels
-

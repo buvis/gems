@@ -5,9 +5,7 @@ from pathlib import Path
 try:
     import ffmpeg
 except ImportError as _exc:
-    raise ImportError(
-        "muc requires the 'muc' extra. Install with: uv tool install buvis-gems[muc]"
-    ) from _exc
+    raise ImportError("muc requires the 'muc' extra. Install with: uv tool install buvis-gems[muc]") from _exc
 
 
 class CommandLimit:

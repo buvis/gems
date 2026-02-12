@@ -35,7 +35,7 @@ class ProjectZettelJiraIssueDTOAssembler:
 
         team = self.defaults["team"]
 
-        if source.deliverable == "enhancement":
+        if getattr(source, "deliverable", None) == "enhancement":
             issue_type = self.defaults["enhancements"]["issue_type"]
             feature = self.defaults["enhancements"]["feature"]
             labels = self.defaults["enhancements"]["labels"].split(",")
@@ -58,9 +58,9 @@ class ProjectZettelJiraIssueDTOAssembler:
         if ticket_references != "":
             description += f"\n\n{ticket_references}"
 
-        title = source.title
+        title = source.title or ""
 
-        if "pex" in source.tags:
+        if "pex" in (source.tags or []):
             title = f"PEX: {title}"
 
         return JiraIssueDTO(
@@ -70,7 +70,7 @@ class ProjectZettelJiraIssueDTOAssembler:
             issue_type=issue_type,
             labels=labels,
             priority=priority,
-            ticket=source.ticket,
+            ticket=getattr(source, "ticket", "") or "",
             feature=feature,
             assignee=user,
             reporter=user,

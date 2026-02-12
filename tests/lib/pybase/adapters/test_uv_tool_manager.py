@@ -6,7 +6,6 @@ import sys
 from unittest.mock import patch
 
 import pytest
-
 from buvis.pybase.adapters.uv.uv_tool import UvToolManager
 
 

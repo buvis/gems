@@ -7,9 +7,8 @@ not at use time. This ensures configuration errors are caught early.
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
-
 from buvis.pybase.configuration.settings import GlobalSettings, ToolSettings
+from pydantic import ValidationError
 
 
 class TestLogLevelValidation:

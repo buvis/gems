@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from buvis.pybase.formatting.string_operator.string_case_tools import StringCaseTools
 
 

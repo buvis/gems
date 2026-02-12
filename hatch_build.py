@@ -18,7 +18,7 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 class RustBuildHook(BuildHookInterface):
     PLUGIN_NAME = "rust-ext"
 
-    def initialize(self, version: str, build_data: dict) -> None:  # noqa: ANN401
+    def initialize(self, version: str, build_data: dict) -> None:
         if self.target_name != "wheel":
             return
 

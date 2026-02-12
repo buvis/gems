@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 import pytest
 from buvis.pybase.formatting import StringOperator
-
 from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.fix_title_format import (
     fix_title_format,
 )

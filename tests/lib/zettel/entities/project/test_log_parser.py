@@ -1,7 +1,6 @@
 from datetime import date, datetime
 
 import pytest
-
 from buvis.pybase.zettel.domain.entities.project.services.log_parser import parse_log
 
 
@@ -98,11 +97,7 @@ class TestParseLog:
         assert e.reminder_date == date(2026, 2, 20)
 
     def test_nested_context(self):
-        raw = (
-            "- [ ] 2026-02-10 13:08 - task\n"
-            "    - context line 1\n"
-            "    - context line 2"
-        )
+        raw = "- [ ] 2026-02-10 13:08 - task\n    - context line 1\n    - context line 2"
         e = parse_log(raw)[0]
         assert e.context == ["- context line 1", "- context line 2"]
 

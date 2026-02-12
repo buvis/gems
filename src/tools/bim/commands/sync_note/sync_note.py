@@ -16,7 +16,6 @@ from buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue 
     ProjectZettelJiraIssueDTOAssembler,
 )
 
-
 DEFAULT_JIRA_IGNORE_US_LABEL = "do-not-track"
 
 
@@ -33,7 +32,7 @@ class DictConfig:
         return self._data.get(key, default)
 
 
-class ZettelJiraAdapter(JiraAdapter):
+class ZettelJiraAdapter(JiraAdapter):  # type: ignore[misc]
     """JiraAdapter that can create issues from ProjectZettel."""
 
     def __init__(self, cfg: DictConfig) -> None:

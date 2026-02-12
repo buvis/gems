@@ -1,3 +1,4 @@
+import getpass
 from pathlib import Path
 
 from buvis.pybase.adapters import console
@@ -27,7 +28,7 @@ class CommandLogin:
                 )
                 return None
         else:
-            token = str(console.input_password("Enter Readwise API token: "))
+            token = getpass.getpass("Enter Readwise API token: ")
             self.token_file.parent.mkdir(parents=True, exist_ok=True)
             self.token_file.write_text(token)
             token_check = ReaderAPIAdapter.check_token(token)

@@ -5,11 +5,6 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from rich.columns import Columns
-from rich.console import Group, Text
-from rich.markdown import Markdown
-from rich.status import Status
-
 from buvis.pybase.adapters.console.capturing_rich_handler import CapturingRichHandler
 from buvis.pybase.adapters.console.console import (
     ConsoleAdapter,
@@ -17,6 +12,10 @@ from buvis.pybase.adapters.console.console import (
     console,
     logging_to_console,
 )
+from rich.columns import Columns
+from rich.console import Group, Text
+from rich.markdown import Markdown
+from rich.status import Status
 
 
 @pytest.fixture

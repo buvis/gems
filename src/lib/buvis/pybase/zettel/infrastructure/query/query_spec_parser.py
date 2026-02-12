@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-
 from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QueryColumn,
     QueryFilter,

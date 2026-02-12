@@ -9,7 +9,6 @@ Imports:
 """
 
 from buvis.pybase.formatting import StringOperator
-
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 

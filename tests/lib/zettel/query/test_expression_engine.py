@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
 import pytest
-
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval, safe_eval
 
 

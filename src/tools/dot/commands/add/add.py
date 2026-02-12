@@ -22,6 +22,8 @@ class CommandAdd:
             "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
         )
 
+        self.file_path: Path | None = None
+
         if file_path:
             if Path(file_path).is_file():
                 self.file_path = Path(file_path)
@@ -30,13 +32,11 @@ class CommandAdd:
                 self.file_path = Path(Path(os.environ["DOTFILES_ROOT"]) / file_path)
                 logging.info("Checking %s for changes", self.file_path)
             else:
-                self.file_path = None
                 logging.warning(
                     "File %s doesn't exist. Proceeding with cherry picking all.",
                     file_path,
                 )
         else:
-            self.file_path = None
             logging.info("No file specified, proceeding with cherry picking all.")
 
     def execute(self: CommandAdd) -> None:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
-import tempfile
 import time
 from pathlib import Path
 
@@ -36,7 +34,7 @@ tags:
   - sample
   - benchmark
   - tag-{i % 50}
-publish: {'true' if i % 3 == 0 else 'false'}
+publish: {"true" if i % 3 == 0 else "false"}
 processed: false
 ---
 

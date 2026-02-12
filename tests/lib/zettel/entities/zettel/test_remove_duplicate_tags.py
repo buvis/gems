@@ -1,5 +1,4 @@
 import pytest
-
 from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.remove_duplicate_tags import (
     remove_duplicate_tags,
 )

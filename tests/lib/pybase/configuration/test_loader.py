@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from buvis.pybase.configuration.exceptions import MissingEnvVarError
 from buvis.pybase.configuration.loader import (
     _ENV_PATTERN,

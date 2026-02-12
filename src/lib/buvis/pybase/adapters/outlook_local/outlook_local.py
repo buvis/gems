@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from typing import Any, cast
 
 import tzlocal
-
 from buvis.pybase.adapters.outlook_local.exceptions import (
     OutlookAppointmentCreationFailedError,
 )

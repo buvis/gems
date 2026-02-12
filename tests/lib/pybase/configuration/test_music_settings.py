@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from buvis.pybase.configuration.examples import MusicSettings
 from buvis.pybase.configuration.settings import GlobalSettings
+from pydantic import ValidationError
 
 
 class TestMusicSettingsDefaults:

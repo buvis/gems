@@ -94,7 +94,7 @@ def sync_note(
         from bim.commands.sync_note.sync_note import CommandSyncNote
 
         global_settings = get_settings(ctx, GlobalSettings)
-        jira_adapter: dict[str, Any] = global_settings.model_extra.get("jira_adapter", {})
+        jira_adapter: dict[str, Any] = (global_settings.model_extra or {}).get("jira_adapter", {})
         cmd = CommandSyncNote(
             path_note=Path(path_to_note),
             target_system=target_system,

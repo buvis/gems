@@ -11,9 +11,8 @@ from __future__ import annotations
 
 from typing import cast
 
-from buvis.pybase.formatting import StringOperator
-
 import buvis.pybase.zettel.domain.entities as zettel_entities
+from buvis.pybase.formatting import StringOperator
 
 
 class ZettelFactory:

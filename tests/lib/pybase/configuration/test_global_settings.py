@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
-
 from buvis.pybase.configuration.settings import GlobalSettings
+from pydantic import ValidationError
 
 
 class TestGlobalSettingsDefaults:

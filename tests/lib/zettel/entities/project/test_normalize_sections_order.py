@@ -1,5 +1,4 @@
 import pytest
-
 from buvis.pybase.zettel.domain.entities.project.services.consistency.fixers.normalize_sections_order import (
     normalize_sections_order,
 )

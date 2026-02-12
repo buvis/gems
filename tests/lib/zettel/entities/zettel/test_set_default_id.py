@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-
 from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.set_default_id import (
     set_default_id,
 )

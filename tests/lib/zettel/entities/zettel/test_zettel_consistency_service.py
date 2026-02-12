@@ -5,7 +5,6 @@ Test cases for the ZettelConsistencyService class.
 from datetime import UTC, datetime
 
 import pytest
-
 from buvis.pybase.zettel.domain.entities.zettel.services.consistency.zettel_consistency_service import (
     ZettelConsistencyService,
 )

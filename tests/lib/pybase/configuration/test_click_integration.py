@@ -6,11 +6,10 @@ from pathlib import Path
 
 import click
 import pytest
-from click.testing import CliRunner
-from pydantic import BaseModel
-
 from buvis.pybase.configuration import buvis_options, get_settings
 from buvis.pybase.configuration.settings import GlobalSettings
+from click.testing import CliRunner
+from pydantic import BaseModel
 
 
 @pytest.fixture

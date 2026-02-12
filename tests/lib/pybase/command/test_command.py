@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 
 import pytest
-
 from buvis.pybase.command.command import (
     FILENAME_COMMAND_INPUT_SPECIFICATION,
     BuvisCommand,

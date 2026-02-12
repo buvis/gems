@@ -41,7 +41,7 @@ class ProjectZettel(Zettel):
         """Initialize the ProjectZettel instance by calling the initializer of the superclass :class:`Zettel`."""
         super().__init__(zettel_data, from_rust=from_rust)
 
-    def _migrate(self: "ProjectZettel") -> None:
+    def _migrate(self: ProjectZettel) -> None:
         """
         Perform migration operations specific to project Zettels.
 
@@ -52,7 +52,7 @@ class ProjectZettel(Zettel):
         super()._migrate()
         ProjectZettelMigrationService.migrate(self._data)
 
-    def _ensure_consistency(self: "ProjectZettel") -> None:
+    def _ensure_consistency(self: ProjectZettel) -> None:
         """
         Ensure consistency of the project Zettel's data.
 
@@ -64,7 +64,7 @@ class ProjectZettel(Zettel):
         ProjectZettelConsistencyService.ensure_consistency(self._data)
 
     @property
-    def log(self: "ProjectZettel") -> str:
+    def log(self: ProjectZettel) -> str:
         """
         Retrieve the log section from the Zettel's data.
 
@@ -80,12 +80,12 @@ class ProjectZettel(Zettel):
         )
 
     @property
-    def tasks(self: "ProjectZettel") -> list[LogEntry]:
+    def tasks(self: ProjectZettel) -> list[LogEntry]:
         """Return parsed log entries as structured LogEntry objects."""
         return parse_log(self.log)
 
     @property
-    def us(self: "ProjectZettel") -> str | None:
+    def us(self: ProjectZettel) -> str | None:
         """
         Retrieve user story from Zettel's data.
 
@@ -97,10 +97,10 @@ class ProjectZettel(Zettel):
         return self._data.reference.get("us", None)
 
     @us.setter
-    def us(self: "ProjectZettel", value: str) -> None:
+    def us(self: ProjectZettel, value: str) -> None:
         self._data.reference["us"] = value
 
-    def add_log_entry(self: "ProjectZettel", entry: str) -> None:
+    def add_log_entry(self: ProjectZettel, entry: str) -> None:
         """
         Add a new entry to the log section of the Zettel.
 

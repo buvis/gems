@@ -3,8 +3,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from jira.exceptions import JIRAError
-
 from buvis.pybase.adapters.jira.domain import JiraCommentDTO, JiraIssueDTO
 from buvis.pybase.adapters.jira.exceptions import (
     JiraLinkError,
@@ -13,6 +11,7 @@ from buvis.pybase.adapters.jira.exceptions import (
 )
 from buvis.pybase.adapters.jira.jira import JiraAdapter
 from buvis.pybase.adapters.jira.settings import JiraFieldMappings, JiraSettings
+from jira.exceptions import JIRAError
 
 
 @pytest.fixture

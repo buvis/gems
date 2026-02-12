@@ -7,9 +7,8 @@ from typing import Literal, Union
 
 import pytest
 import yaml
-from pydantic import BaseModel
-
 from buvis.pybase.configuration import ConfigWriter
+from pydantic import BaseModel
 
 
 class NestedModel(BaseModel):

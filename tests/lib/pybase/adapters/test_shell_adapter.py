@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 
 import pexpect
 import pytest
-
 from buvis.pybase.adapters.shell.shell import ShellAdapter
 
 

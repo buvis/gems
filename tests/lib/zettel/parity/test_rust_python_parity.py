@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

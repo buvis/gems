@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import yaml
-
 from buvis.pybase.zettel.domain.templates import (
     discover_templates,
     discover_yaml_templates,
@@ -36,6 +33,7 @@ class TestDiscoverYamlTemplates:
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
         from buvis.pybase.zettel.domain.templates.note import NoteTemplate
+
         base = {"note": NoteTemplate()}
         result = discover_yaml_templates(base, python_eval)
         assert isinstance(result["note"], YamlTemplate)
@@ -44,16 +42,19 @@ class TestDiscoverYamlTemplates:
         templates_dir = tmp_path / "templates"
         templates_dir.mkdir()
         (templates_dir / "standup.yaml").write_text(
-            yaml.dump({
-                "name": "standup",
-                "extends": "note",
-                "metadata": {"type": "standup"},
-            }),
+            yaml.dump(
+                {
+                    "name": "standup",
+                    "extends": "note",
+                    "metadata": {"type": "standup"},
+                }
+            ),
         )
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
         from buvis.pybase.zettel.domain.templates.note import NoteTemplate
+
         base = {"note": NoteTemplate()}
         result = discover_yaml_templates(base, python_eval)
         assert "standup" in result

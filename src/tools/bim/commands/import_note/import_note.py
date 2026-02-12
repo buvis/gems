@@ -7,6 +7,7 @@ from buvis.pybase.zettel import (
     MarkdownZettelRepository,
     ReadZettelUseCase,
 )
+from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 
 
 class CommandImportNote:
@@ -23,7 +24,7 @@ class CommandImportNote:
             raise FileNotFoundError(f"Zettelkasten directory not found: {path_zettelkasten}")
         self.path_zettelkasten = path_zettelkasten
 
-    def _resolve_output_path(self: "CommandImportNote", note: object, path_output: Path) -> Path:
+    def _resolve_output_path(self: "CommandImportNote", note: Zettel, path_output: Path) -> Path:
         overwrite_confirmed = False
 
         while path_output.is_file() and not overwrite_confirmed:
@@ -36,6 +37,7 @@ class CommandImportNote:
             if overwrite_file:
                 overwrite_confirmed = True
             else:
+                assert note.id is not None
                 alternative_note_id = note.id + 1
                 alternative_path_output = self.path_zettelkasten / f"{alternative_note_id}.md"
 

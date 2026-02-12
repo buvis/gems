@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.value_objects.query_spec import (
@@ -49,14 +48,19 @@ def _make_zettel(
 @pytest.fixture
 def sample_zettels():
     return [
-        _make_zettel(id=1, title="Alpha", type="project", tags=["sprint-1", "dev"],
-                     date=datetime(2024, 1, 10, tzinfo=UTC)),
-        _make_zettel(id=2, title="Beta", type="note", tags=["sprint-1"],
-                     date=datetime(2024, 3, 5, tzinfo=UTC)),
-        _make_zettel(id=3, title="Gamma", type="project", tags=["sprint-2"],
-                     date=datetime(2024, 2, 20, tzinfo=UTC), processed=True),
-        _make_zettel(id=4, title="Delta", type="note", tags=[],
-                     date=datetime(2024, 4, 1, tzinfo=UTC)),
+        _make_zettel(
+            id=1, title="Alpha", type="project", tags=["sprint-1", "dev"], date=datetime(2024, 1, 10, tzinfo=UTC)
+        ),
+        _make_zettel(id=2, title="Beta", type="note", tags=["sprint-1"], date=datetime(2024, 3, 5, tzinfo=UTC)),
+        _make_zettel(
+            id=3,
+            title="Gamma",
+            type="project",
+            tags=["sprint-2"],
+            date=datetime(2024, 2, 20, tzinfo=UTC),
+            processed=True,
+        ),
+        _make_zettel(id=4, title="Delta", type="note", tags=[], date=datetime(2024, 4, 1, tzinfo=UTC)),
     ]
 
 

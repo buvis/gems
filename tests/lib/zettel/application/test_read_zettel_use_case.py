@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from buvis.pybase.zettel.application.use_cases.read_zettel_use_case import ReadZettelUseCase
 from buvis.pybase.zettel.domain.entities import Zettel
 from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader

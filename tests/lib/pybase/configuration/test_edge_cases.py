@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from buvis.pybase.configuration.resolver import ConfigResolver
 from buvis.pybase.configuration.settings import GlobalSettings
 

@@ -16,4 +16,4 @@ class CommandBalance:
                 account = Account(account_name, currency)
                 reader = TransactionsReader(account)
                 reader.get_transactions()
-                console.print(account)
+                console.console.print(account)

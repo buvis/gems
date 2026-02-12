@@ -3,17 +3,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from textual import on, work
-from textual.app import App, ComposeResult
-from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
-
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate, discover_templates
 from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
 )
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
+from textual import on, work
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, VerticalScroll
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
 
 
 class CreateNoteApp(App[None]):

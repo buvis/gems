@@ -14,13 +14,15 @@ class TestYamlTemplateBasic:
         assert t.name == "test"
 
     def test_questions(self):
-        t = _make_template({
-            "name": "test",
-            "questions": [
-                {"key": "who", "prompt": "Who?", "required": True},
-                {"key": "where", "prompt": "Where?", "default": "online"},
-            ],
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "questions": [
+                    {"key": "who", "prompt": "Who?", "required": True},
+                    {"key": "where", "prompt": "Where?", "default": "online"},
+                ],
+            }
+        )
         qs = t.questions()
         assert len(qs) == 2
         assert qs[0].key == "who"
@@ -28,12 +30,14 @@ class TestYamlTemplateBasic:
         assert qs[1].default == "online"
 
     def test_questions_with_choices(self):
-        t = _make_template({
-            "name": "test",
-            "questions": [
-                {"key": "loc", "prompt": "Location", "choices": ["a", "b"]},
-            ],
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "questions": [
+                    {"key": "loc", "prompt": "Location", "choices": ["a", "b"]},
+                ],
+            }
+        )
         assert t.questions()[0].choices == ["a", "b"]
 
     def test_no_questions(self):
@@ -47,63 +51,77 @@ class TestYamlTemplateBasic:
 
 class TestYamlTemplateBuildData:
     def test_metadata_string_substitution(self):
-        t = _make_template({
-            "name": "test",
-            "metadata": {"type": "meeting", "attendees": "{attendees}"},
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "metadata": {"type": "meeting", "attendees": "{attendees}"},
+            }
+        )
         data = t.build_data({"title": "Standup", "attendees": "Alice, Bob"})
         assert data.metadata["type"] == "meeting"
         assert data.metadata["attendees"] == "Alice, Bob"
 
     def test_metadata_missing_key_empty_string(self):
-        t = _make_template({
-            "name": "test",
-            "metadata": {"note": "{missing_key}"},
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "metadata": {"note": "{missing_key}"},
+            }
+        )
         data = t.build_data({"title": "X"})
         assert data.metadata["note"] == ""
 
     def test_metadata_eval(self):
-        t = _make_template({
-            "name": "test",
-            "metadata": {"tag_count": {"eval": "len(tags) if tags else 0"}},
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "metadata": {"tag_count": {"eval": "len(tags) if tags else 0"}},
+            }
+        )
         data = t.build_data({"title": "X", "tags": ["a", "b", "c"]})
         assert data.metadata["tag_count"] == 3
 
     def test_metadata_eval_no_tags(self):
-        t = _make_template({
-            "name": "test",
-            "metadata": {"tag_count": {"eval": "len(tags) if tags else 0"}},
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "metadata": {"tag_count": {"eval": "len(tags) if tags else 0"}},
+            }
+        )
         data = t.build_data({"title": "X", "tags": []})
         assert data.metadata["tag_count"] == 0
 
     def test_metadata_passthrough(self):
-        t = _make_template({
-            "name": "test",
-            "metadata": {"count": 42, "flag": True},
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "metadata": {"count": 42, "flag": True},
+            }
+        )
         data = t.build_data({"title": "X"})
         assert data.metadata["count"] == 42
         assert data.metadata["flag"] is True
 
     def test_sections(self):
-        t = _make_template({
-            "name": "test",
-            "sections": [
-                {"heading": "# {title}", "body": ""},
-                {"heading": "## Notes", "body": "some body"},
-            ],
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "sections": [
+                    {"heading": "# {title}", "body": ""},
+                    {"heading": "## Notes", "body": "some body"},
+                ],
+            }
+        )
         data = t.build_data({"title": "My Note"})
         assert data.sections == [("# My Note", ""), ("## Notes", "some body")]
 
     def test_sections_missing_body(self):
-        t = _make_template({
-            "name": "test",
-            "sections": [{"heading": "# H1"}],
-        })
+        t = _make_template(
+            {
+                "name": "test",
+                "sections": [{"heading": "# H1"}],
+            }
+        )
         data = t.build_data({"title": "X"})
         assert data.sections == [("# H1", "")]
 
@@ -121,18 +139,19 @@ class TestYamlTemplateBuildData:
 class TestYamlTemplateExtends:
     def _make_base(self):
         """Create a note-like base template."""
-        return _make_template({
-            "name": "note",
-            "questions": [{"key": "context", "prompt": "Context?"}],
-            "metadata": {"type": "note"},
-            "sections": [{"heading": "# {title}", "body": ""}],
-        })
+        return _make_template(
+            {
+                "name": "note",
+                "questions": [{"key": "context", "prompt": "Context?"}],
+                "metadata": {"type": "note"},
+                "sections": [{"heading": "# {title}", "body": ""}],
+            }
+        )
 
     def test_extends_merges_questions(self):
         base = self._make_base()
         child = _make_template(
-            {"name": "standup", "extends": "note",
-             "questions": [{"key": "sprint", "prompt": "Sprint?"}]},
+            {"name": "standup", "extends": "note", "questions": [{"key": "sprint", "prompt": "Sprint?"}]},
             base=base,
         )
         qs = child.questions()
@@ -143,8 +162,7 @@ class TestYamlTemplateExtends:
     def test_extends_metadata_overrides(self):
         base = self._make_base()
         child = _make_template(
-            {"name": "standup", "extends": "note",
-             "metadata": {"type": "standup", "sprint": "{sprint}"}},
+            {"name": "standup", "extends": "note", "metadata": {"type": "standup", "sprint": "{sprint}"}},
             base=base,
         )
         data = child.build_data({"title": "Daily", "sprint": "S1"})
@@ -154,8 +172,7 @@ class TestYamlTemplateExtends:
     def test_extends_sections_override(self):
         base = self._make_base()
         child = _make_template(
-            {"name": "standup", "extends": "note",
-             "sections": [{"heading": "# Standup"}]},
+            {"name": "standup", "extends": "note", "sections": [{"heading": "# Standup"}]},
             base=base,
         )
         data = child.build_data({"title": "Daily"})
@@ -165,8 +182,7 @@ class TestYamlTemplateExtends:
     def test_extends_sections_inherited(self):
         base = self._make_base()
         child = _make_template(
-            {"name": "standup", "extends": "note",
-             "metadata": {"sprint": "1"}},
+            {"name": "standup", "extends": "note", "metadata": {"sprint": "1"}},
             base=base,
         )
         data = child.build_data({"title": "Daily"})
@@ -174,6 +190,7 @@ class TestYamlTemplateExtends:
 
     def test_extends_hooks_from_base(self):
         from buvis.pybase.zettel.domain.templates.project import ProjectTemplate
+
         base = ProjectTemplate()
         child = _make_template(
             {"name": "custom-project", "extends": "project"},

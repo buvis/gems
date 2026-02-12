@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from buvis.pybase.configuration import ConfigurationError
 from buvis.pybase.configuration.resolver import (
     ConfigResolver,
@@ -275,10 +274,9 @@ class TestSecretMaskingInErrors:
 
     def test_sensitive_field_error_masked(self) -> None:
         """Error on sensitive field shows 'invalid value (hidden)'."""
+        from buvis.pybase.configuration.resolver import _format_validation_errors
         from pydantic import ValidationError
         from pydantic_settings import BaseSettings, SettingsConfigDict
-
-        from buvis.pybase.configuration.resolver import _format_validation_errors
 
         class TestSettings(BaseSettings):
             model_config = SettingsConfigDict(env_prefix="TEST_")
@@ -294,10 +292,9 @@ class TestSecretMaskingInErrors:
 
     def test_nested_sensitive_field_masked(self) -> None:
         """Error on nested sensitive field is masked."""
+        from buvis.pybase.configuration.resolver import _format_validation_errors
         from pydantic import BaseModel, ValidationError
         from pydantic_settings import BaseSettings, SettingsConfigDict
-
-        from buvis.pybase.configuration.resolver import _format_validation_errors
 
         class DbConfig(BaseModel):
             password: int  # Will fail with string
@@ -316,10 +313,9 @@ class TestSecretMaskingInErrors:
 
     def test_non_sensitive_field_shows_message(self) -> None:
         """Error on non-sensitive field shows actual error message."""
+        from buvis.pybase.configuration.resolver import _format_validation_errors
         from pydantic import ValidationError
         from pydantic_settings import BaseSettings, SettingsConfigDict
-
-        from buvis.pybase.configuration.resolver import _format_validation_errors
 
         class TestSettings(BaseSettings):
             model_config = SettingsConfigDict(env_prefix="TEST_")

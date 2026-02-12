@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from buvis.pybase.zettel.domain.entities.zettel.services.migration.upgrades.normalize_type import (
     normalize_type,
 )

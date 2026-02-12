@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.set_default_tags import (
     set_default_tags,
 )

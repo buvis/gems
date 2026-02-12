@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import yaml
-
 from buvis.pybase.adapters.console.console import console
 from buvis.pybase.configuration.exceptions import ConfigurationKeyNotFoundError
 
