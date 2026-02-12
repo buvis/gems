@@ -2,13 +2,16 @@ from pathlib import Path
 
 import click
 from buvis.pybase.adapters import console
+from buvis.pybase.configuration import buvis_options, get_settings
+
+from readerctl.settings import ReaderctlSettings
 
 
 @click.group(help="CLI tool to manage Reader from Readwise")
+@buvis_options(settings_class=ReaderctlSettings)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
-    ctx.obj["token"] = None
 
 
 @cli.command("login")
@@ -16,9 +19,10 @@ def cli(ctx: click.Context) -> None:
 def login(ctx: click.Context) -> None:
     from readerctl.commands.login.login import CommandLogin
 
-    cmd = CommandLogin()
-    token = cmd.execute()
-    ctx.obj["token"] = token
+    settings = get_settings(ctx, ReaderctlSettings)
+    token_file = Path(settings.token_file).expanduser()
+    cmd = CommandLogin(token_file=token_file)
+    cmd.execute()
 
 
 @cli.command("add")
@@ -29,12 +33,14 @@ def add(ctx: click.Context, url: str, file: str) -> None:
     from readerctl.commands.add.add import CommandAdd
     from readerctl.commands.login.login import CommandLogin
 
-    if url != "NONE" or file != "NONE":
-        cmd_login = CommandLogin()
-        token = cmd_login.execute()
-        ctx.obj["token"] = token
+    settings = get_settings(ctx, ReaderctlSettings)
+    token_file = Path(settings.token_file).expanduser()
+    token = None
 
-    token = ctx.obj.get("token")
+    if url != "NONE" or file != "NONE":
+        cmd_login = CommandLogin(token_file=token_file)
+        token = cmd_login.execute()
+
     if not token:
         console.panic("Not logged in. Run 'readerctl login' first.")
         return

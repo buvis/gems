@@ -1,11 +1,12 @@
 from buvis.pybase.adapters import console
 from fctracker.adapters import TransactionsDirScanner, TransactionsReader
 from fctracker.domain import Account
+from fctracker.settings import FctrackerSettings
 
 
 class CommandBalance:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, settings: FctrackerSettings) -> None:
+        self.settings = settings
 
     def execute(self) -> None:
         scanner = TransactionsDirScanner()

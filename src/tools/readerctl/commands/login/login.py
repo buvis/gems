@@ -4,16 +4,14 @@ from buvis.pybase.adapters import console
 
 from readerctl.adapters import ReaderAPIAdapter
 
-TOKEN_FILE = Path.home() / ".config" / "scripts" / "readwise-token"
-
 
 class CommandLogin:
-    def __init__(self: "CommandLogin") -> None:
-        pass
+    def __init__(self, token_file: Path) -> None:
+        self.token_file = token_file
 
-    def execute(self: "CommandLogin") -> str | None:
+    def execute(self) -> str | None:
         try:
-            token = TOKEN_FILE.read_text().strip()
+            token = self.token_file.read_text().strip()
         except FileNotFoundError:
             token = ""
 
@@ -30,8 +28,8 @@ class CommandLogin:
                 return None
         else:
             token = str(console.input_password("Enter Readwise API token: "))
-            TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-            TOKEN_FILE.write_text(token)
+            self.token_file.parent.mkdir(parents=True, exist_ok=True)
+            self.token_file.write_text(token)
             token_check = ReaderAPIAdapter.check_token(token)
 
             if token_check.is_ok():

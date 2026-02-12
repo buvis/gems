@@ -1,17 +1,24 @@
 import click
+from buvis.pybase.configuration import buvis_options, get_settings
+
+from fctracker.settings import FctrackerSettings
 
 
 @click.group(help="CLI tool to manage accounts in foreign currencies")
-def cli() -> None:
-    pass
+@buvis_options(settings_class=FctrackerSettings)
+@click.pass_context
+def cli(ctx: click.Context) -> None:
+    ctx.ensure_object(dict)
 
 
 @cli.command("balance")
-def balance() -> None:
+@click.pass_context
+def balance(ctx: click.Context) -> None:
     """Print current balance of all accounts and currencies"""
     from fctracker.commands.balance.balance import CommandBalance
 
-    cmd = CommandBalance()
+    settings = get_settings(ctx, FctrackerSettings)
+    cmd = CommandBalance(settings)
     cmd.execute()
 
 
@@ -34,11 +41,13 @@ def balance() -> None:
     default="",
     help="Only print transactions for given month [YYYY-MM]",
 )
-def transactions(account: str = "", currency: str = "", month: str = "") -> None:
+@click.pass_context
+def transactions(ctx: click.Context, account: str = "", currency: str = "", month: str = "") -> None:
     """Print transactions"""
     from fctracker.commands.transactions.transactions import CommandTransactions
 
-    cmd = CommandTransactions(account, currency, month)
+    settings = get_settings(ctx, FctrackerSettings)
+    cmd = CommandTransactions(settings, account, currency, month)
     cmd.execute()
 
 

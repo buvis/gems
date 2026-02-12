@@ -1,11 +1,13 @@
 from buvis.pybase.adapters import console
-from fctracker.adapters import TransactionsDirScanner, TransactionsReader, cfg
+from fctracker.adapters import TransactionsDirScanner, TransactionsReader
 from fctracker.domain import Account, Deposit
+from fctracker.settings import FctrackerSettings
 from rich.table import Table
 
 
 class CommandTransactions:
-    def __init__(self, account: str = "", currency: str = "", month: str = "") -> None:
+    def __init__(self, settings: FctrackerSettings, account: str = "", currency: str = "", month: str = "") -> None:
+        self.settings = settings
         self.account = account.capitalize()
         self.currency = currency.upper()
         self.month = month
@@ -47,14 +49,14 @@ class CommandTransactions:
                             if isinstance(transaction, Deposit):
                                 description = "Deposit"
                                 outflow = ""
-                                inflow = f"{transaction.get_local_cost()} {cfg.local_currency['symbol']}"
+                                inflow = f"{transaction.get_local_cost()} {self.settings.local_currency.symbol}"
 
                             else:
                                 description = transaction.description
-                                outflow = f"{transaction.get_local_cost()} {cfg.local_currency['symbol']}"
+                                outflow = f"{transaction.get_local_cost()} {self.settings.local_currency.symbol}"
                                 inflow = ""
-                            precision = cfg.local_currency["precision"] * 2
-                            local_sym = cfg.local_currency["symbol"]
+                            precision = self.settings.local_currency.precision * 2
+                            local_sym = self.settings.local_currency.symbol
                             rate_str = f"{transaction.rate:.{precision}f} {local_sym}/{transaction.currency_symbol}"
                             table.add_row(
                                 f"{index}",
