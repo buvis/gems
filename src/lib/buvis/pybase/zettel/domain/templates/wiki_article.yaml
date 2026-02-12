@@ -1,0 +1,4 @@
+name: wiki-article
+extends: note
+metadata:
+  type: wiki-article

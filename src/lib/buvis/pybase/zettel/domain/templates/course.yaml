@@ -1,0 +1,13 @@
+name: course
+extends: note
+questions:
+  - key: provider
+    prompt: "Course provider"
+  - key: length
+    prompt: "Course length (e.g. 2h 30m)"
+metadata:
+  type: course
+  status: backlog
+  date_completed: 9999-12-31
+  length: "{length}"
+  provider: "{provider}"

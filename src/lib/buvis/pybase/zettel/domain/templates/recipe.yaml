@@ -1,0 +1,4 @@
+name: recipe
+extends: note
+metadata:
+  type: recipe

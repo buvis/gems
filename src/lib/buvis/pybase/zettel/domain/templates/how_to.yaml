@@ -1,0 +1,4 @@
+name: how-to
+extends: note
+metadata:
+  type: how-to

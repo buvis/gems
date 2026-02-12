@@ -1,0 +1,5 @@
+name: quote
+extends: note
+metadata:
+  type: quote
+  rating: 0

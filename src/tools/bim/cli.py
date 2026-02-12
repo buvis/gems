@@ -134,6 +134,7 @@ def parse_tags(
 @click.option("--title", default=None, help="Zettel title")
 @click.option("--tags", default=None, help="Comma-separated tags")
 @click.option("-a", "--answer", multiple=True, help="Template question answer as key=value")
+@click.option("-l", "--list", "list_templates", is_flag=True, default=False, help="List available templates")
 @click.pass_context
 def create_note(
     ctx: click.Context,
@@ -141,7 +142,17 @@ def create_note(
     title: str | None,
     tags: str | None,
     answer: tuple[str, ...],
+    *,
+    list_templates: bool,
 ) -> None:
+    if list_templates:
+        from buvis.pybase.zettel.domain.templates import discover_templates
+        from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
+
+        for name in sorted(discover_templates(python_eval)):
+            console.print(name, mode="raw")
+        return
+
     from bim.commands.create_note.create_note import CommandCreateNote
 
     settings = get_settings(ctx, BimSettings)
@@ -161,9 +172,10 @@ def create_note(
 
 
 @cli.command("query", help="Query zettels with YAML filter/sort/output spec")
-@click.option("-f", "--file", "query_file", default=None, help="Path to YAML query spec file")
+@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.option("-e", "--edit", is_flag=True, default=False, help="Pick result with fzf and open in nvim")
+@click.option("-l", "--list", "list_queries", is_flag=True, default=False, help="List available queries")
 @click.pass_context
 def query(
     ctx: click.Context,
@@ -171,7 +183,16 @@ def query(
     query_string: str | None,
     *,
     edit: bool,
+    list_queries: bool,
 ) -> None:
+    if list_queries:
+        from bim.commands.query.query import BUNDLED_QUERY_DIR
+        from buvis.pybase.zettel.infrastructure.query.query_spec_parser import list_query_files
+
+        for name, path in sorted(list_query_files(bundled_dir=BUNDLED_QUERY_DIR).items()):
+            console.print(f"{name:30s} {path}", mode="raw")
+        return
+
     from bim.commands.query.query import CommandQuery
 
     settings = get_settings(ctx, BimSettings)

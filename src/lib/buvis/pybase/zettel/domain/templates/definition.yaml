@@ -1,0 +1,4 @@
+name: definition
+extends: note
+metadata:
+  type: definition

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from buvis.pybase.configuration import get_config_dirs
 from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QueryColumn,
     QueryExpand,
@@ -137,3 +138,50 @@ def _parse_output(raw: dict[str, Any]) -> QueryOutput:
         file=raw.get("file"),
         limit=raw.get("limit"),
     )
+
+
+def resolve_query_file(name_or_path: str, bundled_dir: Path | None = None) -> Path:
+    """Resolve a query name or path to an actual file.
+
+    If the value contains '/' or ends with .yaml/.yml, treat as path.
+    Otherwise search config dirs' queries/ subdirs (highest priority first),
+    then fall back to bundled_dir.
+    """
+    if "/" in name_or_path or name_or_path.endswith((".yaml", ".yml")):
+        return Path(name_or_path)
+
+    searched: list[Path] = []
+    for config_dir in get_config_dirs():
+        candidate = config_dir / "queries" / f"{name_or_path}.yaml"
+        searched.append(candidate)
+        if candidate.is_file():
+            return candidate
+
+    if bundled_dir is not None:
+        candidate = bundled_dir / f"{name_or_path}.yaml"
+        searched.append(candidate)
+        if candidate.is_file():
+            return candidate
+
+    msg = f"Query '{name_or_path}' not found. Searched:\n" + "\n".join(
+        f"  {p}" for p in searched
+    )
+    raise FileNotFoundError(msg)
+
+
+def list_query_files(bundled_dir: Path | None = None) -> dict[str, Path]:
+    """Discover available query files. Returns {stem: path}.
+
+    Bundled dir has lowest priority; config dirs override by name.
+    """
+    found: dict[str, Path] = {}
+    if bundled_dir is not None and bundled_dir.is_dir():
+        for f in sorted(bundled_dir.glob("*.yaml")):
+            found[f.stem] = f
+    for config_dir in reversed(get_config_dirs()):
+        queries_dir = config_dir / "queries"
+        if not queries_dir.is_dir():
+            continue
+        for f in sorted(queries_dir.glob("*.yaml")):
+            found[f.stem] = f
+    return found

@@ -22,24 +22,13 @@ from buvis.pybase.zettel.infrastructure.query.output_formatter import (
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
     parse_query_file,
     parse_query_string,
+    resolve_query_file,
 )
 
 
 from rich.text import Text
 
-_BUILTIN_QUERY_DIR = Path(__file__).parent
-
-
-def _resolve_query_file(name: str) -> str:
-    """Resolve a query file path. Tries exact path first, then builtin queries."""
-    p = Path(name)
-    if p.is_file():
-        return str(p)
-    # Try as builtin name (with or without .yaml)
-    candidate = _BUILTIN_QUERY_DIR / (name if name.endswith(".yaml") else f"{name}.yaml")
-    if candidate.is_file():
-        return str(candidate)
-    return name  # let downstream raise FileNotFoundError with original
+BUNDLED_QUERY_DIR = Path(__file__).parent
 
 
 class CommandQuery:
@@ -58,7 +47,8 @@ class CommandQuery:
 
     def execute(self) -> None:
         if self.file:
-            spec = parse_query_file(_resolve_query_file(self.file))
+            resolved = resolve_query_file(self.file, bundled_dir=BUNDLED_QUERY_DIR)
+            spec = parse_query_file(str(resolved))
         elif self.query:
             spec = parse_query_string(self.query)
         else:

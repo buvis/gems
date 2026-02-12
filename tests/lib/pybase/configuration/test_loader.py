@@ -311,60 +311,24 @@ class TestLoadYaml:
 
 
 class TestGetSearchPaths:
-    def test_all_env_vars_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_with_buvis_config_dir(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", "/custom/config")
-        monkeypatch.setenv("XDG_CONFIG_HOME", "/custom/xdg")
 
         paths = ConfigurationLoader._get_search_paths()
 
-        assert len(paths) == 4
-        assert paths[0] == Path("/custom/config")
-        assert paths[1] == Path("/custom/xdg/buvis")
-
-    def test_buvis_config_dir_empty_string(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("BUVIS_CONFIG_DIR", "")
-        monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
-
-        paths = ConfigurationLoader._get_search_paths()
-
-        # Empty BUVIS_CONFIG_DIR treated as unset, so 3 paths
         assert len(paths) == 3
-        assert paths[0] == Path.home() / ".config" / "buvis"
+        assert paths[0] == Path("/custom/config")
+        assert paths[1] == Path.home() / ".config" / "buvis"
+        assert paths[2] == Path.cwd()
 
-    def test_xdg_config_home_empty_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_without_buvis_config_dir(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
-        monkeypatch.setenv("XDG_CONFIG_HOME", "")
 
         paths = ConfigurationLoader._get_search_paths()
 
+        assert len(paths) == 2
         assert paths[0] == Path.home() / ".config" / "buvis"
-
-    def test_path_order_priority(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("BUVIS_CONFIG_DIR", "/override")
-        monkeypatch.setenv("XDG_CONFIG_HOME", "/xdg")
-
-        paths = ConfigurationLoader._get_search_paths()
-
-        assert paths[0] == Path("/override")
-        assert paths[1] == Path("/xdg/buvis")
-        assert paths[2] == Path.home() / ".buvis"
-        assert paths[3] == Path.cwd()
-
-    def test_expanduser_tilde_paths(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("BUVIS_CONFIG_DIR", "~/custom")
-        monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
-
-        paths = ConfigurationLoader._get_search_paths()
-
-        assert paths[0] == Path.home() / "custom"
-
-    def test_legacy_buvis_always_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
-        monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
-
-        paths = ConfigurationLoader._get_search_paths()
-
-        assert Path.home() / ".buvis" in paths
+        assert paths[1] == Path.cwd()
 
     def test_cwd_always_last(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", "/override")

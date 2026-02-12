@@ -79,24 +79,25 @@ class TestDiscoverYamlTemplates:
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
         result = discover_yaml_templates({}, python_eval)
-        assert len(result) == 0
+        # noname.yaml has no "name" key, so it should be skipped
+        assert all(v.name != "x" for v in result.values())
 
     def test_higher_priority_overrides(self, tmp_path, monkeypatch):
         # BUVIS_CONFIG_DIR takes priority over ~/.config/buvis
         high = tmp_path / "high"
-        low = tmp_path / "low"
-        for d in (high, low):
+        fakehome = tmp_path / "fakehome"
+        default_config = fakehome / ".config" / "buvis"
+        for d in (high, default_config):
             (d / "templates").mkdir(parents=True)
 
-        (low / "templates" / "t.yaml").write_text(
+        (default_config / "templates" / "t.yaml").write_text(
             yaml.dump({"name": "t", "metadata": {"source": "low"}}),
         )
         (high / "templates" / "t.yaml").write_text(
             yaml.dump({"name": "t", "metadata": {"source": "high"}}),
         )
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(high))
-        monkeypatch.setenv("XDG_CONFIG_HOME", str(low))
-        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        monkeypatch.setenv("HOME", str(fakehome))
 
         result = discover_yaml_templates({}, python_eval)
         data = result["t"].build_data({"title": "X"})

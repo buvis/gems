@@ -1,0 +1,13 @@
+name: contact
+extends: note
+questions:
+  - key: contact_type
+    prompt: "Contact type"
+    choices: ["colleague", "friend", "family", "other"]
+    default: colleague
+  - key: email
+    prompt: "Email address"
+metadata:
+  type: contact
+  contact-type: "{contact_type}"
+  email: "{email}"

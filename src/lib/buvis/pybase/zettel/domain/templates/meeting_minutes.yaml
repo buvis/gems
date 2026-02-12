@@ -1,0 +1,27 @@
+name: meeting-minutes
+extends: note
+questions:
+  - key: location
+    prompt: "Location"
+    choices: ["online", "face to face"]
+    default: online
+  - key: organizer
+    prompt: "Organizer"
+metadata:
+  type: meeting-minutes
+  location: "{location}"
+  start: "hh:mm"
+  end: "hh:mm"
+  organizer: "{organizer}"
+  attendees: []
+sections:
+  - heading: "# {title}"
+    body: ""
+  - heading: "## Attendees"
+    body: ""
+  - heading: "## Agenda"
+    body: ""
+  - heading: "## Notes"
+    body: ""
+  - heading: "## Action items"
+    body: ""

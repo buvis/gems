@@ -1,0 +1,8 @@
+name: snippet
+extends: note
+questions:
+  - key: language
+    prompt: "Programming language"
+metadata:
+  type: snippet
+  language: "{language}"

@@ -1,0 +1,4 @@
+name: list
+extends: note
+metadata:
+  type: list

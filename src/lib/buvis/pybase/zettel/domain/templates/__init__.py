@@ -66,44 +66,45 @@ def _discover_python_templates() -> dict[str, ZettelTemplate]:
     return templates
 
 
-def _get_template_dirs() -> list[Path]:
-    """Config dirs in priority order (highest first), matching ConfigurationLoader."""
-    import os
+_BUNDLED_TEMPLATE_DIR = Path(__file__).parent
 
-    dirs: list[Path] = []
-    if env_dir := os.getenv("BUVIS_CONFIG_DIR"):
-        dirs.append(Path(env_dir).expanduser())
-    xdg = os.getenv("XDG_CONFIG_HOME", "")
-    xdg_path = Path(xdg).expanduser() if xdg else Path.home() / ".config"
-    dirs.append(xdg_path / "buvis")
-    dirs.append(Path.home() / ".buvis")
-    return dirs
+
+def _scan_yaml_dir(
+    directory: Path,
+    base_templates: dict[str, ZettelTemplate],
+    found: dict[str, ZettelTemplate],
+    evaluator: ExpressionEvaluator,
+) -> None:
+    from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
+
+    if not directory.is_dir():
+        return
+    for yaml_file in sorted(directory.glob("*.yaml")):
+        try:
+            raw = yaml.safe_load(yaml_file.read_text(encoding="utf-8"))
+        except (yaml.YAMLError, OSError):
+            logger.warning("Failed to load template %s", yaml_file)
+            continue
+        if not isinstance(raw, dict) or "name" not in raw:
+            continue
+        base = None
+        if extends := raw.get("extends"):
+            base = base_templates.get(extends) or found.get(extends)
+        found[raw["name"]] = YamlTemplate(raw, base=base, evaluator=evaluator)
 
 
 def discover_yaml_templates(
     base_templates: dict[str, ZettelTemplate],
     evaluator: ExpressionEvaluator,
 ) -> dict[str, ZettelTemplate]:
-    from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
+    from buvis.pybase.configuration import get_config_dirs
 
     found: dict[str, ZettelTemplate] = {}
-    # Scan dirs in reverse priority order so higher-priority overrides
-    for config_dir in reversed(_get_template_dirs()):
-        templates_dir = config_dir / "templates"
-        if not templates_dir.is_dir():
-            continue
-        for yaml_file in sorted(templates_dir.glob("*.yaml")):
-            try:
-                raw = yaml.safe_load(yaml_file.read_text(encoding="utf-8"))
-            except (yaml.YAMLError, OSError):
-                logger.warning("Failed to load template %s", yaml_file)
-                continue
-            if not isinstance(raw, dict) or "name" not in raw:
-                continue
-            base = None
-            if extends := raw.get("extends"):
-                base = base_templates.get(extends) or found.get(extends)
-            found[raw["name"]] = YamlTemplate(raw, base=base, evaluator=evaluator)
+    # Bundled templates (lowest priority)
+    _scan_yaml_dir(_BUNDLED_TEMPLATE_DIR, base_templates, found, evaluator)
+    # Config dirs in reverse priority order so higher-priority overrides
+    for config_dir in reversed(get_config_dirs()):
+        _scan_yaml_dir(config_dir / "templates", base_templates, found, evaluator)
     return found
 
 

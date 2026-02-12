@@ -27,6 +27,7 @@ from .exceptions import (
     MissingEnvVarError,
 )
 from .loader import ConfigurationLoader
+from .paths import get_config_dirs
 from .resolver import ConfigResolver
 from .settings import GlobalSettings, ToolSettings
 from .source import ConfigSource
@@ -51,6 +52,7 @@ __all__ = [
     "ConfigurationKeyNotFoundError",
     "ConfigurationLoader",
     "GlobalSettings",
+    "get_config_dirs",
     "MissingEnvVarError",
     "SafeLoggingMixin",
     "SecureSettingsMixin",

@@ -1,0 +1,4 @@
+name: procedure
+extends: note
+metadata:
+  type: procedure

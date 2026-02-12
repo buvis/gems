@@ -10,13 +10,9 @@ from typing import Any
 import yaml
 
 from .exceptions import MissingEnvVarError
+from .paths import get_config_dirs
 
 logger = logging.getLogger(__name__)
-
-
-DEFAULT_CONFIG_DIRECTORY = Path(
-    os.getenv("BUVIS_CONFIG_DIR", Path.home() / ".config" / "buvis"),
-)
 
 _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 _ESCAPE_PLACEHOLDER = "\x00ESCAPED_DOLLAR\x00"
@@ -82,28 +78,11 @@ class ConfigurationLoader:
         Returns:
             list[Path]: Search paths from highest to lowest priority:
                 1. BUVIS_CONFIG_DIR (if set and non-empty)
-                2. XDG_CONFIG_HOME/buvis (or ~/.config/buvis if XDG unset)
-                3. ~/.buvis (legacy)
-                4. Current working directory
+                2. ~/.config/buvis (default)
+                3. Current working directory
         """
-        paths: list[Path] = []
-
-        # 1. Explicit override - highest priority
-        if env_dir := os.getenv("BUVIS_CONFIG_DIR"):
-            if env_dir:  # Empty string treated as unset
-                paths.append(Path(env_dir).expanduser())
-
-        # 2. XDG standard location
-        xdg = os.getenv("XDG_CONFIG_HOME", "")
-        xdg_path = Path(xdg).expanduser() if xdg else Path.home() / ".config"
-        paths.append(xdg_path / "buvis")
-
-        # 3. Legacy location
-        paths.append(Path.home() / ".buvis")
-
-        # 4. Project-local (lowest priority)
+        paths = get_config_dirs()
         paths.append(Path.cwd())
-
         return paths
 
     @staticmethod

@@ -1,7 +1,11 @@
+from pathlib import Path
+
 import pytest
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
+    list_query_files,
     parse_query_spec,
     parse_query_string,
+    resolve_query_file,
 )
 
 
@@ -171,3 +175,106 @@ class TestParseQueryString:
     def test_invalid_yaml(self):
         with pytest.raises(ValueError, match="YAML mapping"):
             parse_query_string("just a string")
+
+
+class TestResolveQueryFile:
+    def test_path_with_slash_returned_as_is(self) -> None:
+        result = resolve_query_file("/some/path/query.yaml")
+        assert result == Path("/some/path/query.yaml")
+
+    def test_path_ending_yaml_returned_as_is(self) -> None:
+        result = resolve_query_file("my_query.yaml")
+        assert result == Path("my_query.yaml")
+
+    def test_path_ending_yml_returned_as_is(self) -> None:
+        result = resolve_query_file("my_query.yml")
+        assert result == Path("my_query.yml")
+
+    def test_name_resolved_from_config_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        queries_dir = tmp_path / "queries"
+        queries_dir.mkdir()
+        (queries_dir / "my_query.yaml").write_text("filter: {}")
+
+        result = resolve_query_file("my_query")
+
+        assert result == queries_dir / "my_query.yaml"
+
+    def test_bundled_dir_fallback(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path / "empty"))
+        bundled = tmp_path / "bundled"
+        bundled.mkdir()
+        (bundled / "builtin.yaml").write_text("filter: {}")
+
+        result = resolve_query_file("builtin", bundled_dir=bundled)
+
+        assert result == bundled / "builtin.yaml"
+
+    def test_user_overrides_bundled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        queries_dir = tmp_path / "queries"
+        queries_dir.mkdir()
+        user_file = queries_dir / "shared.yaml"
+        user_file.write_text("filter: {type: {eq: note}}")
+
+        bundled = tmp_path / "bundled"
+        bundled.mkdir()
+        (bundled / "shared.yaml").write_text("filter: {type: {eq: project}}")
+
+        result = resolve_query_file("shared", bundled_dir=bundled)
+
+        assert result == user_file
+
+    def test_not_found_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+
+        with pytest.raises(FileNotFoundError, match="nonexistent"):
+            resolve_query_file("nonexistent")
+
+
+class TestListQueryFiles:
+    def test_discovers_bundled(self, tmp_path: Path) -> None:
+        bundled = tmp_path / "bundled"
+        bundled.mkdir()
+        (bundled / "q1.yaml").write_text("filter: {}")
+        (bundled / "q2.yaml").write_text("filter: {}")
+
+        result = list_query_files(bundled_dir=bundled)
+
+        assert set(result.keys()) == {"q1", "q2"}
+
+    def test_config_overrides_bundled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        queries_dir = tmp_path / "queries"
+        queries_dir.mkdir()
+        user_file = queries_dir / "shared.yaml"
+        user_file.write_text("filter: {}")
+
+        bundled = tmp_path / "bundled"
+        bundled.mkdir()
+        (bundled / "shared.yaml").write_text("filter: {}")
+        (bundled / "only_bundled.yaml").write_text("filter: {}")
+
+        result = list_query_files(bundled_dir=bundled)
+
+        assert result["shared"] == user_file
+        assert result["only_bundled"] == bundled / "only_bundled.yaml"
+
+    def test_empty_dirs(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+
+        result = list_query_files()
+
+        assert result == {}
