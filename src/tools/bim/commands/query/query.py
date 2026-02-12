@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
+import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -16,7 +19,11 @@ from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.m
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 from buvis.pybase.zettel.infrastructure.query.output_formatter import (
     format_csv,
+    format_html,
+    format_json,
+    format_jsonl,
     format_markdown,
+    format_pdf,
     format_table,
 )
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
@@ -89,6 +96,31 @@ class CommandQuery:
         elif output.format == "markdown":
             text = format_markdown(rows, columns)
             _write_output(text, output.file)
+        elif output.format == "json":
+            text = format_json(rows, columns)
+            _write_output(text, output.file)
+        elif output.format == "jsonl":
+            text = format_jsonl(rows, columns)
+            _write_output(text, output.file)
+        elif output.format == "html":
+            text = format_html(rows, columns)
+            dest = output.file or _tmp_file("html")
+            _write_output(text, dest)
+            if not output.file:
+                _open_file(dest)
+        elif output.format == "pdf":
+            try:
+                raw = format_pdf(rows, columns)
+            except ImportError:
+                console.failure("PDF requires fpdf2: uv pip install 'buvis-gems[bim]'")
+                return
+            dest = output.file or _tmp_file("pdf")
+            Path(dest).write_bytes(raw)
+            console.success(f"Written to {dest}")
+            if not output.file:
+                _open_file(dest)
+        elif output.format == "tui":
+            _run_tui(rows, columns)
         else:
             console.failure(f"Unknown output format: {output.format}")
 
@@ -220,6 +252,29 @@ def _results_match(a: list[dict[str, Any]], b: list[dict[str, Any]]) -> bool:
     except TypeError:
         # unhashable values — fall back to length comparison
         return len(a) == len(b)
+
+
+def _tmp_file(ext: str) -> str:
+    fd, path = tempfile.mkstemp(suffix=f".{ext}", prefix="bim_query_")
+    os.close(fd)
+    return path
+
+
+def _open_file(path: str) -> None:
+    system = platform.system()
+    if system == "Darwin":
+        subprocess.Popen(["open", path])  # noqa: S603
+    elif system == "Linux":
+        subprocess.Popen(["xdg-open", path])  # noqa: S603
+    else:
+        os.startfile(path)  # type: ignore[attr-defined]  # noqa: S606
+
+
+def _run_tui(rows: list[dict[str, Any]], columns: list[str]) -> None:
+    from bim.commands.query.tui import QueryTuiApp
+
+    app = QueryTuiApp(rows, columns)
+    app.run()
 
 
 def _write_output(text: str, file: str | None) -> None:

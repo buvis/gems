@@ -1,5 +1,12 @@
+import json
+
+import pytest
+
 from buvis.pybase.zettel.infrastructure.query.output_formatter import (
     format_csv,
+    format_html,
+    format_json,
+    format_jsonl,
     format_markdown,
 )
 
@@ -50,3 +57,85 @@ class TestFormatMarkdown:
         result = format_markdown([], ["id"])
         lines = result.strip().split("\n")
         assert len(lines) == 2  # header + separator only
+
+
+SAMPLE_ROWS = [
+    {"id": 1, "title": "Alpha", "extra": "x"},
+    {"id": 2, "title": "Beta", "extra": "y"},
+]
+SAMPLE_COLS = ["id", "title"]
+
+
+class TestFormatJson:
+    def test_basic(self):
+        result = format_json(SAMPLE_ROWS, SAMPLE_COLS)
+        parsed = json.loads(result)
+        assert len(parsed) == 2
+        assert parsed[0] == {"id": 1, "title": "Alpha"}
+        assert parsed[1] == {"id": 2, "title": "Beta"}
+
+    def test_empty_rows(self):
+        result = format_json([], SAMPLE_COLS)
+        assert json.loads(result) == []
+
+    def test_column_filtering(self):
+        result = format_json(SAMPLE_ROWS, SAMPLE_COLS)
+        parsed = json.loads(result)
+        for row in parsed:
+            assert "extra" not in row
+
+
+class TestFormatJsonl:
+    def test_basic(self):
+        result = format_jsonl(SAMPLE_ROWS, SAMPLE_COLS)
+        lines = result.strip().splitlines()
+        assert len(lines) == 2
+        assert json.loads(lines[0]) == {"id": 1, "title": "Alpha"}
+        assert json.loads(lines[1]) == {"id": 2, "title": "Beta"}
+
+    def test_empty_rows(self):
+        result = format_jsonl([], SAMPLE_COLS)
+        assert result.strip() == ""
+
+    def test_column_filtering(self):
+        result = format_jsonl(SAMPLE_ROWS, SAMPLE_COLS)
+        for line in result.strip().splitlines():
+            assert "extra" not in json.loads(line)
+
+
+class TestFormatHtml:
+    def test_basic(self):
+        result = format_html(SAMPLE_ROWS, SAMPLE_COLS)
+        assert "<th>id</th>" in result
+        assert "<th>title</th>" in result
+        assert "<td>1</td>" in result
+        assert "<td>Alpha</td>" in result
+
+    def test_empty_rows(self):
+        result = format_html([], SAMPLE_COLS)
+        assert "<th>id</th>" in result
+        assert "<td>" not in result
+
+    def test_xss_escaping(self):
+        rows = [{"val": "<script>alert(1)</script>"}]
+        result = format_html(rows, ["val"])
+        assert "<script>" not in result
+        assert "&lt;script&gt;" in result
+
+
+class TestFormatPdf:
+    def test_basic(self):
+        fpdf = pytest.importorskip("fpdf")  # noqa: F841
+        from buvis.pybase.zettel.infrastructure.query.output_formatter import format_pdf
+
+        result = format_pdf(SAMPLE_ROWS, SAMPLE_COLS)
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+
+    def test_empty_rows(self):
+        fpdf = pytest.importorskip("fpdf")  # noqa: F841
+        from buvis.pybase.zettel.infrastructure.query.output_formatter import format_pdf
+
+        result = format_pdf([], SAMPLE_COLS)
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
