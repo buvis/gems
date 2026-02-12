@@ -44,7 +44,7 @@ def test_execute_success(mock_zettel_factory, read_zettel_use_case):
 
 
 def test_execute_not_found(read_zettel_use_case):
-    read_zettel_use_case.repository.find_by_location.return_value = None
+    read_zettel_use_case.repository.find_by_location.side_effect = ZettelRepositoryZettelNotFoundError
 
     with pytest.raises(ZettelRepositoryZettelNotFoundError):
         read_zettel_use_case.execute("non_existent_location")

@@ -7,9 +7,6 @@ a specific zettel accourding to zettel type.
 
 import buvis.pybase.zettel.domain.entities as zettel_entities
 from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
-from buvis.pybase.zettel.domain.interfaces.zettel_repository_exceptions import (
-    ZettelRepositoryZettelNotFoundError,
-)
 from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 
 
@@ -51,10 +48,5 @@ class ReadZettelUseCase:
         :return: A Zettel object created from the retrieved zettel.
         :rtype: Zettel or its subclass
         """
-        try:
-            zettel = self.repository.find_by_location(repository_location)
-        except ZettelRepositoryZettelNotFoundError as e:
-            raise e
-        if zettel is None:
-            raise ZettelRepositoryZettelNotFoundError
+        zettel = self.repository.find_by_location(repository_location)
         return ZettelFactory.create(zettel)

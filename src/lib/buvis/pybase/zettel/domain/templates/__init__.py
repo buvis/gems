@@ -95,7 +95,7 @@ def discover_yaml_templates(
         for yaml_file in sorted(templates_dir.glob("*.yaml")):
             try:
                 raw = yaml.safe_load(yaml_file.read_text(encoding="utf-8"))
-            except Exception:
+            except (yaml.YAMLError, OSError):
                 logger.warning("Failed to load template %s", yaml_file)
                 continue
             if not isinstance(raw, dict) or "name" not in raw:
