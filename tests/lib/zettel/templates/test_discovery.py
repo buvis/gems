@@ -9,6 +9,7 @@ from buvis.pybase.zettel.domain.templates import (
     discover_yaml_templates,
 )
 from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
+from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
 
 class TestDiscoverYamlTemplates:
@@ -21,7 +22,7 @@ class TestDiscoverYamlTemplates:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
-        result = discover_yaml_templates({})
+        result = discover_yaml_templates({}, python_eval)
         assert "meeting" in result
         assert isinstance(result["meeting"], YamlTemplate)
 
@@ -36,7 +37,7 @@ class TestDiscoverYamlTemplates:
 
         from buvis.pybase.zettel.domain.templates.note import NoteTemplate
         base = {"note": NoteTemplate()}
-        result = discover_yaml_templates(base)
+        result = discover_yaml_templates(base, python_eval)
         assert isinstance(result["note"], YamlTemplate)
 
     def test_extends_resolves(self, tmp_path, monkeypatch):
@@ -54,7 +55,7 @@ class TestDiscoverYamlTemplates:
 
         from buvis.pybase.zettel.domain.templates.note import NoteTemplate
         base = {"note": NoteTemplate()}
-        result = discover_yaml_templates(base)
+        result = discover_yaml_templates(base, python_eval)
         assert "standup" in result
         data = result["standup"].build_data({"title": "Daily"})
         assert data.metadata["type"] == "standup"
@@ -66,7 +67,7 @@ class TestDiscoverYamlTemplates:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
-        result = discover_yaml_templates({})
+        result = discover_yaml_templates({}, python_eval)
         assert "bad" not in result
 
     def test_skips_yaml_without_name(self, tmp_path, monkeypatch):
@@ -76,7 +77,7 @@ class TestDiscoverYamlTemplates:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
-        result = discover_yaml_templates({})
+        result = discover_yaml_templates({}, python_eval)
         assert len(result) == 0
 
     def test_higher_priority_overrides(self, tmp_path, monkeypatch):
@@ -96,14 +97,14 @@ class TestDiscoverYamlTemplates:
         monkeypatch.setenv("XDG_CONFIG_HOME", str(low))
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
-        result = discover_yaml_templates({})
+        result = discover_yaml_templates({}, python_eval)
         data = result["t"].build_data({"title": "X"})
         assert data.metadata["source"] == "high"
 
 
 class TestDiscoverTemplates:
     def test_includes_python_templates(self):
-        templates = discover_templates()
+        templates = discover_templates(python_eval)
         assert "note" in templates
         assert "project" in templates
 
@@ -116,6 +117,6 @@ class TestDiscoverTemplates:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
 
-        templates = discover_templates()
+        templates = discover_templates(python_eval)
         assert "note" in templates
         assert "custom" in templates

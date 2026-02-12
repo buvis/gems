@@ -6,6 +6,7 @@ from typing import Any
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 from buvis.pybase.zettel.domain.templates import discover_templates
+from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
 )
@@ -29,7 +30,7 @@ class CommandCreateNote:
         self.extra_answers = extra_answers or {}
 
     def _scripted(self) -> None:
-        templates = discover_templates()
+        templates = discover_templates(python_eval)
         assert self.zettel_type is not None
         assert self.title is not None
         if self.zettel_type not in templates:

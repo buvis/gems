@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
+from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
+
+
+def _make_template(raw, base=None):
+    return YamlTemplate(raw, base=base, evaluator=python_eval)
 
 
 class TestYamlTemplateBasic:
     def test_name(self):
-        t = YamlTemplate({"name": "test"})
+        t = _make_template({"name": "test"})
         assert t.name == "test"
 
     def test_questions(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "questions": [
                 {"key": "who", "prompt": "Who?", "required": True},
@@ -23,7 +28,7 @@ class TestYamlTemplateBasic:
         assert qs[1].default == "online"
 
     def test_questions_with_choices(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "questions": [
                 {"key": "loc", "prompt": "Location", "choices": ["a", "b"]},
@@ -32,17 +37,17 @@ class TestYamlTemplateBasic:
         assert t.questions()[0].choices == ["a", "b"]
 
     def test_no_questions(self):
-        t = YamlTemplate({"name": "test"})
+        t = _make_template({"name": "test"})
         assert t.questions() == []
 
     def test_hooks_empty(self):
-        t = YamlTemplate({"name": "test"})
+        t = _make_template({"name": "test"})
         assert t.hooks() == []
 
 
 class TestYamlTemplateBuildData:
     def test_metadata_string_substitution(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "metadata": {"type": "meeting", "attendees": "{attendees}"},
         })
@@ -51,7 +56,7 @@ class TestYamlTemplateBuildData:
         assert data.metadata["attendees"] == "Alice, Bob"
 
     def test_metadata_missing_key_empty_string(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "metadata": {"note": "{missing_key}"},
         })
@@ -59,7 +64,7 @@ class TestYamlTemplateBuildData:
         assert data.metadata["note"] == ""
 
     def test_metadata_eval(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "metadata": {"tag_count": {"eval": "len(tags) if tags else 0"}},
         })
@@ -67,7 +72,7 @@ class TestYamlTemplateBuildData:
         assert data.metadata["tag_count"] == 3
 
     def test_metadata_eval_no_tags(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "metadata": {"tag_count": {"eval": "len(tags) if tags else 0"}},
         })
@@ -75,7 +80,7 @@ class TestYamlTemplateBuildData:
         assert data.metadata["tag_count"] == 0
 
     def test_metadata_passthrough(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "metadata": {"count": 42, "flag": True},
         })
@@ -84,7 +89,7 @@ class TestYamlTemplateBuildData:
         assert data.metadata["flag"] is True
 
     def test_sections(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "sections": [
                 {"heading": "# {title}", "body": ""},
@@ -95,7 +100,7 @@ class TestYamlTemplateBuildData:
         assert data.sections == [("# My Note", ""), ("## Notes", "some body")]
 
     def test_sections_missing_body(self):
-        t = YamlTemplate({
+        t = _make_template({
             "name": "test",
             "sections": [{"heading": "# H1"}],
         })
@@ -103,12 +108,12 @@ class TestYamlTemplateBuildData:
         assert data.sections == [("# H1", "")]
 
     def test_no_sections_keeps_default(self):
-        t = YamlTemplate({"name": "test"})
+        t = _make_template({"name": "test"})
         data = t.build_data({"title": "X"})
         assert data.sections == []
 
     def test_title_set_without_base(self):
-        t = YamlTemplate({"name": "test"})
+        t = _make_template({"name": "test"})
         data = t.build_data({"title": "My Title"})
         assert data.metadata["title"] == "My Title"
 
@@ -116,7 +121,7 @@ class TestYamlTemplateBuildData:
 class TestYamlTemplateExtends:
     def _make_base(self):
         """Create a note-like base template."""
-        return YamlTemplate({
+        return _make_template({
             "name": "note",
             "questions": [{"key": "context", "prompt": "Context?"}],
             "metadata": {"type": "note"},
@@ -125,7 +130,7 @@ class TestYamlTemplateExtends:
 
     def test_extends_merges_questions(self):
         base = self._make_base()
-        child = YamlTemplate(
+        child = _make_template(
             {"name": "standup", "extends": "note",
              "questions": [{"key": "sprint", "prompt": "Sprint?"}]},
             base=base,
@@ -137,7 +142,7 @@ class TestYamlTemplateExtends:
 
     def test_extends_metadata_overrides(self):
         base = self._make_base()
-        child = YamlTemplate(
+        child = _make_template(
             {"name": "standup", "extends": "note",
              "metadata": {"type": "standup", "sprint": "{sprint}"}},
             base=base,
@@ -148,7 +153,7 @@ class TestYamlTemplateExtends:
 
     def test_extends_sections_override(self):
         base = self._make_base()
-        child = YamlTemplate(
+        child = _make_template(
             {"name": "standup", "extends": "note",
              "sections": [{"heading": "# Standup"}]},
             base=base,
@@ -159,7 +164,7 @@ class TestYamlTemplateExtends:
 
     def test_extends_sections_inherited(self):
         base = self._make_base()
-        child = YamlTemplate(
+        child = _make_template(
             {"name": "standup", "extends": "note",
              "metadata": {"sprint": "1"}},
             base=base,
@@ -170,7 +175,7 @@ class TestYamlTemplateExtends:
     def test_extends_hooks_from_base(self):
         from buvis.pybase.zettel.domain.templates.project import ProjectTemplate
         base = ProjectTemplate()
-        child = YamlTemplate(
+        child = _make_template(
             {"name": "custom-project", "extends": "project"},
             base=base,
         )

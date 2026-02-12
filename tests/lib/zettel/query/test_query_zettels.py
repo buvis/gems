@@ -14,6 +14,7 @@ from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QuerySpec,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
+from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
 
 def _make_zettel(
@@ -69,13 +70,13 @@ def mock_repo(sample_zettels):
 class TestQueryZettelsUseCase:
     def test_no_filter_returns_all(self, mock_repo):
         spec = QuerySpec(source=QuerySource(directory="/notes"))
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 4
 
     def test_default_columns(self, mock_repo):
         spec = QuerySpec(source=QuerySource(directory="/notes"))
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert set(rows[0].keys()) == {"id", "title", "date", "type", "tags", "file_path"}
 
@@ -84,7 +85,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(operator="eq", field="type", value="project"),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
         assert all(r["type"] == "project" for r in rows)
@@ -94,7 +95,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(operator="ne", field="type", value="project"),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
         assert all(r["type"] == "note" for r in rows)
@@ -104,7 +105,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(operator="contains", field="tags", value="sprint-1"),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
 
@@ -119,7 +120,7 @@ class TestQueryZettelsUseCase:
                 ],
             ),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 1
         assert rows[0]["title"] == "Alpha"
@@ -135,7 +136,7 @@ class TestQueryZettelsUseCase:
                 ],
             ),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
 
@@ -147,7 +148,7 @@ class TestQueryZettelsUseCase:
                 children=[QueryFilter(operator="eq", field="processed", value=True)],
             ),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 3
 
@@ -156,7 +157,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(operator="regex", field="title", value="^[AB]"),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
 
@@ -165,7 +166,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(operator="in", field="type", value=["project", "note"]),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 4
 
@@ -174,7 +175,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             sort=[QuerySort(field="title", order="asc")],
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert [r["title"] for r in rows] == ["Alpha", "Beta", "Delta", "Gamma"]
 
@@ -183,7 +184,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             sort=[QuerySort(field="date", order="desc")],
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert rows[0]["title"] == "Delta"
         assert rows[-1]["title"] == "Alpha"
@@ -193,7 +194,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             output=QueryOutput(limit=2),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
 
@@ -205,7 +206,7 @@ class TestQueryZettelsUseCase:
                 QueryColumn(field="title"),
             ],
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert set(rows[0].keys()) == {"id", "title"}
 
@@ -217,7 +218,7 @@ class TestQueryZettelsUseCase:
                 QueryColumn(expr="len(tags)", label="Tag Count"),
             ],
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert rows[0]["Tag Count"] == 2  # Alpha has 2 tags
 
@@ -228,13 +229,13 @@ class TestQueryZettelsUseCase:
                 QueryColumn(field="date", format="%Y-%m-%d"),
             ],
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert rows[0]["date"] == "2024-01-10"
 
     def test_directory_required(self, mock_repo):
         spec = QuerySpec(source=QuerySource())
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         with pytest.raises(ValueError, match="directory"):
             uc.execute(spec)
 
@@ -243,7 +244,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(operator="gt", field="id", value=2),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
         assert all(r["id"] > 2 for r in rows)
@@ -253,7 +254,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(operator="le", field="id", value=2),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
 
@@ -262,7 +263,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(expr="len(tags) > 1"),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 1
         assert rows[0]["title"] == "Alpha"
@@ -278,7 +279,7 @@ class TestQueryZettelsUseCase:
                 ],
             ),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 2
 
@@ -287,7 +288,7 @@ class TestQueryZettelsUseCase:
             source=QuerySource(directory="/notes"),
             filter=QueryFilter(expr="title.startswith('A')"),
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert len(rows) == 1
         assert rows[0]["title"] == "Alpha"
@@ -299,6 +300,6 @@ class TestQueryZettelsUseCase:
                 QueryColumn(expr="title.upper()", label="upper"),
             ],
         )
-        uc = QueryZettelsUseCase(mock_repo)
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert rows[0]["upper"] == "ALPHA"

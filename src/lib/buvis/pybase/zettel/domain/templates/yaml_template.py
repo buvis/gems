@@ -3,18 +3,24 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from buvis.pybase.zettel.domain.interfaces.expression_evaluator import ExpressionEvaluator
 from buvis.pybase.zettel.domain.templates import Hook, Question
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
 
 class YamlTemplate:
     """Template loaded from a YAML dict."""
 
-    def __init__(self, raw: dict[str, Any], base: Any | None = None) -> None:
+    def __init__(
+        self,
+        raw: dict[str, Any],
+        base: Any | None,
+        evaluator: ExpressionEvaluator,
+    ) -> None:
         self.name: str = raw["name"]
         self._raw = raw
         self._base = base
+        self._evaluator = evaluator
 
     def questions(self) -> list[Question]:
         base_qs = self._base.questions() if self._base else []
@@ -38,7 +44,7 @@ class YamlTemplate:
             data.metadata["title"] = answers.get("title", "")
 
         for key, val in self._raw.get("metadata", {}).items():
-            data.metadata[key] = _resolve_value(val, answers)
+            data.metadata[key] = _resolve_value(val, answers, self._evaluator)
 
         yaml_sections = self._raw.get("sections")
         if yaml_sections is not None:
@@ -56,9 +62,13 @@ class YamlTemplate:
         return self._base.hooks() if self._base else []
 
 
-def _resolve_value(val: Any, answers: dict[str, Any]) -> Any:
+def _resolve_value(
+    val: Any,
+    answers: dict[str, Any],
+    evaluator: ExpressionEvaluator,
+) -> Any:
     if isinstance(val, dict) and "eval" in val:
-        return python_eval(val["eval"], answers)
+        return evaluator(val["eval"], answers)
     if isinstance(val, str):
         return _resolve_str(val, answers)
     return val

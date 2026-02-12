@@ -13,6 +13,7 @@ from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate, disco
 from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
 )
+from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
 
 class CreateNoteApp(App[None]):
@@ -39,7 +40,7 @@ class CreateNoteApp(App[None]):
         self.preselected_title = preselected_title
         self.preselected_tags = preselected_tags
         self.extra_answers = extra_answers or {}
-        self.templates = discover_templates()
+        self.templates = discover_templates(python_eval)
         self._current_template: ZettelTemplate | None = None
         self._question_widgets: list[tuple[Question, Input | Select[str]]] = []
 

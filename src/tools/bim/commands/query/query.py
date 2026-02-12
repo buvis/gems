@@ -11,6 +11,7 @@ from buvis.pybase.zettel.infrastructure.query.output_formatter import (
     format_markdown,
     format_table,
 )
+from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
     parse_query_file,
     parse_query_string,
@@ -41,7 +42,7 @@ class CommandQuery:
             spec.source.directory = self.default_directory
 
         repo = MarkdownZettelRepository()
-        use_case = QueryZettelsUseCase(repo)
+        use_case = QueryZettelsUseCase(repo, python_eval)
         rows = use_case.execute(spec)
 
         if not rows:

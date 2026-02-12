@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from buvis.pybase.zettel.domain.value_objects.query_spec import QueryColumn
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
+    from buvis.pybase.zettel.domain.interfaces.expression_evaluator import (
+        ExpressionEvaluator,
+    )
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
     from buvis.pybase.zettel.domain.value_objects.query_spec import (
         QueryFilter,
@@ -21,8 +23,9 @@ _DEFAULT_COLUMNS = ["id", "title", "date", "type", "tags", "file_path"]
 
 
 class QueryZettelsUseCase:
-    def __init__(self, repository: ZettelReader) -> None:
+    def __init__(self, repository: ZettelReader, evaluator: ExpressionEvaluator) -> None:
         self.repository = repository
+        self.evaluator = evaluator
 
     def execute(self, spec: QuerySpec) -> list[dict[str, Any]]:
         directory = spec.source.directory
@@ -33,7 +36,7 @@ class QueryZettelsUseCase:
         zettels = self.repository.find_all(directory, spec.source.extensions)
 
         if spec.filter:
-            zettels = [z for z in zettels if _matches(z, spec.filter)]
+            zettels = [z for z in zettels if _matches(z, spec.filter, self.evaluator)]
 
         if spec.sort:
             zettels = _sort_zettels(zettels, spec.sort)
@@ -42,7 +45,7 @@ class QueryZettelsUseCase:
             zettels = zettels[: spec.output.limit]
 
         columns = spec.columns or [QueryColumn(field=f) for f in _DEFAULT_COLUMNS]
-        return [_project(z, columns) for z in zettels]
+        return [_project(z, columns, self.evaluator) for z in zettels]
 
 
 def _get_field(zettel: Zettel, name: str) -> Any:
@@ -58,17 +61,17 @@ def _get_field(zettel: Zettel, name: str) -> Any:
     return None
 
 
-def _matches(zettel: Zettel, f: QueryFilter) -> bool:
+def _matches(zettel: Zettel, f: QueryFilter, evaluator: ExpressionEvaluator) -> bool:
     if f.combinator == "and":
-        return all(_matches(zettel, c) for c in f.children)
+        return all(_matches(zettel, c, evaluator) for c in f.children)
     if f.combinator == "or":
-        return any(_matches(zettel, c) for c in f.children)
+        return any(_matches(zettel, c, evaluator) for c in f.children)
     if f.combinator == "not":
-        return not _matches(zettel, f.children[0])
+        return not _matches(zettel, f.children[0], evaluator)
 
     if f.expr is not None:
         variables = _zettel_variables(zettel)
-        return bool(python_eval(f.expr, variables))
+        return bool(evaluator(f.expr, variables))
 
     assert f.field is not None
     assert f.operator is not None
@@ -130,7 +133,11 @@ def _sort_zettels(zettels: list[Zettel], sort_fields: list[Any]) -> list[Zettel]
     return sorted(zettels, key=cmp_to_key(compare))
 
 
-def _project(zettel: Zettel, columns: list[QueryColumn]) -> dict[str, Any]:
+def _project(
+    zettel: Zettel,
+    columns: list[QueryColumn],
+    evaluator: ExpressionEvaluator,
+) -> dict[str, Any]:
     row: dict[str, Any] = {}
     for col in columns:
         label = col.label or col.field or col.expr or "?"
@@ -141,7 +148,7 @@ def _project(zettel: Zettel, columns: list[QueryColumn]) -> dict[str, Any]:
             row[label] = val
         elif col.expr:
             variables = _zettel_variables(zettel)
-            row[label] = python_eval(col.expr, variables)
+            row[label] = evaluator(col.expr, variables)
     return row
 
 

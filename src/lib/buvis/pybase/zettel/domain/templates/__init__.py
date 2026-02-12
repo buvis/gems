@@ -6,11 +6,16 @@ import pkgutil
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import yaml
 
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
+
+if TYPE_CHECKING:
+    from buvis.pybase.zettel.domain.interfaces.expression_evaluator import (
+        ExpressionEvaluator,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +83,7 @@ def _get_template_dirs() -> list[Path]:
 
 def discover_yaml_templates(
     base_templates: dict[str, ZettelTemplate],
+    evaluator: ExpressionEvaluator,
 ) -> dict[str, ZettelTemplate]:
     from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
 
@@ -98,13 +104,13 @@ def discover_yaml_templates(
             base = None
             if extends := raw.get("extends"):
                 base = base_templates.get(extends) or found.get(extends)
-            found[raw["name"]] = YamlTemplate(raw, base=base)
+            found[raw["name"]] = YamlTemplate(raw, base=base, evaluator=evaluator)
     return found
 
 
-def discover_templates() -> dict[str, ZettelTemplate]:
+def discover_templates(evaluator: ExpressionEvaluator) -> dict[str, ZettelTemplate]:
     templates = _discover_python_templates()
-    templates.update(discover_yaml_templates(templates))
+    templates.update(discover_yaml_templates(templates, evaluator=evaluator))
     return templates
 
 
