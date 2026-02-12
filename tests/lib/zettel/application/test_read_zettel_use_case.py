@@ -4,7 +4,7 @@ import pytest
 
 from buvis.pybase.zettel.application.use_cases.read_zettel_use_case import ReadZettelUseCase
 from buvis.pybase.zettel.domain.entities import Zettel
-from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
+from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
 from buvis.pybase.zettel.domain.interfaces.zettel_repository_exceptions import (
     ZettelRepositoryZettelNotFoundError,
 )
@@ -13,7 +13,7 @@ from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 
 @pytest.fixture
 def mock_zettel_repository():
-    return MagicMock(spec=ZettelRepository)
+    return MagicMock(spec=ZettelReader)
 
 
 @pytest.fixture
