@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
+usage() { echo "Usage: release [--dry-run] <patch|minor|major>"; exit 1; }
+die() { echo "error: $1" >&2; exit 1; }
+
+bump_version() {
+  local ver="$1" part="$2"
+  IFS='.' read -r major minor patch <<< "$ver"
+  case "$part" in
+    major) echo "$((major + 1)).0.0" ;;
+    minor) echo "$major.$((minor + 1)).0" ;;
+    patch) echo "$major.$minor.$((patch + 1))" ;;
+  esac
+}
+
+dry_run=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+  dry_run=true
+  shift
+fi
+
+[[ $# -eq 1 ]] || usage
+part="$1"
+[[ "$part" =~ ^(patch|minor|major)$ ]] || usage
+
+pyproject="$ROOT/pyproject.toml"
+old_ver=$(grep '^version' "$pyproject" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+new_ver=$(bump_version "$old_ver" "$part")
+tag="gems-v${new_ver}"
+
+if $dry_run; then
+  echo "$old_ver -> $new_ver (tag: $tag)"
+  exit 0
+fi
+
+[[ -z "$(git status --porcelain)" ]] || die "working tree is dirty"
+git tag -l "$tag" | grep -q . && die "tag $tag already exists"
+
+sed -i.bak "s/version = \"$old_ver\"/version = \"$new_ver\"/" "$pyproject" && rm -f "$pyproject.bak"
+
+uv lock || die "uv lock failed"
+
+git add "$pyproject" uv.lock
+git commit -m "build(gems): bump to v$new_ver"
+git tag "$tag"
+git push origin HEAD --tags
+
+echo "Released gems v$new_ver"
