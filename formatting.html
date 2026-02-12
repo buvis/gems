@@ -1,0 +1,671 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Formatting &mdash; buvis-gems  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Filesystem" href="filesystem.html" />
+    <link rel="prev" title="Configuration" href="configuration.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            buvis-gems
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Library:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#api-reference">API Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Formatting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-reference">API Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator"><code class="docutils literal notranslate"><span class="pre">StringOperator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.as_graphql_field_name"><code class="docutils literal notranslate"><span class="pre">StringOperator.as_graphql_field_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.as_note_field_name"><code class="docutils literal notranslate"><span class="pre">StringOperator.as_note_field_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.camelize"><code class="docutils literal notranslate"><span class="pre">StringOperator.camelize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.collapse"><code class="docutils literal notranslate"><span class="pre">StringOperator.collapse()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.humanize"><code class="docutils literal notranslate"><span class="pre">StringOperator.humanize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.pluralize"><code class="docutils literal notranslate"><span class="pre">StringOperator.pluralize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.prepend"><code class="docutils literal notranslate"><span class="pre">StringOperator.prepend()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.replace_abbreviations"><code class="docutils literal notranslate"><span class="pre">StringOperator.replace_abbreviations()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.shorten"><code class="docutils literal notranslate"><span class="pre">StringOperator.shorten()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.singularize"><code class="docutils literal notranslate"><span class="pre">StringOperator.singularize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.slugify"><code class="docutils literal notranslate"><span class="pre">StringOperator.slugify()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.suggest_tags"><code class="docutils literal notranslate"><span class="pre">StringOperator.suggest_tags()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.underscore"><code class="docutils literal notranslate"><span class="pre">StringOperator.underscore()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#helper-classes">Helper Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools"><code class="docutils literal notranslate"><span class="pre">StringCaseTools</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.as_graphql_field_name"><code class="docutils literal notranslate"><span class="pre">StringCaseTools.as_graphql_field_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.as_note_field_name"><code class="docutils literal notranslate"><span class="pre">StringCaseTools.as_note_field_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.camelize"><code class="docutils literal notranslate"><span class="pre">StringCaseTools.camelize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.humanize"><code class="docutils literal notranslate"><span class="pre">StringCaseTools.humanize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.underscore"><code class="docutils literal notranslate"><span class="pre">StringCaseTools.underscore()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools"><code class="docutils literal notranslate"><span class="pre">WordLevelTools</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools.pluralize"><code class="docutils literal notranslate"><span class="pre">WordLevelTools.pluralize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools.singularize"><code class="docutils literal notranslate"><span class="pre">WordLevelTools.singularize()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.abbr.Abbr"><code class="docutils literal notranslate"><span class="pre">Abbr</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.string_operator.abbr.Abbr.replace_abbreviations"><code class="docutils literal notranslate"><span class="pre">Abbr.replace_abbreviations()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filesystem.html">Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adapters.html">Adapters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zettel.html">Zettel</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CLI Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">CLI Tools</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">buvis-gems</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Formatting</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/formatting.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="formatting">
+<h1>Formatting<a class="headerlink" href="#formatting" title="Link to this heading"></a></h1>
+<p>The formatting helpers centralize string manipulation so your tools can produce
+consistent slugs, human-friendly labels, and tag suggestions.</p>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#overview" id="id1">Overview</a></p></li>
+<li><p><a class="reference internal" href="#quick-start" id="id2">Quick Start</a></p></li>
+<li><p><a class="reference internal" href="#api-reference" id="id3">API Reference</a></p></li>
+<li><p><a class="reference internal" href="#helper-classes" id="id4">Helper Classes</a></p></li>
+</ul>
+</nav>
+<section id="overview">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p><cite>StringOperator</cite> exposes slugification, casing helpers, and word-level
+transformations that bundle common rules for mushtags and filenames:</p>
+<ul class="simple">
+<li><p><strong>Slugification</strong> applies transliteration, delimiter normalization, and
+abbreviation handling to create URL-safe identifiers.</p></li>
+<li><p><strong>Case conversion</strong> covers camelCase, snake_case, and title-case variants
+plus reversals for finetuning display labels.</p></li>
+<li><p><strong>Word operations</strong> offer splitting, joining, and inflection helpers that
+respect existing abbreviations and brand-safe capitalizations.</p></li>
+<li><p><strong>Abbreviation expansion</strong> lets you replace short forms with full phrases or
+abbreviations sourced from config or code.</p></li>
+<li><p><strong>Tag suggestion</strong> helps derive consistent namespace/build tags from raw
+phrases or file paths.</p></li>
+</ul>
+</section>
+<section id="quick-start">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Quick Start</a><a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.formatting</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringOperator</span>
+
+<span class="n">slug</span> <span class="o">=</span> <span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">&quot;BUVIS-CLI Utilities&quot;</span><span class="p">)</span>
+<span class="n">camel</span> <span class="o">=</span> <span class="n">StringOperator</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s2">&quot;cli_utilities&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>   <span class="c1"># =&gt; &quot;buvis-cli-utilities&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">camel</span><span class="p">)</span>  <span class="c1"># =&gt; &quot;CliUtilities&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="api-reference">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">API Reference</a><a class="headerlink" href="#api-reference" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.formatting.</span></span><span class="sig-name descname"><span class="pre">StringOperator</span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Facade class providing unified string manipulation operations.</p>
+<p>All methods are static. Delegates to StringCaseTools, WordLevelTools, Abbr, TagSuggester.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.as_graphql_field_name">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">as_graphql_field_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.as_graphql_field_name" title="Link to this definition"></a></dt>
+<dd><p>Convert text to a GraphQL-friendly PascalCase field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Text to normalize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A PascalCase representation suitable for GraphQL schemas.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">as_graphql_field_name</span><span class="p">(</span><span class="s2">&quot;first_name&quot;</span><span class="p">)</span>
+<span class="go">&#39;FirstName&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.as_note_field_name">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">as_note_field_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.as_note_field_name" title="Link to this definition"></a></dt>
+<dd><p>Convert text to a lowercase, hyphen-delimited note field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Text to normalize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A lowercase string with hyphen separators.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">as_note_field_name</span><span class="p">(</span><span class="s2">&quot;Note Title&quot;</span><span class="p">)</span>
+<span class="go">&#39;note-title&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.camelize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">camelize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.camelize" title="Link to this definition"></a></dt>
+<dd><p>Convert text to CamelCase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Text to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A CamelCase string.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s2">&quot;first_name&quot;</span><span class="p">)</span>
+<span class="go">&#39;FirstName&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.collapse">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">collapse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.collapse" title="Link to this definition"></a></dt>
+<dd><p>Collapse whitespace and strip the ends of the text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Raw text that may contain repeated whitespace.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The text with internal whitespace collapsed and trimmed.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">collapse</span><span class="p">(</span><span class="s2">&quot;  foo   bar &quot;</span><span class="p">)</span>
+<span class="go">&#39;foo bar&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.humanize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">humanize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.humanize" title="Link to this definition"></a></dt>
+<dd><p>Make an identifier more readable for humans.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Identifier in snake_case or camelCase.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A human-readable string with spaces and capitalization.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">humanize</span><span class="p">(</span><span class="s2">&quot;first_name&quot;</span><span class="p">)</span>
+<span class="go">&#39;First name&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.pluralize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">pluralize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.pluralize" title="Link to this definition"></a></dt>
+<dd><p>Return the plural form of the provided text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Word to pluralize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Pluralized form of the word.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s2">&quot;mouse&quot;</span><span class="p">)</span>
+<span class="go">&#39;mice&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.prepend">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">prepend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prepend_text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.prepend" title="Link to this definition"></a></dt>
+<dd><p>Prepend a prefix when the text does not already start with it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – Target text.</p></li>
+<li><p><strong>prepend_text</strong> – Prefix to add when missing.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The original text if the prefix exists, otherwise the prefixed text.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">prepend</span><span class="p">(</span><span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="s2">&quot;pre-&quot;</span><span class="p">)</span>
+<span class="go">&#39;pre-bar&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.replace_abbreviations">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">replace_abbreviations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">abbreviations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.replace_abbreviations" title="Link to this definition"></a></dt>
+<dd><p>Replace abbreviations within the text using configured levels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – Text containing abbreviations to replace.</p></li>
+<li><p><strong>abbreviations</strong> – Mapping of abbreviations to expanded text.</p></li>
+<li><p><strong>level</strong> – Expansion level (0=case fix, 4=long text plus abbreviation).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The text with abbreviations expanded according to the level.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">replace_abbreviations</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;Send an API request&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[{</span><span class="s2">&quot;API&quot;</span><span class="p">:</span> <span class="s2">&quot;Application Programming Interface&lt;&lt;Application Programming Interface&gt;&gt;&quot;</span><span class="p">}],</span>
+<span class="gp">... </span>    <span class="n">level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">&#39;Send an Application Programming Interface (API) request&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.shorten">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">shorten</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.shorten" title="Link to this definition"></a></dt>
+<dd><p>Truncate text while preserving a suffix and inserting ellipsis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – Text to truncate.</p></li>
+<li><p><strong>limit</strong> – Maximum length of the returned string.</p></li>
+<li><p><strong>suffix_length</strong> – Number of characters to keep from the end after ellipsis.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A shortened string with an ellipsis if truncation occurred.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">shorten</span><span class="p">(</span><span class="s2">&quot;short&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="go">&#39;short&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.singularize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">singularize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.singularize" title="Link to this definition"></a></dt>
+<dd><p>Return the singular form of the provided text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Word to singularize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Singularized form of the word.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s2">&quot;mice&quot;</span><span class="p">)</span>
+<span class="go">&#39;mouse&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.slugify">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">slugify</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.slugify" title="Link to this definition"></a></dt>
+<dd><p>Create a URL-safe slug from the given text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Input text to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A lowercase slug with unsafe characters replaced by hyphens.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">&quot;Foo Bar!&quot;</span><span class="p">)</span>
+<span class="go">&#39;foo-bar&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.suggest_tags">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">suggest_tags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.suggest_tags" title="Link to this definition"></a></dt>
+<dd><p>Suggest tags for the text using NLP and zero-shot classification.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – Text to analyze for tag candidates.</p></li>
+<li><p><strong>limit_count</strong> – Maximum number of tags to return.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of suggested tags ordered by relevance.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">suggest_tags</span><span class="p">(</span><span class="s2">&quot;Build a CLI tool&quot;</span><span class="p">,</span> <span class="n">limit_count</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="go">[&#39;cli&#39;, &#39;automation&#39;]  # Actual suggestions vary.</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.underscore">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">underscore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.underscore" title="Link to this definition"></a></dt>
+<dd><p>Convert text to snake_case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – String to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A snake_case version of the text.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">underscore</span><span class="p">(</span><span class="s2">&quot;FirstName&quot;</span><span class="p">)</span>
+<span class="go">&#39;first_name&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="helper-classes">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">Helper Classes</a><a class="headerlink" href="#helper-classes" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.formatting.string_operator.string_case_tools.</span></span><span class="sig-name descname"><span class="pre">StringCaseTools</span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>String case conversion utilities.</p>
+<p>Static utility class for converting strings between naming
+conventions. Wraps the inflection library with BUVIS-specific
+field naming conventions.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.as_graphql_field_name">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">as_graphql_field_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.as_graphql_field_name" title="Link to this definition"></a></dt>
+<dd><p>Convert a string to a GraphQL-style field name (PascalCase).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Text to convert into PascalCase.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>PascalCase string suitable for GraphQL fields.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">as_graphql_field_name</span><span class="p">(</span><span class="s1">&#39;some_value&#39;</span><span class="p">)</span>
+<span class="go">&#39;SomeValue&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.as_note_field_name">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">as_note_field_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.as_note_field_name" title="Link to this definition"></a></dt>
+<dd><p>Make a string safe for note field names (kebab-case).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Text to convert into a note field identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Kebab-case representation of the input text.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">as_note_field_name</span><span class="p">(</span><span class="s1">&#39;SomeValue&#39;</span><span class="p">)</span>
+<span class="go">&#39;some-value&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.camelize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">camelize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.camelize" title="Link to this definition"></a></dt>
+<dd><p>Convert a string into CamelCase, respecting hyphen separators.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Text containing hyphens or underscores.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>CamelCase representation of the input text.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s1">&#39;some-name&#39;</span><span class="p">)</span>
+<span class="go">&#39;SomeName&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.humanize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">humanize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.humanize" title="Link to this definition"></a></dt>
+<dd><p>Turn an identifier into a human-readable phrase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Lowercase string or identifier to make human readable.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Human-readable string with spaces and capitalized words.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">humanize</span><span class="p">(</span><span class="s1">&#39;some_value&#39;</span><span class="p">)</span>
+<span class="go">&#39;Some value&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.underscore">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">underscore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.string_case_tools.StringCaseTools.underscore" title="Link to this definition"></a></dt>
+<dd><p>Convert a string into snake_case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Text to convert.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Snake_case version of the input text.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">underscore</span><span class="p">(</span><span class="s1">&#39;SomeValue&#39;</span><span class="p">)</span>
+<span class="go">&#39;some_value&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.formatting.string_operator.word_level_tools.</span></span><span class="sig-name descname"><span class="pre">WordLevelTools</span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Word-level text manipulation utilities.
+Static utility class for singularization and pluralization.
+Wraps inflection library with domain-specific exceptions.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools.pluralize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">pluralize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools.pluralize" title="Link to this definition"></a></dt>
+<dd><p>Pluralize <cite>text</cite> unless it matches an exception like ‘minutes’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Word to pluralize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Plural form of <cite>text</cite>, or the original <cite>text</cite> when it is exempted.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s1">&#39;minutes&#39;</span><span class="p">)</span>
+<span class="go">&#39;minutes&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">)</span>
+<span class="go">&#39;cats&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools.singularize">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">singularize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.word_level_tools.WordLevelTools.singularize" title="Link to this definition"></a></dt>
+<dd><p>Singularize <cite>text</cite> unless it matches an exception like ‘minutes’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Word to singularize.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Singular form of <cite>text</cite>, or the original <cite>text</cite> when it is exempted.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s1">&#39;minutes&#39;</span><span class="p">)</span>
+<span class="go">&#39;minutes&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s1">&#39;dogs&#39;</span><span class="p">)</span>
+<span class="go">&#39;dog&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.abbr.Abbr">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.formatting.string_operator.abbr.</span></span><span class="sig-name descname"><span class="pre">Abbr</span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.abbr.Abbr" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Abbreviation replacement utility.</p>
+<p>Provides static methods for expanding abbreviations in text with configurable expansion levels.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.string_operator.abbr.Abbr.replace_abbreviations">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">replace_abbreviations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">abbreviations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.string_operator.abbr.Abbr.replace_abbreviations" title="Link to this definition"></a></dt>
+<dd><p>Expand abbreviations found in the provided text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – The text to process.</p></li>
+<li><p><strong>abbreviations</strong> – A list of dictionaries that map abbreviations to
+expansion strings, where an expansion can include an optional
+long form delimited by <code class="docutils literal notranslate"><span class="pre">&lt;&lt;</span></code> and <code class="docutils literal notranslate"><span class="pre">&gt;&gt;</span></code> (e.g.
+<code class="docutils literal notranslate"><span class="pre">{&quot;API&quot;:</span> <span class="pre">&quot;App&lt;&lt;Application</span> <span class="pre">Programming</span> <span class="pre">Interface&gt;&gt;&quot;}</span></code>).</p></li>
+<li><p><strong>level</strong> – Determines how much of the expansion to use (0=fix case,
+1=short, 2=short+(abbr), 3=long, 4=long+(abbr)).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A string where each abbreviation is replaced according to level.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Abbr</span><span class="o">.</span><span class="n">replace_abbreviations</span><span class="p">(</span><span class="s2">&quot;Use the API&quot;</span><span class="p">,</span> <span class="p">[{</span><span class="s2">&quot;API&quot;</span><span class="p">:</span> <span class="s2">&quot;App&quot;</span><span class="p">}],</span> <span class="mi">1</span><span class="p">)</span>
+<span class="go">&#39;Use the App&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="configuration.html" class="btn btn-neutral float-left" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="filesystem.html" class="btn btn-neutral float-right" title="Filesystem" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tomáš Bouška.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

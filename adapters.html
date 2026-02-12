@@ -1,0 +1,1226 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adapters &mdash; buvis-gems  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Zettel" href="zettel.html" />
+    <link rel="prev" title="Filesystem" href="filesystem.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            buvis-gems
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Library:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#api-reference">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formatting.html">Formatting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filesystem.html">Filesystem</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Adapters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#return-convention">Return Convention</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#when-to-use">When to Use</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#choosing-the-right-adapter">Choosing the Right Adapter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#shelladapter-vs-specific-adapters">ShellAdapter vs Specific Adapters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#api-reference">API Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#shelladapter">ShellAdapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.adapters.ShellAdapter"><code class="docutils literal notranslate"><span class="pre">ShellAdapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#consoleadapter">ConsoleAdapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.adapters.console.console.ConsoleAdapter"><code class="docutils literal notranslate"><span class="pre">ConsoleAdapter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.adapters.logging_to_console"><code class="docutils literal notranslate"><span class="pre">logging_to_console()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#uvadapter">UvAdapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.adapters.UvAdapter"><code class="docutils literal notranslate"><span class="pre">UvAdapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#uvtoolmanager">UvToolManager</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.adapters.UvToolManager"><code class="docutils literal notranslate"><span class="pre">UvToolManager</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#jiraadapter">JiraAdapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.adapters.JiraAdapter"><code class="docutils literal notranslate"><span class="pre">JiraAdapter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO"><code class="docutils literal notranslate"><span class="pre">JiraIssueDTO</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#platform-specific-adapters">Platform-Specific Adapters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#outlooklocaladapter">OutlookLocalAdapter</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#examples">Examples</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#shelladapter-example">ShellAdapter Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#consoleadapter-example">ConsoleAdapter Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jiraadapter-example">JiraAdapter Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#uvadapter-example">UvAdapter Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#uvtoolmanager-example">UvToolManager Example</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="zettel.html">Zettel</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CLI Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">CLI Tools</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">buvis-gems</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Adapters</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/adapters.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="adapters">
+<h1>Adapters<a class="headerlink" href="#adapters" title="Link to this heading"></a></h1>
+<p>The adapters module wraps external tools and APIs behind consistent Python interfaces.</p>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#overview" id="id2">Overview</a></p>
+<ul>
+<li><p><a class="reference internal" href="#return-convention" id="id3">Return Convention</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#when-to-use" id="id4">When to Use</a></p>
+<ul>
+<li><p><a class="reference internal" href="#choosing-the-right-adapter" id="id5">Choosing the Right Adapter</a></p></li>
+<li><p><a class="reference internal" href="#shelladapter-vs-specific-adapters" id="id6">ShellAdapter vs Specific Adapters</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#api-reference" id="id7">API Reference</a></p>
+<ul>
+<li><p><a class="reference internal" href="#shelladapter" id="id8">ShellAdapter</a></p></li>
+<li><p><a class="reference internal" href="#consoleadapter" id="id9">ConsoleAdapter</a></p></li>
+<li><p><a class="reference internal" href="#uvadapter" id="id10">UvAdapter</a></p></li>
+<li><p><a class="reference internal" href="#uvtoolmanager" id="id11">UvToolManager</a></p></li>
+<li><p><a class="reference internal" href="#jiraadapter" id="id12">JiraAdapter</a></p></li>
+<li><p><a class="reference internal" href="#platform-specific-adapters" id="id13">Platform-Specific Adapters</a></p></li>
+<li><p><a class="reference internal" href="#examples" id="id14">Examples</a></p></li>
+</ul>
+</li>
+</ul>
+</nav>
+<section id="overview">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Wrap subprocess calls, COM automation, or REST APIs.</p></li>
+<li><p><cite>ShellAdapter.exe()</cite> returns (stderr, stdout) tuples for standard shell operations.</p></li>
+<li><p><cite>UvToolManager.run()</cite> exits the process directly after execution.</p></li>
+<li><p>Handle platform-specific differences internally.</p></li>
+<li><p>Log operations via the standard logging module.</p></li>
+</ul>
+<p>Adapters differ in how they return results: shell wrappers yield <cite>(stderr, stdout)</cite> for post-processing, while <cite>UvToolManager</cite> terminates the process as part of its flow.</p>
+<section id="return-convention">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">Return Convention</a><a class="headerlink" href="#return-convention" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stderr</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">exe</span><span class="p">(</span><span class="s2">&quot;command&quot;</span><span class="p">,</span> <span class="n">working_dir</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">stderr</span><span class="p">:</span>
+    <span class="c1"># Handle error</span>
+<span class="c1"># Process stdout</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="when-to-use">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">When to Use</a><a class="headerlink" href="#when-to-use" title="Link to this heading"></a></h2>
+<section id="choosing-the-right-adapter">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">Choosing the Right Adapter</a><a class="headerlink" href="#choosing-the-right-adapter" title="Link to this heading"></a></h3>
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Adapter Selection Guide</span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Scenario</p></th>
+<th class="head"><p>Adapter</p></th>
+<th class="head"><p>Rationale</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>New projects, fast installs</p></td>
+<td><p>UvAdapter / UvToolManager</p></td>
+<td><p>uv is faster than Poetry, better for CI/CD</p></td>
+</tr>
+<tr class="row-odd"><td><p>Running arbitrary shell commands</p></td>
+<td><p>ShellAdapter</p></td>
+<td><p>Handles aliases, env vars, logging</p></td>
+</tr>
+<tr class="row-even"><td><p>JIRA issue creation</p></td>
+<td><p>JiraAdapter</p></td>
+<td><p>Typed DTO, handles custom field quirks</p></td>
+</tr>
+<tr class="row-odd"><td><p>Windows Outlook calendar</p></td>
+<td><p>OutlookLocalAdapter</p></td>
+<td><p>COM automation for local Outlook</p></td>
+</tr>
+<tr class="row-even"><td><p>Styled terminal output</p></td>
+<td><p>ConsoleAdapter</p></td>
+<td><p>Rich formatting, spinners, confirmations</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="shelladapter-vs-specific-adapters">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">ShellAdapter vs Specific Adapters</a><a class="headerlink" href="#shelladapter-vs-specific-adapters" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 50.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Specific Adapters (JiraAdapter, OutlookLocalAdapter)</p></th>
+<th class="head"><p>ShellAdapter</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Type-safe interfaces via DTOs</p></td>
+<td><p>One-off commands without dedicated adapters</p></td>
+</tr>
+<tr class="row-odd"><td><p>API-specific error handling</p></td>
+<td><p>Scripts requiring alias expansion</p></td>
+</tr>
+<tr class="row-even"><td><p>Protocol abstraction (REST, COM)</p></td>
+<td><p>Commands needing env var interpolation</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="api-reference">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">API Reference</a><a class="headerlink" href="#api-reference" title="Link to this heading"></a></h2>
+<section id="shelladapter">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">ShellAdapter</a><a class="headerlink" href="#shelladapter" title="Link to this heading"></a></h3>
+<p>Subprocess execution with alias and environment variable expansion.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.ShellAdapter">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.adapters.</span></span><span class="sig-name descname"><span class="pre">ShellAdapter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">suppress_logging</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.adapters.ShellAdapter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class for executing shell commands and logging their output,
+with support for command aliases and environment variables.</p>
+<p>It executes shell commands, logs the output, and handles errors.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.ShellAdapter.alias">
+<span class="sig-name descname"><span class="pre">alias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.ShellAdapter.alias" title="Link to this definition"></a></dt>
+<dd><p>Define a command alias.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alias</strong> – The alias name to define.</p></li>
+<li><p><strong>command</strong> – The command string that the alias maps to.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.ShellAdapter.exe">
+<span class="sig-name descname"><span class="pre">exe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">working_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#buvis.pybase.adapters.ShellAdapter.exe" title="Link to this definition"></a></dt>
+<dd><p>Execute a shell command and log its output.</p>
+<p>This method runs the given command, logs stdout as info and stderr as error.
+If the command fails, it logs both stdout and stderr.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>command</strong> – A string representing the command to execute.</p></li>
+<li><p><strong>working_dir</strong> – Path to directory where the command will be executed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple of (stderr, stdout) from command execution. On failure, returns
+(error_message, empty string).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.ShellAdapter.interact">
+<span class="sig-name descname"><span class="pre">interact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">working_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.ShellAdapter.interact" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.ShellAdapter.is_command_available">
+<span class="sig-name descname"><span class="pre">is_command_available</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.ShellAdapter.is_command_available" title="Link to this definition"></a></dt>
+<dd><p>Check if a given command is available in the system PATH.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>command</strong> – The name of the command to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the command exists, False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="consoleadapter">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">ConsoleAdapter</a><a class="headerlink" href="#consoleadapter" title="Link to this heading"></a></h3>
+<p>Rich console output wrapper for styled terminal messages.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.adapters.console.console.</span></span><span class="sig-name descname"><span class="pre">ConsoleAdapter</span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Rich console wrapper for styled terminal output.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConsoleAdapter</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">console</span> <span class="o">=</span> <span class="n">ConsoleAdapter</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">console</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;Operation completed&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Checkmark, warning, and failure flows reuse the
+<cite>CHECKMARK</cite>, <cite>WARNING</cite>, and <cite>CROSSMARK</cite> markers together with
+<cite>STYLE_SUCCESS_MSG</cite>, <cite>STYLE_WARNING_MSG</cite>, and <cite>STYLE_FAILURE_MSG</cite>
+so decorated messages remain consistent.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.capture">
+<span class="sig-name descname"><span class="pre">capture</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Capture</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.capture" title="Link to this definition"></a></dt>
+<dd><p>Return a Rich Capture context manager for console output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Context manager that captures console output.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Capture</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.confirm">
+<span class="sig-name descname"><span class="pre">confirm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">question</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.confirm" title="Link to this definition"></a></dt>
+<dd><p>Prompt the user for confirmation via Rich Confirm.ask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>question</strong> (<em>str</em>) – Prompt text presented to the user.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Result of the confirmation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.failure">
+<span class="sig-name descname"><span class="pre">failure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.failure" title="Link to this definition"></a></dt>
+<dd><p>Print a red failure message, optionally including details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<em>str</em>) – Text to display.</p></li>
+<li><p><strong>details</strong> (<em>str</em><em> | </em><em>None</em>) – Additional information to display after the failure message.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.format_failure">
+<span class="sig-name descname"><span class="pre">format_failure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.format_failure" title="Link to this definition"></a></dt>
+<dd><p>Return a red crossmark Rich markup string with optional details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<em>str</em>) – Text to format.</p></li>
+<li><p><strong>details</strong> (<em>str</em><em> | </em><em>None</em>) – Additional detail text to append.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Rich markup string with crossmark and red styling.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.format_success">
+<span class="sig-name descname"><span class="pre">format_success</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.format_success" title="Link to this definition"></a></dt>
+<dd><p>Return a green checkmark Rich markup string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>message</strong> (<em>str</em>) – Text to format.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Rich markup string with checkmark and green styling.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.format_warning">
+<span class="sig-name descname"><span class="pre">format_warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.format_warning" title="Link to this definition"></a></dt>
+<dd><p>Return an orange warning symbol Rich markup string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>message</strong> (<em>str</em>) – Text to format.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Rich markup string with warning symbol and orange styling.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.info">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.info" title="Link to this definition"></a></dt>
+<dd><p>Print dimmed informational text.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.nl">
+<span class="sig-name descname"><span class="pre">nl</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.nl" title="Link to this definition"></a></dt>
+<dd><p>Output an empty line to the console.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.panic">
+<span class="sig-name descname"><span class="pre">panic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.panic" title="Link to this definition"></a></dt>
+<dd><p>Print a failure message and exit the program.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<em>str</em>) – Text to display.</p></li>
+<li><p><strong>details</strong> (<em>str</em><em> | </em><em>None</em>) – Additional information to display after the failure message.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Terminates the program by calling <cite>sys.exit()</cite>.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.print">
+<span class="sig-name descname"><span class="pre">print</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'normal'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.print" title="Link to this definition"></a></dt>
+<dd><p>Render text through the console with optional rendering modes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> (<em>str</em>) – Content to print.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – Rendering mode, one of <code class="docutils literal notranslate"><span class="pre">normal</span></code>, <code class="docutils literal notranslate"><span class="pre">raw</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">markdown_with_frontmatter</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.print_side_by_side">
+<span class="sig-name descname"><span class="pre">print_side_by_side</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title_left</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_left</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title_right</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text_right</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode_left</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'normal'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode_right</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'normal'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.print_side_by_side" title="Link to this definition"></a></dt>
+<dd><p>Render two panels in a half-width, side-by-side layout where each panel
+uses half the console width to keep columns balanced.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title_left</strong> (<em>str</em>) – Panel title for the left column.</p></li>
+<li><p><strong>text_left</strong> (<em>str</em>) – Content for the left column body.</p></li>
+<li><p><strong>title_right</strong> (<em>str</em>) – Panel title for the right column.</p></li>
+<li><p><strong>text_right</strong> (<em>str</em>) – Content for the right column body.</p></li>
+<li><p><strong>mode_left</strong> (<em>str</em>) – Rendering mode for the left column content.</p></li>
+<li><p><strong>mode_right</strong> (<em>str</em>) – Rendering mode for the right column content.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">console</span><span class="o">.</span><span class="n">print_side_by_side</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">title_left</span><span class="o">=</span><span class="s2">&quot;Config&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">text_left</span><span class="o">=</span><span class="s2">&quot;name: buvis</span><span class="se">\n</span><span class="s2">---</span><span class="se">\n</span><span class="s2"># details&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">title_right</span><span class="o">=</span><span class="s2">&quot;Result&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">text_right</span><span class="o">=</span><span class="s2">&quot;Success&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">mode_left</span><span class="o">=</span><span class="s2">&quot;markdown_with_frontmatter&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">mode_right</span><span class="o">=</span><span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.status">
+<span class="sig-name descname"><span class="pre">status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Status</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.status" title="Link to this definition"></a></dt>
+<dd><p>Return a Rich Status context manager with arrow3 spinner.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>message</strong> (<em>str</em>) – Text to display while the status context is active.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Context manager for long-running operations.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Status</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.success">
+<span class="sig-name descname"><span class="pre">success</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.success" title="Link to this definition"></a></dt>
+<dd><p>Print a green checkmark status message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>message</strong> (<em>str</em>) – Text to display.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.console.console.ConsoleAdapter.warning">
+<span class="sig-name descname"><span class="pre">warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.console.console.ConsoleAdapter.warning" title="Link to this definition"></a></dt>
+<dd><p>Print an orange warning status message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>message</strong> (<em>str</em>) – Text to display.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p><cite>console</cite> singleton instance exposes the adapter for quick access.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.logging_to_console">
+<span class="sig-prename descclassname"><span class="pre">buvis.pybase.adapters.</span></span><span class="sig-name descname"><span class="pre">logging_to_console</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#buvis.pybase.adapters.logging_to_console" title="Link to this definition"></a></dt>
+<dd><p>Context manager that routes logging output through the Rich console.</p>
+<p>Temporarily adds a <code class="xref py py-class docutils literal notranslate"><span class="pre">CapturingRichHandler</span></code> to the root logger, setting the
+logger level to <code class="docutils literal notranslate"><span class="pre">INFO</span></code> while the context is active and restoring the previous
+handler and level on exit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>show_level</strong> (<em>bool</em>) – Include the log level in the captured output. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>show_time</strong> (<em>bool</em>) – Include timestamps in the captured output. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>show_path</strong> (<em>bool</em>) – Include the logger path in the captured output. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>None</em> – Logging is redirected to the Rich console for the duration of the context.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">logging_to_console</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Hello Rich&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="uvadapter">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">UvAdapter</a><a class="headerlink" href="#uvadapter" title="Link to this heading"></a></h3>
+<p>Fast Python package manager integration with auto-installation.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.UvAdapter">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.adapters.</span></span><span class="sig-name descname"><span class="pre">UvAdapter</span></span><a class="headerlink" href="#buvis.pybase.adapters.UvAdapter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>uv package manager integration.</p>
+<p>Provides auto-installation of uv and PATH configuration for
+cross-platform Python tooling.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.UvAdapter.ensure_uv">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ensure_uv</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.UvAdapter.ensure_uv" title="Link to this definition"></a></dt>
+<dd><p>Ensure uv is installed and available in PATH.</p>
+<p>If uv is not found, automatically installs it using:
+- Windows: PowerShell installer from astral.sh
+- Unix: curl installer from astral.sh</p>
+<p>Updates PATH to include common uv installation directories:
+- ~/.cargo/bin
+- ~/.local/bin (Unix)
+- ~/AppData/Local/uv (Windows)</p>
+<p>Exits with code 1 if installation fails.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="uvtoolmanager">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">UvToolManager</a><a class="headerlink" href="#uvtoolmanager" title="Link to this heading"></a></h3>
+<p>Manage and run CLI tools installed via uv.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.UvToolManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.adapters.</span></span><span class="sig-name descname"><span class="pre">UvToolManager</span></span><a class="headerlink" href="#buvis.pybase.adapters.UvToolManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Manage and run Python tools via uv.</p>
+<p>Supports development workflows with automatic tool discovery
+and installation from local project sources.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.UvToolManager.install_all">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">install_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scripts_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.UvToolManager.install_all" title="Link to this definition"></a></dt>
+<dd><p>Install all projects in src/ as uv tools.</p>
+<p>Scans scripts_root/src/ for directories containing pyproject.toml
+and installs each as a uv tool.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>scripts_root</strong> – Root directory containing src/. Defaults to cwd.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.UvToolManager.install_tool">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">install_tool</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.UvToolManager.install_tool" title="Link to this definition"></a></dt>
+<dd><p>Install a project as a uv tool.</p>
+<p>Uses –force –upgrade to ensure latest version. On failure,
+cleans the tool cache and retries once.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>project_path</strong> – Directory containing pyproject.toml.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.UvToolManager.run">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">script_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.UvToolManager.run" title="Link to this definition"></a></dt>
+<dd><p>Run a tool from local venv, project source, or installed uv tool.</p>
+<dl class="simple">
+<dt>Execution priority when BUVIS_DEV_MODE=1:</dt><dd><ol class="arabic simple">
+<li><p>Local .venv/bin/{tool} if exists</p></li>
+<li><p>uv run from project source (src/{pkg}/pyproject.toml)</p></li>
+<li><p>Exit with error if neither found</p></li>
+</ol>
+</dd>
+<dt>Execution priority when BUVIS_DEV_MODE unset:</dt><dd><ol class="arabic simple">
+<li><p>uv tool run {tool}</p></li>
+<li><p>Auto-install from local source if tool not found</p></li>
+<li><p>Exit with error if no source available</p></li>
+</ol>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>script_path</strong> – Path to the launcher script (used to derive tool name).</p></li>
+<li><p><strong>args</strong> – Command arguments. Defaults to sys.argv[1:].</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Tool name derived from script stem: my-tool -&gt; pkg my_tool.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="jiraadapter">
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">JiraAdapter</a><a class="headerlink" href="#jiraadapter" title="Link to this heading"></a></h3>
+<p>JIRA REST API adapter for issue creation.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.adapters.</span></span><span class="sig-name descname"><span class="pre">JiraAdapter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">JiraSettings</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>JIRA REST API adapter for issue operations.</p>
+<dl class="simple">
+<dt>Requirements:</dt><dd><p>Provide a populated <cite>JiraSettings</cite> instance with <cite>server</cite> and <cite>token</cite>.</p>
+</dd>
+<dt>Optional:</dt><dd><p>Configure <cite>proxy</cite> in the settings to route requests through a proxy server.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">settings</span> <span class="o">=</span> <span class="n">JiraSettings</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="s2">&quot;https://jira&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jira</span> <span class="o">=</span> <span class="n">JiraAdapter</span><span class="p">(</span><span class="n">settings</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">issue</span> <span class="o">=</span> <span class="n">JiraIssueDTO</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">created</span> <span class="o">=</span> <span class="n">jira</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">issue</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">link</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jira</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">jira</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;project = PROJ ORDER BY created DESC&quot;</span><span class="p">,</span> <span class="n">max_results</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jira</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;Start Progress&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.add_comment">
+<span class="sig-name descname"><span class="pre">add_comment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">issue_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_internal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">JiraCommentDTO</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.add_comment" title="Link to this definition"></a></dt>
+<dd><p>Add comment to issue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>issue_key</strong> – JIRA issue key.</p></li>
+<li><p><strong>body</strong> – Comment text content.</p></li>
+<li><p><strong>is_internal</strong> – If True, restrict visibility to Administrators.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JiraCommentDTO for the created comment.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>JiraNotFoundError</strong> – Issue does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.create">
+<span class="sig-name descname"><span class="pre">create</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">issue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO" title="buvis.pybase.adapters.jira.domain.jira_issue_dto.JiraIssueDTO"><span class="pre">JiraIssueDTO</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO" title="buvis.pybase.adapters.jira.domain.jira_issue_dto.JiraIssueDTO"><span class="pre">JiraIssueDTO</span></a></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.create" title="Link to this definition"></a></dt>
+<dd><p>Create a JIRA issue via the REST API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>issue</strong> (<a class="reference internal" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO" title="buvis.pybase.adapters.jira.domain.JiraIssueDTO"><em>JiraIssueDTO</em></a>) – containing all required fields.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>populated with server-assigned id and link.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO" title="buvis.pybase.adapters.jira.domain.JiraIssueDTO">JiraIssueDTO</a></p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Custom Field Mappings:</dt><dd><p>Determined by <cite>self._settings.field_mappings</cite>. Defaults:
+ticket -&gt; customfield_11502, team -&gt; customfield_10501,
+feature -&gt; customfield_10001, region -&gt; customfield_12900.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Custom fields customfield_10001 (feature) and customfield_12900 (region)
+require post-creation update due to JIRA API limitations.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">issue_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO" title="buvis.pybase.adapters.jira.domain.jira_issue_dto.JiraIssueDTO"><span class="pre">JiraIssueDTO</span></a></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.get" title="Link to this definition"></a></dt>
+<dd><p>Retrieve issue by key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>issue_key</strong> – JIRA issue key (e.g., “PROJ-123”).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JiraIssueDTO with issue data.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>JiraNotFoundError</strong> – Issue does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.get_comments">
+<span class="sig-name descname"><span class="pre">get_comments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">issue_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">JiraCommentDTO</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.get_comments" title="Link to this definition"></a></dt>
+<dd><p>Get all comments on issue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>issue_key</strong> – JIRA issue key.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of JiraCommentDTO, chronologically ordered.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>JiraNotFoundError</strong> – Issue does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.get_link_types">
+<span class="sig-name descname"><span class="pre">get_link_types</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.get_link_types" title="Link to this definition"></a></dt>
+<dd><p>Get available issue link types.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of link type names (e.g., “Blocks”, “Duplicates”).</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>JIRAError</strong> – JIRA API call failed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.get_transitions">
+<span class="sig-name descname"><span class="pre">get_transitions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">issue_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.get_transitions" title="Link to this definition"></a></dt>
+<dd><p>List available transitions for issue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>issue_key</strong> – JIRA issue key.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of dicts with “id” and “name” keys.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>JiraNotFoundError</strong> – Issue does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.link_issues">
+<span class="sig-name descname"><span class="pre">link_issues</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">from_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.link_issues" title="Link to this definition"></a></dt>
+<dd><p>Create link between issues.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>from_key</strong> – Source issue key (outward side of link).</p></li>
+<li><p><strong>to_key</strong> – Target issue key (inward side of link).</p></li>
+<li><p><strong>link_type</strong> – Link type name (e.g., “Blocks”, “Duplicates”).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>JiraNotFoundError</strong> – Either issue does not exist.</p></li>
+<li><p><strong>JiraLinkError</strong> – Link creation failed.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jql</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">JiraSearchResult</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.search" title="Link to this definition"></a></dt>
+<dd><p>Execute JQL query with pagination.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>jql</strong> – JQL query string.</p></li>
+<li><p><strong>start_at</strong> – Index of first result (for pagination).</p></li>
+<li><p><strong>max_results</strong> – Maximum results to return.</p></li>
+<li><p><strong>fields</strong> – Comma-separated field names to include, or None for all.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JiraSearchResult with matching issues and pagination info.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.transition">
+<span class="sig-name descname"><span class="pre">transition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">issue_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.transition" title="Link to this definition"></a></dt>
+<dd><p>Execute workflow transition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>issue_key</strong> – JIRA issue key.</p></li>
+<li><p><strong>transition</strong> – Transition ID or name.</p></li>
+<li><p><strong>fields</strong> – Optional field updates during transition.</p></li>
+<li><p><strong>comment</strong> – Optional comment to add during transition.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>JiraNotFoundError</strong> – Issue does not exist.</p></li>
+<li><p><strong>JiraTransitionError</strong> – Transition unavailable.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.JiraAdapter.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">issue_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO" title="buvis.pybase.adapters.jira.domain.jira_issue_dto.JiraIssueDTO"><span class="pre">JiraIssueDTO</span></a></span></span><a class="headerlink" href="#buvis.pybase.adapters.JiraAdapter.update" title="Link to this definition"></a></dt>
+<dd><p>Update issue fields.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>issue_key</strong> – Issue to update.</p></li>
+<li><p><strong>fields</strong> – Dict of field names to new values.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updated JiraIssueDTO.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>JiraNotFoundError</strong> – Issue does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.adapters.jira.domain.</span></span><span class="sig-name descname"><span class="pre">JiraIssueDTO</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">issue_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ticket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">assignee</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reporter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">team</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>DTO for JIRA issue creation.</p>
+<p>Maps Python fields to JIRA API field names. Custom field IDs are
+configured via JiraSettings.field_mappings.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.project">
+<span class="sig-name descname"><span class="pre">project</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.project" title="Link to this definition"></a></dt>
+<dd><p>JIRA project key (e.g., ‘BUV’).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.title">
+<span class="sig-name descname"><span class="pre">title</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.title" title="Link to this definition"></a></dt>
+<dd><p>Issue summary text, maps to JIRA ‘summary’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.description">
+<span class="sig-name descname"><span class="pre">description</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.description" title="Link to this definition"></a></dt>
+<dd><p>Issue body text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.issue_type">
+<span class="sig-name descname"><span class="pre">issue_type</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.issue_type" title="Link to this definition"></a></dt>
+<dd><p>Type name (e.g., ‘Task’, ‘Bug’).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.labels">
+<span class="sig-name descname"><span class="pre">labels</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.labels" title="Link to this definition"></a></dt>
+<dd><p>List of label strings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.priority">
+<span class="sig-name descname"><span class="pre">priority</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.priority" title="Link to this definition"></a></dt>
+<dd><p>Priority name (e.g., ‘Medium’, ‘High’).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.ticket">
+<span class="sig-name descname"><span class="pre">ticket</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.ticket" title="Link to this definition"></a></dt>
+<dd><p>Parent ticket reference (custom field).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.feature">
+<span class="sig-name descname"><span class="pre">feature</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.feature" title="Link to this definition"></a></dt>
+<dd><p>Feature/epic link (custom field).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.assignee">
+<span class="sig-name descname"><span class="pre">assignee</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.assignee" title="Link to this definition"></a></dt>
+<dd><p>Assignee username key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.reporter">
+<span class="sig-name descname"><span class="pre">reporter</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.reporter" title="Link to this definition"></a></dt>
+<dd><p>Reporter username key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.team">
+<span class="sig-name descname"><span class="pre">team</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.team" title="Link to this definition"></a></dt>
+<dd><p>Team name (custom field), None if not set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.region">
+<span class="sig-name descname"><span class="pre">region</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.region" title="Link to this definition"></a></dt>
+<dd><p>Region value (custom field), None if not set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.id" title="Link to this definition"></a></dt>
+<dd><p>Server-assigned issue key (e.g., ‘BUV-123’), populated after creation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.adapters.jira.domain.JiraIssueDTO.link">
+<span class="sig-name descname"><span class="pre">link</span></span><a class="headerlink" href="#buvis.pybase.adapters.jira.domain.JiraIssueDTO.link" title="Link to this definition"></a></dt>
+<dd><p>Permalink URL, populated after creation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="platform-specific-adapters">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Platform-Specific Adapters</a><a class="headerlink" href="#platform-specific-adapters" title="Link to this heading"></a></h3>
+<section id="outlooklocaladapter">
+<h4>OutlookLocalAdapter<a class="headerlink" href="#outlooklocaladapter" title="Link to this heading"></a></h4>
+<p>Windows-only adapter for local Outlook COM automation. Requires <code class="docutils literal notranslate"><span class="pre">pywin32</span></code>
+and a local Outlook installation. Only available when <code class="docutils literal notranslate"><span class="pre">os.name</span> <span class="pre">==</span> <span class="pre">&quot;nt&quot;</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This adapter cannot be autodocumented cross-platform as it raises <code class="docutils literal notranslate"><span class="pre">OSError</span></code>
+on import when <code class="docutils literal notranslate"><span class="pre">os.name</span> <span class="pre">!=</span> <span class="pre">&quot;nt&quot;</span></code>.</p>
+</div>
+<p><strong>Methods:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">__init__()</span></code>: Connect to local Outlook via COM. Initializes MAPI namespace and default calendar.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create_timeblock(appointment_input:</span> <span class="pre">dict)</span></code>: Create a calendar appointment. Keys: <code class="docutils literal notranslate"><span class="pre">subject</span></code>, <code class="docutils literal notranslate"><span class="pre">body</span></code>, <code class="docutils literal notranslate"><span class="pre">duration</span></code> (minutes), <code class="docutils literal notranslate"><span class="pre">location</span></code>, <code class="docutils literal notranslate"><span class="pre">categories</span></code>, <code class="docutils literal notranslate"><span class="pre">start</span></code> (optional datetime).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_all_appointments()</span></code>: Retrieve all calendar appointments sorted by start time.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_day_appointments(appointments,</span> <span class="pre">date)</span></code>: Filter appointments to a single day.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_conflicting_appointment(desired_start,</span> <span class="pre">desired_duration,</span> <span class="pre">debug_level=0)</span></code>: Find appointment conflicting with proposed time slot.</p></li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Windows only</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutlookLocalAdapter</span>
+
+<span class="n">adapter</span> <span class="o">=</span> <span class="n">OutlookLocalAdapter</span><span class="p">()</span>
+<span class="n">adapter</span><span class="o">.</span><span class="n">create_timeblock</span><span class="p">({</span>
+    <span class="s2">&quot;subject&quot;</span><span class="p">:</span> <span class="s2">&quot;Check-in&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="s2">&quot;Daily sync&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="s2">&quot;Desk&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;categories&quot;</span><span class="p">:</span> <span class="s2">&quot;Work&quot;</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="examples">
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">Examples</a><a class="headerlink" href="#examples" title="Link to this heading"></a></h3>
+<section id="shelladapter-example">
+<h4>ShellAdapter Example<a class="headerlink" href="#shelladapter-example" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ShellAdapter</span>
+
+<span class="n">shell</span> <span class="o">=</span> <span class="n">ShellAdapter</span><span class="p">()</span>
+<span class="n">shell</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;lint&quot;</span><span class="p">,</span> <span class="s2">&quot;poetry run lint&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">shell</span><span class="o">.</span><span class="n">is_command_available</span><span class="p">(</span><span class="s2">&quot;git&quot;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;git is required for this workflow&quot;</span><span class="p">)</span>
+
+<span class="n">stderr</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">shell</span><span class="o">.</span><span class="n">exe</span><span class="p">(</span><span class="s2">&quot;lint&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">stderr</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lint failed: </span><span class="si">{</span><span class="n">stderr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">stdout</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="consoleadapter-example">
+<h4>ConsoleAdapter Example<a class="headerlink" href="#consoleadapter-example" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters.console.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">console</span>
+
+<span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="s2">&quot;Deploying service&quot;</span><span class="p">):</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;Gathering assets&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">console</span><span class="o">.</span><span class="n">confirm</span><span class="p">(</span><span class="s2">&quot;Continue deployment?&quot;</span><span class="p">):</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="s2">&quot;Deployment aborted by user&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">console</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;Deployment finished&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="jiraadapter-example">
+<h4>JiraAdapter Example<a class="headerlink" href="#jiraadapter-example" title="Link to this heading"></a></h4>
+<p>Ensure configuration exposes <code class="docutils literal notranslate"><span class="pre">server</span></code> and <code class="docutils literal notranslate"><span class="pre">token</span></code> before instantiating the adapter.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">jira.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">JIRAError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">JiraAdapter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters.jira.domain</span><span class="w"> </span><span class="kn">import</span> <span class="n">JiraIssueDTO</span>
+
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">MyConfig</span><span class="p">()</span>  <span class="c1"># supplies server, token, and optional proxy</span>
+<span class="n">jira</span> <span class="o">=</span> <span class="n">JiraAdapter</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<span class="n">issue</span> <span class="o">=</span> <span class="n">JiraIssueDTO</span><span class="p">(</span>
+    <span class="n">project</span><span class="o">=</span><span class="s2">&quot;BUV&quot;</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Document new adapter patterns&quot;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Describe adapter usage in docs&quot;</span><span class="p">,</span>
+    <span class="n">issue_type</span><span class="o">=</span><span class="s2">&quot;Task&quot;</span><span class="p">,</span>
+    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;docs&quot;</span><span class="p">,</span> <span class="s2">&quot;pybase&quot;</span><span class="p">],</span>
+    <span class="n">priority</span><span class="o">=</span><span class="s2">&quot;Medium&quot;</span><span class="p">,</span>
+    <span class="n">ticket</span><span class="o">=</span><span class="s2">&quot;BUV-123&quot;</span><span class="p">,</span>
+    <span class="n">feature</span><span class="o">=</span><span class="s2">&quot;adapter-workflows&quot;</span><span class="p">,</span>
+    <span class="n">assignee</span><span class="o">=</span><span class="s2">&quot;alice&quot;</span><span class="p">,</span>
+    <span class="n">reporter</span><span class="o">=</span><span class="s2">&quot;bob&quot;</span><span class="p">,</span>
+    <span class="n">team</span><span class="o">=</span><span class="s2">&quot;platform&quot;</span><span class="p">,</span>
+    <span class="n">region</span><span class="o">=</span><span class="s2">&quot;emea&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">created</span> <span class="o">=</span> <span class="n">jira</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">issue</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Issue created: </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">link</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">JIRAError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;JIRA API error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">raise</span>
+</pre></div>
+</div>
+</section>
+<section id="uvadapter-example">
+<h4>UvAdapter Example<a class="headerlink" href="#uvadapter-example" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">UvAdapter</span>
+
+<span class="c1"># Ensure uv is installed and PATH is configured</span>
+<span class="n">UvAdapter</span><span class="o">.</span><span class="n">ensure_uv</span><span class="p">()</span>
+<span class="c1"># uv is now available for subprocess calls</span>
+<span class="c1"># Use UvToolManager for running uv-managed tools</span>
+</pre></div>
+</div>
+</section>
+<section id="uvtoolmanager-example">
+<h4>UvToolManager Example<a class="headerlink" href="#uvtoolmanager-example" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">UvToolManager</span>
+
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/project&quot;</span><span class="p">)</span>
+<span class="c1"># Directory layout:</span>
+<span class="c1"># /project</span>
+<span class="c1"># ├── bin/</span>
+<span class="c1"># └── src/</span>
+<span class="c1">#     └── my_tool/</span>
+<span class="n">UvToolManager</span><span class="o">.</span><span class="n">install_all</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
+<span class="n">UvToolManager</span><span class="o">.</span><span class="n">install_tool</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;src&quot;</span> <span class="o">/</span> <span class="s2">&quot;my_tool&quot;</span><span class="p">)</span>
+<span class="n">UvToolManager</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;bin&quot;</span> <span class="o">/</span> <span class="s2">&quot;my-tool&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;--help&quot;</span><span class="p">])</span>  <span class="c1"># exits on completion</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="filesystem.html" class="btn btn-neutral float-left" title="Filesystem" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="zettel.html" class="btn btn-neutral float-right" title="Zettel" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tomáš Bouška.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
