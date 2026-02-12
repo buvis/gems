@@ -48,7 +48,7 @@ class ZettelFactory:
         except AttributeError:
             return zettel
         else:
-            if zettel._from_rust:  # noqa: SLF001
+            if zettel.from_rust:
                 downcasted_zettel = entity_class(zettel.get_data(), from_rust=True)
             else:
                 downcasted_zettel = entity_class()

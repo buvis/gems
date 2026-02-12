@@ -48,7 +48,7 @@ class ProjectZettelJiraIssueDTOAssembler:
 
         description = "No description provided"
 
-        for section in source._data.sections:  # noqa: SLF001
+        for section in source.data.sections:
             title, content = section
             if title == "## Description":
                 description = content.strip()

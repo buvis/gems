@@ -67,6 +67,16 @@ class Zettel:
         self._ensure_consistency()
         self._alias_attributes()
 
+    @property
+    def data(self) -> ZettelData:
+        """Return the Zettel data."""
+        return self._data
+
+    @property
+    def from_rust(self) -> bool:
+        """Return whether the Zettel was created from Rust data."""
+        return self._from_rust
+
     def _migrate(self) -> None:
         """Migrate the Zettel data."""
         ZettelMigrationService.migrate(self._data)

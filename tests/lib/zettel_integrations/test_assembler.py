@@ -44,7 +44,7 @@ def _make_zettel(
     zettel.tags = tags or []
     zettel.ticket = ticket
     zettel.ticket_related = ticket_related
-    zettel._data.sections = sections or []
+    zettel.data.sections = sections or []
     return zettel
 
 

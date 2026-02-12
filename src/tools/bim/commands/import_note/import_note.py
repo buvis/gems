@@ -64,7 +64,7 @@ class CommandImportNote:
         note = reader.execute(str(self.path_note))
 
         if note.type == "project":
-            note._data.metadata["resources"] = (  # noqa: SLF001
+            note.data.metadata["resources"] = (
                 f"[project resources]({self.path_note.parent.resolve().as_uri()})"
             )
 
