@@ -1,12 +1,12 @@
 """
 This module defines the ReadZettelUseCase class.
 
-It includes functionality to read zettel from ZettelRepository and returning it as
+It includes functionality to read zettel from ZettelReader and returning it as
 a specific zettel accourding to zettel type.
 """
 
 import buvis.pybase.zettel.domain.entities as zettel_entities
-from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
+from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
 from buvis.pybase.zettel.domain.interfaces.zettel_repository_exceptions import (
     ZettelRepositoryZettelNotFoundError,
 )
@@ -17,21 +17,21 @@ class ReadZettelUseCase:
     """
     A use case class for reading zettel from repository by location and downcasting it to zettel.
 
-    This class is responsible for taking location of a zettel within a ZettelRepository, and downcasting
+    This class is responsible for taking location of a zettel within a ZettelReader, and downcasting
     it using ZettelFactory service to specific zettel according to zettel type.
 
-    :param repository: An instance of a class that implements the ZettelRepository interface,
+    :param repository: An instance of a class that implements the ZettelReader interface,
                       used to data access in persistence layer.
-    :type repository: ZettelRepository
+    :type repository: ZettelReader
     """
 
-    def __init__(self: "ReadZettelUseCase", repository: ZettelRepository) -> None:
+    def __init__(self: "ReadZettelUseCase", repository: ZettelReader) -> None:
         """
         Initialize a new instance of the ReadZettelUseCase class.
 
-        :param reposiroty: An instance of a class that implements the ZettelRepository interface,
+        :param reposiroty: An instance of a class that implements the ZettelReader interface,
                           which will be used to retrieve the data.
-        :type repository: ZettelRepository
+        :type repository: ZettelReader
         """
         self.repository = repository
 

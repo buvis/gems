@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
-from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
+from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 try:
@@ -24,7 +24,7 @@ def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
     return data
 
 
-class MarkdownZettelRepository(ZettelRepository):
+class MarkdownZettelRepository(ZettelReader):
     def find_by_location(self, repository_location: str) -> Zettel:
         if _HAS_RUST:
             raw = parse_file(repository_location)
@@ -66,8 +66,3 @@ class MarkdownZettelRepository(ZettelRepository):
                 zettels.append(Zettel(zettel_data))
         return zettels
 
-    def save(self, zettel: Zettel) -> None:
-        raise NotImplementedError
-
-    def find_by_id(self, zettel_id: str) -> Zettel:
-        raise NotImplementedError

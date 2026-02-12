@@ -11,7 +11,7 @@ from buvis.pybase.zettel.infrastructure.query.expression_engine import python_ev
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
-    from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
+    from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
     from buvis.pybase.zettel.domain.value_objects.query_spec import (
         QueryFilter,
         QuerySpec,
@@ -21,7 +21,7 @@ _DEFAULT_COLUMNS = ["id", "title", "date", "type", "tags", "file_path"]
 
 
 class QueryZettelsUseCase:
-    def __init__(self, repository: ZettelRepository) -> None:
+    def __init__(self, repository: ZettelReader) -> None:
         self.repository = repository
 
     def execute(self, spec: QuerySpec) -> list[dict[str, Any]]:
