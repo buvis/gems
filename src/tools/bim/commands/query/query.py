@@ -66,7 +66,7 @@ class CommandQuery:
         else:
             console.failure(f"Unknown output format: {output.format}")
 
-        console.info(f"query took {elapsed:.2f}s")
+        console.info(f"{len(rows)} rows, query took {elapsed:.2f}s")
 
 
 def _write_output(text: str, file: str | None) -> None:
