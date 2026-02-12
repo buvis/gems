@@ -18,7 +18,6 @@ uv run sphinx-build -b html docs/source docs/build/html  # build docs
 src/
 ├── lib/buvis/pybase/           # shared library (namespace pkg: no buvis/__init__.py)
 │   ├── adapters/               # jira, console, config adapters
-│   ├── command/                # CLI scaffolding (BuvisCommand)
 │   ├── configuration/          # settings/config helpers
 │   ├── filesystem/             # file utilities
 │   ├── formatting/             # output formatting
@@ -71,15 +70,15 @@ def foo(path: Path | None = None) -> list[str]: ...
 
 **Docstrings**: Google format
 
-**CLI pattern**: Click-based, inheriting from `BuvisCommand`:
+**CLI pattern**: Click-based:
 
 ```python
 @click.command()
 @buvis_options
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    command = MyCommand(ctx.obj["settings"])
-    command.execute()
+    settings = get_settings(ctx)
+    ...
 ```
 
 ## Testing
