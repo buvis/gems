@@ -163,11 +163,14 @@ def create_note(
 @cli.command("query", help="Query zettels with YAML filter/sort/output spec")
 @click.option("-f", "--file", "query_file", default=None, help="Path to YAML query spec file")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
+@click.option("-e", "--edit", is_flag=True, default=False, help="Pick result with fzf and open in nvim")
 @click.pass_context
 def query(
     ctx: click.Context,
     query_file: str | None,
     query_string: str | None,
+    *,
+    edit: bool,
 ) -> None:
     from bim.commands.query.query import CommandQuery
 
@@ -176,6 +179,7 @@ def query(
         default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
         file=query_file,
         query=query_string,
+        edit=edit,
     )
     cmd.execute()
 

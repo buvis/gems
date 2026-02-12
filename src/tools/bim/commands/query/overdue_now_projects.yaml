@@ -22,13 +22,7 @@ expand:
   filter: "task.gtd_list == 'now'"
 
 columns:
-  - field: id
   - field: title
   - expr: "task.action or ''"
     label: next_action
-  - expr: "str(task.due_date or '')"
-    label: due
-  - expr: "str(task.start_date or '')"
-    label: start
-  - expr: "str(task.reminder_date or '')"
-    label: reminder
+  - field: file_path

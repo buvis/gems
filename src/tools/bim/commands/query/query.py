@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 import time
@@ -24,20 +25,40 @@ from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
 )
 
 
+from rich.text import Text
+
+_BUILTIN_QUERY_DIR = Path(__file__).parent
+
+
+def _resolve_query_file(name: str) -> str:
+    """Resolve a query file path. Tries exact path first, then builtin queries."""
+    p = Path(name)
+    if p.is_file():
+        return str(p)
+    # Try as builtin name (with or without .yaml)
+    candidate = _BUILTIN_QUERY_DIR / (name if name.endswith(".yaml") else f"{name}.yaml")
+    if candidate.is_file():
+        return str(candidate)
+    return name  # let downstream raise FileNotFoundError with original
+
+
 class CommandQuery:
     def __init__(
         self,
         default_directory: str,
         file: str | None = None,
         query: str | None = None,
+        *,
+        edit: bool = False,
     ) -> None:
         self.default_directory = default_directory
         self.file = file
         self.query = query
+        self.edit = edit
 
     def execute(self) -> None:
         if self.file:
-            spec = parse_query_file(self.file)
+            spec = parse_query_file(_resolve_query_file(self.file))
         elif self.query:
             spec = parse_query_string(self.query)
         else:
@@ -65,10 +86,13 @@ class CommandQuery:
             return
 
         columns = list(rows[0].keys())
+        display_columns = columns
         output = spec.output
 
         if output.format == "table":
-            format_table(rows, columns)
+            _linkify_titles(rows)
+            display_columns = [c for c in columns if c != "file_path"]
+            format_table(rows, display_columns)
         elif output.format == "csv":
             text = format_csv(rows, columns)
             _write_output(text, output.file)
@@ -80,7 +104,72 @@ class CommandQuery:
 
         console.info(f"{len(rows)} rows, query took {elapsed:.2f}s")
 
+        if self.edit:
+            _fzf_edit(rows, columns)
+
         _finish_refresh(refresh_proc, rows, use_case, spec)
+
+
+def _linkify_titles(rows: list[dict[str, Any]]) -> None:
+    """Turn title into a cmd-clickable file:// hyperlink when file_path exists."""
+    for row in rows:
+        fp = row.get("file_path")
+        title = row.get("title")
+        if fp and title is not None:
+            t = Text(str(title))
+            t.stylize(f"link {Path(fp).as_uri()}")
+            row["title"] = t
+
+
+def _fzf_edit(rows: list[dict[str, Any]], columns: list[str]) -> None:
+    """Let user pick a row via fzf and open the file in nvim."""
+    if not shutil.which("fzf"):
+        console.failure("fzf not found in PATH")
+        return
+
+    # Build display lines: all columns except file_path, tab-separated
+    display_cols = [c for c in columns if c != "file_path"]
+    lines = []
+    paths = []
+    for row in rows:
+        fp = str(row.get("file_path", ""))
+        paths.append(fp)
+        parts = [str(row.get(c, "")) for c in display_cols]
+        lines.append("\t".join(parts))
+
+    if not any(paths):
+        console.failure("No file_path in results — add file_path column to use --edit")
+        return
+
+    header = "\t".join(display_cols)
+    fzf_input = "\n".join(lines)
+
+    try:
+        result = subprocess.run(
+            ["fzf", "--header", header, "--no-multi", "--ansi"],
+            input=fzf_input,
+            capture_output=True,
+            text=True,
+        )
+    except KeyboardInterrupt:
+        return
+
+    if result.returncode != 0:
+        return
+
+    selected = result.stdout.strip()
+    if not selected:
+        return
+
+    # Match selected line back to row index
+    try:
+        idx = lines.index(selected)
+    except ValueError:
+        return
+
+    fp = paths[idx]
+    if fp:
+        subprocess.run(["nvim", fp])
 
 
 def _start_cache_refresh(directory: str) -> subprocess.Popen[bytes] | None:

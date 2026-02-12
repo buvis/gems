@@ -178,6 +178,7 @@ class TestQueryCommand:
                 default_directory=str(tmp_path.resolve()),
                 file=str(query_file),
                 query=None,
+                edit=False,
             )
             instance.execute.assert_called_once_with()
 
@@ -200,5 +201,6 @@ class TestQueryCommand:
                 default_directory=str(tmp_path.resolve()),
                 file=None,
                 query="sort: title",
+                edit=False,
             )
             instance.execute.assert_called_once_with()
