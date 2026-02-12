@@ -173,6 +173,10 @@ class ConsoleAdapter:
         """
         return self.console.print(_stylize_text(message, mode))
 
+    def info(self: ConsoleAdapter, message: str) -> None:
+        """Print dimmed informational text."""
+        self.console.print(f"[dim]{message}[/dim]")
+
     def print_side_by_side(
         self: ConsoleAdapter,
         title_left: str,

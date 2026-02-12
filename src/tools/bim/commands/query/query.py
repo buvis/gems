@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +44,10 @@ class CommandQuery:
 
         repo = MarkdownZettelRepository()
         use_case = QueryZettelsUseCase(repo, python_eval)
+
+        t0 = time.perf_counter()
         rows = use_case.execute(spec)
+        elapsed = time.perf_counter() - t0
 
         if not rows:
             console.warning("No results")
@@ -62,6 +66,8 @@ class CommandQuery:
             _write_output(text, output.file)
         else:
             console.failure(f"Unknown output format: {output.format}")
+
+        console.info(f"query took {elapsed:.2f}s")
 
 
 def _write_output(text: str, file: str | None) -> None:
