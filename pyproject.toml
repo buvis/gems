@@ -45,6 +45,7 @@ zseq = "zseq.cli:cli"
 
 [project.urls]
 Repository = "https://github.com/buvis/gems"
+Documentation = "https://buvis.github.io/gems/"
 
 [dependency-groups]
 dev = ["pre-commit>=4.5.1,<5", "maturin>=1.7,<2"]

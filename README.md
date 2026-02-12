@@ -2,6 +2,8 @@
 
 BUVIS Python toolkit and CLI tools, shipped as a single PyPI package.
 
+[Documentation](https://buvis.github.io/gems/)
+
 ## Install
 
 ```bash
