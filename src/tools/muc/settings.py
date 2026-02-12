@@ -1,4 +1,5 @@
 from buvis.pybase.configuration import GlobalSettings
+from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 
 
@@ -17,18 +18,20 @@ class MucSettings(GlobalSettings):
     limit_flac_sampling_rate: int = 44100
 
     # Tidy command settings
-    tidy_junk_extensions: list[str] = [  # noqa: RUF012 - pydantic field
-        ".cue",
-        ".db",
-        ".jpg",
-        ".jpeg",
-        ".lrc",
-        ".m3u",
-        ".m3u8",
-        ".md",
-        ".nfo",
-        ".png",
-        ".sfv",
-        ".txt",
-        ".url",
-    ]
+    tidy_junk_extensions: list[str] = Field(
+        default=[
+            ".cue",
+            ".db",
+            ".jpg",
+            ".jpeg",
+            ".lrc",
+            ".m3u",
+            ".m3u8",
+            ".md",
+            ".nfo",
+            ".png",
+            ".sfv",
+            ".txt",
+            ".url",
+        ]
+    )

@@ -1,5 +1,5 @@
 from buvis.pybase.configuration import GlobalSettings
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import SettingsConfigDict
 
 
@@ -25,4 +25,4 @@ class FctrackerSettings(GlobalSettings):
 
     transactions_dir: str = ""
     local_currency: LocalCurrencyConfig = LocalCurrencyConfig()
-    foreign_currencies: dict[str, ForeignCurrencyConfig] = {}  # noqa: RUF012 - pydantic field
+    foreign_currencies: dict[str, ForeignCurrencyConfig] = Field(default_factory=dict)

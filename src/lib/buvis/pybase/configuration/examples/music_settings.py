@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from buvis.pybase.configuration.settings import GlobalSettings
+from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 
 
@@ -25,4 +26,4 @@ class MusicSettings(GlobalSettings):
     )
 
     library_path: Path = Path.home() / "Music"
-    formats: list[str] = ["mp3", "flac", "wav"]  # noqa: RUF012
+    formats: list[str] = Field(default=["mp3", "flac", "wav"])
