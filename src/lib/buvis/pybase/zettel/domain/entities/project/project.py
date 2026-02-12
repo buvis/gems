@@ -18,6 +18,8 @@ Imports:
 
 from __future__ import annotations
 
+from functools import cached_property
+
 from buvis.pybase.zettel.domain.entities.project.services.consistency.project_zettel_consistency_service import (
     ProjectZettelConsistencyService,
 )
@@ -79,7 +81,7 @@ class ProjectZettel(Zettel):
             "",
         )
 
-    @property
+    @cached_property
     def tasks(self: ProjectZettel) -> list[LogEntry]:
         """Return parsed log entries as structured LogEntry objects."""
         return parse_log(self.log)

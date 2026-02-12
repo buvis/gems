@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from buvis.pybase.zettel.domain.entities.project.project import ProjectZettel
@@ -8,13 +9,18 @@ from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
+def _default_cache_path() -> str:
+    xdg = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
+    return os.path.join(xdg, "buvis", "zettel_cache.bin")
+
+
 def _create_zettel(data: ZettelData, *, from_rust: bool = False) -> Zettel:
     if data.metadata.get("type") == "project":
         return ProjectZettel(data, from_rust=from_rust)
     return Zettel(data, from_rust=from_rust)
 
 try:
-    from buvis.pybase.zettel._core import load_all, parse_file
+    from buvis.pybase.zettel._core import load_all, load_filtered, parse_file
 
     _HAS_RUST = True
 except ImportError:
@@ -48,14 +54,23 @@ class MarkdownZettelRepository(ZettelReader):
         zettel_data = ZettelFileParser.from_file(Path(repository_location))
         return _create_zettel(zettel_data)
 
-    def find_all(self, directory: str, extensions: list[str] | None = None) -> list[Zettel]:
+    def find_all(
+        self,
+        directory: str,
+        extensions: list[str] | None = None,
+        metadata_eq: dict[str, Any] | None = None,
+        cache_path: str | None = None,
+    ) -> list[Zettel]:
         if _HAS_RUST:
-            raw_list = load_all(directory, extensions)
-            zettels: list[Zettel] = []
-            for raw in raw_list:
-                zettel_data = _rust_dict_to_zettel_data(raw)
-                zettels.append(_create_zettel(zettel_data, from_rust=True))
-            return zettels
+            if metadata_eq:
+                cp = cache_path or _default_cache_path()
+                raw_list = load_filtered(directory, extensions, metadata_eq, cp)
+            else:
+                raw_list = load_all(directory, extensions)
+            return [
+                _create_zettel(_rust_dict_to_zettel_data(raw), from_rust=True)
+                for raw in raw_list
+            ]
 
         from pathlib import Path
 
@@ -65,10 +80,14 @@ class MarkdownZettelRepository(ZettelReader):
 
         exts = extensions or ["md"]
         dir_path = Path(directory).expanduser().resolve()
-        zettels = []
+        zettels: list[Zettel] = []
         for ext in exts:
             for file_path in sorted(dir_path.rglob(f"*.{ext}")):
                 zettel_data = ZettelFileParser.from_file(file_path)
+                if metadata_eq and not all(
+                    zettel_data.metadata.get(k) == v for k, v in metadata_eq.items()
+                ):
+                    continue
                 zettel_data.file_path = str(file_path)
                 zettels.append(_create_zettel(zettel_data))
         return zettels

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from functools import cmp_to_key
+from functools import cached_property, cmp_to_key
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from buvis.pybase.zettel.domain.value_objects.query_spec import QueryColumn
+from buvis.pybase.zettel.domain.value_objects.query_spec import QueryColumn, QueryFilter
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     )
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
     from buvis.pybase.zettel.domain.value_objects.query_spec import (
-        QueryFilter,
         QuerySpec,
     )
 
@@ -33,10 +32,12 @@ class QueryZettelsUseCase:
             msg = "source.directory is required"
             raise ValueError(msg)
         directory = str(Path(directory).expanduser().resolve())
-        zettels = self.repository.find_all(directory, spec.source.extensions)
 
-        if spec.filter:
-            zettels = [z for z in zettels if _matches(z, spec.filter, self.evaluator)]
+        metadata_eq, remaining = _extract_metadata_eq(spec.filter)
+        zettels = self.repository.find_all(directory, spec.source.extensions, metadata_eq=metadata_eq)
+
+        if remaining:
+            zettels = [z for z in zettels if _matches(z, remaining, self.evaluator)]
 
         if spec.sort:
             zettels = _sort_zettels(zettels, spec.sort)
@@ -52,6 +53,32 @@ class QueryZettelsUseCase:
             rows = rows[: spec.output.limit]
 
         return rows
+
+
+def _extract_metadata_eq(
+    f: QueryFilter | None,
+) -> tuple[dict[str, Any] | None, QueryFilter | None]:
+    """Extract simple eq conditions from a top-level 'and' filter.
+
+    Returns (metadata_eq_dict, original_filter). The dict is passed to the
+    repository as an optimization hint (can be pushed into Rust). The
+    original filter is always returned unchanged for post-Zettel validation.
+    """
+    if f is None:
+        return None, None
+
+    if f.combinator != "and":
+        return None, f
+
+    conditions: dict[str, Any] = {}
+    for child in f.children:
+        if child.field and child.operator == "eq" and child.expr is None and not child.children:
+            conditions[child.field.replace("-", "_")] = child.value
+
+    if not conditions:
+        return None, f
+
+    return conditions, f
 
 
 def _get_field(zettel: Zettel, name: str) -> Any:
@@ -187,9 +214,9 @@ def _zettel_variables(zettel: Zettel) -> dict[str, Any]:
     variables.update(data.reference)
     if data.file_path:
         variables["file_path"] = data.file_path
-    # Expose all @property attributes from the zettel's actual class
+    # Expose all @property / @cached_property attributes from the zettel's actual class
     for cls in type(zettel).__mro__:
         for attr, desc in vars(cls).items():
-            if isinstance(desc, property) and not attr.startswith("_"):
+            if isinstance(desc, (property, cached_property)) and not attr.startswith("_"):
                 variables.setdefault(attr, getattr(zettel, attr, None))
     return variables

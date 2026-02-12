@@ -8,6 +8,7 @@ use crate::consistency;
 use crate::migration;
 use crate::parser;
 use crate::scanner;
+use crate::scanner::MetaFilterValue;
 use crate::types::{YamlValue, ZettelData};
 
 /// Convert YamlValue to a Python object.
@@ -114,6 +115,64 @@ pub fn load_all(py: Python<'_>, directory: &str, extensions: Option<Vec<String>>
     Ok(PyList::new(py, &py_list)?.into_any().unbind())
 }
 
+/// Bulk load with metadata eq filtering. Returns only matching dicts.
+#[pyfunction]
+#[pyo3(signature = (directory, extensions=None, metadata_eq=None, cache_path=None))]
+pub fn load_filtered(
+    py: Python<'_>,
+    directory: &str,
+    extensions: Option<Vec<String>>,
+    metadata_eq: Option<&Bound<'_, PyDict>>,
+    cache_path: Option<&str>,
+) -> PyResult<Py<PyAny>> {
+    let exts = extensions.unwrap_or_else(|| vec!["md".to_string()]);
+
+    let conditions = match metadata_eq {
+        Some(dict) => pydict_to_conditions(py, dict)?,
+        None => vec![],
+    };
+
+    if conditions.is_empty() {
+        // No filter — fall back to load_all
+        return load_all(py, directory, Some(exts));
+    }
+
+    let results = if let Some(cp) = cache_path {
+        scanner::load_cached(directory, &exts, &conditions, cp)
+    } else {
+        scanner::load_filtered(directory, &exts, &conditions)
+    }
+    .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+
+    let py_list: Vec<Py<PyAny>> = results
+        .iter()
+        .map(|data| zettel_data_to_pydict(py, data))
+        .collect::<PyResult<_>>()?;
+
+    Ok(PyList::new(py, &py_list)?.into_any().unbind())
+}
+
+/// Convert a Python dict of {str: value} to Rust filter conditions.
+fn pydict_to_conditions(_py: Python<'_>, dict: &Bound<'_, PyDict>) -> PyResult<Vec<(String, MetaFilterValue)>> {
+    let mut conditions = Vec::new();
+    for (key, value) in dict.iter() {
+        let key_str: String = key.extract()?;
+        let filter_val = if let Ok(b) = value.extract::<bool>() {
+            MetaFilterValue::Bool(b)
+        } else if let Ok(i) = value.extract::<i64>() {
+            MetaFilterValue::Int(i)
+        } else if let Ok(s) = value.extract::<String>() {
+            MetaFilterValue::Str(s)
+        } else {
+            return Err(pyo3::exceptions::PyTypeError::new_err(
+                format!("Unsupported filter value type for key '{}'", key_str),
+            ));
+        };
+        conditions.push((key_str, filter_val));
+    }
+    Ok(conditions)
+}
+
 /// Full-text search across a directory. Returns matching zettels.
 #[pyfunction]
 #[pyo3(signature = (directory, query, extensions=None))]
@@ -133,6 +192,20 @@ pub fn search(
         .collect::<PyResult<_>>()?;
 
     Ok(PyList::new(py, &py_list)?.into_any().unbind())
+}
+
+/// Background cache refresh: walk directory, update cache, write stale marker if changed.
+/// Returns summary string (empty if no changes).
+#[pyfunction]
+#[pyo3(signature = (directory, cache_path, extensions=None))]
+pub fn refresh_cache(
+    directory: &str,
+    cache_path: &str,
+    extensions: Option<Vec<String>>,
+) -> PyResult<String> {
+    let exts = extensions.unwrap_or_else(|| vec!["md".to_string()]);
+    scanner::refresh_cache(directory, &exts, cache_path)
+        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))
 }
 
 /// Apply the full zettel processing pipeline.

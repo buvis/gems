@@ -246,6 +246,18 @@ def _eval_node(node: ast.AST, variables: dict[str, Any]) -> Any:
     raise ValueError(msg)
 
 
+_COMPILE_CACHE: dict[tuple[str, str], object] = {}
+
+
+def _cached_compile(expression: str, mode: str) -> object:
+    key = (expression, mode)
+    compiled = _COMPILE_CACHE.get(key)
+    if compiled is None:
+        compiled = compile(expression, "<expr>", mode)
+        _COMPILE_CACHE[key] = compiled
+    return compiled
+
+
 def python_eval(expression: str, context: dict[str, Any]) -> Any:
     """Evaluate arbitrary Python code with full builtins.
 
@@ -257,10 +269,10 @@ def python_eval(expression: str, context: dict[str, Any]) -> Any:
     ns.update(context)
 
     try:
-        compiled = compile(expression, "<expr>", "eval")
+        compiled = _cached_compile(expression, "eval")
         return eval(compiled, ns)  # noqa: S307
     except SyntaxError:
-        compiled = compile(expression, "<expr>", "exec")
+        compiled = _cached_compile(expression, "exec")
         exec(compiled, ns)  # noqa: S102
         if "result" not in ns:
             msg = "exec-mode code must assign to 'result'"

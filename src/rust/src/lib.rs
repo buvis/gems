@@ -12,6 +12,8 @@ pub mod types;
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(pybridge::parse_file, m)?)?;
     m.add_function(wrap_pyfunction!(pybridge::load_all, m)?)?;
+    m.add_function(wrap_pyfunction!(pybridge::load_filtered, m)?)?;
     m.add_function(wrap_pyfunction!(pybridge::search, m)?)?;
+    m.add_function(wrap_pyfunction!(pybridge::refresh_cache, m)?)?;
     Ok(())
 }

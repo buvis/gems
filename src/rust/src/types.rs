@@ -1,8 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Mirror of Python's ZettelData value object.
 /// Holds metadata, reference, and content sections parsed from a markdown file.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZettelData {
     pub metadata: HashMap<String, YamlValue>,
     pub reference: HashMap<String, YamlValue>,
@@ -22,7 +23,7 @@ impl ZettelData {
 }
 
 /// Dynamic YAML value type that can be converted to Python objects.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum YamlValue {
     Null,
     Bool(bool),
