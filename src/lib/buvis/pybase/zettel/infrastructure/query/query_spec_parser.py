@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QueryColumn,
+    QueryExpand,
     QueryFilter,
     QueryOutput,
     QuerySort,
@@ -17,10 +18,11 @@ from buvis.pybase.zettel.domain.value_objects.query_spec import (
 def parse_query_spec(raw: dict[str, Any]) -> QuerySpec:
     source = _parse_source(raw.get("source", {}))
     filt = _parse_filter(raw.get("filter")) if "filter" in raw else None
+    expand = _parse_expand(raw.get("expand")) if "expand" in raw else None
     sort = _parse_sort(raw.get("sort", []))
     columns = _parse_columns(raw.get("columns", []))
     output = _parse_output(raw.get("output", {}))
-    return QuerySpec(source=source, filter=filt, sort=sort, columns=columns, output=output)
+    return QuerySpec(source=source, filter=filt, expand=expand, sort=sort, columns=columns, output=output)
 
 
 def parse_query_file(path: str) -> QuerySpec:
@@ -87,6 +89,17 @@ def _parse_filter(raw: Any) -> QueryFilter:
         msg = f"Unknown operator '{op}', valid: {sorted(valid_ops)}"
         raise ValueError(msg)
     return QueryFilter(operator=op, field=field_name, value=condition[op])
+
+
+def _parse_expand(raw: dict[str, Any]) -> QueryExpand:
+    if not isinstance(raw, dict) or "field" not in raw:
+        msg = f"Expand must be a mapping with 'field' key, got {raw}"
+        raise ValueError(msg)
+    return QueryExpand(
+        field=raw["field"],
+        as_=raw.get("as", "item"),
+        filter=raw.get("filter"),
+    )
 
 
 def _parse_sort(raw: list[dict[str, Any]]) -> list[QuerySort]:

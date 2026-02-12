@@ -43,9 +43,17 @@ class QueryOutput:
 
 
 @dataclass
+class QueryExpand:
+    field: str
+    as_: str = "item"
+    filter: str | None = None
+
+
+@dataclass
 class QuerySpec:
     source: QuerySource = dc_field(default_factory=QuerySource)
     filter: QueryFilter | None = None
+    expand: QueryExpand | None = None
     sort: list[QuerySort] = dc_field(default_factory=list)
     columns: list[QueryColumn] = dc_field(default_factory=list)
     output: QueryOutput = dc_field(default_factory=QueryOutput)

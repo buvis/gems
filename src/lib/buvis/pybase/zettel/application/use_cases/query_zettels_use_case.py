@@ -41,11 +41,17 @@ class QueryZettelsUseCase:
         if spec.sort:
             zettels = _sort_zettels(zettels, spec.sort)
 
-        if spec.output.limit:
-            zettels = zettels[: spec.output.limit]
-
         columns = spec.columns or [QueryColumn(field=f) for f in _DEFAULT_COLUMNS]
-        return [_project(z, columns, self.evaluator) for z in zettels]
+
+        if spec.expand:
+            rows = _expand(zettels, spec.expand, columns, self.evaluator)
+        else:
+            rows = [_project(z, columns, self.evaluator) for z in zettels]
+
+        if spec.output.limit:
+            rows = rows[: spec.output.limit]
+
+        return rows
 
 
 def _get_field(zettel: Zettel, name: str) -> Any:
@@ -133,10 +139,30 @@ def _sort_zettels(zettels: list[Zettel], sort_fields: list[Any]) -> list[Zettel]
     return sorted(zettels, key=cmp_to_key(compare))
 
 
+def _expand(
+    zettels: list[Zettel],
+    expand: Any,
+    columns: list[QueryColumn],
+    evaluator: ExpressionEvaluator,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for z in zettels:
+        items = _get_field(z, expand.field) or []
+        for item in items:
+            extra = {expand.as_: item}
+            if expand.filter:
+                variables = {**_zettel_variables(z), **extra}
+                if not evaluator(expand.filter, variables):
+                    continue
+            rows.append(_project(z, columns, evaluator, extra))
+    return rows
+
+
 def _project(
     zettel: Zettel,
     columns: list[QueryColumn],
     evaluator: ExpressionEvaluator,
+    extra_variables: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {}
     for col in columns:
@@ -148,6 +174,8 @@ def _project(
             row[label] = val
         elif col.expr:
             variables = _zettel_variables(zettel)
+            if extra_variables:
+                variables.update(extra_variables)
             row[label] = evaluator(col.expr, variables)
     return row
 
@@ -159,7 +187,9 @@ def _zettel_variables(zettel: Zettel) -> dict[str, Any]:
     variables.update(data.reference)
     if data.file_path:
         variables["file_path"] = data.file_path
-    # Also expose property-based attributes
-    for attr in ("id", "title", "date", "type", "tags", "publish", "processed"):
-        variables.setdefault(attr, getattr(zettel, attr, None))
+    # Expose all @property attributes from the zettel's actual class
+    for cls in type(zettel).__mro__:
+        for attr, desc in vars(cls).items():
+            if isinstance(desc, property) and not attr.startswith("_"):
+                variables.setdefault(attr, getattr(zettel, attr, None))
     return variables
