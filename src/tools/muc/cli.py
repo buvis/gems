@@ -51,9 +51,10 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
 
 @cli.command("tidy", help="Tidy directory")
 @buvis_options(settings_class=MucSettings)
+@click.option("-y", "--yes", is_flag=True, default=False, help="Skip confirmation prompt.")
 @click.argument("directory")
 @click.pass_context
-def tidy(ctx: click.Context, directory: str) -> None:
+def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
     settings = get_settings(ctx, MucSettings)
 
     path_directory = Path(directory).resolve()
@@ -63,14 +64,13 @@ def tidy(ctx: click.Context, directory: str) -> None:
     file_count = DirTree.count_files(path_directory)
     max_depth = DirTree.get_max_depth(path_directory)
 
-    if file_count > ALERT_FILE_COUNT or max_depth > ALERT_DIR_DEPTH:
+    if not yes and (file_count > ALERT_FILE_COUNT or max_depth > ALERT_DIR_DEPTH):
         message = (
             f"Warning: The directory contains {file_count} files "
             f"and has a maximum depth of {max_depth}. "
             "Do you want to proceed?"
         )
-        if not user_confirmation(message):
-            console.panic("Operation cancelled by user.")
+        click.confirm(message, abort=True)
 
     from muc.commands.tidy.tidy import CommandTidy
 
@@ -80,16 +80,6 @@ def tidy(ctx: click.Context, directory: str) -> None:
             junk_extensions=settings.tidy_junk_extensions,
         )
         cmd.execute()
-
-
-def user_confirmation(message: str) -> bool:
-    while True:
-        response = input(f"{message} (y/n): ").lower().strip()
-        if response in ["y", "yes"]:
-            return True
-        if response in ["n", "no"]:
-            return False
-        console.warning("Please answer with 'y' or 'n'.")
 
 
 if __name__ == "__main__":
