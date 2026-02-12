@@ -5,6 +5,7 @@ import datetime as _datetime_mod
 import operator
 from collections.abc import Callable
 from datetime import datetime
+from types import CodeType
 from typing import Any
 
 _SAFE_BINOPS: dict[type, Callable[..., Any]] = {
@@ -246,10 +247,10 @@ def _eval_node(node: ast.AST, variables: dict[str, Any]) -> Any:
     raise ValueError(msg)
 
 
-_COMPILE_CACHE: dict[tuple[str, str], object] = {}
+_COMPILE_CACHE: dict[tuple[str, str], str | bytes | CodeType] = {}
 
 
-def _cached_compile(expression: str, mode: str) -> object:
+def _cached_compile(expression: str, mode: str) -> str | bytes | CodeType:
     key = (expression, mode)
     compiled = _COMPILE_CACHE.get(key)
     if compiled is None:

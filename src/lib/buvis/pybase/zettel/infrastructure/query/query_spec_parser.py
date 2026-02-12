@@ -18,7 +18,7 @@ from buvis.pybase.zettel.domain.value_objects.query_spec import (
 def parse_query_spec(raw: dict[str, Any]) -> QuerySpec:
     source = _parse_source(raw.get("source", {}))
     filt = _parse_filter(raw.get("filter")) if "filter" in raw else None
-    expand = _parse_expand(raw.get("expand")) if "expand" in raw else None
+    expand = _parse_expand(raw["expand"]) if "expand" in raw else None
     sort = _parse_sort(raw.get("sort", []))
     columns = _parse_columns(raw.get("columns", []))
     output = _parse_output(raw.get("output", {}))

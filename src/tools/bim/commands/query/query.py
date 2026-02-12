@@ -83,7 +83,7 @@ class CommandQuery:
         _finish_refresh(refresh_proc, rows, use_case, spec)
 
 
-def _start_cache_refresh(directory: str) -> subprocess.Popen | None:
+def _start_cache_refresh(directory: str) -> subprocess.Popen[bytes] | None:
     """Start a subprocess that walks the directory and updates the cache."""
     try:
         from buvis.pybase.zettel._core import refresh_cache as _rc  # noqa: F401
@@ -103,7 +103,7 @@ def _start_cache_refresh(directory: str) -> subprocess.Popen | None:
 
 
 def _finish_refresh(
-    proc: subprocess.Popen | None,
+    proc: subprocess.Popen[bytes] | None,
     original_rows: list[dict[str, Any]] | None,
     use_case: QueryZettelsUseCase,
     spec: Any,
