@@ -5,7 +5,13 @@ from typing import Any
 
 import yaml
 from buvis.pybase.configuration import get_config_dirs
+from buvis.pybase.zettel.domain.value_objects.property_schema import PropertyDef
 from buvis.pybase.zettel.domain.value_objects.query_spec import (
+    ActionSpec,
+    DashboardConfig,
+    ItemField,
+    ItemSection,
+    ItemViewSpec,
     QueryColumn,
     QueryExpand,
     QueryFilter,
@@ -23,7 +29,21 @@ def parse_query_spec(raw: dict[str, Any]) -> QuerySpec:
     sort = _parse_sort(raw.get("sort", []))
     columns = _parse_columns(raw.get("columns", []))
     output = _parse_output(raw.get("output", {}))
-    return QuerySpec(source=source, filter=filt, expand=expand, sort=sort, columns=columns, output=output)
+    dashboard = _parse_dashboard(raw["dashboard"]) if "dashboard" in raw else None
+    schema = _parse_schema(raw["schema"]) if "schema" in raw else {}
+    item = _parse_item(raw["item"]) if "item" in raw else None
+    actions = _parse_actions(raw.get("actions", []))
+
+    # Auto-inject hidden file_path column when any column is editable
+    if columns and any(c.editable for c in columns):
+        if not any(c.field == "file_path" for c in columns):
+            columns.append(QueryColumn(field="file_path"))
+
+    return QuerySpec(
+        source=source, filter=filt, expand=expand, sort=sort,
+        columns=columns, output=output, dashboard=dashboard,
+        schema=schema, item=item, actions=actions,
+    )
 
 
 def parse_query_file(path: str) -> QuerySpec:
@@ -124,6 +144,9 @@ def _parse_columns(raw: list[dict[str, Any]]) -> list[QueryColumn]:
             expr=item.get("expr"),
             label=item.get("label"),
             format=item.get("format"),
+            widget=item.get("widget"),
+            editable=bool(item.get("editable", False)),
+            options=item.get("options", []),
         )
         if not col.field and not col.expr:
             msg = "Column must have 'field' or 'expr'"
@@ -138,6 +161,73 @@ def _parse_output(raw: dict[str, Any]) -> QueryOutput:
         file=raw.get("file"),
         limit=raw.get("limit"),
     )
+
+
+def _parse_dashboard(raw: dict[str, Any]) -> DashboardConfig:
+    return DashboardConfig(
+        title=raw.get("title"),
+        auto_refresh=raw.get("auto_refresh", True),
+    )
+
+
+def _parse_schema(raw: dict[str, Any]) -> dict[str, PropertyDef]:
+    result: dict[str, PropertyDef] = {}
+    for name, defn in raw.items():
+        if isinstance(defn, dict):
+            result[name] = PropertyDef(
+                type=defn.get("type", "text"),
+                label=defn.get("label"),
+                options=defn.get("options", []),
+            )
+    return result
+
+
+def _parse_item(raw: dict[str, Any]) -> ItemViewSpec:
+    sections: list[ItemSection] = []
+    for sec_raw in raw.get("sections", []):
+        fields = None
+        if "fields" in sec_raw:
+            fields = [
+                ItemField(
+                    field=f["field"],
+                    editable=bool(f.get("editable", False)),
+                    widget=f.get("widget"),
+                )
+                for f in sec_raw["fields"]
+            ]
+        sections.append(
+            ItemSection(
+                heading=sec_raw["heading"],
+                fields=fields,
+                section=sec_raw.get("section"),
+                editable=bool(sec_raw.get("editable", False)),
+                display=sec_raw.get("display", "auto"),
+            )
+        )
+    return ItemViewSpec(
+        title=raw.get("title", "{title}"),
+        subtitle=raw.get("subtitle"),
+        sections=sections,
+    )
+
+
+def _parse_actions(raw: list[dict[str, Any]]) -> list[ActionSpec]:
+    result: list[ActionSpec] = []
+    for act in raw:
+        if not isinstance(act, dict) or "name" not in act or "label" not in act:
+            msg = f"Action must have 'name' and 'label', got {act}"
+            raise ValueError(msg)
+        result.append(
+            ActionSpec(
+                name=act["name"],
+                label=act["label"],
+                scope=act.get("scope", "item"),
+                handler=act.get("handler", "patch"),
+                args=act.get("args", {}),
+                confirm=act.get("confirm"),
+            )
+        )
+    return result
 
 
 def resolve_query_file(name_or_path: str, bundled_dir: Path | None = None) -> Path:

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field as dc_field
+from typing import Any
+
+from buvis.pybase.zettel.domain.value_objects.property_schema import PropertyDef
 
 
 @dataclass
@@ -33,6 +36,9 @@ class QueryColumn:
     expr: str | None = None
     label: str | None = None
     format: str | None = None
+    widget: str | None = None  # text | date | checkbox | select | link
+    editable: bool = False
+    options: list[str] = dc_field(default_factory=list)
 
 
 @dataclass
@@ -50,6 +56,51 @@ class QueryExpand:
 
 
 @dataclass
+class DashboardConfig:
+    title: str | None = None
+    auto_refresh: bool = True
+
+
+# --- Item view ---
+
+
+@dataclass
+class ItemField:
+    field: str
+    editable: bool = False
+    widget: str | None = None
+
+
+@dataclass
+class ItemSection:
+    heading: str
+    fields: list[ItemField] | None = None  # property group
+    section: str | None = None  # zettel body section heading
+    editable: bool = False
+    display: str = "auto"  # auto | markdown
+
+
+@dataclass
+class ItemViewSpec:
+    title: str = "{title}"
+    subtitle: str | None = None
+    sections: list[ItemSection] = dc_field(default_factory=list)
+
+
+# --- Actions ---
+
+
+@dataclass
+class ActionSpec:
+    name: str
+    label: str
+    scope: str = "item"  # item | list | both
+    handler: str = "patch"
+    args: dict[str, Any] = dc_field(default_factory=dict)
+    confirm: str | None = None  # confirmation message template, None = no confirm
+
+
+@dataclass
 class QuerySpec:
     source: QuerySource = dc_field(default_factory=QuerySource)
     filter: QueryFilter | None = None
@@ -57,3 +108,7 @@ class QuerySpec:
     sort: list[QuerySort] = dc_field(default_factory=list)
     columns: list[QueryColumn] = dc_field(default_factory=list)
     output: QueryOutput = dc_field(default_factory=QueryOutput)
+    dashboard: DashboardConfig | None = None
+    schema: dict[str, PropertyDef] = dc_field(default_factory=dict)
+    item: ItemViewSpec | None = None
+    actions: list[ActionSpec] = dc_field(default_factory=list)
