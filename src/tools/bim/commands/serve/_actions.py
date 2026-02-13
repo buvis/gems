@@ -82,6 +82,14 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: An
     return {"status": "ok"}
 
 
+async def handle_archive(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+    from bim.commands.archive_note.archive_note import archive_single
+
+    archive_dir = Path(str(app_state.archive_directory)).expanduser().resolve()
+    archive_single(Path(file_path), archive_dir)
+    return {"status": "ok"}
+
+
 async def handle_open(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
     import platform
     import subprocess
@@ -102,5 +110,6 @@ ACTION_HANDLERS: dict[str, Any] = {
     "patch": handle_patch,
     "sync_note": handle_sync_note,
     "create_note": handle_create_note,
+    "archive": handle_archive,
     "open": handle_open,
 }

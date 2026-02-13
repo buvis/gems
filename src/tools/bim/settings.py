@@ -12,3 +12,4 @@ class BimSettings(GlobalSettings):
     )
 
     path_zettelkasten: str = "~/bim/zettelkasten/"
+    path_archive: str = "~/bim/reference/40-archives/"

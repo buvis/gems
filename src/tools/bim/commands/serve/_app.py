@@ -11,9 +11,10 @@ from bim.commands.serve._sse import router as sse_router, start_watcher, stop_wa
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-def create_app(default_directory: str) -> FastAPI:
+def create_app(default_directory: str, archive_directory: str | None = None) -> FastAPI:
     app = FastAPI(title="bim dashboard")
     app.state.default_directory = default_directory
+    app.state.archive_directory = archive_directory
 
     app.include_router(api_router, prefix="/api")
     app.include_router(sse_router, prefix="/api")

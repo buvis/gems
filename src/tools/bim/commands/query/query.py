@@ -42,12 +42,14 @@ class CommandQuery:
     def __init__(
         self,
         default_directory: str,
+        archive_directory: str | None = None,
         file: str | None = None,
         query: str | None = None,
         *,
         edit: bool = False,
     ) -> None:
         self.default_directory = default_directory
+        self.archive_directory = archive_directory
         self.file = file
         self.query = query
         self.edit = edit
@@ -120,7 +122,7 @@ class CommandQuery:
             if not output.file:
                 _open_file(dest)
         elif output.format == "tui":
-            _run_tui(rows, columns)
+            _run_tui(rows, columns, self.archive_directory)
         else:
             console.failure(f"Unknown output format: {output.format}")
 
@@ -270,10 +272,11 @@ def _open_file(path: str) -> None:
         os.startfile(path)  # type: ignore[attr-defined]  # noqa: S606
 
 
-def _run_tui(rows: list[dict[str, Any]], columns: list[str]) -> None:
+def _run_tui(rows: list[dict[str, Any]], columns: list[str], archive_directory: str | None = None) -> None:
     from bim.commands.query.tui import QueryTuiApp
 
-    app = QueryTuiApp(rows, columns)
+    archive_dir = Path(archive_directory).expanduser().resolve() if archive_directory else None
+    app = QueryTuiApp(rows, columns, archive_dir=archive_dir)
     app.run()
 
 

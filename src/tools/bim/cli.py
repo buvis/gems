@@ -198,9 +198,32 @@ def query(
     settings = get_settings(ctx, BimSettings)
     cmd = CommandQuery(
         default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
+        archive_directory=str(Path(settings.path_archive).expanduser().resolve()),
         file=query_file,
         query=query_string,
         edit=edit,
+    )
+    cmd.execute()
+
+
+@cli.command("archive", help="Archive zettel(s): set processed + move to archive dir")
+@click.argument("paths", nargs=-1, required=True)
+@click.option("--undo", is_flag=True, default=False, help="Unarchive (move back to zettelkasten)")
+@click.pass_context
+def archive_note(
+    ctx: click.Context,
+    paths: tuple[str, ...],
+    *,
+    undo: bool,
+) -> None:
+    from bim.commands.archive_note.archive_note import CommandArchiveNote
+
+    settings = get_settings(ctx, BimSettings)
+    cmd = CommandArchiveNote(
+        paths=[Path(p) for p in paths],
+        path_archive=Path(settings.path_archive).expanduser().resolve(),
+        path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
+        undo=undo,
     )
     cmd.execute()
 
@@ -222,6 +245,7 @@ def serve(
     settings = get_settings(ctx, BimSettings)
     cmd = CommandServe(
         default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
+        archive_directory=str(Path(settings.path_archive).expanduser().resolve()),
         host=host,
         port=port,
         no_browser=no_browser,

@@ -159,12 +159,15 @@ class TestQueryCommand:
     def test_query_with_file(self, runner, tmp_path):
         query_file = tmp_path / "query.yml"
         query_file.write_text("sort: title\n")
+        archive_dir = tmp_path / "archive"
 
         with (
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path), path_archive=str(archive_dir),
+            )
             instance = mock_cmd.return_value
 
             result = runner.invoke(
@@ -176,6 +179,7 @@ class TestQueryCommand:
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
                 default_directory=str(tmp_path.resolve()),
+                archive_directory=str(archive_dir.resolve()),
                 file=str(query_file),
                 query=None,
                 edit=False,
@@ -183,11 +187,15 @@ class TestQueryCommand:
             instance.execute.assert_called_once_with()
 
     def test_query_with_inline(self, runner, tmp_path):
+        archive_dir = tmp_path / "archive"
+
         with (
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path), path_archive=str(archive_dir),
+            )
             instance = mock_cmd.return_value
 
             result = runner.invoke(
@@ -199,6 +207,7 @@ class TestQueryCommand:
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
                 default_directory=str(tmp_path.resolve()),
+                archive_directory=str(archive_dir.resolve()),
                 file=None,
                 query="sort: title",
                 edit=False,
