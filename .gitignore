@@ -22,3 +22,9 @@ htmlcov/
 # Rust
 src/rust/target/
 src/rust/uv.lock
+
+# Frontend
+src/tools/bim/commands/serve/frontend/node_modules/
+src/tools/bim/commands/serve/frontend/build/
+src/tools/bim/commands/serve/frontend/.svelte-kit/
+src/tools/bim/commands/serve/static/

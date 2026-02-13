@@ -205,5 +205,29 @@ def query(
     cmd.execute()
 
 
+@cli.command("serve", help="Start web dashboard")
+@click.option("-p", "--port", default=8000, type=int)
+@click.option("-H", "--host", default="127.0.0.1")
+@click.option("--no-browser", is_flag=True, default=False)
+@click.pass_context
+def serve(
+    ctx: click.Context,
+    port: int,
+    host: str,
+    *,
+    no_browser: bool,
+) -> None:
+    from bim.commands.serve.serve import CommandServe
+
+    settings = get_settings(ctx, BimSettings)
+    cmd = CommandServe(
+        default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
+        host=host,
+        port=port,
+        no_browser=no_browser,
+    )
+    cmd.execute()
+
+
 if __name__ == "__main__":
     cli()
