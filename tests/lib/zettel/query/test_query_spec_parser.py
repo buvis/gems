@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA, PropertyDef
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
     list_query_files,
     parse_query_spec,
@@ -164,6 +165,238 @@ class TestParseQuerySpec:
         )
         assert spec.filter.combinator == "and"
         assert spec.filter.children[1].expr == "len(tags) > 1"
+
+    def test_column_widget_fields(self):
+        spec = parse_query_spec(
+            {
+                "columns": [
+                    {"field": "title", "widget": "link"},
+                    {
+                        "field": "priority",
+                        "widget": "select",
+                        "editable": True,
+                        "options": ["low", "high"],
+                    },
+                    {"field": "done", "widget": "checkbox", "editable": True},
+                ],
+            }
+        )
+        assert spec.columns[0].widget == "link"
+        assert spec.columns[0].editable is False
+        assert spec.columns[1].widget == "select"
+        assert spec.columns[1].editable is True
+        assert spec.columns[1].options == ["low", "high"]
+        assert spec.columns[2].widget == "checkbox"
+
+    def test_editable_auto_injects_file_path(self):
+        spec = parse_query_spec(
+            {
+                "columns": [
+                    {"field": "title"},
+                    {"field": "done", "editable": True},
+                ],
+            }
+        )
+        fields = [c.field for c in spec.columns]
+        assert "file_path" in fields
+
+    def test_editable_no_duplicate_file_path(self):
+        spec = parse_query_spec(
+            {
+                "columns": [
+                    {"field": "title"},
+                    {"field": "done", "editable": True},
+                    {"field": "file_path"},
+                ],
+            }
+        )
+        fp_count = sum(1 for c in spec.columns if c.field == "file_path")
+        assert fp_count == 1
+
+    def test_dashboard_parsing(self):
+        spec = parse_query_spec(
+            {
+                "dashboard": {"title": "My Board", "auto_refresh": False},
+            }
+        )
+        assert spec.dashboard is not None
+        assert spec.dashboard.title == "My Board"
+        assert spec.dashboard.auto_refresh is False
+
+    def test_no_dashboard_defaults_none(self):
+        spec = parse_query_spec({})
+        assert spec.dashboard is None
+
+
+class TestSchemaParser:
+    def test_schema_parsing(self):
+        spec = parse_query_spec(
+            {
+                "schema": {
+                    "deliverable": {
+                        "type": "select",
+                        "label": "Deliverable",
+                        "options": ["enhancement", "bugfix"],
+                    },
+                    "priority": {
+                        "type": "number",
+                        "label": "Priority",
+                    },
+                },
+            }
+        )
+        assert "deliverable" in spec.schema
+        assert spec.schema["deliverable"].type == "select"
+        assert spec.schema["deliverable"].label == "Deliverable"
+        assert spec.schema["deliverable"].options == ["enhancement", "bugfix"]
+        assert spec.schema["priority"].type == "number"
+        assert spec.schema["priority"].options == []
+
+    def test_schema_empty_defaults(self):
+        spec = parse_query_spec({})
+        assert spec.schema == {}
+
+    def test_schema_type_defaults_to_text(self):
+        spec = parse_query_spec(
+            {
+                "schema": {
+                    "custom": {"label": "Custom Field"},
+                },
+            }
+        )
+        assert spec.schema["custom"].type == "text"
+
+    def test_builtin_schema_has_expected_fields(self):
+        assert "id" in BUILTIN_SCHEMA
+        assert "title" in BUILTIN_SCHEMA
+        assert "tags" in BUILTIN_SCHEMA
+        assert "completed" in BUILTIN_SCHEMA
+        assert "file_path" in BUILTIN_SCHEMA
+        assert BUILTIN_SCHEMA["completed"].type == "bool"
+        assert BUILTIN_SCHEMA["tags"].type == "tags"
+        assert BUILTIN_SCHEMA["type"].type == "select"
+        assert isinstance(BUILTIN_SCHEMA["type"].options, list)
+
+
+class TestItemParser:
+    def test_item_parsing(self):
+        spec = parse_query_spec(
+            {
+                "item": {
+                    "title": "{title}",
+                    "subtitle": "{type} | {date}",
+                    "sections": [
+                        {
+                            "heading": "Properties",
+                            "fields": [
+                                {"field": "tags"},
+                                {"field": "completed", "editable": True},
+                            ],
+                        },
+                        {
+                            "heading": "Description",
+                            "section": "## Description",
+                            "editable": True,
+                        },
+                    ],
+                },
+            }
+        )
+        assert spec.item is not None
+        assert spec.item.title == "{title}"
+        assert spec.item.subtitle == "{type} | {date}"
+        assert len(spec.item.sections) == 2
+
+        props = spec.item.sections[0]
+        assert props.heading == "Properties"
+        assert props.fields is not None
+        assert len(props.fields) == 2
+        assert props.fields[0].field == "tags"
+        assert props.fields[0].editable is False
+        assert props.fields[1].field == "completed"
+        assert props.fields[1].editable is True
+
+        desc = spec.item.sections[1]
+        assert desc.heading == "Description"
+        assert desc.section == "## Description"
+        assert desc.editable is True
+        assert desc.fields is None
+
+    def test_no_item_defaults_none(self):
+        spec = parse_query_spec({})
+        assert spec.item is None
+
+    def test_item_defaults(self):
+        spec = parse_query_spec({"item": {}})
+        assert spec.item is not None
+        assert spec.item.title == "{title}"
+        assert spec.item.subtitle is None
+        assert spec.item.sections == []
+
+
+class TestActionsParser:
+    def test_actions_parsing(self):
+        spec = parse_query_spec(
+            {
+                "actions": [
+                    {
+                        "name": "sync_jira",
+                        "label": "Sync to Jira",
+                        "scope": "item",
+                        "handler": "sync_note",
+                        "confirm": "Create Jira issue?",
+                        "args": {"target_system": "jira"},
+                    },
+                    {
+                        "name": "mark_done",
+                        "label": "Mark done",
+                        "scope": "list",
+                        "handler": "patch",
+                        "args": {"field": "completed", "value": True},
+                    },
+                ],
+            }
+        )
+        assert len(spec.actions) == 2
+
+        a0 = spec.actions[0]
+        assert a0.name == "sync_jira"
+        assert a0.label == "Sync to Jira"
+        assert a0.scope == "item"
+        assert a0.handler == "sync_note"
+        assert a0.confirm == "Create Jira issue?"
+        assert a0.args == {"target_system": "jira"}
+
+        a1 = spec.actions[1]
+        assert a1.name == "mark_done"
+        assert a1.scope == "list"
+        assert a1.confirm is None
+
+    def test_no_actions_defaults_empty(self):
+        spec = parse_query_spec({})
+        assert spec.actions == []
+
+    def test_action_defaults(self):
+        spec = parse_query_spec(
+            {
+                "actions": [
+                    {"name": "test", "label": "Test"},
+                ],
+            }
+        )
+        a = spec.actions[0]
+        assert a.scope == "item"
+        assert a.handler == "patch"
+        assert a.args == {}
+        assert a.confirm is None
+
+    def test_action_missing_name_raises(self):
+        with pytest.raises(ValueError, match="name.*label"):
+            parse_query_spec({"actions": [{"label": "oops"}]})
+
+    def test_action_missing_label_raises(self):
+        with pytest.raises(ValueError, match="name.*label"):
+            parse_query_spec({"actions": [{"name": "oops"}]})
 
 
 class TestParseQueryString:
