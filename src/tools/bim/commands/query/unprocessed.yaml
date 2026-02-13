@@ -1,0 +1,38 @@
+filter:
+  and:
+    - processed: {eq: false}
+    - type: {ne: project}
+
+sort:
+  - field: date
+    order: asc
+
+columns:
+  - field: title
+  - field: type
+  - field: tags
+  - field: date
+  - field: file_path
+
+dashboard:
+  title: Unprocessed
+
+item:
+  title: "{title}"
+  sections:
+    - heading: Properties
+      fields:
+        - field: type
+        - field: tags
+          editable: true
+        - field: processed
+          editable: true
+
+actions:
+  - name: archive
+    label: Archive
+    handler: archive
+    confirm: "Archive this note?"
+  - name: open
+    label: Open
+    handler: open

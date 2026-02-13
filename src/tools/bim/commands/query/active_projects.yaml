@@ -1,0 +1,55 @@
+source:
+  directory: ~/bim
+
+filter:
+  and:
+    - type: {eq: project}
+    - completed: {eq: false}
+
+sort:
+  - field: date
+    order: desc
+
+columns:
+  - field: title
+  - field: tags
+  - field: deliverable
+  - field: completed
+    widget: checkbox
+    editable: true
+  - field: file_path
+
+dashboard:
+  title: Active Projects
+
+item:
+  title: "{title}"
+  sections:
+    - heading: Properties
+      fields:
+        - field: type
+        - field: deliverable
+          editable: true
+        - field: tags
+          editable: true
+        - field: completed
+          editable: true
+        - field: processed
+          editable: true
+    - heading: Description
+      section: Description
+      editable: true
+      display: markdown
+    - heading: Log
+      section: Log
+      editable: true
+      display: markdown
+
+actions:
+  - name: archive
+    label: Archive
+    handler: archive
+    confirm: "Archive this project?"
+  - name: open
+    label: Open
+    handler: open

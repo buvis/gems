@@ -1,0 +1,53 @@
+source:
+  directory: ~/bim/zettelkasten/contact
+
+filter:
+  type: {eq: contact}
+
+sort:
+  - field: title
+    order: asc
+
+columns:
+  - field: title
+  - field: company
+  - field: job-title
+  - field: email
+  - field: file_path
+
+dashboard:
+  title: Contacts
+
+schema:
+  company:
+    type: text
+  job-title:
+    type: text
+  email:
+    type: text
+  contact-type:
+    type: select
+  summary:
+    type: text
+
+item:
+  title: "{title}"
+  subtitle: "{company}"
+  sections:
+    - heading: Properties
+      fields:
+        - field: company
+          editable: true
+        - field: job-title
+          editable: true
+        - field: email
+          editable: true
+        - field: contact-type
+          editable: true
+        - field: summary
+          editable: true
+
+actions:
+  - name: open
+    label: Open
+    handler: open

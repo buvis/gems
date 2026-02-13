@@ -1,0 +1,21 @@
+sort:
+  - field: date
+    order: desc
+
+output:
+  limit: 50
+
+columns:
+  - field: title
+  - field: type
+  - field: date
+  - field: tags
+  - field: file_path
+
+dashboard:
+  title: Recent
+
+actions:
+  - name: open
+    label: Open
+    handler: open

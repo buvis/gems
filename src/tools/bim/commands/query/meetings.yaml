@@ -1,0 +1,49 @@
+filter:
+  type: {eq: meeting-minutes}
+
+sort:
+  - field: date
+    order: desc
+
+columns:
+  - field: title
+  - field: date
+  - field: location
+  - field: organizer
+  - field: file_path
+
+dashboard:
+  title: Meetings
+
+schema:
+  location:
+    type: select
+  organizer:
+    type: text
+  start:
+    type: text
+  end:
+    type: text
+  attendees:
+    type: tags
+  summary:
+    type: text
+
+item:
+  title: "{title}"
+  subtitle: "{organizer}"
+  sections:
+    - heading: Properties
+      fields:
+        - field: summary
+          editable: true
+        - field: location
+        - field: organizer
+        - field: start
+        - field: end
+        - field: attendees
+
+actions:
+  - name: open
+    label: Open
+    handler: open
