@@ -169,7 +169,11 @@ class CreateNoteApp(App[None]):
         if not self._current_template:
             return
         answers = self._gather_answers()
-        use_case = CreateZettelUseCase(self.path_zettelkasten, MarkdownZettelFormatter())
+        from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
+            MarkdownZettelRepository,
+        )
+
+        use_case = CreateZettelUseCase(self.path_zettelkasten, MarkdownZettelRepository())
         try:
             path = use_case.execute(self._current_template, answers)
         except FileExistsError as e:

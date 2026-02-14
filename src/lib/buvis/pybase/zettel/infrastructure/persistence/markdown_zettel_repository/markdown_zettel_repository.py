@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.domain.entities.project.project import ProjectZettel
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
-from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
+from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
@@ -37,7 +38,27 @@ def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
     return data
 
 
-class MarkdownZettelRepository(ZettelReader):
+class MarkdownZettelRepository(ZettelRepository):
+    def __init__(self, zettelkasten_path: Path | None = None) -> None:
+        self.zettelkasten_path = zettelkasten_path
+
+    def save(self, zettel: Zettel) -> None:
+        from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
+            MarkdownZettelFormatter,
+        )
+
+        data = zettel.get_data()
+        if not data.file_path:
+            raise ValueError("Cannot save zettel without file_path")
+        formatted = MarkdownZettelFormatter.format(data)
+        Path(data.file_path).write_text(formatted, encoding="utf-8")
+
+    def find_by_id(self, zettel_id: str) -> Zettel:
+        if self.zettelkasten_path is None:
+            raise ValueError("zettelkasten_path required for find_by_id")
+        path = self.zettelkasten_path / f"{zettel_id}.md"
+        return self.find_by_location(str(path))
+
     def find_by_location(self, repository_location: str) -> Zettel:
         if _HAS_RUST:
             raw = parse_file(repository_location)
