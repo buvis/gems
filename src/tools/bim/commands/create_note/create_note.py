@@ -5,7 +5,7 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
-from buvis.pybase.zettel.domain.templates import discover_templates
+from buvis.pybase.zettel.infrastructure.persistence.template_loader import discover_templates
 from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
     MarkdownZettelRepository,
 )

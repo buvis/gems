@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.domain.templates import Hook, Question
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
-
-
-def _create_project_dir(data: ZettelData, zettelkasten_path: Path) -> None:
-    project_dir = zettelkasten_path.parent / "projects" / str(data.metadata.get("id", "unknown"))
-    project_dir.mkdir(parents=True, exist_ok=True)
-    data.metadata["resources"] = f"[project resources]({project_dir.as_uri()})"
+from buvis.pybase.zettel.infrastructure.persistence.template_loader import (
+    _create_project_dir,
+)
 
 
 class ProjectTemplate:

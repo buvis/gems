@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
-from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate, discover_templates
+from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate
+from buvis.pybase.zettel.infrastructure.persistence.template_loader import discover_templates
 from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
 )

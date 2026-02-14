@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import yaml
-from buvis.pybase.zettel.domain.templates import (
+from buvis.pybase.zettel.infrastructure.persistence.template_loader import (
     discover_templates,
     discover_yaml_templates,
 )

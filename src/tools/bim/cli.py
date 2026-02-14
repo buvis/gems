@@ -159,7 +159,7 @@ def create_note(
     list_templates: bool,
 ) -> None:
     if list_templates:
-        from buvis.pybase.zettel.domain.templates import discover_templates
+        from buvis.pybase.zettel.infrastructure.persistence.template_loader import discover_templates
         from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
         for name in sorted(discover_templates(python_eval)):
