@@ -35,19 +35,15 @@ class ZettelReader(ABC):
     def find_all(
         self,
         directory: str,
-        extensions: list[str] | None = None,
         metadata_eq: dict[str, Any] | None = None,
-        cache_path: str | None = None,
     ) -> list[Zettel]:
         """
         Retrieve all :class:`Zettel` entities from a directory.
 
         :param directory: Path to the directory to scan.
-        :param extensions: File extensions to include (default: ["md"]).
         :param metadata_eq: Optional dict of field=value eq conditions.
             Entries not matching all conditions are skipped before Zettel
             object creation.
-        :param cache_path: Optional path for metadata cache file.
         :return: A list of Zettel entities.
         :rtype: list[:class:`Zettel`]
         """

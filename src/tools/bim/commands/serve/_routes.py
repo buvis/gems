@@ -34,7 +34,7 @@ def _get_directory(request: Request) -> str:
 def _run_query(spec: Any, directory: str) -> dict[str, Any]:
     if spec.source.directory is None:
         spec.source.directory = directory
-    repo = MarkdownZettelRepository()
+    repo = MarkdownZettelRepository(extensions=spec.source.extensions)
     use_case = QueryZettelsUseCase(repo, python_eval)
     rows = use_case.execute(spec)
     columns = [dataclasses.asdict(c) for c in spec.columns] if spec.columns else []

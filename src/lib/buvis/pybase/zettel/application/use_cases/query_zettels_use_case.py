@@ -34,7 +34,7 @@ class QueryZettelsUseCase:
         directory = str(Path(directory).expanduser().resolve())
 
         metadata_eq, remaining = _extract_metadata_eq(spec.filter)
-        zettels = self.repository.find_all(directory, spec.source.extensions, metadata_eq=metadata_eq)
+        zettels = self.repository.find_all(directory, metadata_eq=metadata_eq)
 
         if remaining:
             zettels = [z for z in zettels if _matches(z, remaining, self.evaluator)]

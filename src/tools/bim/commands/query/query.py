@@ -72,7 +72,7 @@ class CommandQuery:
         # Start background cache refresh immediately (walks full dir tree)
         refresh_proc = _start_cache_refresh(directory)
 
-        repo = MarkdownZettelRepository()
+        repo = MarkdownZettelRepository(extensions=spec.source.extensions)
         use_case = QueryZettelsUseCase(repo, python_eval)
 
         t0 = time.perf_counter()

@@ -39,8 +39,13 @@ def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
 
 
 class MarkdownZettelRepository(ZettelRepository):
-    def __init__(self, zettelkasten_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        zettelkasten_path: Path | None = None,
+        extensions: list[str] | None = None,
+    ) -> None:
         self.zettelkasten_path = zettelkasten_path
+        self._extensions = extensions or ["md"]
 
     def save(self, zettel: Zettel) -> None:
         from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
@@ -78,16 +83,14 @@ class MarkdownZettelRepository(ZettelRepository):
     def find_all(
         self,
         directory: str,
-        extensions: list[str] | None = None,
         metadata_eq: dict[str, Any] | None = None,
-        cache_path: str | None = None,
     ) -> list[Zettel]:
         if _HAS_RUST:
             if metadata_eq:
-                cp = cache_path or _default_cache_path()
-                raw_list = load_filtered(directory, extensions, metadata_eq, cp)
+                cp = _default_cache_path()
+                raw_list = load_filtered(directory, self._extensions, metadata_eq, cp)
             else:
-                raw_list = load_all(directory, extensions)
+                raw_list = load_all(directory, self._extensions)
             return [
                 _create_zettel(_rust_dict_to_zettel_data(raw), from_rust=True)
                 for raw in raw_list
@@ -99,7 +102,7 @@ class MarkdownZettelRepository(ZettelRepository):
             ZettelFileParser,
         )
 
-        exts = extensions or ["md"]
+        exts = self._extensions
         dir_path = Path(directory).expanduser().resolve()
         zettels: list[Zettel] = []
         for ext in exts:
