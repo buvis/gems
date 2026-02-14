@@ -86,7 +86,7 @@ async def handle_archive(file_path: str, args: dict[str, Any], app_state: Any) -
     from bim.commands.archive_note.archive_note import archive_single
 
     archive_dir = Path(str(app_state.archive_directory)).expanduser().resolve()
-    archive_single(Path(file_path), archive_dir)
+    archive_single(Path(file_path), archive_dir, quiet=True)
     return {"status": "ok"}
 
 

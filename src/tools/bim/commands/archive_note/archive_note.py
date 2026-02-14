@@ -6,7 +6,7 @@ from buvis.pybase.adapters import console
 from buvis.pybase.zettel import MarkdownZettelFormatter, MarkdownZettelRepository
 
 
-def archive_single(path: Path, archive_dir: Path) -> None:
+def archive_single(path: Path, archive_dir: Path, *, quiet: bool = False) -> str:
     """Archive one zettel: set processed/completed, move to archive_dir."""
     repo = MarkdownZettelRepository()
     zettel = repo.find_by_location(str(path))
@@ -21,10 +21,13 @@ def archive_single(path: Path, archive_dir: Path) -> None:
     formatted = MarkdownZettelFormatter.format(data)
     dest.write_text(formatted, encoding="utf-8")
     path.unlink()
-    console.success(f"Archived {path.name}")
+    msg = f"Archived {path.name}"
+    if not quiet:
+        console.success(msg)
+    return msg
 
 
-def unarchive_single(path: Path, zettelkasten_dir: Path) -> None:
+def unarchive_single(path: Path, zettelkasten_dir: Path) -> str:
     """Unarchive one zettel: clear processed/completed, move back."""
     repo = MarkdownZettelRepository()
     zettel = repo.find_by_location(str(path))
@@ -38,7 +41,9 @@ def unarchive_single(path: Path, zettelkasten_dir: Path) -> None:
     formatted = MarkdownZettelFormatter.format(data)
     dest.write_text(formatted, encoding="utf-8")
     path.unlink()
-    console.success(f"Unarchived {path.name}")
+    msg = f"Unarchived {path.name}"
+    console.success(msg)
+    return msg
 
 
 class CommandArchiveNote:
