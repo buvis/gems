@@ -53,6 +53,7 @@ dev/
 - **Namespace package**: `src/lib/buvis/` has no `__init__.py`
 - **Hatch packages**: each `src/tools/<name>/` maps to top-level `<name>` in wheel
 - **Libraries are internal**: pybase + zettel not published separately
+- **All-interface rule**: every command/action must work across CLI, TUI, API, and WebUI
 
 ## Tool Structure
 
