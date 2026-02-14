@@ -106,6 +106,13 @@ async def handle_open(file_path: str, args: dict[str, Any], app_state: Any) -> d
     return {"status": "ok"}
 
 
+async def handle_format(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+    from bim.commands.format_note.format_note import format_single
+
+    format_single(Path(file_path), in_place=True, quiet=True)
+    return {"status": "ok"}
+
+
 async def handle_delete(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
     from bim.commands.delete_note.delete_note import delete_single
 
@@ -120,4 +127,5 @@ ACTION_HANDLERS: dict[str, Any] = {
     "archive": handle_archive,
     "open": handle_open,
     "delete": handle_delete,
+    "format": handle_format,
 }

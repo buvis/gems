@@ -50,6 +50,7 @@ class QueryTuiApp(App[None]):
         Binding("e", "edit", "Edit", show=True),
         Binding("s", "show", "Show", show=True),
         Binding("d", "delete", "Delete", show=True),
+        Binding("f", "format", "Format", show=True),
     ]
 
     def __init__(
@@ -183,6 +184,21 @@ class QueryTuiApp(App[None]):
         self.notify(msg)
         self._rows = [r for r in self._rows if r.get("file_path") != fp]
         self._populate(self._rows)
+
+    def action_format(self) -> None:
+        table = self.query_one(DataTable)
+        if table.cursor_row is None:
+            return
+        row_idx = table.cursor_row
+        if row_idx < 0 or row_idx >= len(self._visible_rows):
+            return
+        fp = self._visible_rows[row_idx].get("file_path")
+        if not fp:
+            return
+        from bim.commands.format_note.format_note import format_single
+
+        format_single(Path(fp), in_place=True, quiet=True)
+        self.notify(f"Formatted {Path(fp).name}")
 
     def action_edit(self) -> None:
         table = self.query_one(DataTable)

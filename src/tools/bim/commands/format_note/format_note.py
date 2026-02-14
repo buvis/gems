@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from buvis.pybase.adapters import console
@@ -8,9 +10,24 @@ from buvis.pybase.zettel import (
 )
 
 
+def format_single(path: Path, *, in_place: bool = False, quiet: bool = False) -> str:
+    """Format one zettel. Returns formatted content. If in_place, writes back."""
+    repo = MarkdownZettelRepository()
+    reader = ReadZettelUseCase(repo)
+    formatter = MarkdownZettelFormatter()
+    note = reader.execute(str(path))
+    formatted = formatter.format(note.get_data())
+    if in_place:
+        path.write_text(formatted, encoding="utf-8")
+        msg = f"Formatted {path.name}"
+        if not quiet:
+            console.success(msg)
+    return formatted
+
+
 class CommandFormatNote:
     def __init__(
-        self: "CommandFormatNote",
+        self,
         path_note: Path,
         is_highlighting_requested: bool = False,
         is_diff_requested: bool = False,
@@ -23,13 +40,9 @@ class CommandFormatNote:
         self.is_printing_diff = is_diff_requested
         self.path_output = path_output.resolve() if path_output else None
 
-    def execute(self: "CommandFormatNote") -> None:
+    def execute(self) -> None:
         original_content = self.path_note.read_text()
-        repo = MarkdownZettelRepository()
-        reader = ReadZettelUseCase(repo)
-        formatter = MarkdownZettelFormatter()
-        note = reader.execute(str(self.path_note))
-        formatted_content = formatter.format(note.get_data())
+        formatted_content = format_single(self.path_note)
 
         if self.path_output:
             try:
