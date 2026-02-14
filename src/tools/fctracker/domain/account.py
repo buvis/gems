@@ -9,9 +9,21 @@ from fctracker.domain.withdrawal import Withdrawal
 
 
 class Account:
-    def __init__(self, name: str, currency: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        currency: str,
+        precision: int,
+        symbol: str,
+        local_precision: int,
+        local_symbol: str,
+    ) -> None:
         self.name = name
         self.currency = currency
+        self.precision = precision
+        self.symbol = symbol
+        self.local_precision = local_precision
+        self.local_symbol = local_symbol
         self._store: QuantifiedQueue[Deposit] = QuantifiedQueue()
         self.transactions: list[Deposit | Withdrawal] = []
 
@@ -35,30 +47,25 @@ class Account:
         return withdrawal_transaction
 
     def get_balance(self) -> Decimal:
-        from fctracker.adapters.config.config import cfg
-
         balance = Decimal("0")
 
         for deposit in self._store:
             balance += Decimal(f"{deposit.amount}")
 
-        return Decimal(f"{balance:.{cfg.currency[self.currency]['precision']}f}")
+        return Decimal(f"{balance:.{self.precision}f}")
 
     def get_balance_local(self) -> Decimal:
-        from fctracker.adapters.config.config import cfg
-
         balance = Decimal("0")
 
         for deposit in self._store:
             balance += Decimal(f"{deposit.amount}") * Decimal(f"{deposit.rate}")
 
-        return Decimal(f"{balance:.{cfg.local_currency['precision']}f}")
+        return Decimal(f"{balance:.{self.local_precision}f}")
 
     def __repr__(self) -> str:
-        from fctracker.adapters.config.config import cfg
-
         bal = self.get_balance()
-        cur_sym = cfg.currency[self.currency]["symbol"]
         bal_local = self.get_balance_local()
-        local_sym = cfg.local_currency["symbol"]
-        return f"{self.name}[{self.currency}] balance: {bal} {cur_sym} ({bal_local} {local_sym})"
+        return (
+            f"{self.name}[{self.currency}] balance: {bal} {self.symbol} "
+            f"({bal_local} {self.local_symbol})"
+        )

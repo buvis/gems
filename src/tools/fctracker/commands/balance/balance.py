@@ -13,7 +13,13 @@ class CommandBalance:
 
         for account_name, currencies in scanner.accounts.items():
             for currency in currencies:
-                account = Account(account_name, currency)
+                fc = self.settings.foreign_currencies[currency]
+                lc = self.settings.local_currency
+                account = Account(
+                    account_name, currency,
+                    fc.precision, fc.symbol,
+                    lc.precision, lc.symbol,
+                )
                 reader = TransactionsReader(account)
                 reader.get_transactions()
                 console.console.print(account)

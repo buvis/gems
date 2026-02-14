@@ -19,7 +19,13 @@ class CommandTransactions:
             if self.account in ("", account_name):
                 for currency in currencies:
                     if self.currency in ("", currency):
-                        account = Account(account_name, currency)
+                        fc = self.settings.foreign_currencies[currency]
+                        lc = self.settings.local_currency
+                        account = Account(
+                            account_name, currency,
+                            fc.precision, fc.symbol,
+                            lc.precision, lc.symbol,
+                        )
                         reader = TransactionsReader(account)
                         reader.get_transactions()
 
