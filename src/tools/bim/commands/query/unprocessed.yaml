@@ -33,6 +33,13 @@ actions:
     label: Archive
     handler: archive
     confirm: "Archive this note?"
+  - name: delete
+    label: Delete
+    handler: delete
+    confirm: "Permanently delete this note?"
+  - name: format
+    label: Format
+    handler: format
   - name: open
     label: Open
     handler: open

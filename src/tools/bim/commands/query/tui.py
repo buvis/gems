@@ -133,7 +133,7 @@ class QueryTuiApp(App[None]):
             callback=self._on_archive_confirmed,
         )
 
-    def _on_archive_confirmed(self, confirmed: bool) -> None:
+    def _on_archive_confirmed(self, confirmed: bool | None) -> None:
         if not confirmed or self._archive_dir is None:
             return
         fp = self._pending_archive_path
@@ -174,7 +174,7 @@ class QueryTuiApp(App[None]):
             callback=self._on_delete_confirmed,
         )
 
-    def _on_delete_confirmed(self, confirmed: bool) -> None:
+    def _on_delete_confirmed(self, confirmed: bool | None) -> None:
         if not confirmed:
             return
         fp = self._pending_delete_path
