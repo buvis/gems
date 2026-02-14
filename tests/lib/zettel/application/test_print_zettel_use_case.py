@@ -22,13 +22,12 @@ def test_print_zettel_use_case_initialization(mock_zettel_formatter: MagicMock) 
     assert use_case.formatter == mock_zettel_formatter
 
 
-def test_print_zettel_use_case_execute(capsys, mock_zettel_formatter, mock_zettel_data):
+def test_print_zettel_use_case_execute(mock_zettel_formatter, mock_zettel_data):
     formatted_output = "Formatted Zettel Data"
     mock_zettel_formatter.format.return_value = formatted_output
 
     use_case = PrintZettelUseCase(mock_zettel_formatter)
-    use_case.execute(mock_zettel_data)
+    result = use_case.execute(mock_zettel_data)
 
-    captured = capsys.readouterr()
-    assert captured.out.strip() == formatted_output
+    assert result == formatted_output
     mock_zettel_formatter.format.assert_called_once_with(mock_zettel_data)

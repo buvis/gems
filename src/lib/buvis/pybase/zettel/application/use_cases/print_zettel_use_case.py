@@ -25,16 +25,16 @@ class PrintZettelUseCase:
         """
         self.formatter = formatter
 
-    def execute(self: "PrintZettelUseCase", zettel_data: ZettelData) -> None:
+    def execute(self: "PrintZettelUseCase", zettel_data: ZettelData) -> str:
         """
-        Execute the use case by formatting and printing the given Zettel data.
+        Execute the use case by formatting the given Zettel data.
 
-        Format the provided Zettel data using the configured formatter and print
-        the result.
+        Format the provided Zettel data using the configured formatter and
+        return the result.
 
         :param zettel_data: The Zettel data to format and print.
         :type zettel_data: :class:`zettel.domain.value_objects.zettel_data.ZettelData`
-        :return: None
-        :rtype: None
+        :return: The formatted Zettel data.
+        :rtype: str
         """
-        print(self.formatter.format(zettel_data))
+        return self.formatter.format(zettel_data)
