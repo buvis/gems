@@ -49,6 +49,7 @@ class QueryTuiApp(App[None]):
         Binding("a", "archive", "Archive", show=True),
         Binding("e", "edit", "Edit", show=True),
         Binding("s", "show", "Show", show=True),
+        Binding("d", "delete", "Delete", show=True),
     ]
 
     def __init__(
@@ -155,6 +156,33 @@ class QueryTuiApp(App[None]):
         from bim.commands.show_note.tui import ShowScreen
 
         self.push_screen(ShowScreen(Path(fp)))
+
+    def action_delete(self) -> None:
+        table = self.query_one(DataTable)
+        if table.cursor_row is None:
+            return
+        row_idx = table.cursor_row
+        if row_idx < 0 or row_idx >= len(self._visible_rows):
+            return
+        fp = self._visible_rows[row_idx].get("file_path")
+        if not fp:
+            return
+        self._pending_delete_path = fp
+        self.push_screen(
+            ConfirmScreen("Permanently delete this note?"),
+            callback=self._on_delete_confirmed,
+        )
+
+    def _on_delete_confirmed(self, confirmed: bool) -> None:
+        if not confirmed:
+            return
+        fp = self._pending_delete_path
+        from bim.commands.delete_note.delete_note import delete_single
+
+        msg = delete_single(Path(fp), quiet=True)
+        self.notify(msg)
+        self._rows = [r for r in self._rows if r.get("file_path") != fp]
+        self._populate(self._rows)
 
     def action_edit(self) -> None:
         table = self.query_one(DataTable)

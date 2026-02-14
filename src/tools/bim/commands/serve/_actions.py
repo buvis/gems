@@ -106,10 +106,18 @@ async def handle_open(file_path: str, args: dict[str, Any], app_state: Any) -> d
     return {"status": "ok"}
 
 
+async def handle_delete(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+    from bim.commands.delete_note.delete_note import delete_single
+
+    delete_single(Path(file_path), quiet=True)
+    return {"status": "ok"}
+
+
 ACTION_HANDLERS: dict[str, Any] = {
     "patch": handle_patch,
     "sync_note": handle_sync_note,
     "create_note": handle_create_note,
     "archive": handle_archive,
     "open": handle_open,
+    "delete": handle_delete,
 }

@@ -285,6 +285,16 @@ def show_note(path_to_note: str) -> None:
     cmd.execute()
 
 
+@cli.command("delete", help="Permanently delete zettel(s)")
+@click.argument("paths", nargs=-1, required=True)
+@click.option("--force", is_flag=True, default=False, help="Skip confirmation")
+def delete_note(paths: tuple[str, ...], *, force: bool) -> None:
+    from bim.commands.delete_note.delete_note import CommandDeleteNote
+
+    cmd = CommandDeleteNote(paths=[Path(p) for p in paths], force=force)
+    cmd.execute()
+
+
 @cli.command("serve", help="Start web dashboard")
 @click.option("-p", "--port", default=8000, type=int)
 @click.option("-H", "--host", default="127.0.0.1")
