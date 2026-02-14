@@ -206,6 +206,50 @@ def query(
     cmd.execute()
 
 
+@cli.command("edit", help="Edit zettel metadata")
+@click.argument("path_to_note")
+@click.option("--title", default=None, help="New title")
+@click.option("--tags", default=None, help="Comma-separated tags")
+@click.option("--type", "zettel_type", default=None, help="Note type")
+@click.option("--processed/--no-processed", default=None, help="Processed flag")
+@click.option("--publish/--no-publish", default=None, help="Publish flag")
+@click.option("-s", "--set", "extra_sets", multiple=True, help="Arbitrary key=value metadata")
+def edit_note(
+    path_to_note: str,
+    title: str | None,
+    tags: str | None,
+    zettel_type: str | None,
+    processed: bool | None,
+    publish: bool | None,
+    extra_sets: tuple[str, ...],
+) -> None:
+    path = Path(path_to_note)
+    if not path.is_file():
+        console.failure(f"{path_to_note} doesn't exist")
+        return
+
+    changes: dict[str, Any] = {}
+    if title is not None:
+        changes["title"] = title
+    if tags is not None:
+        changes["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    if zettel_type is not None:
+        changes["type"] = zettel_type
+    if processed is not None:
+        changes["processed"] = processed
+    if publish is not None:
+        changes["publish"] = publish
+    for s in extra_sets:
+        if "=" in s:
+            k, v = s.split("=", 1)
+            changes[k] = v
+
+    from bim.commands.edit_note.edit_note import CommandEditNote
+
+    cmd = CommandEditNote(path=path, changes=changes or None)
+    cmd.execute()
+
+
 @cli.command("archive", help="Archive zettel(s): set processed + move to archive dir")
 @click.argument("paths", nargs=-1, required=True)
 @click.option("--undo", is_flag=True, default=False, help="Unarchive (move back to zettelkasten)")

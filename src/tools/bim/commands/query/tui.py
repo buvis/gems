@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.zettel import MarkdownZettelRepository
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Center
@@ -46,6 +47,7 @@ class QueryTuiApp(App[None]):
         Binding("q", "quit", "Quit", show=True),
         Binding("enter", "open_editor", "Open in nvim", show=True),
         Binding("a", "archive", "Archive", show=True),
+        Binding("e", "edit", "Edit", show=True),
     ]
 
     def __init__(
@@ -134,6 +136,41 @@ class QueryTuiApp(App[None]):
         fp = self._pending_archive_path
         from bim.commands.archive_note.archive_note import archive_single
 
-        archive_single(Path(fp), self._archive_dir)
+        msg = archive_single(Path(fp), self._archive_dir, quiet=True)
+        self.notify(msg)
         self._rows = [r for r in self._rows if r.get("file_path") != fp]
+        self._populate(self._rows)
+
+    def action_edit(self) -> None:
+        table = self.query_one(DataTable)
+        if table.cursor_row is None:
+            return
+        row_idx = table.cursor_row
+        if row_idx < 0 or row_idx >= len(self._visible_rows):
+            return
+        fp = self._visible_rows[row_idx].get("file_path")
+        if not fp:
+            return
+        from bim.commands.edit_note.tui import EditScreen
+
+        self.push_screen(
+            EditScreen(Path(fp)),
+            callback=self._on_edit_done,
+        )
+
+    def _on_edit_done(self, result: dict[str, Any] | None) -> None:
+        if result is None:
+            return
+        fp = result.get("file_path")
+        if not fp:
+            return
+        # Re-read zettel from disk and update row columns that exist
+        repo = MarkdownZettelRepository()
+        meta = repo.find_by_location(fp).get_data().metadata
+        for row in self._rows:
+            if str(row.get("file_path")) == fp:
+                for key in row:
+                    if key != "file_path" and key in meta:
+                        row[key] = meta[key]
+                break
         self._populate(self._rows)
