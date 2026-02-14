@@ -8,13 +8,13 @@ import tzlocal
 from buvis.pybase.adapters import JiraAdapter, console
 from buvis.pybase.zettel import (
     MarkdownZettelFormatter,
-    MarkdownZettelRepository,
     ReadZettelUseCase,
 )
 from buvis.pybase.zettel.domain.entities import ProjectZettel
 from buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue import (
     ProjectZettelJiraIssueDTOAssembler,
 )
+from bim.dependencies import get_repo
 
 DEFAULT_JIRA_IGNORE_US_LABEL = "do-not-track"
 
@@ -69,7 +69,7 @@ class CommandSyncNote:
                 raise NotImplementedError(f"Target system '{target_system}' not supported")
 
     def execute(self) -> None:
-        repo = MarkdownZettelRepository()
+        repo = get_repo()
         reader = ReadZettelUseCase(repo)
         formatter = MarkdownZettelFormatter()
         note = reader.execute(str(self.path_note))

@@ -6,10 +6,8 @@ from typing import Any
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 from buvis.pybase.zettel.infrastructure.persistence.template_loader import discover_templates
-from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
-    MarkdownZettelRepository,
-)
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
+from bim.dependencies import get_repo
 
 
 class CommandCreateNote:
@@ -48,7 +46,7 @@ class CommandCreateNote:
             elif q.required:
                 console.failure(f"Missing required answer: {q.key}")
                 return
-        use_case = CreateZettelUseCase(self.path_zettelkasten, MarkdownZettelRepository())
+        use_case = CreateZettelUseCase(self.path_zettelkasten, get_repo())
         try:
             path = use_case.execute(template, answers)
         except FileExistsError as e:

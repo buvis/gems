@@ -10,6 +10,7 @@ from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.mar
     MarkdownZettelFormatter,
 )
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
+from bim.dependencies import get_repo
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
@@ -170,11 +171,8 @@ class CreateNoteApp(App[None]):
         if not self._current_template:
             return
         answers = self._gather_answers()
-        from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
-            MarkdownZettelRepository,
-        )
 
-        use_case = CreateZettelUseCase(self.path_zettelkasten, MarkdownZettelRepository())
+        use_case = CreateZettelUseCase(self.path_zettelkasten, get_repo())
         try:
             path = use_case.execute(self._current_template, answers)
         except FileExistsError as e:

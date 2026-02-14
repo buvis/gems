@@ -6,10 +6,10 @@ from buvis.pybase.adapters import console
 from buvis.pybase.formatting import StringOperator
 from buvis.pybase.zettel import (
     MarkdownZettelFormatter,
-    MarkdownZettelRepository,
     ReadZettelUseCase,
 )
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
+from bim.dependencies import get_repo
 
 
 def import_single(
@@ -22,7 +22,7 @@ def import_single(
     quiet: bool = False,
 ) -> str:
     """Import a note to zettelkasten. Non-interactive."""
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     reader = ReadZettelUseCase(repo)
     formatter = MarkdownZettelFormatter()
     note = reader.execute(str(path_note))
@@ -112,7 +112,7 @@ class CommandImportNote:
 
     def _interactive(self) -> None:
         original_content = self.path_note.read_text()
-        repo = MarkdownZettelRepository()
+        repo = get_repo()
         reader = ReadZettelUseCase(repo)
         formatter = MarkdownZettelFormatter()
         note = reader.execute(str(self.path_note))
