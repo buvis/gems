@@ -43,7 +43,7 @@ class ProjectZettel(Zettel):
         """Initialize the ProjectZettel instance by calling the initializer of the superclass :class:`Zettel`."""
         super().__init__(zettel_data, from_rust=from_rust)
 
-    def _migrate(self: ProjectZettel) -> None:
+    def migrate(self: ProjectZettel) -> None:
         """
         Perform migration operations specific to project Zettels.
 
@@ -51,10 +51,10 @@ class ProjectZettel(Zettel):
 
         :return: None. The function modifies the internal state in place.
         """
-        super()._migrate()
+        super().migrate()
         ProjectZettelMigrationService.migrate(self._data)
 
-    def _ensure_consistency(self: ProjectZettel) -> None:
+    def ensure_consistency(self: ProjectZettel) -> None:
         """
         Ensure consistency of the project Zettel's data.
 
@@ -62,7 +62,7 @@ class ProjectZettel(Zettel):
 
         :return: None. The function modifies the internal state in place.
         """
-        super()._ensure_consistency()
+        super().ensure_consistency()
         ProjectZettelConsistencyService.ensure_consistency(self._data)
 
     @property
@@ -121,7 +121,4 @@ class ProjectZettel(Zettel):
             else:
                 updated_sections.append(section)
         self._data.sections = [sec for sec in updated_sections if sec[0] != ""]
-        self._ensure_consistency()
-        self._migrate()
-        self._ensure_consistency()
         self._alias_attributes()

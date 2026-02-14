@@ -36,13 +36,8 @@ class Zettel:
         """Initialize a new Zettel instance."""
         self._data = ZettelData()
         self._from_rust = from_rust
-
         if zettel_data:
-            if from_rust:
-                self._data = zettel_data
-                self._alias_attributes()
-            else:
-                self.replace_data(zettel_data)
+            self.replace_data(zettel_data)
 
     def get_data(self) -> ZettelData:
         """
@@ -62,9 +57,6 @@ class Zettel:
         :return: None. The function modifies the Zettel data in place.
         """
         self._data = zettel_data
-        self._ensure_consistency()
-        self._migrate()
-        self._ensure_consistency()
         self._alias_attributes()
 
     @property
@@ -77,25 +69,19 @@ class Zettel:
         """Return whether the Zettel was created from Rust data."""
         return self._from_rust
 
-    def _migrate(self) -> None:
+    def migrate(self) -> None:
         """Migrate the Zettel data."""
         ZettelMigrationService.migrate(self._data)
 
-    def _ensure_consistency(self) -> None:
+    def ensure_consistency(self) -> None:
         """Ensure the consistency of the Zettel data."""
         ZettelConsistencyService.ensure_consistency(self._data)
 
     def _alias_attributes(self) -> None:
         """Alias the Zettel attributes.
-
-        When from_rust=True, skips keys with property descriptors to avoid
-        triggering setters that run migration/consistency (Rust already did it).
         """
-        cls = type(self)
         for key, value in {**self._data.metadata, **self._data.reference}.items():
             attr = key.replace("-", "_")
-            if self._from_rust and isinstance(getattr(cls, attr, None), property):
-                continue
             setattr(self, attr, value)
 
     @property
@@ -128,8 +114,6 @@ class Zettel:
             raise ValueError from err
         except TypeError as err:
             raise TypeError from err
-        self._migrate()
-        self._ensure_consistency()
 
     @property
     def title(self) -> str | None:
@@ -155,8 +139,6 @@ class Zettel:
             self._data.metadata["title"] = None
         else:
             self._data.metadata["title"] = str(value)
-        self._migrate()
-        self._ensure_consistency()
 
     @property
     def date(self) -> datetime | None:
@@ -179,8 +161,6 @@ class Zettel:
         :type value: :class:`datetime.datetime`
         """
         self._data.metadata["date"] = value
-        self._migrate()
-        self._ensure_consistency()
 
     @property
     def type(self) -> str | None:
@@ -206,8 +186,6 @@ class Zettel:
             self._data.metadata["type"] = None
         else:
             self._data.metadata["type"] = str(value)
-        self._migrate()
-        self._ensure_consistency()
 
     @property
     def tags(self) -> list[str] | None:
@@ -232,8 +210,6 @@ class Zettel:
         if value and not isinstance(value, list):
             value = [value]
         self._data.metadata["tags"] = value
-        self._migrate()
-        self._ensure_consistency()
 
     @property
     def publish(self) -> bool:
@@ -256,8 +232,6 @@ class Zettel:
         :type value: bool
         """
         self._data.metadata["publish"] = bool(value)
-        self._migrate()
-        self._ensure_consistency()
 
     @property
     def processed(self) -> bool:
@@ -280,5 +254,3 @@ class Zettel:
         :type value: bool
         """
         self._data.metadata["processed"] = bool(value)
-        self._migrate()
-        self._ensure_consistency()
