@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from buvis.pybase.adapters import console
-from buvis.pybase.zettel import MarkdownZettelFormatter, MarkdownZettelRepository
+from bim.dependencies import get_repo
+from buvis.pybase.zettel import MarkdownZettelFormatter
 
 
 def archive_single(path: Path, archive_dir: Path, *, quiet: bool = False) -> str:
     """Archive one zettel: set processed/completed, move to archive_dir."""
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     zettel = repo.find_by_location(str(path))
     data = zettel.get_data()
 
@@ -29,7 +30,7 @@ def archive_single(path: Path, archive_dir: Path, *, quiet: bool = False) -> str
 
 def unarchive_single(path: Path, zettelkasten_dir: Path) -> str:
     """Unarchive one zettel: clear processed/completed, move back."""
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     zettel = repo.find_by_location(str(path))
     data = zettel.get_data()
 

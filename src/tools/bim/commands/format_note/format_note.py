@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from bim.dependencies import get_repo
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel import (
     MarkdownZettelFormatter,
-    MarkdownZettelRepository,
     ReadZettelUseCase,
 )
 
 
 def format_single(path: Path, *, in_place: bool = False, quiet: bool = False) -> str:
     """Format one zettel. Returns formatted content. If in_place, writes back."""
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     reader = ReadZettelUseCase(repo)
     formatter = MarkdownZettelFormatter()
     note = reader.execute(str(path))

@@ -4,14 +4,15 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.adapters import console
-from buvis.pybase.zettel import MarkdownZettelFormatter, MarkdownZettelRepository
+from bim.dependencies import get_repo
+from buvis.pybase.zettel import MarkdownZettelFormatter
 
 
 def edit_single(
     path: Path, changes: dict[str, Any], target: str = "metadata", *, quiet: bool = False,
 ) -> str:
     """Apply changes dict to a zettel and write back."""
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     zettel = repo.find_by_location(str(path))
     data = zettel.get_data()
 

@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel import MarkdownZettelFormatter, MarkdownZettelRepository
+from bim.dependencies import get_repo
+from buvis.pybase.zettel import MarkdownZettelFormatter
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Center, Horizontal, VerticalScroll
@@ -13,7 +14,7 @@ from textual.widgets import Button, Checkbox, Footer, Header, Input, Label, Sele
 
 def _load_zettel(path: Path) -> Any:
     """Return the full ZettelData object."""
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     zettel = repo.find_by_location(str(path))
     return zettel.get_data()
 
