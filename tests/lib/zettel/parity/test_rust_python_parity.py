@@ -73,8 +73,11 @@ class TestParseFileParity:
     def _parse_both(self, fixture_name: str) -> tuple[ZettelData, ZettelData]:
         path = FIXTURES_DIR / fixture_name
         py_data = ZettelFileParser.from_file(path)
-        # Apply full Python pipeline (same as Zettel constructor)
+        # Apply full Python pipeline (same as repo load path)
         py_zettel = Zettel(py_data)
+        py_zettel.ensure_consistency()
+        py_zettel.migrate()
+        py_zettel.ensure_consistency()
         py_data = py_zettel.get_data()
 
         rust_raw = parse_file(str(path))

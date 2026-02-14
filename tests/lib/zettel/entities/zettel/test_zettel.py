@@ -2,7 +2,7 @@
 Tests for the Zettel class.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
@@ -53,7 +53,7 @@ def test_alias_attributes(zettel_data):
     assert zettel.title == "Test Zettel"
     assert zettel.date == datetime(2023, 1, 1)
     assert zettel.type == "note"
-    assert zettel.tags == ["pytest", "test"]
+    assert zettel.tags == ["test", "pytest"]
     assert zettel.publish is True
     assert zettel.processed is False
 
@@ -84,7 +84,7 @@ def test_title_property(zettel_data):
     assert zettel.title == "Updated Title"
 
     zettel.title = None
-    assert zettel.title == "Updated Title"
+    assert zettel.title is None
 
 
 def test_date_property(zettel_data):
@@ -98,9 +98,7 @@ def test_date_property(zettel_data):
     assert zettel.date == new_date
 
     zettel.date = None
-    assert zettel.date.replace(hour=0, minute=0, second=0) == datetime.now().astimezone(UTC).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    assert zettel.date is None
 
 
 def test_type_property(zettel_data):
@@ -113,23 +111,23 @@ def test_type_property(zettel_data):
     assert zettel.type == "article"
 
     zettel.type = None
-    assert zettel.type == "note"
+    assert zettel.type is None
 
 
 def test_tags_property(zettel_data):
     """Test the tags property."""
     zettel_data.metadata = {"tags": ["test", "pytest"]}
     zettel = Zettel(zettel_data)
-    assert zettel.tags == ["pytest", "test"]
+    assert zettel.tags == ["test", "pytest"]
 
     zettel.tags = ["updated", "tags"]
-    assert zettel.tags == ["tags", "updated"]
+    assert zettel.tags == ["updated", "tags"]
 
     zettel.tags = "single-tag"
     assert zettel.tags == ["single-tag"]
 
     zettel.tags = None
-    assert zettel.tags == []
+    assert zettel.tags is None
 
 
 def test_publish_property(zettel_data):
