@@ -16,18 +16,9 @@ def edit_single(
     data = zettel.get_data()
 
     if target == "section":
+        from bim.commands.shared.sections import replace_section
         for field, value in changes.items():
-            replaced = False
-            new_sections = []
-            for heading, old_body in data.sections:
-                if heading == field:
-                    new_sections.append((heading, value))
-                    replaced = True
-                else:
-                    new_sections.append((heading, old_body))
-            if not replaced:
-                new_sections.append((field, value))
-            data.sections = new_sections
+            replace_section(data, field, value)
     elif target == "reference":
         data.reference.update(changes)
     else:

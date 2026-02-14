@@ -6,6 +6,7 @@ from typing import Any
 
 from buvis.pybase.zettel import MarkdownZettelFormatter, MarkdownZettelRepository
 
+from bim.commands.shared.os_open import open_in_os
 
 def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
     """Replace {field} placeholders in args values using row data."""
@@ -33,17 +34,8 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: Any) -> 
     value = args["value"]
 
     if target == "section":
-        replaced = False
-        new_sections = []
-        for heading, old_body in data.sections:
-            if heading == field:
-                new_sections.append((heading, value))
-                replaced = True
-            else:
-                new_sections.append((heading, old_body))
-        if not replaced:
-            new_sections.append((field, value))
-        data.sections = new_sections
+        from bim.commands.shared.sections import replace_section
+        replace_section(data, field, value)
     elif target == "reference":
         data.reference[field] = value
     else:
@@ -91,18 +83,8 @@ async def handle_archive(file_path: str, args: dict[str, Any], app_state: Any) -
 
 
 async def handle_open(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
-    import platform
-    import subprocess
-
     fp = Path(file_path)
-    system = platform.system()
-    if system == "Darwin":
-        subprocess.Popen(["open", str(fp)])  # noqa: S603
-    elif system == "Linux":
-        subprocess.Popen(["xdg-open", str(fp)])  # noqa: S603
-    else:
-        import os
-        os.startfile(str(fp))  # type: ignore[attr-defined]  # noqa: S606
+    open_in_os(fp)
     return {"status": "ok"}
 
 

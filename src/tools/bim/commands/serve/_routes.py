@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import platform
-import subprocess
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +20,7 @@ from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
 )
 
 from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
+from bim.commands.shared.os_open import open_in_os
 
 router = APIRouter()
 
@@ -143,19 +142,8 @@ async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
     data = zettel.get_data()
 
     if body.target == "section":
-        # field = heading, value = new body text
-        replaced = False
-        new_sections = []
-        for heading, old_body in data.sections:
-            if heading == body.field:
-                new_sections.append((heading, body.value))
-                replaced = True
-            else:
-                new_sections.append((heading, old_body))
-        if not replaced:
-            # Append new section
-            new_sections.append((body.field, body.value))
-        data.sections = new_sections
+        from bim.commands.shared.sections import replace_section
+        replace_section(data, body.field, body.value)
     elif body.target == "reference":
         data.reference[body.field] = body.value
     else:
@@ -193,14 +181,7 @@ async def open_file(body: OpenBody) -> dict[str, str]:
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {body.path}")
 
-    system = platform.system()
-    if system == "Darwin":
-        subprocess.Popen(["open", str(fp)])  # noqa: S603
-    elif system == "Linux":
-        subprocess.Popen(["xdg-open", str(fp)])  # noqa: S603
-    else:
-        import os
-        os.startfile(str(fp))  # type: ignore[attr-defined]  # noqa: S606
+    open_in_os(fp)
 
     return {"status": "ok"}
 

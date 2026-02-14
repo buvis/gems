@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -32,6 +31,7 @@ from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
     resolve_query_file,
 )
 
+from bim.commands.shared.os_open import open_in_os
 
 from rich.text import Text
 
@@ -263,13 +263,7 @@ def _tmp_file(ext: str) -> str:
 
 
 def _open_file(path: str) -> None:
-    system = platform.system()
-    if system == "Darwin":
-        subprocess.Popen(["open", path])  # noqa: S603
-    elif system == "Linux":
-        subprocess.Popen(["xdg-open", path])  # noqa: S603
-    else:
-        os.startfile(path)  # type: ignore[attr-defined]  # noqa: S606
+    open_in_os(path)
 
 
 def _run_tui(rows: list[dict[str, Any]], columns: list[str], archive_directory: str | None = None) -> None:
