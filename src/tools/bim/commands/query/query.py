@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.adapters import console
-from buvis.pybase.zettel import MarkdownZettelRepository
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
     _default_cache_path,
@@ -32,6 +31,7 @@ from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
 )
 
 from bim.commands.shared.os_open import open_in_os
+from bim.dependencies import get_repo
 
 from rich.text import Text
 
@@ -72,7 +72,7 @@ class CommandQuery:
         # Start background cache refresh immediately (walks full dir tree)
         refresh_proc = _start_cache_refresh(directory)
 
-        repo = MarkdownZettelRepository(extensions=spec.source.extensions)
+        repo = get_repo(extensions=spec.source.extensions)
         use_case = QueryZettelsUseCase(repo, python_eval)
 
         t0 = time.perf_counter()

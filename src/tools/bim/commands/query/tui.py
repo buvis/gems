@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel import MarkdownZettelRepository
+from bim.dependencies import get_repo
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Center
@@ -224,7 +224,7 @@ class QueryTuiApp(App[None]):
         if not fp:
             return
         # Re-read zettel from disk and update row columns that exist
-        repo = MarkdownZettelRepository()
+        repo = get_repo()
         meta = repo.find_by_location(fp).get_data().metadata
         for row in self._rows:
             if str(row.get("file_path")) == fp:

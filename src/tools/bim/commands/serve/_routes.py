@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from buvis.pybase.zettel import MarkdownZettelFormatter, MarkdownZettelRepository
+from buvis.pybase.zettel import MarkdownZettelFormatter
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
@@ -21,6 +21,7 @@ from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
 
 from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
 from bim.commands.shared.os_open import open_in_os
+from bim.dependencies import get_repo
 
 router = APIRouter()
 
@@ -34,7 +35,7 @@ def _get_directory(request: Request) -> str:
 def _run_query(spec: Any, directory: str) -> dict[str, Any]:
     if spec.source.directory is None:
         spec.source.directory = directory
-    repo = MarkdownZettelRepository(extensions=spec.source.extensions)
+    repo = get_repo(extensions=spec.source.extensions)
     use_case = QueryZettelsUseCase(repo, python_eval)
     rows = use_case.execute(spec)
     columns = [dataclasses.asdict(c) for c in spec.columns] if spec.columns else []
@@ -137,7 +138,7 @@ async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     zettel = repo.find_by_location(str(fp))
     data = zettel.get_data()
 
@@ -160,7 +161,7 @@ async def get_zettel(file_path: str) -> dict[str, Any]:
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     zettel = repo.find_by_location(str(fp))
     data = zettel.get_data()
     return {

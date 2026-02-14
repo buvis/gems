@@ -4,9 +4,10 @@ import re
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel import MarkdownZettelFormatter, MarkdownZettelRepository
+from buvis.pybase.zettel import MarkdownZettelFormatter
 
 from bim.commands.shared.os_open import open_in_os
+from bim.dependencies import get_repo
 
 def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
     """Replace {field} placeholders in args values using row data."""
@@ -25,7 +26,7 @@ def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, A
 
 async def handle_patch(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
     fp = Path(file_path)
-    repo = MarkdownZettelRepository()
+    repo = get_repo()
     zettel = repo.find_by_location(str(fp))
     data = zettel.get_data()
 
