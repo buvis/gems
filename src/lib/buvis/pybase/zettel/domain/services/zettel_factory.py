@@ -26,6 +26,10 @@ class ZettelFactory:
         zettel_type = getattr(zettel, "type", "")
 
         if zettel_type in ("note", ""):  # generic Zettel
+            if not zettel.from_rust:
+                zettel.ensure_consistency()
+                zettel.migrate()
+                zettel.ensure_consistency()
             return zettel
 
         # Try downcasting to more specific Zettel type
@@ -33,6 +37,10 @@ class ZettelFactory:
 
         entity_class = _ENTITY_CLASSES.get(class_name)
         if entity_class is None:
+            if not zettel.from_rust:
+                zettel.ensure_consistency()
+                zettel.migrate()
+                zettel.ensure_consistency()
             return zettel
 
         if zettel.from_rust:
@@ -40,4 +48,7 @@ class ZettelFactory:
         else:
             downcasted_zettel = entity_class()
             downcasted_zettel.replace_data(zettel.get_data())
+            downcasted_zettel.ensure_consistency()
+            downcasted_zettel.migrate()
+            downcasted_zettel.ensure_consistency()
         return downcasted_zettel

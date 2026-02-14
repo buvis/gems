@@ -16,9 +16,18 @@ def _default_cache_path() -> str:
 
 
 def _create_zettel(data: ZettelData, *, from_rust: bool = False) -> Zettel:
+    zettel: Zettel
     if data.metadata.get("type") == "project":
-        return ProjectZettel(data, from_rust=from_rust)
-    return Zettel(data, from_rust=from_rust)
+        zettel = ProjectZettel(data, from_rust=from_rust)
+    else:
+        zettel = Zettel(data, from_rust=from_rust)
+
+    if not from_rust:
+        zettel.ensure_consistency()
+        zettel.migrate()
+        zettel.ensure_consistency()
+
+    return zettel
 
 try:
     from buvis.pybase.zettel._core import load_all, load_filtered, parse_file
@@ -52,6 +61,7 @@ class MarkdownZettelRepository(ZettelRepository):
             MarkdownZettelFormatter,
         )
 
+        zettel.ensure_consistency()
         data = zettel.get_data()
         if not data.file_path:
             raise ValueError("Cannot save zettel without file_path")
