@@ -19,18 +19,31 @@ def cli(ctx: click.Context) -> None:
 
 @cli.command("import", help="Import a note to zettelkasten")
 @click.argument("path_to_note")
+@click.option("--tags", default=None, help="Comma-separated tags")
+@click.option("--force", is_flag=True, default=False, help="Overwrite if target exists")
+@click.option("--remove-original", is_flag=True, default=False, help="Delete source after import")
 @click.pass_context
 def import_note(
     ctx: click.Context,
-    path_to_note: Path,
+    path_to_note: str,
+    tags: str | None,
+    *,
+    force: bool,
+    remove_original: bool,
 ) -> None:
     if Path(path_to_note).is_file():
         from bim.commands.import_note.import_note import CommandImportNote
 
         settings = get_settings(ctx, BimSettings)
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+        scripted = tags is not None or force or remove_original
         cmd = CommandImportNote(
             path_note=Path(path_to_note),
             path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
+            tags=tag_list,
+            force=force,
+            remove_original=remove_original,
+            scripted=scripted,
         )
         cmd.execute()
     else:

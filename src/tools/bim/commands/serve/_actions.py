@@ -120,6 +120,23 @@ async def handle_delete(file_path: str, args: dict[str, Any], app_state: Any) ->
     return {"status": "ok"}
 
 
+async def handle_import(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+    from bim.commands.import_note.import_note import import_single
+
+    zettelkasten = Path(str(app_state.default_directory)).expanduser().resolve()
+    tags = args.get("tags")
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+    import_single(
+        Path(file_path),
+        zettelkasten,
+        tags=tag_list,
+        force_overwrite=args.get("force", False),
+        remove_original=args.get("remove_original", False),
+        quiet=True,
+    )
+    return {"status": "ok"}
+
+
 ACTION_HANDLERS: dict[str, Any] = {
     "patch": handle_patch,
     "sync_note": handle_sync_note,
@@ -128,4 +145,5 @@ ACTION_HANDLERS: dict[str, Any] = {
     "open": handle_open,
     "delete": handle_delete,
     "format": handle_format,
+    "import": handle_import,
 }

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from buvis.pybase.adapters import console
@@ -10,11 +12,59 @@ from buvis.pybase.zettel import (
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 
 
+def import_single(
+    path_note: Path,
+    path_zettelkasten: Path,
+    *,
+    tags: list[str] | None = None,
+    force_overwrite: bool = False,
+    remove_original: bool = False,
+    quiet: bool = False,
+) -> str:
+    """Import a note to zettelkasten. Non-interactive."""
+    repo = MarkdownZettelRepository()
+    reader = ReadZettelUseCase(repo)
+    formatter = MarkdownZettelFormatter()
+    note = reader.execute(str(path_note))
+
+    if note.type == "project":
+        note.data.metadata["resources"] = (
+            f"[project resources]({path_note.parent.resolve().as_uri()})"
+        )
+
+    if tags is not None:
+        note.tags = tags
+
+    path_output = path_zettelkasten / f"{note.id}.md"
+
+    if path_output.is_file() and not force_overwrite:
+        raise FileExistsError(f"{path_output} already exists")
+
+    formatted = formatter.format(note.get_data())
+    path_output.write_text(formatted, encoding="utf-8")
+    msg = f"Imported {path_note.name} as {path_output.name}"
+    if not quiet:
+        console.success(msg)
+
+    if remove_original:
+        path_note.unlink()
+        rm_msg = f"Removed {path_note}"
+        if not quiet:
+            console.success(rm_msg)
+
+    return msg
+
+
 class CommandImportNote:
     def __init__(
-        self: "CommandImportNote",
+        self,
         path_note: Path,
         path_zettelkasten: Path,
+        *,
+        tags: list[str] | None = None,
+        force: bool = False,
+        remove_original: bool = False,
+        scripted: bool = False,
     ) -> None:
         if not path_note.is_file():
             raise FileNotFoundError(f"Note not found: {path_note}")
@@ -23,8 +73,12 @@ class CommandImportNote:
         if not path_zettelkasten.is_dir():
             raise FileNotFoundError(f"Zettelkasten directory not found: {path_zettelkasten}")
         self.path_zettelkasten = path_zettelkasten
+        self.tags = tags
+        self.force = force
+        self.remove_original = remove_original
+        self.scripted = scripted
 
-    def _resolve_output_path(self: "CommandImportNote", note: Zettel, path_output: Path) -> Path:
+    def _resolve_output_path(self, note: Zettel, path_output: Path) -> Path:
         overwrite_confirmed = False
 
         while path_output.is_file() and not overwrite_confirmed:
@@ -56,7 +110,7 @@ class CommandImportNote:
 
         return path_output
 
-    def execute(self: "CommandImportNote") -> None:
+    def _interactive(self) -> None:
         original_content = self.path_note.read_text()
         repo = MarkdownZettelRepository()
         reader = ReadZettelUseCase(repo)
@@ -111,3 +165,15 @@ class CommandImportNote:
         if remove_file:
             self.path_note.unlink()
             console.success(f"{self.path_note} was removed")
+
+    def execute(self) -> None:
+        if self.scripted:
+            import_single(
+                self.path_note,
+                self.path_zettelkasten,
+                tags=self.tags,
+                force_overwrite=self.force,
+                remove_original=self.remove_original,
+            )
+        else:
+            self._interactive()
