@@ -48,6 +48,7 @@ class QueryTuiApp(App[None]):
         Binding("enter", "open_editor", "Open in nvim", show=True),
         Binding("a", "archive", "Archive", show=True),
         Binding("e", "edit", "Edit", show=True),
+        Binding("s", "show", "Show", show=True),
     ]
 
     def __init__(
@@ -140,6 +141,20 @@ class QueryTuiApp(App[None]):
         self.notify(msg)
         self._rows = [r for r in self._rows if r.get("file_path") != fp]
         self._populate(self._rows)
+
+    def action_show(self) -> None:
+        table = self.query_one(DataTable)
+        if table.cursor_row is None:
+            return
+        row_idx = table.cursor_row
+        if row_idx < 0 or row_idx >= len(self._visible_rows):
+            return
+        fp = self._visible_rows[row_idx].get("file_path")
+        if not fp:
+            return
+        from bim.commands.show_note.tui import ShowScreen
+
+        self.push_screen(ShowScreen(Path(fp)))
 
     def action_edit(self) -> None:
         table = self.query_one(DataTable)

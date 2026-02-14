@@ -272,6 +272,19 @@ def archive_note(
     cmd.execute()
 
 
+@cli.command("show", help="Display zettel content")
+@click.argument("path_to_note")
+def show_note(path_to_note: str) -> None:
+    path = Path(path_to_note)
+    if not path.is_file():
+        console.failure(f"{path_to_note} doesn't exist")
+        return
+    from bim.commands.show_note.show_note import CommandShowNote
+
+    cmd = CommandShowNote(path=path)
+    cmd.execute()
+
+
 @cli.command("serve", help="Start web dashboard")
 @click.option("-p", "--port", default=8000, type=int)
 @click.option("-H", "--host", default="127.0.0.1")
