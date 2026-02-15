@@ -40,7 +40,11 @@ class CommandEditNote:
                     continue
                 edit_single(path, self.changes, self.target)
         else:
+            path = self.paths[0]
+            if not path.is_file():
+                console.failure(f"{path} doesn't exist")
+                return
             from bim.commands.edit_note.tui import EditNoteApp
 
-            app = EditNoteApp(path=self.paths[0])
+            app = EditNoteApp(path=path)
             app.run()

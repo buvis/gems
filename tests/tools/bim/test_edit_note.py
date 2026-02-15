@@ -231,6 +231,11 @@ class TestEditCliCommand:
             )
             instance.execute.assert_called_once()
 
+    def test_edit_missing_file(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["edit", "/nonexistent.md"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "doesn't exist" in result.output
+
     def test_edit_multiple_no_changes_errors(self, runner: CliRunner, tmp_path: Path) -> None:
         a = tmp_path / "a.md"
         b = tmp_path / "b.md"

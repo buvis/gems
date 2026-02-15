@@ -109,6 +109,9 @@ class CommandImportNote:
 
     def _interactive(self) -> None:
         path_note = self.paths[0]
+        if not path_note.is_file():
+            console.failure(f"{path_note} doesn't exist")
+            return
         original_content = path_note.read_text()
         repo = get_repo()
         reader = ReadZettelUseCase(repo)
