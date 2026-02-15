@@ -18,40 +18,42 @@ def cli(ctx: click.Context) -> None:
 
 
 @cli.command("import", help="Import a note to zettelkasten")
-@click.argument("path_to_note")
+@click.argument("paths", nargs=-1, required=True)
 @click.option("--tags", default=None, help="Comma-separated tags")
 @click.option("--force", is_flag=True, default=False, help="Overwrite if target exists")
 @click.option("--remove-original", is_flag=True, default=False, help="Delete source after import")
 @click.pass_context
 def import_note(
     ctx: click.Context,
-    path_to_note: str,
+    paths: tuple[str, ...],
     tags: str | None,
     *,
     force: bool,
     remove_original: bool,
 ) -> None:
-    if Path(path_to_note).is_file():
-        from bim.commands.import_note.import_note import CommandImportNote
+    from bim.commands.import_note.import_note import CommandImportNote
 
-        settings = get_settings(ctx, BimSettings)
-        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
-        scripted = tags is not None or force or remove_original
-        cmd = CommandImportNote(
-            path_note=Path(path_to_note),
-            path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
-            tags=tag_list,
-            force=force,
-            remove_original=remove_original,
-            scripted=scripted,
-        )
-        cmd.execute()
-    else:
-        console.failure(f"{path_to_note} doesn't exist")
+    settings = get_settings(ctx, BimSettings)
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+    scripted = tags is not None or force or remove_original
+
+    if not scripted and len(paths) > 1:
+        console.failure("interactive import requires a single path")
+        return
+
+    cmd = CommandImportNote(
+        paths=[Path(p) for p in paths],
+        path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
+        tags=tag_list,
+        force=force,
+        remove_original=remove_original,
+        scripted=scripted,
+    )
+    cmd.execute()
 
 
 @cli.command("format", help="Format a note")
-@click.argument("path_to_note")
+@click.argument("paths", nargs=-1, required=True)
 @click.option(
     "-h",
     "--highlight",
@@ -74,24 +76,21 @@ def import_note(
     type=click.Path(file_okay=True, dir_okay=False, writable=True, resolve_path=True),
 )
 def format_note(
-    path_to_note: Path,
+    paths: tuple[str, ...],
     *,
     highlight: bool,
     diff: bool,
     output: None | Path,
 ) -> None:
-    if Path(path_to_note).is_file():
-        from bim.commands.format_note.format_note import CommandFormatNote
+    from bim.commands.format_note.format_note import CommandFormatNote
 
-        cmd = CommandFormatNote(
-            path_note=Path(path_to_note),
-            is_highlighting_requested=highlight,
-            is_diff_requested=diff,
-            path_output=Path(output) if output else None,
-        )
-        cmd.execute()
-    else:
-        console.failure(f"{path_to_note} doesn't exist")
+    cmd = CommandFormatNote(
+        paths=[Path(p) for p in paths],
+        is_highlighting_requested=highlight,
+        is_diff_requested=diff,
+        path_output=Path(output) if output else None,
+    )
+    cmd.execute()
 
 
 @cli.command("sync", help="Synchronize note with external system")
@@ -223,7 +222,7 @@ def query(
 
 
 @cli.command("edit", help="Edit zettel metadata")
-@click.argument("path_to_note")
+@click.argument("paths", nargs=-1, required=True)
 @click.option("--title", default=None, help="New title")
 @click.option("--tags", default=None, help="Comma-separated tags")
 @click.option("--type", "zettel_type", default=None, help="Note type")
@@ -231,7 +230,7 @@ def query(
 @click.option("--publish/--no-publish", default=None, help="Publish flag")
 @click.option("-s", "--set", "extra_sets", multiple=True, help="Arbitrary key=value metadata")
 def edit_note(
-    path_to_note: str,
+    paths: tuple[str, ...],
     title: str | None,
     tags: str | None,
     zettel_type: str | None,
@@ -239,11 +238,6 @@ def edit_note(
     publish: bool | None,
     extra_sets: tuple[str, ...],
 ) -> None:
-    path = Path(path_to_note)
-    if not path.is_file():
-        console.failure(f"{path_to_note} doesn't exist")
-        return
-
     changes: dict[str, Any] = {}
     if title is not None:
         changes["title"] = title
@@ -260,9 +254,13 @@ def edit_note(
             k, v = s.split("=", 1)
             changes[k] = v
 
+    if not changes and len(paths) > 1:
+        console.failure("TUI edit requires a single path")
+        return
+
     from bim.commands.edit_note.edit_note import CommandEditNote
 
-    cmd = CommandEditNote(path=path, changes=changes or None)
+    cmd = CommandEditNote(paths=[Path(p) for p in paths], changes=changes or None)
     cmd.execute()
 
 

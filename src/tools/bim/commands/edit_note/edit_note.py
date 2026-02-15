@@ -24,19 +24,23 @@ def edit_single(
 class CommandEditNote:
     def __init__(
         self,
-        path: Path,
+        paths: list[Path],
         changes: dict[str, Any] | None = None,
         target: str = "metadata",
     ) -> None:
-        self.path = path
+        self.paths = paths
         self.changes = changes
         self.target = target
 
     def execute(self) -> None:
         if self.changes:
-            edit_single(self.path, self.changes, self.target)
+            for path in self.paths:
+                if not path.is_file():
+                    console.failure(f"{path} doesn't exist")
+                    continue
+                edit_single(path, self.changes, self.target)
         else:
             from bim.commands.edit_note.tui import EditNoteApp
 
-            app = EditNoteApp(path=self.path)
+            app = EditNoteApp(path=self.paths[0])
             app.run()

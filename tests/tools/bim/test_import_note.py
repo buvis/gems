@@ -206,19 +206,13 @@ class TestImportSingle:
 
 
 class TestCommandImportNote:
-    def test_missing_note_raises(self, tmp_path: Path) -> None:
-        missing = tmp_path / "missing.md"
-
-        with pytest.raises(FileNotFoundError):
-            CommandImportNote(path_note=missing, path_zettelkasten=tmp_path)
-
     def test_missing_zettelkasten_raises(self, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
         note.write_text("# Test", encoding="utf-8")
         missing_dir = tmp_path / "missing"
 
         with pytest.raises(FileNotFoundError):
-            CommandImportNote(path_note=note, path_zettelkasten=missing_dir)
+            CommandImportNote(paths=[note], path_zettelkasten=missing_dir)
 
     def test_scripted_calls_import_single(
         self,
@@ -227,7 +221,7 @@ class TestCommandImportNote:
     ) -> None:
         with patch("bim.commands.import_note.import_note.import_single") as mock_import:
             cmd = CommandImportNote(
-                path_note=note_file,
+                paths=[note_file],
                 path_zettelkasten=zettelkasten_dir,
                 tags=["tag"],
                 force=True,
@@ -241,4 +235,52 @@ class TestCommandImportNote:
                 tags=["tag"],
                 force_overwrite=True,
                 remove_original=True,
+            )
+
+    def test_batch_imports_all(
+        self,
+        tmp_path: Path,
+        zettelkasten_dir: Path,
+    ) -> None:
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text("# A", encoding="utf-8")
+        b.write_text("# B", encoding="utf-8")
+
+        with patch("bim.commands.import_note.import_note.import_single") as mock_import:
+            cmd = CommandImportNote(
+                paths=[a, b],
+                path_zettelkasten=zettelkasten_dir,
+                scripted=True,
+            )
+            cmd.execute()
+            assert mock_import.call_count == 2
+            mock_import.assert_any_call(
+                a, zettelkasten_dir, tags=None, force_overwrite=False, remove_original=False,
+            )
+            mock_import.assert_any_call(
+                b, zettelkasten_dir, tags=None, force_overwrite=False, remove_original=False,
+            )
+
+    def test_batch_skips_missing(
+        self,
+        note_file: Path,
+        zettelkasten_dir: Path,
+        tmp_path: Path,
+    ) -> None:
+        missing = tmp_path / "missing.md"
+
+        with (
+            patch("bim.commands.import_note.import_note.import_single") as mock_import,
+            patch("bim.commands.import_note.import_note.console") as mock_console,
+        ):
+            cmd = CommandImportNote(
+                paths=[missing, note_file],
+                path_zettelkasten=zettelkasten_dir,
+                scripted=True,
+            )
+            cmd.execute()
+            mock_console.failure.assert_called_once()
+            mock_import.assert_called_once_with(
+                note_file, zettelkasten_dir, tags=None, force_overwrite=False, remove_original=False,
             )

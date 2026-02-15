@@ -58,7 +58,7 @@ def import_single(
 class CommandImportNote:
     def __init__(
         self,
-        path_note: Path,
+        paths: list[Path],
         path_zettelkasten: Path,
         *,
         tags: list[str] | None = None,
@@ -66,19 +66,16 @@ class CommandImportNote:
         remove_original: bool = False,
         scripted: bool = False,
     ) -> None:
-        if not path_note.is_file():
-            raise FileNotFoundError(f"Note not found: {path_note}")
-        self.path_note = path_note
-
         if not path_zettelkasten.is_dir():
             raise FileNotFoundError(f"Zettelkasten directory not found: {path_zettelkasten}")
+        self.paths = paths
         self.path_zettelkasten = path_zettelkasten
         self.tags = tags
         self.force = force
         self.remove_original = remove_original
         self.scripted = scripted
 
-    def _resolve_output_path(self, note: Zettel, path_output: Path) -> Path:
+    def _resolve_output_path(self, note: Zettel, path_output: Path, path_note: Path) -> Path:
         overwrite_confirmed = False
 
         while path_output.is_file() and not overwrite_confirmed:
@@ -106,20 +103,21 @@ class CommandImportNote:
                 if accept_alternative_id:
                     path_output = alternative_path_output
                 else:
-                    console.panic(f"Can't import {self.path_note}")
+                    console.panic(f"Can't import {path_note}")
 
         return path_output
 
     def _interactive(self) -> None:
-        original_content = self.path_note.read_text()
+        path_note = self.paths[0]
+        original_content = path_note.read_text()
         repo = get_repo()
         reader = ReadZettelUseCase(repo)
         formatter = MarkdownZettelFormatter()
-        note = reader.execute(str(self.path_note))
+        note = reader.execute(str(path_note))
 
         if note.type == "project":
             note.data.metadata["resources"] = (
-                f"[project resources]({self.path_note.parent.resolve().as_uri()})"
+                f"[project resources]({path_note.parent.resolve().as_uri()})"
             )
 
         path_output = self.path_zettelkasten / f"{note.id}.md"
@@ -144,7 +142,7 @@ class CommandImportNote:
             console.warning("Import cancelled by user")
             return
 
-        path_output = self._resolve_output_path(note, path_output)
+        path_output = self._resolve_output_path(note, path_output, path_note)
 
         if not note.tags:
             console.nl()
@@ -163,17 +161,21 @@ class CommandImportNote:
         remove_file = console.confirm("Do you want to remove the original?")
 
         if remove_file:
-            self.path_note.unlink()
-            console.success(f"{self.path_note} was removed")
+            path_note.unlink()
+            console.success(f"{path_note} was removed")
 
     def execute(self) -> None:
         if self.scripted:
-            import_single(
-                self.path_note,
-                self.path_zettelkasten,
-                tags=self.tags,
-                force_overwrite=self.force,
-                remove_original=self.remove_original,
-            )
+            for path in self.paths:
+                if not path.is_file():
+                    console.failure(f"{path} doesn't exist")
+                    continue
+                import_single(
+                    path,
+                    self.path_zettelkasten,
+                    tags=self.tags,
+                    force_overwrite=self.force,
+                    remove_original=self.remove_original,
+                )
         else:
             self._interactive()

@@ -28,21 +28,32 @@ def format_single(path: Path, *, in_place: bool = False, quiet: bool = False) ->
 class CommandFormatNote:
     def __init__(
         self,
-        path_note: Path,
+        paths: list[Path],
         is_highlighting_requested: bool = False,
         is_diff_requested: bool = False,
         path_output: Path | None = None,
     ) -> None:
-        if not path_note.is_file():
-            raise FileNotFoundError(f"Note not found: {path_note}")
-        self.path_note = path_note
+        self.paths = paths
         self.is_highlighting = is_highlighting_requested
         self.is_printing_diff = is_diff_requested
         self.path_output = path_output.resolve() if path_output else None
 
     def execute(self) -> None:
-        original_content = self.path_note.read_text()
-        formatted_content = format_single(self.path_note)
+        if len(self.paths) > 1:
+            for path in self.paths:
+                if not path.is_file():
+                    console.failure(f"{path} doesn't exist")
+                    continue
+                format_single(path, in_place=True)
+            return
+
+        path = self.paths[0]
+        if not path.is_file():
+            console.failure(f"{path} doesn't exist")
+            return
+
+        original_content = path.read_text()
+        formatted_content = format_single(path)
 
         if self.path_output:
             try:

@@ -98,10 +98,12 @@ class TestFormatSingle:
 
 
 class TestCommandFormatNote:
-    def test_missing_file_raises(self, tmp_path: Path) -> None:
+    def test_missing_file_reports_failure(self, tmp_path: Path) -> None:
         missing = tmp_path / "missing.md"
-        with pytest.raises(FileNotFoundError):
-            CommandFormatNote(path_note=missing)
+        with patch("bim.commands.format_note.format_note.console") as mock_console:
+            cmd = CommandFormatNote(paths=[missing])
+            cmd.execute()
+            mock_console.failure.assert_called_once()
 
     def test_writes_to_output_file(self, zettel_file: Path, tmp_path: Path) -> None:
         output_path = tmp_path / "formatted.md"
@@ -111,7 +113,7 @@ class TestCommandFormatNote:
         ):
             mock_format.return_value = "formatted"
 
-            cmd = CommandFormatNote(path_note=zettel_file, path_output=output_path)
+            cmd = CommandFormatNote(paths=[zettel_file], path_output=output_path)
             cmd.execute()
 
             assert output_path.read_text(encoding="utf-8") == "formatted"
@@ -127,7 +129,7 @@ class TestCommandFormatNote:
             original = zettel_file.read_text()
             mock_format.return_value = "formatted"
 
-            cmd = CommandFormatNote(path_note=zettel_file, is_diff_requested=True)
+            cmd = CommandFormatNote(paths=[zettel_file], is_diff_requested=True)
             cmd.execute()
 
             mock_console.print_side_by_side.assert_called_once_with(
@@ -146,7 +148,7 @@ class TestCommandFormatNote:
         ):
             mock_format.return_value = "formatted"
 
-            cmd = CommandFormatNote(path_note=zettel_file, is_highlighting_requested=True)
+            cmd = CommandFormatNote(paths=[zettel_file], is_highlighting_requested=True)
             cmd.execute()
 
             mock_console.print.assert_called_once_with(
@@ -161,10 +163,39 @@ class TestCommandFormatNote:
         ):
             mock_format.return_value = "formatted"
 
-            cmd = CommandFormatNote(path_note=zettel_file)
+            cmd = CommandFormatNote(paths=[zettel_file])
             cmd.execute()
 
             mock_console.print.assert_called_once_with(
                 "formatted",
                 mode="raw",
             )
+
+    def test_batch_formats_all(self, tmp_path: Path) -> None:
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        b.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+
+        with patch("bim.commands.format_note.format_note.format_single") as mock_format:
+            mock_format.return_value = "formatted"
+            cmd = CommandFormatNote(paths=[a, b])
+            cmd.execute()
+            assert mock_format.call_count == 2
+            mock_format.assert_any_call(a, in_place=True)
+            mock_format.assert_any_call(b, in_place=True)
+
+    def test_batch_skips_missing(self, tmp_path: Path) -> None:
+        exists = tmp_path / "exists.md"
+        exists.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        missing = tmp_path / "missing.md"
+
+        with (
+            patch("bim.commands.format_note.format_note.format_single") as mock_format,
+            patch("bim.commands.format_note.format_note.console") as mock_console,
+        ):
+            mock_format.return_value = "formatted"
+            cmd = CommandFormatNote(paths=[missing, exists])
+            cmd.execute()
+            mock_console.failure.assert_called_once()
+            mock_format.assert_called_once_with(exists, in_place=True)

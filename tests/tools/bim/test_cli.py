@@ -83,7 +83,7 @@ class TestImportCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                path_note=note,
+                paths=[note],
                 path_zettelkasten=tmp_path.resolve(),
                 tags=None,
                 force=False,
@@ -111,7 +111,7 @@ class TestImportCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                path_note=note,
+                paths=[note],
                 path_zettelkasten=tmp_path.resolve(),
                 tags=["a", "b"],
                 force=True,
@@ -119,6 +119,54 @@ class TestImportCommand:
                 scripted=True,
             )
             instance.execute.assert_called_once_with()
+
+    def test_import_multiple_scripted(self, runner, tmp_path):
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text("# A")
+        b.write_text("# B")
+
+        with (
+            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
+        ):
+            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            instance = mock_cmd.return_value
+
+            result = runner.invoke(
+                cli,
+                ["import", str(a), str(b), "--force"],
+                catch_exceptions=False,
+            )
+
+            assert result.exit_code == 0
+            mock_cmd.assert_called_once_with(
+                paths=[a, b],
+                path_zettelkasten=tmp_path.resolve(),
+                tags=None,
+                force=True,
+                remove_original=False,
+                scripted=True,
+            )
+            instance.execute.assert_called_once_with()
+
+    def test_import_multiple_interactive_errors(self, runner, tmp_path):
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text("# A")
+        b.write_text("# B")
+
+        with patch("bim.cli.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+
+            result = runner.invoke(
+                cli,
+                ["import", str(a), str(b)],
+                catch_exceptions=False,
+            )
+
+            assert result.exit_code == 0
+            assert "interactive import requires a single path" in result.output
 
 
 class TestFormatCommand:
@@ -145,10 +193,32 @@ class TestFormatCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                path_note=note,
+                paths=[note],
                 is_highlighting_requested=True,
                 is_diff_requested=True,
                 path_output=output_path,
+            )
+            instance.execute.assert_called_once_with()
+
+    def test_format_multiple(self, runner, tmp_path):
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text("# A")
+        b.write_text("# B")
+
+        with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd:
+            instance = mock_cmd.return_value
+
+            result = runner.invoke(
+                cli, ["format", str(a), str(b)], catch_exceptions=False,
+            )
+
+            assert result.exit_code == 0
+            mock_cmd.assert_called_once_with(
+                paths=[a, b],
+                is_highlighting_requested=False,
+                is_diff_requested=False,
+                path_output=None,
             )
             instance.execute.assert_called_once_with()
 

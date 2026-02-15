@@ -91,22 +91,49 @@ class TestEditSingle:
 class TestCommandEditNote:
     def test_scripted_calls_edit_single(self, zettel_file: Path) -> None:
         with patch("bim.commands.edit_note.edit_note.edit_single") as mock:
-            cmd = CommandEditNote(path=zettel_file, changes={"title": "X"})
+            cmd = CommandEditNote(paths=[zettel_file], changes={"title": "X"})
             cmd.execute()
             mock.assert_called_once_with(zettel_file, {"title": "X"}, "metadata")
 
     def test_no_changes_launches_tui(self, zettel_file: Path) -> None:
         with patch("bim.commands.edit_note.tui.EditNoteApp") as mock_app:
-            cmd = CommandEditNote(path=zettel_file)
+            cmd = CommandEditNote(paths=[zettel_file])
             cmd.execute()
             mock_app.assert_called_once_with(path=zettel_file)
             mock_app.return_value.run.assert_called_once()
 
     def test_target_passed_through(self, zettel_file: Path) -> None:
         with patch("bim.commands.edit_note.edit_note.edit_single") as mock:
-            cmd = CommandEditNote(path=zettel_file, changes={"src": "x"}, target="reference")
+            cmd = CommandEditNote(paths=[zettel_file], changes={"src": "x"}, target="reference")
             cmd.execute()
             mock.assert_called_once_with(zettel_file, {"src": "x"}, "reference")
+
+    def test_batch_edits_all(self, tmp_path: Path) -> None:
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        b.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+
+        with patch("bim.commands.edit_note.edit_note.edit_single") as mock:
+            cmd = CommandEditNote(paths=[a, b], changes={"title": "X"})
+            cmd.execute()
+            assert mock.call_count == 2
+            mock.assert_any_call(a, {"title": "X"}, "metadata")
+            mock.assert_any_call(b, {"title": "X"}, "metadata")
+
+    def test_batch_skips_missing(self, tmp_path: Path) -> None:
+        exists = tmp_path / "exists.md"
+        exists.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        missing = tmp_path / "missing.md"
+
+        with (
+            patch("bim.commands.edit_note.edit_note.edit_single") as mock,
+            patch("bim.commands.edit_note.edit_note.console") as mock_console,
+        ):
+            cmd = CommandEditNote(paths=[missing, exists], changes={"title": "X"})
+            cmd.execute()
+            mock_console.failure.assert_called_once()
+            mock.assert_called_once_with(exists, {"title": "X"}, "metadata")
 
 
 class TestEditCliCommand:
@@ -124,7 +151,7 @@ class TestEditCliCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                path=note,
+                paths=[note],
                 changes={"title": "New", "tags": ["a", "b"], "type": "project"},
             )
             instance.execute.assert_called_once()
@@ -143,7 +170,7 @@ class TestEditCliCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                path=note,
+                paths=[note],
                 changes={"processed": True, "publish": True},
             )
             instance.execute.assert_called_once()
@@ -161,7 +188,7 @@ class TestEditCliCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(path=note, changes=None)
+            mock_cmd.assert_called_once_with(paths=[note], changes=None)
             instance.execute.assert_called_once()
 
     def test_edit_extra_set(self, runner: CliRunner, tmp_path: Path) -> None:
@@ -178,12 +205,43 @@ class TestEditCliCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                path=note,
+                paths=[note],
                 changes={"custom": "val"},
             )
             instance.execute.assert_called_once()
 
-    def test_edit_missing_file(self, runner: CliRunner) -> None:
-        result = runner.invoke(cli, ["edit", "/nonexistent.md"], catch_exceptions=False)
+    def test_edit_multiple_scripted(self, runner: CliRunner, tmp_path: Path) -> None:
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text(MINIMAL_ZETTEL)
+        b.write_text(MINIMAL_ZETTEL)
+
+        with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_cmd:
+            instance = mock_cmd.return_value
+            result = runner.invoke(
+                cli,
+                ["edit", str(a), str(b), "--title", "X"],
+                catch_exceptions=False,
+            )
+
+            assert result.exit_code == 0
+            mock_cmd.assert_called_once_with(
+                paths=[a, b],
+                changes={"title": "X"},
+            )
+            instance.execute.assert_called_once()
+
+    def test_edit_multiple_no_changes_errors(self, runner: CliRunner, tmp_path: Path) -> None:
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text(MINIMAL_ZETTEL)
+        b.write_text(MINIMAL_ZETTEL)
+
+        result = runner.invoke(
+            cli,
+            ["edit", str(a), str(b)],
+            catch_exceptions=False,
+        )
+
         assert result.exit_code == 0
-        assert "doesn't exist" in result.output
+        assert "TUI edit requires a single path" in result.output
