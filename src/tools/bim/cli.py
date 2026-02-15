@@ -188,6 +188,7 @@ def create_note(
 @click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.option("-e", "--edit", is_flag=True, default=False, help="Pick result with fzf and open in nvim")
+@click.option("--tui", is_flag=True, default=False, help="Render output in interactive TUI")
 @click.option("-l", "--list", "list_queries", is_flag=True, default=False, help="List available queries")
 @click.pass_context
 def query(
@@ -196,6 +197,7 @@ def query(
     query_string: str | None,
     *,
     edit: bool,
+    tui: bool,
     list_queries: bool,
 ) -> None:
     if list_queries:
@@ -215,6 +217,7 @@ def query(
         file=query_file,
         query=query_string,
         edit=edit,
+        tui=tui,
     )
     cmd.execute()
 

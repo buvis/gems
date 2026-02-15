@@ -163,6 +163,7 @@ def _parse_output(raw: dict[str, Any]) -> QueryOutput:
         file=raw.get("file"),
         limit=raw.get("limit"),
         sample=raw.get("sample"),
+        group_by=raw.get("group_by"),
     )
 
 

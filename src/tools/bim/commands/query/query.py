@@ -20,6 +20,7 @@ from buvis.pybase.zettel.infrastructure.query.output_formatter import (
     format_html,
     format_json,
     format_jsonl,
+    format_kanban,
     format_markdown,
     format_pdf,
     format_table,
@@ -47,12 +48,14 @@ class CommandQuery:
         query: str | None = None,
         *,
         edit: bool = False,
+        tui: bool = False,
     ) -> None:
         self.default_directory = default_directory
         self.archive_directory = archive_directory
         self.file = file
         self.query = query
         self.edit = edit
+        self.tui = tui
 
     def execute(self) -> None:
         if self.file:
@@ -88,7 +91,21 @@ class CommandQuery:
         display_columns = columns
         output = spec.output
 
-        if output.format == "table":
+        if self.tui:
+            if output.format == "kanban":
+                if not output.group_by:
+                    console.failure("kanban format requires output.group_by")
+                    return
+                _run_kanban_tui(rows, columns, output.group_by, self.archive_directory)
+            else:
+                _run_tui(rows, columns, self.archive_directory)
+        elif output.format == "kanban":
+            if not output.group_by:
+                console.failure("kanban format requires output.group_by")
+                return
+            display_columns = [c for c in columns if c != "file_path"]
+            format_kanban(rows, display_columns, output.group_by)
+        elif output.format == "table":
             _linkify_titles(rows)
             display_columns = [c for c in columns if c != "file_path"]
             format_table(rows, display_columns)
@@ -121,8 +138,6 @@ class CommandQuery:
             console.success(f"Written to {dest}")
             if not output.file:
                 _open_file(dest)
-        elif output.format == "tui":
-            _run_tui(rows, columns, self.archive_directory)
         else:
             console.failure(f"Unknown output format: {output.format}")
 
@@ -271,6 +286,16 @@ def _run_tui(rows: list[dict[str, Any]], columns: list[str], archive_directory: 
 
     archive_dir = Path(archive_directory).expanduser().resolve() if archive_directory else None
     app = QueryTuiApp(rows, columns, archive_dir=archive_dir)
+    app.run()
+
+
+def _run_kanban_tui(
+    rows: list[dict[str, Any]], columns: list[str], group_by: str, archive_directory: str | None = None,
+) -> None:
+    from bim.commands.query.tui import KanbanTuiApp
+
+    archive_dir = Path(archive_directory).expanduser().resolve() if archive_directory else None
+    app = KanbanTuiApp(rows, columns, group_by, archive_dir=archive_dir)
     app.run()
 
 

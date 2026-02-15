@@ -6,6 +6,7 @@
 	import { queries, activeQuery, queryResult, loading, error, selectedRow } from '$lib/stores';
 	import QueryPicker from '$lib/components/QueryPicker.svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
+	import KanbanBoard from '$lib/components/KanbanBoard.svelte';
 	import ItemPanel from '$lib/components/ItemPanel.svelte';
 	import ActionBar from '$lib/components/ActionBar.svelte';
 
@@ -91,13 +92,24 @@
 				scope="list"
 				onactiondone={refreshQuery}
 			/>
-			<DataTable
-				rows={$queryResult.rows}
-				columns={$queryResult.columns}
-				schema={$queryResult.schema}
-				onpatch={handlePatch}
-				onrowclick={handleRowClick}
-			/>
+			{#if $queryResult.output?.format === 'kanban' && $queryResult.output?.group_by}
+				<KanbanBoard
+					rows={$queryResult.rows}
+					columns={$queryResult.columns}
+					groupBy={$queryResult.output.group_by}
+					schema={$queryResult.schema}
+					onpatch={handlePatch}
+					onrowclick={handleRowClick}
+				/>
+			{:else}
+				<DataTable
+					rows={$queryResult.rows}
+					columns={$queryResult.columns}
+					schema={$queryResult.schema}
+					onpatch={handlePatch}
+					onrowclick={handleRowClick}
+				/>
+			{/if}
 		{/if}
 	{/if}
 </main>

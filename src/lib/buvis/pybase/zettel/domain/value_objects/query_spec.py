@@ -43,10 +43,11 @@ class QueryColumn:
 
 @dataclass
 class QueryOutput:
-    format: str = "table"  # table | csv | markdown | json | jsonl | html | pdf | tui
+    format: str = "table"  # table | csv | markdown | json | jsonl | html | pdf | kanban
     file: str | None = None
     limit: int | None = None
     sample: int | None = None
+    group_by: str | None = None
 
 
 @dataclass

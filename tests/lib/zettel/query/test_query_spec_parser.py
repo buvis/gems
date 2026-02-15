@@ -239,6 +239,17 @@ class TestParseQuerySpec:
         spec = parse_query_spec({})
         assert spec.dashboard is None
 
+    def test_group_by_parsing(self):
+        spec = parse_query_spec(
+            {"output": {"format": "kanban", "group_by": "status"}}
+        )
+        assert spec.output.format == "kanban"
+        assert spec.output.group_by == "status"
+
+    def test_group_by_default_none(self):
+        spec = parse_query_spec({"output": {}})
+        assert spec.output.group_by is None
+
 
 class TestSchemaParser:
     def test_schema_parsing(self):

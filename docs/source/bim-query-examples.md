@@ -747,6 +747,66 @@ output:
 '
 ```
 
+### JSON / JSONL
+
+```bash
+bim query -q '{filter: {type: {eq: note}}, columns: [{field: title}], output: {format: json}}'
+bim query -q '{filter: {type: {eq: note}}, columns: [{field: title}], output: {format: jsonl}}'
+```
+
+### HTML — opens in browser
+
+```bash
+bim query -q '{filter: {type: {eq: project}}, columns: [{field: title}], output: {format: html}}'
+```
+
+### PDF — requires `buvis-gems[bim]`
+
+```bash
+bim query -q '{filter: {type: {eq: project}}, columns: [{field: title}], output: {format: pdf, file: projects.pdf}}'
+```
+
+### Kanban — grouped panels
+
+Requires `group_by` to specify the lane/column field:
+
+```bash
+bim query -q '
+filter:
+  type: {eq: action}
+columns:
+  - field: title
+  - field: gtd_list
+  - field: tags
+output:
+  format: kanban
+  group_by: gtd_list
+'
+```
+
+Add `--tui` for an interactive Textual kanban board with lanes, focusable cards, and search:
+
+```bash
+bim query --tui -q '
+filter:
+  type: {eq: action}
+columns:
+  - field: title
+  - field: gtd_list
+output:
+  format: kanban
+  group_by: gtd_list
+'
+```
+
+### Interactive TUI — `--tui` flag
+
+Any format can be rendered in an interactive Textual app using `--tui`:
+
+```bash
+bim query --tui -f my_query
+```
+
 ## Query from File
 
 Save a query spec as YAML:
