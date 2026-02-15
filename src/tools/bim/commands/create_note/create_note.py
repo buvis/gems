@@ -29,8 +29,9 @@ class CommandCreateNote:
 
     def _scripted(self) -> None:
         templates = discover_templates(python_eval)
-        assert self.zettel_type is not None
-        assert self.title is not None
+        if self.zettel_type is None or self.title is None:
+            console.panic("zettel_type and title are required for scripted mode")
+            return
         if self.zettel_type not in templates:
             console.failure(f"Unknown template: {self.zettel_type}")
             return

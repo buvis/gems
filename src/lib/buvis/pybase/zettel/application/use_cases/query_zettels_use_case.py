@@ -140,8 +140,9 @@ def _matches(
             variables.update(lookup_context)
         return bool(evaluator(f.expr, variables))
 
-    assert f.field is not None
-    assert f.operator is not None
+    if f.field is None or f.operator is None:
+        msg = f"Filter missing field or operator: {f}"
+        raise ValueError(msg)
     field_val = _get_field(zettel, f.field.replace("-", "_"))
     if field_val is None and f.field.replace("_", "-") != f.field:
         field_val = _get_field(zettel, f.field)

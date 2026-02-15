@@ -20,7 +20,7 @@ def import_single(
     force_overwrite: bool = False,
     remove_original: bool = False,
     quiet: bool = False,
-) -> str:
+) -> str | None:
     """Import a note to zettelkasten. Non-interactive."""
     repo = get_repo()
     reader = ReadZettelUseCase(repo)
@@ -34,6 +34,10 @@ def import_single(
 
     if tags is not None:
         note.tags = tags
+
+    if note.id is None:
+        console.failure(f"Note at {path_note} has no ID, skipping")
+        return None
 
     path_output = path_zettelkasten / f"{note.id}.md"
 
@@ -88,12 +92,11 @@ class CommandImportNote:
             if overwrite_file:
                 overwrite_confirmed = True
             else:
-                assert note.id is not None
                 alternative_note_id = note.id + 1
                 alternative_path_output = self.path_zettelkasten / f"{alternative_note_id}.md"
 
                 while alternative_path_output.is_file():
-                    alternative_note_id = note.id + 1
+                    alternative_note_id += 1
                     alternative_path_output = self.path_zettelkasten / f"{alternative_note_id}.md"
 
                 accept_alternative_id = console.confirm(
@@ -102,6 +105,7 @@ class CommandImportNote:
 
                 if accept_alternative_id:
                     path_output = alternative_path_output
+                    note.data.metadata["id"] = alternative_note_id
                 else:
                     console.panic(f"Can't import {path_note}")
 
@@ -122,6 +126,10 @@ class CommandImportNote:
             note.data.metadata["resources"] = (
                 f"[project resources]({path_note.parent.resolve().as_uri()})"
             )
+
+        if note.id is None:
+            console.failure(f"Note at {path_note} has no ID, skipping")
+            return
 
         path_output = self.path_zettelkasten / f"{note.id}.md"
         formatted_content = formatter.format(note.get_data())

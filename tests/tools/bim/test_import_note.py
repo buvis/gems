@@ -100,6 +100,30 @@ class TestImportSingle:
 
         assert note.tags == ["new"]
 
+    def test_missing_id_skips(
+        self,
+        note_file: Path,
+        zettelkasten_dir: Path,
+        note_mocks: tuple[MagicMock, MagicMock],
+    ) -> None:
+        repo, note = note_mocks
+        note.id = None
+
+        with (
+            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
+            patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
+            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.console") as mock_console,
+        ):
+            mock_reader.return_value.execute.return_value = note
+
+            result = import_single(note_file, zettelkasten_dir, quiet=True)
+
+        assert result is None
+        mock_console.failure.assert_called_once()
+        mock_formatter.return_value.format.assert_not_called()
+        assert list(zettelkasten_dir.iterdir()) == []
+
     def test_force_overwrites(
         self,
         note_file: Path,
@@ -284,3 +308,29 @@ class TestCommandImportNote:
             mock_import.assert_called_once_with(
                 note_file, zettelkasten_dir, tags=None, force_overwrite=False, remove_original=False,
             )
+
+    def test_resolves_next_available_id_and_updates_metadata(
+        self,
+        tmp_path: Path,
+        zettelkasten_dir: Path,
+    ) -> None:
+        path_note = tmp_path / "note.md"
+        path_note.write_text("# Test", encoding="utf-8")
+        note = MagicMock()
+        note.id = 1
+        note.data = MagicMock()
+        note.data.metadata = {"id": 1}
+
+        for note_id in (1, 2, 3):
+            (zettelkasten_dir / f"{note_id}.md").write_text("existing", encoding="utf-8")
+
+        cmd = CommandImportNote(paths=[path_note], path_zettelkasten=zettelkasten_dir)
+        path_output = zettelkasten_dir / "1.md"
+
+        with patch("bim.commands.import_note.import_note.console") as mock_console:
+            mock_console.confirm.side_effect = [False, True]
+
+            resolved_path = cmd._resolve_output_path(note, path_output, path_note)
+
+        assert resolved_path == zettelkasten_dir / "4.md"
+        assert note.data.metadata["id"] == 4
