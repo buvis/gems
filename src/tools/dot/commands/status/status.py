@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import logging
 import os
 from pathlib import Path
 
-from buvis.pybase.adapters import ShellAdapter
+from buvis.pybase.adapters import ShellAdapter, console
 
 
 class CommandStatus:
@@ -15,7 +14,7 @@ class CommandStatus:
             path_dotfiles = Path.home()
             os.environ.setdefault("DOTFILES_ROOT", str(path_dotfiles.resolve()))
 
-        logging.info("Working in %s", os.environ["DOTFILES_ROOT"])
+        console.info(f"Working in {os.environ['DOTFILES_ROOT']}")
 
         self.shell.alias(
             "cfg",
@@ -30,23 +29,23 @@ class CommandStatus:
             err, out = self.shell.exe("cfg secret hide -m", os.environ["DOTFILES_ROOT"])
 
             if err:
-                logging.error("Error revealing secrets: \n\n%s\n%s", err, out)
+                console.failure("Error revealing secrets", details=f"{err}\n{out}")
                 return
 
         err, out = self.shell.exe("cfg status", os.environ["DOTFILES_ROOT"])
 
         if err:
-            logging.error("Error executing command: %s", err)
+            console.failure(f"Error executing command: {err}")
 
         if out:
             modified_files = get_git_modified_files(out, Path.cwd())
             if modified_files:
                 for m in modified_files:
-                    logging.warning("%s was modified", m)
+                    console.warning(f"{m} was modified")
             elif "nothing to commit" in out:
-                logging.info("No modifications found")
+                console.success("No modifications found")
             else:
-                logging.error("I don't understand this output: \n\n%s", out)
+                console.failure("Unexpected git output", details=out)
 
 
 def get_git_modified_files(git_output: str, relative_to: Path) -> list[Path]:

@@ -103,6 +103,15 @@ def cli(ctx: click.Context) -> None:
     ...
 ```
 
+## Error Handling
+
+- Fatal errors (cannot continue): use `console.panic(msg)` — prints formatted message + exits
+- Recoverable errors (skip and continue): use `console.failure(msg)` — prints formatted message, continues
+- Info/status messages: use `console.success()`, `console.warning()`, `console.info()`
+- Never let raw exceptions (stack traces) reach the user
+- Optional dependency `ImportError`: catch in `cli.py`, call `console.panic()` with install instructions
+- Do NOT use Python logging module in CLI tools; use `buvis.pybase.adapters.console`
+
 ## Testing
 
 - pytest + pytest-mock + pytest-cov

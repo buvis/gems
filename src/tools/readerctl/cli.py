@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import click
@@ -17,7 +19,11 @@ def cli(ctx: click.Context) -> None:
 @cli.command("login")
 @click.pass_context
 def login(ctx: click.Context) -> None:
-    from readerctl.commands.login.login import CommandLogin
+    try:
+        from readerctl.commands.login.login import CommandLogin
+    except ImportError:
+        console.panic("readerctl requires the 'readerctl' extra. Install with: uv tool install buvis-gems[readerctl]")
+        return
 
     settings = get_settings(ctx, ReaderctlSettings)
     token_file = Path(settings.token_file).expanduser()
@@ -30,8 +36,12 @@ def login(ctx: click.Context) -> None:
 @click.option("-f", "--file", default="NONE", help="File with URLs to add to Reader")
 @click.pass_context
 def add(ctx: click.Context, url: str, file: str) -> None:
-    from readerctl.commands.add.add import CommandAdd
-    from readerctl.commands.login.login import CommandLogin
+    try:
+        from readerctl.commands.add.add import CommandAdd
+        from readerctl.commands.login.login import CommandLogin
+    except ImportError:
+        console.panic("readerctl requires the 'readerctl' extra. Install with: uv tool install buvis-gems[readerctl]")
+        return
 
     settings = get_settings(ctx, ReaderctlSettings)
     token_file = Path(settings.token_file).expanduser()

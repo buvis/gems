@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import click
-from buvis.pybase.adapters import logging_to_console
 from buvis.pybase.configuration import buvis_options, get_settings
 
 from dot.settings import DotSettings
@@ -18,9 +17,8 @@ def cli(ctx: click.Context) -> None:
 def status() -> None:
     from dot.commands.status.status import CommandStatus
 
-    with logging_to_console():
-        cmd = CommandStatus()
-        cmd.execute()
+    cmd = CommandStatus()
+    cmd.execute()
 
 
 @cli.command("add", help="Add changes")
@@ -34,9 +32,8 @@ def add(ctx: click.Context, file_path: str | None = None) -> None:
 
     from dot.commands.add.add import CommandAdd
 
-    with logging_to_console():
-        cmd = CommandAdd(file_path=resolved_path)
-        cmd.execute()
+    cmd = CommandAdd(file_path=resolved_path)
+    cmd.execute()
 
 
 if __name__ == "__main__":

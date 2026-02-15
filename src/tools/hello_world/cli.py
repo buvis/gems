@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import click
+from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
 
 from hello_world.commands import CommandDiagnostics, CommandListFonts, CommandPrintFiglet
@@ -56,10 +57,11 @@ def cli(
 
     try:
         import pyfiglet  # noqa: F401
-    except ImportError as _exc:
-        raise ImportError(
+    except ImportError:
+        console.panic(
             "hello-world requires the 'hello-world' extra. Install with: uv tool install buvis-gems[hello-world]"
-        ) from _exc
+        )
+        return
 
     if list_fonts:
         CommandListFonts().execute()

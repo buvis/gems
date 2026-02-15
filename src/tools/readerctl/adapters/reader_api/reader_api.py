@@ -1,11 +1,6 @@
 import time
 
-try:
-    import requests
-except ImportError as _exc:
-    raise ImportError(
-        "readerctl requires the 'readerctl' extra. Install with: uv tool install buvis-gems[readerctl]"
-    ) from _exc
+import requests
 from buvis.pybase.adapters import console
 from readerctl.adapters.response import AdapterResponse
 

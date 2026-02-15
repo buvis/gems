@@ -30,8 +30,12 @@ def wait(ctx: click.Context, host: str, timeout: int | None = None) -> None:
     # CLI overrides settings
     resolved_timeout = timeout if timeout is not None else settings.wait_timeout
 
-    from pinger.commands.wait.exceptions import CommandWaitTimeoutError
-    from pinger.commands.wait.wait import CommandWait
+    try:
+        from pinger.commands.wait.exceptions import CommandWaitTimeoutError
+        from pinger.commands.wait.wait import CommandWait
+    except ImportError:
+        console.panic("pinger requires the 'pinger' extra. Install with: uv tool install buvis-gems[pinger]")
+        return
 
     cmd = CommandWait(host=host, timeout=resolved_timeout)
     with console.status(f"Waiting for {host} to be online (max {resolved_timeout} seconds)"):

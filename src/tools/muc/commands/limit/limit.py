@@ -1,11 +1,8 @@
-import logging
 import shutil
 from pathlib import Path
 
-try:
-    import ffmpeg
-except ImportError as _exc:
-    raise ImportError("muc requires the 'muc' extra. Install with: uv tool install buvis-gems[muc]") from _exc
+import ffmpeg
+from buvis.pybase.adapters import console
 
 
 class CommandLimit:
@@ -58,11 +55,11 @@ class CommandLimit:
                     )
                     ffmpeg.run(stream, overwrite_output=True)
 
-                    logging.info("Transcoded: %s  -> %s", file_path, output_path)
+                    console.success(f"Transcoded: {file_path}  -> {output_path}")
                 else:
                     shutil.copy2(file_path, output_path)
-                    logging.info("Copied: %s  -> %s", file_path, output_path)
+                    console.success(f"Copied: {file_path}  -> {output_path}")
             else:
-                logging.warning("Skipped (no audio stream found): %s", file_path)
+                console.warning(f"Skipped (no audio stream found): {file_path}")
         except ffmpeg.Error as e:
-            logging.exception("Error processing %s: %s", file_path, e.stderr)
+            console.failure(f"Error processing {file_path}", details=str(e.stderr))

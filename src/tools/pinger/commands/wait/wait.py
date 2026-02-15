@@ -1,9 +1,6 @@
 import time
 
-try:
-    from ping3 import ping
-except ImportError as _exc:
-    raise ImportError("pinger requires the 'pinger' extra. Install with: uv tool install buvis-gems[pinger]") from _exc
+from ping3 import ping
 from pinger.commands.wait.exceptions import CommandWaitTimeoutError
 
 

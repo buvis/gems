@@ -63,7 +63,7 @@ class TestCommandStatusExecute:
             "modified: foo.txt\nmodified: dir/bar.txt\n",
         )
 
-        with patch("dot.commands.status.status.logging.warning") as warning_mock:
+        with patch.object(status_module.console, "warning") as warning_mock:
             cmd = status_module.CommandStatus()
             cmd.execute()
 
@@ -75,7 +75,7 @@ class TestCommandStatusExecute:
             (Path.cwd() / "dir/bar.txt").resolve(),
         ]
         warning_mock.assert_has_calls(
-            [call("%s was modified", expected[0]), call("%s was modified", expected[1])]
+            [call(f"{expected[0]} was modified"), call(f"{expected[1]} was modified")]
         )
         assert warning_mock.call_count == 2
 

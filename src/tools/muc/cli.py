@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
-from buvis.pybase.adapters import console, logging_to_console
+from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
 from buvis.pybase.filesystem import DirTree
 
@@ -39,17 +39,20 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
     path_output = Path(output).resolve() if output else Path.cwd() / "transcoded"
     path_output.mkdir(exist_ok=True)
 
-    from muc.commands.limit.limit import CommandLimit
+    try:
+        from muc.commands.limit.limit import CommandLimit
+    except ImportError:
+        console.panic("muc requires the 'muc' extra. Install with: uv tool install buvis-gems[muc]")
+        return
 
-    with logging_to_console():
-        cmd = CommandLimit(
-            source_dir=path_source,
-            output_dir=path_output,
-            bitrate=settings.limit_flac_bitrate,
-            bit_depth=settings.limit_flac_bit_depth,
-            sampling_rate=settings.limit_flac_sampling_rate,
-        )
-        cmd.execute()
+    cmd = CommandLimit(
+        source_dir=path_source,
+        output_dir=path_output,
+        bitrate=settings.limit_flac_bitrate,
+        bit_depth=settings.limit_flac_bit_depth,
+        sampling_rate=settings.limit_flac_sampling_rate,
+    )
+    cmd.execute()
 
 
 @cli.command("tidy", help="Tidy directory")
@@ -76,12 +79,11 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
 
     from muc.commands.tidy.tidy import CommandTidy
 
-    with logging_to_console():
-        cmd = CommandTidy(
-            directory=path_directory,
-            junk_extensions=settings.tidy_junk_extensions,
-        )
-        cmd.execute()
+    cmd = CommandTidy(
+        directory=path_directory,
+        junk_extensions=settings.tidy_junk_extensions,
+    )
+    cmd.execute()
 
 
 if __name__ == "__main__":
