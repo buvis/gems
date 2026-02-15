@@ -7,6 +7,7 @@ from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QueryColumn,
     QueryFilter,
+    QueryLookup,
     QueryOutput,
     QuerySort,
     QuerySource,
@@ -334,3 +335,203 @@ class TestQueryZettelsUseCase:
         uc = QueryZettelsUseCase(mock_repo, python_eval)
         rows = uc.execute(spec)
         assert rows[0]["upper"] == "ALPHA"
+
+
+class TestLookups:
+    @staticmethod
+    def _kanban_zettels():
+        """Create zettels for the kanban lookup pool."""
+        z1 = _make_zettel(id=100, title="US-1234 Implement feature", type="note")
+        z2 = _make_zettel(id=101, title="US-5678 Fix bug", type="note")
+        z3 = _make_zettel(id=102, title="Standup notes", type="meeting")
+        return [z1, z2, z3]
+
+    def _make_repo(self, primary, kanban):
+        """Mock repo returning different zettels per directory."""
+        repo = MagicMock()
+
+        def find_all(directory, metadata_eq=None):
+            if "kanban" in directory:
+                return kanban
+            return primary
+
+        repo.find_all.side_effect = find_all
+        return repo
+
+    def test_lookup_match_filters_candidates(self):
+        primary = [
+            _make_zettel(id=1, title="Project A", type="project", extra_meta={"us": "US-1234"}),
+            _make_zettel(id=2, title="Project B", type="project", extra_meta={"us": "US-9999"}),
+        ]
+        kanban = self._kanban_zettels()
+        repo = self._make_repo(primary, kanban)
+
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            lookups=[
+                QueryLookup(
+                    name="kanban",
+                    source=QuerySource(directory="/kanban"),
+                    match="us and us in kanban.title",
+                ),
+            ],
+            filter=QueryFilter(expr="len(kanban) > 0"),
+            columns=[
+                QueryColumn(field="title"),
+                QueryColumn(expr="kanban[0].title if kanban else ''", label="kanban_title"),
+            ],
+        )
+        uc = QueryZettelsUseCase(repo, python_eval)
+        rows = uc.execute(spec)
+
+        assert len(rows) == 1
+        assert rows[0]["title"] == "Project A"
+        assert rows[0]["kanban_title"] == "US-1234 Implement feature"
+
+    def test_lookup_no_match_returns_all(self):
+        primary = [_make_zettel(id=1, title="P1", type="project")]
+        kanban = self._kanban_zettels()
+        repo = self._make_repo(primary, kanban)
+
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            lookups=[
+                QueryLookup(
+                    name="kanban",
+                    source=QuerySource(directory="/kanban"),
+                    # no match → cross join
+                ),
+            ],
+            columns=[
+                QueryColumn(field="title"),
+                QueryColumn(expr="len(kanban)", label="count"),
+            ],
+        )
+        uc = QueryZettelsUseCase(repo, python_eval)
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            rows = uc.execute(spec)
+            assert len(w) == 1
+            assert "cross-joining" in str(w[0].message)
+
+        assert len(rows) == 1
+        assert rows[0]["count"] == 3  # all kanban candidates
+
+    def test_lookup_filter_expr_uses_lookup(self):
+        primary = [
+            _make_zettel(id=1, title="Has match", type="project", extra_meta={"us": "US-1234"}),
+            _make_zettel(id=2, title="No match", type="project", extra_meta={"us": "NOPE"}),
+        ]
+        kanban = self._kanban_zettels()
+        repo = self._make_repo(primary, kanban)
+
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            lookups=[
+                QueryLookup(
+                    name="kanban",
+                    source=QuerySource(directory="/kanban"),
+                    match="us and us in kanban.title",
+                ),
+            ],
+            filter=QueryFilter(expr="len(kanban) > 0"),
+            columns=[QueryColumn(field="title")],
+        )
+        uc = QueryZettelsUseCase(repo, python_eval)
+        rows = uc.execute(spec)
+        assert len(rows) == 1
+        assert rows[0]["title"] == "Has match"
+
+    def test_lookup_column_expr(self):
+        primary = [
+            _make_zettel(id=1, title="P1", type="project", extra_meta={"us": "US-5678"}),
+        ]
+        kanban = self._kanban_zettels()
+        repo = self._make_repo(primary, kanban)
+
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            lookups=[
+                QueryLookup(
+                    name="kanban",
+                    source=QuerySource(directory="/kanban"),
+                    match="us and us in kanban.title",
+                ),
+            ],
+            columns=[
+                QueryColumn(field="title"),
+                QueryColumn(expr="kanban[0].title if kanban else ''", label="k_title"),
+            ],
+        )
+        uc = QueryZettelsUseCase(repo, python_eval)
+        rows = uc.execute(spec)
+        assert rows[0]["k_title"] == "US-5678 Fix bug"
+
+    def test_lookup_no_candidates(self):
+        primary = [
+            _make_zettel(id=1, title="P1", type="project", extra_meta={"us": "NOPE"}),
+        ]
+        kanban = self._kanban_zettels()
+        repo = self._make_repo(primary, kanban)
+
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            lookups=[
+                QueryLookup(
+                    name="kanban",
+                    source=QuerySource(directory="/kanban"),
+                    match="us and us in kanban.title",
+                ),
+            ],
+            columns=[
+                QueryColumn(field="title"),
+                QueryColumn(expr="len(kanban)", label="count"),
+            ],
+        )
+        uc = QueryZettelsUseCase(repo, python_eval)
+        rows = uc.execute(spec)
+        assert rows[0]["count"] == 0
+
+    def test_lookup_with_pre_filter(self):
+        primary = [
+            _make_zettel(id=1, title="P1", type="project", extra_meta={"us": "US-1234"}),
+        ]
+        kanban = self._kanban_zettels()
+        repo = self._make_repo(primary, kanban)
+
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            lookups=[
+                QueryLookup(
+                    name="kanban",
+                    source=QuerySource(directory="/kanban"),
+                    filter=QueryFilter(operator="eq", field="type", value="note"),
+                    match="us and us in kanban.title",
+                ),
+            ],
+            columns=[
+                QueryColumn(field="title"),
+                QueryColumn(expr="len(kanban)", label="count"),
+            ],
+        )
+        uc = QueryZettelsUseCase(repo, python_eval)
+        rows = uc.execute(spec)
+        # pre-filter removes meeting (type=meeting), match on title gives 1
+        assert rows[0]["count"] == 1
+
+    def test_lookup_missing_directory_raises(self):
+        repo = MagicMock()
+        repo.find_all.return_value = [_make_zettel(id=1, title="P1", type="project")]
+
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            lookups=[
+                QueryLookup(name="bad"),
+            ],
+            columns=[QueryColumn(field="title")],
+        )
+        uc = QueryZettelsUseCase(repo, python_eval)
+        with pytest.raises(ValueError, match="directory"):
+            uc.execute(spec)

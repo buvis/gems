@@ -57,6 +57,14 @@ class QueryExpand:
 
 
 @dataclass
+class QueryLookup:
+    name: str
+    source: QuerySource = dc_field(default_factory=QuerySource)
+    filter: QueryFilter | None = None
+    match: str | None = None
+
+
+@dataclass
 class DashboardConfig:
     title: str | None = None
     auto_refresh: bool = True
@@ -112,4 +120,5 @@ class QuerySpec:
     dashboard: DashboardConfig | None = None
     schema: dict[str, PropertyDef] = dc_field(default_factory=dict)
     item: ItemViewSpec | None = None
+    lookups: list[QueryLookup] = dc_field(default_factory=list)
     actions: list[ActionSpec] = dc_field(default_factory=list)

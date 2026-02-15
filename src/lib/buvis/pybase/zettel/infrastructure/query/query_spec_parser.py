@@ -15,6 +15,7 @@ from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QueryColumn,
     QueryExpand,
     QueryFilter,
+    QueryLookup,
     QueryOutput,
     QuerySort,
     QuerySource,
@@ -32,6 +33,7 @@ def parse_query_spec(raw: dict[str, Any]) -> QuerySpec:
     dashboard = _parse_dashboard(raw["dashboard"]) if "dashboard" in raw else None
     schema = _parse_schema(raw["schema"]) if "schema" in raw else {}
     item = _parse_item(raw["item"]) if "item" in raw else None
+    lookups = _parse_lookups(raw.get("lookups", []))
     actions = _parse_actions(raw.get("actions", []))
 
     # Auto-inject hidden file_path column when any column is editable
@@ -42,7 +44,7 @@ def parse_query_spec(raw: dict[str, Any]) -> QuerySpec:
     return QuerySpec(
         source=source, filter=filt, expand=expand, sort=sort,
         columns=columns, output=output, dashboard=dashboard,
-        schema=schema, item=item, actions=actions,
+        schema=schema, item=item, lookups=lookups, actions=actions,
     )
 
 
@@ -209,6 +211,22 @@ def _parse_item(raw: dict[str, Any]) -> ItemViewSpec:
         title=raw.get("title", "{title}"),
         subtitle=raw.get("subtitle"),
         sections=sections,
+    )
+
+
+def _parse_lookups(raw: list[dict[str, Any]]) -> list[QueryLookup]:
+    return [_parse_lookup(item) for item in raw]
+
+
+def _parse_lookup(raw: dict[str, Any]) -> QueryLookup:
+    if not isinstance(raw, dict) or "name" not in raw:
+        msg = f"Lookup must be a mapping with 'name' key, got {raw}"
+        raise ValueError(msg)
+    return QueryLookup(
+        name=raw["name"],
+        source=_parse_source(raw.get("source", {})),
+        filter=_parse_filter(raw["filter"]) if "filter" in raw else None,
+        match=raw.get("match"),
     )
 
 

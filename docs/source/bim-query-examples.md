@@ -546,6 +546,130 @@ output:
 '
 ```
 
+## Lookups (Cross-file Joins)
+
+Lookups correlate primary zettels with zettels from other directories. Each
+lookup loads a candidate pool, optionally pre-filters it, then matches
+candidates against each primary zettel using a `match` expression.
+
+After resolution, the lookup name becomes a `list[Zettel]` variable available
+in all expressions (filter, columns, expand).
+
+### Match projects to kanban cards by user story ID
+
+Each project has a `us` metadata field (e.g. `US-1234`). Kanban notes have the
+user story in their title. This query joins them:
+
+```bash
+bim query -q '
+source:
+  directory: ~/bim/zettelkasten
+filter:
+  and:
+    - type: {eq: project}
+    - expr: "len(kanban) > 0"
+lookups:
+  - name: kanban
+    source:
+      directory: ~/bim/zettelkasten/kanban
+    filter:
+      type: {eq: note}
+    match: "us and us in kanban.title"
+columns:
+  - field: title
+  - expr: "kanban[0].title if kanban else \"\""
+    label: kanban_card
+  - expr: "len(kanban)"
+    label: matches
+sort:
+  - field: title
+'
+```
+
+### Lookup without match (cross-join)
+
+When `match` is omitted, every candidate is associated with every primary
+zettel — a full cross-join. A warning is emitted. Useful for counting or
+summary queries:
+
+```bash
+bim query -q '
+source:
+  directory: ~/bim/zettelkasten
+filter:
+  type: {eq: project}
+lookups:
+  - name: all_notes
+    source:
+      directory: ~/bim/inbox
+columns:
+  - field: title
+  - expr: "len(all_notes)"
+    label: inbox_count
+output:
+  limit: 5
+'
+```
+
+### Pre-filter lookup candidates
+
+The lookup `filter` uses the same syntax as the top-level filter and runs
+before matching, reducing the candidate pool:
+
+```bash
+bim query -q '
+source:
+  directory: ~/bim/zettelkasten
+filter:
+  type: {eq: project}
+lookups:
+  - name: tasks
+    source:
+      directory: ~/bim/zettelkasten
+    filter:
+      and:
+        - type: {eq: note}
+        - tags: {contains: task}
+    match: "us and us in tasks.title"
+columns:
+  - field: title
+  - expr: "len(tasks)"
+    label: task_count
+'
+```
+
+### Use lookup results in filter expressions
+
+Filter on whether a lookup produced any matches:
+
+```yaml
+filter:
+  expr: "len(kanban) > 0"
+```
+
+Or combine with field filters:
+
+```yaml
+filter:
+  and:
+    - type: {eq: project}
+    - expr: "len(kanban) > 0"
+```
+
+### Access lookup zettel properties in columns
+
+Lookup results are lists of full Zettel objects. Access any property:
+
+```yaml
+columns:
+  - expr: "kanban[0].title if kanban else ''"
+    label: first_match
+  - expr: "', '.join(k.title for k in kanban)"
+    label: all_matches
+  - expr: "len(kanban)"
+    label: match_count
+```
+
 ## Output Formats
 
 ### Table (default) — Rich formatted table to stdout

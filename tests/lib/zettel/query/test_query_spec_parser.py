@@ -411,6 +411,66 @@ class TestActionsParser:
             parse_query_spec({"actions": [{"name": "oops"}]})
 
 
+class TestLookupParser:
+    def test_lookup_parsing(self):
+        spec = parse_query_spec(
+            {
+                "lookups": [
+                    {
+                        "name": "kanban",
+                        "source": {"directory": "~/kanban"},
+                        "filter": {"type": {"eq": "note"}},
+                        "match": "us and us in kanban.title",
+                    },
+                ],
+            }
+        )
+        assert len(spec.lookups) == 1
+        lk = spec.lookups[0]
+        assert lk.name == "kanban"
+        assert lk.source.directory == "~/kanban"
+        assert lk.filter is not None
+        assert lk.filter.field == "type"
+        assert lk.match == "us and us in kanban.title"
+
+    def test_lookup_minimal(self):
+        spec = parse_query_spec(
+            {
+                "lookups": [
+                    {"name": "refs", "source": {"directory": "/refs"}},
+                ],
+            }
+        )
+        assert len(spec.lookups) == 1
+        lk = spec.lookups[0]
+        assert lk.name == "refs"
+        assert lk.filter is None
+        assert lk.match is None
+
+    def test_lookup_missing_name_raises(self):
+        with pytest.raises(ValueError, match="name"):
+            parse_query_spec(
+                {"lookups": [{"source": {"directory": "/x"}}]}
+            )
+
+    def test_multiple_lookups(self):
+        spec = parse_query_spec(
+            {
+                "lookups": [
+                    {"name": "a", "source": {"directory": "/a"}},
+                    {"name": "b", "source": {"directory": "/b"}},
+                ],
+            }
+        )
+        assert len(spec.lookups) == 2
+        assert spec.lookups[0].name == "a"
+        assert spec.lookups[1].name == "b"
+
+    def test_no_lookups_defaults_empty(self):
+        spec = parse_query_spec({})
+        assert spec.lookups == []
+
+
 class TestParseQueryString:
     def test_inline_yaml(self):
         spec = parse_query_string("{filter: {type: {eq: project}}}")

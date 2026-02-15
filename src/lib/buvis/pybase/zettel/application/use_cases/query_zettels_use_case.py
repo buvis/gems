@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 import re
+import warnings
 from datetime import datetime
 from functools import cached_property, cmp_to_key
 from pathlib import Path
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     )
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
     from buvis.pybase.zettel.domain.value_objects.query_spec import (
+        QueryLookup,
         QuerySpec,
     )
 
@@ -37,19 +39,39 @@ class QueryZettelsUseCase:
         metadata_eq, remaining = _extract_metadata_eq(spec.filter)
         zettels = self.repository.find_all(directory, metadata_eq=metadata_eq)
 
-        if remaining:
-            zettels = [z for z in zettels if _matches(z, remaining, self.evaluator)]
+        pools = (
+            _resolve_lookup_pools(spec.lookups, self.repository, self.evaluator)
+            if spec.lookups
+            else {}
+        )
+
+        # Filter + compute lookup context per zettel
+        pairs: list[tuple[Zettel, dict[str, list[Zettel]]]] = []
+        for z in zettels:
+            lctx = (
+                _compute_lookup_context(z, spec.lookups, pools, self.evaluator)
+                if pools
+                else {}
+            )
+            if remaining and not _matches(z, remaining, self.evaluator, lctx):
+                continue
+            pairs.append((z, lctx))
 
         columns = spec.columns or [QueryColumn(field=f) for f in _DEFAULT_COLUMNS]
 
         if spec.expand:
-            rows = _expand(zettels, spec.expand, columns, self.evaluator)
+            rows = _expand(pairs, spec.expand, columns, self.evaluator)
             if spec.sort:
                 rows = _sort_rows(rows, spec.sort)
         else:
             if spec.sort:
-                zettels = _sort_zettels(zettels, spec.sort)
-            rows = [_project(z, columns, self.evaluator) for z in zettels]
+                # Sort bare zettels, then re-pair via id() map
+                ctx_map = {id(z): lctx for z, lctx in pairs}
+                sorted_z = _sort_zettels([z for z, _ in pairs], spec.sort)
+                pairs = [(z, ctx_map[id(z)]) for z in sorted_z]
+            rows = [
+                _project(z, columns, self.evaluator, lctx) for z, lctx in pairs
+            ]
 
         if spec.output.limit:
             rows = rows[: spec.output.limit]
@@ -99,16 +121,23 @@ def _get_field(zettel: Zettel, name: str) -> Any:
     return None
 
 
-def _matches(zettel: Zettel, f: QueryFilter, evaluator: ExpressionEvaluator) -> bool:
+def _matches(
+    zettel: Zettel,
+    f: QueryFilter,
+    evaluator: ExpressionEvaluator,
+    lookup_context: dict[str, Any] | None = None,
+) -> bool:
     if f.combinator == "and":
-        return all(_matches(zettel, c, evaluator) for c in f.children)
+        return all(_matches(zettel, c, evaluator, lookup_context) for c in f.children)
     if f.combinator == "or":
-        return any(_matches(zettel, c, evaluator) for c in f.children)
+        return any(_matches(zettel, c, evaluator, lookup_context) for c in f.children)
     if f.combinator == "not":
-        return not _matches(zettel, f.children[0], evaluator)
+        return not _matches(zettel, f.children[0], evaluator, lookup_context)
 
     if f.expr is not None:
         variables = _zettel_variables(zettel)
+        if lookup_context:
+            variables.update(lookup_context)
         return bool(evaluator(f.expr, variables))
 
     assert f.field is not None
@@ -195,16 +224,16 @@ def _sort_rows(rows: list[dict[str, Any]], sort_fields: list[Any]) -> list[dict[
 
 
 def _expand(
-    zettels: list[Zettel],
+    pairs: list[tuple[Zettel, dict[str, Any]]],
     expand: Any,
     columns: list[QueryColumn],
     evaluator: ExpressionEvaluator,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    for z in zettels:
+    for z, lctx in pairs:
         items = _get_field(z, expand.field) or []
         for item in items:
-            extra = {expand.as_: item}
+            extra = {**lctx, expand.as_: item}
             if expand.filter:
                 variables = {**_zettel_variables(z), **extra}
                 if not evaluator(expand.filter, variables):
@@ -248,3 +277,48 @@ def _zettel_variables(zettel: Zettel) -> dict[str, Any]:
             if isinstance(desc, (property, cached_property)) and not attr.startswith("_"):
                 variables.setdefault(attr, getattr(zettel, attr, None))
     return variables
+
+
+def _resolve_lookup_pools(
+    lookups: list[QueryLookup],
+    repository: ZettelReader,
+    evaluator: ExpressionEvaluator,
+) -> dict[str, list[Zettel]]:
+    pools: dict[str, list[Zettel]] = {}
+    for lookup in lookups:
+        if lookup.source.directory is None:
+            msg = f"Lookup '{lookup.name}' requires source.directory"
+            raise ValueError(msg)
+        directory = str(Path(lookup.source.directory).expanduser().resolve())
+        metadata_eq, remaining = _extract_metadata_eq(lookup.filter)
+        candidates = repository.find_all(directory, metadata_eq=metadata_eq)
+        if remaining:
+            candidates = [z for z in candidates if _matches(z, remaining, evaluator)]
+        pools[lookup.name] = candidates
+    return pools
+
+
+def _compute_lookup_context(
+    zettel: Zettel,
+    lookups: list[QueryLookup],
+    pools: dict[str, list[Zettel]],
+    evaluator: ExpressionEvaluator,
+) -> dict[str, list[Zettel]]:
+    ctx: dict[str, list[Zettel]] = {}
+    primary_vars = _zettel_variables(zettel)
+    for lookup in lookups:
+        candidates = pools.get(lookup.name, [])
+        if lookup.match is None:
+            warnings.warn(
+                f"Lookup '{lookup.name}' has no match expression; cross-joining all candidates",
+                stacklevel=2,
+            )
+            ctx[lookup.name] = candidates
+        else:
+            matched: list[Zettel] = []
+            for candidate in candidates:
+                variables = {**primary_vars, lookup.name: candidate}
+                if evaluator(lookup.match, variables):
+                    matched.append(candidate)
+            ctx[lookup.name] = matched
+    return ctx
