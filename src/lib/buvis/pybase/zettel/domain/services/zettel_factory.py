@@ -3,6 +3,7 @@ from __future__ import annotations
 from buvis.pybase.zettel.domain.entities import ProjectZettel, Zettel
 from buvis.pybase.formatting import StringOperator
 
+# Add new Zettel subtypes here (key = class name, value = class)
 _ENTITY_CLASSES: dict[str, type[Zettel]] = {"ProjectZettel": ProjectZettel}
 
 
