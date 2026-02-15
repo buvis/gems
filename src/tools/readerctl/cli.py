@@ -32,10 +32,10 @@ def login(ctx: click.Context) -> None:
 
 
 @cli.command("add")
-@click.option("-u", "--url", default="NONE", help="URL to add to Reader")
-@click.option("-f", "--file", default="NONE", help="File with URLs to add to Reader")
+@click.option("-u", "--url", default=None, help="URL to add to Reader")
+@click.option("-f", "--file", default=None, help="File with URLs to add to Reader")
 @click.pass_context
-def add(ctx: click.Context, url: str, file: str) -> None:
+def add(ctx: click.Context, url: str | None, file: str | None) -> None:
     try:
         from readerctl.commands.add.add import CommandAdd
         from readerctl.commands.login.login import CommandLogin
@@ -47,7 +47,7 @@ def add(ctx: click.Context, url: str, file: str) -> None:
     token_file = Path(settings.token_file).expanduser()
     token = None
 
-    if url != "NONE" or file != "NONE":
+    if url is not None or file is not None:
         cmd_login = CommandLogin(token_file=token_file)
         token = cmd_login.execute()
 
@@ -55,10 +55,10 @@ def add(ctx: click.Context, url: str, file: str) -> None:
         console.panic("Not logged in. Run 'readerctl login' first.")
         return
 
-    if url != "NONE":
+    if url is not None:
         cmd = CommandAdd(token=token)
         cmd.execute(url)
-    elif file != "NONE":
+    elif file is not None:
         if Path(file).is_file():
             cmd = CommandAdd(token=token)
             with Path(file).open() as f:
