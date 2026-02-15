@@ -103,6 +103,16 @@ def cli(ctx: click.Context) -> None:
     ...
 ```
 
+**Lazy imports in CLI handlers**: import command classes inside handler functions, not at module level. This avoids pulling in optional/heavy dependencies before the user picks a subcommand:
+
+```python
+@cli.command("create")
+@click.pass_context
+def create(ctx):
+    from bim.commands.create_note.create_note import CommandCreateNote
+    ...
+```
+
 ## Error Handling
 
 - Fatal errors (cannot continue): use `console.panic(msg)` — prints formatted message + exits

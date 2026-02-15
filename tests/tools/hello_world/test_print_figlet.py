@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from hello_world.commands import CommandPrintFiglet
+from hello_world.commands.print_figlet.print_figlet import CommandPrintFiglet
 
 
 class TestCommandPrintFiglet:

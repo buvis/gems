@@ -4,7 +4,6 @@ import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
 
-from hello_world.commands import CommandDiagnostics, CommandListFonts, CommandPrintFiglet
 from hello_world.settings import HelloWorldSettings
 
 
@@ -52,6 +51,8 @@ def cli(
     settings = get_settings(ctx, HelloWorldSettings)
 
     if diag:
+        from hello_world.commands.diagnostics.diagnostics import CommandDiagnostics
+
         CommandDiagnostics().execute()
         return
 
@@ -64,8 +65,12 @@ def cli(
         return
 
     if list_fonts:
+        from hello_world.commands.list_fonts.list_fonts import CommandListFonts
+
         CommandListFonts().execute()
         return
+
+    from hello_world.commands.print_figlet.print_figlet import CommandPrintFiglet
 
     CommandPrintFiglet(
         font=font,
