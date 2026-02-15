@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import click
 from buvis.pybase.configuration import buvis_options, get_settings
 
