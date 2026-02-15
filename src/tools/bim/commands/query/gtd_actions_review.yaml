@@ -1,0 +1,47 @@
+filter:
+  and:
+    - type: {eq: project}
+    - completed: {eq: false}
+
+expand:
+  field: tasks
+  as: task
+  filter: "task.status == 'open' and task.gtd_list is not None"
+
+sort:
+  - field: gtd_list
+    order: asc
+  - field: effective_date
+    order: asc
+
+columns:
+  - field: title
+  - expr: "task.action or ''"
+    label: action
+  - expr: "task.gtd_list"
+    label: gtd_list
+  - expr: "task.priority"
+    label: priority
+  - expr: "str(task.due_date) if task.due_date else ''"
+    label: due_date
+  - expr: "str(task.start_date) if task.start_date else ''"
+    label: start_date
+  - expr: |
+      import re
+      m = re.search(r'\[\[contact/([^\]]+)\]\]', task.action or '')
+      result = m.group(1) if m else ''
+    label: contact
+  - expr: "task.due_date or task.start_date"
+    label: effective_date
+  - field: file_path
+
+dashboard:
+  title: GTD Actions Review
+
+actions:
+  - name: open
+    label: Open
+    handler: open
+  - name: format
+    label: Format
+    handler: format

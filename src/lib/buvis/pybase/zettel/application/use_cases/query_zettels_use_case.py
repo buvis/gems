@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import re
 from datetime import datetime
 from functools import cached_property, cmp_to_key
@@ -52,6 +53,9 @@ class QueryZettelsUseCase:
 
         if spec.output.limit:
             rows = rows[: spec.output.limit]
+
+        if spec.output.sample and len(rows) > spec.output.sample:
+            rows = random.sample(rows, spec.output.sample)
 
         return rows
 

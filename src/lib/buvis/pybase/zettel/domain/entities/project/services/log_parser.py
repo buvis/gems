@@ -62,14 +62,23 @@ def _parse_date_emoji(text: str, emoji: str) -> date | None:
     return None
 
 
-def _parse_gtd(text: str) -> str | None:
-    for tag, name in _GTD_MAP.items():
-        if tag in text:
-            return name
-    m = re.search(r"#gtd/\S+", text)
-    if m:
-        return "now"
-    return None
+def _parse_gtd(text: str) -> tuple[str | None, list[str]]:
+    warnings: list[str] = []
+    found_tags = [tag for tag in _GTD_MAP if tag in text]
+    unknown = [m.group() for m in re.finditer(r"#gtd/\S+", text) if m.group() not in _GTD_MAP]
+
+    all_tags = found_tags + unknown
+    if len(all_tags) > 1:
+        warnings.append("multi_gtd")
+
+    if unknown:
+        warnings.append("unknown_gtd")
+
+    if found_tags:
+        return _GTD_MAP[found_tags[0]], warnings
+    if unknown:
+        return "now", warnings
+    return None, warnings
 
 
 def _strip_metadata(text: str) -> str:
@@ -116,7 +125,7 @@ def parse_log(raw: str) -> list[LogEntry]:
 
         status = _parse_status(checkbox)
         state, action = _parse_state_action(rest, status)
-        gtd_list = _parse_gtd(rest)
+        gtd_list, warnings = _parse_gtd(rest)
         priority = _parse_priority(rest)
         recurrence = _parse_recurrence(rest)
         due_date = _parse_date_emoji(rest, "\U0001f4c5")
@@ -127,6 +136,11 @@ def parse_log(raw: str) -> list[LogEntry]:
 
         if completed_date or cancelled_date:
             gtd_list = "completed"
+
+        if status == "open" and not due_date and not start_date and not reminder_date:
+            warnings.append("open_no_dates")
+        if status == "done" and not completed_date:
+            warnings.append("done_no_completed")
 
         context: list[str] = []
         i += 1
@@ -149,6 +163,7 @@ def parse_log(raw: str) -> list[LogEntry]:
                 completed_date=completed_date,
                 cancelled_date=cancelled_date,
                 context=context,
+                warnings=warnings,
             ),
         )
 

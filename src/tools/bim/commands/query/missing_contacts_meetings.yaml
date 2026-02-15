@@ -1,0 +1,26 @@
+filter:
+  type: {eq: meeting-minutes}
+
+expand:
+  field: attendees
+  as: attendee
+  filter: "'[[' not in str(attendee)"
+
+sort:
+  - field: date
+    order: desc
+
+columns:
+  - field: title
+  - expr: "str(attendee)"
+    label: attendee
+  - field: date
+  - field: file_path
+
+dashboard:
+  title: "Missing Contacts \u2014 Meetings"
+
+actions:
+  - name: open
+    label: Open
+    handler: open

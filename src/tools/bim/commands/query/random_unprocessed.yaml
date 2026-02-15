@@ -1,0 +1,20 @@
+filter:
+  processed: {eq: false}
+
+output:
+  sample: 3
+
+columns:
+  - field: title
+  - field: type
+  - field: tags
+  - field: date
+  - field: file_path
+
+dashboard:
+  title: Random Unprocessed
+
+actions:
+  - name: open
+    label: Open
+    handler: open

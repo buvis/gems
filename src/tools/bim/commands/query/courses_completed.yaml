@@ -1,0 +1,31 @@
+filter:
+  and:
+    - type: {eq: course}
+    - status: {eq: completed}
+
+sort:
+  - field: title
+    order: asc
+
+columns:
+  - field: title
+  - field: provider
+  - field: tags
+  - field: length
+  - field: status
+
+schema:
+  provider:
+    type: text
+  length:
+    type: text
+  status:
+    type: select
+
+dashboard:
+  title: "Courses \u2014 Completed"
+
+actions:
+  - name: open
+    label: Open
+    handler: open

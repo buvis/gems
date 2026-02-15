@@ -46,6 +46,7 @@ class QueryOutput:
     format: str = "table"  # table | csv | markdown | json | jsonl | html | pdf | tui
     file: str | None = None
     limit: int | None = None
+    sample: int | None = None
 
 
 @dataclass

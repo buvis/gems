@@ -1,0 +1,29 @@
+filter:
+  and:
+    - type: {eq: project}
+    - completed: {eq: false}
+
+expand:
+  field: tasks
+  as: task
+  filter: "len(task.warnings) > 0"
+
+sort:
+  - field: title
+    order: asc
+
+columns:
+  - field: title
+  - expr: "task.action or ''"
+    label: action
+  - expr: "', '.join(task.warnings)"
+    label: warnings
+  - field: file_path
+
+dashboard:
+  title: Task Warnings
+
+actions:
+  - name: open
+    label: Open
+    handler: open

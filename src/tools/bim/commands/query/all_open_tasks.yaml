@@ -1,0 +1,36 @@
+filter:
+  and:
+    - type: {eq: project}
+    - completed: {eq: false}
+
+expand:
+  field: tasks
+  as: task
+  filter: "task.status == 'open'"
+
+sort:
+  - field: effective_date
+    order: asc
+
+columns:
+  - field: title
+  - expr: "task.action or ''"
+    label: action
+  - expr: "str(task.due_date) if task.due_date else ''"
+    label: due_date
+  - expr: "str(task.start_date) if task.start_date else ''"
+    label: start_date
+  - expr: "task.due_date or task.start_date"
+    label: effective_date
+  - field: file_path
+
+dashboard:
+  title: All Open Tasks
+
+actions:
+  - name: open
+    label: Open
+    handler: open
+  - name: format
+    label: Format
+    handler: format

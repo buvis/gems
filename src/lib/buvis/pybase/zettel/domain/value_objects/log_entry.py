@@ -19,3 +19,4 @@ class LogEntry:
     completed_date: date | None = None
     cancelled_date: date | None = None
     context: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)

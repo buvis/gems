@@ -1,0 +1,45 @@
+filter:
+  and:
+    - type: {eq: project}
+    - completed: {eq: false}
+    - expr: |
+        result = any(
+            t.status == 'open' and t.gtd_list == 'wait'
+            for t in (tasks or [])
+        )
+
+expand:
+  field: tasks
+  as: task
+  filter: "task.status == 'open' and task.gtd_list == 'wait'"
+
+sort:
+  - field: effective_date
+    order: asc
+
+columns:
+  - field: title
+  - expr: "task.action or ''"
+    label: action
+  - expr: "task.priority"
+    label: priority
+  - expr: "str(task.due_date) if task.due_date else ''"
+    label: due_date
+  - expr: "str(task.start_date) if task.start_date else ''"
+    label: start_date
+  - expr: "str(task.reminder_date) if task.reminder_date else ''"
+    label: reminder_date
+  - expr: "task.due_date or task.start_date or task.reminder_date"
+    label: effective_date
+  - field: file_path
+
+dashboard:
+  title: "Daily \u2014 Wait"
+
+actions:
+  - name: open
+    label: Open
+    handler: open
+  - name: format
+    label: Format
+    handler: format

@@ -1,0 +1,21 @@
+filter:
+  and:
+    - type: {eq: project}
+    - completed: {eq: false}
+    - expr: |
+        result = (
+            not any(t.status == 'open' for t in (tasks or []))
+            or all(t.gtd_list is None for t in (tasks or []) if t.status == 'open')
+        )
+
+columns:
+  - field: title
+  - field: file_path
+
+dashboard:
+  title: Projects Without GTD Actions
+
+actions:
+  - name: open
+    label: Open
+    handler: open

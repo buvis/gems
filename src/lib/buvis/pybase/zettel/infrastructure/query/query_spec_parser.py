@@ -160,6 +160,7 @@ def _parse_output(raw: dict[str, Any]) -> QueryOutput:
         format=raw.get("format", "table"),
         file=raw.get("file"),
         limit=raw.get("limit"),
+        sample=raw.get("sample"),
     )
 
 

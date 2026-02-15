@@ -1,0 +1,37 @@
+filter:
+  and:
+    - type: {eq: project}
+    - completed: {eq: false}
+
+expand:
+  field: tasks
+  as: task
+  filter: |
+    import re
+    action = task.action or ''
+    result = (
+        task.status == 'open'
+        and task.gtd_list == 'wait'
+        and ' will ' in action
+        and not re.search(r'\[\[', action.split(' will ')[0])
+    )
+
+sort:
+  - field: title
+    order: asc
+
+columns:
+  - field: title
+  - expr: "(task.action or '').split(' will ')[0].strip() if ' will ' in (task.action or '') else ''"
+    label: contact_name
+  - expr: "task.action or ''"
+    label: action
+  - field: file_path
+
+dashboard:
+  title: "Missing Contacts \u2014 Projects"
+
+actions:
+  - name: open
+    label: Open
+    handler: open
