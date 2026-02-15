@@ -65,6 +65,16 @@ class ZettelWriter(ABC):
         pass
 
     @abstractmethod
+    def delete(self, zettel: Zettel) -> None:
+        """
+        Delete a :class:`Zettel` entity from the repository.
+
+        :param zettel: The Zettel entity to delete.
+        :type zettel: :class:`Zettel`
+        """
+        pass
+
+    @abstractmethod
     def find_by_id(self, zettel_id: str) -> Zettel:
         """
         Retrieve a :class:`Zettel` entity by its ID.

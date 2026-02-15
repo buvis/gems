@@ -44,6 +44,27 @@ class TestSave:
             repository.save(zettel)
 
 
+class TestDelete:
+    def test_delete_removes_file(self, repository, tmp_path) -> None:
+        file_path = tmp_path / "zettel.md"
+        file_path.write_text("content")
+        zettel_data = ZettelData(file_path=str(file_path))
+        zettel = MagicMock(spec=Zettel)
+        zettel.get_data.return_value = zettel_data
+
+        repository.delete(zettel)
+
+        assert not file_path.exists()
+
+    def test_delete_raises_without_file_path(self, repository) -> None:
+        zettel_data = ZettelData()
+        zettel = MagicMock(spec=Zettel)
+        zettel.get_data.return_value = zettel_data
+
+        with pytest.raises(ValueError):
+            repository.delete(zettel)
+
+
 class TestFindById:
     def test_find_by_id_delegates_to_find_by_location(
         self,

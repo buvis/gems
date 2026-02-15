@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from buvis.pybase.adapters import console
+from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
+from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 from bim.dependencies import get_repo
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
 
 
 def archive_single(path: Path, archive_dir: Path, *, quiet: bool = False) -> str:
@@ -13,15 +14,18 @@ def archive_single(path: Path, archive_dir: Path, *, quiet: bool = False) -> str
     zettel = repo.find_by_location(str(path))
     data = zettel.get_data()
 
-    data.metadata["processed"] = True
+    changes: dict[str, object] = {"processed": True}
     if data.metadata.get("type") == "project":
-        data.metadata["completed"] = True
+        changes["completed"] = True
 
     archive_dir.mkdir(parents=True, exist_ok=True)
     dest = archive_dir / path.name
-    formatted = MarkdownZettelFormatter.format(data)
-    dest.write_text(formatted, encoding="utf-8")
-    path.unlink()
+    source = data.file_path
+    data.file_path = str(dest)
+
+    UpdateZettelUseCase(repo).execute(zettel, changes)
+    data.file_path = source
+    DeleteZettelUseCase(repo).execute(zettel)
     msg = f"Archived {path.name}"
     if not quiet:
         console.success(msg)
@@ -34,14 +38,17 @@ def unarchive_single(path: Path, zettelkasten_dir: Path) -> str:
     zettel = repo.find_by_location(str(path))
     data = zettel.get_data()
 
-    data.metadata["processed"] = False
+    changes: dict[str, object] = {"processed": False}
     if data.metadata.get("type") == "project":
-        data.metadata["completed"] = False
+        changes["completed"] = False
 
     dest = zettelkasten_dir / path.name
-    formatted = MarkdownZettelFormatter.format(data)
-    dest.write_text(formatted, encoding="utf-8")
-    path.unlink()
+    source = data.file_path
+    data.file_path = str(dest)
+
+    UpdateZettelUseCase(repo).execute(zettel, changes)
+    data.file_path = source
+    DeleteZettelUseCase(repo).execute(zettel)
     msg = f"Unarchived {path.name}"
     console.success(msg)
     return msg

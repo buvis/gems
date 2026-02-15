@@ -4,7 +4,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
+from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
+from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import get_repo
@@ -28,22 +29,10 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: Any) -> 
     fp = Path(file_path)
     repo = get_repo()
     zettel = repo.find_by_location(str(fp))
-    data = zettel.get_data()
 
     target = args.get("target", "metadata")
-    field = args["field"]
-    value = args["value"]
-
-    if target == "section":
-        from bim.commands.shared.sections import replace_section
-        replace_section(data, field, value)
-    elif target == "reference":
-        data.reference[field] = value
-    else:
-        data.metadata[field] = value
-
-    formatted = MarkdownZettelFormatter.format(data)
-    fp.write_text(formatted, encoding="utf-8")
+    changes = {args["field"]: args["value"]}
+    UpdateZettelUseCase(repo).execute(zettel, changes, target)
     return {"status": "ok"}
 
 
@@ -97,9 +86,10 @@ async def handle_format(file_path: str, args: dict[str, Any], app_state: Any) ->
 
 
 async def handle_delete(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
-    from bim.commands.delete_note.delete_note import delete_single
-
-    delete_single(Path(file_path), quiet=True)
+    fp = Path(file_path)
+    repo = get_repo()
+    zettel = repo.find_by_location(str(fp))
+    DeleteZettelUseCase(repo).execute(zettel)
     return {"status": "ok"}
 
 

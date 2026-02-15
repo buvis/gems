@@ -3,11 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from buvis.pybase.adapters import console
+from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
+from bim.dependencies import get_repo
 
 
 def delete_single(path: Path, *, quiet: bool = False) -> str:
     """Permanently delete one zettel file."""
-    path.unlink()
+    repo = get_repo()
+    zettel = repo.find_by_location(str(path))
+    DeleteZettelUseCase(repo).execute(zettel)
     msg = f"Deleted {path.name}"
     if not quiet:
         console.success(msg)

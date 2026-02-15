@@ -68,6 +68,12 @@ class MarkdownZettelRepository(ZettelRepository):
         formatted = MarkdownZettelFormatter.format(data)
         Path(data.file_path).write_text(formatted, encoding="utf-8")
 
+    def delete(self, zettel: Zettel) -> None:
+        data = zettel.get_data()
+        if not data.file_path:
+            raise ValueError("Cannot delete zettel without file_path")
+        Path(data.file_path).unlink()
+
     def find_by_id(self, zettel_id: str) -> Zettel:
         if self.zettelkasten_path is None:
             raise ValueError("zettelkasten_path required for find_by_id")
