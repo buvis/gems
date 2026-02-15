@@ -7,6 +7,7 @@ import json
 from typing import Any
 
 from rich.console import Console
+from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
 
@@ -81,6 +82,23 @@ def format_html(rows: list[dict[str, Any]], columns: list[str]) -> str:
 {body}</tbody></table>
 </body></html>
 """
+
+
+def format_kanban(rows: list[dict[str, Any]], columns: list[str], group_by: str) -> None:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        key = str(row.get(group_by) or "Ungrouped") or "Ungrouped"
+        groups.setdefault(key, []).append(row)
+
+    show_cols = [c for c in columns if c not in ("file_path", group_by)]
+    con = Console()
+    for group_name, group_rows in groups.items():
+        lines = []
+        for row in group_rows:
+            parts = [str(row.get(c, "")) for c in show_cols if row.get(c)]
+            lines.append(f"  \u2022 {' | '.join(parts)}")
+        con.print(Panel("\n".join(lines) or "  (empty)", title=f"[bold]{group_name}[/bold] ({len(group_rows)})", expand=True))
+    con.print("[dim]Tip: add --tui for interactive kanban[/dim]")
 
 
 def format_pdf(rows: list[dict[str, Any]], columns: list[str]) -> bytes:

@@ -47,6 +47,14 @@ export interface ActionSpec {
 	confirm: string | null;
 }
 
+export interface OutputSpec {
+	format: string;
+	group_by: string | null;
+	limit: number | null;
+	sample: number | null;
+	file: string | null;
+}
+
 export interface ExecResult {
 	rows: Record<string, unknown>[];
 	columns: Column[];
@@ -55,6 +63,7 @@ export interface ExecResult {
 	schema: Record<string, PropertyDef>;
 	item: ItemViewSpec | null;
 	actions: ActionSpec[];
+	output: OutputSpec | null;
 }
 
 export interface Column {

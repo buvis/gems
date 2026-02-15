@@ -7,6 +7,7 @@ from buvis.pybase.zettel.infrastructure.query.output_formatter import (
     format_html,
     format_json,
     format_jsonl,
+    format_kanban,
     format_markdown,
 )
 
@@ -121,6 +122,30 @@ class TestFormatHtml:
         result = format_html(rows, ["val"])
         assert "<script>" not in result
         assert "&lt;script&gt;" in result
+
+
+class TestFormatKanban:
+    def test_groups_by_field(self, capsys):
+        rows = [
+            {"title": "Task A", "status": "todo"},
+            {"title": "Task B", "status": "done"},
+            {"title": "Task C", "status": "todo"},
+        ]
+        format_kanban(rows, ["title", "status"], "status")
+        out = capsys.readouterr().out
+        assert "todo" in out
+        assert "done" in out
+        assert "Task A" in out
+        assert "Task B" in out
+
+    def test_ungrouped(self, capsys):
+        rows = [
+            {"title": "No Group", "status": None},
+            {"title": "Empty", "status": ""},
+        ]
+        format_kanban(rows, ["title", "status"], "status")
+        out = capsys.readouterr().out
+        assert "Ungrouped" in out
 
 
 class TestFormatPdf:

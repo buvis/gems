@@ -269,6 +269,7 @@ class TestQueryCommand:
                 file=str(query_file),
                 query=None,
                 edit=False,
+                tui=False,
             )
             instance.execute.assert_called_once_with()
 
@@ -297,5 +298,6 @@ class TestQueryCommand:
                 file=None,
                 query="sort: title",
                 edit=False,
+                tui=False,
             )
             instance.execute.assert_called_once_with()

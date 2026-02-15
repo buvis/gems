@@ -56,6 +56,7 @@ def _run_query(spec: Any, directory: str) -> dict[str, Any]:
         "schema": resolved_schema,
         "item": item,
         "actions": actions,
+        "output": dataclasses.asdict(spec.output),
     }
 
 
