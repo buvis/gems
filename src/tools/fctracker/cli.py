@@ -20,7 +20,7 @@ def balance(ctx: click.Context) -> None:
     from fctracker.commands.balance.balance import CommandBalance
 
     settings = get_settings(ctx, FctrackerSettings)
-    cmd = CommandBalance(settings)
+    cmd = CommandBalance(settings.foreign_currencies, settings.local_currency)
     cmd.execute()
 
 
@@ -49,7 +49,7 @@ def transactions(ctx: click.Context, account: str = "", currency: str = "", mont
     from fctracker.commands.transactions.transactions import CommandTransactions
 
     settings = get_settings(ctx, FctrackerSettings)
-    cmd = CommandTransactions(settings, account, currency, month)
+    cmd = CommandTransactions(settings.foreign_currencies, settings.local_currency, account, currency, month)
     cmd.execute()
 
 
