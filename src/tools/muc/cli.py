@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import click
@@ -12,12 +14,13 @@ ALERT_DIR_DEPTH = 3
 
 
 @click.group(help="Tools for music collection management")
-def cli() -> None:
+@buvis_options(settings_class=MucSettings)
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     pass
 
 
 @cli.command("limit", help="Limit audio file")
-@buvis_options(settings_class=MucSettings)
 @click.option(
     "-o",
     "--output",
@@ -50,7 +53,6 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
 
 
 @cli.command("tidy", help="Tidy directory")
-@buvis_options(settings_class=MucSettings)
 @click.option("-y", "--yes", is_flag=True, default=False, help="Skip confirmation prompt.")
 @click.argument("directory")
 @click.pass_context

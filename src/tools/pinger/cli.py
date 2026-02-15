@@ -8,12 +8,13 @@ from pinger.settings import PingerSettings
 
 
 @click.group(help="Useful tools around ICMP ping")
-def cli() -> None:
+@buvis_options(settings_class=PingerSettings)
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     pass
 
 
 @cli.command("wait", help="Wait for host to be online")
-@buvis_options(settings_class=PingerSettings)
 @click.option(
     "-t",
     "--timeout",

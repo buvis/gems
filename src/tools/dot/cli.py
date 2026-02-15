@@ -8,14 +8,14 @@ from dot.settings import DotSettings
 
 
 @click.group(help="CLI for bare repo dotfiles")
-def cli() -> None:
+@buvis_options(settings_class=DotSettings)
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     pass
 
 
 @cli.command("status", help="Report status")
-@buvis_options(settings_class=DotSettings)
-@click.pass_context
-def status(_ctx: click.Context) -> None:
+def status() -> None:
     from dot.commands.status.status import CommandStatus
 
     with logging_to_console():
@@ -24,7 +24,6 @@ def status(_ctx: click.Context) -> None:
 
 
 @cli.command("add", help="Add changes")
-@buvis_options(settings_class=DotSettings)
 @click.argument("file_path", required=False)
 @click.pass_context
 def add(ctx: click.Context, file_path: str | None = None) -> None:
