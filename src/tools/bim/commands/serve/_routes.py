@@ -195,7 +195,7 @@ class ActionBody(BaseModel):
 
 
 @router.post("/actions/{action_name}")
-async def exec_action(action_name: str, body: ActionBody, request: Request) -> dict[str, Any]:
+async def exec_action(action_name: str, body: ActionBody, request: Request) -> dict[str, str]:
     handler = ACTION_HANDLERS.get(action_name)
     if not handler:
         raise HTTPException(status_code=404, detail=f"Unknown action: {action_name}")

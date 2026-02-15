@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from collections.abc import Callable, Coroutine
 from typing import Any
 
 from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
@@ -110,7 +111,9 @@ async def handle_import(file_path: str, args: dict[str, Any], app_state: Any) ->
     return {"status": "ok"}
 
 
-ACTION_HANDLERS: dict[str, Any] = {
+ActionHandler = Callable[[str, dict[str, Any], Any], Coroutine[Any, Any, dict[str, str]]]
+
+ACTION_HANDLERS: dict[str, ActionHandler] = {
     "patch": handle_patch,
     "sync_note": handle_sync_note,
     "create_note": handle_create_note,
