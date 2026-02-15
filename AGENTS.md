@@ -76,6 +76,8 @@ Add subdirs only when needed:
 | `domain/` | Business logic beyond simple commands | fctracker |
 | `shared/` | Code reused across commands | zseq |
 
+> `bim/commands/serve/frontend/` contains the WebUI SvelteKit app — the only tool with a frontend subtree.
+
 ## Code Conventions
 
 **Type hints** — modern style, no `Optional`:
