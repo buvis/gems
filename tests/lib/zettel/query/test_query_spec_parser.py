@@ -138,6 +138,18 @@ class TestParseQuerySpec:
         assert spec.output.file == "out.csv"
         assert spec.output.limit == 50
 
+    def test_output_sample_parsing(self):
+        spec = parse_query_spec(
+            {
+                "output": {"sample": 5},
+            }
+        )
+        assert spec.output.sample == 5
+
+    def test_output_sample_default_none(self):
+        spec = parse_query_spec({"output": {}})
+        assert spec.output.sample is None
+
     def test_invalid_operator(self):
         with pytest.raises(ValueError, match="Unknown operator"):
             parse_query_spec({"filter": {"type": {"bogus": "x"}}})

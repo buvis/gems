@@ -202,6 +202,33 @@ class TestQueryZettelsUseCase:
         rows = uc.execute(spec)
         assert len(rows) == 2
 
+    def test_sample_reduces_results(self, mock_repo):
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            output=QueryOutput(sample=2),
+        )
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
+        rows = uc.execute(spec)
+        assert len(rows) == 2
+
+    def test_sample_larger_than_results_returns_all(self, mock_repo):
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            output=QueryOutput(sample=10),
+        )
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
+        rows = uc.execute(spec)
+        assert len(rows) == 4
+
+    def test_sample_after_limit(self, mock_repo):
+        spec = QuerySpec(
+            source=QuerySource(directory="/notes"),
+            output=QueryOutput(limit=3, sample=2),
+        )
+        uc = QueryZettelsUseCase(mock_repo, python_eval)
+        rows = uc.execute(spec)
+        assert len(rows) == 2
+
     def test_custom_columns(self, mock_repo):
         spec = QuerySpec(
             source=QuerySource(directory="/notes"),

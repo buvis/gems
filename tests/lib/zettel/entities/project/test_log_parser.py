@@ -143,3 +143,69 @@ class TestParseLog:
     def test_no_recurrence(self):
         raw = "- [ ] 2026-02-10 13:08 - plain task"
         assert parse_log(raw)[0].recurrence is None
+
+
+class TestLogParserWarnings:
+    def test_no_warnings_by_default(self):
+        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/act/now \U0001f4c5 2026-03-01"
+        assert parse_log(raw)[0].warnings == []
+
+    def test_multi_gtd_warning(self):
+        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/act/now #gtd/wait"
+        e = parse_log(raw)[0]
+        assert "multi_gtd" in e.warnings
+
+    def test_unknown_gtd_warning(self):
+        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/custom/thing"
+        e = parse_log(raw)[0]
+        assert "unknown_gtd" in e.warnings
+        assert e.gtd_list == "now"
+
+    def test_unknown_and_known_gtd_gives_multi_and_unknown(self):
+        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/act/now #gtd/custom/thing"
+        e = parse_log(raw)[0]
+        assert "multi_gtd" in e.warnings
+        assert "unknown_gtd" in e.warnings
+        assert e.gtd_list == "now"
+
+    def test_open_no_dates_warning(self):
+        raw = "- [ ] 2026-02-10 13:08 - task without dates"
+        e = parse_log(raw)[0]
+        assert "open_no_dates" in e.warnings
+
+    def test_open_with_due_date_no_warning(self):
+        raw = "- [ ] 2026-02-10 13:08 - task \U0001f4c5 2026-03-01"
+        e = parse_log(raw)[0]
+        assert "open_no_dates" not in e.warnings
+
+    def test_open_with_start_date_no_warning(self):
+        raw = "- [ ] 2026-02-10 13:08 - task \U0001f6eb 2026-03-01"
+        e = parse_log(raw)[0]
+        assert "open_no_dates" not in e.warnings
+
+    def test_open_with_reminder_date_no_warning(self):
+        raw = "- [ ] 2026-02-10 13:08 - task \u23f3 2026-03-01"
+        e = parse_log(raw)[0]
+        assert "open_no_dates" not in e.warnings
+
+    def test_done_no_completed_warning(self):
+        raw = "- [x] 2026-02-10 13:08 - done task"
+        e = parse_log(raw)[0]
+        assert "done_no_completed" in e.warnings
+
+    def test_done_with_completed_date_no_warning(self):
+        raw = "- [x] 2026-02-10 13:08 - done task \u2705 2026-02-10"
+        e = parse_log(raw)[0]
+        assert "done_no_completed" not in e.warnings
+
+    def test_info_no_open_no_dates_warning(self):
+        raw = "- [i] 2026-02-10 13:08 - info entry"
+        e = parse_log(raw)[0]
+        assert "open_no_dates" not in e.warnings
+
+    def test_multiple_warnings_combined(self):
+        raw = "- [ ] 2026-02-10 13:08 - task | #gtd/act/now #gtd/weird"
+        e = parse_log(raw)[0]
+        assert "multi_gtd" in e.warnings
+        assert "unknown_gtd" in e.warnings
+        assert "open_no_dates" in e.warnings
