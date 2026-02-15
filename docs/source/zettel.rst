@@ -29,6 +29,22 @@ ReadZettelUseCase
    :undoc-members:
    :show-inheritance:
 
+UpdateZettelUseCase
+~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: buvis.pybase.zettel.application.use_cases.update_zettel_use_case.UpdateZettelUseCase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+DeleteZettelUseCase
+~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: buvis.pybase.zettel.application.use_cases.delete_zettel_use_case.DeleteZettelUseCase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Templates
 ---------
 
