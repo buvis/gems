@@ -59,6 +59,14 @@
 <li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.zettel.application.use_cases.read_zettel_use_case.ReadZettelUseCase"><code class="docutils literal notranslate"><span class="pre">ReadZettelUseCase</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#updatezettelusecase">UpdateZettelUseCase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.zettel.application.use_cases.update_zettel_use_case.UpdateZettelUseCase"><code class="docutils literal notranslate"><span class="pre">UpdateZettelUseCase</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#deletezettelusecase">DeleteZettelUseCase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.zettel.application.use_cases.delete_zettel_use_case.DeleteZettelUseCase"><code class="docutils literal notranslate"><span class="pre">DeleteZettelUseCase</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#templates">Templates</a><ul>
@@ -129,22 +137,24 @@ and syncing notes with external systems like Jira.</p>
 <ul>
 <li><p><a class="reference internal" href="#printzettelusecase" id="id2">PrintZettelUseCase</a></p></li>
 <li><p><a class="reference internal" href="#readzettelusecase" id="id3">ReadZettelUseCase</a></p></li>
+<li><p><a class="reference internal" href="#updatezettelusecase" id="id4">UpdateZettelUseCase</a></p></li>
+<li><p><a class="reference internal" href="#deletezettelusecase" id="id5">DeleteZettelUseCase</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#templates" id="id4">Templates</a></p>
+<li><p><a class="reference internal" href="#templates" id="id6">Templates</a></p>
 <ul>
-<li><p><a class="reference internal" href="#writing-a-template" id="id5">Writing a template</a></p></li>
-<li><p><a class="reference internal" href="#yaml-templates" id="id6">YAML templates</a></p></li>
-<li><p><a class="reference internal" href="#template-protocol" id="id7">Template protocol</a></p></li>
-<li><p><a class="reference internal" href="#question-fields" id="id8">Question fields</a></p></li>
-<li><p><a class="reference internal" href="#hook-signature" id="id9">Hook signature</a></p></li>
-<li><p><a class="reference internal" href="#cli-usage" id="id10">CLI usage</a></p></li>
-<li><p><a class="reference internal" href="#createzettelusecase" id="id11">CreateZettelUseCase</a></p></li>
+<li><p><a class="reference internal" href="#writing-a-template" id="id7">Writing a template</a></p></li>
+<li><p><a class="reference internal" href="#yaml-templates" id="id8">YAML templates</a></p></li>
+<li><p><a class="reference internal" href="#template-protocol" id="id9">Template protocol</a></p></li>
+<li><p><a class="reference internal" href="#question-fields" id="id10">Question fields</a></p></li>
+<li><p><a class="reference internal" href="#hook-signature" id="id11">Hook signature</a></p></li>
+<li><p><a class="reference internal" href="#cli-usage" id="id12">CLI usage</a></p></li>
+<li><p><a class="reference internal" href="#createzettelusecase" id="id13">CreateZettelUseCase</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#integrations" id="id12">Integrations</a></p>
+<li><p><a class="reference internal" href="#integrations" id="id14">Integrations</a></p>
 <ul>
-<li><p><a class="reference internal" href="#jira-assemblers" id="id13">Jira Assemblers</a></p></li>
+<li><p><a class="reference internal" href="#jira-assemblers" id="id15">Jira Assemblers</a></p></li>
 </ul>
 </li>
 </ul>
@@ -223,9 +233,37 @@ downcasts it into a zettel, and returns it. It handles potential exceptions duri
 </dd></dl>
 
 </section>
+<section id="updatezettelusecase">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">UpdateZettelUseCase</a><a class="headerlink" href="#updatezettelusecase" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.zettel.application.use_cases.update_zettel_use_case.UpdateZettelUseCase">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.zettel.application.use_cases.update_zettel_use_case.</span></span><span class="sig-name descname"><span class="pre">UpdateZettelUseCase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">writer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ZettelWriter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.zettel.application.use_cases.update_zettel_use_case.UpdateZettelUseCase" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.zettel.application.use_cases.update_zettel_use_case.UpdateZettelUseCase.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zettel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Zettel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">changes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'metadata'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.zettel.application.use_cases.update_zettel_use_case.UpdateZettelUseCase.execute" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="deletezettelusecase">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">DeleteZettelUseCase</a><a class="headerlink" href="#deletezettelusecase" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="buvis.pybase.zettel.application.use_cases.delete_zettel_use_case.DeleteZettelUseCase">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.zettel.application.use_cases.delete_zettel_use_case.</span></span><span class="sig-name descname"><span class="pre">DeleteZettelUseCase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">writer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ZettelWriter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.zettel.application.use_cases.delete_zettel_use_case.DeleteZettelUseCase" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.zettel.application.use_cases.delete_zettel_use_case.DeleteZettelUseCase.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zettel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Zettel</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.zettel.application.use_cases.delete_zettel_use_case.DeleteZettelUseCase.execute" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
 </section>
 <section id="templates">
-<h2><a class="toc-backref" href="#id4" role="doc-backlink">Templates</a><a class="headerlink" href="#templates" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Templates</a><a class="headerlink" href="#templates" title="Link to this heading"></a></h2>
 <p>Templates define how <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">create</span></code> builds new zettels. Each template is a
 Python module in <code class="docutils literal notranslate"><span class="pre">src/lib/buvis/pybase/zettel/domain/templates/</span></code>. Drop a
 module there and <code class="docutils literal notranslate"><span class="pre">discover_templates()</span></code> finds it automatically — no
@@ -233,7 +271,7 @@ registration needed.</p>
 <p>Built-in templates: <code class="docutils literal notranslate"><span class="pre">note</span></code> (minimal, no questions) and <code class="docutils literal notranslate"><span class="pre">project</span></code> (asks for
 dev type, creates project dir).</p>
 <section id="writing-a-template">
-<h3><a class="toc-backref" href="#id5" role="doc-backlink">Writing a template</a><a class="headerlink" href="#writing-a-template" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Writing a template</a><a class="headerlink" href="#writing-a-template" title="Link to this heading"></a></h3>
 <p>A template is a class with three attributes/methods and a <code class="docutils literal notranslate"><span class="pre">name</span></code> class
 variable:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># src/lib/buvis/pybase/zettel/domain/templates/meeting.py</span>
@@ -292,7 +330,7 @@ variable:</p>
 works.</p>
 </section>
 <section id="yaml-templates">
-<h3><a class="toc-backref" href="#id6" role="doc-backlink">YAML templates</a><a class="headerlink" href="#yaml-templates" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">YAML templates</a><a class="headerlink" href="#yaml-templates" title="Link to this heading"></a></h3>
 <p>You can also define templates as YAML files without writing Python. Place
 <code class="docutils literal notranslate"><span class="pre">.yaml</span></code> files in your config directory under <code class="docutils literal notranslate"><span class="pre">templates/</span></code>:</p>
 <ul class="simple">
@@ -418,7 +456,7 @@ otherwise base sections are kept</p></li>
 </section>
 </section>
 <section id="template-protocol">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">Template protocol</a><a class="headerlink" href="#template-protocol" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Template protocol</a><a class="headerlink" href="#template-protocol" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 20.0%" />
@@ -453,7 +491,7 @@ hooks.</p></td>
 </table>
 </section>
 <section id="question-fields">
-<h3><a class="toc-backref" href="#id8" role="doc-backlink">Question fields</a><a class="headerlink" href="#question-fields" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Question fields</a><a class="headerlink" href="#question-fields" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 15.0%" />
@@ -493,7 +531,7 @@ mode.</p></td>
 </table>
 </section>
 <section id="hook-signature">
-<h3><a class="toc-backref" href="#id9" role="doc-backlink">Hook signature</a><a class="headerlink" href="#hook-signature" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Hook signature</a><a class="headerlink" href="#hook-signature" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">my_hook</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">ZettelData</span><span class="p">,</span> <span class="n">zettelkasten_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="c1"># data.metadata has the final zettel metadata (id, title, etc.)</span>
     <span class="c1"># zettelkasten_path is the resolved path to the zettelkasten dir</span>
@@ -506,7 +544,7 @@ mode.</p></td>
 </div>
 </section>
 <section id="cli-usage">
-<h3><a class="toc-backref" href="#id10" role="doc-backlink">CLI usage</a><a class="headerlink" href="#cli-usage" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">CLI usage</a><a class="headerlink" href="#cli-usage" title="Link to this heading"></a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># TUI (interactive wizard)</span>
 bim<span class="w"> </span>create
 
@@ -522,7 +560,7 @@ bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </sp
 </div>
 </section>
 <section id="createzettelusecase">
-<h3><a class="toc-backref" href="#id11" role="doc-backlink">CreateZettelUseCase</a><a class="headerlink" href="#createzettelusecase" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">CreateZettelUseCase</a><a class="headerlink" href="#createzettelusecase" title="Link to this heading"></a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="buvis.pybase.zettel.application.use_cases.create_zettel_use_case.CreateZettelUseCase">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.zettel.application.use_cases.create_zettel_use_case.</span></span><span class="sig-name descname"><span class="pre">CreateZettelUseCase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zettelkasten_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">writer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ZettelWriter</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.zettel.application.use_cases.create_zettel_use_case.CreateZettelUseCase" title="Link to this definition"></a></dt>
@@ -537,9 +575,9 @@ bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </sp
 </section>
 </section>
 <section id="integrations">
-<h2><a class="toc-backref" href="#id12" role="doc-backlink">Integrations</a><a class="headerlink" href="#integrations" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id14" role="doc-backlink">Integrations</a><a class="headerlink" href="#integrations" title="Link to this heading"></a></h2>
 <section id="jira-assemblers">
-<h3><a class="toc-backref" href="#id13" role="doc-backlink">Jira Assemblers</a><a class="headerlink" href="#jira-assemblers" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">Jira Assemblers</a><a class="headerlink" href="#jira-assemblers" title="Link to this heading"></a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue.ProjectZettelJiraIssueDTOAssembler">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue.</span></span><span class="sig-name descname"><span class="pre">ProjectZettelJiraIssueDTOAssembler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">defaults</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue.ProjectZettelJiraIssueDTOAssembler" title="Link to this definition"></a></dt>
