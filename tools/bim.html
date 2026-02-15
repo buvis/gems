@@ -1,0 +1,352 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bim &mdash; buvis-gems  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="dot" href="dot.html" />
+    <link rel="prev" title="CLI Tools" href="../tools.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            buvis-gems
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Library:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html#api-reference">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../formatting.html">Formatting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filesystem.html">Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adapters.html">Adapters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../zettel.html">Zettel</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CLI Tools:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tools.html">CLI Tools</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#common-options">Common Options</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../tools.html#extending-tools">Extending Tools</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">bim</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dot.html">dot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fctracker.html">fctracker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hello-world.html">hello-world</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muc.html">muc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="outlookctl.html">outlookctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">buvis-gems</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
+      <li class="breadcrumb-item active">bim</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tools/bim.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bim">
+<span id="tool-bim"></span><h1>bim<a class="headerlink" href="#bim" title="Link to this heading"></a></h1>
+<p>BUVIS InfoMesh — full-featured Zettelkasten manager with query engine, templates,
+Jira sync, and a web dashboard.</p>
+<p><strong>Extra:</strong> <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[bim]</span></code></p>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_zettelkasten</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/bim/zettelkasten/</span></code></p></td>
+<td><p>Root directory for zettels</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path_archive</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/bim/reference/40-archives/</span></code></p></td>
+<td><p>Archive directory</p></td>
+</tr>
+</tbody>
+</table>
+<p>Env vars: <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ZETTELKASTEN</span></code>, <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ARCHIVE</span></code>.</p>
+</section>
+<section id="commands">
+<h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
+<section id="bim-create">
+<h3>bim create<a class="headerlink" href="#bim-create" title="Link to this heading"></a></h3>
+<p>Create a new zettel from a template.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># interactive (prompts for template type, title, tags)</span>
+bim<span class="w"> </span>create
+
+<span class="c1"># specify type and title directly</span>
+bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>project<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;Redesign homepage&quot;</span><span class="w"> </span>--tags<span class="w"> </span><span class="s2">&quot;web,design&quot;</span>
+
+<span class="c1"># list available templates</span>
+bim<span class="w"> </span>create<span class="w"> </span>-l
+
+<span class="c1"># pre-fill template answers</span>
+bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>meeting<span class="w"> </span>-a<span class="w"> </span><span class="s2">&quot;attendees=Alice,Bob&quot;</span><span class="w"> </span>-a<span class="w"> </span><span class="s2">&quot;date=2025-01-15&quot;</span>
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-t,</span> <span class="pre">--type</span> <span class="pre">TEXT</span></code> — template type (note, project, etc.)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--title</span> <span class="pre">TEXT</span></code> — zettel title</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tags</span> <span class="pre">TEXT</span></code> — comma-separated tags</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-a,</span> <span class="pre">--answer</span> <span class="pre">TEXT</span></code> — template answer as <code class="docutils literal notranslate"><span class="pre">key=value</span></code> (repeatable)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-l,</span> <span class="pre">--list</span></code> — list available templates</p></li>
+</ul>
+</section>
+<section id="bim-query">
+<h3>bim query<a class="headerlink" href="#bim-query" title="Link to this heading"></a></h3>
+<p>Query zettels with a YAML filter/sort/output spec.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># inline query: first 5 zettels</span>
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{output: {limit: 5}}&#39;</span>
+
+<span class="c1"># filter by type, pick columns</span>
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">  columns: [{field: title}, {field: tags}],</span>
+<span class="s1">  filter: {field: type, op: eq, value: project},</span>
+<span class="s1">  output: {format: table}</span>
+<span class="s1">}&#39;</span>
+
+<span class="c1"># load saved query from file</span>
+bim<span class="w"> </span>query<span class="w"> </span>-f<span class="w"> </span>my-query
+
+<span class="c1"># list saved queries</span>
+bim<span class="w"> </span>query<span class="w"> </span>-l
+
+<span class="c1"># pick result with fzf, open in nvim</span>
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{filter: {field: type, op: eq, value: note}}&#39;</span><span class="w"> </span>-e
+
+<span class="c1"># interactive TUI</span>
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{output: {limit: 20}}&#39;</span><span class="w"> </span>--tui
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--file</span> <span class="pre">TEXT</span></code> — query name or path to YAML spec</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--query</span> <span class="pre">TEXT</span></code> — inline YAML query string</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-e,</span> <span class="pre">--edit</span></code> — pick result with fzf and open in nvim</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tui</span></code> — render output in interactive TUI</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-l,</span> <span class="pre">--list</span></code> — list available queries</p></li>
+</ul>
+<p>Output formats: <code class="docutils literal notranslate"><span class="pre">table</span></code>, <code class="docutils literal notranslate"><span class="pre">csv</span></code>, <code class="docutils literal notranslate"><span class="pre">markdown</span></code>, <code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">jsonl</span></code>, <code class="docutils literal notranslate"><span class="pre">html</span></code>, <code class="docutils literal notranslate"><span class="pre">pdf</span></code>, <code class="docutils literal notranslate"><span class="pre">kanban</span></code>.</p>
+<p>See <a class="reference external" href="https://github.com/buvis/gems/blob/master/docs/source/bim-query-examples.md">bim-query-examples.md</a>
+for a comprehensive reference with filter operators, calculated columns, lookups, and more.</p>
+</section>
+<section id="bim-import">
+<h3>bim import<a class="headerlink" href="#bim-import" title="Link to this heading"></a></h3>
+<p>Import a markdown file into the zettelkasten.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>import<span class="w"> </span>~/Downloads/meeting-notes.md
+bim<span class="w"> </span>import<span class="w"> </span>~/Downloads/draft.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">&quot;imported,review&quot;</span><span class="w"> </span>--force<span class="w"> </span>--remove-original
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--tags</span> <span class="pre">TEXT</span></code> — comma-separated tags</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code> — overwrite if target exists</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--remove-original</span></code> — delete source file after import</p></li>
+</ul>
+</section>
+<section id="bim-edit">
+<h3>bim edit<a class="headerlink" href="#bim-edit" title="Link to this heading"></a></h3>
+<p>Modify zettel metadata in-place.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;Better title&quot;</span>
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">&quot;updated,important&quot;</span>
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--processed
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;priority=high&quot;</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;reviewer=alice&quot;</span>
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--title</span> <span class="pre">TEXT</span></code> — new title</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tags</span> <span class="pre">TEXT</span></code> — comma-separated tags</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--type</span> <span class="pre">TEXT</span></code> — note type</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--processed</span> <span class="pre">/</span> <span class="pre">--no-processed</span></code> — processed flag</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--publish</span> <span class="pre">/</span> <span class="pre">--no-publish</span></code> — publish flag</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s,</span> <span class="pre">--set</span> <span class="pre">TEXT</span></code> — arbitrary <code class="docutils literal notranslate"><span class="pre">key=value</span></code> metadata (repeatable)</p></li>
+</ul>
+</section>
+<section id="bim-format">
+<h3>bim format<a class="headerlink" href="#bim-format" title="Link to this heading"></a></h3>
+<p>Format a note’s metadata and content.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md
+bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-d<span class="w">    </span><span class="c1"># show diff</span>
+bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-h<span class="w">    </span><span class="c1"># highlight output</span>
+bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-o<span class="w"> </span>formatted.md
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-h,</span> <span class="pre">--highlight</span></code> — highlight formatted content</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-d,</span> <span class="pre">--diff</span></code> — show side-by-side diff if content changed</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">FILE</span></code> — write to file instead of in-place</p></li>
+</ul>
+</section>
+<section id="bim-show">
+<h3>bim show<a class="headerlink" href="#bim-show" title="Link to this heading"></a></h3>
+<p>Pretty-print a zettel.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>show<span class="w"> </span>~/bim/zettelkasten/my-note.md
+</pre></div>
+</div>
+</section>
+<section id="bim-archive">
+<h3>bim archive<a class="headerlink" href="#bim-archive" title="Link to this heading"></a></h3>
+<p>Mark zettel(s) as processed and move to archive directory.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>archive<span class="w"> </span>~/bim/zettelkasten/done-note.md
+bim<span class="w"> </span>archive<span class="w"> </span>~/bim/zettelkasten/a.md<span class="w"> </span>~/bim/zettelkasten/b.md
+bim<span class="w"> </span>archive<span class="w"> </span>--undo<span class="w"> </span>~/bim/reference/40-archives/done-note.md
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--undo</span></code> — unarchive (move back to zettelkasten)</p></li>
+</ul>
+</section>
+<section id="bim-delete">
+<h3>bim delete<a class="headerlink" href="#bim-delete" title="Link to this heading"></a></h3>
+<p>Permanently delete zettel(s).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>delete<span class="w"> </span>~/bim/zettelkasten/obsolete.md
+bim<span class="w"> </span>delete<span class="w"> </span>--force<span class="w"> </span>~/bim/zettelkasten/a.md<span class="w"> </span>~/bim/zettelkasten/b.md
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code> — skip confirmation prompt</p></li>
+</ul>
+</section>
+<section id="bim-sync">
+<h3>bim sync<a class="headerlink" href="#bim-sync" title="Link to this heading"></a></h3>
+<p>Synchronize a note with an external system (currently Jira).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>sync<span class="w"> </span>~/bim/zettelkasten/project-note.md<span class="w"> </span>jira
+</pre></div>
+</div>
+<p>Arguments: <code class="docutils literal notranslate"><span class="pre">PATH_TO_NOTE</span></code>, <code class="docutils literal notranslate"><span class="pre">TARGET_SYSTEM</span></code>.</p>
+</section>
+<section id="bim-parse-tags">
+<h3>bim parse_tags<a class="headerlink" href="#bim-parse-tags" title="Link to this heading"></a></h3>
+<p>Extract unique tags from an Obsidian Metadata Extractor <code class="docutils literal notranslate"><span class="pre">tags.json</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>parse_tags<span class="w"> </span>~/bim/tags.json
+bim<span class="w"> </span>parse_tags<span class="w"> </span>~/bim/tags.json<span class="w"> </span>-o<span class="w"> </span>tags.txt
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">FILE</span></code> — write output to file</p></li>
+</ul>
+</section>
+<section id="bim-serve">
+<h3>bim serve<a class="headerlink" href="#bim-serve" title="Link to this heading"></a></h3>
+<p>Start the web dashboard (SvelteKit frontend).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>serve
+bim<span class="w"> </span>serve<span class="w"> </span>-p<span class="w"> </span><span class="m">3000</span><span class="w"> </span>-H<span class="w"> </span><span class="m">0</span>.0.0.0
+bim<span class="w"> </span>serve<span class="w"> </span>--no-browser
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--port</span> <span class="pre">INTEGER</span></code> — port (default: 8000)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-H,</span> <span class="pre">--host</span> <span class="pre">TEXT</span></code> — host (default: 127.0.0.1)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-browser</span></code> — don’t auto-open browser</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../tools.html" class="btn btn-neutral float-left" title="CLI Tools" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dot.html" class="btn btn-neutral float-right" title="dot" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tomáš Bouška.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

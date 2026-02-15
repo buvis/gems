@@ -19,6 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="bim" href="tools/bim.html" />
     <link rel="prev" title="Zettel" href="zettel.html" /> 
 </head>
 
@@ -54,7 +55,20 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">CLI Tools</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#tools">Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#common-options">Common Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#extending-tools">Extending Tools</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/bim.html">bim</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/dot.html">dot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/fctracker.html">fctracker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/hello-world.html">hello-world</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/muc.html">muc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/outlookctl.html">outlookctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/pinger.html">pinger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/readerctl.html">readerctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/zseq.html">zseq</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -97,8 +111,8 @@ uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </
 </div>
 <p>Available extras: <code class="docutils literal notranslate"><span class="pre">bim</span></code>, <code class="docutils literal notranslate"><span class="pre">hello-world</span></code>, <code class="docutils literal notranslate"><span class="pre">muc</span></code>, <code class="docutils literal notranslate"><span class="pre">pinger</span></code>, <code class="docutils literal notranslate"><span class="pre">readerctl</span></code>, <code class="docutils literal notranslate"><span class="pre">ml</span></code>, <code class="docutils literal notranslate"><span class="pre">all</span></code>.</p>
 </section>
-<section id="tools">
-<h2>Tools<a class="headerlink" href="#tools" title="Link to this heading"></a></h2>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 15.0%" />
@@ -112,44 +126,59 @@ uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bim</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="tools/bim.html"><span class="doc">bim</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bim</span></code></p></td>
 <td><p>BUVIS InfoMesh — Zettelkasten management with Jira integration</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dot</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="tools/dot.html"><span class="doc">dot</span></a></p></td>
 <td></td>
 <td><p>Dotfiles manager</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fctracker</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="tools/fctracker.html"><span class="doc">fctracker</span></a></p></td>
 <td></td>
 <td><p>Foreign currency account tracker</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hello-world</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="tools/hello-world.html"><span class="doc">hello-world</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">hello-world</span></code></p></td>
 <td><p>Sample script template</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">muc</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">muc</span></code></p></td>
-<td><p>Music collection tools (tagging, tidying)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="tools/muc.html"><span class="doc">muc</span></a></p></td>
+<td></td>
+<td><p>Music collection tools (transcoding, tidying)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">outlookctl</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="tools/outlookctl.html"><span class="doc">outlookctl</span></a></p></td>
 <td></td>
 <td><p>Outlook calendar CLI (Windows)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pinger</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="tools/pinger.html"><span class="doc">pinger</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">pinger</span></code></p></td>
 <td><p>ICMP ping utilities</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">readerctl</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="tools/readerctl.html"><span class="doc">readerctl</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">readerctl</span></code></p></td>
 <td><p>Readwise Reader CLI</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">zseq</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="tools/zseq.html"><span class="doc">zseq</span></a></p></td>
 <td></td>
 <td><p>Zettelsequence file naming utilities</p></td>
 </tr>
 </tbody>
 </table>
+</section>
+<section id="common-options">
+<h2>Common Options<a class="headerlink" href="#common-options" title="Link to this heading"></a></h2>
+<p>Every tool inherits these options from the shared <code class="docutils literal notranslate"><span class="pre">buvis_options</span></code> decorator:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>--config FILE                   YAML config file path
+--config-create FILE            Generate YAML config template to FILE
+--config-dir DIRECTORY          Configuration directory
+--log-level [debug|info|warning|error]
+--debug / --no-debug            Enable debug mode
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a> for how settings are resolved (CLI &gt; env &gt; YAML &gt; defaults).</p>
+</section>
+<section id="extending-tools">
+<h2>Extending Tools<a class="headerlink" href="#extending-tools" title="Link to this heading"></a></h2>
 <p>Each tool follows the same Click-based pattern:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">buvis_options</span><span class="p">,</span> <span class="n">get_settings</span>
@@ -163,6 +192,9 @@ uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </
     <span class="n">command</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>See <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a> for how to create custom settings classes and YAML config files.</p>
+<div class="toctree-wrapper compound">
+</div>
 </section>
 </section>
 
@@ -171,6 +203,7 @@ uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="zettel.html" class="btn btn-neutral float-left" title="Zettel" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tools/bim.html" class="btn btn-neutral float-right" title="bim" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

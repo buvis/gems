@@ -16,8 +16,8 @@ Tools that need extra packages will tell you what to install if the dep is missi
 
 Available extras: ``bim``, ``hello-world``, ``muc``, ``pinger``, ``readerctl``, ``ml``, ``all``.
 
-Tools
------
+Overview
+--------
 
 .. list-table::
    :header-rows: 1
@@ -26,33 +26,51 @@ Tools
    * - Command
      - Extra
      - Description
-   * - ``bim``
+   * - :doc:`bim <tools/bim>`
      - ``bim``
      - BUVIS InfoMesh — Zettelkasten management with Jira integration
-   * - ``dot``
+   * - :doc:`dot <tools/dot>`
      -
      - Dotfiles manager
-   * - ``fctracker``
+   * - :doc:`fctracker <tools/fctracker>`
      -
      - Foreign currency account tracker
-   * - ``hello-world``
+   * - :doc:`hello-world <tools/hello-world>`
      - ``hello-world``
      - Sample script template
-   * - ``muc``
-     - ``muc``
-     - Music collection tools (tagging, tidying)
-   * - ``outlookctl``
+   * - :doc:`muc <tools/muc>`
+     -
+     - Music collection tools (transcoding, tidying)
+   * - :doc:`outlookctl <tools/outlookctl>`
      -
      - Outlook calendar CLI (Windows)
-   * - ``pinger``
+   * - :doc:`pinger <tools/pinger>`
      - ``pinger``
      - ICMP ping utilities
-   * - ``readerctl``
+   * - :doc:`readerctl <tools/readerctl>`
      - ``readerctl``
      - Readwise Reader CLI
-   * - ``zseq``
+   * - :doc:`zseq <tools/zseq>`
      -
      - Zettelsequence file naming utilities
+
+Common Options
+--------------
+
+Every tool inherits these options from the shared ``buvis_options`` decorator:
+
+.. code-block:: text
+
+    --config FILE                   YAML config file path
+    --config-create FILE            Generate YAML config template to FILE
+    --config-dir DIRECTORY          Configuration directory
+    --log-level [debug|info|warning|error]
+    --debug / --no-debug            Enable debug mode
+
+See :doc:`configuration` for how settings are resolved (CLI > env > YAML > defaults).
+
+Extending Tools
+---------------
 
 Each tool follows the same Click-based pattern:
 
@@ -68,3 +86,20 @@ Each tool follows the same Click-based pattern:
         settings = get_settings(ctx)
         command = MyCommand(settings)
         command.execute()
+
+See :doc:`configuration` for how to create custom settings classes and YAML config files.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Tool Reference:
+   :hidden:
+
+   tools/bim
+   tools/dot
+   tools/fctracker
+   tools/hello-world
+   tools/muc
+   tools/outlookctl
+   tools/pinger
+   tools/readerctl
+   tools/zseq

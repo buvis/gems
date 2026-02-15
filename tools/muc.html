@@ -1,0 +1,204 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>muc &mdash; buvis-gems  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="outlookctl" href="outlookctl.html" />
+    <link rel="prev" title="hello-world" href="hello-world.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            buvis-gems
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Library:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html#api-reference">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../formatting.html">Formatting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filesystem.html">Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adapters.html">Adapters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../zettel.html">Zettel</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CLI Tools:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tools.html">CLI Tools</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#common-options">Common Options</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../tools.html#extending-tools">Extending Tools</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="bim.html">bim</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dot.html">dot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fctracker.html">fctracker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hello-world.html">hello-world</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">muc</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="outlookctl.html">outlookctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">buvis-gems</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
+      <li class="breadcrumb-item active">muc</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tools/muc.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="muc">
+<span id="tool-muc"></span><h1>muc<a class="headerlink" href="#muc" title="Link to this heading"></a></h1>
+<p>Music collection tools for transcoding and cleanup.</p>
+<p><strong>Extra:</strong> <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[muc]</span></code></p>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">limit_flac_bitrate</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1411000</span></code></p></td>
+<td><p>Target bitrate (bps)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">limit_flac_bit_depth</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">16</span></code></p></td>
+<td><p>Target bit depth</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">limit_flac_sampling_rate</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">44100</span></code></p></td>
+<td><p>Target sampling rate (Hz)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tidy_junk_extensions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.cue</span> <span class="pre">.db</span> <span class="pre">.jpg</span> <span class="pre">.lrc</span> <span class="pre">.m3u</span> <span class="pre">.md</span> <span class="pre">.nfo</span> <span class="pre">.png</span> <span class="pre">.sfv</span> <span class="pre">.txt</span> <span class="pre">.url</span></code></p></td>
+<td><p>File extensions to remove during tidy</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="commands">
+<h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
+<section id="muc-limit">
+<h3>muc limit<a class="headerlink" href="#muc-limit" title="Link to this heading"></a></h3>
+<p>Transcode FLAC files to target spec (CD quality by default).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>muc<span class="w"> </span>limit<span class="w"> </span>~/music/hi-res-album/
+muc<span class="w"> </span>limit<span class="w"> </span>~/music/hi-res-album/<span class="w"> </span>-o<span class="w"> </span>~/music/transcoded/
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">TEXT</span></code> — output directory (default: <code class="docutils literal notranslate"><span class="pre">./transcoded</span></code>)</p></li>
+</ul>
+</section>
+<section id="muc-tidy">
+<h3>muc tidy<a class="headerlink" href="#muc-tidy" title="Link to this heading"></a></h3>
+<p>Clean up a music directory: merge macOS metadata, normalize extensions,
+remove junk files, delete empty directories.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>muc<span class="w"> </span>tidy<span class="w"> </span>~/music/album/
+muc<span class="w"> </span>tidy<span class="w"> </span>~/music/album/<span class="w"> </span>-y<span class="w">     </span><span class="c1"># skip confirmation</span>
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-y,</span> <span class="pre">--yes</span></code> — skip confirmation prompt</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hello-world.html" class="btn btn-neutral float-left" title="hello-world" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="outlookctl.html" class="btn btn-neutral float-right" title="outlookctl" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tomáš Bouška.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
