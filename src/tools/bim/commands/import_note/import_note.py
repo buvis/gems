@@ -4,9 +4,9 @@ from pathlib import Path
 
 from buvis.pybase.adapters import console
 from buvis.pybase.formatting import StringOperator
-from buvis.pybase.zettel import (
+from buvis.pybase.zettel import ReadZettelUseCase
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
-    ReadZettelUseCase,
 )
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from bim.dependencies import get_repo

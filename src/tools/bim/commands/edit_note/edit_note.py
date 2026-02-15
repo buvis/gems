@@ -5,7 +5,7 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from bim.dependencies import get_repo
-from buvis.pybase.zettel import MarkdownZettelFormatter
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
 
 
 def edit_single(

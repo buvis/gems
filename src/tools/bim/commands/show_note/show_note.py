@@ -4,7 +4,7 @@ from pathlib import Path
 
 from buvis.pybase.adapters import console
 from bim.dependencies import get_repo
-from buvis.pybase.zettel import MarkdownZettelFormatter
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
 
 
 def show_single(path: Path, *, quiet: bool = False) -> str:

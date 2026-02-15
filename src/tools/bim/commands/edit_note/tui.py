@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from bim.dependencies import get_repo
-from buvis.pybase.zettel import MarkdownZettelFormatter
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Center, Horizontal, VerticalScroll

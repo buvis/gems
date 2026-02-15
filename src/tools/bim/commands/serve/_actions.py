@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel import MarkdownZettelFormatter
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
 
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import get_repo

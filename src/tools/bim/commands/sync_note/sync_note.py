@@ -6,9 +6,9 @@ from typing import Any
 
 import tzlocal
 from buvis.pybase.adapters import JiraAdapter, console
-from buvis.pybase.zettel import (
+from buvis.pybase.zettel import ReadZettelUseCase
+from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
-    ReadZettelUseCase,
 )
 from buvis.pybase.zettel.domain.entities import ProjectZettel
 from buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue import (
