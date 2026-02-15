@@ -33,17 +33,20 @@ def repo_mocks() -> tuple[MagicMock, MagicMock, MagicMock]:
 
 class TestArchiveSingle:
     def test_archives_note(self, zettel_file: Path, tmp_path: Path, repo_mocks: tuple[MagicMock, MagicMock, MagicMock]) -> None:
-        repo, zettel, _data = repo_mocks
+        repo, zettel, data = repo_mocks
         archive_dir = tmp_path / "archive"
+        captured_path: list[str] = []
 
         with (
             patch("bim.commands.archive_note.archive_note.get_repo", return_value=repo),
             patch("bim.commands.archive_note.archive_note.UpdateZettelUseCase") as mock_update,
             patch("bim.commands.archive_note.archive_note.DeleteZettelUseCase") as mock_delete,
         ):
+            mock_update.return_value.execute.side_effect = lambda z, c: captured_path.append(data.file_path)
             archive_single(zettel_file, archive_dir, quiet=True)
             mock_update.return_value.execute.assert_called_once_with(zettel, {"processed": True})
             mock_delete.return_value.execute.assert_called_once_with(zettel)
+            assert captured_path[0] == str(archive_dir / zettel_file.name)
 
     def test_archives_project(self, zettel_file: Path, tmp_path: Path, repo_mocks: tuple[MagicMock, MagicMock, MagicMock]) -> None:
         repo, zettel, data = repo_mocks
@@ -123,8 +126,9 @@ class TestUnarchiveSingle:
         tmp_path: Path,
         repo_mocks: tuple[MagicMock, MagicMock, MagicMock],
     ) -> None:
-        repo, zettel, _data = repo_mocks
+        repo, zettel, data = repo_mocks
         zettelkasten_dir = tmp_path / "zettelkasten"
+        captured_path: list[str] = []
 
         with (
             patch("bim.commands.archive_note.archive_note.get_repo", return_value=repo),
@@ -132,9 +136,11 @@ class TestUnarchiveSingle:
             patch("bim.commands.archive_note.archive_note.DeleteZettelUseCase") as mock_delete,
             patch("bim.commands.archive_note.archive_note.console"),
         ):
+            mock_update.return_value.execute.side_effect = lambda z, c: captured_path.append(data.file_path)
             unarchive_single(zettel_file, zettelkasten_dir)
             mock_update.return_value.execute.assert_called_once_with(zettel, {"processed": False})
             mock_delete.return_value.execute.assert_called_once_with(zettel)
+            assert captured_path[0] == str(zettelkasten_dir / zettel_file.name)
 
     def test_unarchives_project(
         self,

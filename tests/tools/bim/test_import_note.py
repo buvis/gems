@@ -58,6 +58,28 @@ class TestImportSingle:
         assert output_path.is_file()
         assert output_path.read_text(encoding="utf-8") == "formatted content"
 
+    def test_imports_project_sets_resources(
+        self,
+        note_file: Path,
+        zettelkasten_dir: Path,
+        note_mocks: tuple[MagicMock, MagicMock],
+    ) -> None:
+        repo, note = note_mocks
+        note.type = "project"
+
+        with (
+            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
+            patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
+            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+        ):
+            mock_reader.return_value.execute.return_value = note
+            mock_formatter.return_value.format.return_value = "formatted content"
+
+            import_single(note_file, zettelkasten_dir, quiet=True)
+
+        assert "project resources" in note.data.metadata["resources"]
+        assert note_file.parent.resolve().as_uri() in note.data.metadata["resources"]
+
     def test_sets_tags(
         self,
         note_file: Path,
