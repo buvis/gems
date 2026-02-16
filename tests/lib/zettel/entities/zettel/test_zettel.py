@@ -35,14 +35,12 @@ def test_replace_data(zettel_data):
     assert zettel.get_data() == zettel_data
 
 
-def test_alias_attributes(zettel_data):
-    """Test aliasing Zettel attributes."""
+def test_explicit_properties(zettel_data):
+    """Test explicit property access on Zettel."""
     zettel_data.metadata = {
         "id": 1,
         "title": "Test Zettel",
         "date": datetime(2023, 1, 1),
-    }
-    zettel_data.reference = {
         "type": "note",
         "tags": ["test", "pytest"],
         "publish": True,

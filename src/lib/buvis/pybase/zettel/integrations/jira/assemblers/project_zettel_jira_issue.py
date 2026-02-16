@@ -6,6 +6,14 @@ from buvis.pybase.adapters.jira.domain.jira_issue_dto import JiraIssueDTO
 from buvis.pybase.zettel.domain.entities.project.project import ProjectZettel
 
 
+def _get_field(source: ProjectZettel, key: str, default: Any = None) -> Any:
+    """Look up a field in metadata then reference (matching old _alias_attributes merge)."""
+    val = source.data.metadata.get(key)
+    if val is None:
+        val = source.data.reference.get(key)
+    return val if val is not None else default
+
+
 class ProjectZettelJiraIssueDTOAssembler:
     def __init__(self, defaults: dict[str, Any] | None = None) -> None:
         self.defaults = defaults or {}
@@ -35,7 +43,7 @@ class ProjectZettelJiraIssueDTOAssembler:
 
         team = self.defaults["team"]
 
-        if getattr(source, "deliverable", None) == "enhancement":
+        if _get_field(source, "deliverable") == "enhancement":
             issue_type = self.defaults["enhancements"]["issue_type"]
             feature = self.defaults["enhancements"]["feature"]
             labels = self.defaults["enhancements"]["labels"].split(",")
@@ -70,7 +78,7 @@ class ProjectZettelJiraIssueDTOAssembler:
             issue_type=issue_type,
             labels=labels,
             priority=priority,
-            ticket=getattr(source, "ticket", "") or "",
+            ticket=_get_field(source, "ticket", ""),
             feature=feature,
             assignee=user,
             reporter=user,
@@ -81,12 +89,14 @@ class ProjectZettelJiraIssueDTOAssembler:
 
 def _get_ticket_references(source: ProjectZettel) -> str:
     ref_text = ""
+    ticket = _get_field(source, "ticket")
+    ticket_related = _get_field(source, "ticket-related") or _get_field(source, "ticket_related")
 
-    if hasattr(source, "ticket") and source.ticket is not None:
-        ref_text = f"This solves SR {source.ticket}."
+    if ticket is not None:
+        ref_text = f"This solves SR {ticket}."
 
-    if hasattr(source, "ticket_related") and source.ticket_related is not None:
-        ticket_list = sorted(source.ticket_related.split(" "))
+    if ticket_related is not None:
+        ticket_list = sorted(ticket_related.split(" "))
 
         if len(ticket_list) > 1:
             if len(ticket_list) == 2:
@@ -95,6 +105,6 @@ def _get_ticket_references(source: ProjectZettel) -> str:
                 ticket_list_str = ", ".join(ticket_list[:-1]) + ", and " + ticket_list[-1]
             ref_text += f" Related SRs: {ticket_list_str}."
         else:
-            ref_text += f" Related SR: {source.ticket_related}."
+            ref_text += f" Related SR: {ticket_related}."
 
     return ref_text

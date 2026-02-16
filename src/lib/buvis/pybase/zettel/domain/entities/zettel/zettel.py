@@ -51,7 +51,6 @@ class Zettel:
         :return: None. The function modifies the Zettel data in place.
         """
         self._data = zettel_data
-        self._alias_attributes()
 
     @property
     def data(self) -> ZettelData:
@@ -70,12 +69,6 @@ class Zettel:
     def ensure_consistency(self) -> None:
         """Ensure the consistency of the Zettel data."""
         ZettelConsistencyService.ensure_consistency(self._data)
-
-    def _alias_attributes(self) -> None:
-        """Alias the Zettel attributes."""
-        for key, value in {**self._data.metadata, **self._data.reference}.items():
-            attr = key.replace("-", "_")
-            setattr(self, attr, value)
 
     @property
     def id(self) -> int | None:

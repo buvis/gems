@@ -119,4 +119,3 @@ class ProjectZettel(Zettel):
             else:
                 updated_sections.append(section)
         self._data.sections = [sec for sec in updated_sections if sec[0] != ""]
-        self._alias_attributes()
