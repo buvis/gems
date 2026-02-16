@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+from bim.params.edit_note import EditNoteParams
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 
@@ -13,30 +13,26 @@ if TYPE_CHECKING:
 class CommandEditNote:
     def __init__(
         self,
-        paths: list[Path],
+        params: EditNoteParams,
         repo: ZettelRepository,
-        changes: dict[str, Any] | None = None,
-        target: str = "metadata",
     ) -> None:
-        self.paths = paths
+        self.params = params
         self.repo = repo
-        self.changes = changes
-        self.target = target
 
     def execute(self) -> CommandResult:
-        if self.changes is None:
+        if self.params.changes is None:
             return CommandResult(success=False, error="No changes provided")
 
         results: list[str] = []
         warnings: list[str] = []
         use_case = UpdateZettelUseCase(self.repo)
 
-        for path in self.paths:
+        for path in self.params.paths:
             if not path.is_file():
                 warnings.append(f"{path} doesn't exist")
                 continue
             zettel = self.repo.find_by_location(str(path))
-            use_case.execute(zettel, self.changes, self.target)
+            use_case.execute(zettel, self.params.changes, self.params.target)
             results.append(f"Updated {path.name}")
 
         if not results:

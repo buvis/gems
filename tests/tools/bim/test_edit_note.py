@@ -6,6 +6,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from bim.cli import cli
 from bim.commands.edit_note.edit_note import CommandEditNote
+from bim.params.edit_note import EditNoteParams
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
 
@@ -24,7 +25,8 @@ class TestCommandEditNote:
         mock_repo.find_by_location.return_value = mock_zettel
         with patch("bim.commands.edit_note.edit_note.UpdateZettelUseCase") as mock_use_case:
             instance = mock_use_case.return_value
-            cmd = CommandEditNote(paths=[zettel_file], repo=mock_repo, changes={"title": "X"})
+            params = EditNoteParams(paths=[zettel_file], changes={"title": "X"})
+            cmd = CommandEditNote(params=params, repo=mock_repo)
             result = cmd.execute()
 
             assert result.success is True
@@ -40,7 +42,8 @@ class TestCommandEditNote:
         mock_zettel = MagicMock()
         mock_repo.find_by_location.return_value = mock_zettel
         with patch("bim.commands.edit_note.edit_note.UpdateZettelUseCase") as mock_use_case:
-            cmd = CommandEditNote(paths=[a, b], repo=mock_repo, changes={"title": "X"})
+            params = EditNoteParams(paths=[a, b], changes={"title": "X"})
+            cmd = CommandEditNote(params=params, repo=mock_repo)
             result = cmd.execute()
 
             assert result.metadata["updated_count"] == 2
@@ -50,7 +53,8 @@ class TestCommandEditNote:
         missing = tmp_path / "missing.md"
         mock_repo = MagicMock()
 
-        cmd = CommandEditNote(paths=[missing], repo=mock_repo, changes={"title": "X"})
+        params = EditNoteParams(paths=[missing], changes={"title": "X"})
+        cmd = CommandEditNote(params=params, repo=mock_repo)
         result = cmd.execute()
 
         assert result.success is False
@@ -77,9 +81,11 @@ class TestEditCliCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[note],
+                params=EditNoteParams(
+                    paths=[note],
+                    changes={"title": "New", "tags": ["a", "b"], "type": "project"},
+                ),
                 repo=ANY,
-                changes={"title": "New", "tags": ["a", "b"], "type": "project"},
             )
             instance.execute.assert_called_once()
 
@@ -102,9 +108,11 @@ class TestEditCliCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[note],
+                params=EditNoteParams(
+                    paths=[note],
+                    changes={"processed": True, "publish": True},
+                ),
                 repo=ANY,
-                changes={"processed": True, "publish": True},
             )
             instance.execute.assert_called_once()
 
@@ -142,9 +150,11 @@ class TestEditCliCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[note],
+                params=EditNoteParams(
+                    paths=[note],
+                    changes={"custom": "val"},
+                ),
                 repo=ANY,
-                changes={"custom": "val"},
             )
             instance.execute.assert_called_once()
 
@@ -169,9 +179,11 @@ class TestEditCliCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[a, b],
+                params=EditNoteParams(
+                    paths=[a, b],
+                    changes={"title": "X"},
+                ),
                 repo=ANY,
-                changes={"title": "X"},
             )
             instance.execute.assert_called_once()
 

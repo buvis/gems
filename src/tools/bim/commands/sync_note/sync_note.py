@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import tzlocal
+from bim.params.sync_note import SyncNoteParams
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
@@ -22,30 +22,29 @@ DEFAULT_JIRA_IGNORE_US_LABEL = "do-not-track"
 class CommandSyncNote:
     def __init__(
         self,
-        paths: list[Path],
-        target_system: str,
+        params: SyncNoteParams,
         jira_adapter_config: dict[str, Any],
         repo: ZettelRepository,
         formatter: ZettelFormatter,
     ) -> None:
-        self.paths = paths
+        self.params = params
         self.jira_adapter_config = jira_adapter_config
         self.repo = repo
         self.formatter = formatter
 
-        match target_system:
+        match self.params.target_system:
             case "jira":
                 jira_cfg = DictConfig(jira_adapter_config)
                 self._target = ZettelJiraAdapter(jira_cfg)
             case _:
-                raise NotImplementedError(f"Target system '{target_system}' not supported")
+                raise NotImplementedError(f"Target system '{self.params.target_system}' not supported")
 
     def execute(self) -> CommandResult:
         messages: list[str] = []
         warnings: list[str] = []
         synced_count = 0
 
-        for path in self.paths:
+        for path in self.params.paths:
             if not path.is_file():
                 warnings.append(f"{path} doesn't exist")
                 continue

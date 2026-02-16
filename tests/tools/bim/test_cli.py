@@ -4,9 +4,12 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import _resolve_output_path, cli
+from bim.params.create_note import CreateNoteParams
 from bim.params.delete_note import DeleteNoteParams
 from bim.params.format_note import FormatNoteParams
+from bim.params.import_note import ImportNoteParams
 from bim.params.show_note import ShowNoteParams
+from bim.params.sync_note import SyncNoteParams
 from buvis.pybase.result import CommandResult
 
 
@@ -157,13 +160,15 @@ class TestImportCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[note],
+                params=ImportNoteParams(
+                    paths=[note],
+                    tags=["a", "b"],
+                    force=True,
+                    remove_original=True,
+                ),
                 path_zettelkasten=tmp_path.resolve(),
                 repo=ANY,
                 formatter=ANY,
-                tags=["a", "b"],
-                force=True,
-                remove_original=True,
             )
             instance.execute.assert_called_once_with()
 
@@ -193,13 +198,15 @@ class TestImportCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[a, b],
+                params=ImportNoteParams(
+                    paths=[a, b],
+                    tags=None,
+                    force=True,
+                    remove_original=False,
+                ),
                 path_zettelkasten=tmp_path.resolve(),
                 repo=ANY,
                 formatter=ANY,
-                tags=None,
-                force=True,
-                remove_original=False,
             )
             instance.execute.assert_called_once_with()
 
@@ -303,8 +310,7 @@ class TestSyncCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[note],
-                target_system="jira",
+                params=SyncNoteParams(paths=[note], target_system="jira"),
                 jira_adapter_config={"host": "jira.example"},
                 repo=ANY,
                 formatter=ANY,
@@ -398,14 +404,16 @@ class TestCreateCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
+                params=CreateNoteParams(
+                    zettel_type="note",
+                    title="My Title",
+                    tags="one,two",
+                    extra_answers={"q1": "a1"},
+                ),
                 path_zettelkasten=tmp_path.resolve(),
                 repo=ANY,
                 templates=ANY,
                 hook_runner=ANY,
-                zettel_type="note",
-                title="My Title",
-                tags="one,two",
-                extra_answers={"q1": "a1"},
             )
             instance.execute.assert_called_once_with()
 

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from bim.params.import_note import ImportNoteParams
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
@@ -15,31 +18,24 @@ if TYPE_CHECKING:
 class CommandImportNote:
     def __init__(
         self,
-        paths: list[Path],
+        params: ImportNoteParams,
         path_zettelkasten: Path,
         repo: ZettelRepository,
         formatter: ZettelFormatter,
-        *,
-        tags: list[str] | None = None,
-        force: bool = False,
-        remove_original: bool = False,
     ) -> None:
         if not path_zettelkasten.is_dir():
             raise FileNotFoundError(f"Zettelkasten directory not found: {path_zettelkasten}")
-        self.paths = paths
+        self.params = params
         self.path_zettelkasten = path_zettelkasten
         self.repo = repo
         self.formatter = formatter
-        self.tags = tags
-        self.force = force
-        self.remove_original = remove_original
 
     def execute(self) -> CommandResult:
         messages: list[str] = []
         warnings: list[str] = []
         imported_count = 0
 
-        for path in self.paths:
+        for path in self.params.paths:
             if not path.is_file():
                 warnings.append(f"{path} doesn't exist")
                 continue
@@ -50,15 +46,15 @@ class CommandImportNote:
             if note.type == "project":
                 note.data.metadata["resources"] = f"[project resources]({path.parent.resolve().as_uri()})"
 
-            if self.tags is not None:
-                note.tags = self.tags
+            if self.params.tags is not None:
+                note.tags = self.params.tags
 
             if note.id is None:
                 warnings.append(f"Note at {path} has no ID, skipping")
                 continue
 
             path_output = self.path_zettelkasten / f"{note.id}.md"
-            if path_output.is_file() and not self.force:
+            if path_output.is_file() and not self.params.force:
                 warnings.append(f"{path_output} already exists")
                 continue
 
@@ -67,7 +63,7 @@ class CommandImportNote:
             messages.append(f"Imported {path.name} as {path_output.name}")
             imported_count += 1
 
-            if self.remove_original:
+            if self.params.remove_original:
                 path.unlink()
                 messages.append(f"Removed {path}")
 

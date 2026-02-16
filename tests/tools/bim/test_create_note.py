@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import create_note
+from bim.params.create_note import CreateNoteParams
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
 
@@ -45,14 +46,16 @@ class TestCreateNoteCli:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
+                params=CreateNoteParams(
+                    zettel_type="note",
+                    title="Test",
+                    tags=None,
+                    extra_answers={},
+                ),
                 path_zettelkasten=Path("/tmp/zk").expanduser().resolve(),
                 repo=ANY,
                 templates=ANY,
                 hook_runner=ANY,
-                zettel_type="note",
-                title="Test",
-                tags=None,
-                extra_answers={},
             )
             instance.execute.assert_called_once_with()
 
@@ -90,14 +93,16 @@ class TestCreateNoteCli:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
+                params=CreateNoteParams(
+                    zettel_type="note",
+                    title="Test",
+                    tags="a,b",
+                    extra_answers={"first": "1", "second": "two"},
+                ),
                 path_zettelkasten=Path("/tmp/zk").expanduser().resolve(),
                 repo=ANY,
                 templates=ANY,
                 hook_runner=ANY,
-                zettel_type="note",
-                title="Test",
-                tags="a,b",
-                extra_answers={"first": "1", "second": "two"},
             )
             instance.execute.assert_called_once_with()
 

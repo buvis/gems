@@ -181,15 +181,19 @@ def import_note(
 
     from bim.commands.import_note.import_note import CommandImportNote
     from bim.dependencies import get_formatter, get_repo
+    from bim.params.import_note import ImportNoteParams
 
-    cmd = CommandImportNote(
+    params = ImportNoteParams(
         paths=[Path(p) for p in paths],
-        path_zettelkasten=path_zettelkasten,
-        repo=get_repo(),
-        formatter=get_formatter(),
         tags=tag_list,
         force=force,
         remove_original=remove_original,
+    )
+    cmd = CommandImportNote(
+        params=params,
+        path_zettelkasten=path_zettelkasten,
+        repo=get_repo(),
+        formatter=get_formatter(),
     )
     result = cmd.execute()
     for w in result.warnings:
@@ -300,6 +304,7 @@ def sync_note(
 
     from bim.commands.sync_note.sync_note import CommandSyncNote
     from bim.dependencies import get_formatter, get_repo
+    from bim.params.sync_note import SyncNoteParams
 
     if len(resolved) > 1 and not force:
         if not console.confirm(f"Sync {len(resolved)} zettels to {target_system}?"):
@@ -308,9 +313,9 @@ def sync_note(
     global_settings = get_settings(ctx, GlobalSettings)
     jira_adapter: dict[str, Any] = (global_settings.model_extra or {}).get("jira_adapter", {})
     try:
+        params = SyncNoteParams(paths=resolved, target_system=target_system)
         cmd = CommandSyncNote(
-            paths=resolved,
-            target_system=target_system,
+            params=params,
             jira_adapter_config=jira_adapter,
             repo=get_repo(),
             formatter=get_formatter(),
@@ -391,17 +396,21 @@ def create_note(
     if zettel_type and title:
         from bim.commands.create_note.create_note import CommandCreateNote
         from bim.dependencies import get_hook_runner, get_repo, get_templates
+        from bim.params.create_note import CreateNoteParams
 
         try:
-            cmd = CommandCreateNote(
-                path_zettelkasten=path_zettelkasten,
-                repo=get_repo(),
-                templates=get_templates(),
-                hook_runner=get_hook_runner(),
+            params = CreateNoteParams(
                 zettel_type=zettel_type,
                 title=title,
                 tags=tags,
                 extra_answers=extra_answers,
+            )
+            cmd = CommandCreateNote(
+                params=params,
+                path_zettelkasten=path_zettelkasten,
+                repo=get_repo(),
+                templates=get_templates(),
+                hook_runner=get_hook_runner(),
             )
         except FileNotFoundError as exc:
             console.panic(str(exc))
@@ -568,8 +577,10 @@ def edit_note(
 
     from bim.commands.edit_note.edit_note import CommandEditNote
     from bim.dependencies import get_repo
+    from bim.params.edit_note import EditNoteParams
 
-    cmd = CommandEditNote(paths=resolved, repo=get_repo(), changes=changes)
+    params = EditNoteParams(paths=resolved, changes=changes)
+    cmd = CommandEditNote(params=params, repo=get_repo())
     result = cmd.execute()
     for w in result.warnings:
         console.warning(w)

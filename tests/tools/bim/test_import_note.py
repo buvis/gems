@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from bim.commands.import_note.import_note import CommandImportNote
+from bim.params.import_note import ImportNoteParams
 
 
 def _make_note(note_id: str | None = "202401151030") -> MagicMock:
@@ -45,8 +46,9 @@ class TestCommandImportNote:
         missing_dir = tmp_path / "missing"
 
         with pytest.raises(FileNotFoundError):
+            params = ImportNoteParams(paths=[note])
             CommandImportNote(
-                paths=[note],
+                params=params,
                 path_zettelkasten=missing_dir,
                 repo=repo,
                 formatter=formatter,
@@ -68,8 +70,9 @@ class TestCommandImportNote:
             mock_reader.return_value.execute.return_value = note
             mock_formatter.return_value.execute.return_value = "formatted content"
 
+            params = ImportNoteParams(paths=[note_file])
             cmd = CommandImportNote(
-                paths=[note_file],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
@@ -99,8 +102,9 @@ class TestCommandImportNote:
             mock_reader.return_value.execute.return_value = note
             mock_formatter.return_value.execute.return_value = "formatted content"
 
+            params = ImportNoteParams(paths=[note_file])
             cmd = CommandImportNote(
-                paths=[note_file],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
@@ -126,12 +130,12 @@ class TestCommandImportNote:
             mock_reader.return_value.execute.return_value = note
             mock_formatter.return_value.execute.return_value = "formatted content"
 
+            params = ImportNoteParams(paths=[note_file], tags=["new"])
             cmd = CommandImportNote(
-                paths=[note_file],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
-                tags=["new"],
             )
             cmd.execute()
 
@@ -146,8 +150,9 @@ class TestCommandImportNote:
         repo, formatter = deps
         missing = tmp_path / "missing.md"
 
+        params = ImportNoteParams(paths=[missing])
         cmd = CommandImportNote(
-            paths=[missing],
+            params=params,
             path_zettelkasten=zettelkasten_dir,
             repo=repo,
             formatter=formatter,
@@ -172,8 +177,9 @@ class TestCommandImportNote:
         ):
             mock_reader.return_value.execute.return_value = note
 
+            params = ImportNoteParams(paths=[note_file])
             cmd = CommandImportNote(
-                paths=[note_file],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
@@ -203,12 +209,12 @@ class TestCommandImportNote:
             mock_reader.return_value.execute.return_value = note
             mock_formatter.return_value.execute.return_value = "formatted content"
 
+            params = ImportNoteParams(paths=[note_file], force=True)
             cmd = CommandImportNote(
-                paths=[note_file],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
-                force=True,
             )
             result = cmd.execute()
 
@@ -229,8 +235,9 @@ class TestCommandImportNote:
         with patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader:
             mock_reader.return_value.execute.return_value = note
 
+            params = ImportNoteParams(paths=[note_file])
             cmd = CommandImportNote(
-                paths=[note_file],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
@@ -257,12 +264,12 @@ class TestCommandImportNote:
             mock_reader.return_value.execute.return_value = note
             mock_formatter.return_value.execute.return_value = "formatted content"
 
+            params = ImportNoteParams(paths=[note_file], remove_original=True)
             cmd = CommandImportNote(
-                paths=[note_file],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
-                remove_original=True,
             )
             result = cmd.execute()
 
@@ -290,8 +297,9 @@ class TestCommandImportNote:
             mock_reader.return_value.execute.side_effect = [note_a, note_b]
             mock_formatter.return_value.execute.return_value = "formatted content"
 
+            params = ImportNoteParams(paths=[a, b])
             cmd = CommandImportNote(
-                paths=[a, b],
+                params=params,
                 path_zettelkasten=zettelkasten_dir,
                 repo=repo,
                 formatter=formatter,
