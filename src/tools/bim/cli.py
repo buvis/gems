@@ -469,6 +469,7 @@ def query(
         parse_query_string,
         resolve_query_file,
     )
+    from bim.params.query import QueryParams
 
     settings = get_settings(ctx, BimSettings)
     if query_file:
@@ -485,11 +486,11 @@ def query(
     repo = get_repo(extensions=spec.source.extensions)
     evaluator = get_evaluator()
 
+    params = QueryParams(spec=spec, default_directory=default_directory)
     cmd = CommandQuery(
-        spec=spec,
+        params=params,
         repo=repo,
         evaluator=evaluator,
-        default_directory=default_directory,
     )
     t0 = time.perf_counter()
     result = cmd.execute()

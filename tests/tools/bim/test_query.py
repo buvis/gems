@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import query
+from bim.params.query import QueryParams
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
 
@@ -78,10 +79,12 @@ class TestQueryCli:
             mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
             mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
-                spec=spec,
+                params=QueryParams(
+                    spec=spec,
+                    default_directory=str(Path("/tmp/zk").expanduser().resolve()),
+                ),
                 repo=repo,
                 evaluator=evaluator,
-                default_directory=str(Path("/tmp/zk").expanduser().resolve()),
             )
             instance.execute.assert_called_once_with()
             mock_present.assert_called_once_with(
@@ -141,10 +144,12 @@ class TestQueryCli:
             mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
             mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
-                spec=spec,
+                params=QueryParams(
+                    spec=spec,
+                    default_directory=str(Path("/tmp/zk").expanduser().resolve()),
+                ),
                 repo=repo,
                 evaluator=evaluator,
-                default_directory=str(Path("/tmp/zk").expanduser().resolve()),
             )
             instance.execute.assert_called_once_with()
             mock_present.assert_called_once_with(

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
+from bim.params.query import QueryParams
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
@@ -15,20 +16,18 @@ BUNDLED_QUERY_DIR = Path(__file__).parent
 class CommandQuery:
     def __init__(
         self,
-        spec: Any,
+        params: QueryParams,
         repo: ZettelRepository,
         evaluator: Any,
-        default_directory: str,
     ) -> None:
-        self.spec = spec
+        self.params = params
         self.repo = repo
         self.evaluator = evaluator
-        self.default_directory = default_directory
 
     def execute(self) -> CommandResult:
-        spec = self.spec
+        spec = self.params.spec
         if spec.source.directory is None:
-            spec.source.directory = self.default_directory
+            spec.source.directory = self.params.default_directory
 
         directory = str(Path(spec.source.directory).expanduser().resolve())
         use_case = QueryZettelsUseCase(self.repo, self.evaluator)
