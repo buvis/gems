@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from buvis.pybase.adapters import console
+from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 
-from bim.commands.create_note.batch import create_single, parse_batch_file
-from bim.dependencies import get_templates
+from bim.dependencies import get_hook_runner, get_repo, get_templates
 
 
 class CommandCreateNote:
@@ -16,7 +17,6 @@ class CommandCreateNote:
         title: str | None = None,
         tags: str | None = None,
         extra_answers: dict[str, str] | None = None,
-        batch_file: Path | None = None,
     ) -> None:
         if not path_zettelkasten.is_dir():
             raise FileNotFoundError(f"Zettelkasten directory not found: {path_zettelkasten}")
@@ -25,7 +25,6 @@ class CommandCreateNote:
         self.title = title
         self.tags = tags
         self.extra_answers = extra_answers or {}
-        self.batch_file = batch_file
 
     def _scripted(self) -> None:
         templates = get_templates()
@@ -36,49 +35,31 @@ class CommandCreateNote:
             console.failure(f"Unknown template: {self.zettel_type}")
             return
         template = templates[self.zettel_type]
-        create_single(
+        answers: dict[str, Any] = {"title": self.title}
+        if self.tags:
+            answers["tags"] = self.tags
+        for q in template.questions():
+            if q.key in self.extra_answers:
+                answers[q.key] = self.extra_answers[q.key]
+            elif q.default is not None:
+                answers[q.key] = q.default
+            elif q.required:
+                console.failure(f"Missing required answer: {q.key}")
+                return
+        use_case = CreateZettelUseCase(
             self.path_zettelkasten,
-            template,
-            self.title,
-            tags=self.tags,
-            extra_answers=self.extra_answers,
+            get_repo(),
+            hook_runner=get_hook_runner(),
         )
-
-    def _batch(self) -> None:
-        assert self.batch_file is not None
-        default_type, default_tags, items = parse_batch_file(self.batch_file)
-        templates = get_templates()
-        created = 0
-        failed = 0
-        for item in items:
-            zettel_type = item["type"] or self.zettel_type or default_type
-            tags = item["tags"] or self.tags or default_tags
-            if not zettel_type:
-                console.failure(f"No type for '{item['title']}', skipping")
-                failed += 1
-                continue
-            if zettel_type not in templates:
-                console.failure(f"Unknown template '{zettel_type}' for '{item['title']}', skipping")
-                failed += 1
-                continue
-            path = create_single(
-                self.path_zettelkasten,
-                templates[zettel_type],
-                item["title"],
-                tags=tags,
-                extra_answers=item.get("answers", {}),
-                quiet=True,
-            )
-            if path:
-                created += 1
-            else:
-                failed += 1
-        console.info(f"Batch: {created} created, {failed} failed")
+        try:
+            path = use_case.execute(template, answers)
+        except FileExistsError as e:
+            console.failure(str(e))
+        else:
+            console.success(f"Created {path}")
 
     def execute(self) -> None:
-        if self.batch_file:
-            self._batch()
-        elif self.zettel_type and self.title:
+        if self.zettel_type and self.title:
             self._scripted()
         else:
             from bim.commands.create_note.tui import CreateNoteApp

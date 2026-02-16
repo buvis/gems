@@ -199,14 +199,6 @@ def parse_tags(
 @click.option("--tags", default=None, help="Comma-separated tags")
 @click.option("-a", "--answer", multiple=True, help="Template question answer as key=value")
 @click.option("-l", "--list", "list_templates", is_flag=True, default=False, help="List available templates")
-@click.option(
-    "-b",
-    "--batch",
-    "batch_file",
-    default=None,
-    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
-    help="YAML or CSV batch spec file",
-)
 @click.pass_context
 def create_note(
     ctx: click.Context,
@@ -214,7 +206,6 @@ def create_note(
     title: str | None,
     tags: str | None,
     answer: tuple[str, ...],
-    batch_file: str | None,
     *,
     list_templates: bool,
 ) -> None:
@@ -240,10 +231,9 @@ def create_note(
             title=title,
             tags=tags,
             extra_answers=extra_answers,
-            batch_file=Path(batch_file) if batch_file else None,
         )
         cmd.execute()
-    except (FileNotFoundError, ValueError) as exc:
+    except FileNotFoundError as exc:
         console.panic(str(exc))
 
 

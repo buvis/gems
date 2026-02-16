@@ -42,7 +42,6 @@ class TestCreateNoteCli:
                 title="Test",
                 tags=None,
                 extra_answers={},
-                batch_file=None,
             )
             instance.execute.assert_called_once_with()
 
@@ -74,7 +73,6 @@ class TestCreateNoteCli:
                 title=None,
                 tags="a,b",
                 extra_answers={"first": "1", "second": "two"},
-                batch_file=None,
             )
             instance.execute.assert_called_once_with()
 
