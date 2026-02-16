@@ -5,14 +5,17 @@ import sys
 from importlib.metadata import distributions, requires
 from pathlib import Path
 
-from buvis.pybase.adapters import console
+from buvis.pybase.result import CommandResult
 
 
 class CommandDiagnostics:
-    def execute(self: CommandDiagnostics) -> None:
-        console.print(f"Script: {Path(__file__).resolve()}", mode="raw")
-        console.print(f"Python: {sys.executable}", mode="raw")
-        console.print("\nDirect dependencies:", mode="raw")
+    def execute(self) -> CommandResult:
+        lines = [
+            f"Script: {Path(__file__).resolve()}",
+            f"Python: {sys.executable}",
+            "",
+            "Direct dependencies:",
+        ]
         reqs = requires("hello-world") or []
         direct_deps = {re.split(r"[<>=!~\[;]", r)[0].lower().replace("-", "_") for r in reqs}
         for dist in sorted(distributions(), key=lambda d: d.metadata["Name"].lower()):
@@ -22,4 +25,5 @@ class CommandDiagnostics:
                 version = dist.version
                 location = getattr(dist, "_path", None)
                 location = location.parent if location else "unknown"
-                console.print(f"  {name}=={version} ({location})", mode="raw")
+                lines.append(f"  {name}=={version} ({location})")
+        return CommandResult(success=True, output="\n".join(lines))

@@ -53,7 +53,9 @@ def cli(
     if diag:
         from hello_world.commands.diagnostics.diagnostics import CommandDiagnostics
 
-        CommandDiagnostics().execute()
+        result = CommandDiagnostics().execute()
+        if result.output:
+            console.print(result.output, mode="raw")
         return
 
     try:
@@ -67,7 +69,9 @@ def cli(
     if list_fonts:
         from hello_world.commands.list_fonts.list_fonts import CommandListFonts
 
-        CommandListFonts().execute()
+        result = CommandListFonts().execute()
+        if result.output:
+            console.print(result.output, mode="raw")
         return
 
     import pyfiglet as _pyfiglet
