@@ -12,17 +12,17 @@ if TYPE_CHECKING:
 
 
 class ZettelReader(ABC):
-    """Abstract base class for reading :class:`Zettel` entities."""
+    """Abstract base class for reading Zettel entities."""
 
     @abstractmethod
     def find_by_location(self, repository_location: str) -> Zettel:
-        """
-        Retrieve a :class:`Zettel` entity by its repository location.
+        """Retrieve a Zettel entity by its repository location.
 
-        :param repository_location: The location in the repository to search.
-        :type repository_location: str
-        :return: The found Zettel entity.
-        :rtype: :class:`Zettel`
+        Args:
+            repository_location: The location in the repository to search.
+
+        Returns:
+            The found Zettel entity.
         """
         pass
 
@@ -32,55 +32,56 @@ class ZettelReader(ABC):
         directory: str,
         metadata_eq: dict[str, Any] | None = None,
     ) -> list[Zettel]:
-        """
-        Retrieve all :class:`Zettel` entities from a directory.
+        """Retrieve all Zettel entities from a directory.
 
-        :param directory: Path to the directory to scan.
-        :param metadata_eq: Optional dict of field=value eq conditions.
-            Entries not matching all conditions are skipped before Zettel
-            object creation.
-        :return: A list of Zettel entities.
-        :rtype: list[:class:`Zettel`]
+        Args:
+            directory: Path to the directory to scan.
+            metadata_eq: Optional dict of field=value eq conditions.
+                Entries not matching all conditions are skipped before Zettel
+                object creation.
+
+        Returns:
+            A list of Zettel entities.
         """
         pass
 
     @abstractmethod
     def find_by_id(self, zettel_id: str) -> Zettel:
-        """
-        Retrieve a :class:`Zettel` entity by its ID.
+        """Retrieve a Zettel entity by its ID.
 
-        :param zettel_id: The ID of the Zettel to find.
-        :type zettel_id: str
-        :return: The found Zettel entity.
-        :rtype: :class:`Zettel`
+        Args:
+            zettel_id: The ID of the Zettel to find.
+
+        Returns:
+            The found Zettel entity.
         """
         pass
 
 
 class ZettelWriter(ABC):
-    """Abstract base class for writing :class:`Zettel` entities."""
+    """Abstract base class for writing Zettel entities."""
 
     @abstractmethod
     def save(self, zettel: Zettel) -> None:
-        """
-        Save a :class:`Zettel` entity to the repository.
+        """Save a Zettel entity to the repository.
 
-        :param zettel: The Zettel entity to save.
-        :type zettel: :class:`Zettel`
-        :return: None. The function modifies the repository in place.
+        Args:
+            zettel: The Zettel entity to save.
+
+        Returns:
+            None. The function modifies the repository in place.
         """
         pass
 
     @abstractmethod
     def delete(self, zettel: Zettel) -> None:
-        """
-        Delete a :class:`Zettel` entity from the repository.
+        """Delete a Zettel entity from the repository.
 
-        :param zettel: The Zettel entity to delete.
-        :type zettel: :class:`Zettel`
+        Args:
+            zettel: The Zettel entity to delete.
         """
         pass
 
 
 class ZettelRepository(ZettelReader, ZettelWriter):
-    """Abstract base class for a repository managing :class:`Zettel` entities."""
+    """Abstract base class for a repository managing Zettel entities."""

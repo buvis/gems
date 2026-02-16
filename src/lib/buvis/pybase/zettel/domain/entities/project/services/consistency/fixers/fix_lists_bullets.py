@@ -13,18 +13,18 @@ if TYPE_CHECKING:
 
 
 def fix_lists_bullets(zettel_data: ZettelData) -> None:
-    """
-    Fix list bullets in the given ZettelData object.
+    """Fix list bullets in the given ZettelData object.
 
     Convert asterisk-based list bullets to hyphen-based bullets in all sections of the ZettelData object.
 
-    :param zettel_data: The ZettelData object to modify
-    :type zettel_data: :class:`zettel.domain.value_objects.zettel_data.ZettelData`
+    Args:
+        zettel_data: The ZettelData object to modify
 
-    :return: None
-    :rtype: None
+    Returns:
+        None
 
-    :raises: No exceptions are explicitly raised
+    Raises:
+        None: No exceptions are explicitly raised
     """
     zettel_data.sections = [
         (

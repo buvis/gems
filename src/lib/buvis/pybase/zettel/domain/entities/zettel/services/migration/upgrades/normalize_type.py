@@ -15,16 +15,16 @@ TYPE_MIGRATIONS = {
 
 
 def normalize_type(zettel_data: ZettelData) -> None:
-    """
-    Normalize the type of a zettel by mapping it to a new type if applicable.
+    """Normalize the type of a zettel by mapping it to a new type if applicable.
 
     This function checks the current type of the zettel and updates it to a new type based on
     predefined mappings. If no mapping is found, the type remains unchanged.
 
-    :param zettel_data: The zettel data whose type is to be normalized.
-    :type zettel_data: :class:`ZettelData`
-    :return: None. The function modifies the `zettel_data` in place.
-    :rtype: None
+    Args:
+        zettel_data: The zettel data whose type is to be normalized.
+
+    Returns:
+        None. The function modifies the `zettel_data` in place.
     """
     if zettel_data.metadata.get("type"):
         zettel_data.metadata["type"] = TYPE_MIGRATIONS.get(

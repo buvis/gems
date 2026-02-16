@@ -16,13 +16,13 @@ class ZettelFactory:
 
     @staticmethod
     def create(zettel: Zettel) -> Zettel:
-        """
-        Create a Zettel instance, potentially downcasting it to a more specific type based on its 'type' attribute.
+        """Create a Zettel instance, potentially downcasting it based on its type attribute.
 
-        :param zettel: The original Zettel instance.
-        :type zettel: :class:`zettel.domain.entities.zettel.zettel.Zettel`
-        :return: A Zettel instance, either the original or a downcasted version (aka Zettel).
-        :rtype: :class:`zettel.domain.entities.zettel.zettel.Zettel`
+        Args:
+            zettel: The original Zettel instance.
+
+        Returns:
+            A Zettel instance, either the original or a downcasted version (aka Zettel).
         """
         zettel_type = getattr(zettel, "type", "") or ""
 

@@ -1,8 +1,7 @@
-"""
-This module defines the :class:`ZettelData` class used for managing zettelkasten data entries.
+"""Define ZettelData for managing zettelkasten data entries.
 
 Classes:
-    - :class:`ZettelData`: Manages metadata, references, and content sections of a zettel.
+    - ZettelData: Manages metadata, references, and content sections of a zettel.
 """
 
 from __future__ import annotations
@@ -20,25 +19,13 @@ class ZettelData:
     """
 
     metadata: dict[str, Any] = field(default_factory=dict)
-    """
-    :var metadata: Stores metadata of the zettel.
-    :type metadata: dict
-    """
+    """Stores metadata of the zettel."""
 
     reference: dict[str, Any] = field(default_factory=dict)
-    """
-    :var reference: Stores references linked to the zettel.
-    :type reference: dict
-    """
+    """Stores references linked to the zettel."""
 
     sections: list[tuple[str, str]] = field(default_factory=list)
-    """
-    :var sections: Contains different sections of content in the zettel.
-    :type sections: list
-    """
+    """Contains different sections of content in the zettel."""
 
     file_path: str | None = None
-    """
-    :var file_path: Path to the source file, if any.
-    :type file_path: str | None
-    """
+    """Path to the source file, if any."""

@@ -12,23 +12,25 @@ from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
 def normalize_sections_order(zettel_data: ZettelData) -> None:
-    """
-    Reorder the sections in a ZettelData object according to a predefined structure.
+    """Reorder the sections in a ZettelData object according to a predefined structure.
 
     This function takes a ZettelData object and rearranges its sections to ensure
     that specific sections appear in a consistent order. The main title section,
     description, log, and actions buffer are placed at the beginning in that order,
     followed by any other sections.
 
-    :param zettel_data: The ZettelData object whose sections need to be normalized.
-    :type zettel_data: :class:`ZettelData`
+    Args:
+        zettel_data: The ZettelData object whose sections need to be normalized.
 
-    :return: None. The function modifies the zettel_data in place.
+    Returns:
+        None. The function modifies the zettel_data in place.
 
-    :raises TypeError: If the input is not an instance of ZettelData.
+    Raises:
+        TypeError: If the input is not an instance of ZettelData.
 
-    :note: This function modifies the input ZettelData object in-place.
-           It does not return a new object but changes the existing one.
+    Note:
+        This function modifies the input ZettelData object in-place.
+        It does not return a new object but changes the existing one.
     """
     if not isinstance(zettel_data, ZettelData):
         raise TypeError("Expected zettel_data to be of type ZettelData")

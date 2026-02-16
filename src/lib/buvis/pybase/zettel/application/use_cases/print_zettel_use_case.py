@@ -19,24 +19,23 @@ class PrintZettelUseCase:
     """
 
     def __init__(self: PrintZettelUseCase, formatter: ZettelFormatter) -> None:
-        """
-        Initialize the PrintZettelUseCase instance.
+        """Initialize the PrintZettelUseCase instance.
 
-        :param formatter: The ZettelFormatter to use for formatting Zettel data.
-        :type formatter: :class:`zettel.domain.interfaces.zettel_formatter.ZettelFormatter`
+        Args:
+            formatter: The ZettelFormatter to use for formatting Zettel data.
         """
         self.formatter = formatter
 
     def execute(self: PrintZettelUseCase, zettel_data: ZettelData) -> str:
-        """
-        Execute the use case by formatting the given Zettel data.
+        """Execute the use case by formatting the given Zettel data.
 
         Format the provided Zettel data using the configured formatter and
         return the result.
 
-        :param zettel_data: The Zettel data to format and print.
-        :type zettel_data: :class:`zettel.domain.value_objects.zettel_data.ZettelData`
-        :return: The formatted Zettel data.
-        :rtype: str
+        Args:
+            zettel_data: The Zettel data to format and print.
+
+        Returns:
+            The formatted Zettel data.
         """
         return self.formatter.format(zettel_data)

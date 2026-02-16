@@ -1,5 +1,4 @@
-"""
-This module defines the MarkdownZettelFormatter class which implements the :class:`ZettelFormatter` interface.
+"""Define MarkdownZettelFormatter for formatting Zettel data.
 
     zettel.infrastructure.formatting.markdown_zettel_formatter.helpers"""
 
@@ -18,11 +17,11 @@ class MarkdownZettelFormatter(ZettelFormatter):
     """
     Format Zettel notes into Markdown using provided Zettel data.
 
-    This formatter adheres to the :class:`ZettelFormatter` interface, ensuring that Zettel notes are formatted
+    This formatter adheres to the ZettelFormatter interface, ensuring that Zettel notes are formatted
     consistently with the expected Markdown structure.
 
-    :ivar TOP_KEYS: Keys considered top-level metadata in a Zettel note, used to structure the output.
-    :type TOP_KEYS: tuple
+    Attributes:
+        TOP_KEYS: Keys considered top-level metadata in a Zettel note, used to structure the output.
     """
 
     TOP_KEYS: tuple[str, ...] = (
@@ -37,13 +36,13 @@ class MarkdownZettelFormatter(ZettelFormatter):
 
     @staticmethod
     def format(zettel_data: ZettelData) -> str:
-        """
-        Format the given Zettel data into a Markdown string.
+        """Format the given Zettel data into a Markdown string.
 
-        :param zettel_data: The Zettel data to format.
-        :type zettel_data: :class:`ZettelData`
-        :return: The formatted Zettel data as a Markdown string.
-        :rtype: str
+        Args:
+            zettel_data: The Zettel data to format.
+
+        Returns:
+            The formatted Zettel data as a Markdown string.
         """
         metadata_str: str = format_metadata(
             zettel_data.metadata,

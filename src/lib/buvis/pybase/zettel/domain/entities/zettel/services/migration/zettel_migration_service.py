@@ -25,12 +25,13 @@ class ZettelMigrationService:
 
     @staticmethod
     def migrate(zettel_data: ZettelData) -> None:
-        """
-        Migrate the given Zettel data through several transformation steps.
+        """Migrate the given Zettel data through several transformation steps.
 
-        :param zettel_data: The Zettel data to be migrated
-        :type zettel_data: :class:`ZettelData`
-        :return: None. The function modifies the `zettel_data` in place.
+        Args:
+            zettel_data: The Zettel data to be migrated
+
+        Returns:
+            None. The function modifies the `zettel_data` in place.
         """
         move_zkn_id_to_id(zettel_data)
         move_tag_to_tags(zettel_data)

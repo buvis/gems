@@ -11,11 +11,12 @@ DEFAULT_TYPE: str = "note"
 
 
 def set_default_type(zettel_data: ZettelData) -> None:
-    """
-    Set the default type in the metadata of the provided :class:`ZettelData` object.
+    """Set the default type in the metadata of the provided ZettelData object.
 
-    :param zettel_data: The zettel data object to modify
-    :type zettel_data: :class:`ZettelData`
-    :return: None. The function modifies the `zettel_data` in place.
+    Args:
+        zettel_data: The zettel data object to modify
+
+    Returns:
+        None. The function modifies the `zettel_data` in place.
     """
     zettel_data.metadata["type"] = DEFAULT_TYPE

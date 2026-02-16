@@ -33,10 +33,11 @@ class ZettelFileParser:
     def from_file(file_path: Path) -> ZettelData:
         """Parses a zettel file from a given path and returns the raw data with enriched metadata.
 
-        :param file_path: The path to the zettel file to be parsed.
-        :type file_path: Path
-        :return: An object containing the parsed content and metadata of the zettel.
-        :rtype: ZettelData
+        Args:
+            file_path: The path to the zettel file to be parsed.
+
+        Returns:
+            An object containing the parsed content and metadata of the zettel.
         """
         with file_path.open("r", encoding="utf-8") as file:
             content = file.read()
@@ -53,10 +54,11 @@ def _get_date_from_file(file_path: Path) -> datetime | None:
     """Attempts to extract a datetime object from the file name based on predefined patterns.
     If no valid date is found in the filename, it falls back to file system creation date or git first commit date.
 
-    :param file_path: The path to the file from which to extract the date.
-    :type file_path: Path
-    :return: The extracted datetime object, if any, otherwise None.
-    :rtype: datetime | None
+    Args:
+        file_path: The path to the file from which to extract the date.
+
+    Returns:
+        The extracted datetime object, if any, otherwise None.
     """
     if DATETIME_PATTERN.match(file_path.stem):
         for fmt in ("%Y%m%d%H%M%S", "%Y%m%d%H%M"):
@@ -74,10 +76,11 @@ def _get_date_from_file(file_path: Path) -> datetime | None:
 def _get_title_from_filename(filename: str) -> str | None:
     """Extracts a human-readable title from a filename by stripping away predefined patterns and formatting.
 
-    :param filename: The filename from which to extract the title.
-    :type filename: str
-    :return: The extracted title, if any, otherwise None.
-    :rtype: str | None
+    Args:
+        filename: The filename from which to extract the title.
+
+    Returns:
+        The extracted title, if any, otherwise None.
     """
     title_from_filename = DATETIME_PATTERN.sub("", filename).replace("-", " ").strip()
     return title_from_filename.capitalize() if title_from_filename else None

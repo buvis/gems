@@ -19,11 +19,10 @@ from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
 class Zettel:
-    """
-    Zettel class representing a Zettel entity.
+    """Zettel class representing a Zettel entity.
 
-    :param zettel_data: Optional :class:`ZettelData` object to initialize the Zettel.
-    :type zettel_data: :class:`ZettelData` or None
+    Args:
+        zettel_data: Optional ZettelData object to initialize the Zettel.
     """
 
     def __init__(self, zettel_data: ZettelData | None = None, *, from_rust: bool = False) -> None:
@@ -34,21 +33,21 @@ class Zettel:
             self.replace_data(zettel_data)
 
     def get_data(self) -> ZettelData:
-        """
-        Get the Zettel data.
+        """Get the Zettel data.
 
-        :return: The :class:`ZettelData` object.
-        :rtype: :class:`ZettelData`
+        Returns:
+            The ZettelData object.
         """
         return self._data
 
     def replace_data(self, zettel_data: ZettelData) -> None:
-        """
-        Replace the Zettel data.
+        """Replace the Zettel data.
 
-        :param zettel_data: The new :class:`ZettelData` object.
-        :type zettel_data: :class:`ZettelData`
-        :return: None. The function modifies the Zettel data in place.
+        Args:
+            zettel_data: The new ZettelData object.
+
+        Returns:
+            None. The function modifies the Zettel data in place.
         """
         self._data = zettel_data
 
@@ -72,11 +71,10 @@ class Zettel:
 
     @property
     def id(self) -> int | None:
-        """
-        Get the Zettel ID.
+        """Get the Zettel ID.
 
-        :return: The Zettel ID.
-        :rtype: int or None
+        Returns:
+            The Zettel ID.
         """
         if self._data.metadata.get("id") is None:
             return None
@@ -87,22 +85,22 @@ class Zettel:
 
     @id.setter
     def id(self, value: int) -> None:
-        """
-        Set the Zettel ID.
+        """Set the Zettel ID.
 
-        :param value: The new Zettel ID.
-        :type value: int
-        :raises ValueError: If the provided value is not a valid integer.
+        Args:
+            value: The new Zettel ID.
+
+        Raises:
+            ValueError: If the provided value is not a valid integer.
         """
         self._data.metadata["id"] = int(value)
 
     @property
     def title(self) -> str | None:
-        """
-        Get the Zettel title.
+        """Get the Zettel title.
 
-        :return: The Zettel title.
-        :rtype: str or None
+        Returns:
+            The Zettel title.
         """
         if self._data.metadata.get("title") is None:
             return None
@@ -110,11 +108,10 @@ class Zettel:
 
     @title.setter
     def title(self, value: str) -> None:
-        """
-        Set the Zettel title.
+        """Set the Zettel title.
 
-        :param value: The new Zettel title.
-        :type value: str
+        Args:
+            value: The new Zettel title.
         """
         if value is None:
             self._data.metadata["title"] = None
@@ -123,11 +120,10 @@ class Zettel:
 
     @property
     def date(self) -> datetime | None:
-        """
-        Get the Zettel date.
+        """Get the Zettel date.
 
-        :return: The Zettel date.
-        :rtype: :class:`datetime.datetime` or None
+        Returns:
+            The Zettel date.
         """
         if self._data.metadata.get("date") is None:
             return None
@@ -135,21 +131,19 @@ class Zettel:
 
     @date.setter
     def date(self, value: datetime) -> None:
-        """
-        Set the Zettel date.
+        """Set the Zettel date.
 
-        :param value: The new Zettel date.
-        :type value: :class:`datetime.datetime`
+        Args:
+            value: The new Zettel date.
         """
         self._data.metadata["date"] = value
 
     @property
     def type(self) -> str | None:
-        """
-        Get the Zettel type.
+        """Get the Zettel type.
 
-        :return: The Zettel type.
-        :rtype: str or None
+        Returns:
+            The Zettel type.
         """
         if self._data.metadata.get("type") is None:
             return None
@@ -157,11 +151,10 @@ class Zettel:
 
     @type.setter
     def type(self, value: str) -> None:
-        """
-        Set the Zettel type.
+        """Set the Zettel type.
 
-        :param value: The new Zettel type.
-        :type value: str
+        Args:
+            value: The new Zettel type.
         """
         if value is None:
             self._data.metadata["type"] = None
@@ -170,11 +163,10 @@ class Zettel:
 
     @property
     def tags(self) -> list[str] | None:
-        """
-        Get the Zettel tags.
+        """Get the Zettel tags.
 
-        :return: The Zettel tags.
-        :rtype: list[str] or None
+        Returns:
+            The Zettel tags.
         """
         if self._data.metadata.get("tags") is None:
             return None
@@ -182,11 +174,10 @@ class Zettel:
 
     @tags.setter
     def tags(self, value: list[str] | str) -> None:
-        """
-        Set the Zettel tags.
+        """Set the Zettel tags.
 
-        :param value: The new Zettel tags.
-        :type value: list[str] or str
+        Args:
+            value: The new Zettel tags.
         """
         if value and not isinstance(value, list):
             value = [value]
@@ -194,11 +185,10 @@ class Zettel:
 
     @property
     def publish(self) -> bool:
-        """
-        Get the Zettel publish status.
+        """Get the Zettel publish status.
 
-        :return: The Zettel publish status.
-        :rtype: bool
+        Returns:
+            The Zettel publish status.
         """
         if self._data.metadata.get("publish") is None:
             return False
@@ -206,21 +196,19 @@ class Zettel:
 
     @publish.setter
     def publish(self, value: bool) -> None:
-        """
-        Set the Zettel publish status.
+        """Set the Zettel publish status.
 
-        :param value: The new Zettel publish status.
-        :type value: bool
+        Args:
+            value: The new Zettel publish status.
         """
         self._data.metadata["publish"] = bool(value)
 
     @property
     def processed(self) -> bool:
-        """
-        Get the Zettel processed status.
+        """Get the Zettel processed status.
 
-        :return: The Zettel processed status.
-        :rtype: bool
+        Returns:
+            The Zettel processed status.
         """
         if self._data.metadata.get("processed") is None:
             return False
@@ -228,10 +216,9 @@ class Zettel:
 
     @processed.setter
     def processed(self, value: bool) -> None:
-        """
-        Set the Zettel processed status.
+        """Set the Zettel processed status.
 
-        :param value: The new Zettel processed status.
-        :type value: bool
+        Args:
+            value: The new Zettel processed status.
         """
         self._data.metadata["processed"] = bool(value)

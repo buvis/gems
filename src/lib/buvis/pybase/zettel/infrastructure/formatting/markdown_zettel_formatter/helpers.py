@@ -19,12 +19,12 @@ def process_metadata(
 ) -> dict[str, Any]:
     """Process and return the full metadata with required keys first, followed by others.
 
-    :param metadata: The original metadata dictionary.
-    :type metadata: dict
-    :param first_keys: Tuple of keys which should appear first in the returned dictionary.
-    :type first_keys: tuple
-    :return: Processed metadata dictionary with specified keys ordered first.
-    :rtype: dict
+    Args:
+        metadata: The original metadata dictionary.
+        first_keys: Tuple of keys which should appear first in the returned dictionary.
+
+    Returns:
+        Processed metadata dictionary with specified keys ordered first.
     """
 
     return {
@@ -36,10 +36,11 @@ def process_metadata(
 def convert_datetimes(full_metadata: dict[str, Any]) -> list[str]:
     """Convert datetime objects to formatted strings and return keys that were converted.
 
-    :param full_metadata: Metadata dictionary potentially containing datetime objects.
-    :type full_metadata: dict
-    :return: List of keys for which the datetime values were converted.
-    :rtype: list
+    Args:
+        full_metadata: Metadata dictionary potentially containing datetime objects.
+
+    Returns:
+        List of keys for which the datetime values were converted.
     """
     datetime_keys = [key for key in full_metadata if isinstance(full_metadata[key], datetime)]
 
@@ -55,12 +56,12 @@ def metadata_to_yaml(
 ) -> str:
     """Convert metadata dictionary to a YAML-formatted string without quotes on datetime keys.
 
-    :param full_metadata: Metadata dictionary with datetime objects converted to strings.
-    :type full_metadata: dict
-    :param datetime_keys: List of keys that have datetime values converted to strings.
-    :type datetime_keys: list
-    :return: YAML formatted string with unquoted datetime values.
-    :rtype: str
+    Args:
+        full_metadata: Metadata dictionary with datetime objects converted to strings.
+        datetime_keys: List of keys that have datetime values converted to strings.
+
+    Returns:
+        YAML formatted string with unquoted datetime values.
     """
     metadata_str = yaml.dump(
         full_metadata,
@@ -76,12 +77,12 @@ def metadata_to_yaml(
 def format_metadata(metadata: dict[str, Any], first_keys: tuple[str, ...]) -> str:
     """Format the metadata into a YAML string with specified keys ordered first and datetimes unquoted.
 
-    :param metadata: The original metadata dictionary.
-    :type metadata: dict
-    :param first_keys: Tuple of keys which should appear first in the formatted output.
-    :type first_keys: tuple
-    :return: Formatted YAML string.
-    :rtype: str
+    Args:
+        metadata: The original metadata dictionary.
+        first_keys: Tuple of keys which should appear first in the formatted output.
+
+    Returns:
+        Formatted YAML string.
     """
     full_metadata = process_metadata(metadata, first_keys)
     datetime_keys = convert_datetimes(full_metadata)
@@ -93,10 +94,11 @@ def format_metadata(metadata: dict[str, Any], first_keys: tuple[str, ...]) -> st
 def format_reference(reference: dict[str, Any]) -> str:
     """Format reference dictionary into a string with key-value pairs.
 
-    :param reference: Dictionary containing reference data.
-    :type reference: dict
-    :return: Formatted reference string.
-    :rtype: str
+    Args:
+        reference: Dictionary containing reference data.
+
+    Returns:
+        Formatted reference string.
     """
     formatted_reference = "\n"
 
@@ -116,19 +118,19 @@ def convert_markdown_to_preserve_line_breaks(text: str) -> str:
     This function adds two spaces at the end of each non-empty line in the
     input text to force line breaks in markdown, while preserving empty lines.
 
-    :param text: The input markdown text to be converted
-    :type text: str
-    :return: The converted markdown text with preserved line breaks
-    :rtype: str
+    Args:
+        text: The input markdown text to be converted
 
-    :Example:
+    Returns:
+        The converted markdown text with preserved line breaks
 
-    >>> text = "Line one.\\nLine two.\\n\\nLine three."
-    >>> print(convert_markdown_to_preserve_line_breaks(text))
-    Line one.
-    Line two.
+    Examples:
+        >>> text = "Line one.\\nLine two.\\n\\nLine three."
+        >>> print(convert_markdown_to_preserve_line_breaks(text))
+        Line one.
+        Line two.
 
-    Line three.
+        Line three.
     """
     lines = text.split("\n")  # Split the text into lines
     converted_lines = []
@@ -145,10 +147,11 @@ def convert_markdown_to_preserve_line_breaks(text: str) -> str:
 def format_sections(sections: list[tuple[str, str]]) -> str:
     """Format sections list into a string with headings and content.
 
-    :param sections: List of tuples containing section headings and content.
-    :type sections: list
-    :return: Formatted sections string.
-    :rtype: str
+    Args:
+        sections: List of tuples containing section headings and content.
+
+    Returns:
+        Formatted sections string.
     """
 
     return "\n".join(

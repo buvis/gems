@@ -6,12 +6,13 @@ from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
 def set_default_completed(zettel_data: ZettelData) -> None:
-    """
-    Set the default completed status of the zettel data to False if it isn't on gtd-list: completed.
+    """Set the default completed status of the zettel data to False if it isn't on gtd-list: completed.
 
-    :param zettel_data: The ZettelData object whose completed status is to be set.
-    :type zettel_data: :class:`ZettelData`
-    :return: None. The function modifies the `zettel_data` in place.
+    Args:
+        zettel_data: The ZettelData object whose completed status is to be set.
+
+    Returns:
+        None. The function modifies the `zettel_data` in place.
     """
     if not zettel_data.metadata.get("completed"):
         zettel_data.metadata["completed"] = False

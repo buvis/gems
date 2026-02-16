@@ -12,21 +12,20 @@ if TYPE_CHECKING:
 
 
 class ZettelFormatter(ABC):
-    """
-    Abstract base class to define the interface for Zettel data formatting.
+    """Abstract base class to define the interface for Zettel data formatting.
 
-    This class requires subclasses to implement the :meth:`format` method.
+    This class requires subclasses to implement the format method.
     """
 
     @staticmethod
     @abstractmethod
     def format(zettel_data: ZettelData) -> str:
-        """
-        Format the provided Zettel data into a string.
+        """Format the provided Zettel data into a string.
 
-        :param zettel_data: The Zettel data to format
-        :type zettel_data: :class:`zettel.domain.value_objects.zettel_data.ZettelData`
-        :return: The formatted Zettel data as a string
-        :rtype: str
+        Args:
+            zettel_data: The Zettel data to format
+
+        Returns:
+            The formatted Zettel data as a string
         """
         pass

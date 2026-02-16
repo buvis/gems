@@ -21,9 +21,10 @@ if TYPE_CHECKING:
 class NextAction:
     """Properties of next action extracted from zettel data.
 
-    :param gtd_list: List according ti GTD method
-    :param priority: Priority = icon (emoji) recognized by Obsidian Tasks plugin: ⏬ 🔽 🔼 ⏫
-    :param dates: Action milestones
+    Args:
+        gtd_list: List according ti GTD method
+        priority: Priority = icon (emoji) recognized by Obsidian Tasks plugin: ⏬ 🔽 🔼 ⏫
+        dates: Action milestones
     """
 
     gtd_list: str
@@ -32,12 +33,13 @@ class NextAction:
 
 
 def migrate_loop_log(zettel_data: ZettelData) -> None:
-    """
-    Migrate log entries from the first section of the zettel data to a new log section.
+    """Migrate log entries from the first section of the zettel data to a new log section.
 
-    :param zettel_data: The zettel data to be processed.
-    :type zettel_data: :class:`ZettelData`
-    :return: None. The function modifies the `zettel_data` in place.
+    Args:
+        zettel_data: The zettel data to be processed.
+
+    Returns:
+        None. The function modifies the `zettel_data` in place.
     """
     header, content = zettel_data.sections[0]
     log_entries, remaining_content = extract_log_entries(content)
@@ -55,13 +57,13 @@ def migrate_loop_log(zettel_data: ZettelData) -> None:
 def extract_log_entries(
     content: str,
 ) -> tuple[list[tuple[datetime, str, str]], list[str]]:
-    """
-    Extract log entries from the provided content string.
+    """Extract log entries from the provided content string.
 
-    :param content: The content from which to extract log entries.
-    :type content: str
-    :return: A tuple containing a list of log entries and a list of unmatched lines.
-    :rtype: tuple[list[tuple[datetime, str, str]], list[str]]
+    Args:
+        content: The content from which to extract log entries.
+
+    Returns:
+        A tuple containing a list of log entries and a list of unmatched lines.
     """
     log_pattern = r"(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}) - (.*?)(?: => (.*))?$"
     matches = []
@@ -80,13 +82,13 @@ def extract_log_entries(
 
 
 def get_next_action_properties(zettel_data: ZettelData) -> NextAction:
-    """
-    Determine next action properties from project metadata.
+    """Determine next action properties from project metadata.
 
-    :param zettel_data: The zettel data to be processed
-    :type zettel_data: ZettelData
-    :return: NextAction instance containing GTD list, priority, and dates
-    :rtype: NextAction
+    Args:
+        zettel_data: The zettel data to be processed
+
+    Returns:
+        NextAction instance containing GTD list, priority, and dates
     """
     PRIORITY_MAP = {"could": "⏬", "would": "🔽", "should": "🔼", "must": "⏫"}
 
@@ -125,13 +127,13 @@ def get_next_action_properties(zettel_data: ZettelData) -> NextAction:
 
 
 def create_dates_section(milestone: DateParseResult) -> str:
-    """
-    Determine dates section for a next action from a milestone.
+    """Determine dates section for a next action from a milestone.
 
-    :param milestone: DateParseResult instance representing a point in time.
-    :type milestone: :class:DateParseResult
-    :return: Dates section understood by Obsidian Tasks plugin.
-    :rtype: str
+    Args:
+        milestone: DateParseResult instance representing a point in time.
+
+    Returns:
+        Dates section understood by Obsidian Tasks plugin.
     """
     if not milestone.date:
         return ""
@@ -149,13 +151,13 @@ def create_dates_section(milestone: DateParseResult) -> str:
 
 
 def determine_gtd_list_from_target_date(target_date: str) -> str:
-    """
-    Determine GTD list from target date.
+    """Determine GTD list from target date.
 
-    :param target_date: Date or word describing point in time.
-    :type target_date: str
-    :return: Name of corresponding GTD list.
-    :rtype: str
+    Args:
+        target_date: Date or word describing point in time.
+
+    Returns:
+        Name of corresponding GTD list.
     """
     next_action = parse_date_string(target_date)
 
@@ -168,9 +170,10 @@ def determine_gtd_list_from_target_date(target_date: str) -> str:
 class DateParseResult:
     """Result of parsing a string containing a date.
 
-    :param date: Parsed datetime object or None if no date found
-    :param before: Text before the date (or entire text if no date)
-    :param after: Text after the date (empty if no date)
+    Args:
+        date: Parsed datetime object or None if no date found
+        before: Text before the date (or entire text if no date)
+        after: Text after the date (empty if no date)
     """
 
     date: datetime | None
@@ -185,18 +188,18 @@ def parse_date_string(input_string: str) -> DateParseResult:
     string into three parts: the date (as datetime object) and the text before
     and after the date.
 
-    :param input_string: String that may contain a date in yyyy-mm-dd format
-    :type input_string: str
-    :returns: DateParseResult object with date, text before and after date
-    :rtype: DateParseResult
+    Args:
+        input_string: String that may contain a date in yyyy-mm-dd format
 
-    :Example:
+    Returns:
+        DateParseResult object with date, text before and after date
 
-    >>> parse_date_string("until 2024-11-27")
-    DateParseResult(date=datetime(2024, 11, 27), before="until", after="")
+    Examples:
+        >>> parse_date_string("until 2024-11-27")
+        DateParseResult(date=datetime(2024, 11, 27), before="until", after="")
 
-    >>> parse_date_string("no date here")
-    DateParseResult(date=None, before="no date here", after="")
+        >>> parse_date_string("no date here")
+        DateParseResult(date=None, before="no date here", after="")
     """
     date_pattern = r"(\b\d{4}-\d{2}-\d{2}\b)"
     input_string = str(input_string)
@@ -217,15 +220,14 @@ def format_log_entries(
     *,
     next_action: NextAction | None = None,
 ) -> str:
-    """
-    Format log entries into a structured log string.
+    """Format log entries into a structured log string.
 
-    :param log_entries: List of log entries.
-    :type log_entries: list[tuple[datetime, str, str]]
-    :param next_action: NextAction instance
-    :type next_action: :class:'NextAction'
-    :return: Formatted log string.
-    :rtype: str
+    Args:
+        log_entries: List of log entries.
+        next_action: NextAction instance
+
+    Returns:
+        Formatted log string.
     """
     log_content = ""
     task_status = " "

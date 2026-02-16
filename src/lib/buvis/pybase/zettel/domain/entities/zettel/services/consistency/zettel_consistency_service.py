@@ -41,20 +41,20 @@ from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
 class ZettelConsistencyService:
-    """
-    Provides services to ensure the consistency of :class:`ZettelData` entities.
+    """Provides services to ensure the consistency of ZettelData entities.
 
     This class includes methods to set missing default values and ensure overall data consistency.
     """
 
     @staticmethod
     def set_missing_defaults(zettel_data: ZettelData) -> None:
-        """
-        Set default values for missing metadata fields in :class:`ZettelData`.
+        """Set default values for missing metadata fields in ZettelData.
 
-        :param zettel_data: The Zettel data to modify
-        :type zettel_data: :class:`ZettelData`
-        :return: None. The function modifies the `zettel_data` in place.
+        Args:
+            zettel_data: The Zettel data to modify
+
+        Returns:
+            None. The function modifies the `zettel_data` in place.
         """
         defaults = {
             "date": set_default_date,
@@ -71,12 +71,13 @@ class ZettelConsistencyService:
 
     @staticmethod
     def ensure_consistency(zettel_data: ZettelData) -> None:
-        """
-        Ensure the consistency of :class:`ZettelData`.
+        """Ensure the consistency of ZettelData.
 
-        :param zettel_data: The Zettel data to check and modify
-        :type zettel_data: :class:`ZettelData`
-        :return: None. The function modifies the `zettel_data` in place.
+        Args:
+            zettel_data: The Zettel data to check and modify
+
+        Returns:
+            None. The function modifies the `zettel_data` in place.
         """
         ZettelConsistencyService.set_missing_defaults(zettel_data)
         remove_duplicate_tags(zettel_data)

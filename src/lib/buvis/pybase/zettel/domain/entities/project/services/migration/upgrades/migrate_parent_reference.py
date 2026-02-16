@@ -15,12 +15,13 @@ import re
 
 
 def migrate_parent_reference(zettel_data: ZettelData) -> None:
-    """
-    Migrate parent reference to comply with latest standard.
+    """Migrate parent reference to comply with latest standard.
 
-    :param zettel_data: The zettel data to be processed.
-    :type zettel_data: :class:`ZettelData`
-    :return: None. The function modifies the `zettel_data` in place.
+    Args:
+        zettel_data: The zettel data to be processed.
+
+    Returns:
+        None. The function modifies the `zettel_data` in place.
     """
     if zettel_data.reference.get("parent"):
         match = re.search(r"\[\[(.*?)\]\]", zettel_data.reference["parent"])

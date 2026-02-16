@@ -24,13 +24,13 @@ class ProjectZettelMigrationService:
 
     @staticmethod
     def migrate(zettel_data: ZettelData) -> None:
-        """
-        Migrate the specified zettel data using the loop log migration service.
+        """Migrate the specified zettel data using the loop log migration service.
 
-        :param zettel_data: The zettel data to be migrated.
-        :type zettel_data: :class:`ZettelData`
-        :return: None. The function modifies the `zettel_data` in place.
-        :rtype: None
+        Args:
+            zettel_data: The zettel data to be migrated.
+
+        Returns:
+            None. The function modifies the `zettel_data` in place.
         """
         migrate_loop_log(zettel_data)
         migrate_parent_reference(zettel_data)
