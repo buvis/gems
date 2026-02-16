@@ -139,10 +139,22 @@ class QueryTuiApp(App[None]):
         if not confirmed or self._archive_dir is None:
             return
         fp = self._pending_archive_path
-        from bim.commands.archive_note.archive_note import archive_single
+        from bim.commands.archive_note.archive_note import CommandArchiveNote
 
-        msg = archive_single(Path(fp), self._archive_dir, quiet=True)
-        self.notify(msg)
+        cmd = CommandArchiveNote(
+            paths=[Path(fp)],
+            path_archive=self._archive_dir,
+            path_zettelkasten=Path(fp).parent,
+            repo=get_repo(),
+        )
+        result = cmd.execute()
+        for w in result.warnings:
+            self.notify(w)
+        if result.success:
+            if result.output:
+                self.notify(result.output)
+        else:
+            self.notify(result.error or "Archive failed")
         self._rows = [r for r in self._rows if r.get("file_path") != fp]
         self._populate(self._rows)
 
@@ -180,10 +192,17 @@ class QueryTuiApp(App[None]):
         if not confirmed:
             return
         fp = self._pending_delete_path
-        from bim.commands.delete_note.delete_note import delete_single
+        from bim.commands.delete_note.delete_note import CommandDeleteNote
 
-        msg = delete_single(Path(fp), quiet=True)
-        self.notify(msg)
+        cmd = CommandDeleteNote(paths=[Path(fp)], repo=get_repo())
+        result = cmd.execute()
+        for w in result.warnings:
+            self.notify(w)
+        if result.success:
+            if result.metadata.get("deleted_count", 0):
+                self.notify(f"Deleted {Path(fp).name}")
+        else:
+            self.notify(result.error or "Deletion failed")
         self._rows = [r for r in self._rows if r.get("file_path") != fp]
         self._populate(self._rows)
 
@@ -405,10 +424,22 @@ class KanbanTuiApp(App[None]):
         if not confirmed or self._archive_dir is None:
             return
         fp = self._pending_archive_path
-        from bim.commands.archive_note.archive_note import archive_single
+        from bim.commands.archive_note.archive_note import CommandArchiveNote
 
-        msg = archive_single(Path(fp), self._archive_dir, quiet=True)
-        self.notify(msg)
+        cmd = CommandArchiveNote(
+            paths=[Path(fp)],
+            path_archive=self._archive_dir,
+            path_zettelkasten=Path(fp).parent,
+            repo=get_repo(),
+        )
+        result = cmd.execute()
+        for w in result.warnings:
+            self.notify(w)
+        if result.success:
+            if result.output:
+                self.notify(result.output)
+        else:
+            self.notify(result.error or "Archive failed")
         self._rows = [r for r in self._rows if r.get("file_path") != fp]
         self._rebuild_lanes(self._rows)
 
@@ -440,10 +471,17 @@ class KanbanTuiApp(App[None]):
         if not confirmed:
             return
         fp = self._pending_delete_path
-        from bim.commands.delete_note.delete_note import delete_single
+        from bim.commands.delete_note.delete_note import CommandDeleteNote
 
-        msg = delete_single(Path(fp), quiet=True)
-        self.notify(msg)
+        cmd = CommandDeleteNote(paths=[Path(fp)], repo=get_repo())
+        result = cmd.execute()
+        for w in result.warnings:
+            self.notify(w)
+        if result.success:
+            if result.metadata.get("deleted_count", 0):
+                self.notify(f"Deleted {Path(fp).name}")
+        else:
+            self.notify(result.error or "Deletion failed")
         self._rows = [r for r in self._rows if r.get("file_path") != fp]
         self._rebuild_lanes(self._rows)
 

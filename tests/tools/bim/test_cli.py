@@ -59,8 +59,16 @@ class TestDeleteCommand:
         note = tmp_path / "note.md"
         note.write_text("# Test")
 
-        with patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd:
+        with (
+            patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+        ):
+            mock_get_repo.return_value = MagicMock()
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(
+                success=True,
+                metadata={"deleted_count": 1},
+            )
 
             result = runner.invoke(
                 cli,
@@ -69,7 +77,7 @@ class TestDeleteCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[note], force=True, batch=False)
+            mock_cmd.assert_called_once_with(paths=[note], repo=ANY)
             instance.execute.assert_called_once_with()
 
     def test_delete_multiple(self, runner, tmp_path):
@@ -78,8 +86,17 @@ class TestDeleteCommand:
         a.write_text("# A")
         b.write_text("# B")
 
-        with patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd:
+        with (
+            patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.cli.console.confirm", return_value=True) as mock_confirm,
+        ):
+            mock_get_repo.return_value = MagicMock()
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(
+                success=True,
+                metadata={"deleted_count": 2},
+            )
 
             result = runner.invoke(
                 cli,
@@ -88,8 +105,9 @@ class TestDeleteCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[a, b], force=False, batch=False)
+            mock_cmd.assert_called_once_with(paths=[a, b], repo=ANY)
             instance.execute.assert_called_once_with()
+            assert mock_confirm.call_count == 2
 
 
 class TestImportCommand:

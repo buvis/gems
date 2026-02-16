@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
 from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 
 from bim.commands.shared.os_open import open_in_os
@@ -74,10 +73,19 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
 
 
 async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
-    from bim.commands.archive_note.archive_note import archive_single
+    from bim.commands.archive_note.archive_note import CommandArchiveNote
 
     archive_dir = Path(str(app_state.archive_directory)).expanduser().resolve()
-    archive_single(Path(file_path), archive_dir, quiet=True)
+    zettelkasten_dir = Path(str(app_state.default_directory)).expanduser().resolve()
+    cmd = CommandArchiveNote(
+        paths=[Path(file_path)],
+        path_archive=archive_dir,
+        path_zettelkasten=zettelkasten_dir,
+        repo=get_repo(),
+    )
+    result = cmd.execute()
+    if not result.success:
+        return {"status": "error", "message": result.error or "Archive failed"}
     return {"status": "ok"}
 
 
@@ -105,10 +113,12 @@ async def handle_format(file_path: str, args: dict[str, Any], app_state: AppStat
 
 
 async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
-    fp = Path(file_path)
-    repo = get_repo()
-    zettel = repo.find_by_location(str(fp))
-    DeleteZettelUseCase(repo).execute(zettel)
+    from bim.commands.delete_note.delete_note import CommandDeleteNote
+
+    cmd = CommandDeleteNote(paths=[Path(file_path)], repo=get_repo())
+    result = cmd.execute()
+    if not result.success:
+        return {"status": "error", "message": result.error or "Delete failed"}
     return {"status": "ok"}
 
 

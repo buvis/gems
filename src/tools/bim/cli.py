@@ -377,15 +377,24 @@ def archive_note(
         return
 
     from bim.commands.archive_note.archive_note import CommandArchiveNote
+    from bim.dependencies import get_repo
 
     settings = get_settings(ctx, BimSettings)
     cmd = CommandArchiveNote(
         paths=resolved,
         path_archive=Path(settings.path_archive).expanduser().resolve(),
         path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
+        repo=get_repo(),
         undo=undo,
     )
-    cmd.execute()
+    result = cmd.execute()
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        if result.output:
+            console.success(result.output)
+    else:
+        console.failure(result.error)
 
 
 @cli.command("show", help="Display zettel content")
@@ -436,10 +445,28 @@ def delete_note(
         return
 
     from bim.commands.delete_note.delete_note import CommandDeleteNote
+    from bim.dependencies import get_repo
 
     batch = query_file is not None or query_string is not None
-    cmd = CommandDeleteNote(paths=resolved, force=force, batch=batch)
-    cmd.execute()
+    if batch and not force:
+        if not console.confirm(f"Permanently delete {len(resolved)} zettels?"):
+            return
+        confirmed_paths = resolved
+    elif not force and not batch:
+        confirmed_paths = [path for path in resolved if console.confirm(f"Permanently delete {path.name}?")]
+    else:
+        confirmed_paths = resolved
+
+    cmd = CommandDeleteNote(paths=confirmed_paths, repo=get_repo())
+    result = cmd.execute()
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        count = result.metadata.get("deleted_count", 0)
+        if count:
+            console.success(f"Deleted {count} zettel(s)")
+    else:
+        console.failure(result.error)
 
 
 @cli.command("serve", help="Start web dashboard")

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 import pytest
-from bim.commands.delete_note.delete_note import CommandDeleteNote, delete_single
+
+from bim.commands.delete_note.delete_note import CommandDeleteNote
 
 
 @pytest.fixture
@@ -14,51 +15,35 @@ def zettel_file(tmp_path: Path) -> Path:
     return p
 
 
-class TestDeleteSingle:
-    def test_deletes_file(self, zettel_file: Path) -> None:
-        assert zettel_file.is_file()
-        delete_single(zettel_file, quiet=True)
-        assert not zettel_file.exists()
+def _make_repo_for_delete(zettel_file: Path) -> MagicMock:
+    data = MagicMock()
+    data.file_path = str(zettel_file)
+    zettel = MagicMock()
+    zettel.get_data.return_value = data
+    repo = MagicMock()
+    repo.find_by_location.return_value = zettel
 
-    def test_returns_message(self, zettel_file: Path) -> None:
-        msg = delete_single(zettel_file, quiet=True)
-        assert zettel_file.name in msg
+    def _delete(target) -> None:
+        Path(target.get_data().file_path).unlink()
 
-    def test_quiet_suppresses_console(self, zettel_file: Path) -> None:
-        with patch("bim.commands.delete_note.delete_note.console") as mock_console:
-            delete_single(zettel_file, quiet=True)
-            mock_console.success.assert_not_called()
-
-    def test_loud_prints_console(self, zettel_file: Path) -> None:
-        with patch("bim.commands.delete_note.delete_note.console") as mock_console:
-            delete_single(zettel_file)
-            mock_console.success.assert_called_once()
+    repo.delete.side_effect = _delete
+    return repo
 
 
 class TestCommandDeleteNote:
-    def test_force_deletes_without_confirm(self, zettel_file: Path) -> None:
-        cmd = CommandDeleteNote(paths=[zettel_file], force=True)
-        cmd.execute()
+    def test_deletes_file(self, zettel_file: Path) -> None:
+        repo = _make_repo_for_delete(zettel_file)
+        cmd = CommandDeleteNote(paths=[zettel_file], repo=repo)
+        result = cmd.execute()
+        assert result.success
+        assert result.metadata["deleted_count"] == 1
         assert not zettel_file.exists()
 
-    def test_no_force_confirms(self, zettel_file: Path) -> None:
-        with patch("bim.commands.delete_note.delete_note.console") as mock_console:
-            mock_console.confirm.return_value = True
-            cmd = CommandDeleteNote(paths=[zettel_file])
-            cmd.execute()
-            mock_console.confirm.assert_called_once()
-            assert not zettel_file.exists()
-
-    def test_no_force_declined(self, zettel_file: Path) -> None:
-        with patch("bim.commands.delete_note.delete_note.console") as mock_console:
-            mock_console.confirm.return_value = False
-            cmd = CommandDeleteNote(paths=[zettel_file])
-            cmd.execute()
-            assert zettel_file.exists()
-
-    def test_missing_file_reports_failure(self, tmp_path: Path) -> None:
+    def test_missing_file(self, tmp_path: Path) -> None:
         missing = tmp_path / "nope.md"
-        with patch("bim.commands.delete_note.delete_note.console") as mock_console:
-            cmd = CommandDeleteNote(paths=[missing], force=True)
-            cmd.execute()
-            mock_console.failure.assert_called_once()
+        repo = MagicMock()
+        cmd = CommandDeleteNote(paths=[missing], repo=repo)
+        result = cmd.execute()
+        assert not result.success
+        assert f"{missing} doesn't exist" in result.warnings
+        repo.find_by_location.assert_not_called()
