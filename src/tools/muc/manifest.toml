@@ -1,0 +1,20 @@
+[tool]
+name = "muc"
+display_name = "Music Collection"
+module_name = "muc"
+description = "Tools for music collection management"
+category = "media"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+limit = "Limit collection size"
+tidy = "Tidy up collection"
+
+[tool.requirements]
+python = ">=3.11"
+extras = ["muc"]

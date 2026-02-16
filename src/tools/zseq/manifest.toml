@@ -1,0 +1,19 @@
+[tool]
+name = "zseq"
+display_name = "Zettel Sequence"
+module_name = "zseq"
+description = "CLI tool to work with Zettelkasten sequential file naming"
+category = "knowledge-management"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+get_last = "Get last sequential filename"
+
+[tool.requirements]
+python = ">=3.11"
+extras = []

@@ -1,0 +1,19 @@
+[tool]
+name = "pinger"
+display_name = "Pinger"
+module_name = "pinger"
+description = "Useful tools around ICMP ping"
+category = "network"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+wait = "Wait for host to respond"
+
+[tool.requirements]
+python = ">=3.11"
+extras = ["pinger"]

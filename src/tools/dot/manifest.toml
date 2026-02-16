@@ -1,0 +1,20 @@
+[tool]
+name = "dot"
+display_name = "Dotfiles Manager"
+module_name = "dot"
+description = "CLI for bare repo dotfiles"
+category = "system"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+status = "Show dotfiles status"
+add = "Add file to dotfiles"
+
+[tool.requirements]
+python = ">=3.11"
+extras = []

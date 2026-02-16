@@ -1,0 +1,21 @@
+[tool]
+name = "hello-world"
+display_name = "Hello World"
+module_name = "hello_world"
+description = "CLI tool as script proof of concept"
+category = "demo"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+print = "Print figlet text"
+list-fonts = "List available fonts"
+diagnostics = "Print runtime info"
+
+[tool.requirements]
+python = ">=3.11"
+extras = ["hello-world"]

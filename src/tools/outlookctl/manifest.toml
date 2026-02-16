@@ -1,0 +1,19 @@
+[tool]
+name = "outlookctl"
+display_name = "Outlook Control"
+module_name = "outlookctl"
+description = "CLI to Outlook"
+category = "productivity"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+create_timeblock = "Create timeblock event"
+
+[tool.requirements]
+python = ">=3.11"
+extras = []

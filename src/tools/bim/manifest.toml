@@ -1,0 +1,29 @@
+[tool]
+name = "bim"
+display_name = "BUVIS InfoMesh"
+module_name = "bim"
+description = "CLI to BUVIS InfoMesh — zettelkasten management"
+category = "knowledge-management"
+
+[tool.interfaces]
+cli = true
+rest = true
+tui = true
+web = true
+
+[tool.commands]
+show_note = "Display zettel content"
+format_note = "Format a note"
+create_note = "Create a new zettel from template"
+edit_note = "Edit zettel metadata"
+query = "Query zettels with YAML filter"
+import_note = "Import a note to zettelkasten"
+sync_note = "Synchronize with external system"
+archive_note = "Archive zettel(s)"
+delete_note = "Permanently delete zettel(s)"
+parse_tags = "Parse Obsidian tags.json"
+serve = "Start web dashboard"
+
+[tool.requirements]
+python = ">=3.11"
+extras = ["bim", "bim-web"]

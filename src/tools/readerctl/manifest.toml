@@ -1,0 +1,20 @@
+[tool]
+name = "readerctl"
+display_name = "Reader Control"
+module_name = "readerctl"
+description = "CLI tool to manage Reader from Readwise"
+category = "reading"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+login = "Login to Readwise"
+add = "Add URL to Reader"
+
+[tool.requirements]
+python = ">=3.11"
+extras = ["readerctl"]

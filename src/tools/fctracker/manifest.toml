@@ -1,0 +1,20 @@
+[tool]
+name = "fctracker"
+display_name = "Foreign Currency Tracker"
+module_name = "fctracker"
+description = "CLI tool to manage accounts in foreign currencies"
+category = "finance"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+balance = "Show account balance"
+transactions = "List transactions"
+
+[tool.requirements]
+python = ">=3.11"
+extras = []
