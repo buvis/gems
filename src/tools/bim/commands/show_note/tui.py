@@ -25,9 +25,12 @@ class ShowScreen(ModalScreen[None]):
         self._path = path
 
     def compose(self) -> ComposeResult:
-        from bim.commands.show_note.show_note import show_single
+        from bim.commands.show_note.show_note import CommandShowNote
+        from bim.dependencies import get_formatter, get_repo
 
-        content = show_single(self._path, quiet=True)
+        cmd = CommandShowNote(paths=[self._path], repo=get_repo(), formatter=get_formatter())
+        result = cmd.execute()
+        content = result.output or result.error or ""
         with VerticalScroll(id="show-dialog"):
             yield Static(content, id="show-content", markup=False)
             with Center(id="show-close"):

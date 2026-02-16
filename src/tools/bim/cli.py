@@ -374,9 +374,17 @@ def show_note(
         return
 
     from bim.commands.show_note.show_note import CommandShowNote
+    from bim.dependencies import get_formatter, get_repo
 
-    cmd = CommandShowNote(paths=resolved)
-    cmd.execute()
+    cmd = CommandShowNote(paths=resolved, repo=get_repo(), formatter=get_formatter())
+    result = cmd.execute()
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        if result.output:
+            console.print(result.output, mode="raw")
+    else:
+        console.failure(result.error)
 
 
 @cli.command("delete", help="Permanently delete zettel(s)")

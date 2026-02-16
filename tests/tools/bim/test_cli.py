@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import cli
+from buvis.pybase.result import CommandResult
 
 
 class TestShowCommand:
@@ -10,19 +12,46 @@ class TestShowCommand:
         note = tmp_path / "note.md"
         note.write_text("# Test")
 
-        with patch("bim.commands.show_note.show_note.CommandShowNote") as mock_cmd:
+        with (
+            patch("bim.commands.show_note.show_note.CommandShowNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_formatter") as mock_get_formatter,
+        ):
+            mock_get_repo.return_value = MagicMock()
+            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True)
 
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[note])
+            mock_cmd.assert_called_once_with(paths=[note], repo=ANY, formatter=ANY)
             instance.execute.assert_called_once_with()
 
     def test_show_missing_file(self, runner):
-        result = runner.invoke(cli, ["show", "/nonexistent.md"], catch_exceptions=False)
-        assert result.exit_code == 0
-        assert "doesn't exist" in result.output
+        with (
+            patch("bim.commands.show_note.show_note.CommandShowNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_formatter") as mock_get_formatter,
+        ):
+            mock_get_repo.return_value = MagicMock()
+            mock_get_formatter.return_value = MagicMock()
+            instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(
+                success=False,
+                error="Missing note",
+                warnings=["Missing note"],
+            )
+
+            result = runner.invoke(cli, ["show", "/nonexistent.md"], catch_exceptions=False)
+            assert result.exit_code == 0
+            mock_cmd.assert_called_once_with(
+                paths=[Path("/nonexistent.md")],
+                repo=ANY,
+                formatter=ANY,
+            )
+            instance.execute.assert_called_once_with()
+            assert "Missing note" in result.output
 
 
 class TestDeleteCommand:
