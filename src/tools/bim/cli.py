@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -449,18 +450,62 @@ def query(
             console.print(f"{name:30s} {path}", mode="raw")
         return
 
-    from bim.commands.query.query import CommandQuery
+    from bim.commands.query._presentation import present_query_result
+    from bim.commands.query.query import BUNDLED_QUERY_DIR, CommandQuery
+    from bim.dependencies import (
+        get_evaluator,
+        get_repo,
+        parse_query_file,
+        parse_query_string,
+        resolve_query_file,
+    )
 
     settings = get_settings(ctx, BimSettings)
+    if query_file:
+        resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)
+        spec = parse_query_file(str(resolved))
+    elif query_string:
+        spec = parse_query_string(query_string)
+    else:
+        console.failure("Provide -f/--file or -q/--query")
+        return
+
+    default_directory = str(Path(settings.path_zettelkasten).expanduser().resolve())
+    archive_directory = str(Path(settings.path_archive).expanduser().resolve())
+    repo = get_repo(extensions=spec.source.extensions)
+    evaluator = get_evaluator()
+
     cmd = CommandQuery(
-        default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
-        archive_directory=str(Path(settings.path_archive).expanduser().resolve()),
-        file=query_file,
-        query=query_string,
-        edit=edit,
-        tui=tui,
+        spec=spec,
+        repo=repo,
+        evaluator=evaluator,
+        default_directory=default_directory,
     )
-    cmd.execute()
+    t0 = time.perf_counter()
+    result = cmd.execute()
+    elapsed = time.perf_counter() - t0
+
+    rows = result.metadata["rows"]
+    columns = result.metadata["columns"]
+    directory = result.metadata["directory"]
+    spec = result.metadata["spec"]
+
+    if not rows:
+        console.warning("No results")
+        return
+
+    present_query_result(
+        rows,
+        columns,
+        spec,
+        tui=tui,
+        edit=edit,
+        archive_directory=archive_directory,
+        directory=directory,
+        repo=repo,
+        evaluator=evaluator,
+    )
+    console.info(f"{len(rows)} rows, query took {elapsed:.2f}s")
 
 
 @cli.command("edit", help="Edit zettel metadata")

@@ -413,13 +413,38 @@ class TestQueryCommand:
 
         with (
             patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.dependencies.resolve_query_file") as mock_resolve,
+            patch("bim.dependencies.parse_query_file") as mock_parse,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
+            patch("bim.commands.query._presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),
                 path_archive=str(archive_dir),
             )
+            spec = MagicMock()
+            spec.source.extensions = [".md"]
+            mock_resolve.return_value = query_file
+            mock_parse.return_value = spec
+            repo = MagicMock()
+            evaluator = MagicMock()
+            mock_get_repo.return_value = repo
+            mock_get_evaluator.return_value = evaluator
             instance = mock_cmd.return_value
+            rows = [{"title": "Note"}]
+            columns = ["title"]
+            instance.execute.return_value = CommandResult(
+                success=True,
+                metadata={
+                    "rows": rows,
+                    "columns": columns,
+                    "count": len(rows),
+                    "directory": str(tmp_path),
+                    "spec": spec,
+                },
+            )
 
             result = runner.invoke(
                 cli,
@@ -428,28 +453,64 @@ class TestQueryCommand:
             )
 
             assert result.exit_code == 0
+            mock_resolve.assert_called_once_with(str(query_file), bundled_dir=ANY)
+            mock_parse.assert_called_once_with(str(query_file))
+            mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
+            mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
+                spec=spec,
+                repo=repo,
+                evaluator=evaluator,
                 default_directory=str(tmp_path.resolve()),
-                archive_directory=str(archive_dir.resolve()),
-                file=str(query_file),
-                query=None,
-                edit=False,
-                tui=False,
             )
             instance.execute.assert_called_once_with()
+            mock_present.assert_called_once_with(
+                rows,
+                columns,
+                spec,
+                tui=False,
+                edit=False,
+                archive_directory=str(archive_dir.resolve()),
+                directory=str(tmp_path),
+                repo=repo,
+                evaluator=evaluator,
+            )
 
     def test_query_with_inline(self, runner, tmp_path):
         archive_dir = tmp_path / "archive"
 
         with (
             patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.dependencies.parse_query_string") as mock_parse,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
+            patch("bim.commands.query._presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),
                 path_archive=str(archive_dir),
             )
+            spec = MagicMock()
+            spec.source.extensions = [".md"]
+            mock_parse.return_value = spec
+            repo = MagicMock()
+            evaluator = MagicMock()
+            mock_get_repo.return_value = repo
+            mock_get_evaluator.return_value = evaluator
             instance = mock_cmd.return_value
+            rows = [{"title": "Note"}]
+            columns = ["title"]
+            instance.execute.return_value = CommandResult(
+                success=True,
+                metadata={
+                    "rows": rows,
+                    "columns": columns,
+                    "count": len(rows),
+                    "directory": str(tmp_path),
+                    "spec": spec,
+                },
+            )
 
             result = runner.invoke(
                 cli,
@@ -458,12 +519,24 @@ class TestQueryCommand:
             )
 
             assert result.exit_code == 0
+            mock_parse.assert_called_once_with("sort: title")
+            mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
+            mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
+                spec=spec,
+                repo=repo,
+                evaluator=evaluator,
                 default_directory=str(tmp_path.resolve()),
-                archive_directory=str(archive_dir.resolve()),
-                file=None,
-                query="sort: title",
-                edit=False,
-                tui=False,
             )
             instance.execute.assert_called_once_with()
+            mock_present.assert_called_once_with(
+                rows,
+                columns,
+                spec,
+                tui=False,
+                edit=False,
+                archive_directory=str(archive_dir.resolve()),
+                directory=str(tmp_path),
+                repo=repo,
+                evaluator=evaluator,
+            )

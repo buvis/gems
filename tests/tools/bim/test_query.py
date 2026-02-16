@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import query
+from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
 
 
@@ -31,13 +32,39 @@ class TestQueryCli:
     def test_query_file_executes_command(self, runner: CliRunner) -> None:
         with (
             patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.dependencies.resolve_query_file") as mock_resolve,
+            patch("bim.dependencies.parse_query_file") as mock_parse,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
+            patch("bim.commands.query._presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten="/tmp/zk",
                 path_archive="/tmp/archive",
             )
+            spec = MagicMock()
+            spec.source.extensions = [".md"]
+            resolved = Path("/tmp/query.yml")
+            mock_resolve.return_value = resolved
+            mock_parse.return_value = spec
+            repo = MagicMock()
+            evaluator = MagicMock()
+            mock_get_repo.return_value = repo
+            mock_get_evaluator.return_value = evaluator
             instance = mock_cmd.return_value
+            rows = [{"title": "Note"}]
+            columns = ["title"]
+            instance.execute.return_value = CommandResult(
+                success=True,
+                metadata={
+                    "rows": rows,
+                    "columns": columns,
+                    "count": len(rows),
+                    "directory": "/tmp/zk",
+                    "spec": spec,
+                },
+            )
 
             result = runner.invoke(
                 query,
@@ -46,26 +73,62 @@ class TestQueryCli:
             )
 
             assert result.exit_code == 0
+            mock_resolve.assert_called_once_with("query.yml", bundled_dir=ANY)
+            mock_parse.assert_called_once_with(str(resolved))
+            mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
+            mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
+                spec=spec,
+                repo=repo,
+                evaluator=evaluator,
                 default_directory=str(Path("/tmp/zk").expanduser().resolve()),
-                archive_directory=str(Path("/tmp/archive").expanduser().resolve()),
-                file="query.yml",
-                query=None,
-                edit=True,
-                tui=True,
             )
             instance.execute.assert_called_once_with()
+            mock_present.assert_called_once_with(
+                rows,
+                columns,
+                spec,
+                tui=True,
+                edit=True,
+                archive_directory=str(Path("/tmp/archive").expanduser().resolve()),
+                directory="/tmp/zk",
+                repo=repo,
+                evaluator=evaluator,
+            )
 
     def test_query_inline_yaml_executes_command(self, runner: CliRunner) -> None:
         with (
             patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.dependencies.parse_query_string") as mock_parse,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
+            patch("bim.commands.query._presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten="/tmp/zk",
                 path_archive="/tmp/archive",
             )
+            spec = MagicMock()
+            spec.source.extensions = [".md"]
+            mock_parse.return_value = spec
+            repo = MagicMock()
+            evaluator = MagicMock()
+            mock_get_repo.return_value = repo
+            mock_get_evaluator.return_value = evaluator
             instance = mock_cmd.return_value
+            rows = [{"title": "Note"}]
+            columns = ["title"]
+            instance.execute.return_value = CommandResult(
+                success=True,
+                metadata={
+                    "rows": rows,
+                    "columns": columns,
+                    "count": len(rows),
+                    "directory": "/tmp/zk",
+                    "spec": spec,
+                },
+            )
 
             result = runner.invoke(
                 query,
@@ -74,36 +137,37 @@ class TestQueryCli:
             )
 
             assert result.exit_code == 0
+            mock_parse.assert_called_once_with("sort: title")
+            mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
+            mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
+                spec=spec,
+                repo=repo,
+                evaluator=evaluator,
                 default_directory=str(Path("/tmp/zk").expanduser().resolve()),
-                archive_directory=str(Path("/tmp/archive").expanduser().resolve()),
-                file=None,
-                query="sort: title",
-                edit=False,
-                tui=False,
             )
             instance.execute.assert_called_once_with()
+            mock_present.assert_called_once_with(
+                rows,
+                columns,
+                spec,
+                tui=False,
+                edit=False,
+                archive_directory=str(Path("/tmp/archive").expanduser().resolve()),
+                directory="/tmp/zk",
+                repo=repo,
+                evaluator=evaluator,
+            )
 
-    def test_query_without_args_invokes_command(self, runner: CliRunner) -> None:
+    def test_query_without_args_reports_error(self, runner: CliRunner) -> None:
         with (
+            patch("bim.cli.console") as mock_console,
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
         ):
-            mock_settings.return_value = MagicMock(
-                path_zettelkasten="/tmp/zk",
-                path_archive="/tmp/archive",
-            )
-            instance = mock_cmd.return_value
-
+            mock_settings.return_value = MagicMock()
             result = runner.invoke(query, [], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(
-                default_directory=str(Path("/tmp/zk").expanduser().resolve()),
-                archive_directory=str(Path("/tmp/archive").expanduser().resolve()),
-                file=None,
-                query=None,
-                edit=False,
-                tui=False,
-            )
-            instance.execute.assert_called_once_with()
+            mock_console.failure.assert_called_once_with("Provide -f/--file or -q/--query")
+            mock_cmd.assert_not_called()
