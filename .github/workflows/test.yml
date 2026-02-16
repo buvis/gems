@@ -41,7 +41,7 @@ jobs:
         run: uv run python -c "import nltk; nltk.download('stopwords', quiet=True)"
 
       - name: Run tests
-        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=50
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=62  # ratchet: bump after adding tests
 
       - name: Type check
         run: uv run mypy src/lib/ src/tools/
