@@ -29,6 +29,14 @@ ReadZettelUseCase
    :undoc-members:
    :show-inheritance:
 
+QueryZettelsUseCase
+~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: buvis.pybase.zettel.application.use_cases.query_zettels_use_case.QueryZettelsUseCase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 UpdateZettelUseCase
 ~~~~~~~~~~~~~~~~~~~
 

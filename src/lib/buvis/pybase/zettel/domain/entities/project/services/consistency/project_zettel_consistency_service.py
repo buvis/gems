@@ -6,6 +6,8 @@ within a zettel. These functionalities are encapsulated in the ProjectZettelCons
 class, which operates on instances of :class:`ZettelData`.
 """
 
+from __future__ import annotations
+
 from buvis.pybase.zettel.domain.entities.project.services.consistency.fixers.fix_lists_bullets import (
     fix_lists_bullets,
 )

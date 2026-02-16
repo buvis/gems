@@ -8,6 +8,8 @@ Classes:
     - :class:`ZettelRepositoryZettelNotFoundError`: Custom exception class for Zettel not found errors.
 """
 
+from __future__ import annotations
+
 
 class ZettelRepositoryZettelNotFoundError(Exception):
     """
@@ -19,7 +21,7 @@ class ZettelRepositoryZettelNotFoundError(Exception):
     """
 
     def __init__(
-        self: "ZettelRepositoryZettelNotFoundError",
+        self: ZettelRepositoryZettelNotFoundError,
         message: str = "Zettel not found in repository.",
     ) -> None:
         """

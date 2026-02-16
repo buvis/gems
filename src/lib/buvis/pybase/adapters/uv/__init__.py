@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .uv import UvAdapter
 from .uv_tool import UvToolManager
 

@@ -19,6 +19,8 @@ Precedence (highest to lowest):
     4. Model defaults
 """
 
+from __future__ import annotations
+
 from .click_integration import buvis_options, get_settings
 from .config_writer import ConfigWriter
 from .exceptions import (

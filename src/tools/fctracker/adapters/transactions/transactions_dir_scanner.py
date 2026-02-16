@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fctracker.adapters.config.config import cfg
 
 

@@ -6,6 +6,8 @@ Imports:
     represent and manipulate zettel metadata.
 """
 
+from __future__ import annotations
+
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 TYPE_MIGRATIONS = {

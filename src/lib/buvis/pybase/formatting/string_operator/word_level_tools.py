@@ -9,6 +9,8 @@ Example:
     'dog'
 """
 
+from __future__ import annotations
+
 from inflection import pluralize as infl_pluralize
 from inflection import singularize as infl_singularize
 

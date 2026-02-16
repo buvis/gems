@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .account import Account as Account
 from .deposit import Deposit as Deposit
 from .quantified_item import QuantifiedItem as QuantifiedItem

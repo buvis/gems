@@ -7,6 +7,8 @@ Imports:
     - ZettelData: A class representing the data structure for zettel information.
 """
 
+from __future__ import annotations
+
 from buvis.pybase.zettel.domain.entities.project.services.migration.upgrades.migrate_loop_log import (
     migrate_loop_log,
 )

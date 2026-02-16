@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
@@ -6,7 +8,7 @@ from buvis.pybase.adapters import console
 
 class CommandParseTags:
     def __init__(
-        self: "CommandParseTags",
+        self: CommandParseTags,
         path_tags_json: Path,
         path_output: Path | None = None,
     ) -> None:
@@ -15,7 +17,7 @@ class CommandParseTags:
         self.path_tags_json = path_tags_json
         self.path_output = path_output.resolve() if path_output else None
 
-    def execute(self: "CommandParseTags") -> None:
+    def execute(self: CommandParseTags) -> None:
         data = json.loads(self.path_tags_json.read_text())
         tags = [item["tag"] for item in data]
         unique_sorted_tags = sorted(set(tags))

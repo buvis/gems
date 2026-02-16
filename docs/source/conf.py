@@ -6,7 +6,7 @@ sys.path.insert(0, str(root / "src" / "lib"))
 sys.path.insert(0, str(root / "src" / "tools"))
 
 project = "buvis-gems"
-copyright = "2024, Tomáš Bouška"
+copyright = "2024-2026, Tomáš Bouška"
 author = "Tomáš Bouška"
 
 extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx.ext.githubpages"]

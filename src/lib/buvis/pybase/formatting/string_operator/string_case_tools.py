@@ -1,5 +1,7 @@
 """String case conversion utilities for converting between naming conventions."""
 
+from __future__ import annotations
+
 from inflection import camelize as infl_camelize
 from inflection import humanize as infl_humanize
 from inflection import underscore as infl_underscore

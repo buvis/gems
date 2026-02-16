@@ -8,6 +8,8 @@ Example:
     StringOperator.slugify("Hello World!")  # returns "hello-world"
 """
 
+from __future__ import annotations
+
 from .string_operator.string_operator import StringOperator
 
 __all__ = ["StringOperator"]

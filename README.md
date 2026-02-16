@@ -18,6 +18,7 @@ All 9 CLIs (`bim`, `dot`, `fctracker`, `hello-world`, `muc`, `outlookctl`, `ping
 | Extra | Dep | Tool |
 |-------|-----|------|
 | `bim` | jira, textual | bim |
+| `bim-web` | fastapi, uvicorn, watchfiles | bim (web UI) |
 | `hello-world` | pyfiglet | hello-world |
 | `muc` | ffmpeg-python | muc |
 | `pinger` | ping3 | pinger |

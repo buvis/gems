@@ -10,6 +10,8 @@ Provides JiraAdapter for CRUD operations on JIRA issues including:
 Configuration via JiraSettings pydantic model with env vars.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
@@ -55,7 +57,7 @@ class JiraAdapter:
         >>> jira.transition(created.id, "Start Progress")
     """
 
-    def __init__(self: "JiraAdapter", settings: JiraSettings) -> None:
+    def __init__(self: JiraAdapter, settings: JiraSettings) -> None:
         """Initialize JIRA connection.
 
         Args:
@@ -142,7 +144,7 @@ class JiraAdapter:
             link=new_issue.permalink(),  # type: ignore[no-untyped-call]
         )
 
-    def _issue_to_dto(self, issue: "Issue") -> JiraIssueDTO:
+    def _issue_to_dto(self, issue: Issue) -> JiraIssueDTO:
         """Convert JIRA issue object to DTO."""
         fm = self._settings.field_mappings
         team_val = getattr(issue.fields, fm.team, None)

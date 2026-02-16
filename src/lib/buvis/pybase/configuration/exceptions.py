@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class ConfigurationKeyNotFoundError(Exception):
     """Key not found in configuration exception.
 
@@ -6,7 +9,7 @@ class ConfigurationKeyNotFoundError(Exception):
     """
 
     def __init__(
-        self: "ConfigurationKeyNotFoundError",
+        self: ConfigurationKeyNotFoundError,
         message: str = "Key not found in configuration.",
     ) -> None:
         super().__init__(message)

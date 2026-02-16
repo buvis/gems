@@ -9,50 +9,45 @@ from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import Upd
 from bim.dependencies import get_repo
 
 
-def archive_single(path: Path, archive_dir: Path, *, quiet: bool = False) -> str:
-    """Archive one zettel: set processed/completed, move to archive_dir."""
+def _toggle_archive(
+    path: Path,
+    destination: Path,
+    *,
+    archive: bool,
+    quiet: bool = False,
+) -> str:
     repo = get_repo()
     zettel = repo.find_by_location(str(path))
     data = zettel.get_data()
 
-    changes: dict[str, object] = {"processed": True}
+    changes: dict[str, object] = {"processed": archive}
     if data.metadata.get("type") == "project":
-        changes["completed"] = True
+        changes["completed"] = archive
 
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    dest = archive_dir / path.name
+    if archive:
+        destination.mkdir(parents=True, exist_ok=True)
+    dest = destination / path.name
     source = data.file_path
     data.file_path = str(dest)
 
     UpdateZettelUseCase(repo).execute(zettel, changes)
     data.file_path = source
     DeleteZettelUseCase(repo).execute(zettel)
-    msg = f"Archived {path.name}"
+    action = "Archived" if archive else "Unarchived"
+    msg = f"{action} {path.name}"
     if not quiet:
         console.success(msg)
     return msg
 
 
+def archive_single(path: Path, archive_dir: Path, *, quiet: bool = False) -> str:
+    """Archive one zettel: set processed/completed, move to archive_dir."""
+    return _toggle_archive(path, archive_dir, archive=True, quiet=quiet)
+
+
 def unarchive_single(path: Path, zettelkasten_dir: Path) -> str:
     """Unarchive one zettel: clear processed/completed, move back."""
-    repo = get_repo()
-    zettel = repo.find_by_location(str(path))
-    data = zettel.get_data()
-
-    changes: dict[str, object] = {"processed": False}
-    if data.metadata.get("type") == "project":
-        changes["completed"] = False
-
-    dest = zettelkasten_dir / path.name
-    source = data.file_path
-    data.file_path = str(dest)
-
-    UpdateZettelUseCase(repo).execute(zettel, changes)
-    data.file_path = source
-    DeleteZettelUseCase(repo).execute(zettel)
-    msg = f"Unarchived {path.name}"
-    console.success(msg)
-    return msg
+    return _toggle_archive(path, zettelkasten_dir, archive=False)
 
 
 class CommandArchiveNote:

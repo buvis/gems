@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,12 @@ from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import Upd
 
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import get_repo
+
+
+@dataclass
+class AppState:
+    default_directory: str
+    archive_directory: str | None
 
 
 def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
@@ -27,7 +34,7 @@ def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, A
     return resolved
 
 
-async def handle_patch(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     fp = Path(file_path)
     repo = get_repo()
     zettel = repo.find_by_location(str(fp))
@@ -38,7 +45,7 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: Any) -> 
     return {"status": "ok"}
 
 
-async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.sync_note.sync_note import CommandSyncNote
 
     target_system = args.get("target_system", "jira")
@@ -52,7 +59,7 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: Any)
     return {"status": "ok"}
 
 
-async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_create_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.create_note.create_note import CommandCreateNote
 
     directory = Path(file_path).parent if file_path else Path(str(app_state.default_directory))
@@ -66,7 +73,7 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: An
     return {"status": "ok"}
 
 
-async def handle_archive(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.archive_note.archive_note import archive_single
 
     archive_dir = Path(str(app_state.archive_directory)).expanduser().resolve()
@@ -74,20 +81,20 @@ async def handle_archive(file_path: str, args: dict[str, Any], app_state: Any) -
     return {"status": "ok"}
 
 
-async def handle_open(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_open(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     fp = Path(file_path)
     open_in_os(fp)
     return {"status": "ok"}
 
 
-async def handle_format(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_format(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.format_note.format_note import format_single
 
     format_single(Path(file_path), in_place=True, quiet=True)
     return {"status": "ok"}
 
 
-async def handle_delete(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     fp = Path(file_path)
     repo = get_repo()
     zettel = repo.find_by_location(str(fp))
@@ -95,7 +102,7 @@ async def handle_delete(file_path: str, args: dict[str, Any], app_state: Any) ->
     return {"status": "ok"}
 
 
-async def handle_import(file_path: str, args: dict[str, Any], app_state: Any) -> dict[str, str]:
+async def handle_import(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.import_note.import_note import import_single
 
     zettelkasten = Path(str(app_state.default_directory)).expanduser().resolve()
@@ -112,7 +119,7 @@ async def handle_import(file_path: str, args: dict[str, Any], app_state: Any) ->
     return {"status": "ok"}
 
 
-ActionHandler = Callable[[str, dict[str, Any], Any], Coroutine[Any, Any, dict[str, str]]]
+ActionHandler = Callable[[str, dict[str, Any], AppState], Coroutine[Any, Any, dict[str, str]]]
 
 ACTION_HANDLERS: dict[str, ActionHandler] = {
     "patch": handle_patch,

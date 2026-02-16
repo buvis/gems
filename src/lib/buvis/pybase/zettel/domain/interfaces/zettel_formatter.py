@@ -7,6 +7,8 @@ Imports:
     - :class:`zettel.domain.value_objects.zettel_data.ZettelData` for type annotations.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
@@ -23,7 +25,7 @@ class ZettelFormatter(ABC):
 
     @staticmethod
     @abstractmethod
-    def format(zettel_data: "ZettelData") -> str:
+    def format(zettel_data: ZettelData) -> str:
         """
         Format the provided Zettel data into a string.
 

@@ -137,11 +137,12 @@ def create(ctx):
 ```bash
 uv tool install buvis-gems              # core only (no tool-specific deps)
 uv tool install buvis-gems[bim]         # with jira support
+uv tool install buvis-gems[bim-web]     # bim web UI deps
 uv tool install buvis-gems[all]         # everything
 uv tool upgrade buvis-gems              # update
 ```
 
-Extras: `bim`, `hello-world`, `muc`, `pinger`, `readerctl`, `ml`, `all`
+Extras: `bim`, `bim-web`, `hello-world`, `muc`, `pinger`, `readerctl`, `ml`, `all`
 
 ## Release
 

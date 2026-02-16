@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class AdapterResponse:
     def __init__(self, code: int = 0, message: str = "") -> None:
         self.code = code

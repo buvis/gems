@@ -6,6 +6,8 @@ Imports:
     - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data for data manipulation.
 """
 
+from __future__ import annotations
+
 from datetime import UTC
 
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

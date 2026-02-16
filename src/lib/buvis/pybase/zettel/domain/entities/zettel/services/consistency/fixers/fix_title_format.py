@@ -8,6 +8,8 @@ Imports:
   representing the data structure for zettel information.
 """
 
+from __future__ import annotations
+
 from buvis.pybase.formatting import StringOperator
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 

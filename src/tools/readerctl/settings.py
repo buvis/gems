@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from buvis.pybase.configuration import GlobalSettings
 from pydantic_settings import SettingsConfigDict
 

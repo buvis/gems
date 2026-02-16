@@ -6,6 +6,8 @@ Imports:
     data structure for zettel metadata.
 """
 
+from __future__ import annotations
+
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 DEFAULT_TYPE: str = "note"

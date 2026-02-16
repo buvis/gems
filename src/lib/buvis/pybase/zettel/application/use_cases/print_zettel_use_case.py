@@ -4,6 +4,8 @@ Module containing the PrintZettelUseCase class.
 This module provides functionality for printing formatted Zettel data.
 """
 
+from __future__ import annotations
+
 from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
@@ -16,7 +18,7 @@ class PrintZettelUseCase:
     using a provided ZettelFormatter.
     """
 
-    def __init__(self: "PrintZettelUseCase", formatter: ZettelFormatter) -> None:
+    def __init__(self: PrintZettelUseCase, formatter: ZettelFormatter) -> None:
         """
         Initialize the PrintZettelUseCase instance.
 
@@ -25,7 +27,7 @@ class PrintZettelUseCase:
         """
         self.formatter = formatter
 
-    def execute(self: "PrintZettelUseCase", zettel_data: ZettelData) -> str:
+    def execute(self: PrintZettelUseCase, zettel_data: ZettelData) -> str:
         """
         Execute the use case by formatting the given Zettel data.
 

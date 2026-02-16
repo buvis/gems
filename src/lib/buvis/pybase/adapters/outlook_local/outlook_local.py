@@ -53,7 +53,7 @@ class OutlookLocalAdapter:
             self.api: Any = self.app.GetNamespace("MAPI")
             self.calendar: Any = self.api.GetDefaultFolder(9)
         except Exception as e:
-            console.panic(f"Outook connection failed:\n{e}")
+            console.panic(f"Outlook connection failed:\n{e}")
 
     def create_timeblock(
         self: OutlookLocalAdapter,

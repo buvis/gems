@@ -5,6 +5,8 @@ It includes functionality to read zettel from ZettelReader and returning it as
 a specific zettel accourding to zettel type.
 """
 
+from __future__ import annotations
+
 import buvis.pybase.zettel.domain.entities as zettel_entities
 from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelReader
 from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
@@ -22,7 +24,7 @@ class ReadZettelUseCase:
     :type repository: ZettelReader
     """
 
-    def __init__(self: "ReadZettelUseCase", repository: ZettelReader) -> None:
+    def __init__(self: ReadZettelUseCase, repository: ZettelReader) -> None:
         """
         Initialize a new instance of the ReadZettelUseCase class.
 
@@ -33,7 +35,7 @@ class ReadZettelUseCase:
         self.repository = repository
 
     def execute(
-        self: "ReadZettelUseCase",
+        self: ReadZettelUseCase,
         repository_location: str,
     ) -> zettel_entities.Zettel:
         """

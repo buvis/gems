@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .console.console import console, logging_to_console
 
 

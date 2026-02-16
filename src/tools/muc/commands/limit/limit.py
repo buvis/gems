@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import shutil
 from pathlib import Path
 
@@ -7,7 +9,7 @@ from buvis.pybase.adapters import console
 
 class CommandLimit:
     def __init__(
-        self: "CommandLimit",
+        self: CommandLimit,
         source_dir: Path,
         output_dir: Path,
         bitrate: int,
@@ -20,12 +22,12 @@ class CommandLimit:
         self.bit_depth = bit_depth
         self.sampling_rate = sampling_rate
 
-    def execute(self: "CommandLimit") -> None:
+    def execute(self: CommandLimit) -> None:
         for file_path in self.source_dir.rglob("*.flac"):
             if not file_path.is_relative_to(self.output_dir):
                 self.transcode_flac(file_path)
 
-    def transcode_flac(self: "CommandLimit", file_path: Path) -> None:
+    def transcode_flac(self: CommandLimit, file_path: Path) -> None:
         try:
             probe = ffmpeg.probe(str(file_path), loglevel="quiet")
             audio_stream = next(
