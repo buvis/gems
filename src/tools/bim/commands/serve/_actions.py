@@ -86,11 +86,13 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
 
 async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.archive_note.archive_note import CommandArchiveNote
+    from bim.params.archive_note import ArchiveNoteParams
 
     archive_dir = Path(str(app_state.archive_directory)).expanduser().resolve()
     zettelkasten_dir = Path(str(app_state.default_directory)).expanduser().resolve()
+    params = ArchiveNoteParams(paths=[Path(file_path)])
     cmd = CommandArchiveNote(
-        paths=[Path(file_path)],
+        params=params,
         path_archive=archive_dir,
         path_zettelkasten=zettelkasten_dir,
         repo=get_repo(),
@@ -110,13 +112,14 @@ async def handle_open(file_path: str, args: dict[str, Any], app_state: AppState)
 async def handle_format(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.format_note.format_note import CommandFormatNote
     from bim.dependencies import get_formatter, get_repo
+    from bim.params.format_note import FormatNoteParams
 
     target = Path(file_path)
+    params = FormatNoteParams(paths=[target], path_output=target)
     cmd = CommandFormatNote(
-        paths=[target],
+        params=params,
         repo=get_repo(),
         formatter=get_formatter(),
-        path_output=target,
     )
     result = cmd.execute()
     if not result.success:
@@ -126,8 +129,10 @@ async def handle_format(file_path: str, args: dict[str, Any], app_state: AppStat
 
 async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.delete_note.delete_note import CommandDeleteNote
+    from bim.params.delete_note import DeleteNoteParams
 
-    cmd = CommandDeleteNote(paths=[Path(file_path)], repo=get_repo())
+    params = DeleteNoteParams(paths=[Path(file_path)])
+    cmd = CommandDeleteNote(params=params, repo=get_repo())
     result = cmd.execute()
     if not result.success:
         return {"status": "error", "message": result.error or "Delete failed"}

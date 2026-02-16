@@ -4,6 +4,9 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import _resolve_output_path, cli
+from bim.params.delete_note import DeleteNoteParams
+from bim.params.format_note import FormatNoteParams
+from bim.params.show_note import ShowNoteParams
 from buvis.pybase.result import CommandResult
 
 
@@ -25,7 +28,11 @@ class TestShowCommand:
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[note], repo=ANY, formatter=ANY)
+            mock_cmd.assert_called_once_with(
+                params=ShowNoteParams(paths=[note]),
+                repo=ANY,
+                formatter=ANY,
+            )
             instance.execute.assert_called_once_with()
 
     def test_show_missing_file(self, runner):
@@ -46,7 +53,7 @@ class TestShowCommand:
             result = runner.invoke(cli, ["show", "/nonexistent.md"], catch_exceptions=False)
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[Path("/nonexistent.md")],
+                params=ShowNoteParams(paths=[Path("/nonexistent.md")]),
                 repo=ANY,
                 formatter=ANY,
             )
@@ -77,7 +84,7 @@ class TestDeleteCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[note], repo=ANY)
+            mock_cmd.assert_called_once_with(params=DeleteNoteParams(paths=[note]), repo=ANY)
             instance.execute.assert_called_once_with()
 
     def test_delete_multiple(self, runner, tmp_path):
@@ -105,7 +112,7 @@ class TestDeleteCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[a, b], repo=ANY)
+            mock_cmd.assert_called_once_with(params=DeleteNoteParams(paths=[a, b]), repo=ANY)
             instance.execute.assert_called_once_with()
             assert mock_confirm.call_count == 2
 
@@ -240,10 +247,9 @@ class TestFormatCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[note],
+                params=FormatNoteParams(paths=[note], path_output=output_path),
                 repo=ANY,
                 formatter=ANY,
-                path_output=output_path,
             )
             instance.execute.assert_called_once_with()
 
@@ -265,10 +271,9 @@ class TestFormatCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                paths=[a, b],
+                params=FormatNoteParams(paths=[a, b], path_output=None),
                 repo=ANY,
                 formatter=ANY,
-                path_output=None,
             )
             instance.execute.assert_called_once_with()
 

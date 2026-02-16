@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
+
+from bim.params.delete_note import DeleteNoteParams
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
 
 
 class CommandDeleteNote:
-    def __init__(self, paths: list[Path], repo: ZettelRepository) -> None:
-        self.paths = paths
+    def __init__(self, params: DeleteNoteParams, repo: ZettelRepository) -> None:
+        self.params = params
         self.repo = repo
 
     def execute(self) -> CommandResult:
@@ -20,7 +21,7 @@ class CommandDeleteNote:
         deleted_count = 0
         use_case = DeleteZettelUseCase(self.repo)
 
-        for path in self.paths:
+        for path in self.params.paths:
             if not path.is_file():
                 warnings.append(f"{path} doesn't exist")
                 continue

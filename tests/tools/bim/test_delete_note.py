@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from bim.commands.delete_note.delete_note import CommandDeleteNote
+from bim.params.delete_note import DeleteNoteParams
 
 
 @pytest.fixture
@@ -33,7 +34,7 @@ def _make_repo_for_delete(zettel_file: Path) -> MagicMock:
 class TestCommandDeleteNote:
     def test_deletes_file(self, zettel_file: Path) -> None:
         repo = _make_repo_for_delete(zettel_file)
-        cmd = CommandDeleteNote(paths=[zettel_file], repo=repo)
+        cmd = CommandDeleteNote(params=DeleteNoteParams(paths=[zettel_file]), repo=repo)
         result = cmd.execute()
         assert result.success
         assert result.metadata["deleted_count"] == 1
@@ -42,7 +43,7 @@ class TestCommandDeleteNote:
     def test_missing_file(self, tmp_path: Path) -> None:
         missing = tmp_path / "nope.md"
         repo = MagicMock()
-        cmd = CommandDeleteNote(paths=[missing], repo=repo)
+        cmd = CommandDeleteNote(params=DeleteNoteParams(paths=[missing]), repo=repo)
         result = cmd.execute()
         assert not result.success
         assert f"{missing} doesn't exist" in result.warnings

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from bim.commands.format_note.format_note import CommandFormatNote
+from bim.params.format_note import FormatNoteParams
 
 
 @pytest.fixture
@@ -41,7 +42,11 @@ def format_note_dependencies():
 class TestCommandFormatNote:
     def test_missing_file_reports_failure(self, tmp_path: Path) -> None:
         missing = tmp_path / "missing.md"
-        cmd = CommandFormatNote(paths=[missing], repo=MagicMock(), formatter=MagicMock())
+        cmd = CommandFormatNote(
+            params=FormatNoteParams(paths=[missing]),
+            repo=MagicMock(),
+            formatter=MagicMock(),
+        )
         result = cmd.execute()
         assert result.success is False
         assert result.error == f"{missing} doesn't exist"
@@ -54,10 +59,9 @@ class TestCommandFormatNote:
     ) -> None:
         output_path = tmp_path / "formatted.md"
         cmd = CommandFormatNote(
-            paths=[zettel_file],
+            params=FormatNoteParams(paths=[zettel_file], path_output=output_path),
             repo=format_note_dependencies["repo"],
             formatter=format_note_dependencies["formatter"],
-            path_output=output_path,
         )
         result = cmd.execute()
 
@@ -77,7 +81,7 @@ class TestCommandFormatNote:
         b.write_text(minimal_zettel, encoding="utf-8")
 
         cmd = CommandFormatNote(
-            paths=[a, b],
+            params=FormatNoteParams(paths=[a, b]),
             repo=format_note_dependencies["repo"],
             formatter=format_note_dependencies["formatter"],
         )
@@ -98,7 +102,7 @@ class TestCommandFormatNote:
         missing = tmp_path / "missing.md"
 
         cmd = CommandFormatNote(
-            paths=[missing, exists],
+            params=FormatNoteParams(paths=[missing, exists]),
             repo=format_note_dependencies["repo"],
             formatter=format_note_dependencies["formatter"],
         )
@@ -114,7 +118,7 @@ class TestCommandFormatNote:
         format_note_dependencies,
     ) -> None:
         cmd = CommandFormatNote(
-            paths=[zettel_file],
+            params=FormatNoteParams(paths=[zettel_file]),
             repo=format_note_dependencies["repo"],
             formatter=format_note_dependencies["formatter"],
         )
@@ -130,7 +134,7 @@ class TestCommandFormatNote:
     ) -> None:
         original = zettel_file.read_text(encoding="utf-8")
         cmd = CommandFormatNote(
-            paths=[zettel_file],
+            params=FormatNoteParams(paths=[zettel_file]),
             repo=format_note_dependencies["repo"],
             formatter=format_note_dependencies["formatter"],
         )

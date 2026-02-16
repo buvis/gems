@@ -243,12 +243,13 @@ def format_note(
 
     from bim.commands.format_note.format_note import CommandFormatNote
     from bim.dependencies import get_formatter, get_repo
+    from bim.params.format_note import FormatNoteParams
 
+    params = FormatNoteParams(paths=resolved, path_output=Path(output) if output else None)
     cmd = CommandFormatNote(
-        paths=resolved,
+        params=params,
         repo=get_repo(),
         formatter=get_formatter(),
-        path_output=Path(output) if output else None,
     )
     result = cmd.execute()
     for w in result.warnings:
@@ -599,14 +600,15 @@ def archive_note(
 
     from bim.commands.archive_note.archive_note import CommandArchiveNote
     from bim.dependencies import get_repo
+    from bim.params.archive_note import ArchiveNoteParams
 
     settings = get_settings(ctx, BimSettings)
+    params = ArchiveNoteParams(paths=resolved, undo=undo)
     cmd = CommandArchiveNote(
-        paths=resolved,
+        params=params,
         path_archive=Path(settings.path_archive).expanduser().resolve(),
         path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
         repo=get_repo(),
-        undo=undo,
     )
     result = cmd.execute()
     for w in result.warnings:
@@ -669,6 +671,7 @@ def delete_note(
 
     from bim.commands.delete_note.delete_note import CommandDeleteNote
     from bim.dependencies import get_repo
+    from bim.params.delete_note import DeleteNoteParams
 
     batch = query_file is not None or query_string is not None
     if batch and not force:
@@ -680,7 +683,8 @@ def delete_note(
     else:
         confirmed_paths = resolved
 
-    cmd = CommandDeleteNote(paths=confirmed_paths, repo=get_repo())
+    params = DeleteNoteParams(paths=confirmed_paths)
+    cmd = CommandDeleteNote(params=params, repo=get_repo())
     result = cmd.execute()
     for w in result.warnings:
         console.warning(w)

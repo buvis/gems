@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+
+from bim.params.format_note import FormatNoteParams
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
@@ -15,24 +16,23 @@ if TYPE_CHECKING:
 class CommandFormatNote:
     def __init__(
         self,
-        paths: list[Path],
+        params: FormatNoteParams,
         repo: ZettelRepository,
         formatter: ZettelFormatter,
-        path_output: Path | None = None,
     ) -> None:
-        self.paths = paths
+        self.params = params
         self.repo = repo
         self.formatter = formatter
-        self.path_output = path_output.resolve() if path_output else None
 
     def execute(self) -> CommandResult:
         warnings: list[str] = []
         reader = ReadZettelUseCase(self.repo)
         printer = PrintZettelUseCase(self.formatter)
+        path_output = self.params.path_output.resolve() if self.params.path_output else None
 
-        if len(self.paths) > 1:
+        if len(self.params.paths) > 1:
             formatted_count = 0
-            for path in self.paths:
+            for path in self.params.paths:
                 if not path.is_file():
                     warnings.append(f"{path} doesn't exist")
                     continue
@@ -46,7 +46,7 @@ class CommandFormatNote:
                 warnings=warnings,
             )
 
-        path = self.paths[0]
+        path = self.params.paths[0]
         if not path.is_file():
             return CommandResult(success=False, error=f"{path} doesn't exist")
 
@@ -54,9 +54,9 @@ class CommandFormatNote:
         zettel = reader.execute(str(path))
         formatted_content = printer.execute(zettel.get_data())
 
-        if self.path_output:
+        if path_output:
             try:
-                self.path_output.write_text(formatted_content, encoding="utf-8")
+                path_output.write_text(formatted_content, encoding="utf-8")
             except OSError as exc:
                 return CommandResult(
                     success=False,
@@ -67,7 +67,7 @@ class CommandFormatNote:
                     success=False,
                     error="The text could not be encoded with UTF-8",
                 )
-            return CommandResult(success=True, metadata={"written_to": str(self.path_output)})
+            return CommandResult(success=True, metadata={"written_to": str(path_output)})
 
         return CommandResult(
             success=True,

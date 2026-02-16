@@ -7,6 +7,8 @@ from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
 from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 
+from bim.params.archive_note import ArchiveNoteParams
+
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
 
@@ -14,27 +16,24 @@ if TYPE_CHECKING:
 class CommandArchiveNote:
     def __init__(
         self,
-        paths: list[Path],
+        params: ArchiveNoteParams,
         path_archive: Path,
         path_zettelkasten: Path,
         repo: ZettelRepository,
-        *,
-        undo: bool = False,
     ) -> None:
-        self.paths = paths
+        self.params = params
         self.path_archive = path_archive
         self.path_zettelkasten = path_zettelkasten
         self.repo = repo
-        self.undo = undo
 
     def execute(self) -> CommandResult:
         messages: list[str] = []
         update_use_case = UpdateZettelUseCase(self.repo)
         delete_use_case = DeleteZettelUseCase(self.repo)
-        archive = not self.undo
+        archive = not self.params.undo
         destination = self.path_archive if archive else self.path_zettelkasten
 
-        for path in self.paths:
+        for path in self.params.paths:
             zettel = self.repo.find_by_location(str(path))
             data = zettel.get_data()
 

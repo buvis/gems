@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from bim.commands.archive_note.archive_note import CommandArchiveNote
+from bim.params.archive_note import ArchiveNoteParams
 
 
 @pytest.fixture
@@ -38,7 +39,7 @@ class TestCommandArchiveNote:
         data.file_path = str(zettel_file)
         archive_dir = tmp_path / "archive"
         cmd = CommandArchiveNote(
-            paths=[zettel_file],
+            params=ArchiveNoteParams(paths=[zettel_file]),
             path_archive=archive_dir,
             path_zettelkasten=tmp_path,
             repo=repo,
@@ -61,11 +62,10 @@ class TestCommandArchiveNote:
         archive_dir = tmp_path / "archive"
         zettelkasten_dir = tmp_path / "zettelkasten"
         cmd = CommandArchiveNote(
-            paths=[zettel_file],
+            params=ArchiveNoteParams(paths=[zettel_file], undo=True),
             path_archive=archive_dir,
             path_zettelkasten=zettelkasten_dir,
             repo=repo,
-            undo=True,
         )
         result = cmd.execute()
         assert result.success

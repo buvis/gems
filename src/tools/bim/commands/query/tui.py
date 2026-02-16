@@ -140,9 +140,11 @@ class QueryTuiApp(App[None]):
             return
         fp = self._pending_archive_path
         from bim.commands.archive_note.archive_note import CommandArchiveNote
+        from bim.params.archive_note import ArchiveNoteParams
 
+        params = ArchiveNoteParams(paths=[Path(fp)])
         cmd = CommandArchiveNote(
-            paths=[Path(fp)],
+            params=params,
             path_archive=self._archive_dir,
             path_zettelkasten=Path(fp).parent,
             repo=get_repo(),
@@ -193,8 +195,10 @@ class QueryTuiApp(App[None]):
             return
         fp = self._pending_delete_path
         from bim.commands.delete_note.delete_note import CommandDeleteNote
+        from bim.params.delete_note import DeleteNoteParams
 
-        cmd = CommandDeleteNote(paths=[Path(fp)], repo=get_repo())
+        params = DeleteNoteParams(paths=[Path(fp)])
+        cmd = CommandDeleteNote(params=params, repo=get_repo())
         result = cmd.execute()
         for w in result.warnings:
             self.notify(w)
@@ -218,13 +222,14 @@ class QueryTuiApp(App[None]):
             return
         from bim.commands.format_note.format_note import CommandFormatNote
         from bim.dependencies import get_formatter
+        from bim.params.format_note import FormatNoteParams
 
         target = Path(fp)
+        params = FormatNoteParams(paths=[target], path_output=target)
         cmd = CommandFormatNote(
-            paths=[target],
+            params=params,
             repo=get_repo(),
             formatter=get_formatter(),
-            path_output=target,
         )
         result = cmd.execute()
         if not result.success:
@@ -425,9 +430,11 @@ class KanbanTuiApp(App[None]):
             return
         fp = self._pending_archive_path
         from bim.commands.archive_note.archive_note import CommandArchiveNote
+        from bim.params.archive_note import ArchiveNoteParams
 
+        params = ArchiveNoteParams(paths=[Path(fp)])
         cmd = CommandArchiveNote(
-            paths=[Path(fp)],
+            params=params,
             path_archive=self._archive_dir,
             path_zettelkasten=Path(fp).parent,
             repo=get_repo(),
@@ -472,8 +479,10 @@ class KanbanTuiApp(App[None]):
             return
         fp = self._pending_delete_path
         from bim.commands.delete_note.delete_note import CommandDeleteNote
+        from bim.params.delete_note import DeleteNoteParams
 
-        cmd = CommandDeleteNote(paths=[Path(fp)], repo=get_repo())
+        params = DeleteNoteParams(paths=[Path(fp)])
+        cmd = CommandDeleteNote(params=params, repo=get_repo())
         result = cmd.execute()
         for w in result.warnings:
             self.notify(w)
@@ -494,13 +503,14 @@ class KanbanTuiApp(App[None]):
             return
         from bim.commands.format_note.format_note import CommandFormatNote
         from bim.dependencies import get_formatter
+        from bim.params.format_note import FormatNoteParams
 
         target = Path(fp)
+        params = FormatNoteParams(paths=[target], path_output=target)
         cmd = CommandFormatNote(
-            paths=[target],
+            params=params,
             repo=get_repo(),
             formatter=get_formatter(),
-            path_output=target,
         )
         result = cmd.execute()
         if not result.success:
