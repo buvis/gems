@@ -8,6 +8,7 @@ from bim.params.create_note import CreateNoteParams
 from bim.params.delete_note import DeleteNoteParams
 from bim.params.format_note import FormatNoteParams
 from bim.params.import_note import ImportNoteParams
+from bim.params.query import QueryParams
 from bim.params.show_note import ShowNoteParams
 from bim.params.sync_note import SyncNoteParams
 from buvis.pybase.result import CommandResult
@@ -471,10 +472,12 @@ class TestQueryCommand:
             mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
             mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
-                spec=spec,
+                params=QueryParams(
+                    spec=spec,
+                    default_directory=str(tmp_path.resolve()),
+                ),
                 repo=repo,
                 evaluator=evaluator,
-                default_directory=str(tmp_path.resolve()),
             )
             instance.execute.assert_called_once_with()
             mock_present.assert_called_once_with(
@@ -536,10 +539,12 @@ class TestQueryCommand:
             mock_get_repo.assert_called_once_with(extensions=spec.source.extensions)
             mock_get_evaluator.assert_called_once_with()
             mock_cmd.assert_called_once_with(
-                spec=spec,
+                params=QueryParams(
+                    spec=spec,
+                    default_directory=str(tmp_path.resolve()),
+                ),
                 repo=repo,
                 evaluator=evaluator,
-                default_directory=str(tmp_path.resolve()),
             )
             instance.execute.assert_called_once_with()
             mock_present.assert_called_once_with(
