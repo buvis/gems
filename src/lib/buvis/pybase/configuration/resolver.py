@@ -199,75 +199,67 @@ class ConfigResolver:
         """
         env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
         tool_name = _extract_tool_name(env_prefix)
-        original_config_dir = os.environ.get("BUVIS_CONFIG_DIR")
+
+        if config_dir is not None:
+            logger.debug("Using config_dir override: %s", config_dir)
+
+        # Load YAML config (priority 3)
+        if config_path is not None:
+            yaml_config = _load_yaml_config(config_path)
+        else:
+            discovered_files = self.loader.find_config_files(tool_name, config_dir=config_dir)
+            loaded_configs = [
+                self.loader.load_yaml(path)
+                for path in reversed(discovered_files)  # lowest -> highest
+            ]
+            yaml_config = self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
+        logger.debug("Loaded YAML config: %s", yaml_config)
 
         try:
-            if config_dir is not None:
-                os.environ["BUVIS_CONFIG_DIR"] = config_dir
-                logger.debug("Set BUVIS_CONFIG_DIR to %s", config_dir)
+            # Create base settings with YAML + ENV (ENV overrides YAML via Pydantic)
+            # Note: Pydantic kwargs override env, so we create without YAML first
+            base_settings = settings_class()
 
-            # Load YAML config (priority 3)
-            if config_path is not None:
-                yaml_config = _load_yaml_config(config_path)
+            # Apply YAML for fields not set by env (check against defaults)
+            merged: dict[str, Any] = {}
+            for key, value in yaml_config.items():
+                if hasattr(base_settings, key):
+                    field_value = getattr(base_settings, key)
+                    default = settings_class.model_fields.get(key)
+                    if default and field_value == default.default:
+                        # Field has default value, apply YAML
+                        merged[key] = value
+
+            # Apply CLI overrides (priority 1, highest)
+            if cli_overrides:
+                for key, value in cli_overrides.items():
+                    if value is not None:
+                        merged[key] = value
+
+            # Build final settings
+            if merged:
+                final_settings = settings_class.model_validate(base_settings.model_dump() | merged)
             else:
-                discovered_files = self.loader.find_config_files(tool_name)
-                loaded_configs = [
-                    self.loader.load_yaml(path)
-                    for path in reversed(discovered_files)  # lowest -> highest
-                ]
-                yaml_config = self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
-            logger.debug("Loaded YAML config: %s", yaml_config)
+                final_settings = base_settings
 
-            try:
-                # Create base settings with YAML + ENV (ENV overrides YAML via Pydantic)
-                # Note: Pydantic kwargs override env, so we create without YAML first
-                base_settings = settings_class()
+            # Track sources for each field
+            env_keys = {k.removeprefix(env_prefix).lower() for k in os.environ if k.startswith(env_prefix)}
 
-                # Apply YAML for fields not set by env (check against defaults)
-                merged: dict[str, Any] = {}
-                for key, value in yaml_config.items():
-                    if hasattr(base_settings, key):
-                        field_value = getattr(base_settings, key)
-                        default = settings_class.model_fields.get(key)
-                        if default and field_value == default.default:
-                            # Field has default value, apply YAML
-                            merged[key] = value
-
-                # Apply CLI overrides (priority 1, highest)
-                if cli_overrides:
-                    for key, value in cli_overrides.items():
-                        if value is not None:
-                            merged[key] = value
-
-                # Build final settings
-                if merged:
-                    final_settings = settings_class.model_validate(base_settings.model_dump() | merged)
+            self._sources.clear()
+            for field in settings_class.model_fields:
+                if cli_overrides and cli_overrides.get(field) is not None:
+                    self._sources[field] = ConfigSource.CLI
+                elif field in env_keys:
+                    self._sources[field] = ConfigSource.ENV
+                elif field in yaml_config:
+                    self._sources[field] = ConfigSource.YAML
                 else:
-                    final_settings = base_settings
+                    self._sources[field] = ConfigSource.DEFAULT
 
-                # Track sources for each field
-                env_keys = {k.removeprefix(env_prefix).lower() for k in os.environ if k.startswith(env_prefix)}
-
-                self._sources.clear()
-                for field in settings_class.model_fields:
-                    if cli_overrides and cli_overrides.get(field) is not None:
-                        self._sources[field] = ConfigSource.CLI
-                    elif field in env_keys:
-                        self._sources[field] = ConfigSource.ENV
-                    elif field in yaml_config:
-                        self._sources[field] = ConfigSource.YAML
-                    else:
-                        self._sources[field] = ConfigSource.DEFAULT
-
-                self._log_sources()
-                return final_settings
-            except ValidationError as e:
-                raise ConfigurationError(_format_validation_errors(e)) from e
-        finally:
-            if original_config_dir is None:
-                os.environ.pop("BUVIS_CONFIG_DIR", None)
-            else:
-                os.environ["BUVIS_CONFIG_DIR"] = original_config_dir
+            self._log_sources()
+            return final_settings
+        except ValidationError as e:
+            raise ConfigurationError(_format_validation_errors(e)) from e
 
     def _log_sources(self) -> None:
         """Log config field sources. Sensitive fields use INFO, others DEBUG.

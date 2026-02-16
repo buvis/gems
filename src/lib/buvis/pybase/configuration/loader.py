@@ -72,16 +72,22 @@ class ConfigurationLoader:
     """
 
     @staticmethod
-    def _get_search_paths() -> list[Path]:
+    def _get_search_paths(config_dir: str | None = None) -> list[Path]:
         """Build ordered list of config directories to search.
+
+        Args:
+            config_dir: Explicit config directory override (bypasses env lookup).
 
         Returns:
             list[Path]: Search paths from highest to lowest priority:
-                1. BUVIS_CONFIG_DIR (if set and non-empty)
+                1. config_dir / BUVIS_CONFIG_DIR (if set and non-empty)
                 2. ~/.config/buvis (default)
                 3. Current working directory
         """
-        paths = get_config_dirs()
+        if config_dir is not None:
+            paths = [Path(config_dir).expanduser(), Path.home() / ".config" / "buvis"]
+        else:
+            paths = get_config_dirs()
         paths.append(Path.cwd())
         return paths
 
@@ -205,16 +211,17 @@ class ConfigurationLoader:
         return yaml.safe_load(content) or {}
 
     @staticmethod
-    def find_config_files(tool_name: str | None = None) -> list[Path]:
+    def find_config_files(tool_name: str | None = None, *, config_dir: str | None = None) -> list[Path]:
         """Find configuration files that apply to a tool.
 
         Args:
             tool_name: Optional tool identifier used to narrow the search scope.
+            config_dir: Explicit config directory override (bypasses env lookup).
 
         Returns:
             list[Path]: Config file paths ordered from highest to lowest priority.
         """
-        paths = ConfigurationLoader._get_search_paths()
+        paths = ConfigurationLoader._get_search_paths(config_dir)
         candidates = ConfigurationLoader._get_candidate_files(paths, tool_name)
         result: list[Path] = []
 
