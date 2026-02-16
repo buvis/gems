@@ -4,7 +4,18 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from bim.commands.import_note.import_note import CommandImportNote, import_single
+from bim.commands.import_note.import_note import CommandImportNote
+
+
+def _make_note(note_id: str | None = "202401151030") -> MagicMock:
+    note = MagicMock()
+    note.type = "note"
+    note.id = note_id
+    note.tags = ["test"]
+    note.data = MagicMock()
+    note.data.metadata = {}
+    note.get_data.return_value = MagicMock()
+    return note
 
 
 @pytest.fixture
@@ -22,38 +33,52 @@ def zettelkasten_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def note_mocks() -> tuple[MagicMock, MagicMock]:
-    note = MagicMock()
-    note.type = "note"
-    note.id = "202401151030"
-    note.tags = ["test"]
-    note.data = MagicMock()
-    note.data.metadata = {}
-    note.get_data.return_value = MagicMock()
-    repo = MagicMock()
-    return repo, note
+def deps() -> tuple[MagicMock, MagicMock]:
+    return MagicMock(), MagicMock()
 
 
-class TestImportSingle:
+class TestCommandImportNote:
+    def test_missing_zettelkasten_raises(self, tmp_path: Path, deps: tuple[MagicMock, MagicMock]) -> None:
+        repo, formatter = deps
+        note = tmp_path / "note.md"
+        note.write_text("# Test", encoding="utf-8")
+        missing_dir = tmp_path / "missing"
+
+        with pytest.raises(FileNotFoundError):
+            CommandImportNote(
+                paths=[note],
+                path_zettelkasten=missing_dir,
+                repo=repo,
+                formatter=formatter,
+            )
+
     def test_imports_note(
         self,
         note_file: Path,
         zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
-        repo, note = note_mocks
+        repo, formatter = deps
+        note = _make_note()
 
         with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
+            mock_formatter.return_value.execute.return_value = "formatted content"
 
-            import_single(note_file, zettelkasten_dir, quiet=True)
+            cmd = CommandImportNote(
+                paths=[note_file],
+                path_zettelkasten=zettelkasten_dir,
+                repo=repo,
+                formatter=formatter,
+            )
+            result = cmd.execute()
 
         output_path = zettelkasten_dir / f"{note.id}.md"
+        assert result.success
+        assert result.metadata["imported_count"] == 1
         assert output_path.is_file()
         assert output_path.read_text(encoding="utf-8") == "formatted content"
 
@@ -61,20 +86,26 @@ class TestImportSingle:
         self,
         note_file: Path,
         zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
-        repo, note = note_mocks
+        repo, formatter = deps
+        note = _make_note()
         note.type = "project"
 
         with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
+            mock_formatter.return_value.execute.return_value = "formatted content"
 
-            import_single(note_file, zettelkasten_dir, quiet=True)
+            cmd = CommandImportNote(
+                paths=[note_file],
+                path_zettelkasten=zettelkasten_dir,
+                repo=repo,
+                formatter=formatter,
+            )
+            cmd.execute()
 
         assert "project resources" in note.data.metadata["resources"]
         assert note_file.parent.resolve().as_uri() in note.data.metadata["resources"]
@@ -83,265 +114,191 @@ class TestImportSingle:
         self,
         note_file: Path,
         zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
-        repo, note = note_mocks
+        repo, formatter = deps
+        note = _make_note()
 
         with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
+            mock_formatter.return_value.execute.return_value = "formatted content"
 
-            import_single(note_file, zettelkasten_dir, tags=["new"], quiet=True)
+            cmd = CommandImportNote(
+                paths=[note_file],
+                path_zettelkasten=zettelkasten_dir,
+                repo=repo,
+                formatter=formatter,
+                tags=["new"],
+            )
+            cmd.execute()
 
         assert note.tags == ["new"]
 
-    def test_missing_id_skips(
+    def test_missing_file(
+        self,
+        tmp_path: Path,
+        zettelkasten_dir: Path,
+        deps: tuple[MagicMock, MagicMock],
+    ) -> None:
+        repo, formatter = deps
+        missing = tmp_path / "missing.md"
+
+        cmd = CommandImportNote(
+            paths=[missing],
+            path_zettelkasten=zettelkasten_dir,
+            repo=repo,
+            formatter=formatter,
+        )
+        result = cmd.execute()
+
+        assert not result.success
+        assert f"{missing} doesn't exist" in result.warnings
+
+    def test_missing_id(
         self,
         note_file: Path,
         zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
-        repo, note = note_mocks
-        note.id = None
+        repo, formatter = deps
+        note = _make_note(note_id=None)
 
         with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
-            patch("bim.commands.import_note.import_note.console") as mock_console,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
 
-            result = import_single(note_file, zettelkasten_dir, quiet=True)
+            cmd = CommandImportNote(
+                paths=[note_file],
+                path_zettelkasten=zettelkasten_dir,
+                repo=repo,
+                formatter=formatter,
+            )
+            result = cmd.execute()
 
-        assert result is None
-        mock_console.failure.assert_called_once()
-        mock_get_formatter.return_value.format.assert_not_called()
+        assert not result.success
+        assert f"Note at {note_file} has no ID, skipping" in result.warnings
         assert list(zettelkasten_dir.iterdir()) == []
+        mock_formatter.assert_not_called()
 
     def test_force_overwrites(
         self,
         note_file: Path,
         zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
-        repo, note = note_mocks
+        repo, formatter = deps
+        note = _make_note()
         output_path = zettelkasten_dir / f"{note.id}.md"
         output_path.write_text("old", encoding="utf-8")
 
         with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
+            mock_formatter.return_value.execute.return_value = "formatted content"
 
-            import_single(note_file, zettelkasten_dir, force_overwrite=True, quiet=True)
+            cmd = CommandImportNote(
+                paths=[note_file],
+                path_zettelkasten=zettelkasten_dir,
+                repo=repo,
+                formatter=formatter,
+                force=True,
+            )
+            result = cmd.execute()
 
+        assert result.success
         assert output_path.read_text(encoding="utf-8") == "formatted content"
 
     def test_raises_without_force(
         self,
         note_file: Path,
         zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
-        repo, note = note_mocks
+        repo, formatter = deps
+        note = _make_note()
         output_path = zettelkasten_dir / f"{note.id}.md"
         output_path.write_text("old", encoding="utf-8")
 
-        with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
-            patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
-        ):
+        with patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader:
             mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
 
-            with pytest.raises(FileExistsError):
-                import_single(note_file, zettelkasten_dir, quiet=True)
+            cmd = CommandImportNote(
+                paths=[note_file],
+                path_zettelkasten=zettelkasten_dir,
+                repo=repo,
+                formatter=formatter,
+            )
+            result = cmd.execute()
+
+        assert not result.success
+        assert f"{output_path} already exists" in result.warnings
+        assert output_path.read_text(encoding="utf-8") == "old"
 
     def test_removes_original(
         self,
         note_file: Path,
         zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
-        repo, note = note_mocks
+        repo, formatter = deps
+        note = _make_note()
 
         with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
+            mock_formatter.return_value.execute.return_value = "formatted content"
 
-            import_single(note_file, zettelkasten_dir, remove_original=True, quiet=True)
-
-        assert not note_file.exists()
-
-    def test_quiet_suppresses_console(
-        self,
-        note_file: Path,
-        zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
-    ) -> None:
-        repo, note = note_mocks
-
-        with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
-            patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
-            patch("bim.commands.import_note.import_note.console") as mock_console,
-        ):
-            mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
-
-            import_single(note_file, zettelkasten_dir, quiet=True)
-            mock_console.success.assert_not_called()
-
-    def test_returns_message(
-        self,
-        note_file: Path,
-        zettelkasten_dir: Path,
-        note_mocks: tuple[MagicMock, MagicMock],
-    ) -> None:
-        repo, note = note_mocks
-
-        with (
-            patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
-            patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
-        ):
-            mock_reader.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
-
-            msg = import_single(note_file, zettelkasten_dir, quiet=True)
-
-        assert note_file.name in msg
-        assert f"{note.id}.md" in msg
-
-
-class TestCommandImportNote:
-    def test_missing_zettelkasten_raises(self, tmp_path: Path) -> None:
-        note = tmp_path / "note.md"
-        note.write_text("# Test", encoding="utf-8")
-        missing_dir = tmp_path / "missing"
-
-        with pytest.raises(FileNotFoundError):
-            CommandImportNote(paths=[note], path_zettelkasten=missing_dir)
-
-    def test_scripted_calls_import_single(
-        self,
-        note_file: Path,
-        zettelkasten_dir: Path,
-    ) -> None:
-        with patch("bim.commands.import_note.import_note.import_single") as mock_import:
             cmd = CommandImportNote(
                 paths=[note_file],
                 path_zettelkasten=zettelkasten_dir,
-                tags=["tag"],
-                force=True,
-                remove_original=True,
-                scripted=True,
-            )
-            cmd.execute()
-            mock_import.assert_called_once_with(
-                note_file,
-                zettelkasten_dir,
-                tags=["tag"],
-                force_overwrite=True,
+                repo=repo,
+                formatter=formatter,
                 remove_original=True,
             )
+            result = cmd.execute()
+
+        assert result.success
+        assert not note_file.exists()
 
     def test_batch_imports_all(
         self,
         tmp_path: Path,
         zettelkasten_dir: Path,
+        deps: tuple[MagicMock, MagicMock],
     ) -> None:
+        repo, formatter = deps
         a = tmp_path / "a.md"
         b = tmp_path / "b.md"
         a.write_text("# A", encoding="utf-8")
         b.write_text("# B", encoding="utf-8")
+        note_a = _make_note(note_id="1")
+        note_b = _make_note(note_id="2")
 
-        with patch("bim.commands.import_note.import_note.import_single") as mock_import:
+        with (
+            patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
+        ):
+            mock_reader.return_value.execute.side_effect = [note_a, note_b]
+            mock_formatter.return_value.execute.return_value = "formatted content"
+
             cmd = CommandImportNote(
                 paths=[a, b],
                 path_zettelkasten=zettelkasten_dir,
-                scripted=True,
+                repo=repo,
+                formatter=formatter,
             )
-            cmd.execute()
-            assert mock_import.call_count == 2
-            mock_import.assert_any_call(
-                a,
-                zettelkasten_dir,
-                tags=None,
-                force_overwrite=False,
-                remove_original=False,
-            )
-            mock_import.assert_any_call(
-                b,
-                zettelkasten_dir,
-                tags=None,
-                force_overwrite=False,
-                remove_original=False,
-            )
+            result = cmd.execute()
 
-    def test_batch_skips_missing(
-        self,
-        note_file: Path,
-        zettelkasten_dir: Path,
-        tmp_path: Path,
-    ) -> None:
-        missing = tmp_path / "missing.md"
-
-        with (
-            patch("bim.commands.import_note.import_note.import_single") as mock_import,
-            patch("bim.commands.import_note.import_note.console") as mock_console,
-        ):
-            cmd = CommandImportNote(
-                paths=[missing, note_file],
-                path_zettelkasten=zettelkasten_dir,
-                scripted=True,
-            )
-            cmd.execute()
-            mock_console.failure.assert_called_once()
-            mock_import.assert_called_once_with(
-                note_file,
-                zettelkasten_dir,
-                tags=None,
-                force_overwrite=False,
-                remove_original=False,
-            )
-
-    def test_resolves_next_available_id_and_updates_metadata(
-        self,
-        tmp_path: Path,
-        zettelkasten_dir: Path,
-    ) -> None:
-        path_note = tmp_path / "note.md"
-        path_note.write_text("# Test", encoding="utf-8")
-        note = MagicMock()
-        note.id = 1
-        note.data = MagicMock()
-        note.data.metadata = {"id": 1}
-
-        for note_id in (1, 2, 3):
-            (zettelkasten_dir / f"{note_id}.md").write_text("existing", encoding="utf-8")
-
-        cmd = CommandImportNote(paths=[path_note], path_zettelkasten=zettelkasten_dir)
-        path_output = zettelkasten_dir / "1.md"
-
-        with patch("bim.commands.import_note.import_note.console") as mock_console:
-            mock_console.confirm.side_effect = [False, True]
-
-            resolved_path = cmd._resolve_output_path(note, path_output, path_note)
-
-        assert resolved_path == zettelkasten_dir / "4.md"
-        assert note.data.metadata["id"] == 4
+        assert result.success
+        assert result.metadata["imported_count"] == 2
+        assert (zettelkasten_dir / "1.md").is_file()
+        assert (zettelkasten_dir / "2.md").is_file()

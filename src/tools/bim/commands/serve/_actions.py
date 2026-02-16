@@ -46,6 +46,7 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState
 
 async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.sync_note.sync_note import CommandSyncNote
+    from bim.dependencies import get_formatter, get_repo
 
     target_system = args.get("target_system", "jira")
     jira_config = args.get("jira_config", {})
@@ -53,8 +54,12 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
         paths=[Path(file_path)],
         target_system=target_system,
         jira_adapter_config=jira_config,
+        repo=get_repo(),
+        formatter=get_formatter(),
     )
-    cmd.execute()
+    result = cmd.execute()
+    if not result.success:
+        return {"status": "error", "message": result.error or "Sync failed"}
     return {"status": "ok"}
 
 
@@ -130,19 +135,24 @@ async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppStat
 
 
 async def handle_import(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
-    from bim.commands.import_note.import_note import import_single
+    from bim.commands.import_note.import_note import CommandImportNote
+    from bim.dependencies import get_formatter, get_repo
 
     zettelkasten = Path(str(app_state.default_directory)).expanduser().resolve()
     tags = args.get("tags")
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
-    import_single(
-        Path(file_path),
-        zettelkasten,
+    cmd = CommandImportNote(
+        paths=[Path(file_path)],
+        path_zettelkasten=zettelkasten,
+        repo=get_repo(),
+        formatter=get_formatter(),
         tags=tag_list,
-        force_overwrite=args.get("force", False),
+        force=args.get("force", False),
         remove_original=args.get("remove_original", False),
-        quiet=True,
     )
+    result = cmd.execute()
+    if not result.success:
+        return {"status": "error", "message": result.error or "Import failed"}
     return {"status": "ok"}
 
 

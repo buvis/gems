@@ -38,6 +38,111 @@ def _resolve_paths(
     return None
 
 
+def _resolve_output_path(
+    note: Any,
+    path_output: Path,
+    path_note: Path,
+    path_zettelkasten: Path,
+) -> Path:
+    overwrite_confirmed = False
+
+    while path_output.is_file() and not overwrite_confirmed:
+        console.failure(f"{path_output} already exists")
+        console.nl()
+        console.print(path_output.read_text(encoding="utf-8"), mode="raw")
+        console.nl()
+        overwrite_file = console.confirm("Overwrite file?")
+
+        if overwrite_file:
+            overwrite_confirmed = True
+        else:
+            alternative_note_id = (note.id or 0) + 1
+            alternative_path_output = path_zettelkasten / f"{alternative_note_id}.md"
+
+            while alternative_path_output.is_file():
+                alternative_note_id += 1
+                alternative_path_output = path_zettelkasten / f"{alternative_note_id}.md"
+
+            accept_alternative_id = console.confirm(
+                f"Change ID to {alternative_note_id}?",
+            )
+
+            if accept_alternative_id:
+                path_output = alternative_path_output
+                note.data.metadata["id"] = alternative_note_id
+            else:
+                console.panic(f"Can't import {path_note}")
+
+    return path_output
+
+
+def _interactive_import(path_note: Path, path_zettelkasten: Path) -> None:
+    if not path_note.is_file():
+        console.failure(f"{path_note} doesn't exist")
+        return
+
+    from bim.dependencies import get_formatter, get_repo
+    from buvis.pybase.formatting import StringOperator
+    from buvis.pybase.zettel import ReadZettelUseCase
+    from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+
+    original_content = path_note.read_text(encoding="utf-8")
+    repo = get_repo()
+    reader = ReadZettelUseCase(repo)
+    note = reader.execute(str(path_note))
+
+    if note.type == "project":
+        note.data.metadata["resources"] = f"[project resources]({path_note.parent.resolve().as_uri()})"
+
+    if note.id is None:
+        console.failure(f"Note at {path_note} has no ID, skipping")
+        return
+
+    path_output = path_zettelkasten / f"{note.id}.md"
+    formatted_content = PrintZettelUseCase(get_formatter()).execute(note.get_data())
+    _, _, markdown_content = formatted_content.partition("\n---\n")
+
+    console.print_side_by_side(
+        "Original",
+        original_content,
+        "Formatted",
+        formatted_content,
+        mode_left="raw",
+        mode_right="raw",
+    )
+    console.nl()
+
+    is_import_approved = console.confirm(
+        "Check the resulting note and compare to original. Should I continue importing?"
+    )
+
+    if not is_import_approved:
+        console.warning("Import cancelled by user")
+        return
+
+    path_output = _resolve_output_path(note, path_output, path_note, path_zettelkasten)
+
+    if not note.tags:
+        console.nl()
+        console.warning("There are no tags in this note. I will suggest some.")
+        console.nl()
+        new_tags = []
+        for suggested_tag in StringOperator.suggest_tags(markdown_content):
+            add_tag = console.confirm(f"Tag with '{suggested_tag}'?")
+            if add_tag:
+                new_tags.append(suggested_tag)
+        note.tags = new_tags
+        formatted_content = PrintZettelUseCase(get_formatter()).execute(note.get_data())
+
+    path_output.write_text(formatted_content, encoding="utf-8")
+    console.success(f"Note imported as {path_output}")
+    remove_file = console.confirm("Do you want to remove the original?")
+
+    if remove_file:
+        path_note.unlink()
+        console.success(f"{path_note} was removed")
+
+
 @click.group(help="CLI to BUVIS InfoMesh")
 @buvis_options(settings_class=BimSettings)
 @click.pass_context
@@ -59,8 +164,6 @@ def import_note(
     force: bool,
     remove_original: bool,
 ) -> None:
-    from bim.commands.import_note.import_note import CommandImportNote
-
     settings = get_settings(ctx, BimSettings)
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     scripted = tags is not None or force or remove_original
@@ -69,15 +172,32 @@ def import_note(
         console.failure("interactive import requires a single path")
         return
 
+    path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
+
+    if not scripted:
+        _interactive_import(Path(paths[0]), path_zettelkasten)
+        return
+
+    from bim.commands.import_note.import_note import CommandImportNote
+    from bim.dependencies import get_formatter, get_repo
+
     cmd = CommandImportNote(
         paths=[Path(p) for p in paths],
-        path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
+        path_zettelkasten=path_zettelkasten,
+        repo=get_repo(),
+        formatter=get_formatter(),
         tags=tag_list,
         force=force,
         remove_original=remove_original,
-        scripted=scripted,
     )
-    cmd.execute()
+    result = cmd.execute()
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        if result.output:
+            console.success(result.output)
+    else:
+        console.failure(result.error)
 
 
 @cli.command("format", help="Format a note")
@@ -177,6 +297,11 @@ def sync_note(
         return
 
     from bim.commands.sync_note.sync_note import CommandSyncNote
+    from bim.dependencies import get_formatter, get_repo
+
+    if len(resolved) > 1 and not force:
+        if not console.confirm(f"Sync {len(resolved)} zettels to {target_system}?"):
+            return
 
     global_settings = get_settings(ctx, GlobalSettings)
     jira_adapter: dict[str, Any] = (global_settings.model_extra or {}).get("jira_adapter", {})
@@ -185,9 +310,17 @@ def sync_note(
             paths=resolved,
             target_system=target_system,
             jira_adapter_config=jira_adapter,
-            force=force,
+            repo=get_repo(),
+            formatter=get_formatter(),
         )
-        cmd.execute()
+        result = cmd.execute()
+        for w in result.warnings:
+            console.warning(w)
+        if result.success:
+            if result.output:
+                console.success(result.output)
+        else:
+            console.failure(result.error)
     except (ValueError, FileNotFoundError) as exc:
         console.panic(str(exc))
     except NotImplementedError:

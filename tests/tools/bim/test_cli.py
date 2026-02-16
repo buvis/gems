@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
-from bim.cli import cli
+from bim.cli import _resolve_output_path, cli
 from buvis.pybase.result import CommandResult
 
 
@@ -117,23 +117,14 @@ class TestImportCommand:
 
         with (
             patch("bim.cli.get_settings") as mock_settings,
-            patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
+            patch("bim.cli._interactive_import") as mock_interactive,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
-            instance = mock_cmd.return_value
 
             result = runner.invoke(cli, ["import", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(
-                paths=[note],
-                path_zettelkasten=tmp_path.resolve(),
-                tags=None,
-                force=False,
-                remove_original=False,
-                scripted=False,
-            )
-            instance.execute.assert_called_once_with()
+            mock_interactive.assert_called_once_with(note, tmp_path.resolve())
 
     def test_import_with_flags(self, runner, tmp_path):
         note = tmp_path / "note.md"
@@ -142,9 +133,14 @@ class TestImportCommand:
         with (
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_get_repo.return_value = MagicMock()
+            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True, output="Imported note.md")
 
             result = runner.invoke(
                 cli,
@@ -156,10 +152,11 @@ class TestImportCommand:
             mock_cmd.assert_called_once_with(
                 paths=[note],
                 path_zettelkasten=tmp_path.resolve(),
+                repo=ANY,
+                formatter=ANY,
                 tags=["a", "b"],
                 force=True,
                 remove_original=True,
-                scripted=True,
             )
             instance.execute.assert_called_once_with()
 
@@ -172,9 +169,14 @@ class TestImportCommand:
         with (
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_get_repo.return_value = MagicMock()
+            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True, output="Imported note.md")
 
             result = runner.invoke(
                 cli,
@@ -186,10 +188,11 @@ class TestImportCommand:
             mock_cmd.assert_called_once_with(
                 paths=[a, b],
                 path_zettelkasten=tmp_path.resolve(),
+                repo=ANY,
+                formatter=ANY,
                 tags=None,
                 force=True,
                 remove_original=False,
-                scripted=True,
             )
             instance.execute.assert_called_once_with()
 
@@ -278,9 +281,14 @@ class TestSyncCommand:
         with (
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
             mock_settings.return_value = MagicMock(model_extra={"jira_adapter": {"host": "jira.example"}})
+            mock_get_repo.return_value = MagicMock()
+            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True, output="Synced")
 
             result = runner.invoke(
                 cli,
@@ -293,9 +301,38 @@ class TestSyncCommand:
                 paths=[note],
                 target_system="jira",
                 jira_adapter_config={"host": "jira.example"},
-                force=False,
+                repo=ANY,
+                formatter=ANY,
             )
             instance.execute.assert_called_once_with()
+
+
+class TestImportInteractiveHelpers:
+    def test_resolves_next_available_id_and_updates_metadata(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        path_note = tmp_path / "note.md"
+        path_note.write_text("# Test", encoding="utf-8")
+        note = MagicMock()
+        note.id = 1
+        note.data = MagicMock()
+        note.data.metadata = {"id": 1}
+        zettelkasten_dir = tmp_path / "zettelkasten"
+        zettelkasten_dir.mkdir()
+
+        for note_id in (1, 2, 3):
+            (zettelkasten_dir / f"{note_id}.md").write_text("existing", encoding="utf-8")
+
+        path_output = zettelkasten_dir / "1.md"
+
+        with patch("bim.cli.console") as mock_console:
+            mock_console.confirm.side_effect = [False, True]
+
+            resolved_path = _resolve_output_path(note, path_output, path_note, zettelkasten_dir)
+
+        assert resolved_path == zettelkasten_dir / "4.md"
+        assert note.data.metadata["id"] == 4
 
 
 class TestParseTagsCommand:
