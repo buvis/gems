@@ -304,6 +304,64 @@ class TestCreateCommand:
                 title="My Title",
                 tags="one,two",
                 extra_answers={"q1": "a1"},
+                batch_file=None,
+            )
+            instance.execute.assert_called_once_with()
+
+
+    def test_create_batch_yaml(self, runner, tmp_path):
+        spec = tmp_path / "batch.yaml"
+        spec.write_text("type: note\nitems:\n  - title: A\n  - title: B\n")
+
+        with (
+            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
+        ):
+            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            instance = mock_cmd.return_value
+
+            result = runner.invoke(
+                cli,
+                ["create", "--batch", str(spec)],
+                catch_exceptions=False,
+            )
+
+            assert result.exit_code == 0
+            mock_cmd.assert_called_once_with(
+                path_zettelkasten=tmp_path.resolve(),
+                zettel_type=None,
+                title=None,
+                tags=None,
+                extra_answers={},
+                batch_file=spec,
+            )
+            instance.execute.assert_called_once_with()
+
+    def test_create_batch_csv(self, runner, tmp_path):
+        spec = tmp_path / "batch.csv"
+        spec.write_text("title,type\nAlice,contact\n")
+
+        with (
+            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
+        ):
+            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            instance = mock_cmd.return_value
+
+            result = runner.invoke(
+                cli,
+                ["create", "--batch", str(spec), "--type", "note"],
+                catch_exceptions=False,
+            )
+
+            assert result.exit_code == 0
+            mock_cmd.assert_called_once_with(
+                path_zettelkasten=tmp_path.resolve(),
+                zettel_type="note",
+                title=None,
+                tags=None,
+                extra_answers={},
+                batch_file=spec,
             )
             instance.execute.assert_called_once_with()
 
