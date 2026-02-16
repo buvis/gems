@@ -13,3 +13,11 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: no-framework-in-commands
+        name: no framework imports in commands/params
+        entry: >
+          bash -c 'if rg -q "from.*adapters|import click|import textual|import fastapi|from buvis.pybase.adapters"
+          src/tools/bim/commands/ src/tools/bim/params/ --glob "!*/serve/*" --glob "!*/tui.py";
+          then echo "ERROR: framework imports in commands/ or params/"; exit 1; fi'
+        language: system
+        pass_filenames: false

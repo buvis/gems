@@ -109,7 +109,7 @@ class TestCreateNoteCli:
     def test_create_note_without_type_or_title_launches_tui(self, runner: CliRunner) -> None:
         with (
             patch("bim.cli.get_settings") as mock_settings,
-            patch("bim.commands.create_note.tui.CreateNoteApp") as mock_app,
+            patch("bim.tui.create_note.CreateNoteApp") as mock_app,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
 

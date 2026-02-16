@@ -10,7 +10,7 @@ from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.entities import ProjectZettel
 
-from .jira_adapter import DictConfig, ZettelJiraAdapter
+from bim.integrations.jira_adapter import DictConfig, ZettelJiraAdapter
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter

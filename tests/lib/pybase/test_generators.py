@@ -50,6 +50,15 @@ class PathsSkippedModel(BaseModel):
     flag: bool = Field(False, description="Not skipped")
 
 
+class CliSkipModel(BaseModel):
+    output: Path | None = Field(
+        None,
+        description="Output path",
+        json_schema_extra={"cli_skip": True},
+    )
+    flag: bool = Field(False, description="Not skipped")
+
+
 class CliHintsModel(BaseModel):
     query_file: str | None = Field(
         None,
@@ -96,6 +105,10 @@ class TestGenerateClickOptions:
     def test_paths_field_is_skipped(self):
         opts = generate_click_options(PathsSkippedModel)
         assert len(opts) == 1  # only flag, not paths
+
+    def test_cli_skip_excludes_field(self):
+        opts = generate_click_options(CliSkipModel)
+        assert len(opts) == 1  # only flag, not output
 
     def test_cli_hints_respected(self):
         opts = generate_click_options(CliHintsModel)

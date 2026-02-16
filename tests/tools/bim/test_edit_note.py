@@ -84,6 +84,9 @@ class TestEditCliCommand:
                 params=EditNoteParams(
                     paths=[note],
                     changes={"title": "New", "tags": ["a", "b"], "type": "project"},
+                    title="New",
+                    tags="a,b",
+                    zettel_type="project",
                 ),
                 repo=ANY,
             )
@@ -111,6 +114,8 @@ class TestEditCliCommand:
                 params=EditNoteParams(
                     paths=[note],
                     changes={"processed": True, "publish": True},
+                    processed=True,
+                    publish=True,
                 ),
                 repo=ANY,
             )
@@ -120,7 +125,7 @@ class TestEditCliCommand:
         note = tmp_path / "note.md"
         note.write_text(minimal_zettel)
 
-        with patch("bim.commands.edit_note.tui.EditNoteApp") as mock_app:
+        with patch("bim.tui.edit_note.EditNoteApp") as mock_app:
             result = runner.invoke(
                 cli,
                 ["edit", str(note)],
@@ -182,6 +187,7 @@ class TestEditCliCommand:
                 params=EditNoteParams(
                     paths=[a, b],
                     changes={"title": "X"},
+                    title="X",
                 ),
                 repo=ANY,
             )

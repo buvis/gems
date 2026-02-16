@@ -46,6 +46,8 @@ def _unwrap_optional(annotation: type) -> tuple[type, bool]:
 def _field_to_option(name: str, field: FieldInfo):
     """Convert a single Pydantic field to a click.option decorator."""
     extra = field.json_schema_extra or {}
+    if extra.get("cli_skip"):
+        return None
     short = extra.get("cli_short")
     long_name = extra.get("cli_long", f"--{name.replace('_', '-')}")
     param_name = extra.get("cli_param", name)

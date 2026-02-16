@@ -14,6 +14,10 @@ from buvis.pybase.configuration import (
 )
 
 from bim.params.archive_note import ArchiveNoteParams
+from bim.params.delete_note import DeleteNoteParams
+from bim.params.edit_note import EditNoteParams
+from bim.params.format_note import FormatNoteParams
+from bim.params.query import QueryParams
 from bim.settings import BimSettings
 
 
@@ -32,7 +36,7 @@ def _resolve_paths(
         return None
 
     if has_query:
-        from bim.commands.shared.query_paths import resolve_query_paths
+        from bim.shared.query_paths import resolve_query_paths
 
         settings = get_settings(ctx, BimSettings)
         default_dir = str(Path(settings.path_zettelkasten).expanduser().resolve())
@@ -215,22 +219,7 @@ def import_note(
 @click.argument("paths", nargs=-1, required=False)
 @click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
-@click.option(
-    "-h",
-    "--highlight",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Highlight formatted content",
-)
-@click.option(
-    "-d",
-    "--diff",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Show original and formatted note side by side if different",
-)
+@apply_generated_options(FormatNoteParams)
 @click.option(
     "-o",
     "--output",
@@ -242,10 +231,8 @@ def format_note(
     paths: tuple[str, ...],
     query_file: str | None,
     query_string: str | None,
-    *,
-    highlight: bool,
-    diff: bool,
     output: None | Path,
+    **kwargs: Any,
 ) -> None:
     resolved = _resolve_paths(ctx, paths, query_file, query_string)
     if resolved is None:
@@ -253,9 +240,8 @@ def format_note(
 
     from bim.commands.format_note.format_note import CommandFormatNote
     from bim.dependencies import get_formatter, get_repo
-    from bim.params.format_note import FormatNoteParams
 
-    params = FormatNoteParams(paths=resolved, path_output=Path(output) if output else None)
+    params = FormatNoteParams(paths=resolved, path_output=Path(output) if output else None, **kwargs)
     cmd = CommandFormatNote(
         params=params,
         repo=get_repo(),
@@ -271,7 +257,7 @@ def format_note(
         console.success(f"Formatted note written to {result.metadata['written_to']}")
     elif result.output:
         original = result.metadata.get("original")
-        if diff and original and original != result.output:
+        if params.diff and original and original != result.output:
             console.print_side_by_side(
                 "Original",
                 original,
@@ -280,7 +266,7 @@ def format_note(
                 mode_left="raw",
                 mode_right="markdown_with_frontmatter",
             )
-        elif highlight:
+        elif params.highlight:
             console.print(result.output, mode="markdown_with_frontmatter")
         else:
             console.print(result.output, mode="raw")
@@ -430,7 +416,7 @@ def create_note(
             console.failure(result.error)
         return
 
-    from bim.commands.create_note.tui import CreateNoteApp
+    from bim.tui.create_note import CreateNoteApp
 
     app = CreateNoteApp(
         path_zettelkasten=path_zettelkasten,
@@ -445,18 +431,15 @@ def create_note(
 @cli.command("query", help="Query zettels with YAML filter/sort/output spec")
 @click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
-@click.option("-e", "--edit", is_flag=True, default=False, help="Pick result with fzf and open in nvim")
-@click.option("--tui", is_flag=True, default=False, help="Render output in interactive TUI")
+@apply_generated_options(QueryParams)
 @click.option("-l", "--list", "list_queries", is_flag=True, default=False, help="List available queries")
 @click.pass_context
 def query(
     ctx: click.Context,
     query_file: str | None,
     query_string: str | None,
-    *,
-    edit: bool,
-    tui: bool,
     list_queries: bool,
+    **kwargs: Any,
 ) -> None:
     if list_queries:
         from bim.commands.query.query import BUNDLED_QUERY_DIR
@@ -466,7 +449,7 @@ def query(
             console.print(f"{name:30s} {path}", mode="raw")
         return
 
-    from bim.commands.query._presentation import present_query_result
+    from bim.shared.query_presentation import present_query_result
     from bim.commands.query.query import BUNDLED_QUERY_DIR, CommandQuery
     from bim.dependencies import (
         get_evaluator,
@@ -475,8 +458,6 @@ def query(
         parse_query_string,
         resolve_query_file,
     )
-    from bim.params.query import QueryParams
-
     settings = get_settings(ctx, BimSettings)
     if query_file:
         resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)
@@ -492,7 +473,7 @@ def query(
     repo = get_repo(extensions=spec.source.extensions)
     evaluator = get_evaluator()
 
-    params = QueryParams(spec=spec, default_directory=default_directory)
+    params = QueryParams(spec=spec, default_directory=default_directory, **kwargs)
     cmd = CommandQuery(
         params=params,
         repo=repo,
@@ -515,8 +496,8 @@ def query(
         rows,
         columns,
         spec,
-        tui=tui,
-        edit=edit,
+        tui=params.tui,
+        edit=params.edit,
         archive_directory=archive_directory,
         directory=directory,
         repo=repo,
@@ -529,11 +510,7 @@ def query(
 @click.argument("paths", nargs=-1, required=False)
 @click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
-@click.option("--title", default=None, help="New title")
-@click.option("--tags", default=None, help="Comma-separated tags")
-@click.option("--type", "zettel_type", default=None, help="Note type")
-@click.option("--processed/--no-processed", default=None, help="Processed flag")
-@click.option("--publish/--no-publish", default=None, help="Publish flag")
+@apply_generated_options(EditNoteParams)
 @click.option("-s", "--set", "extra_sets", multiple=True, help="Arbitrary key=value metadata")
 @click.pass_context
 def edit_note(
@@ -541,22 +518,23 @@ def edit_note(
     paths: tuple[str, ...],
     query_file: str | None,
     query_string: str | None,
-    title: str | None,
-    tags: str | None,
-    zettel_type: str | None,
-    processed: bool | None,
-    publish: bool | None,
     extra_sets: tuple[str, ...],
+    **kwargs: Any,
 ) -> None:
     changes: dict[str, Any] = {}
+    title = kwargs.get("title")
     if title is not None:
         changes["title"] = title
+    tags = kwargs.get("tags")
     if tags is not None:
         changes["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    zettel_type = kwargs.get("zettel_type")
     if zettel_type is not None:
         changes["type"] = zettel_type
+    processed = kwargs.get("processed")
     if processed is not None:
         changes["processed"] = processed
+    publish = kwargs.get("publish")
     if publish is not None:
         changes["publish"] = publish
     for s in extra_sets:
@@ -576,7 +554,7 @@ def edit_note(
         if not path.is_file():
             console.failure(f"{path} doesn't exist")
             return
-        from bim.commands.edit_note.tui import EditNoteApp
+        from bim.tui.edit_note import EditNoteApp
 
         app = EditNoteApp(path=path)
         app.run()
@@ -584,9 +562,7 @@ def edit_note(
 
     from bim.commands.edit_note.edit_note import CommandEditNote
     from bim.dependencies import get_repo
-    from bim.params.edit_note import EditNoteParams
-
-    params = EditNoteParams(paths=resolved, changes=changes)
+    params = EditNoteParams(paths=resolved, changes=changes, **kwargs)
     cmd = CommandEditNote(params=params, repo=get_repo())
     result = cmd.execute()
     for w in result.warnings:
@@ -672,15 +648,14 @@ def show_note(
 @click.argument("paths", nargs=-1, required=False)
 @click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
-@click.option("--force", is_flag=True, default=False, help="Skip confirmation")
+@apply_generated_options(DeleteNoteParams)
 @click.pass_context
 def delete_note(
     ctx: click.Context,
     paths: tuple[str, ...],
     query_file: str | None,
     query_string: str | None,
-    *,
-    force: bool,
+    **kwargs: Any,
 ) -> None:
     resolved = _resolve_paths(ctx, paths, query_file, query_string)
     if resolved is None:
@@ -688,19 +663,19 @@ def delete_note(
 
     from bim.commands.delete_note.delete_note import CommandDeleteNote
     from bim.dependencies import get_repo
-    from bim.params.delete_note import DeleteNoteParams
 
+    params = DeleteNoteParams(paths=resolved, **kwargs)
     batch = query_file is not None or query_string is not None
-    if batch and not force:
+    if batch and not params.force:
         if not console.confirm(f"Permanently delete {len(resolved)} zettels?"):
             return
         confirmed_paths = resolved
-    elif not force and not batch:
+    elif not params.force and not batch:
         confirmed_paths = [path for path in resolved if console.confirm(f"Permanently delete {path.name}?")]
     else:
         confirmed_paths = resolved
 
-    params = DeleteNoteParams(paths=confirmed_paths)
+    params = DeleteNoteParams(paths=confirmed_paths, **kwargs)
     cmd = CommandDeleteNote(params=params, repo=get_repo())
     result = cmd.execute()
     for w in result.warnings:

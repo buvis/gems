@@ -38,7 +38,7 @@ class TestQueryCli:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
-            patch("bim.commands.query._presentation.present_query_result") as mock_present,
+            patch("bim.shared.query_presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten="/tmp/zk",
@@ -82,6 +82,8 @@ class TestQueryCli:
                 params=QueryParams(
                     spec=spec,
                     default_directory=str(Path("/tmp/zk").expanduser().resolve()),
+                    edit=True,
+                    tui=True,
                 ),
                 repo=repo,
                 evaluator=evaluator,
@@ -106,7 +108,7 @@ class TestQueryCli:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
-            patch("bim.commands.query._presentation.present_query_result") as mock_present,
+            patch("bim.shared.query_presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten="/tmp/zk",

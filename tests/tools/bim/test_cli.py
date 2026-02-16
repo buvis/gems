@@ -88,7 +88,7 @@ class TestDeleteCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(params=DeleteNoteParams(paths=[note]), repo=ANY)
+            mock_cmd.assert_called_once_with(params=DeleteNoteParams(paths=[note], force=True), repo=ANY)
             instance.execute.assert_called_once_with()
 
     def test_delete_multiple(self, runner, tmp_path):
@@ -255,7 +255,7 @@ class TestFormatCommand:
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                params=FormatNoteParams(paths=[note], path_output=output_path),
+                params=FormatNoteParams(paths=[note], path_output=output_path, highlight=True, diff=True),
                 repo=ANY,
                 formatter=ANY,
             )
@@ -432,7 +432,7 @@ class TestQueryCommand:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
-            patch("bim.commands.query._presentation.present_query_result") as mock_present,
+            patch("bim.shared.query_presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),
@@ -501,7 +501,7 @@ class TestQueryCommand:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
-            patch("bim.commands.query._presentation.present_query_result") as mock_present,
+            patch("bim.shared.query_presentation.present_query_result") as mock_present,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),

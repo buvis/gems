@@ -170,7 +170,7 @@ class QueryTuiApp(App[None]):
         fp = self._visible_rows[row_idx].get("file_path")
         if not fp:
             return
-        from bim.commands.show_note.tui import ShowScreen
+        from bim.tui.show_note import ShowScreen
 
         self.push_screen(ShowScreen(Path(fp)))
 
@@ -247,7 +247,7 @@ class QueryTuiApp(App[None]):
         fp = self._visible_rows[row_idx].get("file_path")
         if not fp:
             return
-        from bim.commands.edit_note.tui import EditScreen
+        from bim.tui.edit_note import EditScreen
 
         self.push_screen(
             EditScreen(Path(fp)),
@@ -457,7 +457,7 @@ class KanbanTuiApp(App[None]):
         fp = row.get("file_path")
         if not fp:
             return
-        from bim.commands.show_note.tui import ShowScreen
+        from bim.tui.show_note import ShowScreen
 
         self.push_screen(ShowScreen(Path(fp)))
 
@@ -525,7 +525,7 @@ class KanbanTuiApp(App[None]):
         fp = row.get("file_path")
         if not fp:
             return
-        from bim.commands.edit_note.tui import EditScreen
+        from bim.tui.edit_note import EditScreen
 
         self.push_screen(
             EditScreen(Path(fp)),

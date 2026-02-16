@@ -232,7 +232,7 @@ def _open_file(path: str) -> None:
 
 
 def _run_tui(rows: list[dict[str, Any]], columns: list[str], archive_directory: str | None = None) -> None:
-    from bim.commands.query.tui import QueryTuiApp
+    from bim.tui.query import QueryTuiApp
 
     archive_dir = Path(archive_directory).expanduser().resolve() if archive_directory else None
     app = QueryTuiApp(rows, columns, archive_dir=archive_dir)
@@ -245,7 +245,7 @@ def _run_kanban_tui(
     group_by: str,
     archive_directory: str | None = None,
 ) -> None:
-    from bim.commands.query.tui import KanbanTuiApp
+    from bim.tui.query import KanbanTuiApp
 
     archive_dir = Path(archive_directory).expanduser().resolve() if archive_directory else None
     app = KanbanTuiApp(rows, columns, group_by, archive_dir=archive_dir)
