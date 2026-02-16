@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-bim = ["jira>=3.10.5,<4", "textual>=3,<4", "fpdf2>=2.8,<3"]
+bim = ["jira>=3.10.5,<4", "textual>=3,<9", "fpdf2>=2.8,<3"]
 hello-world = ["pyfiglet>=1.0.4,<2"]
 muc = ["ffmpeg-python>=0.2.0,<1"]
 pinger = ["ping3>=5.1.5,<6"]
