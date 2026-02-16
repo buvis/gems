@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
-from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QueryColumn,
     QueryFilter,
@@ -13,47 +12,17 @@ from buvis.pybase.zettel.domain.value_objects.query_spec import (
     QuerySource,
     QuerySpec,
 )
-from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
 
-def _make_zettel(
-    *,
-    id: int | None = None,
-    title: str | None = None,
-    date: datetime | None = None,
-    type: str | None = None,
-    tags: list[str] | None = None,
-    processed: bool = False,
-    extra_meta: dict | None = None,
-) -> Zettel:
-    data = ZettelData()
-    if id is not None:
-        data.metadata["id"] = id
-    if title is not None:
-        data.metadata["title"] = title
-    if date is not None:
-        data.metadata["date"] = date
-    if type is not None:
-        data.metadata["type"] = type
-    if tags is not None:
-        data.metadata["tags"] = tags
-    data.metadata["processed"] = processed
-    if extra_meta:
-        data.metadata.update(extra_meta)
-    data.file_path = f"/notes/{id or 0}.md"
-    z = Zettel(data, from_rust=True)
-    return z
-
-
 @pytest.fixture
-def sample_zettels():
+def sample_zettels(make_zettel):
     return [
-        _make_zettel(
+        make_zettel(
             id=1, title="Alpha", type="project", tags=["sprint-1", "dev"], date=datetime(2024, 1, 10, tzinfo=UTC)
         ),
-        _make_zettel(id=2, title="Beta", type="note", tags=["sprint-1"], date=datetime(2024, 3, 5, tzinfo=UTC)),
-        _make_zettel(
+        make_zettel(id=2, title="Beta", type="note", tags=["sprint-1"], date=datetime(2024, 3, 5, tzinfo=UTC)),
+        make_zettel(
             id=3,
             title="Gamma",
             type="project",
@@ -61,7 +30,7 @@ def sample_zettels():
             date=datetime(2024, 2, 20, tzinfo=UTC),
             processed=True,
         ),
-        _make_zettel(id=4, title="Delta", type="note", tags=[], date=datetime(2024, 4, 1, tzinfo=UTC)),
+        make_zettel(id=4, title="Delta", type="note", tags=[], date=datetime(2024, 4, 1, tzinfo=UTC)),
     ]
 
 
@@ -337,15 +306,15 @@ class TestQueryZettelsUseCase:
         assert rows[0]["upper"] == "ALPHA"
 
 
-class TestLookups:
-    @staticmethod
-    def _kanban_zettels():
-        """Create zettels for the kanban lookup pool."""
-        z1 = _make_zettel(id=100, title="US-1234 Implement feature", type="note")
-        z2 = _make_zettel(id=101, title="US-5678 Fix bug", type="note")
-        z3 = _make_zettel(id=102, title="Standup notes", type="meeting")
-        return [z1, z2, z3]
+def _kanban_zettels(make_zettel):
+    """Create zettels for the kanban lookup pool."""
+    z1 = make_zettel(id=100, title="US-1234 Implement feature", type="note")
+    z2 = make_zettel(id=101, title="US-5678 Fix bug", type="note")
+    z3 = make_zettel(id=102, title="Standup notes", type="meeting")
+    return [z1, z2, z3]
 
+
+class TestLookups:
     def _make_repo(self, primary, kanban):
         """Mock repo returning different zettels per directory."""
         repo = MagicMock()
@@ -358,12 +327,12 @@ class TestLookups:
         repo.find_all.side_effect = find_all
         return repo
 
-    def test_lookup_match_filters_candidates(self):
+    def test_lookup_match_filters_candidates(self, make_zettel):
         primary = [
-            _make_zettel(id=1, title="Project A", type="project", extra_meta={"us": "US-1234"}),
-            _make_zettel(id=2, title="Project B", type="project", extra_meta={"us": "US-9999"}),
+            make_zettel(id=1, title="Project A", type="project", extra_meta={"us": "US-1234"}),
+            make_zettel(id=2, title="Project B", type="project", extra_meta={"us": "US-9999"}),
         ]
-        kanban = self._kanban_zettels()
+        kanban = _kanban_zettels(make_zettel)
         repo = self._make_repo(primary, kanban)
 
         spec = QuerySpec(
@@ -388,9 +357,9 @@ class TestLookups:
         assert rows[0]["title"] == "Project A"
         assert rows[0]["kanban_title"] == "US-1234 Implement feature"
 
-    def test_lookup_no_match_returns_all(self):
-        primary = [_make_zettel(id=1, title="P1", type="project")]
-        kanban = self._kanban_zettels()
+    def test_lookup_no_match_returns_all(self, make_zettel):
+        primary = [make_zettel(id=1, title="P1", type="project")]
+        kanban = _kanban_zettels(make_zettel)
         repo = self._make_repo(primary, kanban)
 
         spec = QuerySpec(
@@ -419,12 +388,12 @@ class TestLookups:
         assert len(rows) == 1
         assert rows[0]["count"] == 3  # all kanban candidates
 
-    def test_lookup_filter_expr_uses_lookup(self):
+    def test_lookup_filter_expr_uses_lookup(self, make_zettel):
         primary = [
-            _make_zettel(id=1, title="Has match", type="project", extra_meta={"us": "US-1234"}),
-            _make_zettel(id=2, title="No match", type="project", extra_meta={"us": "NOPE"}),
+            make_zettel(id=1, title="Has match", type="project", extra_meta={"us": "US-1234"}),
+            make_zettel(id=2, title="No match", type="project", extra_meta={"us": "NOPE"}),
         ]
-        kanban = self._kanban_zettels()
+        kanban = _kanban_zettels(make_zettel)
         repo = self._make_repo(primary, kanban)
 
         spec = QuerySpec(
@@ -444,11 +413,11 @@ class TestLookups:
         assert len(rows) == 1
         assert rows[0]["title"] == "Has match"
 
-    def test_lookup_column_expr(self):
+    def test_lookup_column_expr(self, make_zettel):
         primary = [
-            _make_zettel(id=1, title="P1", type="project", extra_meta={"us": "US-5678"}),
+            make_zettel(id=1, title="P1", type="project", extra_meta={"us": "US-5678"}),
         ]
-        kanban = self._kanban_zettels()
+        kanban = _kanban_zettels(make_zettel)
         repo = self._make_repo(primary, kanban)
 
         spec = QuerySpec(
@@ -469,11 +438,11 @@ class TestLookups:
         rows = uc.execute(spec)
         assert rows[0]["k_title"] == "US-5678 Fix bug"
 
-    def test_lookup_no_candidates(self):
+    def test_lookup_no_candidates(self, make_zettel):
         primary = [
-            _make_zettel(id=1, title="P1", type="project", extra_meta={"us": "NOPE"}),
+            make_zettel(id=1, title="P1", type="project", extra_meta={"us": "NOPE"}),
         ]
-        kanban = self._kanban_zettels()
+        kanban = _kanban_zettels(make_zettel)
         repo = self._make_repo(primary, kanban)
 
         spec = QuerySpec(
@@ -494,11 +463,11 @@ class TestLookups:
         rows = uc.execute(spec)
         assert rows[0]["count"] == 0
 
-    def test_lookup_with_pre_filter(self):
+    def test_lookup_with_pre_filter(self, make_zettel):
         primary = [
-            _make_zettel(id=1, title="P1", type="project", extra_meta={"us": "US-1234"}),
+            make_zettel(id=1, title="P1", type="project", extra_meta={"us": "US-1234"}),
         ]
-        kanban = self._kanban_zettels()
+        kanban = _kanban_zettels(make_zettel)
         repo = self._make_repo(primary, kanban)
 
         spec = QuerySpec(
@@ -521,9 +490,9 @@ class TestLookups:
         # pre-filter removes meeting (type=meeting), match on title gives 1
         assert rows[0]["count"] == 1
 
-    def test_lookup_missing_directory_raises(self):
+    def test_lookup_missing_directory_raises(self, make_zettel):
         repo = MagicMock()
-        repo.find_all.return_value = [_make_zettel(id=1, title="P1", type="project")]
+        repo.find_all.return_value = [make_zettel(id=1, title="P1", type="project")]
 
         spec = QuerySpec(
             source=QuerySource(directory="/notes"),

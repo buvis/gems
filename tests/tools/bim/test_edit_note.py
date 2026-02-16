@@ -8,32 +8,11 @@ from bim.cli import cli
 from bim.commands.edit_note.edit_note import CommandEditNote, edit_single
 from click.testing import CliRunner
 
-MINIMAL_ZETTEL = """\
----
-title: Original Title
-type: note
-tags:
-  - alpha
-  - beta
-processed: false
-publish: false
----
-
-## Content
-
-Some body text.
-"""
-
 
 @pytest.fixture
-def runner() -> CliRunner:
-    return CliRunner()
-
-
-@pytest.fixture
-def zettel_file(tmp_path: Path) -> Path:
+def zettel_file(tmp_path: Path, minimal_zettel: str) -> Path:
     p = tmp_path / "202401151030 Test note.md"
-    p.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+    p.write_text(minimal_zettel, encoding="utf-8")
     return p
 
 
@@ -110,11 +89,11 @@ class TestCommandEditNote:
             cmd.execute()
             mock.assert_called_once_with(zettel_file, {"src": "x"}, "reference")
 
-    def test_batch_edits_all(self, tmp_path: Path) -> None:
+    def test_batch_edits_all(self, tmp_path: Path, minimal_zettel: str) -> None:
         a = tmp_path / "a.md"
         b = tmp_path / "b.md"
-        a.write_text(MINIMAL_ZETTEL, encoding="utf-8")
-        b.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        a.write_text(minimal_zettel, encoding="utf-8")
+        b.write_text(minimal_zettel, encoding="utf-8")
 
         with patch("bim.commands.edit_note.edit_note.edit_single") as mock:
             cmd = CommandEditNote(paths=[a, b], changes={"title": "X"})
@@ -123,9 +102,9 @@ class TestCommandEditNote:
             mock.assert_any_call(a, {"title": "X"}, "metadata")
             mock.assert_any_call(b, {"title": "X"}, "metadata")
 
-    def test_batch_skips_missing(self, tmp_path: Path) -> None:
+    def test_batch_skips_missing(self, tmp_path: Path, minimal_zettel: str) -> None:
         exists = tmp_path / "exists.md"
-        exists.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        exists.write_text(minimal_zettel, encoding="utf-8")
         missing = tmp_path / "missing.md"
 
         with (
@@ -139,9 +118,9 @@ class TestCommandEditNote:
 
 
 class TestEditCliCommand:
-    def test_edit_scripted(self, runner: CliRunner, tmp_path: Path) -> None:
+    def test_edit_scripted(self, runner: CliRunner, tmp_path: Path, minimal_zettel: str) -> None:
         note = tmp_path / "note.md"
-        note.write_text(MINIMAL_ZETTEL)
+        note.write_text(minimal_zettel)
 
         with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_cmd:
             instance = mock_cmd.return_value
@@ -158,9 +137,9 @@ class TestEditCliCommand:
             )
             instance.execute.assert_called_once()
 
-    def test_edit_boolean_flags(self, runner: CliRunner, tmp_path: Path) -> None:
+    def test_edit_boolean_flags(self, runner: CliRunner, tmp_path: Path, minimal_zettel: str) -> None:
         note = tmp_path / "note.md"
-        note.write_text(MINIMAL_ZETTEL)
+        note.write_text(minimal_zettel)
 
         with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_cmd:
             instance = mock_cmd.return_value
@@ -177,9 +156,9 @@ class TestEditCliCommand:
             )
             instance.execute.assert_called_once()
 
-    def test_edit_no_flags_launches_tui(self, runner: CliRunner, tmp_path: Path) -> None:
+    def test_edit_no_flags_launches_tui(self, runner: CliRunner, tmp_path: Path, minimal_zettel: str) -> None:
         note = tmp_path / "note.md"
-        note.write_text(MINIMAL_ZETTEL)
+        note.write_text(minimal_zettel)
 
         with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_cmd:
             instance = mock_cmd.return_value
@@ -193,9 +172,9 @@ class TestEditCliCommand:
             mock_cmd.assert_called_once_with(paths=[note], changes=None)
             instance.execute.assert_called_once()
 
-    def test_edit_extra_set(self, runner: CliRunner, tmp_path: Path) -> None:
+    def test_edit_extra_set(self, runner: CliRunner, tmp_path: Path, minimal_zettel: str) -> None:
         note = tmp_path / "note.md"
-        note.write_text(MINIMAL_ZETTEL)
+        note.write_text(minimal_zettel)
 
         with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_cmd:
             instance = mock_cmd.return_value
@@ -212,11 +191,11 @@ class TestEditCliCommand:
             )
             instance.execute.assert_called_once()
 
-    def test_edit_multiple_scripted(self, runner: CliRunner, tmp_path: Path) -> None:
+    def test_edit_multiple_scripted(self, runner: CliRunner, tmp_path: Path, minimal_zettel: str) -> None:
         a = tmp_path / "a.md"
         b = tmp_path / "b.md"
-        a.write_text(MINIMAL_ZETTEL)
-        b.write_text(MINIMAL_ZETTEL)
+        a.write_text(minimal_zettel)
+        b.write_text(minimal_zettel)
 
         with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_cmd:
             instance = mock_cmd.return_value
@@ -238,11 +217,11 @@ class TestEditCliCommand:
         assert result.exit_code == 0
         assert "doesn't exist" in result.output
 
-    def test_edit_multiple_no_changes_errors(self, runner: CliRunner, tmp_path: Path) -> None:
+    def test_edit_multiple_no_changes_errors(self, runner: CliRunner, tmp_path: Path, minimal_zettel: str) -> None:
         a = tmp_path / "a.md"
         b = tmp_path / "b.md"
-        a.write_text(MINIMAL_ZETTEL)
-        b.write_text(MINIMAL_ZETTEL)
+        a.write_text(minimal_zettel)
+        b.write_text(minimal_zettel)
 
         result = runner.invoke(
             cli,

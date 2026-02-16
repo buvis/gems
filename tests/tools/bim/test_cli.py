@@ -2,14 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from bim.cli import cli
-from click.testing import CliRunner
-
-
-@pytest.fixture
-def runner() -> CliRunner:
-    return CliRunner()
 
 
 class TestShowCommand:

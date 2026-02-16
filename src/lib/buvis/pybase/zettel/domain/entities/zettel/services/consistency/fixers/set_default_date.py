@@ -19,4 +19,5 @@ def set_default_date(zettel_data: ZettelData) -> None:
     :type zettel_data: :class:`ZettelData`
     :return: None. The function modifies the `zettel_data` in place.
     """
-    zettel_data.metadata["date"] = datetime.now(UTC).replace(microsecond=0)
+    if zettel_data.metadata.get("date") is None:
+        zettel_data.metadata["date"] = datetime.now(UTC).replace(microsecond=0)

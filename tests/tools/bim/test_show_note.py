@@ -6,33 +6,19 @@ from unittest.mock import patch
 import pytest
 from bim.commands.show_note.show_note import CommandShowNote, show_single
 
-MINIMAL_ZETTEL = """\
----
-title: Test Note
-type: note
-tags:
-  - test
-processed: false
----
-
-## Content
-
-Body text.
-"""
-
 
 @pytest.fixture
-def zettel_file(tmp_path: Path) -> Path:
+def zettel_file(tmp_path: Path, minimal_zettel: str) -> Path:
     p = tmp_path / "202401151030 Test note.md"
-    p.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+    p.write_text(minimal_zettel, encoding="utf-8")
     return p
 
 
 class TestShowSingle:
     def test_returns_formatted_content(self, zettel_file: Path) -> None:
         result = show_single(zettel_file, quiet=True)
-        assert "title: Test Note" in result
-        assert "Body text." in result
+        assert "title: Original Title" in result
+        assert "Some body text." in result
 
     def test_quiet_suppresses_console(self, zettel_file: Path) -> None:
         with patch("bim.commands.show_note.show_note.console") as mock_console:

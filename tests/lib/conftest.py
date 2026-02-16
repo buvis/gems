@@ -35,6 +35,7 @@ def make_zettel() -> Callable[..., Zettel]:
         processed: bool = False,
         extra_meta: dict[str, Any] | None = None,
         file_path: str | None = None,
+        sections: list[tuple[str, str]] | None = None,
     ) -> Zettel:
         data = ZettelData()
         if id is not None:
@@ -51,6 +52,8 @@ def make_zettel() -> Callable[..., Zettel]:
         if extra_meta:
             data.metadata.update(extra_meta)
         data.file_path = file_path
+        if sections is not None:
+            data.sections = sections
         return Zettel(data, from_rust=True)
 
     return _make_zettel

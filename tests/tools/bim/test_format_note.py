@@ -1,96 +1,42 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from bim.commands.format_note.format_note import CommandFormatNote, format_single
 
-MINIMAL_ZETTEL = """\
----
-title: Test Note
-type: note
-tags:
-  - test
-processed: false
----
-
-## Content
-
-Body text.
-"""
-
 
 @pytest.fixture
-def zettel_file(tmp_path: Path) -> Path:
+def zettel_file(tmp_path: Path, minimal_zettel: str) -> Path:
     p = tmp_path / "202401151030 Test note.md"
-    p.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+    p.write_text(minimal_zettel, encoding="utf-8")
     return p
 
 
 class TestFormatSingle:
-    def test_returns_formatted_content(self, zettel_file: Path) -> None:
+    def test_returns_formatted_content(self, zettel_file: Path, format_note_mocks) -> None:
+        result = format_single(zettel_file)
+
+        assert result == "formatted content"
+
+    def test_in_place_writes_file(self, zettel_file: Path, format_note_mocks) -> None:
+        format_single(zettel_file, in_place=True, quiet=True)
+
+        assert zettel_file.read_text(encoding="utf-8") == "formatted content"
+
+    def test_quiet_suppresses_console(self, zettel_file: Path, format_note_mocks) -> None:
         with (
-            patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
-            patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
-        ):
-            mock_repo.return_value = MagicMock()
-            note = MagicMock()
-            note.get_data.return_value = {"title": "Test Note"}
-            mock_reader_cls.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
-
-            result = format_single(zettel_file)
-
-            assert result == "formatted content"
-
-    def test_in_place_writes_file(self, zettel_file: Path) -> None:
-        with (
-            patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
-            patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
-        ):
-            mock_repo.return_value = MagicMock()
-            note = MagicMock()
-            note.get_data.return_value = {"title": "Test Note"}
-            mock_reader_cls.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
-
-            format_single(zettel_file, in_place=True, quiet=True)
-
-            assert zettel_file.read_text(encoding="utf-8") == "formatted content"
-
-    def test_quiet_suppresses_console(self, zettel_file: Path) -> None:
-        with (
-            patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
-            patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
             patch("bim.commands.format_note.format_note.console") as mock_console,
         ):
-            mock_repo.return_value = MagicMock()
-            note = MagicMock()
-            note.get_data.return_value = {"title": "Test Note"}
-            mock_reader_cls.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
-
             format_single(zettel_file, in_place=True, quiet=True)
 
             mock_console.success.assert_not_called()
 
-    def test_loud_prints_console(self, zettel_file: Path) -> None:
+    def test_loud_prints_console(self, zettel_file: Path, format_note_mocks) -> None:
         with (
-            patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
-            patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
             patch("bim.commands.format_note.format_note.console") as mock_console,
         ):
-            mock_repo.return_value = MagicMock()
-            note = MagicMock()
-            note.get_data.return_value = {"title": "Test Note"}
-            mock_reader_cls.return_value.execute.return_value = note
-            mock_get_formatter.return_value.format.return_value = "formatted content"
-
             format_single(zettel_file, in_place=True)
 
             mock_console.success.assert_called_once()
@@ -170,11 +116,11 @@ class TestCommandFormatNote:
                 mode="raw",
             )
 
-    def test_batch_formats_all(self, tmp_path: Path) -> None:
+    def test_batch_formats_all(self, tmp_path: Path, minimal_zettel: str) -> None:
         a = tmp_path / "a.md"
         b = tmp_path / "b.md"
-        a.write_text(MINIMAL_ZETTEL, encoding="utf-8")
-        b.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        a.write_text(minimal_zettel, encoding="utf-8")
+        b.write_text(minimal_zettel, encoding="utf-8")
 
         with patch("bim.commands.format_note.format_note.format_single") as mock_format:
             mock_format.return_value = "formatted"
@@ -184,9 +130,9 @@ class TestCommandFormatNote:
             mock_format.assert_any_call(a, in_place=True)
             mock_format.assert_any_call(b, in_place=True)
 
-    def test_batch_skips_missing(self, tmp_path: Path) -> None:
+    def test_batch_skips_missing(self, tmp_path: Path, minimal_zettel: str) -> None:
         exists = tmp_path / "exists.md"
-        exists.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        exists.write_text(minimal_zettel, encoding="utf-8")
         missing = tmp_path / "missing.md"
 
         with (
