@@ -70,14 +70,28 @@ def cli(
         CommandListFonts().execute()
         return
 
+    import pyfiglet as _pyfiglet
+
+    resolved_font = font if font is not None else settings.font
+    if random_font:
+        import random
+
+        all_fonts: list[str] = _pyfiglet.FigletFont.getFonts()  # type: ignore[no-untyped-call]
+        resolved_font = random.choice(all_fonts)  # noqa: S311
+        console.print(f"Random font selected: {resolved_font}", mode="raw")
+
+    available_fonts: list[str] = _pyfiglet.FigletFont.getFonts()  # type: ignore[no-untyped-call]
+    if resolved_font not in available_fonts:
+        resolved_font = settings.font
+
+    resolved_text = text if text is not None else settings.text
+
     from hello_world.commands.print_figlet.print_figlet import CommandPrintFiglet
 
-    CommandPrintFiglet(
-        font=font,
-        text=text,
-        settings=settings,
-        random_font=random_font,
-    ).execute()
+    result = CommandPrintFiglet(font=resolved_font, text=resolved_text).execute()
+    console.nl()
+    if result.output:
+        console.print(result.output, mode="raw")
 
 
 if __name__ == "__main__":
