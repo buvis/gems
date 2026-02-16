@@ -7,10 +7,10 @@ from buvis.pybase.zettel.domain.entities.project.project import ProjectZettel
 
 
 def _get_field(source: ProjectZettel, key: str, default: Any = None) -> Any:
-    """Look up a field in metadata then reference (matching old _alias_attributes merge)."""
-    val = source.data.metadata.get(key)
+    """Look up a field in reference then metadata (reference wins, matching old _alias_attributes merge)."""
+    val = source.data.reference.get(key)
     if val is None:
-        val = source.data.reference.get(key)
+        val = source.data.metadata.get(key)
     return val if val is not None else default
 
 
