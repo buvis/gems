@@ -6,8 +6,14 @@ from typing import Any
 
 import click
 from buvis.pybase.adapters import console
-from buvis.pybase.configuration import GlobalSettings, buvis_options, get_settings
+from buvis.pybase.configuration import (
+    GlobalSettings,
+    apply_generated_options,
+    buvis_options,
+    get_settings,
+)
 
+from bim.params.archive_note import ArchiveNoteParams
 from bim.settings import BimSettings
 
 
@@ -596,7 +602,7 @@ def edit_note(
 @click.argument("paths", nargs=-1, required=False)
 @click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
-@click.option("--undo", is_flag=True, default=False, help="Unarchive (move back to zettelkasten)")
+@apply_generated_options(ArchiveNoteParams)
 @click.pass_context
 def archive_note(
     ctx: click.Context,
@@ -612,7 +618,6 @@ def archive_note(
 
     from bim.commands.archive_note.archive_note import CommandArchiveNote
     from bim.dependencies import get_repo
-    from bim.params.archive_note import ArchiveNoteParams
 
     settings = get_settings(ctx, BimSettings)
     params = ArchiveNoteParams(paths=resolved, undo=undo)
