@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from buvis.pybase.result import CommandResult
 from bim.commands.show_note.show_note import CommandShowNote
+from bim.params.show_note import ShowNoteParams
 
 
 @pytest.fixture
@@ -24,7 +25,8 @@ class TestCommandShowNote:
         formatter = MagicMock()
         formatter.format.return_value = "formatted content"
 
-        cmd = CommandShowNote(paths=[zettel_file], repo=repo, formatter=formatter)
+        params = ShowNoteParams(paths=[zettel_file])
+        cmd = CommandShowNote(params=params, repo=repo, formatter=formatter)
         result = cmd.execute()
 
         assert isinstance(result, CommandResult)
@@ -40,7 +42,8 @@ class TestCommandShowNote:
         repo = MagicMock()
         formatter = MagicMock()
 
-        cmd = CommandShowNote(paths=[missing], repo=repo, formatter=formatter)
+        params = ShowNoteParams(paths=[missing])
+        cmd = CommandShowNote(params=params, repo=repo, formatter=formatter)
         result = cmd.execute()
 
         assert result.success is False
@@ -63,7 +66,8 @@ class TestCommandShowNote:
         formatter = MagicMock()
         formatter.format.return_value = "formatted content"
 
-        cmd = CommandShowNote(paths=[zettel_file, missing], repo=repo, formatter=formatter)
+        params = ShowNoteParams(paths=[zettel_file, missing])
+        cmd = CommandShowNote(params=params, repo=repo, formatter=formatter)
         result = cmd.execute()
 
         assert result.success is True

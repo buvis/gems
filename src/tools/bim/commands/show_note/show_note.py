@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+
+from bim.params.show_note import ShowNoteParams
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
@@ -14,11 +15,11 @@ if TYPE_CHECKING:
 class CommandShowNote:
     def __init__(
         self,
-        paths: list[Path],
+        params: ShowNoteParams,
         repo: ZettelRepository,
         formatter: ZettelFormatter,
     ) -> None:
-        self.paths = paths
+        self.params = params
         self.repo = repo
         self.formatter = formatter
 
@@ -27,7 +28,7 @@ class CommandShowNote:
         warnings: list[str] = []
         use_case = PrintZettelUseCase(self.formatter)
 
-        for path in self.paths:
+        for path in self.params.paths:
             if not path.is_file():
                 warnings.append(f"{path} doesn't exist")
                 continue

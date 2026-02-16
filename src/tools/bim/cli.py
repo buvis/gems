@@ -635,8 +635,10 @@ def show_note(
 
     from bim.commands.show_note.show_note import CommandShowNote
     from bim.dependencies import get_formatter, get_repo
+    from bim.params.show_note import ShowNoteParams
 
-    cmd = CommandShowNote(paths=resolved, repo=get_repo(), formatter=get_formatter())
+    params = ShowNoteParams(paths=resolved)
+    cmd = CommandShowNote(params=params, repo=get_repo(), formatter=get_formatter())
     result = cmd.execute()
     for w in result.warnings:
         console.warning(w)
