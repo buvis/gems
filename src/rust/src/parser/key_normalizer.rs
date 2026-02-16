@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::types::YamlValue;
 
 // Matches transitions: lowercase->uppercase, uppercase->lowercase (in sequences),
 // non-alpha->alpha boundaries — same behavior as inflection.underscore()
-static UNDERSCORE_RE1: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"([A-Z]+)([A-Z][a-z])").unwrap());
-static UNDERSCORE_RE2: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"([a-z\d])([A-Z])").unwrap());
+static UNDERSCORE_RE1: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([A-Z]+)([A-Z][a-z])").unwrap());
+static UNDERSCORE_RE2: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([a-z\d])([A-Z])").unwrap());
 
 /// Port of StringCaseTools.as_note_field_name():
 /// underscore(text).replace("_", "-").lower()

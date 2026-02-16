@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::types::YamlValue;
 
-static REFERENCE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?s)\n---\n(.*)$").unwrap());
+static REFERENCE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?s)\n---\n(.*)$").unwrap());
 
-static DATAVIEW_KEY_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(\S+)::").unwrap());
+static DATAVIEW_KEY_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(\S+)::").unwrap());
 
 /// Extract back matter (reference section) from content.
 /// Returns (parsed reference dict, content with back matter removed).
@@ -21,7 +21,7 @@ pub fn extract_reference(content: &str) -> (Option<HashMap<String, YamlValue>>, 
     let raw = caps.get(1).unwrap().as_str().trim();
     let preprocessed = quote_unsafe_strings(&fix_dataview_keys(raw));
 
-    let yaml_val: serde_yaml::Value = match serde_yaml::from_str(&preprocessed) {
+    let yaml_val: serde_yml::Value = match serde_yml::from_str(&preprocessed) {
         Ok(v) => v,
         Err(_) => return (None, content.to_string()),
     };
@@ -82,19 +82,19 @@ fn quote_unsafe_strings(text: &str) -> String {
 
 /// Merge YAML list-of-dicts into a single dict.
 /// Duplicate keys become lists.
-fn merge_reference_list(val: serde_yaml::Value) -> HashMap<String, YamlValue> {
+fn merge_reference_list(val: serde_yml::Value) -> HashMap<String, YamlValue> {
     let mut map: HashMap<String, YamlValue> = HashMap::new();
 
     let items = match val {
-        serde_yaml::Value::Sequence(seq) => seq,
+        serde_yml::Value::Sequence(seq) => seq,
         _ => return map,
     };
 
     for item in items {
-        if let serde_yaml::Value::Mapping(mapping) = item {
+        if let serde_yml::Value::Mapping(mapping) = item {
             for (k, v) in mapping {
                 let key = match k {
-                    serde_yaml::Value::String(s) => s.trim_end_matches(':').to_string(),
+                    serde_yml::Value::String(s) => s.trim_end_matches(':').to_string(),
                     _ => continue,
                 };
                 let value = YamlValue::from(v);

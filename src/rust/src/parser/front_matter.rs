@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::types::YamlValue;
 
-static METADATA_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?s)---\n(.*?)\n---").unwrap());
+static METADATA_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?s)---\n(.*?)\n---").unwrap());
 
 /// Match tag/tags lines with inline values (not YAML list form).
 /// Uses `[ \t]*` instead of `\s*` to avoid matching across newlines.
-static TAG_LINE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?m)^(?:tag|tags):[ \t]*(\S.*)$").unwrap());
+static TAG_LINE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^(?:tag|tags):[ \t]*(\S.*)$").unwrap());
 
 /// Extract front matter YAML from markdown content.
 /// Returns (parsed metadata, content with front matter removed).
@@ -23,7 +23,7 @@ pub fn extract_metadata(content: &str) -> (Option<HashMap<String, YamlValue>>, S
     let raw_front = caps.get(1).unwrap().as_str();
     let preprocessed = normalize_tags(raw_front);
 
-    let yaml_val: serde_yaml::Value = match serde_yaml::from_str(&preprocessed) {
+    let yaml_val: serde_yml::Value = match serde_yml::from_str(&preprocessed) {
         Ok(v) => v,
         Err(_) => return (None, content.to_string()),
     };
@@ -60,13 +60,13 @@ fn normalize_tags(text: &str) -> String {
         .to_string()
 }
 
-/// Convert a serde_yaml::Value (expected Mapping) into our HashMap<String, YamlValue>.
-fn yaml_to_map(val: serde_yaml::Value) -> HashMap<String, YamlValue> {
+/// Convert a serde_yml::Value (expected Mapping) into our HashMap<String, YamlValue>.
+fn yaml_to_map(val: serde_yml::Value) -> HashMap<String, YamlValue> {
     let mut map = HashMap::new();
 
-    if let serde_yaml::Value::Mapping(mapping) = val {
+    if let serde_yml::Value::Mapping(mapping) = val {
         for (k, v) in mapping {
-            if let serde_yaml::Value::String(key) = k {
+            if let serde_yml::Value::String(key) = k {
                 map.insert(key, YamlValue::from(v));
             }
         }

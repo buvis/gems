@@ -1,11 +1,11 @@
 use std::path::Path;
 
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
-static DATETIME_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(\d{14}|\d{12})").unwrap());
+static DATETIME_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(\d{14}|\d{12})").unwrap());
 
 /// Extract date from filename stem (YYYYMMDDHHMMSS or YYYYMMDDHHMM).
 pub fn date_from_filename(stem: &str) -> Option<DateTime<FixedOffset>> {

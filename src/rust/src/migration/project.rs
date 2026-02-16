@@ -1,17 +1,17 @@
 use chrono::{DateTime, Local, NaiveDateTime};
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::types::{YamlValue, ZettelData};
 
-static LOG_ENTRY_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}) - (.*?)(?:\s*=>\s*(.*))?$").unwrap());
+static LOG_ENTRY_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}) - (.*?)(?:\s*=>\s*(.*))?$").unwrap());
 
-static DATE_PATTERN_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\b(\d{4}-\d{2}-\d{2})\b").unwrap());
+static DATE_PATTERN_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b(\d{4}-\d{2}-\d{2})\b").unwrap());
 
-static WIKI_LINK_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\[\[(.*?)\]\]").unwrap());
+static WIKI_LINK_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[\[(.*?)\]\]").unwrap());
 
 struct NextAction {
     gtd_list: String,

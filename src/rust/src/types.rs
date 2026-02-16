@@ -71,13 +71,13 @@ impl YamlValue {
     }
 }
 
-/// Convert serde_yaml::Value into our YamlValue
-impl From<serde_yaml::Value> for YamlValue {
-    fn from(v: serde_yaml::Value) -> Self {
+/// Convert serde_yml::Value into our YamlValue
+impl From<serde_yml::Value> for YamlValue {
+    fn from(v: serde_yml::Value) -> Self {
         match v {
-            serde_yaml::Value::Null => YamlValue::Null,
-            serde_yaml::Value::Bool(b) => YamlValue::Bool(b),
-            serde_yaml::Value::Number(n) => {
+            serde_yml::Value::Null => YamlValue::Null,
+            serde_yml::Value::Bool(b) => YamlValue::Bool(b),
+            serde_yml::Value::Number(n) => {
                 if let Some(i) = n.as_i64() {
                     YamlValue::Int(i)
                 } else if let Some(f) = n.as_f64() {
@@ -86,8 +86,8 @@ impl From<serde_yaml::Value> for YamlValue {
                     YamlValue::Null
                 }
             }
-            serde_yaml::Value::String(s) => {
-                // Try parsing as datetime (serde_yaml returns dates as strings)
+            serde_yml::Value::String(s) => {
+                // Try parsing as datetime (serde_yml returns dates as strings)
                 if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&s) {
                     YamlValue::DateTime(dt)
                 } else if let Ok(dt) = chrono::DateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S %z") {
@@ -114,14 +114,14 @@ impl From<serde_yaml::Value> for YamlValue {
                     YamlValue::String(s)
                 }
             }
-            serde_yaml::Value::Sequence(seq) => {
+            serde_yml::Value::Sequence(seq) => {
                 YamlValue::List(seq.into_iter().map(YamlValue::from).collect())
             }
-            serde_yaml::Value::Mapping(_) => {
+            serde_yml::Value::Mapping(_) => {
                 // Flatten mappings to string representation for now
                 YamlValue::String(format!("{:?}", v))
             }
-            serde_yaml::Value::Tagged(tagged) => YamlValue::from(tagged.value),
+            serde_yml::Value::Tagged(tagged) => YamlValue::from(tagged.value),
         }
     }
 }

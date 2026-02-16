@@ -1,8 +1,8 @@
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
-static HEADING_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(#{1,6} .+?)\n").unwrap());
+static HEADING_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(#{1,6} .+?)\n").unwrap());
 
 /// Split content into (heading, body) sections.
 /// Mirrors Python's split_content_into_sections().
