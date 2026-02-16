@@ -1,12 +1,10 @@
 """
 This module provides functionality to format the title of a ZettelData object.
 
-Imports:
 - :class:`StringOperator` from the `buvis.pybase.formatting` module, used for text
   manipulation.
 - :class:`ZettelData` from the `zettel.domain.value_objects.zettel_data` module,
-  representing the data structure for zettel information.
-"""
+  representing the data structure for zettel information."""
 
 from __future__ import annotations
 

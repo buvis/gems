@@ -1,10 +1,5 @@
 """
 This module defines an abstract base class for formatting Zettel data.
-
-Imports:
-    - :class:`abc.ABC` and :class:`abc.abstractmethod` for creating abstract base classes and methods.
-    - :class:`typing.TYPE_CHECKING` for type checking purposes.
-    - :class:`zettel.domain.value_objects.zettel_data.ZettelData` for type annotations.
 """
 
 from __future__ import annotations

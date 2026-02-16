@@ -2,10 +2,7 @@
 This module provides functionality to align the first heading of a Zettel (a type of note) to its
 title.
 
-Imports:
-    - ZettelData: A class from the zettel.domain.value_objects.zettel_data module, representing
-    the data structure of a Zettel.
-"""
+    the data structure of a Zettel."""
 
 from __future__ import annotations
 

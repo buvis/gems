@@ -2,12 +2,6 @@
 Zettel module.
 
 This module contains the Zettel class which represents a Zettel entity.
-
-Imports:
-    - :class:`datetime.datetime`: Used for type hinting.
-    - :class:`ZettelConsistencyService`: Service for ensuring Zettel consistency.
-    - :class:`ZettelMigrationService`: Service for migrating Zettel data.
-    - :class:`ZettelData`: Value object representing Zettel data.
 """
 
 from __future__ import annotations

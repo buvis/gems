@@ -1,9 +1,5 @@
 """
 This module provides services for ensuring consistency in Zettel data entities.
-
-Imports:
-    - Various fixer functions from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers
-    - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data
 """
 
 from __future__ import annotations

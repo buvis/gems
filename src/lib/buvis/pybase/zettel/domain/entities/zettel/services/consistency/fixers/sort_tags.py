@@ -1,8 +1,5 @@
 """
 This module provides functionality to sort tags within the metadata of a :class:`ZettelData` object.
-
-Imports:
-    - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data for accessing zettel metadata.
 """
 
 from __future__ import annotations

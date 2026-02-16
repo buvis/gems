@@ -1,9 +1,5 @@
 """
 This module provides services for migrating ZettelData.
-
-Imports:
-    - Various upgrade functions from buvis.pybase.zettel.domain.entities.zettel.services.migration.upgrades
-    - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data
 """
 
 from __future__ import annotations

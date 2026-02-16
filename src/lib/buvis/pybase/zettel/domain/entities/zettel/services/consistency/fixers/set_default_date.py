@@ -1,10 +1,8 @@
 """
 This module sets default dates for ZettelData objects using the datetime module.
 
-Imports:
 - datetime: For fetching the current date and time in UTC.
-- :class:`ZettelData`: A domain value object from the zettel.domain.value_objects package.
-"""
+- :class:`ZettelData`: A domain value object from the zettel.domain.value_objects package."""
 
 from __future__ import annotations
 

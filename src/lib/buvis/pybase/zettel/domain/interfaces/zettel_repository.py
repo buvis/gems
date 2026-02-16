@@ -1,10 +1,5 @@
 """
 This module defines an abstract base class for managing Zettel entities.
-
-Imports:
-    - :class:`abc.ABC` and :class:`abc.abstractmethod` for creating abstract base classes and methods.
-    - :class:`typing.TYPE_CHECKING` for type checking support.
-    - :class:`zettel.domain.entities.zettel.zettel.Zettel` for Zettel entity type annotations.
 """
 
 from __future__ import annotations

@@ -1,10 +1,7 @@
 """
 This module handles the normalization of zettel types based on predefined mappings.
 
-Imports:
-    - :class:`ZettelData` from `zettel.domain.value_objects.zettel_data` which is used to
-    represent and manipulate zettel metadata.
-"""
+    represent and manipulate zettel metadata."""
 
 from __future__ import annotations
 

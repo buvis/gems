@@ -9,12 +9,10 @@ and migration of project Zettels.
 Classes:
     ProjectZettel: Represents a project-specific Zettel with additional methods for migration and consistency checks.
 
-Imports:
     ProjectZettelConsistencyService: A service class from `project.services.consistency` used to ensure
     data consistency.
     ProjectZettelMigrationService: A service class from `project.services.migration` used to handle data migration.
-    Zettel: The base class for Zettel objects, extended by ProjectZettel to include project-specific functionality.
-"""
+    Zettel: The base class for Zettel objects, extended by ProjectZettel to include project-specific functionality."""
 
 from __future__ import annotations
 

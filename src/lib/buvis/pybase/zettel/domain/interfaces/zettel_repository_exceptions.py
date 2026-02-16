@@ -1,12 +1,8 @@
 """
 This module defines a custom exception class for handling errors related to Zettel not found in a repository.
 
-Imports:
-    - :class:`Exception` from the standard library for base exception functionality.
-
 Classes:
-    - :class:`ZettelRepositoryZettelNotFoundError`: Custom exception class for Zettel not found errors.
-"""
+    - :class:`ZettelRepositoryZettelNotFoundError`: Custom exception class for Zettel not found errors."""
 
 from __future__ import annotations
 

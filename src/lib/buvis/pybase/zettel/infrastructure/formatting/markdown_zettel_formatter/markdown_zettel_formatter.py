@@ -1,12 +1,7 @@
 """
 This module defines the MarkdownZettelFormatter class which implements the :class:`ZettelFormatter` interface.
 
-Imports:
-    - :class:`ZettelFormatter` from buvis.pybase.zettel.domain.interfaces.zettel_formatter
-    - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data
-    - Helper functions (format_metadata, format_reference, format_sections) from
-    zettel.infrastructure.formatting.markdown_zettel_formatter.helpers
-"""
+    zettel.infrastructure.formatting.markdown_zettel_formatter.helpers"""
 
 from __future__ import annotations
 

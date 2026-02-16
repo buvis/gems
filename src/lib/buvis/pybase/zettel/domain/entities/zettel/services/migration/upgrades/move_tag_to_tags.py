@@ -1,10 +1,7 @@
 """
 This module provides functionality to manipulate metadata in :class:`ZettelData`.
 
-Imports:
-    - :class:`ZettelData` from `zettel.domain.value_objects.zettel_data`: Represents the data
-    structure for Zettel metadata.
-"""
+    structure for Zettel metadata."""
 
 from __future__ import annotations
 

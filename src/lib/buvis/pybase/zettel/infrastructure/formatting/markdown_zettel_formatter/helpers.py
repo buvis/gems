@@ -2,11 +2,6 @@
 
 This module provides functions to process metadata dictionaries, convert datetime objects to strings,
 format metadata into YAML, and handle string formatting in YAML outputs.
-
-Imports:
-    - re: Used for regular expressions operations.
-    - datetime: Provides datetime class for handling date and time data.
-    - yaml: Used to convert dictionaries to YAML formatted strings.
 """
 
 from __future__ import annotations

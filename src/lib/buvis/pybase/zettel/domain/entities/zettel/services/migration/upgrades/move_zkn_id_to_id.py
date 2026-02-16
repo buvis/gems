@@ -1,9 +1,6 @@
 """
 This module contains the function move_zkn_id_to_id which is used to modify the metadata of a
 :class:`ZettelData` object by moving the value from 'zkn-id' to 'id'.
-
-Imports:
-    - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data
 """
 
 from __future__ import annotations

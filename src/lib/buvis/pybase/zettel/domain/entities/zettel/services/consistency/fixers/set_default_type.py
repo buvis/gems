@@ -1,10 +1,7 @@
 """
 This module provides functionality to set default metadata types for ZettelData objects.
 
-Imports:
-    - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data module to represent the
-    data structure for zettel metadata.
-"""
+    data structure for zettel metadata."""
 
 from __future__ import annotations
 
