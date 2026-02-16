@@ -11,28 +11,24 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
-from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
-    _default_cache_path,
-)
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
-from buvis.pybase.zettel.infrastructure.query.output_formatter import (
-    format_csv,
-    format_html,
-    format_json,
-    format_jsonl,
-    format_kanban,
-    format_markdown,
-    format_pdf,
-    format_table,
-)
-from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
+
+from bim.commands.shared.os_open import open_in_os
+from bim.dependencies import (
+    format_query_csv,
+    format_query_html,
+    format_query_json,
+    format_query_jsonl,
+    format_query_kanban,
+    format_query_markdown,
+    format_query_pdf,
+    format_query_table,
+    get_cache_path,
+    get_evaluator,
+    get_repo,
     parse_query_file,
     parse_query_string,
     resolve_query_file,
 )
-
-from bim.commands.shared.os_open import open_in_os
-from bim.dependencies import get_repo
 
 from rich.text import Text
 
@@ -76,7 +72,7 @@ class CommandQuery:
         refresh_proc = _start_cache_refresh(directory)
 
         repo = get_repo(extensions=spec.source.extensions)
-        use_case = QueryZettelsUseCase(repo, python_eval)
+        use_case = QueryZettelsUseCase(repo, get_evaluator())
 
         t0 = time.perf_counter()
         rows = use_case.execute(spec)
@@ -104,32 +100,32 @@ class CommandQuery:
                 console.failure("kanban format requires output.group_by")
                 return
             display_columns = [c for c in columns if c != "file_path"]
-            format_kanban(rows, display_columns, output.group_by)
+            format_query_kanban(rows, display_columns, output.group_by)
         elif output.format == "table":
             _linkify_titles(rows)
             display_columns = [c for c in columns if c != "file_path"]
-            format_table(rows, display_columns)
+            format_query_table(rows, display_columns)
         elif output.format == "csv":
-            text = format_csv(rows, columns)
+            text = format_query_csv(rows, columns)
             _write_output(text, output.file)
         elif output.format == "markdown":
-            text = format_markdown(rows, columns)
+            text = format_query_markdown(rows, columns)
             _write_output(text, output.file)
         elif output.format == "json":
-            text = format_json(rows, columns)
+            text = format_query_json(rows, columns)
             _write_output(text, output.file)
         elif output.format == "jsonl":
-            text = format_jsonl(rows, columns)
+            text = format_query_jsonl(rows, columns)
             _write_output(text, output.file)
         elif output.format == "html":
-            text = format_html(rows, columns)
+            text = format_query_html(rows, columns)
             dest = output.file or _tmp_file("html")
             _write_output(text, dest)
             if not output.file:
                 _open_file(dest)
         elif output.format == "pdf":
             try:
-                raw = format_pdf(rows, columns)
+                raw = format_query_pdf(rows, columns)
             except ImportError:
                 console.failure("PDF requires fpdf2: uv pip install 'buvis-gems[bim]'")
                 return
@@ -218,7 +214,7 @@ def _start_cache_refresh(directory: str) -> subprocess.Popen[bytes] | None:
     except ImportError:
         return None
 
-    cache_path = _default_cache_path()
+    cache_path = get_cache_path()
     script = (
         "from buvis.pybase.zettel._core import refresh_cache;"
         f"print(refresh_cache({directory!r}, {cache_path!r}))"

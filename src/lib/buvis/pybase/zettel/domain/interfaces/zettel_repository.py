@@ -49,6 +49,18 @@ class ZettelReader(ABC):
         """
         pass
 
+    @abstractmethod
+    def find_by_id(self, zettel_id: str) -> Zettel:
+        """
+        Retrieve a :class:`Zettel` entity by its ID.
+
+        :param zettel_id: The ID of the Zettel to find.
+        :type zettel_id: str
+        :return: The found Zettel entity.
+        :rtype: :class:`Zettel`
+        """
+        pass
+
 
 class ZettelWriter(ABC):
     """Abstract base class for writing :class:`Zettel` entities."""
@@ -71,18 +83,6 @@ class ZettelWriter(ABC):
 
         :param zettel: The Zettel entity to delete.
         :type zettel: :class:`Zettel`
-        """
-        pass
-
-    @abstractmethod
-    def find_by_id(self, zettel_id: str) -> Zettel:
-        """
-        Retrieve a :class:`Zettel` entity by its ID.
-
-        :param zettel_id: The ID of the Zettel to find.
-        :type zettel_id: str
-        :return: The found Zettel entity.
-        :rtype: :class:`Zettel`
         """
         pass
 

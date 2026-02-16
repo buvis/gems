@@ -8,20 +8,21 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
+from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
-from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
+
+from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
+from bim.commands.shared.os_open import open_in_os
+from bim.dependencies import (
+    get_evaluator,
+    get_formatter,
+    get_repo,
     list_query_files,
     parse_query_file,
     parse_query_spec,
     resolve_query_file,
 )
-
-from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
-from bim.commands.shared.os_open import open_in_os
-from bim.dependencies import get_repo
 
 router = APIRouter()
 
@@ -36,7 +37,7 @@ def _run_query(spec: Any, directory: str) -> dict[str, Any]:
     if spec.source.directory is None:
         spec.source.directory = directory
     repo = get_repo(extensions=spec.source.extensions)
-    use_case = QueryZettelsUseCase(repo, python_eval)
+    use_case = QueryZettelsUseCase(repo, get_evaluator())
     rows = use_case.execute(spec)
     columns = [dataclasses.asdict(c) for c in spec.columns] if spec.columns else []
     dashboard = dataclasses.asdict(spec.dashboard) if spec.dashboard else None
@@ -151,7 +152,7 @@ async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
     else:
         data.metadata[body.field] = body.value
 
-    formatted = MarkdownZettelFormatter.format(data)
+    formatted = PrintZettelUseCase(get_formatter()).execute(data)
     fp.write_text(formatted, encoding="utf-8")
     return {"status": "ok"}
 

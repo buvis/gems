@@ -24,7 +24,7 @@ class ZettelFactory:
         :return: A Zettel instance, either the original or a downcasted version (aka Zettel).
         :rtype: :class:`zettel.domain.entities.zettel.zettel.Zettel`
         """
-        zettel_type = getattr(zettel, "type", "")
+        zettel_type = getattr(zettel, "type", "") or ""
 
         if zettel_type in ("note", ""):  # generic Zettel
             if not zettel.from_rust:

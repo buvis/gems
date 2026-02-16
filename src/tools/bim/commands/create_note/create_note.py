@@ -5,9 +5,7 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
-from buvis.pybase.zettel.infrastructure.persistence.template_loader import discover_templates
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
-from bim.dependencies import get_repo
+from bim.dependencies import get_hook_runner, get_repo, get_templates
 
 
 class CommandCreateNote:
@@ -28,7 +26,7 @@ class CommandCreateNote:
         self.extra_answers = extra_answers or {}
 
     def _scripted(self) -> None:
-        templates = discover_templates(python_eval)
+        templates = get_templates()
         if self.zettel_type is None or self.title is None:
             console.panic("zettel_type and title are required for scripted mode")
             return
@@ -47,7 +45,11 @@ class CommandCreateNote:
             elif q.required:
                 console.failure(f"Missing required answer: {q.key}")
                 return
-        use_case = CreateZettelUseCase(self.path_zettelkasten, get_repo())
+        use_case = CreateZettelUseCase(
+            self.path_zettelkasten,
+            get_repo(),
+            hook_runner=get_hook_runner(),
+        )
         try:
             path = use_case.execute(template, answers)
         except FileExistsError as e:

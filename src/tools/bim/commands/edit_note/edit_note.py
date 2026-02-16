@@ -8,6 +8,12 @@ from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import Upd
 from bim.dependencies import get_repo
 
 
+def _get_edit_note_app() -> type:
+    from bim.commands.edit_note.tui import EditNoteApp
+
+    return EditNoteApp
+
+
 def edit_single(
     path: Path, changes: dict[str, Any], target: str = "metadata", *, quiet: bool = False,
 ) -> str:
@@ -44,7 +50,5 @@ class CommandEditNote:
             if not path.is_file():
                 console.failure(f"{path} doesn't exist")
                 return
-            from bim.commands.edit_note.tui import EditNoteApp
-
-            app = EditNoteApp(path=path)
+            app = _get_edit_note_app()(path=path)
             app.run()

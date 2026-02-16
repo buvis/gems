@@ -96,9 +96,12 @@ class TestCommandEditNote:
             mock.assert_called_once_with(zettel_file, {"title": "X"}, "metadata")
 
     def test_no_changes_launches_tui(self, zettel_file: Path) -> None:
-        with patch("bim.commands.edit_note.tui.EditNoteApp") as mock_app:
+        with patch("bim.commands.edit_note.edit_note._get_edit_note_app") as mock_get_app:
+            mock_app = MagicMock()
+            mock_get_app.return_value = mock_app
             cmd = CommandEditNote(paths=[zettel_file])
             cmd.execute()
+            mock_get_app.assert_called_once()
             mock_app.assert_called_once_with(path=zettel_file)
             mock_app.return_value.run.assert_called_once()
 

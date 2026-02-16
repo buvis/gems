@@ -78,6 +78,12 @@ def test_execute_raises_file_exists(
 def test_execute_runs_hooks(
     mock_zettel_factory, create_zettel_use_case, mock_zettel_writer
 ):
+    hook_runner = MagicMock()
+    create_zettel_use_case = CreateZettelUseCase(
+        create_zettel_use_case.zettelkasten_path,
+        mock_zettel_writer,
+        hook_runner=hook_runner,
+    )
     mock_template = MagicMock(spec=ZettelTemplate)
     mock_data = MagicMock(spec=ZettelData)
     mock_data.metadata = {"id": "20231026120000"}
@@ -98,7 +104,11 @@ def test_execute_runs_hooks(
     answers = {"title": "Test Zettel"}
     create_zettel_use_case.execute(mock_template, answers)
 
-    mock_hook.fn.assert_called_once_with(mock_data, create_zettel_use_case.zettelkasten_path)
+    hook_runner.assert_called_once_with(
+        mock_template.hooks.return_value,
+        mock_data,
+        create_zettel_use_case.zettelkasten_path,
+    )
 
 
 @patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")

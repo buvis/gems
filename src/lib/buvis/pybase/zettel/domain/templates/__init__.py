@@ -4,7 +4,7 @@ import importlib
 import logging
 import pkgutil
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -25,7 +25,9 @@ class Question:
 @dataclass
 class Hook:
     name: str
-    fn: Callable[[ZettelData, Path], None] = field(repr=False)
+
+
+HookRunner = Callable[[list[Hook], ZettelData, Path], None]
 
 
 class ZettelTemplate(Protocol):
@@ -62,6 +64,7 @@ def _discover_python_templates() -> dict[str, ZettelTemplate]:
 
 __all__ = [
     "Hook",
+    "HookRunner",
     "Question",
     "ZettelTemplate",
     "_discover_python_templates",

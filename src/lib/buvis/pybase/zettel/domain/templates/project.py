@@ -4,9 +4,6 @@ from typing import Any
 
 from buvis.pybase.zettel.domain.templates import Hook, Question
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
-from buvis.pybase.zettel.infrastructure.persistence.template_loader import (
-    _create_project_dir,
-)
 
 
 class ProjectTemplate:
@@ -42,4 +39,4 @@ class ProjectTemplate:
         return data
 
     def hooks(self) -> list[Hook]:
-        return [Hook(name="create_project_dir", fn=_create_project_dir)]
+        return [Hook(name="create_project_dir")]

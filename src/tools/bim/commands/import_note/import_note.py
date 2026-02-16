@@ -4,12 +4,10 @@ from pathlib import Path
 
 from buvis.pybase.adapters import console
 from buvis.pybase.formatting import StringOperator
+from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel import ReadZettelUseCase
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
-    MarkdownZettelFormatter,
-)
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
-from bim.dependencies import get_repo
+from bim.dependencies import get_formatter, get_repo
 
 
 def import_single(
@@ -24,7 +22,6 @@ def import_single(
     """Import a note to zettelkasten. Non-interactive."""
     repo = get_repo()
     reader = ReadZettelUseCase(repo)
-    formatter = MarkdownZettelFormatter()
     note = reader.execute(str(path_note))
 
     if note.type == "project":
@@ -44,7 +41,7 @@ def import_single(
     if path_output.is_file() and not force_overwrite:
         raise FileExistsError(f"{path_output} already exists")
 
-    formatted = formatter.format(note.get_data())
+    formatted = PrintZettelUseCase(get_formatter()).execute(note.get_data())
     path_output.write_text(formatted, encoding="utf-8")
     msg = f"Imported {path_note.name} as {path_output.name}"
     if not quiet:
@@ -92,7 +89,7 @@ class CommandImportNote:
             if overwrite_file:
                 overwrite_confirmed = True
             else:
-                alternative_note_id = note.id + 1
+                alternative_note_id = (note.id or 0) + 1
                 alternative_path_output = self.path_zettelkasten / f"{alternative_note_id}.md"
 
                 while alternative_path_output.is_file():
@@ -119,7 +116,6 @@ class CommandImportNote:
         original_content = path_note.read_text()
         repo = get_repo()
         reader = ReadZettelUseCase(repo)
-        formatter = MarkdownZettelFormatter()
         note = reader.execute(str(path_note))
 
         if note.type == "project":
@@ -132,7 +128,7 @@ class CommandImportNote:
             return
 
         path_output = self.path_zettelkasten / f"{note.id}.md"
-        formatted_content = formatter.format(note.get_data())
+        formatted_content = PrintZettelUseCase(get_formatter()).execute(note.get_data())
         _, _, markdown_content = formatted_content.partition("\n---\n")
 
         console.print_side_by_side(
@@ -165,7 +161,7 @@ class CommandImportNote:
                 if add_tag:
                     new_tags.append(suggested_tag)
             note.tags = new_tags
-            formatted_content = formatter.format(note.get_data())
+            formatted_content = PrintZettelUseCase(get_formatter()).execute(note.get_data())
 
         path_output.write_bytes(formatted_content.encode("utf-8"))
         console.success(f"Note imported as {path_output}")

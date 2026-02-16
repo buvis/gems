@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from bim.dependencies import get_repo
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import MarkdownZettelFormatter
+from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+from bim.dependencies import get_formatter, get_repo
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Center, Horizontal, VerticalScroll
@@ -119,7 +119,7 @@ class EditNoteApp(App[None]):
         data = copy.deepcopy(self._zettel_data)
         changes = _gather_changes(self.query_one, self._original)
         data.metadata.update(changes)
-        preview.update(MarkdownZettelFormatter.format(data))
+        preview.update(PrintZettelUseCase(get_formatter()).execute(data))
 
     @on(Button.Pressed, "#save-btn")
     def _save(self) -> None:
@@ -178,7 +178,7 @@ class EditScreen(ModalScreen[dict[str, Any] | None]):
         data = copy.deepcopy(self._zettel_data)
         changes = _gather_changes(self.query_one, self._original)
         data.metadata.update(changes)
-        preview.update(MarkdownZettelFormatter.format(data))
+        preview.update(PrintZettelUseCase(get_formatter()).execute(data))
 
     @on(Button.Pressed, "#save-btn")
     def _save(self) -> None:

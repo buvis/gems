@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel.domain.entities.project.project import ProjectZettel
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
+from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
@@ -14,20 +14,6 @@ def _default_cache_path() -> str:
     xdg = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
     return os.path.join(xdg, "buvis", "zettel_cache.bin")
 
-
-def _create_zettel(data: ZettelData, *, from_rust: bool = False) -> Zettel:
-    zettel: Zettel
-    if data.metadata.get("type") == "project":
-        zettel = ProjectZettel(data, from_rust=from_rust)
-    else:
-        zettel = Zettel(data, from_rust=from_rust)
-
-    if not from_rust:
-        zettel.ensure_consistency()
-        zettel.migrate()
-        zettel.ensure_consistency()
-
-    return zettel
 
 try:
     from buvis.pybase.zettel._core import load_all, load_filtered, parse_file
@@ -84,7 +70,7 @@ class MarkdownZettelRepository(ZettelRepository):
         if _HAS_RUST:
             raw = parse_file(repository_location)
             zettel_data = _rust_dict_to_zettel_data(raw)
-            return _create_zettel(zettel_data, from_rust=True)
+            return ZettelFactory.create(Zettel(zettel_data, from_rust=True))
 
         # Fallback to pure-Python parser
         from pathlib import Path
@@ -94,7 +80,8 @@ class MarkdownZettelRepository(ZettelRepository):
         )
 
         zettel_data = ZettelFileParser.from_file(Path(repository_location))
-        return _create_zettel(zettel_data)
+        zettel_data.file_path = str(repository_location)
+        return ZettelFactory.create(Zettel(zettel_data))
 
     def find_all(
         self,
@@ -108,7 +95,9 @@ class MarkdownZettelRepository(ZettelRepository):
             else:
                 raw_list = load_all(directory, self._extensions)
             return [
-                _create_zettel(_rust_dict_to_zettel_data(raw), from_rust=True)
+                ZettelFactory.create(
+                    Zettel(_rust_dict_to_zettel_data(raw), from_rust=True)
+                )
                 for raw in raw_list
             ]
 
@@ -129,5 +118,5 @@ class MarkdownZettelRepository(ZettelRepository):
                 ):
                     continue
                 zettel_data.file_path = str(file_path)
-                zettels.append(_create_zettel(zettel_data))
+                zettels.append(ZettelFactory.create(Zettel(zettel_data)))
         return zettels

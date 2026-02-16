@@ -34,13 +34,13 @@ class TestFormatSingle:
         with (
             patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
             patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.MarkdownZettelFormatter") as mock_formatter_cls,
+            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
         ):
             mock_repo.return_value = MagicMock()
             note = MagicMock()
             note.get_data.return_value = {"title": "Test Note"}
             mock_reader_cls.return_value.execute.return_value = note
-            mock_formatter_cls.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             result = format_single(zettel_file)
 
@@ -50,13 +50,13 @@ class TestFormatSingle:
         with (
             patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
             patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.MarkdownZettelFormatter") as mock_formatter_cls,
+            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
         ):
             mock_repo.return_value = MagicMock()
             note = MagicMock()
             note.get_data.return_value = {"title": "Test Note"}
             mock_reader_cls.return_value.execute.return_value = note
-            mock_formatter_cls.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             format_single(zettel_file, in_place=True, quiet=True)
 
@@ -66,14 +66,14 @@ class TestFormatSingle:
         with (
             patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
             patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.MarkdownZettelFormatter") as mock_formatter_cls,
+            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
             patch("bim.commands.format_note.format_note.console") as mock_console,
         ):
             mock_repo.return_value = MagicMock()
             note = MagicMock()
             note.get_data.return_value = {"title": "Test Note"}
             mock_reader_cls.return_value.execute.return_value = note
-            mock_formatter_cls.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             format_single(zettel_file, in_place=True, quiet=True)
 
@@ -83,14 +83,14 @@ class TestFormatSingle:
         with (
             patch("bim.commands.format_note.format_note.get_repo") as mock_repo,
             patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
-            patch("bim.commands.format_note.format_note.MarkdownZettelFormatter") as mock_formatter_cls,
+            patch("bim.commands.format_note.format_note.get_formatter") as mock_get_formatter,
             patch("bim.commands.format_note.format_note.console") as mock_console,
         ):
             mock_repo.return_value = MagicMock()
             note = MagicMock()
             note.get_data.return_value = {"title": "Test Note"}
             mock_reader_cls.return_value.execute.return_value = note
-            mock_formatter_cls.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             format_single(zettel_file, in_place=True)
 

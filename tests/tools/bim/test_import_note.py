@@ -47,10 +47,10 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             import_single(note_file, zettelkasten_dir, quiet=True)
 
@@ -70,10 +70,10 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             import_single(note_file, zettelkasten_dir, quiet=True)
 
@@ -91,10 +91,10 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             import_single(note_file, zettelkasten_dir, tags=["new"], quiet=True)
 
@@ -112,7 +112,7 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
             patch("bim.commands.import_note.import_note.console") as mock_console,
         ):
             mock_reader.return_value.execute.return_value = note
@@ -121,7 +121,7 @@ class TestImportSingle:
 
         assert result is None
         mock_console.failure.assert_called_once()
-        mock_formatter.return_value.format.assert_not_called()
+        mock_get_formatter.return_value.format.assert_not_called()
         assert list(zettelkasten_dir.iterdir()) == []
 
     def test_force_overwrites(
@@ -137,10 +137,10 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             import_single(note_file, zettelkasten_dir, force_overwrite=True, quiet=True)
 
@@ -159,10 +159,10 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             with pytest.raises(FileExistsError):
                 import_single(note_file, zettelkasten_dir, quiet=True)
@@ -178,10 +178,10 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             import_single(note_file, zettelkasten_dir, remove_original=True, quiet=True)
 
@@ -198,11 +198,11 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
             patch("bim.commands.import_note.import_note.console") as mock_console,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             import_single(note_file, zettelkasten_dir, quiet=True)
             mock_console.success.assert_not_called()
@@ -218,10 +218,10 @@ class TestImportSingle:
         with (
             patch("bim.commands.import_note.import_note.get_repo", return_value=repo),
             patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
-            patch("bim.commands.import_note.import_note.MarkdownZettelFormatter") as mock_formatter,
+            patch("bim.commands.import_note.import_note.get_formatter") as mock_get_formatter,
         ):
             mock_reader.return_value.execute.return_value = note
-            mock_formatter.return_value.format.return_value = "formatted content"
+            mock_get_formatter.return_value.format.return_value = "formatted content"
 
             msg = import_single(note_file, zettelkasten_dir, quiet=True)
 

@@ -4,13 +4,9 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
+from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate
-from buvis.pybase.zettel.infrastructure.persistence.template_loader import discover_templates
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
-    MarkdownZettelFormatter,
-)
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
-from bim.dependencies import get_repo
+from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
@@ -41,7 +37,7 @@ class CreateNoteApp(App[None]):
         self.preselected_title = preselected_title
         self.preselected_tags = preselected_tags
         self.extra_answers = extra_answers or {}
-        self.templates = discover_templates(python_eval)
+        self.templates = get_templates()
         self._current_template: ZettelTemplate | None = None
         self._question_widgets: list[tuple[Question, Input | Select[str]]] = []
 
@@ -154,14 +150,11 @@ class CreateNoteApp(App[None]):
 
         from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
         from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
-        from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
-            MarkdownZettelFormatter,
-        )
 
         data = self._current_template.build_data(answers)
         zettel = Zettel(data)
         zettel = ZettelFactory.create(zettel)
-        content = MarkdownZettelFormatter.format(zettel.get_data())
+        content = PrintZettelUseCase(get_formatter()).execute(zettel.get_data())
         preview.update(content)
         create_btn.disabled = False
 
@@ -172,7 +165,11 @@ class CreateNoteApp(App[None]):
             return
         answers = self._gather_answers()
 
-        use_case = CreateZettelUseCase(self.path_zettelkasten, get_repo())
+        use_case = CreateZettelUseCase(
+            self.path_zettelkasten,
+            get_repo(),
+            hook_runner=get_hook_runner(),
+        )
         try:
             path = use_case.execute(self._current_template, answers)
         except FileExistsError as e:

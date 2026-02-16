@@ -8,6 +8,7 @@ import yaml
 
 from buvis.pybase.configuration import get_config_dirs
 from buvis.pybase.zettel.domain.templates import (
+    Hook,
     ZettelTemplate,
     _discover_python_templates,
 )
@@ -75,4 +76,18 @@ def _create_project_dir(data: ZettelData, zettelkasten_path: Path) -> None:
     data.metadata["resources"] = f"[project resources]({project_dir.as_uri()})"
 
 
-__all__ = ["discover_templates", "discover_yaml_templates"]
+def run_template_hooks(
+    hooks: list[Hook],
+    data: ZettelData,
+    zettelkasten_path: Path,
+) -> None:
+    registry = {"create_project_dir": _create_project_dir}
+    for hook in hooks:
+        handler = registry.get(hook.name)
+        if handler is None:
+            logger.warning("No hook handler registered for '%s'", hook.name)
+            continue
+        handler(data, zettelkasten_path)
+
+
+__all__ = ["discover_templates", "discover_yaml_templates", "run_template_hooks"]
