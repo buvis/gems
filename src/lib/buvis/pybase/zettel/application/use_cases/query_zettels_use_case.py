@@ -6,6 +6,7 @@ import warnings
 from datetime import datetime
 from functools import cached_property, cmp_to_key
 from pathlib import Path
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from buvis.pybase.zettel.domain.value_objects.query_spec import QueryColumn, QueryFilter
@@ -167,12 +168,14 @@ def _apply_operator(op: str, field_val: Any, value: Any) -> bool:
     raise ValueError(msg)
 
 
-def _sort_zettels(zettels: list[Zettel], sort_fields: list[Any]) -> list[Zettel]:
-    def compare(a: Zettel, b: Zettel) -> int:
+def _make_comparator(
+    getter: Callable[[Any, str], Any],
+    sort_fields: list[Any],
+) -> Callable[[Any, Any], int]:
+    def compare(a: Any, b: Any) -> int:
         for sf in sort_fields:
-            va = _get_field(a, sf.field)
-            vb = _get_field(b, sf.field)
-            # None sorts last
+            va = getter(a, sf.field)
+            vb = getter(b, sf.field)
             if va is None and vb is None:
                 continue
             if va is None:
@@ -188,30 +191,15 @@ def _sort_zettels(zettels: list[Zettel], sort_fields: list[Any]) -> list[Zettel]
             return result if sf.order == "asc" else -result
         return 0
 
-    return sorted(zettels, key=cmp_to_key(compare))
+    return compare
+
+
+def _sort_zettels(zettels: list[Zettel], sort_fields: list[Any]) -> list[Zettel]:
+    return sorted(zettels, key=cmp_to_key(_make_comparator(_get_field, sort_fields)))
 
 
 def _sort_rows(rows: list[dict[str, Any]], sort_fields: list[Any]) -> list[dict[str, Any]]:
-    def compare(a: dict[str, Any], b: dict[str, Any]) -> int:
-        for sf in sort_fields:
-            va = a.get(sf.field)
-            vb = b.get(sf.field)
-            if va is None and vb is None:
-                continue
-            if va is None:
-                return 1
-            if vb is None:
-                return -1
-            if va < vb:
-                result = -1
-            elif va > vb:
-                result = 1
-            else:
-                continue
-            return result if sf.order == "asc" else -result
-        return 0
-
-    return sorted(rows, key=cmp_to_key(compare))
+    return sorted(rows, key=cmp_to_key(_make_comparator(lambda d, f: d.get(f), sort_fields)))
 
 
 def _expand(
