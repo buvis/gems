@@ -28,6 +28,7 @@ from .exceptions import (
     ConfigurationKeyNotFoundError,
     MissingEnvVarError,
 )
+from .generators import apply_generated_options, generate_click_options
 from .loader import ConfigurationLoader
 from .paths import get_config_dirs
 from .resolver import ConfigResolver
@@ -58,7 +59,9 @@ __all__ = [
     "SafeLoggingMixin",
     "SecureSettingsMixin",
     "ToolSettings",
+    "apply_generated_options",
     "buvis_options",
+    "generate_click_options",
     "get_config_dirs",
     "get_model_depth",
     "get_settings",
