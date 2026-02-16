@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import click
+from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
 
 from fctracker.settings import FctrackerSettings
@@ -20,8 +21,11 @@ def balance(ctx: click.Context) -> None:
     from fctracker.commands.balance.balance import CommandBalance
 
     settings = get_settings(ctx, FctrackerSettings)
-    cmd = CommandBalance(settings.foreign_currencies, settings.local_currency)
-    cmd.execute()
+    try:
+        cmd = CommandBalance(settings.foreign_currencies, settings.local_currency)
+        cmd.execute()
+    except FileNotFoundError as exc:
+        console.panic(str(exc))
 
 
 @cli.command("transactions")
@@ -49,8 +53,11 @@ def transactions(ctx: click.Context, account: str = "", currency: str = "", mont
     from fctracker.commands.transactions.transactions import CommandTransactions
 
     settings = get_settings(ctx, FctrackerSettings)
-    cmd = CommandTransactions(settings.foreign_currencies, settings.local_currency, account, currency, month)
-    cmd.execute()
+    try:
+        cmd = CommandTransactions(settings.foreign_currencies, settings.local_currency, account, currency, month)
+        cmd.execute()
+    except FileNotFoundError as exc:
+        console.panic(str(exc))
 
 
 if __name__ == "__main__":

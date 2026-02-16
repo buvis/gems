@@ -107,12 +107,17 @@ def sync_note(
 
         global_settings = get_settings(ctx, GlobalSettings)
         jira_adapter: dict[str, Any] = (global_settings.model_extra or {}).get("jira_adapter", {})
-        cmd = CommandSyncNote(
-            path_note=Path(path_to_note),
-            target_system=target_system,
-            jira_adapter_config=jira_adapter,
-        )
-        cmd.execute()
+        try:
+            cmd = CommandSyncNote(
+                path_note=Path(path_to_note),
+                target_system=target_system,
+                jira_adapter_config=jira_adapter,
+            )
+            cmd.execute()
+        except (ValueError, FileNotFoundError) as exc:
+            console.panic(str(exc))
+        except NotImplementedError:
+            console.panic(f"Sync target '{target_system}' not supported")
     else:
         console.failure(f"{path_to_note} doesn't exist")
 
@@ -172,14 +177,17 @@ def create_note(
         if "=" in a:
             k, v = a.split("=", 1)
             extra_answers[k] = v
-    cmd = CommandCreateNote(
-        path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
-        zettel_type=zettel_type,
-        title=title,
-        tags=tags,
-        extra_answers=extra_answers,
-    )
-    cmd.execute()
+    try:
+        cmd = CommandCreateNote(
+            path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
+            zettel_type=zettel_type,
+            title=title,
+            tags=tags,
+            extra_answers=extra_answers,
+        )
+        cmd.execute()
+    except FileNotFoundError as exc:
+        console.panic(str(exc))
 
 
 @cli.command("query", help="Query zettels with YAML filter/sort/output spec")

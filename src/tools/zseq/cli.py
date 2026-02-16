@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import click
+from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
 
 from zseq.settings import ZseqSettings
@@ -40,8 +41,11 @@ def cli(
 
     from zseq.commands.get_last.get_last import CommandGetLast
 
-    cmd = CommandGetLast(path_dir=resolved_path, is_reporting_misnamed=resolved_misnamed)
-    cmd.execute()
+    try:
+        cmd = CommandGetLast(path_dir=resolved_path, is_reporting_misnamed=resolved_misnamed)
+        cmd.execute()
+    except ValueError as exc:
+        console.panic(str(exc))
 
 
 if __name__ == "__main__":
