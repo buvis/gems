@@ -184,13 +184,10 @@ using a provided ZettelFormatter.</p>
 return the result.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>zettel_data</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">zettel.domain.value_objects.zettel_data.ZettelData</span></code>) – The Zettel data to format and print.</p>
+<dd class="field-odd"><p><strong>zettel_data</strong> – The Zettel data to format and print.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The formatted Zettel data.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
 </dd>
 </dl>
 </dd></dl>
@@ -204,12 +201,12 @@ return the result.</p>
 <dt class="sig sig-object py" id="buvis.pybase.zettel.application.use_cases.read_zettel_use_case.ReadZettelUseCase">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.zettel.application.use_cases.read_zettel_use_case.</span></span><span class="sig-name descname"><span class="pre">ReadZettelUseCase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repository</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ZettelReader</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.zettel.application.use_cases.read_zettel_use_case.ReadZettelUseCase" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>A use case class for reading zettel from repository by location and downcasting it to zettel.</p>
+<p>Read zettel from repository by location and downcast it to zettel.</p>
 <p>This class is responsible for taking location of a zettel within a ZettelReader, and downcasting
 it using ZettelFactory service to specific zettel according to zettel type.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>repository</strong> (<em>ZettelReader</em>) – An instance of a class that implements the ZettelReader interface,
+<dd class="field-odd"><p><strong>repository</strong> – An instance of a class that implements the ZettelReader interface,
 used to data access in persistence layer.</p>
 </dd>
 </dl>
@@ -221,16 +218,13 @@ used to data access in persistence layer.</p>
 downcasts it into a zettel, and returns it. It handles potential exceptions during the retrieval process.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>repository_location</strong> (<em>str</em>) – Unique identifier of location within repository containing zettel data.</p>
+<dd class="field-odd"><p><strong>repository_location</strong> – Unique identifier of location within repository containing zettel data.</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>ZettelRepositoryZettelNotFoundError</strong> – If the zettel is not found in the repository.</p>
 </dd>
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>A Zettel object created from the retrieved zettel.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Zettel or its subclass</p>
 </dd>
 </dl>
 </dd></dl>
