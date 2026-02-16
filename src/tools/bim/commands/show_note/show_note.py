@@ -19,8 +19,14 @@ def show_single(path: Path, *, quiet: bool = False) -> str:
 
 
 class CommandShowNote:
-    def __init__(self, path: Path) -> None:
-        self.path = path
+    def __init__(self, paths: list[Path]) -> None:
+        self.paths = paths
 
     def execute(self) -> None:
-        show_single(self.path)
+        for i, path in enumerate(self.paths):
+            if not path.is_file():
+                console.failure(f"{path} doesn't exist")
+                continue
+            if i > 0:
+                console.print("---", mode="raw")
+            show_single(path)

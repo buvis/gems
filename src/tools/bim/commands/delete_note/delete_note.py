@@ -20,16 +20,21 @@ def delete_single(path: Path, *, quiet: bool = False) -> str:
 
 
 class CommandDeleteNote:
-    def __init__(self, paths: list[Path], *, force: bool = False) -> None:
+    def __init__(self, paths: list[Path], *, force: bool = False, batch: bool = False) -> None:
         self.paths = paths
         self.force = force
+        self.batch = batch
 
     def execute(self) -> None:
+        if self.batch and not self.force:
+            if not console.confirm(f"Permanently delete {len(self.paths)} zettels?"):
+                return
+
         for path in self.paths:
             if not path.is_file():
                 console.failure(f"{path} doesn't exist")
                 continue
-            if not self.force:
+            if not self.force and not self.batch:
                 if not console.confirm(f"Permanently delete {path.name}?"):
                     continue
             delete_single(path)

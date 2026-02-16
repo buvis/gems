@@ -50,31 +50,33 @@ class ZettelJiraAdapter(JiraAdapter):  # type: ignore[misc]
 class CommandSyncNote:
     def __init__(
         self,
-        path_note: Path,
+        paths: list[Path],
         target_system: str,
         jira_adapter_config: dict[str, Any],
+        *,
+        force: bool = False,
     ) -> None:
-        if not path_note.is_file():
-            raise FileNotFoundError(f"Note not found: {path_note}")
-        self.path_note = path_note
+        self.paths = paths
         self.jira_adapter_config = jira_adapter_config
+        self.force = force
 
         match target_system:
             case "jira":
                 jira_cfg = DictConfig(jira_adapter_config)
                 self._target = ZettelJiraAdapter(jira_cfg)
+                self._target_name = "jira"
             case _:
                 raise NotImplementedError(f"Target system '{target_system}' not supported")
 
-    def execute(self) -> None:
+    def _sync_single(self, path_note: Path) -> None:
         repo = get_repo()
         reader = ReadZettelUseCase(repo)
-        note = reader.execute(str(self.path_note))
+        note = reader.execute(str(path_note))
 
         if isinstance(note, ProjectZettel):
             project: ProjectZettel = note
         else:
-            console.failure(f"{self.path_note} is not a project")
+            console.failure(f"{path_note} is not a project")
             return
 
         ignore_flag = self.jira_adapter_config.get("ignore", DEFAULT_JIRA_IGNORE_US_LABEL)
@@ -88,9 +90,20 @@ class CommandSyncNote:
                 f"- [i] {timestamp} - Jira Issue created: {md_style_link}",
             )
             formatted_content = PrintZettelUseCase(get_formatter()).execute(project.get_data())
-            self.path_note.write_bytes(formatted_content.encode("utf-8"))
-            console.success(f"Jira Issue {new_issue.id} created from {self.path_note}")
+            path_note.write_bytes(formatted_content.encode("utf-8"))
+            console.success(f"Jira Issue {new_issue.id} created from {path_note}")
         elif note.us == ignore_flag:
             console.warning("Project is set to ignore Jira")
         else:
             console.success(f"Already linked to {note.us}")
+
+    def execute(self) -> None:
+        if len(self.paths) > 1 and not self.force:
+            if not console.confirm(f"Sync {len(self.paths)} zettels to {self._target_name}?"):
+                return
+
+        for path in self.paths:
+            if not path.is_file():
+                console.failure(f"{path} doesn't exist")
+                continue
+            self._sync_single(path)

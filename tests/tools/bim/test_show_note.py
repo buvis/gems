@@ -34,6 +34,6 @@ class TestShowSingle:
 class TestCommandShowNote:
     def test_execute_calls_show_single(self, zettel_file: Path) -> None:
         with patch("bim.commands.show_note.show_note.show_single") as mock:
-            cmd = CommandShowNote(path=zettel_file)
+            cmd = CommandShowNote(paths=[zettel_file])
             cmd.execute()
             mock.assert_called_once_with(zettel_file)

@@ -10,6 +10,34 @@ from buvis.pybase.configuration import GlobalSettings, buvis_options, get_settin
 from bim.settings import BimSettings
 
 
+def _resolve_paths(
+    ctx: click.Context,
+    paths: tuple[str, ...],
+    query_file: str | None,
+    query_string: str | None,
+) -> list[Path] | None:
+    """Resolve paths from explicit args or query flags. Returns None on error."""
+    has_paths = len(paths) > 0
+    has_query = query_file is not None or query_string is not None
+
+    if has_paths and has_query:
+        console.failure("Provide paths or -f/-q, not both")
+        return None
+
+    if has_query:
+        from bim.commands.shared.query_paths import resolve_query_paths
+
+        settings = get_settings(ctx, BimSettings)
+        default_dir = str(Path(settings.path_zettelkasten).expanduser().resolve())
+        return resolve_query_paths(query_file, query_string, default_dir)
+
+    if has_paths:
+        return [Path(p) for p in paths]
+
+    console.failure("Provide paths or -f/-q")
+    return None
+
+
 @click.group(help="CLI to BUVIS InfoMesh")
 @buvis_options(settings_class=BimSettings)
 @click.pass_context
@@ -53,7 +81,9 @@ def import_note(
 
 
 @cli.command("format", help="Format a note")
-@click.argument("paths", nargs=-1, required=True)
+@click.argument("paths", nargs=-1, required=False)
+@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.option(
     "-h",
     "--highlight",
@@ -75,17 +105,25 @@ def import_note(
     "--output",
     type=click.Path(file_okay=True, dir_okay=False, writable=True, resolve_path=True),
 )
+@click.pass_context
 def format_note(
+    ctx: click.Context,
     paths: tuple[str, ...],
+    query_file: str | None,
+    query_string: str | None,
     *,
     highlight: bool,
     diff: bool,
     output: None | Path,
 ) -> None:
+    resolved = _resolve_paths(ctx, paths, query_file, query_string)
+    if resolved is None:
+        return
+
     from bim.commands.format_note.format_note import CommandFormatNote
 
     cmd = CommandFormatNote(
-        paths=[Path(p) for p in paths],
+        paths=resolved,
         is_highlighting_requested=highlight,
         is_diff_requested=diff,
         path_output=Path(output) if output else None,
@@ -93,33 +131,42 @@ def format_note(
     cmd.execute()
 
 
-@cli.command("sync", help="Synchronize note with external system")
-@click.argument("path_to_note")
-@click.argument("target_system")
+@cli.command("sync", help="Synchronize note(s) with external system")
+@click.argument("paths", nargs=-1, required=False)
+@click.option("-t", "--target", "target_system", required=True, help="Target system (e.g. jira)")
+@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
+@click.option("--force", is_flag=True, default=False, help="Skip confirmation for batch sync")
 @click.pass_context
 def sync_note(
     ctx: click.Context,
-    path_to_note: Path,
+    paths: tuple[str, ...],
     target_system: str,
+    query_file: str | None,
+    query_string: str | None,
+    *,
+    force: bool,
 ) -> None:
-    if Path(path_to_note).is_file():
-        from bim.commands.sync_note.sync_note import CommandSyncNote
+    resolved = _resolve_paths(ctx, paths, query_file, query_string)
+    if resolved is None:
+        return
 
-        global_settings = get_settings(ctx, GlobalSettings)
-        jira_adapter: dict[str, Any] = (global_settings.model_extra or {}).get("jira_adapter", {})
-        try:
-            cmd = CommandSyncNote(
-                path_note=Path(path_to_note),
-                target_system=target_system,
-                jira_adapter_config=jira_adapter,
-            )
-            cmd.execute()
-        except (ValueError, FileNotFoundError) as exc:
-            console.panic(str(exc))
-        except NotImplementedError:
-            console.panic(f"Sync target '{target_system}' not supported")
-    else:
-        console.failure(f"{path_to_note} doesn't exist")
+    from bim.commands.sync_note.sync_note import CommandSyncNote
+
+    global_settings = get_settings(ctx, GlobalSettings)
+    jira_adapter: dict[str, Any] = (global_settings.model_extra or {}).get("jira_adapter", {})
+    try:
+        cmd = CommandSyncNote(
+            paths=resolved,
+            target_system=target_system,
+            jira_adapter_config=jira_adapter,
+            force=force,
+        )
+        cmd.execute()
+    except (ValueError, FileNotFoundError) as exc:
+        console.panic(str(exc))
+    except NotImplementedError:
+        console.panic(f"Sync target '{target_system}' not supported")
 
 
 @cli.command("parse_tags", help="Parse Obsidian Metadata Extractor tags.json")
@@ -229,15 +276,21 @@ def query(
 
 
 @cli.command("edit", help="Edit zettel metadata")
-@click.argument("paths", nargs=-1, required=True)
+@click.argument("paths", nargs=-1, required=False)
+@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.option("--title", default=None, help="New title")
 @click.option("--tags", default=None, help="Comma-separated tags")
 @click.option("--type", "zettel_type", default=None, help="Note type")
 @click.option("--processed/--no-processed", default=None, help="Processed flag")
 @click.option("--publish/--no-publish", default=None, help="Publish flag")
 @click.option("-s", "--set", "extra_sets", multiple=True, help="Arbitrary key=value metadata")
+@click.pass_context
 def edit_note(
+    ctx: click.Context,
     paths: tuple[str, ...],
+    query_file: str | None,
+    query_string: str | None,
     title: str | None,
     tags: str | None,
     zettel_type: str | None,
@@ -261,31 +314,43 @@ def edit_note(
             k, v = s.split("=", 1)
             changes[k] = v
 
-    if not changes and len(paths) > 1:
+    resolved = _resolve_paths(ctx, paths, query_file, query_string)
+    if resolved is None:
+        return
+
+    if not changes and len(resolved) > 1:
         console.failure("TUI edit requires a single path")
         return
 
     from bim.commands.edit_note.edit_note import CommandEditNote
 
-    cmd = CommandEditNote(paths=[Path(p) for p in paths], changes=changes or None)
+    cmd = CommandEditNote(paths=resolved, changes=changes or None)
     cmd.execute()
 
 
 @cli.command("archive", help="Archive zettel(s): set processed + move to archive dir")
-@click.argument("paths", nargs=-1, required=True)
+@click.argument("paths", nargs=-1, required=False)
+@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.option("--undo", is_flag=True, default=False, help="Unarchive (move back to zettelkasten)")
 @click.pass_context
 def archive_note(
     ctx: click.Context,
     paths: tuple[str, ...],
+    query_file: str | None,
+    query_string: str | None,
     *,
     undo: bool,
 ) -> None:
+    resolved = _resolve_paths(ctx, paths, query_file, query_string)
+    if resolved is None:
+        return
+
     from bim.commands.archive_note.archive_note import CommandArchiveNote
 
     settings = get_settings(ctx, BimSettings)
     cmd = CommandArchiveNote(
-        paths=[Path(p) for p in paths],
+        paths=resolved,
         path_archive=Path(settings.path_archive).expanduser().resolve(),
         path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
         undo=undo,
@@ -294,25 +359,48 @@ def archive_note(
 
 
 @cli.command("show", help="Display zettel content")
-@click.argument("path_to_note")
-def show_note(path_to_note: str) -> None:
-    path = Path(path_to_note)
-    if not path.is_file():
-        console.failure(f"{path_to_note} doesn't exist")
+@click.argument("paths", nargs=-1, required=False)
+@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
+@click.pass_context
+def show_note(
+    ctx: click.Context,
+    paths: tuple[str, ...],
+    query_file: str | None,
+    query_string: str | None,
+) -> None:
+    resolved = _resolve_paths(ctx, paths, query_file, query_string)
+    if resolved is None:
         return
+
     from bim.commands.show_note.show_note import CommandShowNote
 
-    cmd = CommandShowNote(path=path)
+    cmd = CommandShowNote(paths=resolved)
     cmd.execute()
 
 
 @cli.command("delete", help="Permanently delete zettel(s)")
-@click.argument("paths", nargs=-1, required=True)
+@click.argument("paths", nargs=-1, required=False)
+@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.option("--force", is_flag=True, default=False, help="Skip confirmation")
-def delete_note(paths: tuple[str, ...], *, force: bool) -> None:
+@click.pass_context
+def delete_note(
+    ctx: click.Context,
+    paths: tuple[str, ...],
+    query_file: str | None,
+    query_string: str | None,
+    *,
+    force: bool,
+) -> None:
+    resolved = _resolve_paths(ctx, paths, query_file, query_string)
+    if resolved is None:
+        return
+
     from bim.commands.delete_note.delete_note import CommandDeleteNote
 
-    cmd = CommandDeleteNote(paths=[Path(p) for p in paths], force=force)
+    batch = query_file is not None or query_string is not None
+    cmd = CommandDeleteNote(paths=resolved, force=force, batch=batch)
     cmd.execute()
 
 

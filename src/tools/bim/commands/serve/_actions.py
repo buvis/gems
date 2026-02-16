@@ -51,7 +51,7 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
     target_system = args.get("target_system", "jira")
     jira_config = args.get("jira_config", {})
     cmd = CommandSyncNote(
-        path_note=Path(file_path),
+        paths=[Path(file_path)],
         target_system=target_system,
         jira_adapter_config=jira_config,
     )

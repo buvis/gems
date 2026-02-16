@@ -16,7 +16,7 @@ class TestShowCommand:
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(path=note)
+            mock_cmd.assert_called_once_with(paths=[note])
             instance.execute.assert_called_once_with()
 
     def test_show_missing_file(self, runner):
@@ -40,7 +40,7 @@ class TestDeleteCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[note], force=True)
+            mock_cmd.assert_called_once_with(paths=[note], force=True, batch=False)
             instance.execute.assert_called_once_with()
 
     def test_delete_multiple(self, runner, tmp_path):
@@ -59,7 +59,7 @@ class TestDeleteCommand:
             )
 
             assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(paths=[a, b], force=False)
+            mock_cmd.assert_called_once_with(paths=[a, b], force=False, batch=False)
             instance.execute.assert_called_once_with()
 
 
@@ -235,15 +235,16 @@ class TestSyncCommand:
 
             result = runner.invoke(
                 cli,
-                ["sync", str(note), "jira"],
+                ["sync", str(note), "-t", "jira"],
                 catch_exceptions=False,
             )
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                path_note=note,
+                paths=[note],
                 target_system="jira",
                 jira_adapter_config={"host": "jira.example"},
+                force=False,
             )
             instance.execute.assert_called_once_with()
 
