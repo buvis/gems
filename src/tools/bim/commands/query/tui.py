@@ -197,9 +197,20 @@ class QueryTuiApp(App[None]):
         fp = self._visible_rows[row_idx].get("file_path")
         if not fp:
             return
-        from bim.commands.format_note.format_note import format_single
+        from bim.commands.format_note.format_note import CommandFormatNote
+        from bim.dependencies import get_formatter
 
-        format_single(Path(fp), in_place=True, quiet=True)
+        target = Path(fp)
+        cmd = CommandFormatNote(
+            paths=[target],
+            repo=get_repo(),
+            formatter=get_formatter(),
+            path_output=target,
+        )
+        result = cmd.execute()
+        if not result.success:
+            self.notify(result.error or "Formatting failed")
+            return
         self.notify(f"Formatted {Path(fp).name}")
 
     def action_edit(self) -> None:
@@ -443,9 +454,20 @@ class KanbanTuiApp(App[None]):
         fp = row.get("file_path")
         if not fp:
             return
-        from bim.commands.format_note.format_note import format_single
+        from bim.commands.format_note.format_note import CommandFormatNote
+        from bim.dependencies import get_formatter
 
-        format_single(Path(fp), in_place=True, quiet=True)
+        target = Path(fp)
+        cmd = CommandFormatNote(
+            paths=[target],
+            repo=get_repo(),
+            formatter=get_formatter(),
+            path_output=target,
+        )
+        result = cmd.execute()
+        if not result.success:
+            self.notify(result.error or "Formatting failed")
+            return
         self.notify(f"Formatted {Path(fp).name}")
 
     def action_edit(self) -> None:

@@ -202,6 +202,7 @@ class TestFormatCommand:
 
         with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd:
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True)
 
             result = runner.invoke(
                 cli,
@@ -219,8 +220,8 @@ class TestFormatCommand:
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
                 paths=[note],
-                is_highlighting_requested=True,
-                is_diff_requested=True,
+                repo=ANY,
+                formatter=ANY,
                 path_output=output_path,
             )
             instance.execute.assert_called_once_with()
@@ -233,6 +234,7 @@ class TestFormatCommand:
 
         with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd:
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True)
 
             result = runner.invoke(
                 cli,
@@ -243,8 +245,8 @@ class TestFormatCommand:
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
                 paths=[a, b],
-                is_highlighting_requested=False,
-                is_diff_requested=False,
+                repo=ANY,
+                formatter=ANY,
                 path_output=None,
             )
             instance.execute.assert_called_once_with()
@@ -286,6 +288,7 @@ class TestParseTagsCommand:
 
         with patch("bim.commands.parse_tags.parse_tags.CommandParseTags") as mock_cmd:
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True)
 
             result = runner.invoke(
                 cli,

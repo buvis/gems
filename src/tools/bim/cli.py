@@ -121,14 +121,39 @@ def format_note(
         return
 
     from bim.commands.format_note.format_note import CommandFormatNote
+    from bim.dependencies import get_formatter, get_repo
 
     cmd = CommandFormatNote(
         paths=resolved,
-        is_highlighting_requested=highlight,
-        is_diff_requested=diff,
+        repo=get_repo(),
+        formatter=get_formatter(),
         path_output=Path(output) if output else None,
     )
-    cmd.execute()
+    result = cmd.execute()
+    for w in result.warnings:
+        console.warning(w)
+    if not result.success:
+        console.failure(result.error)
+        return
+    if result.metadata.get("written_to"):
+        console.success(f"Formatted note written to {result.metadata['written_to']}")
+    elif result.output:
+        original = result.metadata.get("original")
+        if diff and original and original != result.output:
+            console.print_side_by_side(
+                "Original",
+                original,
+                "Formatted",
+                result.output,
+                mode_left="raw",
+                mode_right="markdown_with_frontmatter",
+            )
+        elif highlight:
+            console.print(result.output, mode="markdown_with_frontmatter")
+        else:
+            console.print(result.output, mode="raw")
+    elif result.metadata.get("formatted_count"):
+        console.success(f"Formatted {result.metadata['formatted_count']} files")
 
 
 @cli.command("sync", help="Synchronize note(s) with external system")
@@ -188,7 +213,12 @@ def parse_tags(
             path_tags_json=Path(path_to_tags_json),
             path_output=Path(output) if output else None,
         )
-        cmd.execute()
+        result = cmd.execute()
+        if not result.success:
+            console.failure(result.error)
+            return
+        if result.output:
+            console.print(result.output, mode="raw")
     else:
         console.failure(f"{path_to_tags_json} doesn't exist")
 

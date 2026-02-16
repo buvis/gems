@@ -88,9 +88,19 @@ async def handle_open(file_path: str, args: dict[str, Any], app_state: AppState)
 
 
 async def handle_format(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
-    from bim.commands.format_note.format_note import format_single
+    from bim.commands.format_note.format_note import CommandFormatNote
+    from bim.dependencies import get_formatter, get_repo
 
-    format_single(Path(file_path), in_place=True, quiet=True)
+    target = Path(file_path)
+    cmd = CommandFormatNote(
+        paths=[target],
+        repo=get_repo(),
+        formatter=get_formatter(),
+        path_output=target,
+    )
+    result = cmd.execute()
+    if not result.success:
+        return {"status": "error", "message": result.error or "Formatting failed"}
     return {"status": "ok"}
 
 
