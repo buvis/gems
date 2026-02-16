@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from buvis.pybase.adapters import console
+from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 
-from bim.dependencies import get_hook_runner, get_repo, get_templates
+if TYPE_CHECKING:
+    from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
 
 
 class CommandCreateNote:
     def __init__(
         self,
         path_zettelkasten: Path,
+        repo: ZettelRepository,
+        templates: dict,
+        hook_runner: Any,
         zettel_type: str | None = None,
         title: str | None = None,
         tags: str | None = None,
@@ -21,20 +25,21 @@ class CommandCreateNote:
         if not path_zettelkasten.is_dir():
             raise FileNotFoundError(f"Zettelkasten directory not found: {path_zettelkasten}")
         self.path_zettelkasten = path_zettelkasten
+        self.repo = repo
+        self.templates = templates
+        self.hook_runner = hook_runner
         self.zettel_type = zettel_type
         self.title = title
         self.tags = tags
         self.extra_answers = extra_answers or {}
 
-    def _scripted(self) -> None:
-        templates = get_templates()
+    def execute(self) -> CommandResult:
         if self.zettel_type is None or self.title is None:
-            console.panic("zettel_type and title are required for scripted mode")
-            return
-        if self.zettel_type not in templates:
-            console.failure(f"Unknown template: {self.zettel_type}")
-            return
-        template = templates[self.zettel_type]
+            return CommandResult(success=False, error="zettel_type and title are required")
+        if self.zettel_type not in self.templates:
+            return CommandResult(success=False, error=f"Unknown template: {self.zettel_type}")
+
+        template = self.templates[self.zettel_type]
         answers: dict[str, Any] = {"title": self.title}
         if self.tags:
             answers["tags"] = self.tags
@@ -44,31 +49,18 @@ class CommandCreateNote:
             elif q.default is not None:
                 answers[q.key] = q.default
             elif q.required:
-                console.failure(f"Missing required answer: {q.key}")
-                return
+                return CommandResult(success=False, error=f"Missing required answer: {q.key}")
         use_case = CreateZettelUseCase(
             self.path_zettelkasten,
-            get_repo(),
-            hook_runner=get_hook_runner(),
+            self.repo,
+            hook_runner=self.hook_runner,
         )
         try:
             path = use_case.execute(template, answers)
         except FileExistsError as e:
-            console.failure(str(e))
-        else:
-            console.success(f"Created {path}")
-
-    def execute(self) -> None:
-        if self.zettel_type and self.title:
-            self._scripted()
-        else:
-            from bim.commands.create_note.tui import CreateNoteApp
-
-            app = CreateNoteApp(
-                path_zettelkasten=self.path_zettelkasten,
-                preselected_type=self.zettel_type,
-                preselected_title=self.title,
-                preselected_tags=self.tags,
-                extra_answers=self.extra_answers,
-            )
-            app.run()
+            return CommandResult(success=False, error=str(e))
+        return CommandResult(
+            success=True,
+            output=f"Created {path}",
+            metadata={"path": path},
+        )

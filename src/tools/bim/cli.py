@@ -246,25 +246,50 @@ def create_note(
             console.print(name, mode="raw")
         return
 
-    from bim.commands.create_note.create_note import CommandCreateNote
-
     settings = get_settings(ctx, BimSettings)
     extra_answers: dict[str, str] = {}
     for a in answer:
         if "=" in a:
             k, v = a.split("=", 1)
             extra_answers[k] = v
-    try:
-        cmd = CommandCreateNote(
-            path_zettelkasten=Path(settings.path_zettelkasten).expanduser().resolve(),
-            zettel_type=zettel_type,
-            title=title,
-            tags=tags,
-            extra_answers=extra_answers,
-        )
-        cmd.execute()
-    except FileNotFoundError as exc:
-        console.panic(str(exc))
+    path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
+    if zettel_type and title:
+        from bim.commands.create_note.create_note import CommandCreateNote
+        from bim.dependencies import get_hook_runner, get_repo, get_templates
+
+        try:
+            cmd = CommandCreateNote(
+                path_zettelkasten=path_zettelkasten,
+                repo=get_repo(),
+                templates=get_templates(),
+                hook_runner=get_hook_runner(),
+                zettel_type=zettel_type,
+                title=title,
+                tags=tags,
+                extra_answers=extra_answers,
+            )
+        except FileNotFoundError as exc:
+            console.panic(str(exc))
+            return
+        result = cmd.execute()
+        for w in result.warnings:
+            console.warning(w)
+        if result.success:
+            console.success(result.output)
+        else:
+            console.failure(result.error)
+        return
+
+    from bim.commands.create_note.tui import CreateNoteApp
+
+    app = CreateNoteApp(
+        path_zettelkasten=path_zettelkasten,
+        preselected_type=zettel_type,
+        preselected_title=title,
+        preselected_tags=tags,
+        extra_answers=extra_answers,
+    )
+    app.run()
 
 
 @cli.command("query", help="Query zettels with YAML filter/sort/output spec")
@@ -348,14 +373,32 @@ def edit_note(
     if resolved is None:
         return
 
-    if not changes and len(resolved) > 1:
-        console.failure("TUI edit requires a single path")
+    if not changes:
+        if len(resolved) > 1:
+            console.failure("TUI edit requires a single path")
+            return
+        path = resolved[0]
+        if not path.is_file():
+            console.failure(f"{path} doesn't exist")
+            return
+        from bim.commands.edit_note.tui import EditNoteApp
+
+        app = EditNoteApp(path=path)
+        app.run()
         return
 
     from bim.commands.edit_note.edit_note import CommandEditNote
+    from bim.dependencies import get_repo
 
-    cmd = CommandEditNote(paths=resolved, changes=changes or None)
-    cmd.execute()
+    cmd = CommandEditNote(paths=resolved, repo=get_repo(), changes=changes)
+    result = cmd.execute()
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        if result.output:
+            console.success(result.output)
+    else:
+        console.failure(result.error)
 
 
 @cli.command("archive", help="Archive zettel(s): set processed + move to archive dir")

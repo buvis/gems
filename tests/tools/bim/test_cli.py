@@ -327,9 +327,16 @@ class TestCreateCommand:
         with (
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_templates") as mock_get_templates,
+            patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_get_repo.return_value = MagicMock()
+            mock_get_templates.return_value = MagicMock()
+            mock_get_hook_runner.return_value = MagicMock()
             instance = mock_cmd.return_value
+            instance.execute.return_value = CommandResult(success=True, output="Created note.md")
 
             result = runner.invoke(
                 cli,
@@ -350,6 +357,9 @@ class TestCreateCommand:
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
                 path_zettelkasten=tmp_path.resolve(),
+                repo=ANY,
+                templates=ANY,
+                hook_runner=ANY,
                 zettel_type="note",
                 title="My Title",
                 tags="one,two",

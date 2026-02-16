@@ -60,15 +60,22 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
 
 async def handle_create_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.create_note.create_note import CommandCreateNote
+    from bim.dependencies import get_hook_runner, get_repo, get_templates
 
     directory = Path(file_path).parent if file_path else Path(str(app_state.default_directory))
     cmd = CommandCreateNote(
         path_zettelkasten=directory,
+        repo=get_repo(),
+        templates=get_templates(),
+        hook_runner=get_hook_runner(),
         zettel_type=args.get("type"),
         title=args.get("title"),
         tags=args.get("tags"),
+        extra_answers=args.get("extra_answers"),
     )
-    cmd.execute()
+    result = cmd.execute()
+    if not result.success:
+        return {"status": "error", "message": result.error or "Create failed"}
     return {"status": "ok"}
 
 

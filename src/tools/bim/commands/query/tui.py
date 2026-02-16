@@ -153,10 +153,10 @@ class QueryTuiApp(App[None]):
         if result.success:
             if result.output:
                 self.notify(result.output)
+            self._rows = [r for r in self._rows if r.get("file_path") != fp]
+            self._populate(self._rows)
         else:
             self.notify(result.error or "Archive failed")
-        self._rows = [r for r in self._rows if r.get("file_path") != fp]
-        self._populate(self._rows)
 
     def action_show(self) -> None:
         table = self.query_one(DataTable)
@@ -201,10 +201,10 @@ class QueryTuiApp(App[None]):
         if result.success:
             if result.metadata.get("deleted_count", 0):
                 self.notify(f"Deleted {Path(fp).name}")
+            self._rows = [r for r in self._rows if r.get("file_path") != fp]
+            self._populate(self._rows)
         else:
             self.notify(result.error or "Deletion failed")
-        self._rows = [r for r in self._rows if r.get("file_path") != fp]
-        self._populate(self._rows)
 
     def action_format(self) -> None:
         table = self.query_one(DataTable)
@@ -438,10 +438,10 @@ class KanbanTuiApp(App[None]):
         if result.success:
             if result.output:
                 self.notify(result.output)
+            self._rows = [r for r in self._rows if r.get("file_path") != fp]
+            self._rebuild_lanes(self._rows)
         else:
             self.notify(result.error or "Archive failed")
-        self._rows = [r for r in self._rows if r.get("file_path") != fp]
-        self._rebuild_lanes(self._rows)
 
     def action_show(self) -> None:
         row = self._focused_row()
@@ -480,10 +480,10 @@ class KanbanTuiApp(App[None]):
         if result.success:
             if result.metadata.get("deleted_count", 0):
                 self.notify(f"Deleted {Path(fp).name}")
+            self._rows = [r for r in self._rows if r.get("file_path") != fp]
+            self._rebuild_lanes(self._rows)
         else:
             self.notify(result.error or "Deletion failed")
-        self._rows = [r for r in self._rows if r.get("file_path") != fp]
-        self._rebuild_lanes(self._rows)
 
     def action_format(self) -> None:
         row = self._focused_row()
