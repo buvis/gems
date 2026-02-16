@@ -107,12 +107,7 @@ class Zettel:
         :type value: int
         :raises ValueError: If the provided value is not a valid integer.
         """
-        try:
-            self._data.metadata["id"] = int(value)
-        except ValueError as err:
-            raise ValueError from err
-        except TypeError as err:
-            raise TypeError from err
+        self._data.metadata["id"] = int(value)
 
     @property
     def title(self) -> str | None:
