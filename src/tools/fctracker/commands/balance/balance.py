@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from buvis.pybase.adapters import console
+
 from fctracker.adapters import TransactionsDirScanner, TransactionsReader
 from fctracker.domain import Account
 from fctracker.settings import ForeignCurrencyConfig, LocalCurrencyConfig
@@ -22,9 +23,12 @@ class CommandBalance:
             for currency in currencies:
                 fc = self.foreign_currencies[currency]
                 account = Account(
-                    account_name, currency,
-                    fc.precision, fc.symbol,
-                    self.local_currency.precision, self.local_currency.symbol,
+                    account_name,
+                    currency,
+                    fc.precision,
+                    fc.symbol,
+                    self.local_currency.precision,
+                    self.local_currency.symbol,
                 )
                 reader = TransactionsReader(account)
                 reader.get_transactions()

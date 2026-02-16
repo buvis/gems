@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from buvis.pybase.adapters import console
-
 from hello_world.settings import HelloWorldSettings
 
 

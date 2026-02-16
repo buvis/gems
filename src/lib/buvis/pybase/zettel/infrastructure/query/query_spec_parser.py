@@ -42,9 +42,17 @@ def parse_query_spec(raw: dict[str, Any]) -> QuerySpec:
             columns.append(QueryColumn(field="file_path"))
 
     return QuerySpec(
-        source=source, filter=filt, expand=expand, sort=sort,
-        columns=columns, output=output, dashboard=dashboard,
-        schema=schema, item=item, lookups=lookups, actions=actions,
+        source=source,
+        filter=filt,
+        expand=expand,
+        sort=sort,
+        columns=columns,
+        output=output,
+        dashboard=dashboard,
+        schema=schema,
+        item=item,
+        lookups=lookups,
+        actions=actions,
     )
 
 
@@ -273,9 +281,7 @@ def resolve_query_file(name_or_path: str, bundled_dir: Path | None = None) -> Pa
         if candidate.is_file():
             return candidate
 
-    msg = f"Query '{name_or_path}' not found. Searched:\n" + "\n".join(
-        f"  {p}" for p in searched
-    )
+    msg = f"Query '{name_or_path}' not found. Searched:\n" + "\n".join(f"  {p}" for p in searched)
     raise FileNotFoundError(msg)
 
 

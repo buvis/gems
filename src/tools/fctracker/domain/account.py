@@ -65,7 +65,4 @@ class Account:
     def __repr__(self) -> str:
         bal = self.get_balance()
         bal_local = self.get_balance_local()
-        return (
-            f"{self.name}[{self.currency}] balance: {bal} {self.symbol} "
-            f"({bal_local} {self.local_symbol})"
-        )
+        return f"{self.name}[{self.currency}] balance: {bal} {self.symbol} ({bal_local} {self.local_symbol})"

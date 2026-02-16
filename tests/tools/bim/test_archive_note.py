@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from bim.commands.archive_note.archive_note import (
     CommandArchiveNote,
     archive_single,
@@ -32,7 +31,12 @@ def repo_mocks() -> tuple[MagicMock, MagicMock, MagicMock]:
 
 
 class TestArchiveSingle:
-    def test_archives_note(self, zettel_file: Path, tmp_path: Path, repo_mocks: tuple[MagicMock, MagicMock, MagicMock]) -> None:
+    def test_archives_note(
+        self,
+        zettel_file: Path,
+        tmp_path: Path,
+        repo_mocks: tuple[MagicMock, MagicMock, MagicMock],
+    ) -> None:
         repo, zettel, data = repo_mocks
         archive_dir = tmp_path / "archive"
         captured_path: list[str] = []
@@ -48,7 +52,12 @@ class TestArchiveSingle:
             mock_delete.return_value.execute.assert_called_once_with(zettel)
             assert captured_path[0] == str(archive_dir / zettel_file.name)
 
-    def test_archives_project(self, zettel_file: Path, tmp_path: Path, repo_mocks: tuple[MagicMock, MagicMock, MagicMock]) -> None:
+    def test_archives_project(
+        self,
+        zettel_file: Path,
+        tmp_path: Path,
+        repo_mocks: tuple[MagicMock, MagicMock, MagicMock],
+    ) -> None:
         repo, zettel, data = repo_mocks
         data.metadata = {"type": "project"}
         archive_dir = tmp_path / "archive"

@@ -5,6 +5,7 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
+
 from bim.dependencies import get_hook_runner, get_repo, get_templates
 
 

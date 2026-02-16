@@ -5,6 +5,7 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
+
 from bim.dependencies import get_repo
 
 
@@ -15,7 +16,11 @@ def _get_edit_note_app() -> type:
 
 
 def edit_single(
-    path: Path, changes: dict[str, Any], target: str = "metadata", *, quiet: bool = False,
+    path: Path,
+    changes: dict[str, Any],
+    target: str = "metadata",
+    *,
+    quiet: bool = False,
 ) -> str:
     """Apply changes dict to a zettel and write back."""
     repo = get_repo()

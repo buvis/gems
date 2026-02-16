@@ -4,6 +4,7 @@ from pathlib import Path
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+
 from bim.dependencies import get_formatter, get_repo
 
 

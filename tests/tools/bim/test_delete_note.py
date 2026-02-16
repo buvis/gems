@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from bim.commands.delete_note.delete_note import CommandDeleteNote, delete_single
 
 

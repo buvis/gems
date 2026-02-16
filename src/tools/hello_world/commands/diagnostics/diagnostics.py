@@ -9,7 +9,7 @@ from buvis.pybase.adapters import console
 
 
 class CommandDiagnostics:
-    def execute(self: "CommandDiagnostics") -> None:
+    def execute(self: CommandDiagnostics) -> None:
         console.print(f"Script: {Path(__file__).resolve()}", mode="raw")
         console.print(f"Python: {sys.executable}", mode="raw")
         console.print("\nDirect dependencies:", mode="raw")

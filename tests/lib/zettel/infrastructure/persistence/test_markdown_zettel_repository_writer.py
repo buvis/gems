@@ -77,9 +77,7 @@ class TestFindById:
         result = repository_with_path.find_by_id("20250101120000")
 
         assert result == expected
-        repository_with_path.find_by_location.assert_called_once_with(
-            str(tmp_path / "20250101120000.md")
-        )
+        repository_with_path.find_by_location.assert_called_once_with(str(tmp_path / "20250101120000.md"))
 
     def test_find_by_id_raises_without_zettelkasten_path(self, repository) -> None:
         with pytest.raises(ValueError):

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import yaml
-
 from buvis.pybase.configuration import get_config_dirs
 from buvis.pybase.zettel.domain.templates import (
     Hook,
@@ -69,9 +68,7 @@ def discover_templates(evaluator: ExpressionEvaluator) -> dict[str, ZettelTempla
 
 
 def _create_project_dir(data: ZettelData, zettelkasten_path: Path) -> None:
-    project_dir = zettelkasten_path.parent / "projects" / str(
-        data.metadata.get("id", "unknown")
-    )
+    project_dir = zettelkasten_path.parent / "projects" / str(data.metadata.get("id", "unknown"))
     project_dir.mkdir(parents=True, exist_ok=True)
     data.metadata["resources"] = f"[project resources]({project_dir.as_uri()})"
 

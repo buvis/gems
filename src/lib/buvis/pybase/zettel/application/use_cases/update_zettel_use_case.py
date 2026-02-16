@@ -12,7 +12,10 @@ class UpdateZettelUseCase:
         self.writer = writer
 
     def execute(
-        self, zettel: Zettel, changes: dict[str, Any], target: str = "metadata",
+        self,
+        zettel: Zettel,
+        changes: dict[str, Any],
+        target: str = "metadata",
     ) -> None:
         data = zettel.get_data()
 

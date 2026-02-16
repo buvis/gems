@@ -5,12 +5,11 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
+from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-
-from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
-from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
-from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
 
 from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
 from bim.commands.shared.os_open import open_in_os
@@ -146,6 +145,7 @@ async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
 
     if body.target == "section":
         from bim.commands.shared.sections import replace_section
+
         replace_section(data, body.field, body.value)
     elif body.target == "reference":
         data.reference[body.field] = body.value

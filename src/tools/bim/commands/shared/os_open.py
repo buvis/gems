@@ -10,9 +10,10 @@ def open_in_os(path: Path | str) -> None:
     system = platform.system()
     target = str(path)
     if system == "Darwin":
-        subprocess.Popen(["open", target])  # noqa: S603
+        subprocess.Popen(["open", target])
     elif system == "Linux":
-        subprocess.Popen(["xdg-open", target])  # noqa: S603
+        subprocess.Popen(["xdg-open", target])
     else:
         import os
+
         os.startfile(target)  # type: ignore[attr-defined]  # noqa: S606

@@ -3,9 +3,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from click.testing import CliRunner
-
 from bim.cli import cli
+from click.testing import CliRunner
 
 
 @pytest.fixture
@@ -42,7 +41,9 @@ class TestDeleteCommand:
             instance = mock_cmd.return_value
 
             result = runner.invoke(
-                cli, ["delete", str(note), "--force"], catch_exceptions=False,
+                cli,
+                ["delete", str(note), "--force"],
+                catch_exceptions=False,
             )
 
             assert result.exit_code == 0
@@ -59,7 +60,9 @@ class TestDeleteCommand:
             instance = mock_cmd.return_value
 
             result = runner.invoke(
-                cli, ["delete", str(a), str(b)], catch_exceptions=False,
+                cli,
+                ["delete", str(a), str(b)],
+                catch_exceptions=False,
             )
 
             assert result.exit_code == 0
@@ -210,7 +213,9 @@ class TestFormatCommand:
             instance = mock_cmd.return_value
 
             result = runner.invoke(
-                cli, ["format", str(a), str(b)], catch_exceptions=False,
+                cli,
+                ["format", str(a), str(b)],
+                catch_exceptions=False,
             )
 
             assert result.exit_code == 0
@@ -232,9 +237,7 @@ class TestSyncCommand:
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
         ):
-            mock_settings.return_value = MagicMock(
-                model_extra={"jira_adapter": {"host": "jira.example"}}
-            )
+            mock_settings.return_value = MagicMock(model_extra={"jira_adapter": {"host": "jira.example"}})
             instance = mock_cmd.return_value
 
             result = runner.invoke(
@@ -322,7 +325,8 @@ class TestQueryCommand:
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
         ):
             mock_settings.return_value = MagicMock(
-                path_zettelkasten=str(tmp_path), path_archive=str(archive_dir),
+                path_zettelkasten=str(tmp_path),
+                path_archive=str(archive_dir),
             )
             instance = mock_cmd.return_value
 
@@ -351,7 +355,8 @@ class TestQueryCommand:
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
         ):
             mock_settings.return_value = MagicMock(
-                path_zettelkasten=str(tmp_path), path_archive=str(archive_dir),
+                path_zettelkasten=str(tmp_path),
+                path_archive=str(archive_dir),
             )
             instance = mock_cmd.return_value
 

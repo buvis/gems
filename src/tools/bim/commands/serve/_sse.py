@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -50,7 +50,7 @@ async def _event_stream(queue: asyncio.Queue[str]) -> AsyncGenerator[str, None]:
             try:
                 msg = await asyncio.wait_for(queue.get(), timeout=30.0)
                 yield f"data: {msg}\n\n"
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 yield ": keepalive\n\n"
     finally:
         _subscribers.discard(queue)

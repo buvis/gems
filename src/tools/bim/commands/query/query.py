@@ -11,6 +11,7 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
+from rich.text import Text
 
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import (
@@ -29,8 +30,6 @@ from bim.dependencies import (
     parse_query_string,
     resolve_query_file,
 )
-
-from rich.text import Text
 
 BUNDLED_QUERY_DIR = Path(__file__).parent
 
@@ -215,10 +214,7 @@ def _start_cache_refresh(directory: str) -> subprocess.Popen[bytes] | None:
         return None
 
     cache_path = get_cache_path()
-    script = (
-        "from buvis.pybase.zettel._core import refresh_cache;"
-        f"print(refresh_cache({directory!r}, {cache_path!r}))"
-    )
+    script = f"from buvis.pybase.zettel._core import refresh_cache;print(refresh_cache({directory!r}, {cache_path!r}))"
     return subprocess.Popen(
         [sys.executable, "-c", script],
         stdout=subprocess.PIPE,
@@ -286,7 +282,10 @@ def _run_tui(rows: list[dict[str, Any]], columns: list[str], archive_directory: 
 
 
 def _run_kanban_tui(
-    rows: list[dict[str, Any]], columns: list[str], group_by: str, archive_directory: str | None = None,
+    rows: list[dict[str, Any]],
+    columns: list[str],
+    group_by: str,
+    archive_directory: str | None = None,
 ) -> None:
     from bim.commands.query.tui import KanbanTuiApp
 

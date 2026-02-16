@@ -39,20 +39,12 @@ class QueryZettelsUseCase:
         metadata_eq, remaining = _extract_metadata_eq(spec.filter)
         zettels = self.repository.find_all(directory, metadata_eq=metadata_eq)
 
-        pools = (
-            _resolve_lookup_pools(spec.lookups, self.repository, self.evaluator)
-            if spec.lookups
-            else {}
-        )
+        pools = _resolve_lookup_pools(spec.lookups, self.repository, self.evaluator) if spec.lookups else {}
 
         # Filter + compute lookup context per zettel
         pairs: list[tuple[Zettel, dict[str, list[Zettel]]]] = []
         for z in zettels:
-            lctx = (
-                _compute_lookup_context(z, spec.lookups, pools, self.evaluator)
-                if pools
-                else {}
-            )
+            lctx = _compute_lookup_context(z, spec.lookups, pools, self.evaluator) if pools else {}
             if remaining and not _matches(z, remaining, self.evaluator, lctx):
                 continue
             pairs.append((z, lctx))
@@ -69,9 +61,7 @@ class QueryZettelsUseCase:
                 ctx_map = {id(z): lctx for z, lctx in pairs}
                 sorted_z = _sort_zettels([z for z, _ in pairs], spec.sort)
                 pairs = [(z, ctx_map[id(z)]) for z in sorted_z]
-            rows = [
-                _project(z, columns, self.evaluator, lctx) for z, lctx in pairs
-            ]
+            rows = [_project(z, columns, self.evaluator, lctx) for z, lctx in pairs]
 
         if spec.output.limit:
             rows = rows[: spec.output.limit]

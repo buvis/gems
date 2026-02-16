@@ -33,7 +33,7 @@ class ShowScreen(ModalScreen[None]):
             with Center(id="show-close"):
                 yield Button("Close", variant="primary", id="close-btn")
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    def on_button_pressed(self, _event: Button.Pressed) -> None:
         self.dismiss(None)
 
     def action_close(self) -> None:

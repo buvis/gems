@@ -4,6 +4,7 @@ from pathlib import Path
 
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
+
 from bim.dependencies import get_repo
 
 

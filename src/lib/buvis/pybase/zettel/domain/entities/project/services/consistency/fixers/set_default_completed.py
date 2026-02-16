@@ -1,9 +1,4 @@
-"""
-This module contains a function to set the default publish status for a ZettelData object.
-
-Imports:
-    - :class:`ZettelData` from buvis.pybase.zettel.domain.value_objects.zettel_data which is used to manipulate zettel metadata.
-"""
+"""Set the default completed status for a ZettelData object."""
 
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 

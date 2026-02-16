@@ -10,6 +10,7 @@ copyright = "2024, Tomáš Bouška"
 author = "Tomáš Bouška"
 
 extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx.ext.githubpages"]
+autodoc_mock_imports = ["buvis.pybase.zettel._core"]
 
 templates_path = ["_templates"]
 exclude_patterns = []

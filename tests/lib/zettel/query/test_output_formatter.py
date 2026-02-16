@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from buvis.pybase.zettel.infrastructure.query.output_formatter import (
     format_csv,
     format_html,

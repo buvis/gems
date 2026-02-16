@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import yaml
+from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
 from buvis.pybase.zettel.infrastructure.persistence.template_loader import (
     discover_templates,
     discover_yaml_templates,
 )
-from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
 

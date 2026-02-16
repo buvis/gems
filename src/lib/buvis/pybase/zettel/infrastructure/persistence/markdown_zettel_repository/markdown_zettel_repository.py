@@ -94,12 +94,7 @@ class MarkdownZettelRepository(ZettelRepository):
                 raw_list = load_filtered(directory, self._extensions, metadata_eq, cp)
             else:
                 raw_list = load_all(directory, self._extensions)
-            return [
-                ZettelFactory.create(
-                    Zettel(_rust_dict_to_zettel_data(raw), from_rust=True)
-                )
-                for raw in raw_list
-            ]
+            return [ZettelFactory.create(Zettel(_rust_dict_to_zettel_data(raw), from_rust=True)) for raw in raw_list]
 
         from pathlib import Path
 
@@ -113,9 +108,7 @@ class MarkdownZettelRepository(ZettelRepository):
         for ext in exts:
             for file_path in sorted(dir_path.rglob(f"*.{ext}")):
                 zettel_data = ZettelFileParser.from_file(file_path)
-                if metadata_eq and not all(
-                    zettel_data.metadata.get(k) == v for k, v in metadata_eq.items()
-                ):
+                if metadata_eq and not all(zettel_data.metadata.get(k) == v for k, v in metadata_eq.items()):
                     continue
                 zettel_data.file_path = str(file_path)
                 zettels.append(ZettelFactory.create(Zettel(zettel_data)))

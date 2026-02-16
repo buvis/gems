@@ -62,7 +62,7 @@ class FileMetadataReader:
         try:
             file_path_obj = Path(file_path)
             git_repo_path = file_path_obj.parent
-            output = subprocess.check_output(  # noqa: S603
+            output = subprocess.check_output(
                 [
                     "git",
                     "log",

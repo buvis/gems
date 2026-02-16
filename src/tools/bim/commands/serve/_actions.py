@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from collections.abc import Callable, Coroutine
+from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.application.use_cases.delete_zettel_use_case import DeleteZettelUseCase
@@ -10,6 +10,7 @@ from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import Upd
 
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import get_repo
+
 
 def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
     """Replace {field} placeholders in args values using row data."""

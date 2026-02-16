@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import (
     CreateZettelUseCase,
 )
@@ -25,9 +23,7 @@ def create_zettel_use_case(tmp_path, mock_zettel_writer):
 
 
 @patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_calls_writer_save(
-    mock_zettel_factory, create_zettel_use_case, mock_zettel_writer
-):
+def test_execute_calls_writer_save(mock_zettel_factory, create_zettel_use_case, mock_zettel_writer):
     mock_template = MagicMock(spec=ZettelTemplate)
     mock_data = MagicMock(spec=ZettelData)
     mock_data.metadata = {"id": "20231026120000", "title": "Test Zettel"}
@@ -40,7 +36,7 @@ def test_execute_calls_writer_save(
     mock_zettel = MagicMock(spec=Zettel)
     mock_zettel.id = "20231026120000"
     mock_zettel.get_data.return_value = mock_data
-    
+
     mock_zettel_factory.create.return_value = mock_zettel
 
     answers = {"title": "Test Zettel"}
@@ -51,16 +47,14 @@ def test_execute_calls_writer_save(
 
 
 @patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_raises_file_exists(
-    mock_zettel_factory, create_zettel_use_case, tmp_path
-):
+def test_execute_raises_file_exists(mock_zettel_factory, create_zettel_use_case, tmp_path):
     mock_template = MagicMock(spec=ZettelTemplate)
     mock_data = MagicMock(spec=ZettelData)
     mock_data.metadata = {"id": "20231026120000"}
     mock_data.sections = []
     mock_data.reference = {}
     mock_template.build_data.return_value = mock_data
-    
+
     mock_zettel = MagicMock(spec=Zettel)
     mock_zettel.id = "20231026120000"
     mock_zettel_factory.create.return_value = mock_zettel
@@ -69,15 +63,13 @@ def test_execute_raises_file_exists(
     (tmp_path / "20231026120000.md").touch()
 
     answers = {"title": "Test Zettel"}
-    
+
     with pytest.raises(FileExistsError):
         create_zettel_use_case.execute(mock_template, answers)
 
 
 @patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_runs_hooks(
-    mock_zettel_factory, create_zettel_use_case, mock_zettel_writer
-):
+def test_execute_runs_hooks(mock_zettel_factory, create_zettel_use_case, mock_zettel_writer):
     hook_runner = MagicMock()
     create_zettel_use_case = CreateZettelUseCase(
         create_zettel_use_case.zettelkasten_path,
@@ -91,14 +83,14 @@ def test_execute_runs_hooks(
     mock_data.sections = []
     mock_data.reference = {}
     mock_template.build_data.return_value = mock_data
-    
+
     mock_hook = MagicMock()
     mock_template.hooks.return_value = [mock_hook]
 
     mock_zettel = MagicMock(spec=Zettel)
     mock_zettel.id = "20231026120000"
     mock_zettel.get_data.return_value = mock_data
-    
+
     mock_zettel_factory.create.return_value = mock_zettel
 
     answers = {"title": "Test Zettel"}
@@ -112,9 +104,7 @@ def test_execute_runs_hooks(
 
 
 @patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_returns_path(
-    mock_zettel_factory, create_zettel_use_case, mock_zettel_writer
-):
+def test_execute_returns_path(mock_zettel_factory, create_zettel_use_case, mock_zettel_writer):
     mock_template = MagicMock(spec=ZettelTemplate)
     mock_data = MagicMock(spec=ZettelData)
     mock_data.metadata = {"id": "20231026120000"}
@@ -127,7 +117,7 @@ def test_execute_returns_path(
     mock_zettel = MagicMock(spec=Zettel)
     mock_zettel.id = "20231026120000"
     mock_zettel.get_data.return_value = mock_data
-    
+
     mock_zettel_factory.create.return_value = mock_zettel
 
     answers = {"title": "Test Zettel"}

@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from bim.commands.format_note.format_note import CommandFormatNote, format_single
 
 MINIMAL_ZETTEL = """\

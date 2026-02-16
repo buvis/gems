@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from bim.commands.import_note.import_note import CommandImportNote, import_single
 
 
@@ -280,10 +279,18 @@ class TestCommandImportNote:
             cmd.execute()
             assert mock_import.call_count == 2
             mock_import.assert_any_call(
-                a, zettelkasten_dir, tags=None, force_overwrite=False, remove_original=False,
+                a,
+                zettelkasten_dir,
+                tags=None,
+                force_overwrite=False,
+                remove_original=False,
             )
             mock_import.assert_any_call(
-                b, zettelkasten_dir, tags=None, force_overwrite=False, remove_original=False,
+                b,
+                zettelkasten_dir,
+                tags=None,
+                force_overwrite=False,
+                remove_original=False,
             )
 
     def test_batch_skips_missing(
@@ -306,7 +313,11 @@ class TestCommandImportNote:
             cmd.execute()
             mock_console.failure.assert_called_once()
             mock_import.assert_called_once_with(
-                note_file, zettelkasten_dir, tags=None, force_overwrite=False, remove_original=False,
+                note_file,
+                zettelkasten_dir,
+                tags=None,
+                force_overwrite=False,
+                remove_original=False,
             )
 
     def test_resolves_next_available_id_and_updates_metadata(

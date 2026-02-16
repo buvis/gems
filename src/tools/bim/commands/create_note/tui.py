@@ -6,11 +6,12 @@ from typing import Any
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate
-from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
+
+from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
 
 
 class CreateNoteApp(App[None]):

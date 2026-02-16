@@ -6,7 +6,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from bim.commands.serve._routes import router as api_router
-from bim.commands.serve._sse import router as sse_router, start_watcher, stop_watcher
+from bim.commands.serve._sse import router as sse_router
+from bim.commands.serve._sse import start_watcher, stop_watcher
 
 STATIC_DIR = Path(__file__).parent / "static"
 

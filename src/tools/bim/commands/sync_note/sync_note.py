@@ -5,14 +5,14 @@ from pathlib import Path
 from typing import Any
 
 import tzlocal
+from bim.dependencies import get_formatter, get_repo
 from buvis.pybase.adapters import JiraAdapter, console
-from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel import ReadZettelUseCase
+from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.entities import ProjectZettel
 from buvis.pybase.zettel.integrations.jira.assemblers.project_zettel_jira_issue import (
     ProjectZettelJiraIssueDTOAssembler,
 )
-from bim.dependencies import get_formatter, get_repo
 
 DEFAULT_JIRA_IGNORE_US_LABEL = "do-not-track"
 

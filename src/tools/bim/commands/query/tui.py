@@ -4,12 +4,13 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from bim.dependencies import get_repo
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Horizontal, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Footer, Header, Input, Label, Static
+
+from bim.dependencies import get_repo
 
 
 class ConfirmScreen(ModalScreen[bool]):
@@ -54,7 +55,10 @@ class QueryTuiApp(App[None]):
     ]
 
     def __init__(
-        self, rows: list[dict[str, Any]], columns: list[str], archive_dir: Path | None = None,
+        self,
+        rows: list[dict[str, Any]],
+        columns: list[str],
+        archive_dir: Path | None = None,
     ) -> None:
         super().__init__()
         self._rows = rows
@@ -88,9 +92,7 @@ class QueryTuiApp(App[None]):
             self._populate(self._rows)
             return
         filtered = [
-            row
-            for row in self._rows
-            if any(term in str(row.get(col, "")).lower() for col in self._all_columns)
+            row for row in self._rows if any(term in str(row.get(col, "")).lower() for col in self._all_columns)
         ]
         self._populate(filtered)
 
@@ -245,11 +247,7 @@ class KanbanCard(Static, can_focus=True):
 
     def __init__(self, row: dict[str, Any], display_cols: list[str]) -> None:
         title = str(row.get("title", ""))
-        extras = [
-            str(row.get(c, ""))
-            for c in display_cols
-            if c != "title" and row.get(c)
-        ]
+        extras = [str(row.get(c, "")) for c in display_cols if c != "title" and row.get(c)]
         label = title or " | ".join(extras) or "(untitled)"
         if extras and title:
             label += f"\n[dim]{' | '.join(extras)}[/dim]"
@@ -349,9 +347,7 @@ class KanbanTuiApp(App[None]):
             self._rebuild_lanes(self._rows)
             return
         filtered = [
-            row
-            for row in self._rows
-            if any(self._filter in str(row.get(c, "")).lower() for c in self._all_columns)
+            row for row in self._rows if any(self._filter in str(row.get(c, "")).lower() for c in self._all_columns)
         ]
         self._rebuild_lanes(filtered)
 

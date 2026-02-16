@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 from bim.commands.show_note.show_note import CommandShowNote, show_single
 
 MINIMAL_ZETTEL = """\

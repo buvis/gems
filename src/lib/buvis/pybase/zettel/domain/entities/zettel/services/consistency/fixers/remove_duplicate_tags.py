@@ -1,9 +1,4 @@
-"""
-This module provides functionality to remove duplicate tags from ZettelData instances.
-
-Imports:
-    - :class:`ZettelData`: A class from buvis.pybase.zettel.domain.value_objects.zettel_data used to represent zettel data.
-"""
+"""Remove duplicate tags from ZettelData instances."""
 
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 

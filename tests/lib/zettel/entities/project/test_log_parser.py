@@ -121,7 +121,10 @@ class TestParseLog:
         assert entries[2].status == "done"
 
     def test_full_entry_with_all_fields(self):
-        raw = "- [ ] 2026-02-10 13:08 - state text => action text | #gtd/act/next \u23eb \U0001f4c5 2026-03-01 \U0001f6eb 2026-02-15 \u23f3 2026-02-20"
+        raw = (
+            "- [ ] 2026-02-10 13:08 - state text => action text"
+            " | #gtd/act/next \u23eb \U0001f4c5 2026-03-01 \U0001f6eb 2026-02-15 \u23f3 2026-02-20"
+        )
         e = parse_log(raw)[0]
         assert e.timestamp == datetime(2026, 2, 10, 13, 8)
         assert e.status == "open"

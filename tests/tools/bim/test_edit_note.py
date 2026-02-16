@@ -4,10 +4,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from click.testing import CliRunner
-
 from bim.cli import cli
 from bim.commands.edit_note.edit_note import CommandEditNote, edit_single
+from click.testing import CliRunner
 
 MINIMAL_ZETTEL = """\
 ---

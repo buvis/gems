@@ -4,12 +4,13 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
-from bim.dependencies import get_formatter, get_repo
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Center, Horizontal, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Footer, Header, Input, Label, Select, Static
+
+from bim.dependencies import get_formatter, get_repo
 
 
 def _load_zettel(path: Path) -> Any:
@@ -141,7 +142,8 @@ class EditScreen(ModalScreen[dict[str, Any] | None]):
 
     CSS = """
     EditScreen { align: center middle; }
-    #edit-dialog { width: 70; max-height: 80%; padding: 1 2; border: thick $accent; background: $surface; overflow-y: auto; }
+    #edit-dialog { width: 70; max-height: 80%; padding: 1 2;
+        border: thick $accent; background: $surface; overflow-y: auto; }
     .field-label { margin-top: 1; color: $text-muted; }
     #preview { margin-top: 1; padding: 1; border: solid $accent; }
     #edit-buttons { width: 100%; height: auto; margin-top: 1; }

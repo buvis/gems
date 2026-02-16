@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA, PropertyDef
+from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
     list_query_files,
     parse_query_spec,
@@ -240,9 +240,7 @@ class TestParseQuerySpec:
         assert spec.dashboard is None
 
     def test_group_by_parsing(self):
-        spec = parse_query_spec(
-            {"output": {"format": "kanban", "group_by": "status"}}
-        )
+        spec = parse_query_spec({"output": {"format": "kanban", "group_by": "status"}})
         assert spec.output.format == "kanban"
         assert spec.output.group_by == "status"
 
@@ -460,9 +458,7 @@ class TestLookupParser:
 
     def test_lookup_missing_name_raises(self):
         with pytest.raises(ValueError, match="name"):
-            parse_query_spec(
-                {"lookups": [{"source": {"directory": "/x"}}]}
-            )
+            parse_query_spec({"lookups": [{"source": {"directory": "/x"}}]})
 
     def test_multiple_lookups(self):
         spec = parse_query_spec(
@@ -506,9 +502,7 @@ class TestResolveQueryFile:
         result = resolve_query_file("my_query.yml")
         assert result == Path("my_query.yml")
 
-    def test_name_resolved_from_config_dir(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_name_resolved_from_config_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         queries_dir = tmp_path / "queries"
         queries_dir.mkdir()
@@ -518,9 +512,7 @@ class TestResolveQueryFile:
 
         assert result == queries_dir / "my_query.yaml"
 
-    def test_bundled_dir_fallback(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_bundled_dir_fallback(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path / "empty"))
         bundled = tmp_path / "bundled"
         bundled.mkdir()
@@ -530,9 +522,7 @@ class TestResolveQueryFile:
 
         assert result == bundled / "builtin.yaml"
 
-    def test_user_overrides_bundled(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_user_overrides_bundled(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         queries_dir = tmp_path / "queries"
         queries_dir.mkdir()
@@ -547,9 +537,7 @@ class TestResolveQueryFile:
 
         assert result == user_file
 
-    def test_not_found_raises(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_not_found_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
 
         with pytest.raises(FileNotFoundError, match="nonexistent"):
@@ -567,9 +555,7 @@ class TestListQueryFiles:
 
         assert set(result.keys()) == {"q1", "q2"}
 
-    def test_config_overrides_bundled(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_config_overrides_bundled(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         queries_dir = tmp_path / "queries"
         queries_dir.mkdir()
@@ -586,9 +572,7 @@ class TestListQueryFiles:
         assert result["shared"] == user_file
         assert result["only_bundled"] == bundled / "only_bundled.yaml"
 
-    def test_empty_dirs(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_empty_dirs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
 
         result = list_query_files()

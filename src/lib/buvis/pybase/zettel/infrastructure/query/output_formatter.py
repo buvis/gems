@@ -8,8 +8,8 @@ from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 from rich.table import Table
+from rich.text import Text
 
 
 def _cell(value: Any) -> str | Text:
@@ -97,7 +97,9 @@ def format_kanban(rows: list[dict[str, Any]], columns: list[str], group_by: str)
         for row in group_rows:
             parts = [str(row.get(c, "")) for c in show_cols if row.get(c)]
             lines.append(f"  \u2022 {' | '.join(parts)}")
-        con.print(Panel("\n".join(lines) or "  (empty)", title=f"[bold]{group_name}[/bold] ({len(group_rows)})", expand=True))
+        body = "\n".join(lines) or "  (empty)"
+        title = f"[bold]{group_name}[/bold] ({len(group_rows)})"
+        con.print(Panel(body, title=title, expand=True))
     con.print("[dim]Tip: add --tui for interactive kanban[/dim]")
 
 

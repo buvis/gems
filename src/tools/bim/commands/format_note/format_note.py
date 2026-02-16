@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bim.dependencies import get_formatter, get_repo
 from buvis.pybase.adapters import console
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+
+from bim.dependencies import get_formatter, get_repo
 
 
 def format_single(path: Path, *, in_place: bool = False, quiet: bool = False) -> str:

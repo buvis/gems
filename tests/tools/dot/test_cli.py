@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-
 from dot.commands.add import add as add_module
 from dot.commands.status import status as status_module
 
@@ -53,9 +52,7 @@ class TestCommandStatusInit:
 
 
 class TestCommandStatusExecute:
-    def test_execute_calls_status_and_logs_modified_files(
-        self, status_shell, dotfiles_root
-    ):
+    def test_execute_calls_status_and_logs_modified_files(self, status_shell, dotfiles_root):
         shell_adapter, shell = status_shell
         shell.is_command_available.return_value = False
         shell.exe.return_value = (
@@ -74,9 +71,7 @@ class TestCommandStatusExecute:
             (Path.cwd() / "foo.txt").resolve(),
             (Path.cwd() / "dir/bar.txt").resolve(),
         ]
-        warning_mock.assert_has_calls(
-            [call(f"{expected[0]} was modified"), call(f"{expected[1]} was modified")]
-        )
+        warning_mock.assert_has_calls([call(f"{expected[0]} was modified"), call(f"{expected[1]} was modified")])
         assert warning_mock.call_count == 2
 
 
@@ -110,9 +105,7 @@ class TestCommandAddInit:
 
 
 class TestCommandAddExecute:
-    def test_execute_uses_patch_for_tracked_file(
-        self, add_shell, dotfiles_root, tmp_path
-    ):
+    def test_execute_uses_patch_for_tracked_file(self, add_shell, dotfiles_root, tmp_path):
         shell_adapter, shell = add_shell
         file_path = tmp_path / "tracked.txt"
         file_path.write_text("data")
@@ -132,9 +125,7 @@ class TestCommandAddExecute:
             str(dotfiles_root),
         )
 
-    def test_execute_uses_add_for_untracked_file(
-        self, add_shell, dotfiles_root, tmp_path
-    ):
+    def test_execute_uses_add_for_untracked_file(self, add_shell, dotfiles_root, tmp_path):
         shell_adapter, shell = add_shell
         file_path = tmp_path / "untracked.txt"
         file_path.write_text("data")

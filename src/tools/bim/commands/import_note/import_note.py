@@ -4,9 +4,10 @@ from pathlib import Path
 
 from buvis.pybase.adapters import console
 from buvis.pybase.formatting import StringOperator
-from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel import ReadZettelUseCase
+from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
+
 from bim.dependencies import get_formatter, get_repo
 
 
@@ -25,9 +26,7 @@ def import_single(
     note = reader.execute(str(path_note))
 
     if note.type == "project":
-        note.data.metadata["resources"] = (
-            f"[project resources]({path_note.parent.resolve().as_uri()})"
-        )
+        note.data.metadata["resources"] = f"[project resources]({path_note.parent.resolve().as_uri()})"
 
     if tags is not None:
         note.tags = tags
@@ -119,9 +118,7 @@ class CommandImportNote:
         note = reader.execute(str(path_note))
 
         if note.type == "project":
-            note.data.metadata["resources"] = (
-                f"[project resources]({path_note.parent.resolve().as_uri()})"
-            )
+            note.data.metadata["resources"] = f"[project resources]({path_note.parent.resolve().as_uri()})"
 
         if note.id is None:
             console.failure(f"Note at {path_note} has no ID, skipping")

@@ -4,7 +4,7 @@ from buvis.pybase.adapters import console
 
 
 class CommandListFonts:
-    def execute(self: "CommandListFonts") -> None:
+    def execute(self: CommandListFonts) -> None:
         import pyfiglet
 
         fonts: list[str] = pyfiglet.FigletFont.getFonts()  # type: ignore[no-untyped-call]
