@@ -721,15 +721,17 @@ def serve(
     no_browser: bool,
 ) -> None:
     from bim.commands.serve.serve import CommandServe
+    from bim.params.serve import ServeParams
 
     settings = get_settings(ctx, BimSettings)
-    cmd = CommandServe(
+    params = ServeParams(
         default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
         archive_directory=str(Path(settings.path_archive).expanduser().resolve()),
         host=host,
         port=port,
         no_browser=no_browser,
     )
+    cmd = CommandServe(params=params)
     cmd.execute()
 
 

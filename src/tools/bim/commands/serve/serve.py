@@ -2,31 +2,29 @@ from __future__ import annotations
 
 import webbrowser
 
+from bim.params.serve import ServeParams
+
 
 class CommandServe:
-    def __init__(
-        self,
-        default_directory: str,
-        archive_directory: str | None = None,
-        host: str = "127.0.0.1",
-        port: int = 8000,
-        *,
-        no_browser: bool = False,
-    ) -> None:
-        self.default_directory = default_directory
-        self.archive_directory = archive_directory
-        self.host = host
-        self.port = port
-        self.no_browser = no_browser
+    def __init__(self, params: ServeParams) -> None:
+        self.params = params
 
     def execute(self) -> None:
         from bim.commands.serve._app import create_app
 
-        app = create_app(self.default_directory, self.archive_directory)
+        app = create_app(
+            self.params.default_directory,
+            self.params.archive_directory,
+        )
 
-        if not self.no_browser:
-            webbrowser.open(f"http://{self.host}:{self.port}")
+        if not self.params.no_browser:
+            webbrowser.open(f"http://{self.params.host}:{self.params.port}")
 
         import uvicorn
 
-        uvicorn.run(app, host=self.host, port=self.port, log_level="info")
+        uvicorn.run(
+            app,
+            host=self.params.host,
+            port=self.params.port,
+            log_level="info",
+        )

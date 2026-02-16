@@ -89,19 +89,22 @@ def query_spec() -> QuerySpecStub:
 
 class TestCommandServe:
     def test_init_sets_attributes(self) -> None:
-        cmd = CommandServe(
+        from bim.params.serve import ServeParams
+
+        params = ServeParams(
             default_directory="zettels",
             archive_directory="archive",
             host="0.0.0.0",
             port=9001,
             no_browser=True,
         )
+        cmd = CommandServe(params=params)
 
-        assert cmd.default_directory == "zettels"
-        assert cmd.archive_directory == "archive"
-        assert cmd.host == "0.0.0.0"
-        assert cmd.port == 9001
-        assert cmd.no_browser is True
+        assert cmd.params.default_directory == "zettels"
+        assert cmd.params.archive_directory == "archive"
+        assert cmd.params.host == "0.0.0.0"
+        assert cmd.params.port == 9001
+        assert cmd.params.no_browser is True
 
 
 class TestServeHealth:
