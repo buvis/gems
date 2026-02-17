@@ -159,3 +159,5 @@ release --dry-run [--pre rc1] [patch]  # preview without changes
 **First-time setup** (already done for buvis-gems):
 - test.pypi.org: add trusted publisher (owner: `buvis`, repo: `gems`, workflow: `publish.yml`, env: `testpypi`)
 - GitHub repo settings: create `testpypi` and `pypi` environments
+
+**Why explicit version in pyproject.toml?** maturin reads the version from `pyproject.toml` at build time to compile the Rust extension. Tag-based versioning (hatch-vcs) would require glue to inject the version before maturin sees it. Pure Python projects like mkdocs-zettelkasten use hatch-vcs instead — the version derives from the git tag, no file to keep in sync, no bump commits.
