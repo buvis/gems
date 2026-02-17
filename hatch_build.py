@@ -26,6 +26,8 @@ class RustBuildHook(BuildHookInterface):
 
         self._build_rust()
         self._build_frontend()
+        build_data["infer_tag"] = True
+        build_data["pure_python"] = False
 
     def _build_rust(self) -> None:
         root = Path(self.root)
