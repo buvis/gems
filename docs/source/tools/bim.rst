@@ -115,6 +115,11 @@ Options:
 - ``--force`` — overwrite if target exists
 - ``--remove-original`` — delete source file after import
 
+When importing interactively (no flags), if the note has no tags and
+``ollama_model`` is configured globally (see :ref:`configuration`), bim
+suggests tags via ollama. Each suggested tag is presented for confirmation.
+If ollama is unreachable, tag suggestion is skipped with a warning.
+
 bim edit
 ~~~~~~~~
 
@@ -202,20 +207,6 @@ Synchronize a note with an external system (currently Jira).
     bim sync ~/bim/zettelkasten/project-note.md jira
 
 Arguments: ``PATH_TO_NOTE``, ``TARGET_SYSTEM``.
-
-bim parse_tags
-~~~~~~~~~~~~~~
-
-Extract unique tags from an Obsidian Metadata Extractor ``tags.json``.
-
-.. code-block:: bash
-
-    bim parse_tags ~/bim/tags.json
-    bim parse_tags ~/bim/tags.json -o tags.txt
-
-Options:
-
-- ``-o, --output FILE`` — write output to file
 
 bim serve
 ~~~~~~~~~

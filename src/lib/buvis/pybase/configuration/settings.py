@@ -41,3 +41,5 @@ class GlobalSettings(BaseSettings):
     debug: bool = False
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     output_format: Literal["text", "json", "yaml"] = "text"
+    ollama_model: str | None = None
+    ollama_url: str = "http://localhost:11434"

@@ -118,27 +118,3 @@ class TestReplaceAbbreviationsDelegation:
         result = StringOperator.replace_abbreviations("API", [{"API": "Test"}], 2)
         assert result == "Expanded"
         mock_replace.assert_called_once_with("API", [{"API": "Test"}], 2)
-
-
-class TestSuggestTags:
-    @patch("buvis.pybase.formatting.string_operator.string_operator.TagSuggester")
-    def test_limits_results(self, mock_suggester_cls) -> None:
-        mock_suggester = mock_suggester_cls.return_value
-        mock_suggester.suggest.return_value = ["tag1", "tag2", "tag3", "tag4", "tag5"]
-        result = StringOperator.suggest_tags("some text", limit_count=2)
-        assert len(result) == 2
-        assert result == ["tag1", "tag2"]
-
-    @patch("buvis.pybase.formatting.string_operator.string_operator.TagSuggester")
-    def test_default_limit(self, mock_suggester_cls) -> None:
-        mock_suggester = mock_suggester_cls.return_value
-        mock_suggester.suggest.return_value = ["t" + str(i) for i in range(15)]
-        result = StringOperator.suggest_tags("text")
-        assert len(result) == 10
-
-    @patch("buvis.pybase.formatting.string_operator.string_operator.TagSuggester")
-    def test_fewer_than_limit(self, mock_suggester_cls) -> None:
-        mock_suggester = mock_suggester_cls.return_value
-        mock_suggester.suggest.return_value = ["only", "two"]
-        result = StringOperator.suggest_tags("text", limit_count=10)
-        assert len(result) == 2

@@ -87,12 +87,11 @@ def _resolve_output_path(
     return path_output
 
 
-def _interactive_import(path_note: Path, path_zettelkasten: Path) -> None:
+def _interactive_import(path_note: Path, path_zettelkasten: Path, global_settings: GlobalSettings) -> None:
     if not path_note.is_file():
         console.failure(f"{path_note} doesn't exist")
         return
 
-    from buvis.pybase.formatting import StringOperator
     from buvis.pybase.zettel import ReadZettelUseCase
     from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 
@@ -134,12 +133,19 @@ def _interactive_import(path_note: Path, path_zettelkasten: Path) -> None:
 
     path_output = _resolve_output_path(note, path_output, path_note, path_zettelkasten)
 
-    if not note.tags:
+    if not note.tags and global_settings.ollama_model:
+        from buvis.pybase.formatting import StringOperator
+
         console.nl()
-        console.warning("There are no tags in this note. I will suggest some.")
+        console.warning("There are no tags in this note. Suggesting via ollama...")
         console.nl()
         new_tags = []
-        for suggested_tag in StringOperator.suggest_tags(markdown_content):
+        suggested = StringOperator.suggest_tags(
+            markdown_content,
+            global_settings.ollama_model,
+            global_settings.ollama_url,
+        )
+        for suggested_tag in suggested:
             add_tag = console.confirm(f"Tag with '{suggested_tag}'?")
             if add_tag:
                 new_tags.append(suggested_tag)
@@ -187,7 +193,8 @@ def import_note(
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
 
     if not scripted:
-        _interactive_import(Path(paths[0]), path_zettelkasten)
+        global_settings = get_settings(ctx, GlobalSettings)
+        _interactive_import(Path(paths[0]), path_zettelkasten, global_settings)
         return
 
     from bim.commands.import_note.import_note import CommandImportNote
@@ -325,35 +332,6 @@ def sync_note(
         console.panic(str(exc))
     except NotImplementedError:
         console.panic(f"Sync target '{target_system}' not supported")
-
-
-@cli.command("parse_tags", help="Parse Obsidian Metadata Extractor tags.json")
-@click.argument("path_to_tags_json")
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(file_okay=True, dir_okay=False, writable=True, resolve_path=True),
-)
-def parse_tags(
-    path_to_tags_json: Path,
-    *,
-    output: None | Path,
-) -> None:
-    if Path(path_to_tags_json).is_file():
-        from bim.commands.parse_tags.parse_tags import CommandParseTags
-
-        cmd = CommandParseTags(
-            path_tags_json=Path(path_to_tags_json),
-            path_output=Path(output) if output else None,
-        )
-        result = cmd.execute()
-        if not result.success:
-            console.failure(result.error or "Parse failed")
-            return
-        if result.output:
-            console.print(result.output, mode="raw")
-    else:
-        console.failure(f"{path_to_tags_json} doesn't exist")
 
 
 @cli.command("create", help="Create a new zettel from template")

@@ -14,14 +14,13 @@ import re
 
 from buvis.pybase.formatting.string_operator.abbr import Abbr, AbbreviationInput
 from buvis.pybase.formatting.string_operator.string_case_tools import StringCaseTools
-from buvis.pybase.formatting.string_operator.tag_suggester import TagSuggester
 from buvis.pybase.formatting.string_operator.word_level_tools import WordLevelTools
 
 
 class StringOperator:
     """Facade class providing unified string manipulation operations.
 
-    All methods are static. Delegates to StringCaseTools, WordLevelTools, Abbr, TagSuggester.
+    All methods are static. Delegates to StringCaseTools, WordLevelTools, Abbr.
     """
 
     @staticmethod
@@ -243,18 +242,16 @@ class StringOperator:
         return Abbr.replace_abbreviations(text, abbreviations, level)
 
     @staticmethod
-    def suggest_tags(text: str, limit_count: int = 10) -> list[str]:
-        """Suggest tags for the text using NLP and zero-shot classification.
+    def suggest_tags(text: str, model: str, url: str = "http://localhost:11434") -> list[str]:
+        """Suggest tags for text via ollama API.
 
         Args:
             text: Text to analyze for tag candidates.
-            limit_count: Maximum number of tags to return.
+            model: Ollama model name (e.g. "llama3.2:3b").
+            url: Ollama base URL.
         Returns:
-            A list of suggested tags ordered by relevance.
-        Example:
-            >>> StringOperator.suggest_tags("Build a CLI tool", limit_count=2)
-            ['cli', 'automation']  # Actual suggestions vary.
+            A list of suggested tag strings, or empty list on error.
         """
-        tag_suggester = TagSuggester()
+        from buvis.pybase.formatting.string_operator.suggest_tags import suggest_tags
 
-        return tag_suggester.suggest(text)[:limit_count]
+        return suggest_tags(text, model, url)

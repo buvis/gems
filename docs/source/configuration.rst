@@ -1,3 +1,5 @@
+.. _configuration:
+
 Configuration
 =============
 
@@ -323,6 +325,8 @@ File Format
     debug: false
     log_level: INFO
     output_format: text
+    ollama_model: llama3.2:3b        # optional, enables LLM features
+    ollama_url: http://localhost:11434  # default
 
     # Tool-specific sections
     photo:
@@ -374,6 +378,43 @@ For nested fields, use double underscores:
 
     export BUVIS_PHOTO__MUSIC__NORMALIZE=true
     export BUVIS_PHOTO__MUSIC__BITRATE=256
+
+Ollama Integration
+------------------
+
+``GlobalSettings`` includes optional ollama fields available to all tools:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 25 50
+
+   * - Setting
+     - Default
+     - Description
+   * - ``ollama_model``
+     - *None* (disabled)
+     - Ollama model name (e.g. ``llama3.2:3b``). When set, enables LLM features
+       such as tag suggestion during ``bim import``.
+   * - ``ollama_url``
+     - ``http://localhost:11434``
+     - Ollama API base URL.
+
+Configure via environment variables:
+
+.. code-block:: bash
+
+    export BUVIS_OLLAMA_MODEL=llama3.2:3b
+    export BUVIS_OLLAMA_URL=http://localhost:11434  # default, usually not needed
+
+Or YAML:
+
+.. code-block:: yaml
+
+    # ~/.config/buvis/buvis.yaml
+    ollama_model: llama3.2:3b
+
+If ollama is unreachable when a tool requests it, the call is skipped with a
+warning.
 
 Custom Settings Classes
 -----------------------

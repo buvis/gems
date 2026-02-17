@@ -130,12 +130,13 @@ class TestImportCommand:
             patch("bim.cli.get_settings") as mock_settings,
             patch("bim.cli._interactive_import") as mock_interactive,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            settings = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = settings
 
             result = runner.invoke(cli, ["import", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_interactive.assert_called_once_with(note, tmp_path.resolve())
+            mock_interactive.assert_called_once_with(note, tmp_path.resolve(), settings)
 
     def test_import_with_flags(self, runner, tmp_path):
         note = tmp_path / "note.md"
@@ -357,30 +358,6 @@ class TestImportInteractiveHelpers:
 
         assert resolved_path == zettelkasten_dir / "4.md"
         assert note.data.metadata["id"] == 4
-
-
-class TestParseTagsCommand:
-    def test_parse_tags_existing_file(self, runner, tmp_path):
-        tags_file = tmp_path / "tags.json"
-        tags_file.write_text('{"tags": []}')
-        output_path = tmp_path / "parsed.json"
-
-        with patch("bim.commands.parse_tags.parse_tags.CommandParseTags") as mock_cmd:
-            instance = mock_cmd.return_value
-            instance.execute.return_value = CommandResult(success=True)
-
-            result = runner.invoke(
-                cli,
-                ["parse_tags", str(tags_file), "--output", str(output_path)],
-                catch_exceptions=False,
-            )
-
-            assert result.exit_code == 0
-            mock_cmd.assert_called_once_with(
-                path_tags_json=tags_file,
-                path_output=output_path,
-            )
-            instance.execute.assert_called_once_with()
 
 
 class TestCreateCommand:
