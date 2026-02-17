@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
+
 from bim.params.query import QueryParams
 
 if TYPE_CHECKING:

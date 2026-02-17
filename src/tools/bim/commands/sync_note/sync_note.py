@@ -4,13 +4,13 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import tzlocal
-from bim.params.sync_note import SyncNoteParams
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.entities import ProjectZettel
 
 from bim.integrations.jira_adapter import DictConfig, ZettelJiraAdapter
+from bim.params.sync_note import SyncNoteParams
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter

@@ -100,7 +100,7 @@ select = ["E", "W", "F", "I", "S", "ANN", "ARG", "SLF", "PLR", "UP", "RUF"]
 ignore = ["ANN401", "S105", "S106", "S108", "S603", "S607", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "RUF012", "UP046", "UP047"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "ANN", "ARG", "SLF001", "PLR2004", "RUF043", "RUF059", "UP007"]
+"tests/**/*.py" = ["S101", "S104", "ANN", "ARG", "SLF001", "PLR2004", "RUF043", "RUF059", "UP007"]
 "src/tools/bim/commands/serve/_actions.py" = ["ARG001"]
 "src/tools/bim/commands/serve/_app.py" = ["ARG001"]
 "src/tools/bim/commands/serve/_routes.py" = ["ARG001"]

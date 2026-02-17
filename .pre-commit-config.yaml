@@ -3,8 +3,11 @@ repos:
     rev: v0.11.12
     hooks:
       - id: ruff
-        args: [--fix]
+        pass_filenames: false
+        args: [--fix, "src/", "tests/"]
       - id: ruff-format
+        pass_filenames: false
+        args: ["src/", "tests/"]
   - repo: local
     hooks:
       - id: mypy

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import types
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, Union, get_args, get_origin
 
@@ -24,9 +25,9 @@ def generate_click_options(model: type[BaseModel]) -> list:
     return options
 
 
-def apply_generated_options(model: type[BaseModel]):
+def apply_generated_options(model: type[BaseModel]) -> Callable:
     """Decorator that applies generated Click options to a command function."""
-    def decorator(f):
+    def decorator(f: Callable) -> Callable:
         for opt in reversed(generate_click_options(model)):
             f = opt(f)
         return f
@@ -43,7 +44,7 @@ def _unwrap_optional(annotation: type) -> tuple[type, bool]:
     return annotation, False
 
 
-def _field_to_option(name: str, field: FieldInfo):
+def _field_to_option(name: str, field: FieldInfo) -> Callable | None:
     """Convert a single Pydantic field to a click.option decorator."""
     extra = field.json_schema_extra or {}
     if extra.get("cli_skip"):

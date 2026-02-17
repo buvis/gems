@@ -10,10 +10,9 @@ import pytest
 pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 
-from starlette.testclient import TestClient
-
 from bim.commands.serve._app import create_app
 from bim.commands.serve.serve import CommandServe
+from starlette.testclient import TestClient
 
 
 @dataclass

@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from bim.commands.format_note.format_note import CommandFormatNote
 from bim.params.format_note import FormatNoteParams
 

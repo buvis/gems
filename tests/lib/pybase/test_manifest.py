@@ -4,7 +4,6 @@ from pathlib import Path
 from textwrap import dedent
 
 import pytest
-
 from buvis.pybase.manifest import ToolManifest, discover_tools_dev
 
 

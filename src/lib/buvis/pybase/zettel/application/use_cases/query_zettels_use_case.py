@@ -3,10 +3,10 @@ from __future__ import annotations
 import random
 import re
 import warnings
+from collections.abc import Callable
 from datetime import datetime
 from functools import cached_property, cmp_to_key
 from pathlib import Path
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from buvis.pybase.zettel.domain.value_objects.query_spec import QueryColumn, QueryFilter

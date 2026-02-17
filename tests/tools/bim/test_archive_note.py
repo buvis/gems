@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
 from bim.commands.archive_note.archive_note import CommandArchiveNote
 from bim.params.archive_note import ArchiveNoteParams
 

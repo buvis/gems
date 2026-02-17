@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
 from bim.commands.delete_note.delete_note import CommandDeleteNote
 from bim.params.delete_note import DeleteNoteParams
 

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from bim.params.edit_note import EditNoteParams
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
+
+from bim.params.edit_note import EditNoteParams
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository

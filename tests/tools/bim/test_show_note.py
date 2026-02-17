@@ -4,9 +4,9 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from buvis.pybase.result import CommandResult
 from bim.commands.show_note.show_note import CommandShowNote
 from bim.params.show_note import ShowNoteParams
+from buvis.pybase.result import CommandResult
 
 
 @pytest.fixture

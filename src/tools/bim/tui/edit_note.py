@@ -128,7 +128,6 @@ class EditNoteApp(App[None]):
         if changes:
             from bim.commands.edit_note.edit_note import CommandEditNote
             from bim.dependencies import get_repo
-
             from bim.params.edit_note import EditNoteParams
 
             params = EditNoteParams(paths=[self._path], changes=changes)
@@ -193,7 +192,6 @@ class EditScreen(ModalScreen[dict[str, Any] | None]):
         if changes:
             from bim.commands.edit_note.edit_note import CommandEditNote
             from bim.dependencies import get_repo
-
             from bim.params.edit_note import EditNoteParams
 
             params = EditNoteParams(paths=[self._path], changes=changes)

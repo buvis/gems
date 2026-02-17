@@ -92,10 +92,11 @@ def _interactive_import(path_note: Path, path_zettelkasten: Path) -> None:
         console.failure(f"{path_note} doesn't exist")
         return
 
-    from bim.dependencies import get_formatter, get_repo
     from buvis.pybase.formatting import StringOperator
     from buvis.pybase.zettel import ReadZettelUseCase
     from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
+
+    from bim.dependencies import get_formatter, get_repo
 
     original_content = path_note.read_text(encoding="utf-8")
     repo = get_repo()
@@ -449,7 +450,6 @@ def query(
             console.print(f"{name:30s} {path}", mode="raw")
         return
 
-    from bim.shared.query_presentation import present_query_result
     from bim.commands.query.query import BUNDLED_QUERY_DIR, CommandQuery
     from bim.dependencies import (
         get_evaluator,
@@ -458,6 +458,7 @@ def query(
         parse_query_string,
         resolve_query_file,
     )
+    from bim.shared.query_presentation import present_query_result
     settings = get_settings(ctx, BimSettings)
     if query_file:
         resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)

@@ -4,13 +4,12 @@ from pathlib import Path
 from typing import Literal
 
 import click
-from click.testing import CliRunner
-from pydantic import BaseModel, Field
-
 from buvis.pybase.configuration.generators import (
     apply_generated_options,
     generate_click_options,
 )
+from click.testing import CliRunner
+from pydantic import BaseModel, Field
 
 
 class BoolModel(BaseModel):

@@ -3,9 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from bim.params.create_note import CreateNoteParams
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
+
+from bim.params.create_note import CreateNoteParams
 
 if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
