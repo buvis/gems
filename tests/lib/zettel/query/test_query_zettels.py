@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,18 +19,22 @@ from buvis.pybase.zettel.infrastructure.query.expression_engine import python_ev
 def sample_zettels(make_zettel):
     return [
         make_zettel(
-            id=1, title="Alpha", type="project", tags=["sprint-1", "dev"], date=datetime(2024, 1, 10, tzinfo=UTC)
+            id=1,
+            title="Alpha",
+            type="project",
+            tags=["sprint-1", "dev"],
+            date=datetime(2024, 1, 10, tzinfo=timezone.utc),
         ),
-        make_zettel(id=2, title="Beta", type="note", tags=["sprint-1"], date=datetime(2024, 3, 5, tzinfo=UTC)),
+        make_zettel(id=2, title="Beta", type="note", tags=["sprint-1"], date=datetime(2024, 3, 5, tzinfo=timezone.utc)),
         make_zettel(
             id=3,
             title="Gamma",
             type="project",
             tags=["sprint-2"],
-            date=datetime(2024, 2, 20, tzinfo=UTC),
+            date=datetime(2024, 2, 20, tzinfo=timezone.utc),
             processed=True,
         ),
-        make_zettel(id=4, title="Delta", type="note", tags=[], date=datetime(2024, 4, 1, tzinfo=UTC)),
+        make_zettel(id=4, title="Delta", type="note", tags=[], date=datetime(2024, 4, 1, tzinfo=timezone.utc)),
     ]
 
 

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,7 +10,7 @@ from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 def test_set_default_id():
     # Mock ZettelData with a specific datetime
-    mock_date = datetime(2024, 9, 13, 12, 0, 0, tzinfo=UTC)
+    mock_date = datetime(2024, 9, 13, 12, 0, 0, tzinfo=timezone.utc)
     zettel_data = MagicMock(spec=ZettelData)
     zettel_data.metadata = {"date": mock_date}
 

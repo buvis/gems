@@ -6,7 +6,7 @@ This module sets default dates for ZettelData objects using the datetime module.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
@@ -21,4 +21,4 @@ def set_default_date(zettel_data: ZettelData) -> None:
         None. The function modifies the `zettel_data` in place.
     """
     if zettel_data.metadata.get("date") is None:
-        zettel_data.metadata["date"] = datetime.now(UTC).replace(microsecond=0)
+        zettel_data.metadata["date"] = datetime.now(timezone.utc).replace(microsecond=0)

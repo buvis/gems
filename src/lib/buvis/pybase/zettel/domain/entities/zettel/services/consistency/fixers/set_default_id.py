@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC
+from datetime import timezone
 
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
@@ -20,7 +20,7 @@ def set_default_id(zettel_data: ZettelData) -> None:
         ValueError: If the ID conversion fails or if the date isn't a date.
     """
     try:
-        id_str: str = zettel_data.metadata["date"].astimezone(UTC).strftime("%Y%m%d%H%M%S")
+        id_str: str = zettel_data.metadata["date"].astimezone(timezone.utc).strftime("%Y%m%d%H%M%S")
     except AttributeError as err:
         raise ValueError("Invalid date format") from err
 

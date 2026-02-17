@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from types import ModuleType
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -144,14 +144,14 @@ class TestCreateTimeblock:
         appointment = MagicMock()
         mock_app.CreateItem.return_value = appointment
 
-        fake_now = datetime(2024, 3, 15, 9, 37, 22, tzinfo=UTC)
+        fake_now = datetime(2024, 3, 15, 9, 37, 22, tzinfo=timezone.utc)
         expected_start = fake_now.replace(minute=0, second=0)
 
         with (
             patch.object(
                 outlook_local_module.tzlocal,
                 "get_localzone",
-                return_value=UTC,
+                return_value=timezone.utc,
             ),
             patch.object(outlook_local_module, "datetime") as mock_datetime,
         ):

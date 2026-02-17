@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import pytest
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval, safe_eval
@@ -74,11 +74,11 @@ class TestSafeEvalAllowed:
         ],
     )
     def test_date_accessors(self, func, expected):
-        dt = datetime(2024, 3, 15, tzinfo=UTC)
+        dt = datetime(2024, 3, 15, tzinfo=timezone.utc)
         assert safe_eval(func, {"date": dt}) == expected
 
     def test_format_date(self):
-        dt = datetime(2024, 3, 15, tzinfo=UTC)
+        dt = datetime(2024, 3, 15, tzinfo=timezone.utc)
         assert safe_eval("format_date(date, '%Y-%m-%d')", {"date": dt}) == "2024-03-15"
 
     @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from buvis.pybase.adapters.jira.domain.jira_comment_dto import JiraCommentDTO
 from buvis.pybase.adapters.jira.domain.jira_issue_dto import JiraIssueDTO
@@ -29,7 +29,7 @@ def build_issue(key: str) -> JiraIssueDTO:
 
 def test_jira_comment_dto_instantiation() -> None:
     """All required fields populated, is_internal defaults to False."""
-    now = datetime.now(tz=UTC)
+    now = datetime.now(tz=timezone.utc)
     comment = JiraCommentDTO(
         id="12345",
         author="jsmith",

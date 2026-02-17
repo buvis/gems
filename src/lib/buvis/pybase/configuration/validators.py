@@ -43,17 +43,14 @@ def _iter_model_types(annotation: Any) -> Iterator[type[BaseModel]]:
     while stack:
         current = stack.pop()
 
-        if isinstance(current, type):
-            if issubclass(current, BaseModel) and current not in seen:
-                seen.add(current)
-                yield current
-            continue
-
         origin = get_origin(current)
-        if origin is None:
+        if origin is not None:
+            stack.extend(get_args(current))
             continue
 
-        stack.extend(get_args(current))
+        if isinstance(current, type) and issubclass(current, BaseModel) and current not in seen:
+            seen.add(current)
+            yield current
 
 
 def get_model_depth(model_class: type[BaseModel], current_depth: int = 0) -> int:

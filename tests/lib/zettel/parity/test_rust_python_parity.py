@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +38,7 @@ def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
 def _normalize_datetime(val: Any) -> Any:
     """Normalize datetime for comparison (strip microseconds, ensure UTC)."""
     if isinstance(val, datetime):
-        return val.replace(microsecond=0, tzinfo=UTC)
+        return val.replace(microsecond=0, tzinfo=timezone.utc)
     return val
 
 

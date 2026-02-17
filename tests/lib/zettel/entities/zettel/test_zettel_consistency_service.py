@@ -2,7 +2,7 @@
 Test cases for the ZettelConsistencyService class.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import pytest
 from buvis.pybase.zettel.domain.entities.zettel.services.consistency.zettel_consistency_service import (
@@ -27,7 +27,7 @@ def test_set_missing_defaults(zettel_data: ZettelData) -> None:
     """
     ZettelConsistencyService.set_missing_defaults(zettel_data)
 
-    assert zettel_data.metadata["date"] == datetime.now(UTC).replace(microsecond=0)
+    assert zettel_data.metadata["date"] == datetime.now(timezone.utc).replace(microsecond=0)
     assert zettel_data.metadata["id"] is not None
     assert zettel_data.metadata["title"] == "Unknown title"
     assert zettel_data.metadata["type"] == "note"
@@ -54,7 +54,7 @@ def test_ensure_consistency(zettel_data: ZettelData) -> None:
 @pytest.mark.parametrize(
     "metadata",
     [
-        {"date": datetime.now(UTC).replace(microsecond=0)},
+        {"date": datetime.now(timezone.utc).replace(microsecond=0)},
         {"id": "test-id"},
         {"title": "Test Title"},
         {"type": "article"},

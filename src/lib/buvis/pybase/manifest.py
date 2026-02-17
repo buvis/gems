@@ -18,7 +18,12 @@ class ToolManifest:
 
     @classmethod
     def from_toml(cls, path: Path) -> ToolManifest:
-        import tomllib
+        import sys
+
+        if sys.version_info >= (3, 11):
+            import tomllib
+        else:
+            import tomli as tomllib
 
         with open(path, "rb") as f:
             data = tomllib.load(f)

@@ -9,7 +9,7 @@ description = "BUVIS Python toolkit and CLI tools"
 authors = [{ name = "Tomas Bouska", email = "tomas@buvis.net" }]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.12,<4.0"
+requires-python = ">=3.10,<4.0"
 dependencies = [
   "click>=8.1.0,<9",
   "inflection>=0.5.1,<1",
@@ -21,6 +21,7 @@ dependencies = [
   "tzlocal>=5.3.1,<6",
   "pywin32>=311,<400; sys_platform == 'win32'",
   "xattr>=1.3.0,<2; sys_platform != 'win32'",
+  "tomli>=2.0,<3; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
@@ -50,7 +51,7 @@ Documentation = "https://buvis.github.io/gems/"
 [dependency-groups]
 dev = ["maturin>=1.7,<2", "pip-audit>=2.7.3,<3", "pre-commit>=4.5.1,<5", "ruff>=0.6,<1"]
 test = ["pytest>=9.0.2,<10", "pytest-mock>=3.15.1,<4", "pytest-cov>=7,<8", "mypy>=1.15,<2", "types-PyYAML>=6,<7", "types-requests>=2,<3", "types-fpdf2>=2,<3"]
-docs = ["sphinx>=9,<10", "sphinx-rtd-theme>=3.0.2,<4"]
+docs = ["sphinx>=8,<10", "sphinx-rtd-theme>=3.0.2,<4"]
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -78,7 +79,7 @@ source = ["src/lib", "src/tools"]
 branch = true
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 plugins = ["pydantic.mypy"]
 strict = true
 warn_return_any = true
@@ -88,7 +89,7 @@ namespace_packages = true
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["jira.*", "pexpect.*", "xattr.*", "inflection.*", "win32com.*", "ffmpeg.*", "ping3.*", "pyfiglet.*", "buvis.pybase.zettel._core"]
+module = ["jira.*", "pexpect.*", "xattr.*", "inflection.*", "win32com.*", "ffmpeg.*", "ping3.*", "pyfiglet.*", "buvis.pybase.zettel._core", "tomli"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -96,7 +97,7 @@ module = ["bim.tui.create_note", "bim.tui.edit_note"]
 warn_unused_ignores = false
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]

@@ -8,7 +8,7 @@ patterns and external utilities.
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -63,7 +63,7 @@ def _get_date_from_file(file_path: Path) -> datetime | None:
     if DATETIME_PATTERN.match(file_path.stem):
         for fmt in ("%Y%m%d%H%M%S", "%Y%m%d%H%M"):
             try:
-                return datetime.strptime(file_path.stem[: len(fmt)], fmt).replace(tzinfo=UTC)
+                return datetime.strptime(file_path.stem[: len(fmt)], fmt).replace(tzinfo=timezone.utc)
             except ValueError:
                 pass
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -149,4 +149,4 @@ class TestZettelFileParser:
 
         assert parsed.metadata["title"] == "Project alpha"
         # Known Python bug: len(fmt_string) used instead of digit count, so 1030 → 10:3
-        assert parsed.metadata["date"] == datetime(2024, 1, 15, 10, 3, tzinfo=UTC)
+        assert parsed.metadata["date"] == datetime(2024, 1, 15, 10, 3, tzinfo=timezone.utc)
