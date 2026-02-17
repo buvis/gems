@@ -63,7 +63,7 @@ def _run_query(spec: Any, directory: str) -> dict[str, Any]:
 def _serialize_row(row: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in row.items():
-        if isinstance(v, (datetime, date)):
+        if isinstance(v, datetime | date):
             out[k] = v.isoformat()
         elif hasattr(v, "plain"):
             out[k] = v.plain
@@ -75,7 +75,7 @@ def _serialize_row(row: dict[str, Any]) -> dict[str, Any]:
 def _serialize_dict(d: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in d.items():
-        if isinstance(v, (datetime, date)):
+        if isinstance(v, datetime | date):
             out[k] = v.isoformat()
         elif hasattr(v, "plain"):
             out[k] = v.plain

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import click
+from buvis.pybase.adapters import ShellAdapter, console
 from buvis.pybase.configuration import buvis_options, get_settings
 
 from dot.settings import DotSettings
@@ -17,8 +18,18 @@ def cli(ctx: click.Context) -> None:
 def status() -> None:
     from dot.commands.status.status import CommandStatus
 
-    cmd = CommandStatus()
-    cmd.execute()
+    shell = ShellAdapter(suppress_logging=True)
+    cmd = CommandStatus(shell=shell)
+    result = cmd.execute()
+
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        if result.output:
+            console.success(result.output)
+    else:
+        details = result.metadata.get("details")
+        console.failure(result.error or "Failed", details=details)
 
 
 @cli.command("add", help="Add changes")
@@ -32,8 +43,17 @@ def add(ctx: click.Context, file_path: str | None = None) -> None:
 
     from dot.commands.add.add import CommandAdd
 
-    cmd = CommandAdd(file_path=resolved_path)
-    cmd.execute()
+    shell = ShellAdapter(suppress_logging=True)
+    cmd = CommandAdd(shell=shell, file_path=resolved_path)
+    result = cmd.execute()
+
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        if result.output:
+            console.success(result.output)
+    else:
+        console.failure(result.error or "Failed")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from buvis.pybase.adapters import console
-from rich.table import Table
+from typing import Any
+
+from buvis.pybase.result import CommandResult
 
 from fctracker.adapters import TransactionsDirScanner, TransactionsReader
 from fctracker.domain import Account, Deposit
@@ -23,8 +24,9 @@ class CommandTransactions:
         self.currency = currency.upper()
         self.month = month
 
-    def execute(self) -> None:
+    def execute(self) -> CommandResult:
         scanner = TransactionsDirScanner()
+        tables: list[dict[str, Any]] = []
 
         for account_name, currencies in scanner.accounts.items():
             if self.account in ("", account_name):
@@ -48,20 +50,7 @@ class CommandTransactions:
                             if (self.month == "" or t.is_in_month(self.month) is True)
                         ]
 
-                        table = Table(
-                            show_header=True,
-                            header_style="bold #268bd2",
-                            show_lines=True,
-                            title=f"{account}, transactions",
-                        )
-                        table.add_column("Seq.", style="italic #6c71c4")
-                        table.add_column("Date", style="bold #839496")
-                        table.add_column("Description")
-                        table.add_column("Amount", justify="right", style="bold #2aa198")
-                        table.add_column("Rate", justify="right", style="italic")
-                        table.add_column("Outflow", justify="right", style="bold #dc322f")
-                        table.add_column("Inflow", justify="right", style="bold #859900")
-
+                        rows: list[dict[str, str]] = []
                         index = len(filtered_transactions)
 
                         for transaction in filtered_transactions:
@@ -69,7 +58,6 @@ class CommandTransactions:
                                 description = "Deposit"
                                 outflow = ""
                                 inflow = f"{transaction.get_local_cost()} {self.local_currency.symbol}"
-
                             else:
                                 description = transaction.description
                                 outflow = f"{transaction.get_local_cost()} {self.local_currency.symbol}"
@@ -77,16 +65,24 @@ class CommandTransactions:
                             precision = self.local_currency.precision * 2
                             local_sym = self.local_currency.symbol
                             rate_str = f"{transaction.rate:.{precision}f} {local_sym}/{transaction.currency_symbol}"
-                            table.add_row(
-                                f"{index}",
-                                transaction.date.strftime("%Y-%m-%d"),
-                                description,
-                                f"{transaction.amount} {transaction.currency_symbol}",
-                                rate_str,
-                                outflow,
-                                inflow,
+                            rows.append(
+                                {
+                                    "seq": str(index),
+                                    "date": transaction.date.strftime("%Y-%m-%d"),
+                                    "description": description,
+                                    "amount": f"{transaction.amount} {transaction.currency_symbol}",
+                                    "rate": rate_str,
+                                    "outflow": outflow,
+                                    "inflow": inflow,
+                                }
                             )
                             index -= 1
-                        console.console.print(table)
 
-                        console.nl()
+                        tables.append(
+                            {
+                                "title": f"{account}, transactions",
+                                "rows": rows,
+                            }
+                        )
+
+        return CommandResult(success=True, metadata={"tables": tables})

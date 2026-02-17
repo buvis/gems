@@ -3,6 +3,7 @@ from __future__ import annotations
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
+from buvis.pybase.result import FatalError
 
 from zseq.settings import ZseqSettings
 
@@ -43,9 +44,17 @@ def cli(
 
     try:
         cmd = CommandGetLast(path_dir=resolved_path, is_reporting_misnamed=resolved_misnamed)
-        cmd.execute()
-    except ValueError as exc:
+        result = cmd.execute()
+    except (ValueError, FatalError) as exc:
         console.panic(str(exc))
+        return
+
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        console.success(result.output or "Done")
+    else:
+        console.failure(result.error or "Failed")
 
 
 if __name__ == "__main__":

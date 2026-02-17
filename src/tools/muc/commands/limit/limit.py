@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 import ffmpeg
-from buvis.pybase.adapters import console
+from buvis.pybase.result import CommandResult
 
 
 class CommandLimit:
@@ -22,12 +22,35 @@ class CommandLimit:
         self.bit_depth = bit_depth
         self.sampling_rate = sampling_rate
 
-    def execute(self: CommandLimit) -> None:
+    def execute(self: CommandLimit) -> CommandResult:
+        successes: list[str] = []
+        warnings: list[str] = []
+        errors: list[str] = []
+
         for file_path in self.source_dir.rglob("*.flac"):
             if not file_path.is_relative_to(self.output_dir):
-                self.transcode_flac(file_path)
+                self._transcode_flac(file_path, successes, warnings, errors)
 
-    def transcode_flac(self: CommandLimit, file_path: Path) -> None:
+        if errors:
+            return CommandResult(
+                success=False,
+                output="\n".join(successes) if successes else None,
+                error="\n".join(errors),
+                warnings=warnings,
+            )
+        return CommandResult(
+            success=True,
+            output="\n".join(successes) if successes else "No files to transcode",
+            warnings=warnings,
+        )
+
+    def _transcode_flac(
+        self: CommandLimit,
+        file_path: Path,
+        successes: list[str],
+        warnings: list[str],
+        errors: list[str],
+    ) -> None:
         try:
             probe = ffmpeg.probe(str(file_path), loglevel="quiet")
             audio_stream = next(
@@ -57,11 +80,11 @@ class CommandLimit:
                     )
                     ffmpeg.run(stream, overwrite_output=True)
 
-                    console.success(f"Transcoded: {file_path}  -> {output_path}")
+                    successes.append(f"Transcoded: {file_path}  -> {output_path}")
                 else:
                     shutil.copy2(file_path, output_path)
-                    console.success(f"Copied: {file_path}  -> {output_path}")
+                    successes.append(f"Copied: {file_path}  -> {output_path}")
             else:
-                console.warning(f"Skipped (no audio stream found): {file_path}")
+                warnings.append(f"Skipped (no audio stream found): {file_path}")
         except ffmpeg.Error as e:
-            console.failure(f"Error processing {file_path}", details=str(e.stderr))
+            errors.append(f"Error processing {file_path}: {e.stderr}")

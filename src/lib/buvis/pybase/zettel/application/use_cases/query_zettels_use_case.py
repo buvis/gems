@@ -253,7 +253,7 @@ def _zettel_variables(zettel: Zettel) -> dict[str, Any]:
     # Expose all @property / @cached_property attributes from the zettel's actual class
     for cls in type(zettel).__mro__:
         for attr, desc in vars(cls).items():
-            if isinstance(desc, (property, cached_property)) and not attr.startswith("_"):
+            if isinstance(desc, property | cached_property) and not attr.startswith("_"):
                 variables.setdefault(attr, getattr(zettel, attr, None))
     return variables
 

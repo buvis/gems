@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from buvis.pybase.adapters import console
+from buvis.pybase.result import CommandResult
 
 from readerctl.adapters import ReaderAPIAdapter
 
@@ -9,10 +9,9 @@ class CommandAdd:
     def __init__(self: CommandAdd, token: str) -> None:
         self.api = ReaderAPIAdapter(token)
 
-    def execute(self: CommandAdd, url: str) -> None:
+    def execute(self: CommandAdd, url: str) -> CommandResult:
         res = self.api.add_url(url)
 
         if res.is_ok():
-            console.success(res.message)
-        else:
-            console.failure(res.message)
+            return CommandResult(success=True, output=res.message)
+        return CommandResult(success=False, error=res.message)

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 import pytest
-from dot.commands.add import add as add_module
-from dot.commands.status import status as status_module
+from dot.commands.add.add import CommandAdd
+from dot.commands.status.status import CommandStatus, get_git_modified_files
 
 
 @pytest.fixture
@@ -17,32 +17,14 @@ def dotfiles_root(tmp_path, monkeypatch) -> Path:
     return root
 
 
-@pytest.fixture
-def status_shell(monkeypatch) -> tuple[MagicMock, MagicMock]:
-    shell = MagicMock()
-    shell.is_command_available.return_value = False
-    shell_adapter = MagicMock(return_value=shell)
-    monkeypatch.setattr(status_module, "ShellAdapter", shell_adapter)
-    return shell_adapter, shell
-
-
-@pytest.fixture
-def add_shell(monkeypatch) -> tuple[MagicMock, MagicMock]:
-    shell = MagicMock()
-    shell_adapter = MagicMock(return_value=shell)
-    monkeypatch.setattr(add_module, "ShellAdapter", shell_adapter)
-    return shell_adapter, shell
-
-
 class TestCommandStatusInit:
-    def test_init_sets_env_and_alias(self, status_shell, tmp_path, monkeypatch):
+    def test_init_sets_env_and_alias(self, tmp_path, monkeypatch):
         monkeypatch.delenv("DOTFILES_ROOT", raising=False)
-        monkeypatch.setattr(status_module.Path, "home", lambda: tmp_path)
-        shell_adapter, shell = status_shell
+        monkeypatch.setattr("dot.commands.status.status.Path.home", staticmethod(lambda: tmp_path))
+        shell = MagicMock()
 
-        cmd = status_module.CommandStatus()
+        cmd = CommandStatus(shell=shell)
 
-        shell_adapter.assert_called_once_with(suppress_logging=True)
         assert os.environ["DOTFILES_ROOT"] == str(tmp_path.resolve())
         shell.alias.assert_called_once_with(
             "cfg",
@@ -52,34 +34,34 @@ class TestCommandStatusInit:
 
 
 class TestCommandStatusExecute:
-    def test_execute_calls_status_and_logs_modified_files(self, status_shell, dotfiles_root):
-        shell_adapter, shell = status_shell
+    def test_execute_calls_status_and_reports_modified_files(self, dotfiles_root):
+        shell = MagicMock()
         shell.is_command_available.return_value = False
         shell.exe.return_value = (
             "",
             "modified: foo.txt\nmodified: dir/bar.txt\n",
         )
 
-        with patch.object(status_module.console, "warning") as warning_mock:
-            cmd = status_module.CommandStatus()
-            cmd.execute()
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
 
-        shell_adapter.assert_called_once_with(suppress_logging=True)
-        shell.exe.assert_called_once_with("cfg status", str(dotfiles_root))
+        shell.exe.assert_called_once_with("cfg status", dotfiles_root)
 
+        assert result.success
         expected = [
             (Path.cwd() / "foo.txt").resolve(),
             (Path.cwd() / "dir/bar.txt").resolve(),
         ]
-        warning_mock.assert_has_calls([call(f"{expected[0]} was modified"), call(f"{expected[1]} was modified")])
-        assert warning_mock.call_count == 2
+        assert f"{expected[0]} was modified" in result.warnings
+        assert f"{expected[1]} was modified" in result.warnings
+        assert len(result.warnings) == 2
 
 
 class TestGetGitModifiedFiles:
     def test_parses_modified_lines(self, tmp_path):
         output = "modified: path/to/file.txt\n  modified: other.txt\nnew file: x\n"
 
-        result = status_module.get_git_modified_files(output, tmp_path)
+        result = get_git_modified_files(output, tmp_path)
 
         assert result == [
             (tmp_path / "path/to/file.txt").resolve(),
@@ -88,14 +70,13 @@ class TestGetGitModifiedFiles:
 
 
 class TestCommandAddInit:
-    def test_init_sets_env_and_alias(self, add_shell, tmp_path, monkeypatch):
+    def test_init_sets_env_and_alias(self, tmp_path, monkeypatch):
         monkeypatch.delenv("DOTFILES_ROOT", raising=False)
-        monkeypatch.setattr(add_module.Path, "home", lambda: tmp_path)
-        shell_adapter, shell = add_shell
+        monkeypatch.setattr("dot.commands.add.add.Path.home", staticmethod(lambda: tmp_path))
+        shell = MagicMock()
 
-        cmd = add_module.CommandAdd()
+        cmd = CommandAdd(shell=shell)
 
-        shell_adapter.assert_called_once_with(suppress_logging=True)
         assert os.environ["DOTFILES_ROOT"] == str(tmp_path.resolve())
         shell.alias.assert_called_once_with(
             "cfg",
@@ -105,42 +86,42 @@ class TestCommandAddInit:
 
 
 class TestCommandAddExecute:
-    def test_execute_uses_patch_for_tracked_file(self, add_shell, dotfiles_root, tmp_path):
-        shell_adapter, shell = add_shell
+    def test_execute_uses_patch_for_tracked_file(self, dotfiles_root, tmp_path):
+        shell = MagicMock()
         file_path = tmp_path / "tracked.txt"
         file_path.write_text("data")
         shell.exe.return_value = ("", "")
 
-        cmd = add_module.CommandAdd(file_path=str(file_path))
-        cmd.execute()
+        cmd = CommandAdd(shell=shell, file_path=str(file_path))
+        result = cmd.execute()
 
-        shell_adapter.assert_called_once_with(suppress_logging=True)
         shell.exe.assert_called_once_with(
             f"cfg ls-files --error-unmatch {file_path}",
-            str(dotfiles_root),
+            dotfiles_root,
         )
         shell.interact.assert_called_once_with(
             f"cfg add -p {file_path}",
             "Stage this hunk [y,n,q,a,d,j,J,g,/,e,?]?",
-            str(dotfiles_root),
+            dotfiles_root,
         )
+        assert result.success
 
-    def test_execute_uses_add_for_untracked_file(self, add_shell, dotfiles_root, tmp_path):
-        shell_adapter, shell = add_shell
+    def test_execute_uses_add_for_untracked_file(self, dotfiles_root, tmp_path):
+        shell = MagicMock()
         file_path = tmp_path / "untracked.txt"
         file_path.write_text("data")
         shell.exe.return_value = ("returned non-zero exit status 1", "")
 
-        cmd = add_module.CommandAdd(file_path=str(file_path))
-        cmd.execute()
+        cmd = CommandAdd(shell=shell, file_path=str(file_path))
+        result = cmd.execute()
 
-        shell_adapter.assert_called_once_with(suppress_logging=True)
         shell.exe.assert_called_once_with(
             f"cfg ls-files --error-unmatch {file_path}",
-            str(dotfiles_root),
+            dotfiles_root,
         )
         shell.interact.assert_called_once_with(
             f"cfg add {file_path}",
             "Stage this hunk [y,n,q,a,d,j,J,g,/,e,?]?",
-            str(dotfiles_root),
+            dotfiles_root,
         )
+        assert result.success

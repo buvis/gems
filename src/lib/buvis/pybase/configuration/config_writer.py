@@ -93,7 +93,7 @@ class ConfigWriter:
             return value
         if isinstance(value, Path):
             return str(value)
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             if not value:
                 return "[]"
             items = ", ".join(ConfigWriter._format_value(v) for v in value)

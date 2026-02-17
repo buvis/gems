@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
+from buvis.pybase.result import FatalError
 
 from readerctl.settings import ReaderctlSettings
 
@@ -28,7 +29,17 @@ def login(ctx: click.Context) -> None:
     settings = get_settings(ctx, ReaderctlSettings)
     token_file = Path(settings.token_file).expanduser()
     cmd = CommandLogin(token_file=token_file)
-    cmd.execute()
+
+    try:
+        result = cmd.execute()
+    except FatalError as e:
+        console.panic(str(e))
+        return
+
+    if result.success:
+        console.success(result.output or "Done")
+    else:
+        console.failure(result.error or "Failed")
 
 
 @cli.command("add")
@@ -49,7 +60,18 @@ def add(ctx: click.Context, url: str | None, file: str | None) -> None:
 
     if url is not None or file is not None:
         cmd_login = CommandLogin(token_file=token_file)
-        token = cmd_login.execute()
+
+        try:
+            login_result = cmd_login.execute()
+        except FatalError as e:
+            console.panic(str(e))
+            return
+
+        if login_result.success:
+            console.success(login_result.output or "Done")
+            token = login_result.metadata.get("token")
+        else:
+            console.failure(login_result.error or "Failed")
 
     if not token:
         console.panic("Not logged in. Run 'readerctl login' first.")
@@ -57,7 +79,11 @@ def add(ctx: click.Context, url: str | None, file: str | None) -> None:
 
     if url is not None:
         cmd = CommandAdd(token=token)
-        cmd.execute(url)
+        result = cmd.execute(url)
+        if result.success:
+            console.success(result.output or "Done")
+        else:
+            console.failure(result.error or "Failed")
     elif file is not None:
         if Path(file).is_file():
             cmd = CommandAdd(token=token)
@@ -65,7 +91,11 @@ def add(ctx: click.Context, url: str | None, file: str | None) -> None:
                 urls = f.readlines()
 
             for u in urls:
-                cmd.execute(u.strip())
+                result = cmd.execute(u.strip())
+                if result.success:
+                    console.success(result.output or "Done")
+                else:
+                    console.failure(result.error or "Failed")
         else:
             console.panic(f"File {file} not found")
 

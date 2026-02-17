@@ -138,28 +138,26 @@ def safe_eval(expr: str, variables: dict[str, Any]) -> Any:
         ):
             if not isinstance(
                 node,
-                (
-                    ast.Add,
-                    ast.Sub,
-                    ast.Mult,
-                    ast.Div,
-                    ast.FloorDiv,
-                    ast.Mod,
-                    ast.Pow,
-                    ast.UAdd,
-                    ast.USub,
-                    ast.Not,
-                    ast.Eq,
-                    ast.NotEq,
-                    ast.Lt,
-                    ast.LtE,
-                    ast.Gt,
-                    ast.GtE,
-                    ast.In,
-                    ast.NotIn,
-                    ast.And,
-                    ast.Or,
-                ),
+                ast.Add
+                | ast.Sub
+                | ast.Mult
+                | ast.Div
+                | ast.FloorDiv
+                | ast.Mod
+                | ast.Pow
+                | ast.UAdd
+                | ast.USub
+                | ast.Not
+                | ast.Eq
+                | ast.NotEq
+                | ast.Lt
+                | ast.LtE
+                | ast.Gt
+                | ast.GtE
+                | ast.In
+                | ast.NotIn
+                | ast.And
+                | ast.Or,
             ):
                 msg = f"Disallowed expression node: {type(node).__name__}"
                 raise ValueError(msg)
@@ -240,7 +238,7 @@ def _eval_node(node: ast.AST, variables: dict[str, Any]) -> Any:
         idx = _eval_node(sl, variables)
         return value[idx]
 
-    if isinstance(node, (ast.Tuple, ast.List)):
+    if isinstance(node, ast.Tuple | ast.List):
         return [_eval_node(e, variables) for e in node.elts]
 
     msg = f"Unsupported node type: {type(node).__name__}"

@@ -18,9 +18,13 @@ def _json_safe(obj: Any) -> Any:
         return str(obj)
     if isinstance(obj, dict):
         return {key: _json_safe(value) for key, value in obj.items()}
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, list | tuple):
         return [_json_safe(value) for value in obj]
     return obj
+
+
+class FatalError(Exception):
+    """Raised by commands for unrecoverable errors (missing config, missing deps)."""
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,50 +2,53 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from buvis.pybase.adapters import ShellAdapter, console
+from buvis.pybase.result import CommandResult
+
+if TYPE_CHECKING:
+    from buvis.pybase.adapters.shell.shell import ShellAdapter
 
 
 class CommandStatus:
-    def __init__(self: CommandStatus) -> None:
-        self.shell = ShellAdapter(suppress_logging=True)
+    def __init__(self: CommandStatus, shell: ShellAdapter) -> None:
+        self.shell = shell
 
         if not os.environ.get("DOTFILES_ROOT"):
             path_dotfiles = Path.home()
             os.environ.setdefault("DOTFILES_ROOT", str(path_dotfiles.resolve()))
-
-        console.info(f"Working in {os.environ['DOTFILES_ROOT']}")
 
         self.shell.alias(
             "cfg",
             "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
         )
 
-    def execute(self: CommandStatus) -> None:
-        err = ""
-        out = ""
+    def execute(self: CommandStatus) -> CommandResult:
+        warnings: list[str] = []
 
         if self.shell.is_command_available("git-secret"):
-            err, out = self.shell.exe("cfg secret hide -m", os.environ["DOTFILES_ROOT"])
+            err, out = self.shell.exe("cfg secret hide -m", Path(os.environ["DOTFILES_ROOT"]))
 
             if err:
-                console.failure("Error revealing secrets", details=f"{err}\n{out}")
-                return
+                return CommandResult(success=False, error=f"Error revealing secrets: {err}\n{out}")
 
-        err, out = self.shell.exe("cfg status", os.environ["DOTFILES_ROOT"])
+        err, out = self.shell.exe("cfg status", Path(os.environ["DOTFILES_ROOT"]))
 
         if err:
-            console.failure(f"Error executing command: {err}")
+            return CommandResult(success=False, error=f"Error executing command: {err}")
 
         if out:
             modified_files = get_git_modified_files(out, Path.cwd())
             if modified_files:
                 for m in modified_files:
-                    console.warning(f"{m} was modified")
+                    warnings.append(f"{m} was modified")
+                return CommandResult(success=True, warnings=warnings)
             elif "nothing to commit" in out:
-                console.success("No modifications found")
+                return CommandResult(success=True, output="No modifications found")
             else:
-                console.failure("Unexpected git output", details=out)
+                return CommandResult(success=False, error="Unexpected git output", metadata={"details": out})
+
+        return CommandResult(success=True, output="No modifications found")
 
 
 def get_git_modified_files(git_output: str, relative_to: Path) -> list[Path]:

@@ -52,7 +52,14 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
         bit_depth=settings.limit_flac_bit_depth,
         sampling_rate=settings.limit_flac_sampling_rate,
     )
-    cmd.execute()
+    result = cmd.execute()
+
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        console.success(result.output or "Done")
+    else:
+        console.failure(result.error or "Failed")
 
 
 @cli.command("tidy", help="Tidy directory")

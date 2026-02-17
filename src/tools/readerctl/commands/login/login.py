@@ -3,7 +3,7 @@ from __future__ import annotations
 import getpass
 from pathlib import Path
 
-from buvis.pybase.adapters import console
+from buvis.pybase.result import CommandResult, FatalError
 
 from readerctl.adapters import ReaderAPIAdapter
 
@@ -12,7 +12,7 @@ class CommandLogin:
     def __init__(self, token_file: Path) -> None:
         self.token_file = token_file
 
-    def execute(self) -> str | None:
+    def execute(self) -> CommandResult:
         try:
             token = self.token_file.read_text().strip()
         except FileNotFoundError:
@@ -22,13 +22,8 @@ class CommandLogin:
             token_check = ReaderAPIAdapter.check_token(token)
 
             if token_check.is_ok():
-                console.success("API token valid")
-                return token
-            else:
-                console.panic(
-                    f"Token check failed: {token_check.code} - {token_check.message}",
-                )
-                return None
+                return CommandResult(success=True, output="API token valid", metadata={"token": token})
+            raise FatalError(f"Token check failed: {token_check.code} - {token_check.message}")
         else:
             token = getpass.getpass("Enter Readwise API token: ")
             self.token_file.parent.mkdir(parents=True, exist_ok=True)
@@ -36,10 +31,5 @@ class CommandLogin:
             token_check = ReaderAPIAdapter.check_token(token)
 
             if token_check.is_ok():
-                console.success("API token stored for future use")
-                return token
-            else:
-                console.panic(
-                    f"Token check failed: {token_check.code} - {token_check.message}",
-                )
-                return None
+                return CommandResult(success=True, output="API token stored for future use", metadata={"token": token})
+            raise FatalError(f"Token check failed: {token_check.code} - {token_check.message}")

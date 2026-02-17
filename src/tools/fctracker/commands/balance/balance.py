@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from buvis.pybase.adapters import console
+from buvis.pybase.result import CommandResult
 
 from fctracker.adapters import TransactionsDirScanner, TransactionsReader
 from fctracker.domain import Account
@@ -16,8 +16,9 @@ class CommandBalance:
         self.foreign_currencies = foreign_currencies
         self.local_currency = local_currency
 
-    def execute(self) -> None:
+    def execute(self) -> CommandResult:
         scanner = TransactionsDirScanner()
+        accounts: list[Account] = []
 
         for account_name, currencies in scanner.accounts.items():
             for currency in currencies:
@@ -32,4 +33,9 @@ class CommandBalance:
                 )
                 reader = TransactionsReader(account)
                 reader.get_transactions()
-                console.console.print(account)
+                accounts.append(account)
+
+        return CommandResult(
+            success=True,
+            metadata={"accounts": accounts},
+        )
