@@ -52,7 +52,7 @@ def _gather_changes(query_one: Any, original: dict[str, Any]) -> dict[str, Any]:
         changes["title"] = title
 
     type_sel = query_one("#edit-type", Select)
-    if type_sel.value is not Select.BLANK:
+    if type_sel.value is not Select.NULL:
         new_type = str(type_sel.value)
         if new_type != original.get("type", "note"):
             changes["type"] = new_type

@@ -81,7 +81,7 @@ class CreateNoteApp(App[None]):
 
     @on(Select.Changed, "#template-select")
     def _template_changed(self, event: Select.Changed) -> None:
-        if event.value is not Select.BLANK:
+        if event.value is not Select.NULL:
             self._on_template_selected(str(event.value))
             self._update_preview()
 
@@ -129,7 +129,7 @@ class CreateNoteApp(App[None]):
         for q, widget in self._question_widgets:
             if isinstance(widget, Select):
                 val = widget.value
-                answers[q.key] = str(val) if val is not Select.BLANK else ""
+                answers[q.key] = str(val) if val is not Select.NULL else ""
             else:
                 answers[q.key] = widget.value
         return answers
