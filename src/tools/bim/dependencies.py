@@ -1,49 +1,57 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from buvis.pybase.zettel.domain.interfaces.expression_evaluator import ExpressionEvaluator
-from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
-from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
-from buvis.pybase.zettel.domain.templates import HookRunner, ZettelTemplate
-from buvis.pybase.zettel.domain.value_objects.query_spec import QuerySpec
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
-    MarkdownZettelFormatter,
-)
-from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
-    MarkdownZettelRepository,
-    _default_cache_path,
-)
-from buvis.pybase.zettel.infrastructure.persistence.template_loader import (
-    discover_templates,
-    run_template_hooks,
-)
 from buvis.pybase.zettel.infrastructure.query import output_formatter, query_spec_parser
-from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
+
+if TYPE_CHECKING:
+    from buvis.pybase.zettel.domain.interfaces.expression_evaluator import ExpressionEvaluator
+    from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
+    from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
+    from buvis.pybase.zettel.domain.templates import HookRunner, ZettelTemplate
+    from buvis.pybase.zettel.domain.value_objects.query_spec import QuerySpec
 
 
 def get_repo(*, extensions: list[str] | None = None) -> ZettelRepository:
+    from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
+        MarkdownZettelRepository,
+    )
+
     return MarkdownZettelRepository(extensions=extensions)
 
 
 def get_formatter() -> ZettelFormatter:
+    from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
+        MarkdownZettelFormatter,
+    )
+
     return MarkdownZettelFormatter()
 
 
 def get_evaluator() -> ExpressionEvaluator:
+    from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
+
     return python_eval
 
 
 def get_templates() -> dict[str, ZettelTemplate]:
+    from buvis.pybase.zettel.infrastructure.persistence.template_loader import discover_templates
+
     return discover_templates(get_evaluator())
 
 
 def get_hook_runner() -> HookRunner:
+    from buvis.pybase.zettel.infrastructure.persistence.template_loader import run_template_hooks
+
     return run_template_hooks
 
 
 def get_cache_path() -> str:
+    from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
+        _default_cache_path,
+    )
+
     return _default_cache_path()
 
 

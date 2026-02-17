@@ -236,7 +236,13 @@ class TestFormatCommand:
         note.write_text("# Test")
         output_path = tmp_path / "formatted.md"
 
-        with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd:
+        with (
+            patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_formatter") as mock_get_formatter,
+        ):
+            mock_get_repo.return_value = MagicMock()
+            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True)
 
@@ -267,7 +273,13 @@ class TestFormatCommand:
         a.write_text("# A")
         b.write_text("# B")
 
-        with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd:
+        with (
+            patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
+            patch("bim.dependencies.get_repo") as mock_get_repo,
+            patch("bim.dependencies.get_formatter") as mock_get_formatter,
+        ):
+            mock_get_repo.return_value = MagicMock()
+            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True)
 
