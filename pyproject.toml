@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-bim = ["jira>=3.10.5,<4", "textual>=3,<4", "fpdf2>=2.8,<3"]
+bim = ["jira>=3.10.5,<4", "textual>=3,<9", "fpdf2>=2.8,<3"]
 hello-world = ["pyfiglet>=1.0.4,<2"]
 muc = ["ffmpeg-python>=0.2.0,<1"]
 pinger = ["ping3>=5.1.5,<6"]
@@ -91,6 +91,10 @@ explicit_package_bases = true
 [[tool.mypy.overrides]]
 module = ["torch.*", "transformers.*", "jira.*", "pexpect.*", "rake_nltk.*", "xattr.*", "inflection.*", "nltk.*", "win32com.*", "ffmpeg.*", "ping3.*", "pyfiglet.*", "buvis.pybase.zettel._core"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["bim.tui.create_note", "bim.tui.edit_note"]
+warn_unused_ignores = false
 
 [tool.ruff]
 target-version = "py312"
