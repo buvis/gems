@@ -40,8 +40,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install maturin
-        run: uv pip install --system maturin
+      - name: Install build deps
+        run: uv pip install --system maturin tomli
 
       - name: Pin dependencies from lockfile
         run: python dev/pin_deps.py .
