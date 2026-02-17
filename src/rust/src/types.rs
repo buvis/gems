@@ -23,7 +23,7 @@ impl ZettelData {
 }
 
 /// Dynamic YAML value type that can be converted to Python objects.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
 pub enum YamlValue {
     Null,
     Bool(bool),
@@ -31,7 +31,7 @@ pub enum YamlValue {
     Float(f64),
     String(String),
     List(Vec<YamlValue>),
-    DateTime(chrono::DateTime<chrono::FixedOffset>),
+    DateTime(#[bincode(with_serde)] chrono::DateTime<chrono::FixedOffset>),
 }
 
 impl YamlValue {
