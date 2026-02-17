@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Callable
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
@@ -66,6 +67,10 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
     """Build a decorator that injects settings into the Click context."""
 
     def decorator(f: F) -> F:
+        @click.version_option(
+            version=pkg_version("buvis-gems"),
+            prog_name="buvis-gems",
+        )
         @click.option(
             "--config",
             type=click.Path(exists=True, dir_okay=False, resolve_path=True),
