@@ -32,14 +32,16 @@ class CommandSyncNote:
         self.repo = repo
         self.formatter = formatter
 
+    def execute(self) -> CommandResult:
         match self.params.target_system:
             case "jira":
-                jira_cfg = DictConfig(jira_adapter_config)
+                jira_cfg = DictConfig(self.jira_adapter_config)
                 self._target = ZettelJiraAdapter(jira_cfg)
             case _:
-                raise NotImplementedError(f"Target system '{self.params.target_system}' not supported")
-
-    def execute(self) -> CommandResult:
+                return CommandResult(
+                    success=False,
+                    error=f"Target system '{self.params.target_system}' not supported",
+                )
         messages: list[str] = []
         warnings: list[str] = []
         synced_count = 0
