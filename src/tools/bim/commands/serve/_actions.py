@@ -47,12 +47,13 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState
 async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.sync_note.sync_note import CommandSyncNote
     from bim.dependencies import get_formatter, get_repo
+    from bim.params.sync_note import SyncNoteParams
 
     target_system = args.get("target_system", "jira")
     jira_config = args.get("jira_config", {})
+    params = SyncNoteParams(paths=[Path(file_path)], target_system=target_system)
     cmd = CommandSyncNote(
-        paths=[Path(file_path)],
-        target_system=target_system,
+        params=params,
         jira_adapter_config=jira_config,
         repo=get_repo(),
         formatter=get_formatter(),
@@ -66,17 +67,21 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
 async def handle_create_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.create_note.create_note import CommandCreateNote
     from bim.dependencies import get_hook_runner, get_repo, get_templates
+    from bim.params.create_note import CreateNoteParams
 
     directory = Path(file_path).parent if file_path else Path(str(app_state.default_directory))
-    cmd = CommandCreateNote(
-        path_zettelkasten=directory,
-        repo=get_repo(),
-        templates=get_templates(),
-        hook_runner=get_hook_runner(),
+    params = CreateNoteParams(
         zettel_type=args.get("type"),
         title=args.get("title"),
         tags=args.get("tags"),
         extra_answers=args.get("extra_answers"),
+    )
+    cmd = CommandCreateNote(
+        params=params,
+        path_zettelkasten=directory,
+        repo=get_repo(),
+        templates=get_templates(),
+        hook_runner=get_hook_runner(),
     )
     result = cmd.execute()
     if not result.success:
@@ -142,18 +147,22 @@ async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppStat
 async def handle_import(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
     from bim.commands.import_note.import_note import CommandImportNote
     from bim.dependencies import get_formatter, get_repo
+    from bim.params.import_note import ImportNoteParams
 
     zettelkasten = Path(str(app_state.default_directory)).expanduser().resolve()
     tags = args.get("tags")
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
-    cmd = CommandImportNote(
+    params = ImportNoteParams(
         paths=[Path(file_path)],
-        path_zettelkasten=zettelkasten,
-        repo=get_repo(),
-        formatter=get_formatter(),
         tags=tag_list,
         force=args.get("force", False),
         remove_original=args.get("remove_original", False),
+    )
+    cmd = CommandImportNote(
+        params=params,
+        path_zettelkasten=zettelkasten,
+        repo=get_repo(),
+        formatter=get_formatter(),
     )
     result = cmd.execute()
     if not result.success:
