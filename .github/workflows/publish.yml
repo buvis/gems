@@ -44,6 +44,14 @@ jobs:
       - name: Build wheel
         run: uv build --wheel
 
+      - name: Repair Linux wheel
+        if: runner.os == 'Linux'
+        run: |
+          uv pip install --system auditwheel patchelf
+          auditwheel repair dist/*.whl --wheel-dir dist-repaired
+          rm -rf dist
+          mv dist-repaired dist
+
       - uses: actions/upload-artifact@v6
         with:
           name: wheel-${{ matrix.os }}
