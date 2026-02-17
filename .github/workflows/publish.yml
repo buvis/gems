@@ -37,7 +37,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install maturin
-        run: uv pip install maturin
+        run: uv pip install --system maturin
 
       - name: Pin dependencies from lockfile
         run: python dev/pin_deps.py .
