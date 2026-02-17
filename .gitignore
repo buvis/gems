@@ -1,23 +1,64 @@
+# Claude / Serena
 .claude
 .local
 .serena
+
+# Python bytecode
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Distribution / packaging
 *.egg-info/
-dist/
-build/
 *.egg
 .eggs/
-*.so
-.venv/
-.env
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
+dist/
+build/
 *.whl
+*.so
+sdist/
+wheels/
+*.tar.gz
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# Linting / type checking
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# IDEs / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docs build
+docs/build/
 
 # Rust
 src/rust/target/
