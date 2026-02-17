@@ -17,13 +17,12 @@ All 9 CLIs (`bim`, `dot`, `fctracker`, `hello-world`, `muc`, `outlookctl`, `ping
 
 | Extra | Dep | Tool |
 |-------|-----|------|
-| `bim` | jira, textual | bim |
+| `bim` | jira, textual, fpdf2 | bim |
 | `bim-web` | fastapi, uvicorn, watchfiles | bim (web UI) |
 | `hello-world` | pyfiglet | hello-world |
 | `muc` | ffmpeg-python | muc |
 | `pinger` | ping3 | pinger |
 | `readerctl` | requests | readerctl |
-| `ml` | torch, transformers, rake-nltk | tag suggester |
 | `all` | all of the above | — |
 
 ## What's inside

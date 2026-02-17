@@ -35,7 +35,12 @@ def _find_editable_requires(lock_path: Path) -> dict[str, str]:
             for req in requires:
                 name = req["name"]
                 spec = req.get("specifier", "")
-                result[_normalize(name)] = f"{name}{spec}"
+                marker = req.get("marker", "")
+                if marker and not re.match(r"extra\s*==", marker):
+                    marker_str = f"; {marker}"
+                else:
+                    marker_str = ""
+                result[_normalize(name)] = f"{name}{spec}{marker_str}"
             return result
     return {}
 
@@ -99,7 +104,11 @@ def pin(pkg_dir: Path) -> None:
         name = name_match.group(1)
         normalized = _normalize(name)
         if normalized in versions:
-            return f'"{name}=={versions[normalized]}"'
+            marker = ""
+            semi = dep_str.find(";")
+            if semi != -1:
+                marker = dep_str[semi:]
+            return f'"{name}=={versions[normalized]}{marker}"'
         return m.group(0)
 
     content = _transform_deps_block(content, pin_dep)
