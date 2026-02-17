@@ -13,7 +13,7 @@ class FormatNoteParams(PathParams):
     highlight: bool = Field(
         False,
         description="Highlight formatted content",
-        json_schema_extra={"cli_short": "-h"},
+        json_schema_extra={},
     )
     diff: bool = Field(
         False,
