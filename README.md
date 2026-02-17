@@ -56,5 +56,8 @@ uv run mypy src/lib/ src/tools/
 ## Release
 
 ```bash
-release [--dry-run] patch|minor|major    # bump version, tag, push -> CI publishes to PyPI
+release patch|minor|major              # bump, tag, push -> CI publishes to PyPI
+release --pre rc1                      # pre-release current version to TestPyPI
+release --pre rc1 minor                # bump + pre-release to TestPyPI
+release                                # after rc: strip suffix, release stable to PyPI
 ```
