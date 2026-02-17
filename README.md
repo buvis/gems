@@ -13,6 +13,8 @@ uv tool install buvis-gems[bim,muc]     # combine extras
 uv tool install buvis-gems[all]         # all optional deps
 ```
 
+Pre-built wheels for Linux (x64, ARM), macOS (ARM), and Windows (x64). Python 3.10+.
+
 All 9 CLIs (`bim`, `dot`, `fctracker`, `hello-world`, `muc`, `outlookctl`, `pinger`, `readerctl`, `zseq`) are always installed. Extras add optional dependencies some tools need:
 
 | Extra | Dep | Tool |
