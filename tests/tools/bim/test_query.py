@@ -69,7 +69,7 @@ class TestQueryCli:
 
             result = runner.invoke(
                 query,
-                ["-f", "query.yml", "--tui", "-e"],
+                ["-Q", "query.yml", "--tui", "-e"],
                 catch_exceptions=False,
             )
 
@@ -176,5 +176,5 @@ class TestQueryCli:
             result = runner.invoke(query, [], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Provide -f/--file or -q/--query")
+            mock_console.failure.assert_called_once_with("Provide -Q/--query-file or -q/--query")
             mock_cmd.assert_not_called()

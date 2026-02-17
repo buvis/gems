@@ -462,7 +462,7 @@ class TestQueryCommand:
 
             result = runner.invoke(
                 cli,
-                ["query", "--file", str(query_file)],
+                ["query", "--query-file", str(query_file)],
                 catch_exceptions=False,
             )
 

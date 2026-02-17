@@ -32,7 +32,7 @@ def _resolve_paths(
     has_query = query_file is not None or query_string is not None
 
     if has_paths and has_query:
-        console.failure("Provide paths or -f/-q, not both")
+        console.failure("Provide paths or -Q/-q, not both")
         return None
 
     if has_query:
@@ -45,7 +45,7 @@ def _resolve_paths(
     if has_paths:
         return [Path(p) for p in paths]
 
-    console.failure("Provide paths or -f/-q")
+    console.failure("Provide paths or -Q/-q")
     return None
 
 
@@ -218,7 +218,7 @@ def import_note(
 
 @cli.command("format", help="Format a note")
 @click.argument("paths", nargs=-1, required=False)
-@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(FormatNoteParams)
 @click.option(
@@ -278,7 +278,7 @@ def format_note(
 @cli.command("sync", help="Synchronize note(s) with external system")
 @click.argument("paths", nargs=-1, required=False)
 @click.option("-t", "--target", "target_system", required=True, help="Target system (e.g. jira)")
-@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.option("--force", is_flag=True, default=False, help="Skip confirmation for batch sync")
 @click.pass_context
@@ -430,7 +430,7 @@ def create_note(
 
 
 @cli.command("query", help="Query zettels with YAML filter/sort/output spec")
-@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(QueryParams)
 @click.option("-l", "--list", "list_queries", is_flag=True, default=False, help="List available queries")
@@ -467,7 +467,7 @@ def query(
     elif query_string:
         spec = parse_query_string(query_string)
     else:
-        console.failure("Provide -f/--file or -q/--query")
+        console.failure("Provide -Q/--query-file or -q/--query")
         return
 
     default_directory = str(Path(settings.path_zettelkasten).expanduser().resolve())
@@ -510,7 +510,7 @@ def query(
 
 @cli.command("edit", help="Edit zettel metadata")
 @click.argument("paths", nargs=-1, required=False)
-@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(EditNoteParams)
 @click.option("-s", "--set", "extra_sets", multiple=True, help="Arbitrary key=value metadata")
@@ -579,7 +579,7 @@ def edit_note(
 
 @cli.command("archive", help="Archive zettel(s): set processed + move to archive dir")
 @click.argument("paths", nargs=-1, required=False)
-@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(ArchiveNoteParams)
 @click.pass_context
@@ -618,7 +618,7 @@ def archive_note(
 
 @cli.command("show", help="Display zettel content")
 @click.argument("paths", nargs=-1, required=False)
-@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @click.pass_context
 def show_note(
@@ -649,7 +649,7 @@ def show_note(
 
 @cli.command("delete", help="Permanently delete zettel(s)")
 @click.argument("paths", nargs=-1, required=False)
-@click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
+@click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(DeleteNoteParams)
 @click.pass_context  # type: ignore[arg-type]

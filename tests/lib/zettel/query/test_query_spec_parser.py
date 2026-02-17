@@ -248,6 +248,14 @@ class TestParseQuerySpec:
         spec = parse_query_spec({"output": {}})
         assert spec.output.group_by is None
 
+    def test_invalid_keys_raises(self):
+        with pytest.raises(ValueError, match="Invalid query spec keys.*title"):
+            parse_query_spec({"title": "My Note", "tags": ["a"], "type": "note"})
+
+    def test_mixed_valid_and_invalid_keys_raises(self):
+        with pytest.raises(ValueError, match="Invalid query spec keys.*bogus"):
+            parse_query_spec({"filter": {"type": {"eq": "note"}}, "bogus": 1})
+
 
 class TestSchemaParser:
     def test_schema_parsing(self):

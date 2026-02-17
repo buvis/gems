@@ -21,7 +21,7 @@ def resolve_query_paths(
     elif query_string:
         spec = parse_query_string(query_string)
     else:
-        console.failure("Provide -f/--file or -q/--query")
+        console.failure("Provide -Q/--query-file or -q/--query")
         return None
 
     if spec.source.directory is None:
