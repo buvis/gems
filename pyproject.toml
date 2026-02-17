@@ -54,6 +54,7 @@ test = ["pytest>=9.0.2,<10", "pytest-mock>=3.15.1,<4", "pytest-cov>=7,<8", "mypy
 docs = ["sphinx>=8,<10", "sphinx-rtd-theme>=3.0.2,<4"]
 
 [tool.hatch.build.targets.wheel]
+artifacts = ["*.so", "*.pyd"]
 packages = [
   "src/lib/buvis",
   "src/tools/bim",
