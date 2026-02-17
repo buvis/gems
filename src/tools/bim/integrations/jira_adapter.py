@@ -24,11 +24,11 @@ class DictConfig:
         return self._data.get(key, default)
 
 
-class ZettelJiraAdapter(JiraAdapter):  # type: ignore[misc]
+class ZettelJiraAdapter(JiraAdapter):
     """JiraAdapter that can create issues from ProjectZettel."""
 
     def __init__(self, cfg: DictConfig) -> None:
-        super().__init__(cfg)
+        super().__init__(cfg)  # type: ignore[arg-type]
         self._cfg = cfg
 
     def create_from_project(self, project: ProjectZettel) -> Any:

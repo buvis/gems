@@ -18,7 +18,7 @@ class CommandCreateNote:
         params: CreateNoteParams,
         path_zettelkasten: Path,
         repo: ZettelRepository,
-        templates: dict,
+        templates: dict[str, Any],
         hook_runner: Any,
     ) -> None:
         if not path_zettelkasten.is_dir():

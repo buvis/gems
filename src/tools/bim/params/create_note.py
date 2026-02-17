@@ -13,6 +13,4 @@ class CreateNoteParams(BaseModel):
     zettel_type: str | None = Field(None, description="Template type (note, project)")
     title: str | None = Field(None, description="Zettel title")
     tags: str | None = Field(None, description="Comma-separated tags")
-    extra_answers: dict[str, str] | None = Field(
-        None, description="Template question answers as key=value pairs"
-    )
+    extra_answers: dict[str, str] | None = Field(None, description="Template question answers as key=value pairs")

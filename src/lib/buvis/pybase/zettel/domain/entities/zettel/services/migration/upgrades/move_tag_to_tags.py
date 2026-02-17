@@ -1,6 +1,6 @@
 """Provide functionality to manipulate metadata in ZettelData.
 
-    structure for Zettel metadata."""
+structure for Zettel metadata."""
 
 from __future__ import annotations
 

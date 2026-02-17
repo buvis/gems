@@ -170,10 +170,7 @@ def _start_cache_refresh(directory: str) -> subprocess.Popen[bytes] | None:
         return None
 
     cache_path = get_cache_path()
-    script = (
-        "from buvis.pybase.zettel._core import refresh_cache;"
-        f"print(refresh_cache({directory!r}, {cache_path!r}))"
-    )
+    script = f"from buvis.pybase.zettel._core import refresh_cache;print(refresh_cache({directory!r}, {cache_path!r}))"
     return subprocess.Popen(
         [sys.executable, "-c", script],
         stdout=subprocess.PIPE,

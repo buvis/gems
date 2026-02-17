@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
 
-def generate_click_options(model: type[BaseModel]) -> list:
+def generate_click_options(model: type[BaseModel]) -> list[Callable[..., Any]]:
     """Generate Click option decorators from a Pydantic model's fields.
 
     Skips 'paths' field (handled as click.argument separately).
@@ -25,12 +25,14 @@ def generate_click_options(model: type[BaseModel]) -> list:
     return options
 
 
-def apply_generated_options(model: type[BaseModel]) -> Callable:
+def apply_generated_options(model: type[BaseModel]) -> Callable[..., Any]:
     """Decorator that applies generated Click options to a command function."""
-    def decorator(f: Callable) -> Callable:
+
+    def decorator(f: Callable[..., Any]) -> Callable[..., Any]:
         for opt in reversed(generate_click_options(model)):
             f = opt(f)
         return f
+
     return decorator
 
 
@@ -44,16 +46,17 @@ def _unwrap_optional(annotation: type) -> tuple[type, bool]:
     return annotation, False
 
 
-def _field_to_option(name: str, field: FieldInfo) -> Callable | None:
+def _field_to_option(name: str, field: FieldInfo) -> Callable[..., Any] | None:
     """Convert a single Pydantic field to a click.option decorator."""
-    extra = field.json_schema_extra or {}
+    raw_extra = field.json_schema_extra
+    extra: dict[str, Any] = raw_extra if isinstance(raw_extra, dict) else {}
     if extra.get("cli_skip"):
         return None
-    short = extra.get("cli_short")
-    long_name = extra.get("cli_long", f"--{name.replace('_', '-')}")
-    param_name = extra.get("cli_param", name)
+    short = str(extra["cli_short"]) if "cli_short" in extra else None
+    long_name = str(extra.get("cli_long", f"--{name.replace('_', '-')}"))
+    param_name = str(extra.get("cli_param", name))
 
-    args = [long_name]
+    args: list[str] = [long_name]
     if short:
         args.insert(0, short)
 
@@ -63,6 +66,8 @@ def _field_to_option(name: str, field: FieldInfo) -> Callable | None:
     }
 
     annotation = field.annotation
+    if annotation is None:
+        return click.option(*args, param_name, **kwargs)
     inner, is_optional = _unwrap_optional(annotation)
 
     # bool | None -> --flag/--no-flag with default None
@@ -85,7 +90,7 @@ def _field_to_option(name: str, field: FieldInfo) -> Callable | None:
 
     # Path with validation hints from json_schema_extra
     if inner is Path:
-        path_kwargs = {}
+        path_kwargs: dict[str, Any] = {}
         if "path_exists" in extra:
             path_kwargs["exists"] = extra["path_exists"]
         if "path_file_okay" in extra:

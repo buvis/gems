@@ -213,7 +213,7 @@ def import_note(
         if result.output:
             console.success(result.output)
     else:
-        console.failure(result.error)
+        console.failure(result.error or "Import failed")
 
 
 @cli.command("format", help="Format a note")
@@ -226,7 +226,7 @@ def import_note(
     "--output",
     type=click.Path(file_okay=True, dir_okay=False, writable=True, resolve_path=True),
 )
-@click.pass_context
+@click.pass_context  # type: ignore[arg-type]
 def format_note(
     ctx: click.Context,
     paths: tuple[str, ...],
@@ -252,7 +252,7 @@ def format_note(
     for w in result.warnings:
         console.warning(w)
     if not result.success:
-        console.failure(result.error)
+        console.failure(result.error or "Format failed")
         return
     if result.metadata.get("written_to"):
         console.success(f"Formatted note written to {result.metadata['written_to']}")
@@ -320,7 +320,7 @@ def sync_note(
             if result.output:
                 console.success(result.output)
         else:
-            console.failure(result.error)
+            console.failure(result.error or "Sync failed")
     except (ValueError, FileNotFoundError) as exc:
         console.panic(str(exc))
     except NotImplementedError:
@@ -348,7 +348,7 @@ def parse_tags(
         )
         result = cmd.execute()
         if not result.success:
-            console.failure(result.error)
+            console.failure(result.error or "Parse failed")
             return
         if result.output:
             console.print(result.output, mode="raw")
@@ -412,9 +412,9 @@ def create_note(
         for w in result.warnings:
             console.warning(w)
         if result.success:
-            console.success(result.output)
+            console.success(result.output or "Created")
         else:
-            console.failure(result.error)
+            console.failure(result.error or "Create failed")
         return
 
     from bim.tui.create_note import CreateNoteApp
@@ -434,7 +434,7 @@ def create_note(
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(QueryParams)
 @click.option("-l", "--list", "list_queries", is_flag=True, default=False, help="List available queries")
-@click.pass_context
+@click.pass_context  # type: ignore[arg-type]
 def query(
     ctx: click.Context,
     query_file: str | None,
@@ -459,6 +459,7 @@ def query(
         resolve_query_file,
     )
     from bim.shared.query_presentation import present_query_result
+
     settings = get_settings(ctx, BimSettings)
     if query_file:
         resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)
@@ -513,7 +514,7 @@ def query(
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(EditNoteParams)
 @click.option("-s", "--set", "extra_sets", multiple=True, help="Arbitrary key=value metadata")
-@click.pass_context
+@click.pass_context  # type: ignore[arg-type]
 def edit_note(
     ctx: click.Context,
     paths: tuple[str, ...],
@@ -563,6 +564,7 @@ def edit_note(
 
     from bim.commands.edit_note.edit_note import CommandEditNote
     from bim.dependencies import get_repo
+
     params = EditNoteParams(paths=resolved, changes=changes, **kwargs)
     cmd = CommandEditNote(params=params, repo=get_repo())
     result = cmd.execute()
@@ -572,7 +574,7 @@ def edit_note(
         if result.output:
             console.success(result.output)
     else:
-        console.failure(result.error)
+        console.failure(result.error or "Edit failed")
 
 
 @cli.command("archive", help="Archive zettel(s): set processed + move to archive dir")
@@ -611,7 +613,7 @@ def archive_note(
         if result.output:
             console.success(result.output)
     else:
-        console.failure(result.error)
+        console.failure(result.error or "Archive failed")
 
 
 @cli.command("show", help="Display zettel content")
@@ -642,7 +644,7 @@ def show_note(
         if result.output:
             console.print(result.output, mode="raw")
     else:
-        console.failure(result.error)
+        console.failure(result.error or "Show failed")
 
 
 @cli.command("delete", help="Permanently delete zettel(s)")
@@ -650,7 +652,7 @@ def show_note(
 @click.option("-f", "--file", "query_file", default=None, help="Query name or path to YAML spec")
 @click.option("-q", "--query", "query_string", default=None, help="Inline YAML query string")
 @apply_generated_options(DeleteNoteParams)
-@click.pass_context
+@click.pass_context  # type: ignore[arg-type]
 def delete_note(
     ctx: click.Context,
     paths: tuple[str, ...],
@@ -686,7 +688,7 @@ def delete_note(
         if count:
             console.success(f"Deleted {count} zettel(s)")
     else:
-        console.failure(result.error)
+        console.failure(result.error or "Delete failed")
 
 
 @cli.command("serve", help="Start web dashboard")

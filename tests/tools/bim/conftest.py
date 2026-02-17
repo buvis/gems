@@ -28,4 +28,3 @@ def minimal_zettel() -> str:
 @pytest.fixture
 def runner() -> CliRunner:
     return CliRunner()
-

@@ -144,9 +144,7 @@ class TestCreateNoteCli:
             mock_get_hook_runner.return_value = MagicMock()
             mock_cmd.side_effect = FileNotFoundError("missing template")
 
-            result = runner.invoke(
-                create_note, ["-t", "note", "--title", "X"], catch_exceptions=False
-            )
+            result = runner.invoke(create_note, ["-t", "note", "--title", "X"], catch_exceptions=False)
 
             assert result.exit_code == 0
             mock_console.panic.assert_called_once_with("missing template")

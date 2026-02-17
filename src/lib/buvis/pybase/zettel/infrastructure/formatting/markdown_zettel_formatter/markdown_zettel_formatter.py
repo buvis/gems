@@ -1,6 +1,6 @@
 """Define MarkdownZettelFormatter for formatting Zettel data.
 
-    zettel.infrastructure.formatting.markdown_zettel_formatter.helpers"""
+zettel.infrastructure.formatting.markdown_zettel_formatter.helpers"""
 
 from __future__ import annotations
 
