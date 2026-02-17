@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-usage() { echo "Usage: release [--dry-run] <patch|minor|major>"; exit 1; }
+usage() { echo "Usage: release [--dry-run] [--pre <suffix>] [patch|minor|major]"; exit 1; }
 die() { echo "error: $1" >&2; exit 1; }
 
 bump_version() {
@@ -17,18 +17,38 @@ bump_version() {
 }
 
 dry_run=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-  dry_run=true
-  shift
-fi
+pre_suffix=""
 
-[[ $# -eq 1 ]] || usage
-part="$1"
-[[ "$part" =~ ^(patch|minor|major)$ ]] || usage
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) dry_run=true; shift ;;
+    --pre) [[ $# -ge 2 ]] || usage; pre_suffix="$2"; shift 2 ;;
+    -*) usage ;;
+    *) break ;;
+  esac
+done
+
+part="${1:-}"
 
 pyproject="$ROOT/pyproject.toml"
 old_ver=$(grep '^version' "$pyproject" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-new_ver=$(bump_version "$old_ver" "$part")
+
+# Strip any existing pre-release suffix to get base version
+base_ver="${old_ver%%[a-z]*}"
+
+if [[ -n "$part" ]]; then
+  [[ "$part" =~ ^(patch|minor|major)$ ]] || usage
+  new_base=$(bump_version "$base_ver" "$part")
+elif [[ -n "$pre_suffix" ]]; then
+  new_base="$base_ver"
+elif [[ "$old_ver" != "$base_ver" ]]; then
+  # Current version is pre-release; release as stable
+  new_base="$base_ver"
+else
+  usage
+fi
+
+new_ver="${new_base}${pre_suffix}"
 tag="gems-v${new_ver}"
 
 if $dry_run; then

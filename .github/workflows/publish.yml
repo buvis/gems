@@ -5,6 +5,11 @@ on:
     tags:
       - "gems-v*"
   workflow_dispatch:
+    inputs:
+      testpypi:
+        description: "Publish to TestPyPI"
+        type: boolean
+        default: true
 
 jobs:
   build-wheels:
@@ -48,7 +53,7 @@ jobs:
   publish:
     needs: build-wheels
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: ${{ (contains(github.ref_name, 'rc') || inputs.testpypi) && 'testpypi' || 'pypi' }}
     permissions:
       id-token: write
     steps:
@@ -58,7 +63,8 @@ jobs:
           pattern: wheel-*
           merge-multiple: true
 
-      - name: Publish to PyPI
+      - name: Publish
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          repository-url: ${{ (contains(github.ref_name, 'rc') || inputs.testpypi) && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
