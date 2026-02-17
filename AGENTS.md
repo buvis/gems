@@ -1,6 +1,6 @@
 # AGENTS.md
 
-BUVIS gems monorepo. Python toolkit (buvis-pybase + zettel) and CLI tools, shipped as a single PyPI package `buvis-gems`.
+BUVIS gems monorepo. Python toolkit (buvis-pybase + zettel) and CLI tools, shipped as a single PyPI package `buvis-gems`. Supports Python 3.10+.
 
 ## Quick Start
 
