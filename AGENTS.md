@@ -147,5 +147,15 @@ Extras: `bim`, `bim-web`, `hello-world`, `muc`, `pinger`, `readerctl`, `ml`, `al
 ## Release
 
 ```bash
-release patch|minor|major    # bump, tag, push → CI publishes to PyPI (mise adds dev/bin to PATH)
+release patch|minor|major              # bump, tag, push → CI publishes to PyPI
+release --pre rc1                      # pre-release current version to TestPyPI
+release --pre rc1 minor                # bump + pre-release to TestPyPI
+release                                # after rc: strip suffix, release stable to PyPI
+release --dry-run [--pre rc1] [patch]  # preview without changes
 ```
+
+`mise` adds `dev/bin` to PATH. Tags with `rc` in the name publish to TestPyPI; stable tags go to PyPI. Manual workflow dispatch defaults to TestPyPI.
+
+**First-time setup** (already done for buvis-gems):
+- test.pypi.org: add trusted publisher (owner: `buvis`, repo: `gems`, workflow: `publish.yml`, env: `testpypi`)
+- GitHub repo settings: create `testpypi` and `pypi` environments
