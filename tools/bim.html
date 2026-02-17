@@ -212,6 +212,10 @@ bim<span class="w"> </span>import<span class="w"> </span>~/Downloads/draft.md<sp
 <li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code> — overwrite if target exists</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--remove-original</span></code> — delete source file after import</p></li>
 </ul>
+<p>When importing interactively (no flags), if the note has no tags and
+<code class="docutils literal notranslate"><span class="pre">ollama_model</span></code> is configured globally (see <a class="reference internal" href="../configuration.html#configuration"><span class="std std-ref">Configuration</span></a>), bim
+suggests tags via ollama. Each suggested tag is presented for confirmation.
+If ollama is unreachable, tag suggestion is skipped with a warning.</p>
 </section>
 <section id="bim-edit">
 <h3>bim edit<a class="headerlink" href="#bim-edit" title="Link to this heading"></a></h3>
@@ -287,18 +291,6 @@ bim<span class="w"> </span>delete<span class="w"> </span>--force<span class="w">
 </pre></div>
 </div>
 <p>Arguments: <code class="docutils literal notranslate"><span class="pre">PATH_TO_NOTE</span></code>, <code class="docutils literal notranslate"><span class="pre">TARGET_SYSTEM</span></code>.</p>
-</section>
-<section id="bim-parse-tags">
-<h3>bim parse_tags<a class="headerlink" href="#bim-parse-tags" title="Link to this heading"></a></h3>
-<p>Extract unique tags from an Obsidian Metadata Extractor <code class="docutils literal notranslate"><span class="pre">tags.json</span></code>.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>parse_tags<span class="w"> </span>~/bim/tags.json
-bim<span class="w"> </span>parse_tags<span class="w"> </span>~/bim/tags.json<span class="w"> </span>-o<span class="w"> </span>tags.txt
-</pre></div>
-</div>
-<p>Options:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--output</span> <span class="pre">FILE</span></code> — write output to file</p></li>
-</ul>
 </section>
 <section id="bim-serve">
 <h3>bim serve<a class="headerlink" href="#bim-serve" title="Link to this heading"></a></h3>

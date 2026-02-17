@@ -66,6 +66,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ollama-integration">Ollama Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-settings-classes">Custom Settings Classes</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#globalsettings-vs-toolsettings">GlobalSettings vs ToolSettings</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#composing-settings">Composing Settings</a></li>
@@ -186,68 +187,69 @@
            <div itemprop="articleBody">
              
   <section id="configuration">
-<h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
+<span id="id1"></span><h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
 <p>This module provides unified configuration management for BUVIS tools with
 automatic precedence handling across multiple sources.</p>
 <nav class="contents local" id="table-of-contents">
 <p class="topic-title">Table of Contents</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#overview" id="id2">Overview</a></p>
+<li><p><a class="reference internal" href="#overview" id="id3">Overview</a></p>
 <ul>
-<li><p><a class="reference internal" href="#source-mapping" id="id3">Source Mapping</a></p></li>
-<li><p><a class="reference internal" href="#adding-custom-cli-options" id="id4">Adding Custom CLI Options</a></p></li>
-<li><p><a class="reference internal" href="#tool-specific-configuration-files" id="id5">Tool-Specific Configuration Files</a></p></li>
+<li><p><a class="reference internal" href="#source-mapping" id="id4">Source Mapping</a></p></li>
+<li><p><a class="reference internal" href="#adding-custom-cli-options" id="id5">Adding Custom CLI Options</a></p></li>
+<li><p><a class="reference internal" href="#tool-specific-configuration-files" id="id6">Tool-Specific Configuration Files</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#quick-start" id="id6">Quick Start</a></p></li>
-<li><p><a class="reference internal" href="#downstream-project-integration" id="id7">Downstream Project Integration</a></p>
+<li><p><a class="reference internal" href="#quick-start" id="id7">Quick Start</a></p></li>
+<li><p><a class="reference internal" href="#downstream-project-integration" id="id8">Downstream Project Integration</a></p>
 <ul>
-<li><p><a class="reference internal" href="#step-1-define-settings" id="id8">Step 1: Define Settings</a></p></li>
-<li><p><a class="reference internal" href="#step-2-wire-cli" id="id9">Step 2: Wire CLI</a></p></li>
-<li><p><a class="reference internal" href="#step-3-configure-any-combination" id="id10">Step 3: Configure (any combination)</a></p></li>
-<li><p><a class="reference internal" href="#example-abbreviations-from-config" id="id11">Example: Abbreviations from Config</a></p></li>
+<li><p><a class="reference internal" href="#step-1-define-settings" id="id9">Step 1: Define Settings</a></p></li>
+<li><p><a class="reference internal" href="#step-2-wire-cli" id="id10">Step 2: Wire CLI</a></p></li>
+<li><p><a class="reference internal" href="#step-3-configure-any-combination" id="id11">Step 3: Configure (any combination)</a></p></li>
+<li><p><a class="reference internal" href="#example-abbreviations-from-config" id="id12">Example: Abbreviations from Config</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#yaml-configuration" id="id12">YAML Configuration</a></p>
+<li><p><a class="reference internal" href="#yaml-configuration" id="id13">YAML Configuration</a></p>
 <ul>
-<li><p><a class="reference internal" href="#file-locations" id="id13">File Locations</a></p></li>
-<li><p><a class="reference internal" href="#file-format" id="id14">File Format</a></p></li>
-<li><p><a class="reference internal" href="#environment-variable-substitution" id="id15">Environment Variable Substitution</a></p></li>
+<li><p><a class="reference internal" href="#file-locations" id="id14">File Locations</a></p></li>
+<li><p><a class="reference internal" href="#file-format" id="id15">File Format</a></p></li>
+<li><p><a class="reference internal" href="#environment-variable-substitution" id="id16">Environment Variable Substitution</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#environment-variables" id="id16">Environment Variables</a></p></li>
-<li><p><a class="reference internal" href="#custom-settings-classes" id="id17">Custom Settings Classes</a></p>
+<li><p><a class="reference internal" href="#environment-variables" id="id17">Environment Variables</a></p></li>
+<li><p><a class="reference internal" href="#ollama-integration" id="id18">Ollama Integration</a></p></li>
+<li><p><a class="reference internal" href="#custom-settings-classes" id="id19">Custom Settings Classes</a></p>
 <ul>
-<li><p><a class="reference internal" href="#globalsettings-vs-toolsettings" id="id18">GlobalSettings vs ToolSettings</a></p></li>
-<li><p><a class="reference internal" href="#composing-settings" id="id19">Composing Settings</a></p></li>
+<li><p><a class="reference internal" href="#globalsettings-vs-toolsettings" id="id20">GlobalSettings vs ToolSettings</a></p></li>
+<li><p><a class="reference internal" href="#composing-settings" id="id21">Composing Settings</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#using-configresolver-directly" id="id20">Using ConfigResolver Directly</a></p></li>
-<li><p><a class="reference internal" href="#security-considerations" id="id21">Security Considerations</a></p>
+<li><p><a class="reference internal" href="#using-configresolver-directly" id="id22">Using ConfigResolver Directly</a></p></li>
+<li><p><a class="reference internal" href="#security-considerations" id="id23">Security Considerations</a></p>
 <ul>
-<li><p><a class="reference internal" href="#sensitive-fields" id="id22">Sensitive Fields</a></p></li>
-<li><p><a class="reference internal" href="#json-size-limits" id="id23">JSON Size Limits</a></p></li>
+<li><p><a class="reference internal" href="#sensitive-fields" id="id24">Sensitive Fields</a></p></li>
+<li><p><a class="reference internal" href="#json-size-limits" id="id25">JSON Size Limits</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#error-handling" id="id24">Error Handling</a></p></li>
-<li><p><a class="reference internal" href="#testing" id="id25">Testing</a></p>
+<li><p><a class="reference internal" href="#error-handling" id="id26">Error Handling</a></p></li>
+<li><p><a class="reference internal" href="#testing" id="id27">Testing</a></p>
 <ul>
-<li><p><a class="reference internal" href="#testing-code-that-uses-settings" id="id26">Testing Code That Uses Settings</a></p></li>
-<li><p><a class="reference internal" href="#mocking-get-settings-in-click-commands" id="id27">Mocking get_settings in Click Commands</a></p></li>
-<li><p><a class="reference internal" href="#testing-with-environment-variables" id="id28">Testing with Environment Variables</a></p></li>
+<li><p><a class="reference internal" href="#testing-code-that-uses-settings" id="id28">Testing Code That Uses Settings</a></p></li>
+<li><p><a class="reference internal" href="#mocking-get-settings-in-click-commands" id="id29">Mocking get_settings in Click Commands</a></p></li>
+<li><p><a class="reference internal" href="#testing-with-environment-variables" id="id30">Testing with Environment Variables</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#troubleshooting" id="id29">Troubleshooting</a></p>
+<li><p><a class="reference internal" href="#troubleshooting" id="id31">Troubleshooting</a></p>
 <ul>
-<li><p><a class="reference internal" href="#missing-environment-variables" id="id30">Missing Environment Variables</a></p></li>
-<li><p><a class="reference internal" href="#yaml-not-loading" id="id31">YAML Not Loading</a></p></li>
-<li><p><a class="reference internal" href="#precedence-confusion" id="id32">Precedence Confusion</a></p></li>
+<li><p><a class="reference internal" href="#missing-environment-variables" id="id32">Missing Environment Variables</a></p></li>
+<li><p><a class="reference internal" href="#yaml-not-loading" id="id33">YAML Not Loading</a></p></li>
+<li><p><a class="reference internal" href="#precedence-confusion" id="id34">Precedence Confusion</a></p></li>
 </ul>
 </li>
 </ul>
 </nav>
 <section id="overview">
-<h2><a class="toc-backref" href="#id2" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
 <p>The configuration system loads settings from multiple sources with clear
 precedence rules:</p>
 <ol class="arabic simple">
@@ -259,10 +261,10 @@ precedence rules:</p>
 <p>This means a <code class="docutils literal notranslate"><span class="pre">--debug</span></code> flag always wins over <code class="docutils literal notranslate"><span class="pre">BUVIS_DEBUG=false</span></code> in the
 environment, which wins over <code class="docutils literal notranslate"><span class="pre">debug:</span> <span class="pre">false</span></code> in a YAML file.</p>
 <section id="source-mapping">
-<h3><a class="toc-backref" href="#id3" role="doc-backlink">Source Mapping</a><a class="headerlink" href="#source-mapping" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Source Mapping</a><a class="headerlink" href="#source-mapping" title="Link to this heading"></a></h3>
 <p>Each Python field maps to CLI, ENV, and YAML sources with consistent naming:</p>
-<table class="docutils align-default" id="id1">
-<caption><span class="caption-text">Mapping Example for <code class="docutils literal notranslate"><span class="pre">PhotoSettings</span></code></span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<table class="docutils align-default" id="id2">
+<caption><span class="caption-text">Mapping Example for <code class="docutils literal notranslate"><span class="pre">PhotoSettings</span></code></span><a class="headerlink" href="#id2" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 25.0%" />
 <col style="width: 25.0%" />
@@ -307,7 +309,7 @@ environment, which wins over <code class="docutils literal notranslate"><span cl
 </ul>
 </section>
 <section id="adding-custom-cli-options">
-<h3><a class="toc-backref" href="#id4" role="doc-backlink">Adding Custom CLI Options</a><a class="headerlink" href="#adding-custom-cli-options" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">Adding Custom CLI Options</a><a class="headerlink" href="#adding-custom-cli-options" title="Link to this heading"></a></h3>
 <p>The <code class="docutils literal notranslate"><span class="pre">&#64;buvis_options</span></code> decorator only adds <code class="docutils literal notranslate"><span class="pre">--debug</span></code>, <code class="docutils literal notranslate"><span class="pre">--log-level</span></code>,
 <code class="docutils literal notranslate"><span class="pre">--config-dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">--config</span></code>. For custom fields, add your own Click
 options and pass them to <code class="docutils literal notranslate"><span class="pre">cli_overrides</span></code>:</p>
@@ -346,7 +348,7 @@ options and pass them to <code class="docutils literal notranslate"><span class=
 </div>
 </section>
 <section id="tool-specific-configuration-files">
-<h3><a class="toc-backref" href="#id5" role="doc-backlink">Tool-Specific Configuration Files</a><a class="headerlink" href="#tool-specific-configuration-files" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">Tool-Specific Configuration Files</a><a class="headerlink" href="#tool-specific-configuration-files" title="Link to this heading"></a></h3>
 <p>You can separate tool configuration from global settings using dedicated files.
 The loader searches for both <code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code> AND <code class="docutils literal notranslate"><span class="pre">buvis-{tool}.yaml</span></code>:</p>
 <p><strong>Option 1: Section in global file</strong></p>
@@ -408,7 +410,7 @@ The loader searches for both <code class="docutils literal notranslate"><span cl
 </section>
 </section>
 <section id="quick-start">
-<h2><a class="toc-backref" href="#id6" role="doc-backlink">Quick Start</a><a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Quick Start</a><a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
 <p>Add configuration to any Click command:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">buvis_options</span><span class="p">,</span> <span class="n">get_settings</span>
@@ -432,10 +434,10 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 <a class="reference internal" href="#custom-settings-classes">Custom Settings Classes</a>.</p>
 </section>
 <section id="downstream-project-integration">
-<h2><a class="toc-backref" href="#id7" role="doc-backlink">Downstream Project Integration</a><a class="headerlink" href="#downstream-project-integration" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Downstream Project Integration</a><a class="headerlink" href="#downstream-project-integration" title="Link to this heading"></a></h2>
 <p>Step-by-step guide for projects depending on buvis-pybase.</p>
 <section id="step-1-define-settings">
-<h3><a class="toc-backref" href="#id8" role="doc-backlink">Step 1: Define Settings</a><a class="headerlink" href="#step-1-define-settings" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Step 1: Define Settings</a><a class="headerlink" href="#step-1-define-settings" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myproject/settings.py</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">GlobalSettings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">SettingsConfigDict</span>
@@ -452,7 +454,7 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 </div>
 </section>
 <section id="step-2-wire-cli">
-<h3><a class="toc-backref" href="#id9" role="doc-backlink">Step 2: Wire CLI</a><a class="headerlink" href="#step-2-wire-cli" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Step 2: Wire CLI</a><a class="headerlink" href="#step-2-wire-cli" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># myproject/cli.py</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">buvis_options</span><span class="p">,</span> <span class="n">get_settings</span>
@@ -469,7 +471,7 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 </div>
 </section>
 <section id="step-3-configure-any-combination">
-<h3><a class="toc-backref" href="#id10" role="doc-backlink">Step 3: Configure (any combination)</a><a class="headerlink" href="#step-3-configure-any-combination" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Step 3: Configure (any combination)</a><a class="headerlink" href="#step-3-configure-any-combination" title="Link to this heading"></a></h3>
 <p>CLI: <code class="docutils literal notranslate"><span class="pre">myproject</span> <span class="pre">--debug</span> <span class="pre">--log-level</span> <span class="pre">DEBUG</span></code></p>
 <p>Environment:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">MYPROJECT_DATA_DIR</span><span class="o">=</span>/var/data
@@ -484,7 +486,7 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 </div>
 </section>
 <section id="example-abbreviations-from-config">
-<h3><a class="toc-backref" href="#id11" role="doc-backlink">Example: Abbreviations from Config</a><a class="headerlink" href="#example-abbreviations-from-config" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">Example: Abbreviations from Config</a><a class="headerlink" href="#example-abbreviations-from-config" title="Link to this heading"></a></h3>
 <p>Load abbreviation definitions from YAML and pass to <code class="docutils literal notranslate"><span class="pre">StringOperator</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">GlobalSettings</span><span class="p">,</span> <span class="n">ToolSettings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.formatting</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringOperator</span>
@@ -517,9 +519,9 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 </section>
 </section>
 <section id="yaml-configuration">
-<h2><a class="toc-backref" href="#id12" role="doc-backlink">YAML Configuration</a><a class="headerlink" href="#yaml-configuration" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id13" role="doc-backlink">YAML Configuration</a><a class="headerlink" href="#yaml-configuration" title="Link to this heading"></a></h2>
 <section id="file-locations">
-<h3><a class="toc-backref" href="#id13" role="doc-backlink">File Locations</a><a class="headerlink" href="#file-locations" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">File Locations</a><a class="headerlink" href="#file-locations" title="Link to this heading"></a></h3>
 <p>Config files are discovered in order (first found wins):</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR/buvis.yaml</span></code> (if env var set)</p></li>
@@ -530,11 +532,13 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 <p>For tool-specific config, files named <code class="docutils literal notranslate"><span class="pre">buvis-{tool}.yaml</span></code> are also checked.</p>
 </section>
 <section id="file-format">
-<h3><a class="toc-backref" href="#id14" role="doc-backlink">File Format</a><a class="headerlink" href="#file-format" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">File Format</a><a class="headerlink" href="#file-format" title="Link to this heading"></a></h3>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.config/buvis/buvis.yaml</span>
 <span class="nt">debug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="nt">log_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INFO</span>
 <span class="nt">output_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">text</span>
+<span class="nt">ollama_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">llama3.2:3b</span><span class="w">        </span><span class="c1"># optional, enables LLM features</span>
+<span class="nt">ollama_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:11434</span><span class="w">  </span><span class="c1"># default</span>
 
 <span class="c1"># Tool-specific sections</span>
 <span class="nt">photo</span><span class="p">:</span>
@@ -547,7 +551,7 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 </div>
 </section>
 <section id="environment-variable-substitution">
-<h3><a class="toc-backref" href="#id15" role="doc-backlink">Environment Variable Substitution</a><a class="headerlink" href="#environment-variable-substitution" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id16" role="doc-backlink">Environment Variable Substitution</a><a class="headerlink" href="#environment-variable-substitution" title="Link to this heading"></a></h3>
 <p>YAML files support environment variable interpolation:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">database</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${DB_HOST}</span><span class="w">                    </span><span class="c1"># Required - fails if not set</span>
@@ -567,7 +571,7 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 </section>
 </section>
 <section id="environment-variables">
-<h2><a class="toc-backref" href="#id16" role="doc-backlink">Environment Variables</a><a class="headerlink" href="#environment-variables" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Environment Variables</a><a class="headerlink" href="#environment-variables" title="Link to this heading"></a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">GlobalSettings</span></code> base class uses the <code class="docutils literal notranslate"><span class="pre">BUVIS_</span></code> prefix in
 SCREAMING_SNAKE_CASE. Override <code class="docutils literal notranslate"><span class="pre">env_prefix</span></code> on your settings class (as shown
 in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</span></code> above) to scope variables per tool:</p>
@@ -582,10 +586,50 @@ in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</s
 </pre></div>
 </div>
 </section>
+<section id="ollama-integration">
+<h2><a class="toc-backref" href="#id18" role="doc-backlink">Ollama Integration</a><a class="headerlink" href="#ollama-integration" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">GlobalSettings</span></code> includes optional ollama fields available to all tools:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ollama_model</span></code></p></td>
+<td><p><em>None</em> (disabled)</p></td>
+<td><p>Ollama model name (e.g. <code class="docutils literal notranslate"><span class="pre">llama3.2:3b</span></code>). When set, enables LLM features
+such as tag suggestion during <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">import</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ollama_url</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">http://localhost:11434</span></code></p></td>
+<td><p>Ollama API base URL.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Configure via environment variables:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_OLLAMA_MODEL</span><span class="o">=</span>llama3.2:3b
+<span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_OLLAMA_URL</span><span class="o">=</span>http://localhost:11434<span class="w">  </span><span class="c1"># default, usually not needed</span>
+</pre></div>
+</div>
+<p>Or YAML:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.config/buvis/buvis.yaml</span>
+<span class="nt">ollama_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">llama3.2:3b</span>
+</pre></div>
+</div>
+<p>If ollama is unreachable when a tool requests it, the call is skipped with a
+warning.</p>
+</section>
 <section id="custom-settings-classes">
-<h2><a class="toc-backref" href="#id17" role="doc-backlink">Custom Settings Classes</a><a class="headerlink" href="#custom-settings-classes" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id19" role="doc-backlink">Custom Settings Classes</a><a class="headerlink" href="#custom-settings-classes" title="Link to this heading"></a></h2>
 <section id="globalsettings-vs-toolsettings">
-<h3><a class="toc-backref" href="#id18" role="doc-backlink">GlobalSettings vs ToolSettings</a><a class="headerlink" href="#globalsettings-vs-toolsettings" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">GlobalSettings vs ToolSettings</a><a class="headerlink" href="#globalsettings-vs-toolsettings" title="Link to this heading"></a></h3>
 <p>Use the right base class:</p>
 <ul class="simple">
 <li><p><strong>GlobalSettings</strong> (<code class="docutils literal notranslate"><span class="pre">pydantic_settings.BaseSettings</span></code>) - For your root settings class. Loads from environment variables automatically using the <code class="docutils literal notranslate"><span class="pre">env_prefix</span></code>.</p></li>
@@ -615,7 +659,7 @@ in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</s
 </div>
 </section>
 <section id="composing-settings">
-<h3><a class="toc-backref" href="#id19" role="doc-backlink">Composing Settings</a><a class="headerlink" href="#composing-settings" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id21" role="doc-backlink">Composing Settings</a><a class="headerlink" href="#composing-settings" title="Link to this heading"></a></h3>
 <p>Model tool namespaces with <code class="docutils literal notranslate"><span class="pre">ToolSettings</span></code> and compose them into your root
 <code class="docutils literal notranslate"><span class="pre">GlobalSettings</span></code> subclass:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
@@ -641,7 +685,7 @@ in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</s
 </section>
 </section>
 <section id="using-configresolver-directly">
-<h2><a class="toc-backref" href="#id20" role="doc-backlink">Using ConfigResolver Directly</a><a class="headerlink" href="#using-configresolver-directly" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id22" role="doc-backlink">Using ConfigResolver Directly</a><a class="headerlink" href="#using-configresolver-directly" title="Link to this heading"></a></h2>
 <p>For non-Click applications or custom resolution:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigResolver</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">myapp.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">PhotoSettings</span>
@@ -658,9 +702,9 @@ in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</s
 </div>
 </section>
 <section id="security-considerations">
-<h2><a class="toc-backref" href="#id21" role="doc-backlink">Security Considerations</a><a class="headerlink" href="#security-considerations" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id23" role="doc-backlink">Security Considerations</a><a class="headerlink" href="#security-considerations" title="Link to this heading"></a></h2>
 <section id="sensitive-fields">
-<h3><a class="toc-backref" href="#id22" role="doc-backlink">Sensitive Fields</a><a class="headerlink" href="#sensitive-fields" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id24" role="doc-backlink">Sensitive Fields</a><a class="headerlink" href="#sensitive-fields" title="Link to this heading"></a></h3>
 <p>Fields matching patterns like <code class="docutils literal notranslate"><span class="pre">password</span></code>, <code class="docutils literal notranslate"><span class="pre">token</span></code>, <code class="docutils literal notranslate"><span class="pre">api_key</span></code>, <code class="docutils literal notranslate"><span class="pre">secret</span></code>
 are automatically:</p>
 <ul class="simple">
@@ -681,7 +725,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="json-size-limits">
-<h3><a class="toc-backref" href="#id23" role="doc-backlink">JSON Size Limits</a><a class="headerlink" href="#json-size-limits" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id25" role="doc-backlink">JSON Size Limits</a><a class="headerlink" href="#json-size-limits" title="Link to this heading"></a></h3>
 <p>Environment variables containing JSON are limited to 64KB to prevent DoS:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecureSettingsMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
@@ -696,7 +740,7 @@ are automatically:</p>
 </section>
 </section>
 <section id="error-handling">
-<h2><a class="toc-backref" href="#id24" role="doc-backlink">Error Handling</a><a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id26" role="doc-backlink">Error Handling</a><a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ConfigResolver</span><span class="p">,</span>
     <span class="n">ConfigurationError</span><span class="p">,</span>
@@ -715,9 +759,9 @@ are automatically:</p>
 </div>
 </section>
 <section id="testing">
-<h2><a class="toc-backref" href="#id25" role="doc-backlink">Testing</a><a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id27" role="doc-backlink">Testing</a><a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
 <section id="testing-code-that-uses-settings">
-<h3><a class="toc-backref" href="#id26" role="doc-backlink">Testing Code That Uses Settings</a><a class="headerlink" href="#testing-code-that-uses-settings" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id28" role="doc-backlink">Testing Code That Uses Settings</a><a class="headerlink" href="#testing-code-that-uses-settings" title="Link to this heading"></a></h3>
 <p>For unit tests, create settings directly without the resolver:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">myapp.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyAppSettings</span>
@@ -734,7 +778,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="mocking-get-settings-in-click-commands">
-<h3><a class="toc-backref" href="#id27" role="doc-backlink">Mocking get_settings in Click Commands</a><a class="headerlink" href="#mocking-get-settings-in-click-commands" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id29" role="doc-backlink">Mocking get_settings in Click Commands</a><a class="headerlink" href="#mocking-get-settings-in-click-commands" title="Link to this heading"></a></h3>
 <p>Use <code class="docutils literal notranslate"><span class="pre">pytest-mock</span></code> to mock <code class="docutils literal notranslate"><span class="pre">get_settings</span></code> in CLI tests:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">click.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">CliRunner</span>
@@ -755,7 +799,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="testing-with-environment-variables">
-<h3><a class="toc-backref" href="#id28" role="doc-backlink">Testing with Environment Variables</a><a class="headerlink" href="#testing-with-environment-variables" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id30" role="doc-backlink">Testing with Environment Variables</a><a class="headerlink" href="#testing-with-environment-variables" title="Link to this heading"></a></h3>
 <p>Use <code class="docutils literal notranslate"><span class="pre">monkeypatch</span></code> to set env vars for integration tests:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_settings_from_env</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">):</span>
     <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setenv</span><span class="p">(</span><span class="s2">&quot;BUVIS_MYAPP_DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
@@ -774,9 +818,9 @@ are automatically:</p>
 </section>
 </section>
 <section id="troubleshooting">
-<h2><a class="toc-backref" href="#id29" role="doc-backlink">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id31" role="doc-backlink">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
 <section id="missing-environment-variables">
-<h3><a class="toc-backref" href="#id30" role="doc-backlink">Missing Environment Variables</a><a class="headerlink" href="#missing-environment-variables" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id32" role="doc-backlink">Missing Environment Variables</a><a class="headerlink" href="#missing-environment-variables" title="Link to this heading"></a></h3>
 <p>If YAML uses <code class="docutils literal notranslate"><span class="pre">${VAR}</span></code> without a default, you’ll get <code class="docutils literal notranslate"><span class="pre">MissingEnvVarError</span></code>:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis.yaml</span>
 <span class="nt">database</span><span class="p">:</span>
@@ -789,7 +833,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="yaml-not-loading">
-<h3><a class="toc-backref" href="#id31" role="doc-backlink">YAML Not Loading</a><a class="headerlink" href="#yaml-not-loading" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id33" role="doc-backlink">YAML Not Loading</a><a class="headerlink" href="#yaml-not-loading" title="Link to this heading"></a></h3>
 <p>Check file locations (in order):</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR/buvis.yaml</span></code></p></li>
@@ -807,7 +851,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="precedence-confusion">
-<h3><a class="toc-backref" href="#id32" role="doc-backlink">Precedence Confusion</a><a class="headerlink" href="#precedence-confusion" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id34" role="doc-backlink">Precedence Confusion</a><a class="headerlink" href="#precedence-confusion" title="Link to this heading"></a></h3>
 <p>CLI always wins, then ENV, then YAML, then defaults.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># This won&#39;t work as expected:</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_DEBUG</span><span class="o">=</span><span class="nb">true</span>
@@ -826,7 +870,7 @@ myapp<span class="w"> </span>--no-debug<span class="w">  </span><span class="c1"
 <h3>GlobalSettings<a class="headerlink" href="#globalsettings" title="Link to this heading"></a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="buvis.pybase.configuration.GlobalSettings">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.configuration.</span></span><span class="sig-name descname"><span class="pre">GlobalSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_case_sensitive</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_nested_model_default_partial_update</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DotenvType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('.')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_file_encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_ignore_empty</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_nested_delimiter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_nested_max_split</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_parse_none_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_parse_enums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_prog_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_parse_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_settings_source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliSettingsSource</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_parse_none_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_hide_none_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_avoid_json</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_enforce_required</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_use_class_docs_for_groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_exit_on_error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_flag_prefix_char</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_implicit_flags</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_ignore_unknown_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_kebab_case</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'all'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'no_enums'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_shortcuts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_secrets_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PathType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'DEBUG'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'INFO'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'WARNING'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'ERROR'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'CRITICAL'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'INFO'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'text'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'json'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'yaml'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'text'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.configuration.GlobalSettings" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.configuration.</span></span><span class="sig-name descname"><span class="pre">GlobalSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_case_sensitive</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_nested_model_default_partial_update</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DotenvType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('.')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_file_encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_ignore_empty</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_nested_delimiter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_nested_max_split</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_parse_none_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_parse_enums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_prog_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_parse_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_settings_source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CliSettingsSource</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_parse_none_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_hide_none_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_avoid_json</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_enforce_required</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_use_class_docs_for_groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_exit_on_error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_flag_prefix_char</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_implicit_flags</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_ignore_unknown_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_kebab_case</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'all'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'no_enums'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_cli_shortcuts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_secrets_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PathType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'DEBUG'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'INFO'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'WARNING'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'ERROR'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'CRITICAL'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'INFO'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'text'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'json'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'yaml'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'text'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ollama_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ollama_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'http://localhost:11434'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#buvis.pybase.configuration.GlobalSettings" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSettings</span></code></p>
 <p>Global runtime settings for BUVIS tools.</p>
 <p>Loads from environment variables with <code class="docutils literal notranslate"><span class="pre">BUVIS_</span></code> prefix.
@@ -846,6 +890,16 @@ Nested delimiter is <code class="docutils literal notranslate"><span class="pre"
 <span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">True,</span> <span class="pre">'case_sensitive':</span> <span class="pre">False,</span> <span class="pre">'cli_avoid_json':</span> <span class="pre">False,</span> <span class="pre">'cli_enforce_required':</span> <span class="pre">False,</span> <span class="pre">'cli_exit_on_error':</span> <span class="pre">True,</span> <span class="pre">'cli_flag_prefix_char':</span> <span class="pre">'-',</span> <span class="pre">'cli_hide_none_type':</span> <span class="pre">False,</span> <span class="pre">'cli_ignore_unknown_args':</span> <span class="pre">False,</span> <span class="pre">'cli_implicit_flags':</span> <span class="pre">False,</span> <span class="pre">'cli_kebab_case':</span> <span class="pre">False,</span> <span class="pre">'cli_parse_args':</span> <span class="pre">None,</span> <span class="pre">'cli_parse_none_str':</span> <span class="pre">None,</span> <span class="pre">'cli_prefix':</span> <span class="pre">'',</span> <span class="pre">'cli_prog_name':</span> <span class="pre">None,</span> <span class="pre">'cli_shortcuts':</span> <span class="pre">None,</span> <span class="pre">'cli_use_class_docs_for_groups':</span> <span class="pre">False,</span> <span class="pre">'enable_decoding':</span> <span class="pre">True,</span> <span class="pre">'env_file':</span> <span class="pre">None,</span> <span class="pre">'env_file_encoding':</span> <span class="pre">None,</span> <span class="pre">'env_ignore_empty':</span> <span class="pre">False,</span> <span class="pre">'env_nested_delimiter':</span> <span class="pre">'__',</span> <span class="pre">'env_nested_max_split':</span> <span class="pre">None,</span> <span class="pre">'env_parse_enums':</span> <span class="pre">None,</span> <span class="pre">'env_parse_none_str':</span> <span class="pre">None,</span> <span class="pre">'env_prefix':</span> <span class="pre">'BUVIS_',</span> <span class="pre">'extra':</span> <span class="pre">'forbid',</span> <span class="pre">'frozen':</span> <span class="pre">True,</span> <span class="pre">'json_file':</span> <span class="pre">None,</span> <span class="pre">'json_file_encoding':</span> <span class="pre">None,</span> <span class="pre">'nested_model_default_partial_update':</span> <span class="pre">False,</span> <span class="pre">'protected_namespaces':</span> <span class="pre">('model_validate',</span> <span class="pre">'model_dump',</span> <span class="pre">'settings_customise_sources'),</span> <span class="pre">'secrets_dir':</span> <span class="pre">None,</span> <span class="pre">'toml_file':</span> <span class="pre">None,</span> <span class="pre">'validate_default':</span> <span class="pre">True,</span> <span class="pre">'yaml_config_section':</span> <span class="pre">None,</span> <span class="pre">'yaml_file':</span> <span class="pre">None,</span> <span class="pre">'yaml_file_encoding':</span> <span class="pre">None}</span></span><a class="headerlink" href="#buvis.pybase.configuration.GlobalSettings.model_config" title="Link to this definition"></a></dt>
 <dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.configuration.GlobalSettings.ollama_model">
+<span class="sig-name descname"><span class="pre">ollama_model</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#buvis.pybase.configuration.GlobalSettings.ollama_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="buvis.pybase.configuration.GlobalSettings.ollama_url">
+<span class="sig-name descname"><span class="pre">ollama_url</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#buvis.pybase.configuration.GlobalSettings.ollama_url" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="buvis.pybase.configuration.GlobalSettings.output_format">
