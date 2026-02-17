@@ -129,7 +129,10 @@ class EditNoteApp(App[None]):
             from bim.commands.edit_note.edit_note import CommandEditNote
             from bim.dependencies import get_repo
 
-            result = CommandEditNote(paths=[self._path], repo=get_repo(), changes=changes).execute()
+            from bim.params.edit_note import EditNoteParams
+
+            params = EditNoteParams(paths=[self._path], changes=changes)
+            result = CommandEditNote(params=params, repo=get_repo()).execute()
             msg = result.output or "No changes"
             self.notify(msg)
         self.exit()
@@ -191,7 +194,10 @@ class EditScreen(ModalScreen[dict[str, Any] | None]):
             from bim.commands.edit_note.edit_note import CommandEditNote
             from bim.dependencies import get_repo
 
-            CommandEditNote(paths=[self._path], repo=get_repo(), changes=changes).execute()
+            from bim.params.edit_note import EditNoteParams
+
+            params = EditNoteParams(paths=[self._path], changes=changes)
+            CommandEditNote(params=params, repo=get_repo()).execute()
         self.dismiss({"file_path": str(self._path)})
 
     @on(Button.Pressed, "#cancel-btn")
