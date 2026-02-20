@@ -9,7 +9,7 @@ from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.entities import ProjectZettel
 
-from bim.integrations.jira_adapter import DictConfig, ZettelJiraAdapter
+from bim.integrations.jira_adapter import ZettelJiraAdapter
 from bim.params.sync_note import SyncNoteParams
 
 if TYPE_CHECKING:
@@ -35,8 +35,7 @@ class CommandSyncNote:
     def execute(self) -> CommandResult:
         match self.params.target_system:
             case "jira":
-                jira_cfg = DictConfig(self.jira_adapter_config)
-                self._target = ZettelJiraAdapter(jira_cfg)
+                self._target = ZettelJiraAdapter(self.jira_adapter_config)
             case _:
                 return CommandResult(
                     success=False,
