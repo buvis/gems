@@ -40,6 +40,14 @@ class TestIsWorldWritable:
 
         assert ConfigurationLoader._is_world_writable(config) is True
 
+    def test_always_false_on_windows(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """On Windows, _is_world_writable always returns False."""
+        config = tmp_path / "config.yaml"
+        config.write_text("key: value\n")
+
+        monkeypatch.setattr("os.name", "nt")
+        assert ConfigurationLoader._is_world_writable(config) is False
+
     def test_nonexistent_file_returns_false(self, tmp_path: Path) -> None:
         """Non-existent file returns False."""
         missing = tmp_path / "missing.yaml"

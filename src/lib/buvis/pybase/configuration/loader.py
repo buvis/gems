@@ -100,7 +100,10 @@ class ConfigurationLoader:
 
         Returns:
             True if file is world-writable, False otherwise or on error.
+            Always False on Windows where Unix permission bits are meaningless.
         """
+        if os.name == "nt":
+            return False
         try:
             mode = path.stat().st_mode
             return bool(mode & stat.S_IWOTH)
@@ -234,8 +237,6 @@ class ConfigurationLoader:
                 if not ConfigurationLoader._is_safe_path(candidate, paths):
                     logger.warning("Skipping unsafe config path: %s", candidate)
                     continue
-                if ConfigurationLoader._is_world_writable(candidate):
-                    logger.warning("Config file is world-writable: %s", candidate)
                 result.append(candidate.resolve())
             except PermissionError:
                 logger.debug("Permission denied: %s", candidate)
