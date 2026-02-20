@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use indexmap::IndexMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
@@ -28,7 +29,7 @@ fn yaml_eq_filter(yaml: &YamlValue, filter: &MetaFilterValue) -> bool {
     }
 }
 
-fn metadata_matches(meta: &HashMap<String, YamlValue>, conditions: &[(String, MetaFilterValue)]) -> bool {
+fn metadata_matches(meta: &IndexMap<String, YamlValue>, conditions: &[(String, MetaFilterValue)]) -> bool {
     conditions.iter().all(|(key, expected)| {
         meta.get(key).map_or(false, |actual| yaml_eq_filter(actual, expected))
     })
@@ -94,14 +95,16 @@ pub fn load_filtered(
 
 // ── Metadata cache ──────────────────────────────────────────────────────
 
-const CACHE_VERSION: u8 = 2;
+const CACHE_VERSION: u8 = 3;
 
 #[derive(Serialize, Deserialize, bincode::Encode, bincode::Decode)]
 struct CacheEntry {
     mtime_secs: i64,
     mtime_nanos: u32,
-    metadata: HashMap<String, YamlValue>,
-    reference: HashMap<String, YamlValue>,
+    #[bincode(with_serde)]
+    metadata: IndexMap<String, YamlValue>,
+    #[bincode(with_serde)]
+    reference: IndexMap<String, YamlValue>,
 }
 
 type Cache = HashMap<String, CacheEntry>;

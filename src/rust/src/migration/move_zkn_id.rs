@@ -2,7 +2,7 @@ use crate::types::ZettelData;
 
 /// Move 'zkn-id' -> 'id' if 'id' doesn't exist.
 pub fn migrate(data: &mut ZettelData) {
-    if let Some(zkn_id) = data.metadata.remove("zkn-id") {
+    if let Some(zkn_id) = data.metadata.shift_remove("zkn-id") {
         if !data.metadata.contains_key("id") {
             data.metadata.insert("id".to_string(), zkn_id);
         }

@@ -158,7 +158,7 @@ pub fn set_default_completed(data: &mut ZettelData) {
     if is_gtd_completed {
         data.metadata
             .insert("completed".to_string(), YamlValue::Bool(true));
-        data.metadata.remove("gtd-list");
+        data.metadata.shift_remove("gtd-list");
     } else if !data.metadata.contains_key("completed") {
         data.metadata
             .insert("completed".to_string(), YamlValue::Bool(false));

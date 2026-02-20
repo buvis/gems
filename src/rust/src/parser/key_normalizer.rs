@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use regex::Regex;
 use std::sync::LazyLock;
@@ -27,8 +27,8 @@ fn underscore(text: &str) -> String {
     s.to_lowercase()
 }
 
-/// Normalize all keys in a HashMap using as_note_field_name.
-pub fn normalize_keys(map: HashMap<String, YamlValue>) -> HashMap<String, YamlValue> {
+/// Normalize all keys in an IndexMap using as_note_field_name.
+pub fn normalize_keys(map: IndexMap<String, YamlValue>) -> IndexMap<String, YamlValue> {
     map.into_iter()
         .map(|(k, v)| (as_note_field_name(&k), v))
         .collect()

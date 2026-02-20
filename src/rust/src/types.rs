@@ -1,12 +1,12 @@
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Mirror of Python's ZettelData value object.
 /// Holds metadata, reference, and content sections parsed from a markdown file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZettelData {
-    pub metadata: HashMap<String, YamlValue>,
-    pub reference: HashMap<String, YamlValue>,
+    pub metadata: IndexMap<String, YamlValue>,
+    pub reference: IndexMap<String, YamlValue>,
     pub sections: Vec<(String, String)>,
     pub file_path: Option<String>,
 }
@@ -14,8 +14,8 @@ pub struct ZettelData {
 impl ZettelData {
     pub fn new() -> Self {
         Self {
-            metadata: HashMap::new(),
-            reference: HashMap::new(),
+            metadata: IndexMap::new(),
+            reference: IndexMap::new(),
             sections: Vec::new(),
             file_path: None,
         }

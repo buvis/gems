@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use regex::Regex;
 use std::sync::LazyLock;
@@ -13,7 +13,7 @@ static DATAVIEW_KEY_RE: LazyLock<Regex> =
 
 /// Extract back matter (reference section) from content.
 /// Returns (parsed reference dict, content with back matter removed).
-pub fn extract_reference(content: &str) -> (Option<HashMap<String, YamlValue>>, String) {
+pub fn extract_reference(content: &str) -> (Option<IndexMap<String, YamlValue>>, String) {
     let Some(caps) = REFERENCE_RE.captures(content) else {
         return (None, content.to_string());
     };
@@ -82,8 +82,8 @@ fn quote_unsafe_strings(text: &str) -> String {
 
 /// Merge YAML list-of-dicts into a single dict.
 /// Duplicate keys become lists.
-fn merge_reference_list(val: serde_yml::Value) -> HashMap<String, YamlValue> {
-    let mut map: HashMap<String, YamlValue> = HashMap::new();
+fn merge_reference_list(val: serde_yml::Value) -> IndexMap<String, YamlValue> {
+    let mut map: IndexMap<String, YamlValue> = IndexMap::new();
 
     let items = match val {
         serde_yml::Value::Sequence(seq) => seq,

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use regex::Regex;
 use std::sync::LazyLock;
@@ -15,7 +15,7 @@ static TAG_LINE_RE: LazyLock<Regex> =
 
 /// Extract front matter YAML from markdown content.
 /// Returns (parsed metadata, content with front matter removed).
-pub fn extract_metadata(content: &str) -> (Option<HashMap<String, YamlValue>>, String) {
+pub fn extract_metadata(content: &str) -> (Option<IndexMap<String, YamlValue>>, String) {
     let Some(caps) = METADATA_RE.captures(content) else {
         return (None, content.to_string());
     };
@@ -60,9 +60,9 @@ fn normalize_tags(text: &str) -> String {
         .to_string()
 }
 
-/// Convert a serde_yml::Value (expected Mapping) into our HashMap<String, YamlValue>.
-fn yaml_to_map(val: serde_yml::Value) -> HashMap<String, YamlValue> {
-    let mut map = HashMap::new();
+/// Convert a serde_yml::Value (expected Mapping) into our IndexMap<String, YamlValue>.
+fn yaml_to_map(val: serde_yml::Value) -> IndexMap<String, YamlValue> {
+    let mut map = IndexMap::new();
 
     if let serde_yml::Value::Mapping(mapping) = val {
         for (k, v) in mapping {

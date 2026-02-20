@@ -2,7 +2,7 @@ use crate::types::{YamlValue, ZettelData};
 
 /// Move 'tag' field into 'tags' list.
 pub fn migrate(data: &mut ZettelData) {
-    let tag = match data.metadata.remove("tag") {
+    let tag = match data.metadata.shift_remove("tag") {
         Some(t) => t,
         None => return,
     };

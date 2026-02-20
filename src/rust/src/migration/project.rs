@@ -192,7 +192,7 @@ fn get_next_action_properties(data: &mut ZettelData) -> NextAction {
     let dates = create_dates_section(&milestone);
 
     // Remove the processed key
-    data.metadata.remove(&key);
+    data.metadata.shift_remove(&key);
 
     NextAction {
         gtd_list,

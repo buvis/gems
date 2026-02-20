@@ -47,10 +47,10 @@ fn yaml_value_to_py(py: Python<'_>, val: &YamlValue) -> PyResult<Py<PyAny>> {
     }
 }
 
-/// Convert HashMap<String, YamlValue> to Python dict.
+/// Convert IndexMap<String, YamlValue> to Python dict (preserves insertion order).
 fn map_to_pydict(
     py: Python<'_>,
-    map: &std::collections::HashMap<String, YamlValue>,
+    map: &indexmap::IndexMap<String, YamlValue>,
 ) -> PyResult<Py<PyDict>> {
     let dict = PyDict::new(py);
     for (key, val) in map {
