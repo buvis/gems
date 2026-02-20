@@ -193,8 +193,8 @@ def import_note(
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
 
     if not scripted:
-        global_settings = get_settings(ctx, GlobalSettings)
-        _interactive_import(Path(paths[0]), path_zettelkasten, global_settings)
+        bim_settings = get_settings(ctx, BimSettings)
+        _interactive_import(Path(paths[0]), path_zettelkasten, bim_settings)
         return
 
     from bim.commands.import_note.import_note import CommandImportNote
@@ -310,8 +310,8 @@ def sync_note(
         if not console.confirm(f"Sync {len(resolved)} zettels to {target_system}?"):
             return
 
-    global_settings = get_settings(ctx, GlobalSettings)
-    jira_adapter: dict[str, Any] = (global_settings.model_extra or {}).get("jira_adapter", {})
+    bim_settings = get_settings(ctx, BimSettings)
+    jira_adapter: dict[str, Any] = (bim_settings.model_extra or {}).get("jira_adapter", {})
     try:
         params = SyncNoteParams(paths=resolved, target_system=target_system)
         cmd = CommandSyncNote(
