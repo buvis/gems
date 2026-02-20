@@ -134,6 +134,7 @@ class TestJiraAdapterCreate:
         assert call_fields["assignee"] == {"key": "testuser", "name": "testuser"}
         field_mappings = jira_settings.field_mappings
         assert call_fields[field_mappings.team] == {"value": "DevTeam"}
+        assert call_fields[field_mappings.environment] == [{"value": "Production"}]
 
     @patch("buvis.pybase.adapters.jira.jira.JIRA")
     def test_returns_dto_with_id_and_link(

@@ -17,6 +17,7 @@ class JiraFieldMappings(BaseModel):
     team: str = "customfield_10501"
     feature: str = "customfield_10001"
     region: str = "customfield_12900"
+    environment: str = "customfield_10108"
 
 
 class JiraSettings(BaseSettings):

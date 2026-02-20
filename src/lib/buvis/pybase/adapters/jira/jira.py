@@ -109,6 +109,7 @@ class JiraAdapter:
             "reporter": {"key": issue.reporter, "name": issue.reporter},
             "summary": issue.title,
         }
+        fields[field_mappings.environment] = [{"value": "Production"}]
         if issue.team is not None:
             fields[field_mappings.team] = {"value": issue.team}
         if issue.region is not None:
