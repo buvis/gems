@@ -108,12 +108,9 @@ jobs:
           range="${prev_tag:+$prev_tag..}$tag"
           repo="${{ github.repository }}"
 
-          {
-            echo "# CHANGELOG"
-            echo ""
-            echo "## $version ($date)"
-            echo ""
-          } > CHANGELOG.md
+          pkg_name=$(sed -n 's/^name = "\(.*\)"/\1/p' pyproject.toml)
+          echo "# ${pkg_name} $version ($date)" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
 
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
@@ -152,7 +149,7 @@ jobs:
 
             if [ -n "$entries" ]; then
               {
-                echo "### $heading"
+                echo "## $heading"
                 echo ""
                 printf '%s' "$entries"
               } >> CHANGELOG.md
