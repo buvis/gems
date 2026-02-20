@@ -45,3 +45,9 @@ environment variables, and migration guides.
    :caption: CLI Tools:
 
    tools
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contributing:
+
+   development
