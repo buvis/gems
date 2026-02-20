@@ -139,10 +139,12 @@ class ConfigurationLoader:
             tool_name: Optional tool name for tool-specific configs.
 
         Returns:
-            Ordered list of candidate paths (buvis.yaml + buvis-{tool}.yaml per location).
+            Ordered list of candidate paths per location (lowest to highest priority):
+            config.yaml, buvis.yaml, buvis-{tool}.yaml.
         """
         candidates: list[Path] = []
         for base in paths:
+            candidates.append(base / "config.yaml")
             candidates.append(base / "buvis.yaml")
             if tool_name:
                 candidates.append(base / f"buvis-{tool_name}.yaml")

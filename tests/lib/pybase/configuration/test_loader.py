@@ -17,6 +17,7 @@ class TestFindConfigFiles:
     def test_no_files_returns_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Empty directory returns empty list."""
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
         monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
 
         result = ConfigurationLoader.find_config_files()
@@ -26,6 +27,7 @@ class TestFindConfigFiles:
     def test_single_buvis_yaml_found(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Single buvis.yaml is returned."""
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
         config = tmp_path / "buvis.yaml"
         config.write_text("key: value\n")
 
@@ -37,6 +39,7 @@ class TestFindConfigFiles:
     def test_tool_specific_file_found(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Tool-specific config file is found."""
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
         tool_config = tmp_path / "buvis-cli.yaml"
         tool_config.write_text("tool: true\n")
 
@@ -47,6 +50,7 @@ class TestFindConfigFiles:
     def test_both_buvis_and_tool_config_found(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Both buvis.yaml and tool-specific are found."""
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
         (tmp_path / "buvis.yaml").write_text("base: true\n")
         (tmp_path / "buvis-mytool.yaml").write_text("tool: true\n")
 
@@ -57,6 +61,7 @@ class TestFindConfigFiles:
     def test_permission_denied_skipped(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Permission error skips file without crashing."""
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
         config = tmp_path / "buvis.yaml"
         config.write_text("key: value\n")
 
@@ -347,19 +352,28 @@ class TestGetCandidateFiles:
     def test_single_path_no_tool(self) -> None:
         result = ConfigurationLoader._get_candidate_files([Path("/cfg")], None)
 
-        assert result == [Path("/cfg/buvis.yaml")]
+        assert result == [Path("/cfg/config.yaml"), Path("/cfg/buvis.yaml")]
 
     def test_multiple_paths_no_tool(self) -> None:
         paths = [Path("/a"), Path("/b")]
 
         result = ConfigurationLoader._get_candidate_files(paths, None)
 
-        assert result == [Path("/a/buvis.yaml"), Path("/b/buvis.yaml")]
+        assert result == [
+            Path("/a/config.yaml"),
+            Path("/a/buvis.yaml"),
+            Path("/b/config.yaml"),
+            Path("/b/buvis.yaml"),
+        ]
 
     def test_single_path_with_tool(self) -> None:
         result = ConfigurationLoader._get_candidate_files([Path("/cfg")], "payroll")
 
-        assert result == [Path("/cfg/buvis.yaml"), Path("/cfg/buvis-payroll.yaml")]
+        assert result == [
+            Path("/cfg/config.yaml"),
+            Path("/cfg/buvis.yaml"),
+            Path("/cfg/buvis-payroll.yaml"),
+        ]
 
     def test_multiple_paths_with_tool_maintains_interleaved_order(self) -> None:
         paths = [Path("/a"), Path("/b")]
@@ -367,8 +381,10 @@ class TestGetCandidateFiles:
         result = ConfigurationLoader._get_candidate_files(paths, "myapp")
 
         expected = [
+            Path("/a/config.yaml"),
             Path("/a/buvis.yaml"),
             Path("/a/buvis-myapp.yaml"),
+            Path("/b/config.yaml"),
             Path("/b/buvis.yaml"),
             Path("/b/buvis-myapp.yaml"),
         ]
@@ -377,7 +393,7 @@ class TestGetCandidateFiles:
     def test_empty_string_tool_name_treated_as_no_tool(self) -> None:
         result = ConfigurationLoader._get_candidate_files([Path("/cfg")], "")
 
-        assert result == [Path("/cfg/buvis.yaml")]
+        assert result == [Path("/cfg/config.yaml"), Path("/cfg/buvis.yaml")]
 
 
 class TestMergeConfigs:
@@ -533,6 +549,7 @@ class TestFindConfigFilesLogging:
         from unittest.mock import patch
 
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
         config_file = tmp_path / "buvis.yaml"
         config_file.write_text("key: value")
 
@@ -557,6 +574,7 @@ class TestFindConfigFilesLogging:
         import logging
 
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
         config = tmp_path / "buvis.yaml"
         config.write_text("key: value")
 
