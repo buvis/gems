@@ -19,6 +19,15 @@ if TYPE_CHECKING:
 DEFAULT_JIRA_IGNORE_US_LABEL = "do-not-track"
 
 
+def _extract_issue_key(md_link: str) -> str | None:
+    """Extract issue key from markdown link like [PROJ-123](url)."""
+    if md_link.startswith("["):
+        end = md_link.find("]")
+        if end > 1:
+            return md_link[1:end]
+    return None
+
+
 class CommandSyncNote:
     def __init__(
         self,
@@ -67,7 +76,16 @@ class CommandSyncNote:
                 continue
 
             if current_us:
-                messages.append(f"Already linked to {project.us}")
+                issue_key = _extract_issue_key(current_us)
+                if issue_key:
+                    updated = self._target.update_description_from_project(issue_key, project)
+                    if updated:
+                        messages.append(f"Description updated for {issue_key}")
+                        synced_count += 1
+                    else:
+                        messages.append(f"Already in sync with {issue_key}")
+                else:
+                    warnings.append(f"Can't parse issue key from: {current_us}")
                 continue
 
             new_issue = self._target.create_from_project(project)
