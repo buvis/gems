@@ -57,6 +57,14 @@ class TestDirectorizeCollision:
         assert source.exists()
         assert any("Destination exists, skipped" in warning for warning in result.warnings)
 
+    def test_target_name_is_existing_file_warns(self, tmp_path: Path) -> None:
+        (tmp_path / "report.pdf").write_text("x")
+        (tmp_path / "report").write_text("blocker")  # file, not dir
+
+        result = CommandDirectorize(directory=str(tmp_path)).execute()
+
+        assert any("Failed to directorize" in w for w in result.warnings)
+
 
 class TestDirectorizeErrors:
     def test_permission_error_warns(self, tmp_path: Path) -> None:
