@@ -134,6 +134,7 @@ jobs:
             entries=""
             while IFS='|' read -r hash msg; do
               [ -z "$hash" ] && continue
+              [[ "$msg" =~ ^build.*:\ bump\ to ]] && continue
               body="${msg#*: }"
               scope=""
               if [[ "$msg" =~ ^${type}\(${scope_re}\) ]]; then
