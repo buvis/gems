@@ -14,6 +14,9 @@ web = false
 [tool.commands]
 status = "Show dotfiles status"
 add = "Add file to dotfiles"
+pull = "Pull dotfiles and update submodules"
+commit = "Commit dotfiles changes"
+push = "Push dotfiles to remote"
 
 [tool.requirements]
 python = ">=3.11"
