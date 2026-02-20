@@ -311,7 +311,7 @@ def sync_note(
             return
 
     bim_settings = get_settings(ctx, BimSettings)
-    jira_adapter: dict[str, Any] = (bim_settings.model_extra or {}).get("jira_adapter", {})
+    jira_adapter: dict[str, Any] = bim_settings.adapters.get("jira", {})
     try:
         params = SyncNoteParams(paths=resolved, target_system=target_system)
         cmd = CommandSyncNote(

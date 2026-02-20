@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,3 +43,4 @@ class GlobalSettings(BaseSettings):
     output_format: Literal["text", "json", "yaml"] = "text"
     ollama_model: str | None = None
     ollama_url: str = "http://localhost:11434"
+    adapters: dict[str, dict[str, Any]] = {}
