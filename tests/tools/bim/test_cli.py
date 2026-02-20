@@ -310,7 +310,7 @@ class TestSyncCommand:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
-            mock_settings.return_value = MagicMock(model_extra={"jira_adapter": {"host": "jira.example"}})
+            mock_settings.return_value = MagicMock(adapters={"jira": {"host": "jira.example"}})
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
