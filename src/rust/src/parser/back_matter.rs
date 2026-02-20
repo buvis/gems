@@ -124,3 +124,56 @@ fn remove_back_matter(content: &str) -> String {
     let re = Regex::new(r"(?m)(^---$)[\s\S]*").unwrap();
     re.replace(content, "").trim_end().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_reference_preserves_key_order() {
+        let content = "\
+## Content
+
+Body text.
+
+---
+- zebra: last animal
+- alpha: first letter
+- middle: center
+- beta: second letter
+";
+        let (reference, _) = extract_reference(content);
+        let reference = reference.expect("should parse reference");
+        let keys: Vec<&str> = reference.keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["zebra", "alpha", "middle", "beta"]);
+    }
+
+    #[test]
+    fn test_extract_reference_preserves_order_with_many_keys() {
+        // Enough keys that HashMap would almost certainly shuffle them
+        let content = "\
+## Content
+
+Body.
+
+---
+- key-z: z
+- key-a: a
+- key-m: m
+- key-f: f
+- key-r: r
+- key-c: c
+- key-x: x
+- key-e: e
+- key-p: p
+- key-b: b
+";
+        let (reference, _) = extract_reference(content);
+        let reference = reference.expect("should parse reference");
+        let keys: Vec<&str> = reference.keys().map(|k| k.as_str()).collect();
+        assert_eq!(
+            keys,
+            vec!["key-z", "key-a", "key-m", "key-f", "key-r", "key-c", "key-x", "key-e", "key-p", "key-b"]
+        );
+    }
+}

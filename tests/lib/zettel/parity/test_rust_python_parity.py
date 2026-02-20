@@ -124,6 +124,56 @@ class TestParseFileParity:
         _compare_sections(py_data.sections, rust_data.sections)
 
 
+class TestReferenceOrderParity:
+    """Verify Rust parser preserves reference key insertion order (IndexMap)."""
+
+    def test_rust_preserves_reference_key_order(self):
+        path = FIXTURES_DIR / "many_references.md"
+        rust_raw = parse_file(str(path))
+        rust_data = _rust_dict_to_zettel_data(rust_raw)
+
+        expected_keys = [
+            "zebra",
+            "alpha",
+            "middle",
+            "beta",
+            "source",
+            "link",
+            "parent",
+            "category",
+            "priority",
+            "status",
+        ]
+        assert list(rust_data.reference.keys()) == expected_keys
+
+    def test_rust_reference_order_matches_python(self):
+        path = FIXTURES_DIR / "many_references.md"
+        py_data = ZettelFileParser.from_file(path)
+        rust_raw = parse_file(str(path))
+        rust_data = _rust_dict_to_zettel_data(rust_raw)
+
+        assert list(py_data.reference.keys()) == list(rust_data.reference.keys())
+
+    def test_format_round_trip_preserves_reference_order(self):
+        from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
+            MarkdownZettelFormatter,
+        )
+
+        path = FIXTURES_DIR / "many_references.md"
+        rust_raw = parse_file(str(path))
+        rust_data = _rust_dict_to_zettel_data(rust_raw)
+
+        formatted = MarkdownZettelFormatter.format(rust_data)
+
+        # Re-parse the formatted output
+        from buvis.pybase.zettel.infrastructure.persistence.file_parsers.parsers.markdown.markdown import (
+            MarkdownZettelFileParser,
+        )
+
+        reparsed = MarkdownZettelFileParser.parse(formatted)
+        assert list(reparsed.reference.keys()) == list(rust_data.reference.keys())
+
+
 class TestLoadAllParity:
     """Test that load_all produces same results as parsing files individually."""
 
