@@ -39,7 +39,7 @@ jobs:
           uv run ruff format --check src/ tests/
 
       - name: Run tests
-        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=62  # ratchet: bump after adding tests
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=70  # ratchet: bump after adding tests
 
       - name: Type check
         run: uv run mypy src/lib/ src/tools/
