@@ -49,6 +49,7 @@ puc = "puc.cli:cli"
 pinger = "pinger.cli:cli"
 readerctl = "readerctl.cli:cli"
 sysup = "sysup.cli:cli"
+vuc = "vuc.cli:cli"
 zseq = "zseq.cli:cli"
 
 [project.urls]
@@ -77,6 +78,7 @@ packages = [
   "src/tools/pinger",
   "src/tools/readerctl",
   "src/tools/sysup",
+  "src/tools/vuc",
   "src/tools/zseq",
 ]
 
