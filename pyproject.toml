@@ -45,6 +45,7 @@ morph = "morph.cli:cli"
 muc = "muc.cli:cli"
 netscan = "netscan.cli:cli"
 outlookctl = "outlookctl.cli:cli"
+puc = "puc.cli:cli"
 pinger = "pinger.cli:cli"
 readerctl = "readerctl.cli:cli"
 zseq = "zseq.cli:cli"
@@ -71,6 +72,7 @@ packages = [
   "src/tools/muc",
   "src/tools/netscan",
   "src/tools/outlookctl",
+  "src/tools/puc",
   "src/tools/pinger",
   "src/tools/readerctl",
   "src/tools/zseq",
