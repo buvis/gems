@@ -43,6 +43,7 @@ fren = "fren.cli:cli"
 hello-world = "hello_world.cli:cli"
 morph = "morph.cli:cli"
 muc = "muc.cli:cli"
+netscan = "netscan.cli:cli"
 outlookctl = "outlookctl.cli:cli"
 pinger = "pinger.cli:cli"
 readerctl = "readerctl.cli:cli"
@@ -68,6 +69,7 @@ packages = [
   "src/tools/hello_world",
   "src/tools/morph",
   "src/tools/muc",
+  "src/tools/netscan",
   "src/tools/outlookctl",
   "src/tools/pinger",
   "src/tools/readerctl",
