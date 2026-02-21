@@ -119,8 +119,6 @@ class CommandDeblank:
     @staticmethod
     def _restore_original(path: Path, old_path: Path, warnings: list[str]) -> None:
         try:
-            if path.exists():
-                path.unlink()
             if old_path.exists():
                 old_path.rename(path)
         except OSError as exc:
