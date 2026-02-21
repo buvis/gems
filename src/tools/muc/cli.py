@@ -93,5 +93,25 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
     cmd.execute()
 
 
+@cli.command("cover", help="Keep only the newest cover image per directory")
+@click.argument("directory")
+def cover(directory: str) -> None:
+    path_directory = Path(directory).resolve()
+    if not path_directory.is_dir():
+        console.panic(f"{path_directory} isn't a directory")
+
+    from muc.commands.cover.cover import CommandCover
+
+    cmd = CommandCover(directory=path_directory)
+    result = cmd.execute()
+
+    for w in result.warnings:
+        console.warning(w)
+    if result.success:
+        console.success(result.output or "Done")
+    else:
+        console.failure(result.error or "Failed")
+
+
 if __name__ == "__main__":
     cli()
