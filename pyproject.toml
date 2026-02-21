@@ -48,6 +48,7 @@ outlookctl = "outlookctl.cli:cli"
 puc = "puc.cli:cli"
 pinger = "pinger.cli:cli"
 readerctl = "readerctl.cli:cli"
+sysup = "sysup.cli:cli"
 zseq = "zseq.cli:cli"
 
 [project.urls]
@@ -75,6 +76,7 @@ packages = [
   "src/tools/puc",
   "src/tools/pinger",
   "src/tools/readerctl",
+  "src/tools/sysup",
   "src/tools/zseq",
 ]
 
