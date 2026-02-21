@@ -31,8 +31,9 @@ muc = ["ffmpeg-python>=0.2.0,<1"]
 pinger = ["ping3>=5.1.5,<6"]
 readerctl = ["requests>=2.32.5,<3"]
 fren = ["python-slugify>=8,<9", "Unidecode>=1.3,<2"]
+morph = ["markdownify>=0.14,<1"]
 bim-web = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1", "watchfiles>=1.0,<2"]
-all = ["buvis-gems[bim,bim-web,fren,hello-world,muc,pinger,readerctl]"]
+all = ["buvis-gems[bim,bim-web,fren,hello-world,morph,muc,pinger,readerctl]"]
 
 [project.scripts]
 bim = "bim.cli:cli"
@@ -40,6 +41,7 @@ dot = "dot.cli:cli"
 fctracker = "fctracker.cli:cli"
 fren = "fren.cli:cli"
 hello-world = "hello_world.cli:cli"
+morph = "morph.cli:cli"
 muc = "muc.cli:cli"
 outlookctl = "outlookctl.cli:cli"
 pinger = "pinger.cli:cli"
@@ -64,6 +66,7 @@ packages = [
   "src/tools/fctracker",
   "src/tools/fren",
   "src/tools/hello_world",
+  "src/tools/morph",
   "src/tools/muc",
   "src/tools/outlookctl",
   "src/tools/pinger",
@@ -93,7 +96,7 @@ namespace_packages = true
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["jira.*", "pexpect.*", "xattr.*", "inflection.*", "win32com.*", "ffmpeg.*", "ping3.*", "pyfiglet.*", "buvis.pybase.zettel._core", "tomli", "slugify"]
+module = ["jira.*", "pexpect.*", "xattr.*", "inflection.*", "win32com.*", "ffmpeg.*", "ping3.*", "pyfiglet.*", "buvis.pybase.zettel._core", "tomli", "slugify", "markdownify"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
