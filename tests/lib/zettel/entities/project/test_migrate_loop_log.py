@@ -3,7 +3,9 @@ from datetime import datetime
 from buvis.pybase.zettel.domain.entities.project.services.migration.upgrades.migrate_loop_log import (
     extract_log_entries,
     format_log_entries,
+    migrate_loop_log,
 )
+from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
 def test_extract_log_entries():
@@ -54,3 +56,10 @@ def test_format_log_entries_empty():
 
     result = format_log_entries(log_entries)
     assert result == expected_output
+
+
+def test_migrate_loop_log_empty_sections():
+    zettel_data = ZettelData()
+    zettel_data.sections = []
+    migrate_loop_log(zettel_data)
+    assert zettel_data.sections == []

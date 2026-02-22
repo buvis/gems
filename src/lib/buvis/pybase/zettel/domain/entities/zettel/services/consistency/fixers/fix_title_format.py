@@ -30,6 +30,8 @@ def fix_title_format(zettel_data: ZettelData) -> None:
         text=title,
         level=0,
     )
-    fixed_title = fixed_title.lstrip().rstrip()
+    fixed_title = fixed_title.strip()
+    if not fixed_title:
+        return
     fixed_title = fixed_title[0].upper() + fixed_title[1:]
     zettel_data.metadata["title"] = fixed_title

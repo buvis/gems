@@ -41,6 +41,8 @@ def migrate_loop_log(zettel_data: ZettelData) -> None:
     Returns:
         None. The function modifies the `zettel_data` in place.
     """
+    if not zettel_data.sections:
+        return
     header, content = zettel_data.sections[0]
     log_entries, remaining_content = extract_log_entries(content)
     next_action = get_next_action_properties(zettel_data)

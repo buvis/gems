@@ -25,6 +25,14 @@ def test_fix_title_format(sample_zettel_data):
         )
 
 
+def test_fix_title_format_whitespace_only_title():
+    zettel_data = ZettelData()
+    zettel_data.metadata = {"title": "   "}
+    with patch.object(StringOperator, "replace_abbreviations", return_value="   "):
+        fix_title_format(zettel_data)
+    assert zettel_data.metadata["title"] == "   "
+
+
 def test_fix_title_format_idempotence(sample_zettel_data):
     # Test to ensure that running the function twice does not change the outcome after the first modification
     with patch.object(StringOperator, "replace_abbreviations", return_value="Doctor John Doe") as mock_method:

@@ -62,10 +62,7 @@ class ShellAdapter:
         expanded_command = self._expand_alias(command)
         expanded_command = self._expand_environment_variables(expanded_command)
 
-        cwd = Path.cwd()
-
-        if working_dir and not Path(working_dir).is_dir():
-            cwd = Path(working_dir)
+        cwd = Path(working_dir) if working_dir and Path(working_dir).is_dir() else Path.cwd()
 
         try:
             result = subprocess.run(  # noqa: S602 - shell=True required for alias/env expansion
@@ -95,10 +92,7 @@ class ShellAdapter:
         expanded_command = self._expand_alias(command)
         expanded_command = self._expand_environment_variables(expanded_command)
 
-        cwd = Path.cwd()
-
-        if working_dir and not Path(working_dir).is_dir():
-            cwd = Path(working_dir)
+        cwd = Path(working_dir) if working_dir and Path(working_dir).is_dir() else Path.cwd()
 
         try:
             child = pexpect.spawn(expanded_command, encoding="utf-8", cwd=cwd)

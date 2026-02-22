@@ -148,5 +148,4 @@ class TestZettelFileParser:
         parsed = ZettelFileParser.from_file(path)
 
         assert parsed.metadata["title"] == "Project alpha"
-        # Known Python bug: len(fmt_string) used instead of digit count, so 1030 → 10:3
-        assert parsed.metadata["date"] == datetime(2024, 1, 15, 10, 3, tzinfo=timezone.utc)
+        assert parsed.metadata["date"] == datetime(2024, 1, 15, 10, 30, tzinfo=timezone.utc)

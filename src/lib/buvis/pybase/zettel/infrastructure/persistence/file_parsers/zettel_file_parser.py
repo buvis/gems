@@ -60,12 +60,14 @@ def _get_date_from_file(file_path: Path) -> datetime | None:
     Returns:
         The extracted datetime object, if any, otherwise None.
     """
-    if DATETIME_PATTERN.match(file_path.stem):
-        for fmt in ("%Y%m%d%H%M%S", "%Y%m%d%H%M"):
-            try:
-                return datetime.strptime(file_path.stem[: len(fmt)], fmt).replace(tzinfo=timezone.utc)
-            except ValueError:
-                pass
+    m = DATETIME_PATTERN.match(file_path.stem)
+    if m:
+        digits = m.group()
+        fmt = "%Y%m%d%H%M%S" if len(digits) == 14 else "%Y%m%d%H%M"
+        try:
+            return datetime.strptime(digits, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
 
     fs_creation_date = FileMetadataReader.get_creation_datetime(file_path)
     git_first_commit_date = FileMetadataReader.get_first_commit_datetime(file_path)

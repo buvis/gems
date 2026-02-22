@@ -181,7 +181,7 @@ class TestShellAdapterExe:
         mock_run: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
-        """Test executing a command with a specific working directory."""
+        """Test executing a command with a valid working directory."""
         mock_result = Mock()
         mock_result.stdout = "success"
         mock_result.stderr = ""
@@ -193,9 +193,8 @@ class TestShellAdapterExe:
         with patch.object(Path, "is_dir", return_value=True):
             stderr, stdout = shell_adapter.exe("pwd", working_dir)
 
-        # Verify subprocess.run was called with the correct cwd
         call_args = mock_run.call_args
-        assert call_args[1]["cwd"] == Path.cwd()  # Should use current dir when working_dir doesn't exist
+        assert call_args[1]["cwd"] == working_dir
 
     @patch("subprocess.run")
     def test_exe_with_invalid_working_directory(
@@ -203,7 +202,7 @@ class TestShellAdapterExe:
         mock_run: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
-        """Test executing a command with an invalid working directory."""
+        """Test executing a command with a nonexistent working directory falls back to cwd."""
         mock_result = Mock()
         mock_result.stdout = "success"
         mock_result.stderr = ""
@@ -214,9 +213,8 @@ class TestShellAdapterExe:
 
         stderr, stdout = shell_adapter.exe("pwd", working_dir)
 
-        # Should fall back to current directory
         call_args = mock_run.call_args
-        assert call_args[1]["cwd"] == working_dir
+        assert call_args[1]["cwd"] == Path.cwd()
 
     @patch("subprocess.run")
     def test_exe_expands_aliases(
@@ -371,7 +369,7 @@ class TestShellAdapterInteract:
         mock_spawn: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
-        """Test interactive session with working directory."""
+        """Test interactive session with valid working directory."""
         mock_child = Mock()
         mock_child.expect.return_value = 1  # EOF
         mock_spawn.return_value = mock_child
@@ -380,7 +378,7 @@ class TestShellAdapterInteract:
         with patch.object(Path, "is_dir", return_value=True):
             shell_adapter.interact("python", ">>> ", working_dir)
 
-        mock_spawn.assert_called_once_with("python", encoding="utf-8", cwd=Path.cwd())
+        mock_spawn.assert_called_once_with("python", encoding="utf-8", cwd=working_dir)
 
     @patch("pexpect.spawn")
     def test_interact_expands_aliases(
