@@ -170,27 +170,40 @@ class TestCommandCoverErrors:
         assert any("Failed to inspect directory" in w for w in result.warnings)
 
     def test_stat_oserror_warns(self, tmp_path) -> None:
-        self._touch(tmp_path / "cover.jpg", mtime=100.0)
-        self._touch(tmp_path / "cover.png", mtime=200.0)
+        (tmp_path / "cover.jpg").touch()
+        (tmp_path / "cover.png").touch()
 
-        # The cover code builds cover_files via iterdir+is_file, then calls
-        # path.stat().st_mtime in a separate list comp. We need stat to work
-        # during is_file() but fail during the mtime lookup. Since is_file
-        # catches OSError internally, we track per-file call count and fail
-        # on the 4th call (after rglob/is_dir=1, is_file=2, is_symlink-related=3).
+        # Patch stat to always raise for cover files, but also patch is_file
+        # and is_symlink to bypass their internal stat calls. This avoids
+        # depending on pathlib internals (call counts vary across versions).
         original_stat = type(tmp_path).stat
-        calls_per_file: dict[str, int] = {}
+        original_is_file = type(tmp_path).is_file
+        original_is_dir = type(tmp_path).is_dir
+        original_is_symlink = type(tmp_path).is_symlink
+
+        def _is_cover(p):
+            return p.stem.lower() == "cover" and p.suffix.lower() in {".jpg", ".jpeg", ".png"}
 
         def broken_stat(self_path, *args, **kwargs):
-            if self_path.stem.lower() == "cover" and self_path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
-                key = str(self_path)
-                calls_per_file[key] = calls_per_file.get(key, 0) + 1
-                # Fail on the 4th+ call per file (the mtime lookup)
-                if calls_per_file[key] >= 4:
-                    raise OSError("stat failed")
+            if _is_cover(self_path):
+                raise OSError("stat failed")
             return original_stat(self_path, *args, **kwargs)
 
-        with patch.object(type(tmp_path), "stat", broken_stat):
+        def force_is_file(self_path):
+            return True if _is_cover(self_path) else original_is_file(self_path)
+
+        def force_not_dir(self_path):
+            return False if _is_cover(self_path) else original_is_dir(self_path)
+
+        def force_not_symlink(self_path):
+            return False if _is_cover(self_path) else original_is_symlink(self_path)
+
+        with (
+            patch.object(type(tmp_path), "stat", broken_stat),
+            patch.object(type(tmp_path), "is_file", force_is_file),
+            patch.object(type(tmp_path), "is_dir", force_not_dir),
+            patch.object(type(tmp_path), "is_symlink", force_not_symlink),
+        ):
             result = CommandCover(tmp_path).execute()
 
         assert result.success is True
