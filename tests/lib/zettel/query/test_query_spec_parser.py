@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
 from buvis.pybase.zettel.infrastructure.query.query_spec_parser import (
     list_query_files,
+    parse_query_file,
     parse_query_spec,
     parse_query_string,
     resolve_query_file,
@@ -495,6 +498,114 @@ class TestParseQueryString:
     def test_invalid_yaml(self):
         with pytest.raises(ValueError, match="YAML mapping"):
             parse_query_string("just a string")
+
+
+class TestParseQueryFile:
+    def test_valid_yaml_file(self, tmp_path: Path) -> None:
+        f = tmp_path / "query.yaml"
+        f.write_text("filter:\n  type:\n    eq: project\n")
+        spec = parse_query_file(str(f))
+        assert spec.filter is not None
+        assert spec.filter.field == "type"
+        assert spec.filter.value == "project"
+
+    def test_minimal_yaml_file(self, tmp_path: Path) -> None:
+        f = tmp_path / "empty.yaml"
+        f.write_text("{}")
+        spec = parse_query_file(str(f))
+        assert spec.source.directory is None
+        assert spec.filter is None
+
+    def test_non_dict_yaml_raises(self, tmp_path: Path) -> None:
+        f = tmp_path / "bad.yaml"
+        f.write_text("- item1\n- item2\n")
+        with pytest.raises(ValueError, match="YAML mapping"):
+            parse_query_file(str(f))
+
+    def test_file_with_all_sections(self, tmp_path: Path) -> None:
+        content = (
+            "source:\n"
+            "  directory: ~/notes\n"
+            "filter:\n"
+            "  type:\n"
+            "    eq: note\n"
+            "sort:\n"
+            "  - field: date\n"
+            "    order: desc\n"
+            "columns:\n"
+            "  - field: title\n"
+            "output:\n"
+            "  format: table\n"
+        )
+        f = tmp_path / "full.yaml"
+        f.write_text(content)
+        spec = parse_query_file(str(f))
+        assert spec.source.directory == "~/notes"
+        assert spec.filter.field == "type"
+        assert len(spec.sort) == 1
+        assert len(spec.columns) == 1
+        assert spec.output.format == "table"
+
+
+class TestExpandParser:
+    def test_expand_parsing(self):
+        spec = parse_query_spec({"expand": {"field": "tags", "as": "tag", "filter": "tag != 'draft'"}})
+        assert spec.expand is not None
+        assert spec.expand.field == "tags"
+        assert spec.expand.as_ == "tag"
+        assert spec.expand.filter == "tag != 'draft'"
+
+    def test_expand_defaults(self):
+        spec = parse_query_spec({"expand": {"field": "tags"}})
+        assert spec.expand.as_ == "item"
+        assert spec.expand.filter is None
+
+    def test_expand_missing_field_raises(self):
+        with pytest.raises(ValueError, match="field"):
+            parse_query_spec({"expand": {"as": "tag"}})
+
+    def test_expand_non_dict_raises(self):
+        with pytest.raises(ValueError, match="field"):
+            parse_query_spec({"expand": "tags"})
+
+    def test_no_expand_defaults_none(self):
+        spec = parse_query_spec({})
+        assert spec.expand is None
+
+
+class TestFilterEdgeCases:
+    def test_non_dict_filter_raises(self):
+        with pytest.raises(ValueError, match="mapping"):
+            parse_query_spec({"filter": "not a dict"})
+
+    def test_multi_key_field_condition_raises(self):
+        with pytest.raises(ValueError, match="exactly one key"):
+            parse_query_spec({"filter": {"type": {"eq": "a"}, "tags": {"eq": "b"}}})
+
+    def test_condition_not_dict_raises(self):
+        with pytest.raises(ValueError, match="operator: value"):
+            parse_query_spec({"filter": {"type": "project"}})
+
+    def test_all_valid_operators(self):
+        for op in ("eq", "ne", "gt", "ge", "lt", "le", "in", "contains", "regex"):
+            spec = parse_query_spec({"filter": {"field": {op: "val"}}})
+            assert spec.filter.operator == op
+
+
+class TestSortEdgeCases:
+    def test_sort_missing_field_raises(self):
+        with pytest.raises(ValueError, match="field"):
+            parse_query_spec({"sort": [{"order": "desc"}]})
+
+    def test_sort_non_dict_raises(self):
+        with pytest.raises(ValueError, match="field"):
+            parse_query_spec({"sort": ["title"]})
+
+
+class TestColumnEdgeCases:
+    def test_column_non_dict_raises(self):
+        with pytest.raises(ValueError, match="mapping"):
+            parse_query_spec({"columns": ["title"]})
 
 
 class TestResolveQueryFile:

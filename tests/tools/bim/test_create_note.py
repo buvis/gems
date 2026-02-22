@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import create_note
+from bim.commands.create_note.create_note import CommandCreateNote
 from bim.params.create_note import CreateNoteParams
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
@@ -148,3 +149,213 @@ class TestCreateNoteCli:
 
             assert result.exit_code == 0
             mock_console.panic.assert_called_once_with("missing template")
+
+
+class TestCommandCreateNote:
+    def test_raises_when_zettelkasten_dir_missing(self, tmp_path: Path) -> None:
+        missing = tmp_path / "nonexistent"
+        params = CreateNoteParams(zettel_type="note", title="Test")
+        repo = MagicMock()
+        templates: dict[str, MagicMock] = {}
+        hook_runner = MagicMock()
+
+        try:
+            CommandCreateNote(
+                params=params,
+                path_zettelkasten=missing,
+                repo=repo,
+                templates=templates,
+                hook_runner=hook_runner,
+            )
+            raised = False
+        except FileNotFoundError:
+            raised = True
+
+        assert raised
+
+    def test_returns_error_when_type_is_none(self, tmp_path: Path) -> None:
+        params = CreateNoteParams(zettel_type=None, title="Test")
+        repo = MagicMock()
+        templates: dict[str, MagicMock] = {}
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates=templates,
+            hook_runner=hook_runner,
+        )
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "zettel_type and title are required" in (result.error or "")
+
+    def test_returns_error_when_title_is_none(self, tmp_path: Path) -> None:
+        params = CreateNoteParams(zettel_type="note", title=None)
+        repo = MagicMock()
+        templates: dict[str, MagicMock] = {}
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates=templates,
+            hook_runner=hook_runner,
+        )
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "zettel_type and title are required" in (result.error or "")
+
+    def test_returns_error_for_unknown_template(self, tmp_path: Path) -> None:
+        params = CreateNoteParams(zettel_type="bogus", title="Test")
+        repo = MagicMock()
+        templates = {"note": MagicMock()}
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates=templates,
+            hook_runner=hook_runner,
+        )
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "Unknown template: bogus" in (result.error or "")
+
+    def test_execute_success(self, tmp_path: Path) -> None:
+        template = MagicMock()
+        template.questions.return_value = []
+        params = CreateNoteParams(zettel_type="note", title="My Note", tags="a,b")
+        repo = MagicMock()
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+
+        created_path = tmp_path / "42.md"
+        with patch("bim.commands.create_note.create_note.CreateZettelUseCase") as mock_use_case:
+            mock_use_case.return_value.execute.return_value = created_path
+            result = cmd.execute()
+
+        assert result.success is True
+        assert str(created_path) in (result.output or "")
+        assert result.metadata["path"] == created_path
+        mock_use_case.return_value.execute.assert_called_once_with(
+            template,
+            {"title": "My Note", "tags": "a,b"},
+        )
+
+    def test_execute_file_exists_error(self, tmp_path: Path) -> None:
+        template = MagicMock()
+        template.questions.return_value = []
+        params = CreateNoteParams(zettel_type="note", title="My Note")
+        repo = MagicMock()
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+
+        with patch("bim.commands.create_note.create_note.CreateZettelUseCase") as mock_use_case:
+            mock_use_case.return_value.execute.side_effect = FileExistsError("already exists")
+            result = cmd.execute()
+
+        assert result.success is False
+        assert "already exists" in (result.error or "")
+
+    def test_execute_uses_extra_answers(self, tmp_path: Path) -> None:
+        question = MagicMock()
+        question.key = "project"
+        question.default = None
+        question.required = False
+        template = MagicMock()
+        template.questions.return_value = [question]
+        params = CreateNoteParams(
+            zettel_type="note",
+            title="My Note",
+            extra_answers={"project": "alpha"},
+        )
+        repo = MagicMock()
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+
+        with patch("bim.commands.create_note.create_note.CreateZettelUseCase") as mock_use_case:
+            mock_use_case.return_value.execute.return_value = tmp_path / "1.md"
+            result = cmd.execute()
+
+        assert result.success is True
+        call_args = mock_use_case.return_value.execute.call_args
+        answers = call_args[0][1]
+        assert answers["project"] == "alpha"
+
+    def test_execute_uses_question_default(self, tmp_path: Path) -> None:
+        question = MagicMock()
+        question.key = "priority"
+        question.default = "low"
+        question.required = False
+        template = MagicMock()
+        template.questions.return_value = [question]
+        params = CreateNoteParams(zettel_type="note", title="My Note")
+        repo = MagicMock()
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+
+        with patch("bim.commands.create_note.create_note.CreateZettelUseCase") as mock_use_case:
+            mock_use_case.return_value.execute.return_value = tmp_path / "1.md"
+            result = cmd.execute()
+
+        assert result.success is True
+        call_args = mock_use_case.return_value.execute.call_args
+        answers = call_args[0][1]
+        assert answers["priority"] == "low"
+
+    def test_execute_errors_on_missing_required_answer(self, tmp_path: Path) -> None:
+        question = MagicMock()
+        question.key = "required_field"
+        question.default = None
+        question.required = True
+        template = MagicMock()
+        template.questions.return_value = [question]
+        params = CreateNoteParams(zettel_type="note", title="My Note")
+        repo = MagicMock()
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "Missing required answer: required_field" in (result.error or "")
