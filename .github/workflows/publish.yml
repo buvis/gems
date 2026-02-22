@@ -68,12 +68,18 @@ jobs:
     environment: ${{ (contains(github.ref_name, 'rc') || inputs.testpypi) && 'testpypi' || 'pypi' }}
     permissions:
       id-token: write
+      attestations: write
     steps:
       - uses: actions/download-artifact@v7
         with:
           path: dist/
           pattern: wheel-*
           merge-multiple: true
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*.whl
 
       - name: Publish
         uses: pypa/gh-action-pypi-publish@release/v1
