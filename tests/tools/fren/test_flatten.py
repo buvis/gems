@@ -104,3 +104,42 @@ class TestFlattenMetadata:
         copied = destination / "file.txt"
         assert copied.exists()
         assert copied.stat().st_mtime_ns == original.stat().st_mtime_ns
+
+
+class TestFlattenErrors:
+    def test_copy_failure_produces_warning(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        source = tmp_path / "src"
+        destination = tmp_path / "dest"
+        source.mkdir()
+        (source / "file.txt").write_text("content")
+
+        with patch("fren.commands.flatten.flatten.shutil.copy2", side_effect=OSError("disk full")):
+            result = CommandFlatten(source=str(source), destination=str(destination)).execute()
+
+        assert result.success
+        assert result.output == f"Copied 0 file(s) to {destination}"
+        assert len(result.warnings) == 1
+        assert "disk full" in result.warnings[0]
+
+    def test_empty_source(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        destination = tmp_path / "dest"
+        source.mkdir()
+
+        result = CommandFlatten(source=str(source), destination=str(destination)).execute()
+
+        assert result.success
+        assert result.output == f"Copied 0 file(s) to {destination}"
+
+    def test_skips_directories(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        destination = tmp_path / "dest"
+        source.mkdir()
+        (source / "subdir").mkdir()
+
+        result = CommandFlatten(source=str(source), destination=str(destination)).execute()
+
+        assert result.success
+        assert result.output == f"Copied 0 file(s) to {destination}"

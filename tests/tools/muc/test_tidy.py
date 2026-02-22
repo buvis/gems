@@ -1,83 +1,75 @@
-"""
-This module contains pytest tests for CommandTidy
+from __future__ import annotations
 
-Imports:
-    pytest: Used for creating and running tests.
-    pathlib: Used for object-oriented filesystem path operations.
-    remove_music_junk: The module we're testing.
-"""
+from unittest.mock import patch
 
-import pytest
-from buvis.pybase.filesystem import DirTree
+from muc.commands.tidy.tidy import CommandTidy
 
 
-@pytest.fixture
-def temp_music_dir(tmp_path):
-    """
-    Create a temporary directory structure for testing.
+class TestCommandTidy:
+    def test_execute_calls_all_dirtree_methods(self, tmp_path) -> None:
+        junk = [".txt", ".nfo"]
 
-    :param tmp_path: Pytest fixture that provides a temporary directory
-    :type tmp_path: :class:`Path`
-    :return: Path to the temporary music directory
-    :rtype: :class:`Path`
-    """
-    music_dir = tmp_path / "media" / "music-inbox"
-    music_dir.mkdir(parents=True)
+        with patch("muc.commands.tidy.tidy.DirTree") as mock_dirtree:
+            cmd = CommandTidy(directory=tmp_path, junk_extensions=junk)
+            cmd.execute()
 
-    # Create test files
-    (music_dir / "song1.MP3").touch()
-    (music_dir / "song2.mp3").touch()
-    (music_dir / "cover.JPG").touch()
-    (music_dir / "image.jfif").touch()
-    (music_dir / "info.TXT").touch()
-    (music_dir / "playlist.m3u").touch()
+        mock_dirtree.merge_mac_metadata.assert_called_once_with(tmp_path)
+        mock_dirtree.normalize_file_extensions.assert_called_once_with(tmp_path)
+        mock_dirtree.delete_by_extension.assert_called_once_with(tmp_path, junk)
+        mock_dirtree.remove_empty_directories.assert_called_once_with(tmp_path)
 
-    # Create an empty directory
-    (music_dir / "empty_dir").mkdir()
+    def test_execute_calls_in_order(self, tmp_path) -> None:
+        junk = [".log"]
+        call_order: list[str] = []
 
-    return music_dir
+        with patch("muc.commands.tidy.tidy.DirTree") as mock_dirtree:
+            mock_dirtree.merge_mac_metadata.side_effect = lambda d: call_order.append("merge_mac_metadata")
+            mock_dirtree.normalize_file_extensions.side_effect = lambda d: call_order.append("normalize")
+            mock_dirtree.delete_by_extension.side_effect = lambda d, e: call_order.append("delete")
+            mock_dirtree.remove_empty_directories.side_effect = lambda d: call_order.append("remove_empty")
 
+            cmd = CommandTidy(directory=tmp_path, junk_extensions=junk)
+            cmd.execute()
 
-def test_normalize_file_extensions(temp_music_dir):
-    """
-    Test the normalize_file_extensions function.
+        assert call_order == ["merge_mac_metadata", "normalize", "delete", "remove_empty"]
 
-    :param temp_music_dir: Temporary music directory
-    :type temp_music_dir: :class:`Path`
-    """
-    DirTree.normalize_file_extensions(temp_music_dir)
+    def test_execute_returns_none(self, tmp_path) -> None:
+        with patch("muc.commands.tidy.tidy.DirTree"):
+            cmd = CommandTidy(directory=tmp_path, junk_extensions=[])
+            result = cmd.execute()
 
-    assert (temp_music_dir / "song1.mp3").exists()
-    assert (temp_music_dir / "song2.mp3").exists()
-    assert (temp_music_dir / "image.jpg").exists()
-    assert not any(f.name == "song1.MP3" for f in temp_music_dir.iterdir())
-    assert not any(f.name == "image.jfif" for f in temp_music_dir.iterdir())
+        assert result is None
 
+    def test_stores_directory_and_extensions(self, tmp_path) -> None:
+        junk = [".cue", ".m3u"]
 
-def test_delete_specific_files(temp_music_dir):
-    """
-    Test the delete_specific_files function.
+        cmd = CommandTidy(directory=tmp_path, junk_extensions=junk)
 
-    :param temp_music_dir: Temporary music directory
-    :type temp_music_dir: :class:`Path`
-    """
-    junk = [".jpg", ".txt", ".m3u"]
-    DirTree.delete_by_extension(temp_music_dir, junk)
+        assert cmd.dir == tmp_path
+        assert cmd.junk_extensions == junk
 
-    assert (temp_music_dir / "song1.MP3").exists()
-    assert (temp_music_dir / "song2.mp3").exists()
-    assert not (temp_music_dir / "cover.JPG").exists()
-    assert not (temp_music_dir / "info.TXT").exists()
-    assert not (temp_music_dir / "playlist.m3u").exists()
+    def test_empty_junk_extensions(self, tmp_path) -> None:
+        with patch("muc.commands.tidy.tidy.DirTree") as mock_dirtree:
+            cmd = CommandTidy(directory=tmp_path, junk_extensions=[])
+            cmd.execute()
+
+        mock_dirtree.delete_by_extension.assert_called_once_with(tmp_path, [])
 
 
-def test_remove_empty_directories(temp_music_dir):
-    """
-    Test the remove_empty_directories function.
+class TestCommandTidyIntegration:
+    def test_removes_junk_and_empty_dirs(self, tmp_path) -> None:
+        music_dir = tmp_path / "album"
+        music_dir.mkdir()
+        (music_dir / "track.mp3").touch()
+        (music_dir / "cover.jpg").touch()
+        (music_dir / "info.nfo").touch()
+        empty_dir = music_dir / "extras"
+        empty_dir.mkdir()
 
-    :param temp_music_dir: Temporary music directory
-    :type temp_music_dir: :class:`Path`
-    """
-    DirTree.remove_empty_directories(temp_music_dir)
+        cmd = CommandTidy(directory=music_dir, junk_extensions=[".jpg", ".nfo"])
+        cmd.execute()
 
-    assert not (temp_music_dir / "empty_dir").exists()
+        assert (music_dir / "track.mp3").exists()
+        assert not (music_dir / "cover.jpg").exists()
+        assert not (music_dir / "info.nfo").exists()
+        assert not empty_dir.exists()

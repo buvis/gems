@@ -141,3 +141,72 @@ class TestCommandFormatNote:
 
         assert result.success is True
         assert result.metadata["original"] == original
+
+    def test_write_os_error(
+        self,
+        zettel_file: Path,
+        tmp_path: Path,
+    ) -> None:
+        """OSError writing output file returns failure."""
+        output_path = tmp_path / "nonexistent_dir" / "out.md"
+        with (
+            patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
+            patch("bim.commands.format_note.format_note.PrintZettelUseCase") as mock_printer_cls,
+        ):
+            note = MagicMock()
+            mock_reader_cls.return_value.execute.return_value = note
+            mock_printer_cls.return_value.execute.return_value = "formatted"
+
+            cmd = CommandFormatNote(
+                params=FormatNoteParams(paths=[zettel_file], path_output=output_path),
+                repo=MagicMock(),
+                formatter=MagicMock(),
+            )
+            result = cmd.execute()
+
+        assert result.success is False
+        assert "error occurred while writing" in result.error
+
+    def test_write_unicode_encode_error(
+        self,
+        zettel_file: Path,
+        tmp_path: Path,
+    ) -> None:
+        """UnicodeEncodeError writing output file returns failure."""
+        output_path = tmp_path / "out.md"
+        with (
+            patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
+            patch("bim.commands.format_note.format_note.PrintZettelUseCase") as mock_printer_cls,
+        ):
+            note = MagicMock()
+            mock_reader_cls.return_value.execute.return_value = note
+            mock_printer_cls.return_value.execute.return_value = "formatted"
+
+            cmd = CommandFormatNote(
+                params=FormatNoteParams(paths=[zettel_file], path_output=output_path),
+                repo=MagicMock(),
+                formatter=MagicMock(),
+            )
+
+            with patch.object(Path, "write_text", side_effect=UnicodeEncodeError("utf-8", "", 0, 1, "bad")):
+                result = cmd.execute()
+
+        assert result.success is False
+        assert "could not be encoded" in result.error
+
+    def test_path_output_none_resolves_to_none(
+        self,
+        zettel_file: Path,
+        format_note_dependencies,
+    ) -> None:
+        """When path_output is None, the output content is returned directly."""
+        cmd = CommandFormatNote(
+            params=FormatNoteParams(paths=[zettel_file], path_output=None),
+            repo=format_note_dependencies["repo"],
+            formatter=format_note_dependencies["formatter"],
+        )
+        result = cmd.execute()
+
+        assert result.success is True
+        assert result.output == "formatted content"
+        assert "written_to" not in result.metadata

@@ -99,3 +99,56 @@ class TestNormalizeBottomUp:
         assert result.success
         assert not result.warnings
         assert (child_nfc / "note.txt").exists()
+
+
+class TestNormalizeErrors:
+    def test_rename_exception_warns(self, tmp_path: Path) -> None:
+        """Covers lines 51-52: exception during rename produces warning."""
+        target_dir = tmp_path / "old-name"
+        target_dir.mkdir()
+
+        with (
+            patch(
+                "fren.commands.normalize.normalize.unicodedata.normalize",
+                side_effect=lambda form, text: "new-name" if text == "old-name" else text,
+            ),
+            patch.object(Path, "rename", side_effect=OSError("permission denied")),
+        ):
+            result = CommandNormalize(directory=str(tmp_path)).execute()
+
+        assert result.success
+        assert any("Failed to normalize" in w for w in result.warnings)
+
+    def test_merge_incomplete_warns(self, tmp_path: Path) -> None:
+        """Covers line 47: source dir not empty after merge attempt."""
+        nfd_dir = tmp_path / "nfd-dir"
+        nfc_dir = tmp_path / "nfc-dir"
+        nfd_dir.mkdir()
+        nfc_dir.mkdir()
+        (nfd_dir / "moveable.txt").write_text("a")
+        (nfd_dir / "stuck.txt").write_text("b")
+
+        original_rename = Path.rename
+        call_count = 0
+
+        def partial_rename(self_path: Path, target: Path) -> Path:
+            nonlocal call_count
+            # Let first item.rename succeed, fail on second
+            if self_path.parent == nfd_dir:
+                call_count += 1
+                if call_count > 1:
+                    raise OSError("cannot move")
+            return original_rename(self_path, target)
+
+        with (
+            patch(
+                "fren.commands.normalize.normalize.unicodedata.normalize",
+                side_effect=lambda form, text: "nfc-dir" if text == "nfd-dir" else text,
+            ),
+            patch.object(Path, "rename", side_effect=partial_rename),
+        ):
+            result = CommandNormalize(directory=str(tmp_path)).execute()
+
+        assert result.success
+        # The exception during merge triggers the outer except, producing a warning
+        assert any("Failed to normalize" in w for w in result.warnings)

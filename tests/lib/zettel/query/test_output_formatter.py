@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import json
 
 import pytest
 from buvis.pybase.zettel.infrastructure.query.output_formatter import (
+    _cell,
     format_csv,
     format_html,
     format_json,
     format_jsonl,
     format_kanban,
     format_markdown,
+    format_table,
 )
 
 
@@ -163,3 +167,133 @@ class TestFormatPdf:
         result = format_pdf([], SAMPLE_COLS)
         assert isinstance(result, bytes)
         assert result[:5] == b"%PDF-"
+
+    def test_single_column(self):
+        fpdf = pytest.importorskip("fpdf")  # noqa: F841
+        from buvis.pybase.zettel.infrastructure.query.output_formatter import format_pdf
+
+        result = format_pdf([{"a": "val"}], ["a"])
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+
+    def test_long_values_truncated(self):
+        fpdf = pytest.importorskip("fpdf")  # noqa: F841
+        from buvis.pybase.zettel.infrastructure.query.output_formatter import format_pdf
+
+        rows = [{"col": "x" * 200}]
+        result = format_pdf(rows, ["col"])
+        assert isinstance(result, bytes)
+
+
+class TestCellHelper:
+    def test_cell_with_none(self):
+        assert _cell(None) == ""
+
+    def test_cell_with_string(self):
+        assert _cell("hello") == "hello"
+
+    def test_cell_with_int(self):
+        assert _cell(42) == "42"
+
+    def test_cell_with_rich_text(self):
+        from rich.text import Text
+
+        t = Text("styled")
+        assert _cell(t) is t
+
+
+class TestFormatTableEdgeCases:
+    def test_table_with_none_values(self, capsys):
+        rows = [{"a": None, "b": "val"}]
+        format_table(rows, ["a", "b"])
+        out = capsys.readouterr().out
+        assert "val" in out
+
+    def test_table_with_rich_text_values(self, capsys):
+        from rich.text import Text
+
+        rows = [{"a": Text("styled"), "b": "plain"}]
+        format_table(rows, ["a", "b"])
+        out = capsys.readouterr().out
+        assert "styled" in out
+        assert "plain" in out
+
+    def test_table_empty_rows(self, capsys):
+        format_table([], ["a", "b"])
+        out = capsys.readouterr().out
+        assert "a" in out
+        assert "b" in out
+
+    def test_table_missing_column_key(self, capsys):
+        rows = [{"a": "val"}]
+        format_table(rows, ["a", "missing"])
+        out = capsys.readouterr().out
+        assert "val" in out
+
+
+class TestFormatKanbanEdgeCases:
+    def test_empty_group(self, capsys):
+        rows = [{"title": "", "status": "todo"}]
+        format_kanban(rows, ["title", "status"], "status")
+        out = capsys.readouterr().out
+        assert "todo" in out
+
+    def test_missing_group_field(self, capsys):
+        rows = [{"title": "Task"}]
+        format_kanban(rows, ["title"], "status")
+        out = capsys.readouterr().out
+        assert "Ungrouped" in out
+
+    def test_file_path_excluded(self, capsys):
+        rows = [{"title": "A", "file_path": "/tmp/a.md", "status": "done"}]
+        format_kanban(rows, ["title", "file_path", "status"], "status")
+        out = capsys.readouterr().out
+        assert "/tmp/a.md" not in out
+
+
+class TestFormatHtmlEdgeCases:
+    def test_missing_column_in_row(self):
+        rows = [{"a": "val"}]
+        result = format_html(rows, ["a", "missing"])
+        assert "<td>val</td>" in result
+        assert "<td></td>" in result
+
+    def test_special_chars_in_column_name(self):
+        result = format_html([], ["col<1>"])
+        assert "col&lt;1&gt;" in result
+
+
+class TestFormatMarkdownEdgeCases:
+    def test_missing_column_in_row(self):
+        rows = [{"a": "val"}]
+        result = format_markdown(rows, ["a", "missing"])
+        assert "| val |" in result
+
+    def test_none_value(self):
+        rows = [{"a": None}]
+        result = format_markdown(rows, ["a"])
+        assert "| None |" in result
+
+
+class TestFormatJsonEdgeCases:
+    def test_missing_column_defaults_empty(self):
+        rows = [{"a": "val"}]
+        result = format_json(rows, ["a", "missing"])
+        parsed = json.loads(result)
+        assert parsed[0]["missing"] == ""
+
+    def test_non_serializable_value(self):
+        from datetime import datetime, timezone
+
+        rows = [{"a": datetime(2024, 1, 1, tzinfo=timezone.utc)}]
+        result = format_json(rows, ["a"])
+        parsed = json.loads(result)
+        assert "2024" in parsed[0]["a"]
+
+
+class TestFormatJsonlEdgeCases:
+    def test_single_row(self):
+        rows = [{"a": 1}]
+        result = format_jsonl(rows, ["a"])
+        assert result.endswith("\n")
+        assert json.loads(result.strip()) == {"a": 1}

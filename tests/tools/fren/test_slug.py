@@ -126,6 +126,65 @@ class TestSlugCollision:
         assert (tmp_path / "A-2.txt").exists()
 
 
+class TestSlugEmlEdgeCases:
+    def test_eml_naive_datetime(self, tmp_path: Path) -> None:
+        """Covers line 70: datetime without tzinfo gets UTC assigned."""
+        source = tmp_path / "naive.eml"
+        # Date without timezone offset produces naive datetime
+        source.write_text(
+            "Date: 07 Jan 2025 10:00:00\nSubject: Naive\n\nbody\n",
+            encoding="utf-8",
+        )
+
+        CommandSlug(paths=(str(source),)).execute()
+
+        assert (tmp_path / "2025-01-07_1000_Naive.eml").exists()
+
+    def test_eml_unparseable_date(self, tmp_path: Path) -> None:
+        """Covers lines 72-73: bad date string triggers ValueError, date_prefix stays empty."""
+        source = tmp_path / "baddate.eml"
+        source.write_text(
+            "Date: not-a-date\nSubject: Good Subject\n\nbody\n",
+            encoding="utf-8",
+        )
+
+        CommandSlug(paths=(str(source),)).execute()
+
+        assert (tmp_path / "Good-Subject.eml").exists()
+
+    def test_eml_no_subject(self, tmp_path: Path) -> None:
+        """eml with empty subject falls back to 'unnamed'."""
+        source = tmp_path / "empty_subj.eml"
+        source.write_text("Date: Tue, 07 Jan 2025 12:00:00 +0000\n\nbody\n", encoding="utf-8")
+
+        CommandSlug(paths=(str(source),)).execute()
+
+        assert (tmp_path / "2025-01-07_1200_unnamed.eml").exists()
+
+    def test_eml_fw_prefix_stripped(self, tmp_path: Path) -> None:
+        """Fw: prefix (short form) is stripped."""
+        source = tmp_path / "fw.eml"
+        source.write_text("Subject: Fw: Ticket\n\nbody\n", encoding="utf-8")
+
+        CommandSlug(paths=(str(source),)).execute()
+
+        assert (tmp_path / "Ticket.eml").exists()
+
+    def test_slugify_name_plain_unnamed_fallback(self, tmp_path: Path) -> None:
+        """Covers line 87: _slugify_name_plain returns 'unnamed' for empty slug."""
+        source = tmp_path / "###.eml"
+        source.write_bytes(b"garbage")
+
+        # Force the eml parser to fail so it falls back to _slugify_name_plain
+        with patch(
+            "fren.commands.slug.slug.email.message_from_binary_file",
+            side_effect=Exception("bad"),
+        ):
+            CommandSlug(paths=(str(source),)).execute()
+
+        assert (tmp_path / "unnamed.eml").exists()
+
+
 class TestSlugErrors:
     def test_nonexistent_path(self, tmp_path: Path) -> None:
         existing = tmp_path / "ok.txt"
@@ -136,3 +195,15 @@ class TestSlugErrors:
 
         assert result.success
         assert any("Path not found" in warning for warning in result.warnings)
+
+    def test_rename_exception_warns(self, tmp_path: Path) -> None:
+        """Covers lines 33-34: exception during rename produces warning."""
+        source = tmp_path / "Hello World.txt"
+        source.write_text("x")
+
+        with patch.object(Path, "rename", side_effect=OSError("disk full")):
+            result = CommandSlug(paths=(str(source),)).execute()
+
+        assert result.success
+        assert any("Failed to rename" in w for w in result.warnings)
+        assert result.output == "Renamed 0 file(s)"

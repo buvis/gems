@@ -136,3 +136,74 @@ class TestCommandPip:
 
         for call_item in mock_run.call_args_list:
             assert call_item.args[0][0] == "/mock/python"
+
+    def test_pip_upgrade_fails_empty_stderr(self, mocker) -> None:
+        mocker.patch("sysup.commands.pip.pip.sys.executable", "/mock/python")
+        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run.side_effect = [
+            self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"], returncode=1, stderr=""),
+            self._result(
+                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
+                stdout="[]",
+            ),
+        ]
+
+        steps = CommandPip().execute()
+
+        pip_step = next(s for s in steps if s.label == "pip")
+        assert pip_step.success is False
+        assert "unknown error" in pip_step.message
+
+    def test_outdated_check_fails_empty_stderr(self, mocker) -> None:
+        mocker.patch("sysup.commands.pip.pip.sys.executable", "/mock/python")
+        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run.side_effect = [
+            self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
+            self._result(
+                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
+                returncode=1,
+                stderr="",
+            ),
+        ]
+
+        steps = CommandPip().execute()
+
+        outdated_step = next(s for s in steps if s.label == "pip outdated")
+        assert outdated_step.success is False
+        assert "unknown error" in outdated_step.message
+
+    def test_skips_invalid_package_names(self, mocker) -> None:
+        mocker.patch("sysup.commands.pip.pip.sys.executable", "/mock/python")
+        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run.side_effect = [
+            self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
+            self._result(
+                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
+                stdout='[{"name":""},{"name":"good"},{"noname":true}]',
+            ),
+            self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "good"]),
+        ]
+
+        steps = CommandPip().execute()
+
+        labels = [s.label for s in steps]
+        assert "good" in labels
+        assert "" not in labels
+
+    def test_individual_package_fails_empty_stderr(self, mocker) -> None:
+        mocker.patch("sysup.commands.pip.pip.sys.executable", "/mock/python")
+        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run.side_effect = [
+            self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
+            self._result(
+                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
+                stdout='[{"name":"broken"}]',
+            ),
+            self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "broken"], returncode=1, stderr=""),
+        ]
+
+        steps = CommandPip().execute()
+
+        broken = next(s for s in steps if s.label == "broken")
+        assert broken.success is False
+        assert "unknown error" in broken.message

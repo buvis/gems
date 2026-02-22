@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Union
 
 import click
 from buvis.pybase.configuration.generators import (
+    _field_to_option,
+    _unwrap_optional,
     apply_generated_options,
     generate_click_options,
 )
 from click.testing import CliRunner
 from pydantic import BaseModel, Field
+from pydantic.fields import FieldInfo
 
 
 class BoolModel(BaseModel):
@@ -29,6 +32,14 @@ class PathModel(BaseModel):
             "path_dir_okay": False,
             "path_resolve": True,
         },
+    )
+
+
+class PathExistsModel(BaseModel):
+    src: Path | None = Field(
+        None,
+        description="Source path",
+        json_schema_extra={"path_exists": True},
     )
 
 
@@ -74,6 +85,10 @@ class MixedModel(BaseModel):
     paths: list[Path] = Field(...)
     highlight: bool = Field(False, description="Highlight output")
     output: Path | None = Field(None, description="Output path")
+
+
+class NoneAnnotationModel(BaseModel):
+    mystery: str = Field("x", description="Has annotation")
 
 
 class TestGenerateClickOptions:
@@ -185,3 +200,92 @@ class TestApplyGeneratedOptions:
         result = CliRunner().invoke(cmd, ["-f", "test.yml"])
         assert result.exit_code == 0
         assert "qf=test.yml" in result.output
+
+    def test_path_exists_extra(self, tmp_path):
+        @click.command()
+        @apply_generated_options(PathExistsModel)
+        def cmd(src):
+            click.echo(f"src={src}")
+
+        existing = tmp_path / "real.txt"
+        existing.touch()
+        result = CliRunner().invoke(cmd, ["--src", str(existing)])
+        assert result.exit_code == 0
+        assert str(existing) in result.output
+
+    def test_path_exists_rejects_missing(self, tmp_path):
+        @click.command()
+        @apply_generated_options(PathExistsModel)
+        def cmd(src):
+            click.echo(f"src={src}")
+
+        result = CliRunner().invoke(cmd, ["--src", str(tmp_path / "nope")])
+        assert result.exit_code != 0
+
+    def test_bool_flag_default_false(self):
+        @click.command()
+        @apply_generated_options(BoolModel)
+        def cmd(flag):
+            click.echo(f"flag={flag}")
+
+        result = CliRunner().invoke(cmd, [])
+        assert result.exit_code == 0
+        assert "flag=False" in result.output
+
+    def test_literal_rejects_invalid_choice(self):
+        @click.command()
+        @apply_generated_options(LiteralModel)
+        def cmd(mode):
+            click.echo(f"mode={mode}")
+
+        result = CliRunner().invoke(cmd, ["--mode", "turbo"])
+        assert result.exit_code != 0
+
+    def test_string_default_none(self):
+        @click.command()
+        @apply_generated_options(StringModel)
+        def cmd(name):
+            click.echo(f"name={name}")
+
+        result = CliRunner().invoke(cmd, [])
+        assert result.exit_code == 0
+        assert "name=None" in result.output
+
+
+class TestUnwrapOptional:
+    def test_non_optional_passthrough(self):
+        inner, is_opt = _unwrap_optional(str)
+        assert inner is str
+        assert is_opt is False
+
+    def test_optional_union_syntax(self):
+        inner, is_opt = _unwrap_optional(Union[int, None])
+        assert inner is int
+        assert is_opt is True
+
+    def test_pipe_union_syntax(self):
+        inner, is_opt = _unwrap_optional(bool | None)
+        assert inner is bool
+        assert is_opt is True
+
+    def test_multi_type_union_not_unwrapped(self):
+        # Union[str, int] is not Optional, should not unwrap
+        inner, is_opt = _unwrap_optional(Union[str, int])
+        assert is_opt is False
+
+
+class TestFieldToOption:
+    def test_none_annotation_returns_option(self):
+        field = FieldInfo(annotation=None, default=None, description="test")
+        result = _field_to_option("test_field", field)
+        assert result is not None
+
+    def test_callable_json_schema_extra_ignored(self):
+        field = FieldInfo(
+            annotation=str,
+            default=None,
+            description="test",
+            json_schema_extra=lambda _: None,
+        )
+        result = _field_to_option("test_field", field)
+        assert result is not None

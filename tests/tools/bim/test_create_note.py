@@ -359,3 +359,80 @@ class TestCommandCreateNote:
 
         assert result.success is False
         assert "Missing required answer: required_field" in (result.error or "")
+
+    def test_optional_question_skipped_when_no_answer_or_default(self, tmp_path: Path) -> None:
+        """Question with no default, not required, not in extra_answers is skipped."""
+        question = MagicMock()
+        question.key = "optional_field"
+        question.default = None
+        question.required = False
+        template = MagicMock()
+        template.questions.return_value = [question]
+        params = CreateNoteParams(zettel_type="note", title="My Note")
+        repo = MagicMock()
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+
+        with patch("bim.commands.create_note.create_note.CreateZettelUseCase") as mock_use_case:
+            mock_use_case.return_value.execute.return_value = tmp_path / "1.md"
+            result = cmd.execute()
+
+        assert result.success is True
+        call_args = mock_use_case.return_value.execute.call_args
+        answers = call_args[0][1]
+        assert "optional_field" not in answers
+
+    def test_extra_answers_none_defaults_to_empty(self, tmp_path: Path) -> None:
+        """extra_answers=None on params initializes to empty dict."""
+        params = CreateNoteParams(zettel_type="note", title="Test", extra_answers=None)
+        repo = MagicMock()
+        template = MagicMock()
+        template.questions.return_value = []
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+        assert cmd.extra_answers == {}
+
+        with patch("bim.commands.create_note.create_note.CreateZettelUseCase") as mock_use_case:
+            mock_use_case.return_value.execute.return_value = tmp_path / "1.md"
+            result = cmd.execute()
+
+        assert result.success is True
+
+    def test_execute_no_tags(self, tmp_path: Path) -> None:
+        """When tags is None, tags key is not in answers."""
+        template = MagicMock()
+        template.questions.return_value = []
+        params = CreateNoteParams(zettel_type="note", title="My Note", tags=None)
+        repo = MagicMock()
+        hook_runner = MagicMock()
+
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=tmp_path,
+            repo=repo,
+            templates={"note": template},
+            hook_runner=hook_runner,
+        )
+
+        with patch("bim.commands.create_note.create_note.CreateZettelUseCase") as mock_use_case:
+            mock_use_case.return_value.execute.return_value = tmp_path / "1.md"
+            result = cmd.execute()
+
+        assert result.success is True
+        call_args = mock_use_case.return_value.execute.call_args
+        answers = call_args[0][1]
+        assert "tags" not in answers
