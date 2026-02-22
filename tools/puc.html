@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>zseq &mdash; buvis-gems  documentation</title>
+  <title>puc &mdash; buvis-gems  documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
@@ -19,8 +19,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Shell Completions" href="../completions.html" />
-    <link rel="prev" title="vuc" href="vuc.html" /> 
+    <link rel="next" title="readerctl" href="readerctl.html" />
+    <link rel="prev" title="pinger" href="pinger.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -68,15 +68,15 @@
 <li class="toctree-l3"><a class="reference internal" href="netscan.html">netscan</a></li>
 <li class="toctree-l3"><a class="reference internal" href="outlookctl.html">outlookctl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
-<li class="toctree-l3"><a class="reference internal" href="puc.html">puc</a></li>
-<li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
-<li class="toctree-l3"><a class="reference internal" href="sysup.html">sysup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">zseq</a><ul>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">puc</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sysup.html">sysup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
 </ul>
 </li>
 </ul>
@@ -103,9 +103,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
-      <li class="breadcrumb-item active">zseq</li>
+      <li class="breadcrumb-item active">puc</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/tools/zseq.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/tools/puc.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -113,10 +113,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="zseq">
-<span id="tool-zseq"></span><h1>zseq<a class="headerlink" href="#zseq" title="Link to this heading"></a></h1>
-<p>Work with Zettelkasten sequential file naming (<code class="docutils literal notranslate"><span class="pre">YYYYMMDDHHMMSS</span></code> prefixes).
-Reports the highest sequence number in a directory.</p>
+  <section id="puc">
+<span id="tool-puc"></span><h1>puc<a class="headerlink" href="#puc" title="Link to this heading"></a></h1>
+<p>Photo utility collection. Strip EXIF metadata while preserving copyright and dates.</p>
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -132,29 +131,23 @@ Reports the highest sequence number in a directory.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_dir</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/Volumes/photography/photography/src/2024</span></code></p></td>
-<td><p>Directory to scan</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">is_reporting_misnamed</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
-<td><p>Report files not following zettelseq naming</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">strip_keep_tags</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DateTimeOriginal</span></code>, <code class="docutils literal notranslate"><span class="pre">CreateDate</span></code>, <code class="docutils literal notranslate"><span class="pre">ModifyDate</span></code>, <code class="docutils literal notranslate"><span class="pre">Copyright</span></code>, <code class="docutils literal notranslate"><span class="pre">XMP-dc:Rights</span></code>, <code class="docutils literal notranslate"><span class="pre">IPTC:CopyrightNotice</span></code></p></td>
+<td><p>EXIF tags to preserve during strip</p></td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="commands">
 <h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zseq<span class="w">                                 </span><span class="c1"># max seq in default dir</span>
-zseq<span class="w"> </span>-p<span class="w"> </span>~/photos/2025/<span class="w">               </span><span class="c1"># custom directory</span>
-zseq<span class="w"> </span>-m<span class="w">                              </span><span class="c1"># also report misnamed files</span>
+<section id="puc-strip">
+<h3>puc strip<a class="headerlink" href="#puc-strip" title="Link to this heading"></a></h3>
+<p>Strip EXIF metadata from photos, keeping copyright and date tags.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>puc<span class="w"> </span>strip<span class="w"> </span>photo.jpg
+puc<span class="w"> </span>strip<span class="w"> </span>*.jpg
 </pre></div>
 </div>
-<p>Options:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--path</span> <span class="pre">TEXT</span></code> — directory to scan</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-m,</span> <span class="pre">--misnamed-reporting</span></code> — report non-conforming files</p></li>
-</ul>
+</section>
 </section>
 </section>
 
@@ -162,8 +155,8 @@ zseq<span class="w"> </span>-m<span class="w">                              </sp
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="vuc.html" class="btn btn-neutral float-left" title="vuc" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../completions.html" class="btn btn-neutral float-right" title="Shell Completions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="pinger.html" class="btn btn-neutral float-left" title="pinger" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="readerctl.html" class="btn btn-neutral float-right" title="readerctl" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

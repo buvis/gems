@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>zseq &mdash; buvis-gems  documentation</title>
+  <title>fren &mdash; buvis-gems  documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
@@ -19,8 +19,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Shell Completions" href="../completions.html" />
-    <link rel="prev" title="vuc" href="vuc.html" /> 
+    <link rel="next" title="hello-world" href="hello-world.html" />
+    <link rel="prev" title="fctracker" href="fctracker.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -61,7 +61,10 @@
 <li class="toctree-l3"><a class="reference internal" href="bim.html">bim</a></li>
 <li class="toctree-l3"><a class="reference internal" href="dot.html">dot</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fctracker.html">fctracker</a></li>
-<li class="toctree-l3"><a class="reference internal" href="fren.html">fren</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">fren</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="hello-world.html">hello-world</a></li>
 <li class="toctree-l3"><a class="reference internal" href="morph.html">morph</a></li>
 <li class="toctree-l3"><a class="reference internal" href="muc.html">muc</a></li>
@@ -72,11 +75,7 @@
 <li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sysup.html">sysup</a></li>
 <li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">zseq</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
 </ul>
 </li>
 </ul>
@@ -103,9 +102,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
-      <li class="breadcrumb-item active">zseq</li>
+      <li class="breadcrumb-item active">fren</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/tools/zseq.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/tools/fren.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -113,48 +112,41 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="zseq">
-<span id="tool-zseq"></span><h1>zseq<a class="headerlink" href="#zseq" title="Link to this heading"></a></h1>
-<p>Work with Zettelkasten sequential file naming (<code class="docutils literal notranslate"><span class="pre">YYYYMMDDHHMMSS</span></code> prefixes).
-Reports the highest sequence number in a directory.</p>
-<section id="configuration">
-<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 25.0%" />
-<col style="width: 25.0%" />
-<col style="width: 50.0%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Setting</p></th>
-<th class="head"><p>Default</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_dir</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/Volumes/photography/photography/src/2024</span></code></p></td>
-<td><p>Directory to scan</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">is_reporting_misnamed</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
-<td><p>Report files not following zettelseq naming</p></td>
-</tr>
-</tbody>
-</table>
-</section>
+  <section id="fren">
+<span id="tool-fren"></span><h1>fren<a class="headerlink" href="#fren" title="Link to this heading"></a></h1>
+<p>File renamer toolkit. Slugify, directorize, flatten, and normalize filenames.</p>
+<p><strong>Extra:</strong> <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[fren]</span></code></p>
 <section id="commands">
 <h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zseq<span class="w">                                 </span><span class="c1"># max seq in default dir</span>
-zseq<span class="w"> </span>-p<span class="w"> </span>~/photos/2025/<span class="w">               </span><span class="c1"># custom directory</span>
-zseq<span class="w"> </span>-m<span class="w">                              </span><span class="c1"># also report misnamed files</span>
+<section id="fren-slug">
+<h3>fren slug<a class="headerlink" href="#fren-slug" title="Link to this heading"></a></h3>
+<p>Slugify filenames — convert to URL-safe lowercase with hyphens.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>fren<span class="w"> </span>slug<span class="w"> </span>file1.txt<span class="w"> </span>file2.txt
+fren<span class="w"> </span>slug<span class="w"> </span>*.pdf
 </pre></div>
 </div>
-<p>Options:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--path</span> <span class="pre">TEXT</span></code> — directory to scan</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-m,</span> <span class="pre">--misnamed-reporting</span></code> — report non-conforming files</p></li>
-</ul>
+</section>
+<section id="fren-directorize">
+<h3>fren directorize<a class="headerlink" href="#fren-directorize" title="Link to this heading"></a></h3>
+<p>Wrap each file in a directory named after the file stem.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>fren<span class="w"> </span>directorize<span class="w"> </span>~/downloads/
+</pre></div>
+</div>
+</section>
+<section id="fren-flatten">
+<h3>fren flatten<a class="headerlink" href="#fren-flatten" title="Link to this heading"></a></h3>
+<p>Copy nested files into a flat destination directory.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>fren<span class="w"> </span>flatten<span class="w"> </span>~/nested-dir/<span class="w"> </span>~/flat-output/
+</pre></div>
+</div>
+</section>
+<section id="fren-normalize">
+<h3>fren normalize<a class="headerlink" href="#fren-normalize" title="Link to this heading"></a></h3>
+<p>NFC-normalize directory names (Unicode normalization).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>fren<span class="w"> </span>normalize<span class="w"> </span>~/documents/
+</pre></div>
+</div>
+</section>
 </section>
 </section>
 
@@ -162,8 +154,8 @@ zseq<span class="w"> </span>-m<span class="w">                              </sp
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="vuc.html" class="btn btn-neutral float-left" title="vuc" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../completions.html" class="btn btn-neutral float-right" title="Shell Completions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="fctracker.html" class="btn btn-neutral float-left" title="fctracker" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="hello-world.html" class="btn btn-neutral float-right" title="hello-world" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>zseq &mdash; buvis-gems  documentation</title>
+  <title>netscan &mdash; buvis-gems  documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
@@ -19,8 +19,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Shell Completions" href="../completions.html" />
-    <link rel="prev" title="vuc" href="vuc.html" /> 
+    <link rel="next" title="outlookctl" href="outlookctl.html" />
+    <link rel="prev" title="muc" href="muc.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -65,18 +65,18 @@
 <li class="toctree-l3"><a class="reference internal" href="hello-world.html">hello-world</a></li>
 <li class="toctree-l3"><a class="reference internal" href="morph.html">morph</a></li>
 <li class="toctree-l3"><a class="reference internal" href="muc.html">muc</a></li>
-<li class="toctree-l3"><a class="reference internal" href="netscan.html">netscan</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">netscan</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="outlookctl.html">outlookctl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
 <li class="toctree-l3"><a class="reference internal" href="puc.html">puc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sysup.html">sysup</a></li>
 <li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">zseq</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
 </ul>
 </li>
 </ul>
@@ -103,9 +103,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
-      <li class="breadcrumb-item active">zseq</li>
+      <li class="breadcrumb-item active">netscan</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/tools/zseq.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/tools/netscan.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -113,10 +113,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="zseq">
-<span id="tool-zseq"></span><h1>zseq<a class="headerlink" href="#zseq" title="Link to this heading"></a></h1>
-<p>Work with Zettelkasten sequential file naming (<code class="docutils literal notranslate"><span class="pre">YYYYMMDDHHMMSS</span></code> prefixes).
-Reports the highest sequence number in a directory.</p>
+  <section id="netscan">
+<span id="tool-netscan"></span><h1>netscan<a class="headerlink" href="#netscan" title="Link to this heading"></a></h1>
+<p>Network scanning tools. Discover hosts and SSH services on the local network.</p>
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -132,29 +131,44 @@ Reports the highest sequence number in a directory.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_dir</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">/Volumes/photography/photography/src/2024</span></code></p></td>
-<td><p>Directory to scan</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">interface</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">en0</span></code></p></td>
+<td><p>Network interface to scan</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">is_reporting_misnamed</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
-<td><p>Report files not following zettelseq naming</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ssh_port</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">22</span></code></p></td>
+<td><p>SSH port to check</p></td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="commands">
 <h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zseq<span class="w">                                 </span><span class="c1"># max seq in default dir</span>
-zseq<span class="w"> </span>-p<span class="w"> </span>~/photos/2025/<span class="w">               </span><span class="c1"># custom directory</span>
-zseq<span class="w"> </span>-m<span class="w">                              </span><span class="c1"># also report misnamed files</span>
+<section id="netscan-hosts">
+<h3>netscan hosts<a class="headerlink" href="#netscan-hosts" title="Link to this heading"></a></h3>
+<p>Discover hosts on the local network.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>netscan<span class="w"> </span>hosts
+netscan<span class="w"> </span>hosts<span class="w"> </span>-i<span class="w"> </span>eth0
 </pre></div>
 </div>
 <p>Options:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--path</span> <span class="pre">TEXT</span></code> — directory to scan</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-m,</span> <span class="pre">--misnamed-reporting</span></code> — report non-conforming files</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-i,</span> <span class="pre">--interface</span> <span class="pre">TEXT</span></code> — network interface to scan (overrides setting)</p></li>
 </ul>
+</section>
+<section id="netscan-ssh">
+<h3>netscan ssh<a class="headerlink" href="#netscan-ssh" title="Link to this heading"></a></h3>
+<p>Find hosts with SSH available.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>netscan<span class="w"> </span>ssh
+netscan<span class="w"> </span>ssh<span class="w"> </span>-i<span class="w"> </span>eth0<span class="w"> </span>-p<span class="w"> </span><span class="m">2222</span>
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-i,</span> <span class="pre">--interface</span> <span class="pre">TEXT</span></code> — network interface to scan (overrides setting)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--port</span> <span class="pre">INTEGER</span></code> — SSH port to scan (overrides setting)</p></li>
+</ul>
+</section>
 </section>
 </section>
 
@@ -162,8 +176,8 @@ zseq<span class="w"> </span>-m<span class="w">                              </sp
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="vuc.html" class="btn btn-neutral float-left" title="vuc" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../completions.html" class="btn btn-neutral float-right" title="Shell Completions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="muc.html" class="btn btn-neutral float-left" title="muc" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="outlookctl.html" class="btn btn-neutral float-right" title="outlookctl" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
