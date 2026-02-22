@@ -1,0 +1,214 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shell Completions &mdash; buvis-gems  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Development" href="development.html" />
+    <link rel="prev" title="zseq" href="tools/zseq.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            buvis-gems
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Library:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#api-reference">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formatting.html">Formatting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filesystem.html">Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adapters.html">Adapters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zettel.html">Zettel</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CLI Tools:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tools.html">CLI Tools</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Shell Completions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#bash">Bash</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#zsh">Zsh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fish">Fish</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#persistent-setup">Persistent Setup</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Development</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">buvis-gems</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Shell Completions</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/completions.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="shell-completions">
+<h1>Shell Completions<a class="headerlink" href="#shell-completions" title="Link to this heading"></a></h1>
+<p>All <code class="docutils literal notranslate"><span class="pre">buvis-gems</span></code> CLIs use Click, so each command can generate shell completion scripts on demand through its <code class="docutils literal notranslate"><span class="pre">_&lt;COMMAND&gt;_COMPLETE</span></code> environment variable.</p>
+<section id="bash">
+<h2>Bash<a class="headerlink" href="#bash" title="Link to this heading"></a></h2>
+<p>Pattern:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_BIM_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>bim<span class="k">)</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>Commands:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_BIM_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>bim<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_DOT_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>dot<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_FCTRACKER_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>fctracker<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_FREN_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>fren<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_HELLO_WORLD_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>hello-world<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_MORPH_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>morph<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_MUC_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>muc<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_NETSCAN_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>netscan<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_OUTLOOKCTL_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>outlookctl<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_PUC_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>puc<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_PINGER_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>pinger<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_READERCTL_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>readerctl<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_SYSUP_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>sysup<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_VUC_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>vuc<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_ZSEQ_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>zseq<span class="k">)</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="zsh">
+<h2>Zsh<a class="headerlink" href="#zsh" title="Link to this heading"></a></h2>
+<p>Pattern:</p>
+<div class="highlight-zsh notranslate"><div class="highlight"><pre><span></span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_BIM_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>bim<span class="k">)</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>Commands:</p>
+<div class="highlight-zsh notranslate"><div class="highlight"><pre><span></span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_BIM_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>bim<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_DOT_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>dot<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_FCTRACKER_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>fctracker<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_FREN_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>fren<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_HELLO_WORLD_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>hello-world<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_MORPH_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>morph<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_MUC_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>muc<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_NETSCAN_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>netscan<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_OUTLOOKCTL_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>outlookctl<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_PUC_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>puc<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_PINGER_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>pinger<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_READERCTL_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>readerctl<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_SYSUP_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>sysup<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_VUC_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>vuc<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">_ZSEQ_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>zseq<span class="k">)</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="fish">
+<h2>Fish<a class="headerlink" href="#fish" title="Link to this heading"></a></h2>
+<p>Pattern:</p>
+<div class="highlight-fish notranslate"><div class="highlight"><pre><span></span><span class="nv">_BIM_COMPLETE</span><span class="o">=</span>fish_source bim <span class="o">|</span> <span class="nb">source</span>
+</pre></div>
+</div>
+<p>Commands:</p>
+<div class="highlight-fish notranslate"><div class="highlight"><pre><span></span><span class="nv">_BIM_COMPLETE</span><span class="o">=</span>fish_source bim <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_DOT_COMPLETE</span><span class="o">=</span>fish_source dot <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_FCTRACKER_COMPLETE</span><span class="o">=</span>fish_source fctracker <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_FREN_COMPLETE</span><span class="o">=</span>fish_source fren <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_HELLO_WORLD_COMPLETE</span><span class="o">=</span>fish_source hello-world <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_MORPH_COMPLETE</span><span class="o">=</span>fish_source morph <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_MUC_COMPLETE</span><span class="o">=</span>fish_source muc <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_NETSCAN_COMPLETE</span><span class="o">=</span>fish_source netscan <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_OUTLOOKCTL_COMPLETE</span><span class="o">=</span>fish_source outlookctl <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_PUC_COMPLETE</span><span class="o">=</span>fish_source puc <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_PINGER_COMPLETE</span><span class="o">=</span>fish_source pinger <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_READERCTL_COMPLETE</span><span class="o">=</span>fish_source readerctl <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_SYSUP_COMPLETE</span><span class="o">=</span>fish_source sysup <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_VUC_COMPLETE</span><span class="o">=</span>fish_source vuc <span class="o">|</span> <span class="nb">source</span>
+<span class="nv">_ZSEQ_COMPLETE</span><span class="o">=</span>fish_source zseq <span class="o">|</span> <span class="nb">source</span>
+</pre></div>
+</div>
+</section>
+<section id="persistent-setup">
+<h2>Persistent Setup<a class="headerlink" href="#persistent-setup" title="Link to this heading"></a></h2>
+<p>To keep completions after opening a new shell, add the command lines you use to your shell startup file:</p>
+<ul class="simple">
+<li><p>Bash: <code class="docutils literal notranslate"><span class="pre">~/.bashrc</span></code></p></li>
+<li><p>Zsh: <code class="docutils literal notranslate"><span class="pre">~/.zshrc</span></code></p></li>
+<li><p>Fish: <code class="docutils literal notranslate"><span class="pre">~/.config/fish/config.fish</span></code></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tools/zseq.html" class="btn btn-neutral float-left" title="zseq" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="development.html" class="btn btn-neutral float-right" title="Development" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2026, Tomáš Bouška.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
