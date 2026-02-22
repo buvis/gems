@@ -169,4 +169,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ env.VERSION }}
           body_path: CHANGELOG.md
-          files: dist/*.whl
+          files: |
+            dist/*.whl
+            dist/*.cdx.json
