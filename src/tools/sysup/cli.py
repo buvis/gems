@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
 
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options
 from buvis.pybase.result import FatalError
 
-from sysup.commands.step_result import StepResult
+if TYPE_CHECKING:
+    from sysup.commands.step_result import StepResult
+
 from sysup.settings import SysupSettings
 
 

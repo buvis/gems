@@ -101,6 +101,14 @@ def test_nl(capsys: Any, console_adapter: ConsoleAdapter) -> None:
     assert captured.out.strip() == ""
 
 
+def test_render(console_adapter: ConsoleAdapter, monkeypatch) -> None:
+    mock_print = Mock()
+    monkeypatch.setattr(console_adapter.console, "print", mock_print)
+    renderable = Text("hello")
+    console_adapter.render(renderable)
+    mock_print.assert_called_once_with(renderable)
+
+
 def test_console_instance() -> None:
     assert isinstance(console, ConsoleAdapter)
 

@@ -73,7 +73,8 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
             f"and has a maximum depth of {max_depth}. "
             "Do you want to proceed?"
         )
-        click.confirm(message, abort=True)
+        if not console.confirm(message):
+            return
 
     from muc.commands.tidy.tidy import CommandTidy
 

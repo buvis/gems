@@ -30,7 +30,7 @@ def balance(ctx: click.Context) -> None:
         return
 
     for account in result.metadata.get("accounts", []):
-        console.console.print(account)
+        console.render(account)
 
 
 @cli.command("transactions")
@@ -90,7 +90,7 @@ def transactions(ctx: click.Context, account: str = "", currency: str = "", mont
                 row["outflow"],
                 row["inflow"],
             )
-        console.console.print(table)
+        console.render(table)
         console.nl()
 
 

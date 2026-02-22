@@ -114,4 +114,4 @@ class TestMucTidyCliExtra:
         mock_dirtree.get_max_depth.return_value = 5
         runner = CliRunner()
         result = runner.invoke(cli, ["tidy", str(tmp_path)], input="n\n")
-        assert result.exit_code != 0  # aborted
+        assert result.exit_code == 0  # declined, early return

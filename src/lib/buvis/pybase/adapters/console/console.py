@@ -164,6 +164,14 @@ class ConsoleAdapter:
         """
         return Confirm.ask(question)
 
+    def render(self: ConsoleAdapter, renderable: RenderableType) -> None:
+        """Print a Rich renderable object directly.
+
+        Args:
+            renderable: Any Rich renderable (Table, Panel, Tree, etc.).
+        """
+        self.console.print(renderable)
+
     def print(self: ConsoleAdapter, message: str, *, mode: str = "normal") -> None:
         """Render text through the console with optional rendering modes.
 
