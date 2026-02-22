@@ -98,6 +98,13 @@ jobs:
           pattern: wheel-*
           merge-multiple: true
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: dist/
+          format: cyclonedx-json
+          output-file: dist/buvis-gems.cdx.json
+
       - name: Generate changelog
         shell: bash
         run: |
