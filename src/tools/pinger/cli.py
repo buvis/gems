@@ -34,7 +34,7 @@ def wait(ctx: click.Context, host: str, timeout: int | None = None) -> None:
         from pinger.commands.wait.exceptions import CommandWaitTimeoutError
         from pinger.commands.wait.wait import CommandWait
     except ImportError:
-        console.panic("pinger requires the 'pinger' extra. Install with: uv tool install buvis-gems[pinger]")
+        console.require_import("pinger")
         return
 
     cmd = CommandWait(host=host, timeout=resolved_timeout)

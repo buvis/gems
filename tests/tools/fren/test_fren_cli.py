@@ -17,7 +17,7 @@ class TestFrenSlugImportError:
             with patch.dict(sys.modules, {mod_key: None}):
                 runner = CliRunner()
                 result = runner.invoke(cli, ["slug", str(target)])
-                assert "Missing deps" in result.output
+                assert "requires the 'fren' extra" in result.output
         finally:
             if saved is not None:
                 sys.modules[mod_key] = saved

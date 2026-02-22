@@ -22,8 +22,7 @@ def cli(ctx: click.Context) -> None:
 @click.argument("output_csv")
 def multilang(directory: str, output_csv: str) -> None:
     path_directory = Path(directory).resolve()
-    if not path_directory.is_dir():
-        console.panic(f"{path_directory} isn't a directory")
+    console.validate_path(path_directory)
 
     if shutil.which("mediainfo") is None:
         console.panic(
@@ -33,15 +32,7 @@ def multilang(directory: str, output_csv: str) -> None:
 
     from vuc.commands.multilang import CommandMultilang
 
-    cmd = CommandMultilang(directory=path_directory, output_csv=Path(output_csv).resolve())
-    result = cmd.execute()
-
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        console.success(result.output or "Done")
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(CommandMultilang(directory=path_directory, output_csv=Path(output_csv).resolve()).execute())
 
 
 if __name__ == "__main__":

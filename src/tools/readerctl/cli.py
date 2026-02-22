@@ -23,7 +23,7 @@ def login(ctx: click.Context) -> None:
     try:
         from readerctl.commands.login.login import CommandLogin
     except ImportError:
-        console.panic("readerctl requires the 'readerctl' extra. Install with: uv tool install buvis-gems[readerctl]")
+        console.require_import("readerctl")
         return
 
     settings = get_settings(ctx, ReaderctlSettings)
@@ -51,7 +51,7 @@ def add(ctx: click.Context, url: str | None, file: str | None) -> None:
         from readerctl.commands.add.add import CommandAdd
         from readerctl.commands.login.login import CommandLogin
     except ImportError:
-        console.panic("readerctl requires the 'readerctl' extra. Install with: uv tool install buvis-gems[readerctl]")
+        console.require_import("readerctl")
         return
 
     settings = get_settings(ctx, ReaderctlSettings)

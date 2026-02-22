@@ -21,18 +21,10 @@ def html2md(directory: str) -> None:
     try:
         from morph.commands.html2md.html2md import CommandHtml2Md
     except ImportError:
-        console.panic("Missing deps. Install with: uv tool install buvis-gems[morph]")
+        console.require_import("morph")
+        return
 
-    cmd = CommandHtml2Md(directory=directory)
-    result = cmd.execute()
-
-    for warning in result.warnings:
-        console.warning(warning)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(CommandHtml2Md(directory=directory).execute())
 
 
 @cli.command("deblank", help="Remove blank pages from PDFs")
@@ -45,14 +37,9 @@ def deblank(files: tuple[str, ...]) -> None:
         result = cmd.execute()
     except FatalError as error:
         console.panic(str(error))
+        return
 
-    for warning in result.warnings:
-        console.warning(warning)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(result)
 
 
 if __name__ == "__main__":

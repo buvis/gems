@@ -17,7 +17,7 @@ class TestMorphHtml2MdImportError:
             with patch.dict(sys.modules, {mod_key: None}):
                 runner = CliRunner()
                 result = runner.invoke(cli, ["html2md", str(tmp_path)])
-                assert "Missing deps" in result.output
+                assert "requires the 'morph' extra" in result.output
         finally:
             if saved is not None:
                 sys.modules[mod_key] = saved

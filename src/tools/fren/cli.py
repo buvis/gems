@@ -20,18 +20,10 @@ def slug(paths: tuple[str, ...]) -> None:
     try:
         from fren.commands.slug.slug import CommandSlug
     except ImportError:
-        console.panic("Missing deps. Install with: uv tool install buvis-gems[fren]")
+        console.require_import("fren")
+        return
 
-    cmd = CommandSlug(paths=paths)
-    result = cmd.execute()
-
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(CommandSlug(paths=paths).execute())
 
 
 @cli.command("directorize", help="Wrap files in directories named after file stem")
@@ -39,16 +31,7 @@ def slug(paths: tuple[str, ...]) -> None:
 def directorize(directory: str) -> None:
     from fren.commands.directorize.directorize import CommandDirectorize
 
-    cmd = CommandDirectorize(directory=directory)
-    result = cmd.execute()
-
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(CommandDirectorize(directory=directory).execute())
 
 
 @cli.command("flatten", help="Copy nested files into flat destination")
@@ -57,16 +40,7 @@ def directorize(directory: str) -> None:
 def flatten(source: str, destination: str) -> None:
     from fren.commands.flatten.flatten import CommandFlatten
 
-    cmd = CommandFlatten(source=source, destination=destination)
-    result = cmd.execute()
-
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(CommandFlatten(source=source, destination=destination).execute())
 
 
 @cli.command("normalize", help="NFC-normalize directory names")
@@ -74,16 +48,7 @@ def flatten(source: str, destination: str) -> None:
 def normalize(directory: str) -> None:
     from fren.commands.normalize.normalize import CommandNormalize
 
-    cmd = CommandNormalize(directory=directory)
-    result = cmd.execute()
-
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(CommandNormalize(directory=directory).execute())
 
 
 if __name__ == "__main__":

@@ -61,9 +61,7 @@ def cli(
     try:
         import pyfiglet  # noqa: F401
     except ImportError:
-        console.panic(
-            "hello-world requires the 'hello-world' extra. Install with: uv tool install buvis-gems[hello-world]"
-        )
+        console.require_import("hello-world", tool_name="hello-world")
         return
 
     if list_fonts:

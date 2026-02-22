@@ -32,12 +32,7 @@ def hosts(ctx: click.Context, interface: str | None = None) -> None:
         console.panic(str(e))
         return
 
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        console.success(result.output or "Done")
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(result)
 
 
 @cli.command("ssh", help="Find hosts with SSH available")
@@ -59,12 +54,7 @@ def ssh(ctx: click.Context, interface: str | None = None, port: int | None = Non
         console.panic(str(e))
         return
 
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        console.success(result.output or "Done")
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(result)
 
 
 if __name__ == "__main__":

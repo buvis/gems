@@ -7,8 +7,10 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
+    from pathlib import Path
 
+    from buvis.pybase.result import CommandResult
     from rich.console import Capture
     from rich.status import Status
 
@@ -228,6 +230,67 @@ class ConsoleAdapter:
         )
 
         return self.console.print(columns)
+
+    def report_result(
+        self: ConsoleAdapter,
+        result: CommandResult,
+        *,
+        success_msg: str | None = None,
+        failure_msg: str = "Failed",
+        on_success: Callable[[CommandResult], None] | None = None,
+        on_failure: Callable[[CommandResult], None] | None = None,
+    ) -> None:
+        """Print warnings then success/failure from a CommandResult.
+
+        Args:
+            result: The command result to report.
+            success_msg: Override message on success (default: result.output).
+            failure_msg: Fallback message on failure (default: "Failed").
+            on_success: Custom handler called instead of default success output.
+            on_failure: Custom handler called instead of default failure output.
+        """
+        for w in result.warnings:
+            self.warning(w)
+        if result.success:
+            if on_success is not None:
+                on_success(result)
+            elif success_msg or result.output:
+                self.success(success_msg or result.output or "")
+        elif on_failure is not None:
+            on_failure(result)
+        else:
+            self.failure(result.error or failure_msg)
+
+    def require_import(self: ConsoleAdapter, extra: str, tool_name: str | None = None) -> None:
+        """Panic with a standardized install hint for a missing optional extra.
+
+        Args:
+            extra: The extras key (e.g. "muc", "bim").
+            tool_name: Display name for the tool. Defaults to *extra*.
+        """
+        name = tool_name or extra
+        self.panic(f"{name} requires the '{extra}' extra. Install with: uv tool install buvis-gems\\[{extra}]")
+
+    def validate_path(
+        self: ConsoleAdapter,
+        path: Path,
+        *,
+        kind: str = "dir",
+        label: str | None = None,
+    ) -> None:
+        """Panic if *path* does not exist as the expected kind.
+
+        Args:
+            path: Path to check.
+            kind: ``"dir"`` (default) or ``"file"``.
+            label: Human-readable name for error messages. Defaults to *str(path)*.
+        """
+        display = label or str(path)
+        if kind == "file":
+            if not path.is_file():
+                self.panic(f"{display} doesn't exist")
+        elif not path.is_dir():
+            self.panic(f"{display} isn't a directory")
 
     def nl(self: ConsoleAdapter) -> None:
         """Output an empty line to the console."""

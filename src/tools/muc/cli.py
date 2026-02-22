@@ -33,8 +33,7 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
     settings = get_settings(ctx, MucSettings)
 
     path_source = Path(source_directory).resolve()
-    if not path_source.is_dir():
-        console.panic(f"{source_directory} isn't a directory")
+    console.validate_path(path_source)
 
     path_output = Path(output).resolve() if output else Path.cwd() / "transcoded"
     path_output.mkdir(exist_ok=True)
@@ -42,7 +41,7 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
     try:
         from muc.commands.limit.limit import CommandLimit
     except ImportError:
-        console.panic("muc requires the 'muc' extra. Install with: uv tool install buvis-gems[muc]")
+        console.require_import("muc")
         return
 
     cmd = CommandLimit(
@@ -52,14 +51,7 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
         bit_depth=settings.limit_flac_bit_depth,
         sampling_rate=settings.limit_flac_sampling_rate,
     )
-    result = cmd.execute()
-
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        console.success(result.output or "Done")
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(cmd.execute())
 
 
 @cli.command("tidy", help="Tidy directory")
@@ -70,8 +62,7 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
     settings = get_settings(ctx, MucSettings)
 
     path_directory = Path(directory).resolve()
-    if not path_directory.is_dir():
-        console.panic(f"{path_directory} isn't a directory")
+    console.validate_path(path_directory)
 
     file_count = DirTree.count_files(path_directory)
     max_depth = DirTree.get_max_depth(path_directory)
@@ -97,20 +88,11 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
 @click.argument("directory")
 def cover(directory: str) -> None:
     path_directory = Path(directory).resolve()
-    if not path_directory.is_dir():
-        console.panic(f"{path_directory} isn't a directory")
+    console.validate_path(path_directory)
 
     from muc.commands.cover.cover import CommandCover
 
-    cmd = CommandCover(directory=path_directory)
-    result = cmd.execute()
-
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        console.success(result.output or "Done")
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(CommandCover(directory=path_directory).execute())
 
 
 if __name__ == "__main__":

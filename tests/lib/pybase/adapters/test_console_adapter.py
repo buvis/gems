@@ -1,6 +1,7 @@
 import io
 import logging
 import sys
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -12,6 +13,7 @@ from buvis.pybase.adapters.console.console import (
     console,
     logging_to_console,
 )
+from buvis.pybase.result import CommandResult
 from rich.columns import Columns
 from rich.console import Group, Text
 from rich.markdown import Markdown
@@ -210,3 +212,111 @@ def test_logging_to_console_manages_handler_and_level(monkeypatch) -> None:
     assert capturing_handler not in logger.handlers
 
     logger.setLevel(previous_level)
+
+
+class TestReportResult:
+    def test_success_with_output(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=True, output="Created note")
+        console_adapter.report_result(result)
+        captured = capsys.readouterr()
+        assert "Created note" in captured.out
+
+    def test_success_with_override_msg(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=True, output="original")
+        console_adapter.report_result(result, success_msg="override")
+        captured = capsys.readouterr()
+        assert "override" in captured.out
+        assert "original" not in captured.out
+
+    def test_success_no_output_prints_nothing(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=True)
+        console_adapter.report_result(result)
+        captured = capsys.readouterr()
+        assert captured.out.strip() == ""
+
+    def test_failure_with_error(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=False, error="Disk full")
+        console_adapter.report_result(result)
+        captured = capsys.readouterr()
+        assert "Disk full" in captured.out
+
+    def test_failure_fallback_msg(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=False)
+        console_adapter.report_result(result, failure_msg="Custom fail")
+        captured = capsys.readouterr()
+        assert "Custom fail" in captured.out
+
+    def test_warnings_printed(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=True, output="ok", warnings=["w1", "w2"])
+        console_adapter.report_result(result)
+        captured = capsys.readouterr()
+        assert "w1" in captured.out
+        assert "w2" in captured.out
+
+    def test_on_success_callback(self, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=True, metadata={"count": 3})
+        callback = Mock()
+        console_adapter.report_result(result, on_success=callback)
+        callback.assert_called_once_with(result)
+
+    def test_on_failure_callback(self, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=False, error="err")
+        callback = Mock()
+        console_adapter.report_result(result, on_failure=callback)
+        callback.assert_called_once_with(result)
+
+
+class TestRequireImport:
+    def test_panics_with_install_hint(self, console_adapter: ConsoleAdapter) -> None:
+        with pytest.raises(SystemExit):
+            console_adapter.require_import("muc")
+
+    def test_message_format(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        with pytest.raises(SystemExit):
+            console_adapter.require_import("muc")
+        captured = capsys.readouterr()
+        assert "muc requires the 'muc' extra" in captured.out
+        assert "uv tool install buvis-gems" in captured.out
+        assert "muc" in captured.out
+
+    def test_custom_tool_name(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        with pytest.raises(SystemExit):
+            console_adapter.require_import("hello-world", tool_name="hello_world")
+        captured = capsys.readouterr()
+        assert "hello_world requires the 'hello-world' extra" in captured.out
+
+
+class TestValidatePath:
+    def test_valid_dir_passes(self, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
+        console_adapter.validate_path(tmp_path)  # should not raise
+
+    def test_invalid_dir_panics(self, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
+        bad = tmp_path / "nonexistent"
+        with pytest.raises(SystemExit):
+            console_adapter.validate_path(bad)
+
+    def test_invalid_dir_message(self, capsys: Any, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
+        bad = tmp_path / "nonexistent"
+        with pytest.raises(SystemExit):
+            console_adapter.validate_path(bad)
+        captured = capsys.readouterr()
+        assert "isn't a directory" in captured.out
+
+    def test_valid_file_passes(self, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
+        f = tmp_path / "test.txt"
+        f.write_text("x")
+        console_adapter.validate_path(f, kind="file")
+
+    def test_invalid_file_panics(self, capsys: Any, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
+        bad = tmp_path / "missing.txt"
+        with pytest.raises(SystemExit):
+            console_adapter.validate_path(bad, kind="file")
+        captured = capsys.readouterr()
+        assert "doesn't exist" in captured.out
+
+    def test_custom_label(self, capsys: Any, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
+        bad = tmp_path / "nope"
+        with pytest.raises(SystemExit):
+            console_adapter.validate_path(bad, label="music library")
+        captured = capsys.readouterr()
+        assert "music library" in captured.out

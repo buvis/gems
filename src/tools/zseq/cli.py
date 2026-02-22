@@ -49,12 +49,7 @@ def cli(
         console.panic(str(exc))
         return
 
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        console.success(result.output or "Done")
-    else:
-        console.failure(result.error or "Failed")
+    console.report_result(result)
 
 
 if __name__ == "__main__":
