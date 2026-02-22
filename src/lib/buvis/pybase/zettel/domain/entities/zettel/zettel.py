@@ -107,7 +107,7 @@ class Zettel:
         return str(self._data.metadata["title"])
 
     @title.setter
-    def title(self, value: str) -> None:
+    def title(self, value: str | None) -> None:
         """Set the Zettel title.
 
         Args:
@@ -150,7 +150,7 @@ class Zettel:
         return str(self._data.metadata["type"])
 
     @type.setter
-    def type(self, value: str) -> None:
+    def type(self, value: str | None) -> None:
         """Set the Zettel type.
 
         Args:

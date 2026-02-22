@@ -35,7 +35,7 @@ class StringOperator:
             >>> StringOperator.collapse("  foo   bar ")
             'foo bar'
         """
-        return " ".join(text.split()).rstrip().lstrip()
+        return " ".join(text.split())
 
     @staticmethod
     def shorten(text: str, limit: int, suffix_length: int) -> str:

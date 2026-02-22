@@ -99,7 +99,7 @@ class TestMucCoverCliExtra:
 
 class TestMucTidyCliExtra:
     @patch("muc.commands.tidy.tidy.CommandTidy")
-    @patch("muc.cli.DirTree")
+    @patch("buvis.pybase.filesystem.DirTree")
     def test_tidy_large_dir_confirmed(self, mock_dirtree: MagicMock, mock_cmd_cls: MagicMock, tmp_path) -> None:
         mock_dirtree.count_files.return_value = 200
         mock_dirtree.get_max_depth.return_value = 5
@@ -108,7 +108,7 @@ class TestMucTidyCliExtra:
         result = runner.invoke(cli, ["tidy", str(tmp_path)], input="y\n")
         assert result.exit_code == 0
 
-    @patch("muc.cli.DirTree")
+    @patch("buvis.pybase.filesystem.DirTree")
     def test_tidy_large_dir_aborted(self, mock_dirtree: MagicMock, tmp_path) -> None:
         mock_dirtree.count_files.return_value = 200
         mock_dirtree.get_max_depth.return_value = 5

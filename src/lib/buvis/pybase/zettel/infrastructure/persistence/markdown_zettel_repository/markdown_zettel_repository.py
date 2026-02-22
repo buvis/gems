@@ -73,8 +73,6 @@ class MarkdownZettelRepository(ZettelRepository):
             return ZettelFactory.create(Zettel(zettel_data, from_rust=True))
 
         # Fallback to pure-Python parser
-        from pathlib import Path
-
         from buvis.pybase.zettel.infrastructure.persistence.file_parsers.zettel_file_parser import (
             ZettelFileParser,
         )
@@ -95,8 +93,6 @@ class MarkdownZettelRepository(ZettelRepository):
             else:
                 raw_list = load_all(directory, self._extensions)
             return [ZettelFactory.create(Zettel(_rust_dict_to_zettel_data(raw), from_rust=True)) for raw in raw_list]
-
-        from pathlib import Path
 
         from buvis.pybase.zettel.infrastructure.persistence.file_parsers.zettel_file_parser import (
             ZettelFileParser,

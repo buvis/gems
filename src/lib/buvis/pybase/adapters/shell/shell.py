@@ -33,11 +33,11 @@ class ShellAdapter:
         self.is_logging = not suppress_logging
 
     def alias(self: ShellAdapter, alias: str, command: str) -> None:
-        """
-        Define a command alias.
+        """Define a command alias.
 
-        :param alias: The alias name to define.
-        :param command: The command string that the alias maps to.
+        Args:
+            alias: The alias name to define.
+            command: The command string that the alias maps to.
         """
         self.aliases[alias] = command
 
@@ -130,17 +130,22 @@ class ShellAdapter:
         """
         Check if a given command is available in the system PATH.
 
-        :param command: The name of the command to check.
-        :return: True if the command exists, False otherwise.
+        Args:
+            command: The name of the command to check.
+
+        Returns:
+            True if the command exists, False otherwise.
         """
         return shutil.which(command) is not None
 
     def _expand_alias(self: ShellAdapter, command: str) -> str:
-        """
-        Expand aliases in the command string.
+        """Expand aliases in the command string.
 
-        :param command: The command string potentially containing aliases.
-        :return: The command string with any aliases expanded.
+        Args:
+            command: The command string potentially containing aliases.
+
+        Returns:
+            The command string with any aliases expanded.
         """
         for alias, cmd in self.aliases.items():
             if command.startswith(alias):
@@ -148,24 +153,26 @@ class ShellAdapter:
         return command
 
     def _expand_environment_variables(self: ShellAdapter, command: str) -> str:
-        """
-        Expand environment variables in the command string.
+        """Expand environment variables in the command string.
 
-        :param command: The command string potentially containing environment variables in ${VAR} format.
-        :return: The command string with environment variables expanded.
+        Args:
+            command: The command string potentially containing environment variables in ${VAR} format.
+
+        Returns:
+            The command string with environment variables expanded.
         """
         return os.path.expandvars(command)
 
     def _log_normal_output(
         self: ShellAdapter,
-        stdout: None | str,
-        stderr: None | str,
+        stdout: str | None,
+        stderr: str | None,
     ) -> None:
-        """
-        Log the successful output of a command.
+        """Log the successful output of a command.
 
-        :param stdout: The standard output of the command.
-        :param stderr: The standard error output of the command.
+        Args:
+            stdout: The standard output of the command.
+            stderr: The standard error output of the command.
         """
         if stdout:
             logger.info(stdout)
@@ -173,10 +180,10 @@ class ShellAdapter:
             logger.error(stderr)
 
     def _log_error_output(self: ShellAdapter, e: subprocess.CalledProcessError) -> None:
-        """
-        Log the error output of a failed command execution.
+        """Log the error output of a failed command execution.
 
-        :param e: The exception raised for the failed command execution.
+        Args:
+            e: The exception raised for the failed command execution.
         """
         logger.error("Command failed with return code %s", e.returncode)
         if e.stdout:

@@ -24,16 +24,7 @@ def normalize_sections_order(zettel_data: ZettelData) -> None:
 
     Returns:
         None. The function modifies the zettel_data in place.
-
-    Raises:
-        TypeError: If the input is not an instance of ZettelData.
-
-    Note:
-        This function modifies the input ZettelData object in-place.
-        It does not return a new object but changes the existing one.
     """
-    if not isinstance(zettel_data, ZettelData):
-        raise TypeError("Expected zettel_data to be of type ZettelData")
 
     # Initialize list for the four expected sections plus other sections
     reordered_sections = [("", "")] * 4

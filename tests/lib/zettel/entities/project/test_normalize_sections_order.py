@@ -100,8 +100,3 @@ def test_content_preservation():
 
     assert zettel.sections[0][1] == ["Main content"]
     assert zettel.sections[1][1] == ["Description content"]
-
-
-def test_type_checking():
-    with pytest.raises(TypeError):
-        normalize_sections_order("Not a ZettelData object")

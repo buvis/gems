@@ -67,5 +67,4 @@ __all__ = [
     "HookRunner",
     "Question",
     "ZettelTemplate",
-    "_discover_python_templates",
 ]

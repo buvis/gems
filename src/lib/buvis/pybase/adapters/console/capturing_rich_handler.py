@@ -8,11 +8,14 @@ from rich.logging import RichHandler
 
 
 class CapturingRichHandler(RichHandler):
+    """RichHandler that captures log output to a specific Rich Console."""
+
     def __init__(self, console: Console, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.console = console
 
     def emit(self, record: LogRecord) -> None:
+        """Render and print a log record to the captured console."""
         message = self.format(record)
         message_renderable = self.render_message(record, message)
         rendered = self.render(

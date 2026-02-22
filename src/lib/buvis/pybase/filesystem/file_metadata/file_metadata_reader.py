@@ -56,7 +56,7 @@ class FileMetadataReader:
             file_path (Path): Path to the file.
 
         Returns:
-            datatime | None: Datetime of the first commit involving the file
+            datetime | None: Datetime of the first commit involving the file
                 or None if the file wasn't committed to any Git repository.
         """
         try:

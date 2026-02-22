@@ -5,7 +5,6 @@ from pathlib import Path
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
-from buvis.pybase.filesystem import DirTree
 
 from muc.settings import MucSettings
 
@@ -60,6 +59,8 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
 @click.pass_context
 def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
     settings = get_settings(ctx, MucSettings)
+
+    from buvis.pybase.filesystem import DirTree
 
     path_directory = Path(directory).resolve()
     console.validate_path(path_directory)

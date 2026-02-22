@@ -3,7 +3,6 @@ from __future__ import annotations
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
-from rich.table import Table
 
 from fctracker.settings import FctrackerSettings
 
@@ -64,6 +63,8 @@ def transactions(ctx: click.Context, account: str = "", currency: str = "", mont
     except FileNotFoundError as exc:
         console.panic(str(exc))
         return
+
+    from rich.table import Table
 
     for table_data in result.metadata.get("tables", []):
         table = Table(

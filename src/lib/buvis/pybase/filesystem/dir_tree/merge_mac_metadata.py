@@ -9,21 +9,20 @@ from buvis.pybase.filesystem.dir_tree.safe_rglob import safe_rglob
 if os.name != "nt":
     import xattr
 
+logger = logging.getLogger(__name__)
+
 
 def merge_mac_metadata(directory: Path) -> None:
-    """
-    Clean Mac metadata by merging extended attributes and removing ._ files.
+    """Clean Mac metadata by merging extended attributes and removing ._ files.
 
-    This function attempts to mimic the behavior of 'dot_clean -mn':
-    - For each ._ file, it tries to merge its contents into the corresponding data file.
-    - If merging is successful, it removes the ._ file.
-    - If there's no corresponding data file, it removes the ._ file.
+    Mimics the behavior of 'dot_clean -mn':
+    - For each ._ file, tries to merge its contents into the corresponding data file.
+    - If merging is successful, removes the ._ file.
+    - If there's no corresponding data file, removes the ._ file.
 
-    :param directory: Path to the directory to process
-    :type directory: :class:`Path`
-    :return: None. The function modifies the <directory> in place.
+    Args:
+        directory: Path to the directory to process.
     """
-    directory = Path(directory)
     for apple_double in safe_rglob(directory, "._*"):
         if apple_double.is_file():
             data_file = apple_double.with_name(apple_double.name[2:])
@@ -42,17 +41,17 @@ def merge_mac_metadata(directory: Path) -> None:
 
                     # Remove the ._ file
                     apple_double.unlink()
-                    logging.info(
+                    logger.info(
                         "Merged metadata from %s to %s",
                         apple_double,
                         data_file,
                     )
-                except OSError as _:
+                except OSError:
                     pass
             else:
                 # If there's no corresponding data file, just remove the ._ file
                 try:
                     apple_double.unlink()
-                    logging.info("Deleted %s", apple_double)
-                except OSError as _:
+                    logger.info("Deleted %s", apple_double)
+                except OSError:
                     pass

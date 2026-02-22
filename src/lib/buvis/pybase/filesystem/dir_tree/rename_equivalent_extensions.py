@@ -5,22 +5,20 @@ from pathlib import Path
 
 from buvis.pybase.filesystem.dir_tree.safe_rglob import safe_rglob
 
+logger = logging.getLogger(__name__)
+
 
 def rename_equivalent_extensions(
     directory: Path,
     equivalent_extensions: list[list[str]],
 ) -> None:
-    """
-    Rename files based on equivalent extensions.
+    """Rename files based on equivalent extensions.
 
-    :param directory: Path to the directory to process
-    :type directory: :class:`Path`
-    :param equivalent_extensions: List of lists containing equivalent extensions.
-        First item is the target the rest of the list will be renamed to
-    :type equivalent_extensions: List[List[str]]
-    :return: None. The function modifies the <directory> in place.
+    Args:
+        directory: Path to the directory to process.
+        equivalent_extensions: List of lists containing equivalent extensions.
+            First item is the target the rest of the list will be renamed to.
     """
-    directory = Path(directory)
     extension_map = {}
     for group in equivalent_extensions:
         target = "." + group[0].lower()
@@ -35,4 +33,4 @@ def rename_equivalent_extensions(
                 new_name = file_path.stem + new_ext
                 new_path = file_path.with_name(new_name)
                 file_path.rename(new_path)
-                logging.info("Renamed %s -> %s", file_path, new_name)
+                logger.info("Renamed %s -> %s", file_path, new_name)

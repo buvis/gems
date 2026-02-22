@@ -20,4 +20,4 @@ def remove_duplicate_tags(zettel_data: ZettelData) -> None:
     """
     tags = zettel_data.metadata.get("tags")
     if tags is not None:
-        zettel_data.metadata["tags"] = list(set(tags))
+        zettel_data.metadata["tags"] = list(dict.fromkeys(tags))
