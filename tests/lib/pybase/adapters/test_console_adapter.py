@@ -308,7 +308,8 @@ class TestValidatePath:
         with pytest.raises(SystemExit):
             console_adapter.validate_path(bad)
         captured = capsys.readouterr()
-        assert "isn't a directory" in captured.out
+        output = " ".join(captured.out.split())
+        assert "isn't a directory" in output
 
     def test_valid_file_passes(self, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
         f = tmp_path / "test.txt"
@@ -320,7 +321,8 @@ class TestValidatePath:
         with pytest.raises(SystemExit):
             console_adapter.validate_path(bad, kind="file")
         captured = capsys.readouterr()
-        assert "doesn't exist" in captured.out
+        output = " ".join(captured.out.split())
+        assert "doesn't exist" in output
 
     def test_custom_label(self, capsys: Any, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
         bad = tmp_path / "nope"

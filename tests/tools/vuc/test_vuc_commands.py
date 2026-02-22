@@ -20,7 +20,8 @@ class TestVucCommands:
     def test_multilang_not_a_dir(self, tmp_path) -> None:
         runner = CliRunner()
         result = runner.invoke(cli, ["multilang", str(tmp_path / "nope"), str(tmp_path / "out.csv")])
-        assert result.exit_code != 0 or "isn't a directory" in result.output
+        output = " ".join(result.output.split())
+        assert result.exit_code != 0 or "isn't a directory" in output
 
     @patch("vuc.cli.shutil")
     def test_multilang_no_mediainfo(self, mock_shutil: MagicMock, tmp_path) -> None:

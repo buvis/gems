@@ -34,8 +34,10 @@ class TestSysupCliHelp:
 
 
 class TestSysupMacCommand:
+    @patch("sysup.cli.sys")
     @patch("sysup.commands.mac.mac.CommandMac")
-    def test_mac_success(self, mock_cmd_cls: MagicMock) -> None:
+    def test_mac_success(self, mock_cmd_cls: MagicMock, mock_sys: MagicMock) -> None:
+        mock_sys.platform = "darwin"
         mock_cmd_cls.return_value.execute.return_value = [
             StepResult("brew", True, "brew updated"),
         ]
@@ -96,17 +98,21 @@ class TestSysupWslCommand:
 
 
 class TestSysupMacCommandExtra:
+    @patch("sysup.cli.sys")
     @patch("sysup.commands.mac.mac.CommandMac")
-    def test_mac_fatal_error(self, mock_cmd_cls: MagicMock) -> None:
+    def test_mac_fatal_error(self, mock_cmd_cls: MagicMock, mock_sys: MagicMock) -> None:
         from buvis.pybase.result import FatalError
 
+        mock_sys.platform = "darwin"
         mock_cmd_cls.return_value.execute.side_effect = FatalError("xcode missing")
         runner = CliRunner()
         result = runner.invoke(cli, ["mac"])
         assert "xcode missing" in result.output
 
+    @patch("sysup.cli.sys")
     @patch("sysup.commands.mac.mac.CommandMac")
-    def test_mac_report_steps_default_messages(self, mock_cmd_cls: MagicMock) -> None:
+    def test_mac_report_steps_default_messages(self, mock_cmd_cls: MagicMock, mock_sys: MagicMock) -> None:
+        mock_sys.platform = "darwin"
         mock_cmd_cls.return_value.execute.return_value = [
             StepResult("brew", True),
             StepResult("mas", False),
