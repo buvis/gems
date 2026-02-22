@@ -32,3 +32,20 @@ class TestPingerCommands:
         runner = CliRunner()
         result = runner.invoke(cli, ["wait", "10.0.0.1"])
         assert result.exit_code != 0 or "Timeout" in result.output
+
+
+class TestPingerImportError:
+    def test_wait_import_error(self) -> None:
+        import sys
+        from unittest.mock import patch
+
+        mod_key = "pinger.commands.wait.wait"
+        saved = sys.modules.pop(mod_key, None)
+        try:
+            with patch.dict(sys.modules, {mod_key: None}):
+                runner = CliRunner()
+                result = runner.invoke(cli, ["wait", "10.0.0.1"])
+                assert "pinger" in result.output
+        finally:
+            if saved is not None:
+                sys.modules[mod_key] = saved

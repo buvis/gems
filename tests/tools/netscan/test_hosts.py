@@ -63,3 +63,29 @@ class TestCommandHosts:
         result = CommandHosts(interface="en0").execute()
         assert result.success is False
         assert "permission denied" in result.error
+
+    def test_regex_match_with_no_ip(self, mocker) -> None:
+        """Covers ip_text is None branch (line 35-36)."""
+        mocker.patch("netscan.commands.hosts.hosts.validate_nmap", return_value="/usr/local/bin/nmap")
+        mocker.patch("netscan.commands.hosts.hosts.get_subnet", return_value="192.168.1.0/24")
+
+        # Craft output where NMAP_REPORT_PATTERN matches but both ip groups are None
+        # This can't normally happen with the regex, but we mock the pattern to test the guard
+        from unittest.mock import MagicMock
+
+        fake_match = MagicMock()
+        fake_match.groups.return_value = ("hostname", None, None)
+
+        original_pattern = mocker.patch("netscan.commands.hosts.hosts.NMAP_REPORT_PATTERN")
+        original_pattern.search.side_effect = [fake_match, None]  # one match then done
+
+        mocker.patch(
+            "netscan.commands.hosts.hosts.subprocess.run",
+            return_value=subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="Nmap scan report for hostname\n", stderr=""
+            ),
+        )
+
+        result = CommandHosts(interface="en0").execute()
+        assert result.success is True
+        assert result.output == ""

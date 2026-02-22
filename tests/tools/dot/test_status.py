@@ -28,6 +28,16 @@ class TestCommandStatusInit:
 
         assert os.environ["DOTFILES_ROOT"] == str(custom_root)
 
+    def test_sets_dotfiles_root_when_missing(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
+        shell = MagicMock()
+
+        CommandStatus(shell=shell)
+
+        import os
+
+        assert os.environ.get("DOTFILES_ROOT") is not None
+
 
 class TestCommandStatusExecute:
     def test_git_secret_hide_success(self, dotfiles_root) -> None:
