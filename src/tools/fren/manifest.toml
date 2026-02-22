@@ -1,0 +1,22 @@
+[tool]
+name = "fren"
+display_name = "File Renamer"
+module_name = "fren"
+description = "File renamer toolkit"
+category = "file-management"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+slug = "Slugify filenames"
+directorize = "Wrap files in directories named after file stem"
+flatten = "Copy nested files into flat destination"
+normalize = "NFC-normalize directory names"
+
+[tool.requirements]
+python = ">=3.10"
+extras = ["fren"]

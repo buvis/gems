@@ -4,7 +4,7 @@ CLI Tools
 Installation
 ------------
 
-The base install registers all 9 CLIs but only pulls core dependencies.
+The base install registers all 15 CLIs but only pulls core dependencies.
 Tools that need extra packages will tell you what to install if the dep is missing.
 
 .. code-block:: bash
@@ -14,7 +14,7 @@ Tools that need extra packages will tell you what to install if the dep is missi
     uv tool install buvis-gems[bim,muc]     # combine extras
     uv tool install buvis-gems[all]         # everything
 
-Available extras: ``bim``, ``hello-world``, ``muc``, ``pinger``, ``readerctl``, ``ml``, ``all``.
+Available extras: ``bim``, ``bim-web``, ``fren``, ``hello-world``, ``morph``, ``muc``, ``pinger``, ``readerctl``, ``all``.
 
 Overview
 --------
@@ -35,21 +35,39 @@ Overview
    * - :doc:`fctracker <tools/fctracker>`
      -
      - Foreign currency account tracker
+   * - :doc:`fren <tools/fren>`
+     - ``fren``
+     - File renamer toolkit
    * - :doc:`hello-world <tools/hello-world>`
      - ``hello-world``
      - Sample script template
+   * - :doc:`morph <tools/morph>`
+     - ``morph``
+     - File conversion toolkit
    * - :doc:`muc <tools/muc>`
      -
      - Music collection tools (transcoding, tidying)
+   * - :doc:`netscan <tools/netscan>`
+     -
+     - Network scanning tools
    * - :doc:`outlookctl <tools/outlookctl>`
      -
      - Outlook calendar CLI (Windows)
    * - :doc:`pinger <tools/pinger>`
      - ``pinger``
      - ICMP ping utilities
+   * - :doc:`puc <tools/puc>`
+     -
+     - Photo utility collection
    * - :doc:`readerctl <tools/readerctl>`
      - ``readerctl``
      - Readwise Reader CLI
+   * - :doc:`sysup <tools/sysup>`
+     -
+     - System update tools
+   * - :doc:`vuc <tools/vuc>`
+     -
+     - Video utility collection
    * - :doc:`zseq <tools/zseq>`
      -
      - Zettelsequence file naming utilities
@@ -97,9 +115,15 @@ See :doc:`configuration` for how to create custom settings classes and YAML conf
    tools/bim
    tools/dot
    tools/fctracker
+   tools/fren
    tools/hello-world
+   tools/morph
    tools/muc
+   tools/netscan
    tools/outlookctl
    tools/pinger
+   tools/puc
    tools/readerctl
+   tools/sysup
+   tools/vuc
    tools/zseq

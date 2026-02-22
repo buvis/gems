@@ -1,0 +1,19 @@
+[tool]
+name = "vuc"
+display_name = "Video Utility"
+module_name = "vuc"
+description = "Video utility collection"
+category = "media"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+multilang = "List video files with multiple audio tracks"
+
+[tool.requirements]
+python = ">=3.10"
+extras = []

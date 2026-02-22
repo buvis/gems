@@ -1,0 +1,20 @@
+[tool]
+name = "morph"
+display_name = "File Converter"
+module_name = "morph"
+description = "File conversion toolkit"
+category = "file-management"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+html2md = "Convert HTML files to Markdown"
+deblank = "Remove blank pages from PDFs"
+
+[tool.requirements]
+python = ">=3.10"
+extras = ["morph"]

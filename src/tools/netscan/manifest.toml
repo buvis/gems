@@ -1,0 +1,20 @@
+[tool]
+name = "netscan"
+display_name = "Network Scanner"
+module_name = "netscan"
+description = "Network scanning tools"
+category = "network"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+hosts = "Discover hosts on the local network"
+ssh = "Find hosts with SSH available"
+
+[tool.requirements]
+python = ">=3.10"
+extras = []

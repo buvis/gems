@@ -1,0 +1,21 @@
+[tool]
+name = "sysup"
+display_name = "System Updater"
+module_name = "sysup"
+description = "System update tools"
+category = "system"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+mac = "Run macOS system and tooling updates"
+pip = "Upgrade pip and outdated Python packages"
+wsl = "Run WSL/Linux package updates"
+
+[tool.requirements]
+python = ">=3.10"
+extras = []

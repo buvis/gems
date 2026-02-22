@@ -1,0 +1,19 @@
+[tool]
+name = "puc"
+display_name = "Photo Utility"
+module_name = "puc"
+description = "Photo utility collection"
+category = "media"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.commands]
+strip = "Strip EXIF metadata from photos, keeping copyright and dates"
+
+[tool.requirements]
+python = ">=3.10"
+extras = []

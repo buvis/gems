@@ -30,11 +30,17 @@ src/
     ├── bim/                    # BUVIS InfoMesh CLI (zettel integration)
     ├── dot/                    # dotfiles manager
     ├── fctracker/              # foreign currency tracker
+    ├── fren/                   # file renamer toolkit
     ├── hello_world/            # sample template
+    ├── morph/                  # file conversion toolkit
     ├── muc/                    # music collection tools
+    ├── netscan/                # network scanning tools
     ├── outlookctl/             # Outlook CLI
     ├── pinger/                 # ICMP ping utilities
+    ├── puc/                    # photo utility collection
     ├── readerctl/              # Readwise Reader CLI
+    ├── sysup/                  # system update tools
+    ├── vuc/                    # video utility collection
     └── zseq/                   # Zettelsequence utilities
 tests/
 ├── lib/                        # library tests
@@ -44,7 +50,8 @@ tests/
 └── tools/                      # CLI tool tests
 dev/
 ├── bin/release                 # bump+tag+push
-└── pin_deps.py                 # pin deps from uv.lock for publishing
+├── pin_deps.py                 # pin deps from uv.lock for publishing
+└── scaffold.py                 # scaffold a new tool
 ```
 
 **Key patterns:**
@@ -142,7 +149,7 @@ uv tool install buvis-gems[all]         # everything
 uv tool upgrade buvis-gems              # update
 ```
 
-Extras: `bim`, `bim-web`, `hello-world`, `muc`, `pinger`, `readerctl`, `all`
+Extras: `bim`, `bim-web`, `fren`, `hello-world`, `morph`, `muc`, `pinger`, `readerctl`, `all`
 
 ## Release
 
