@@ -59,7 +59,7 @@ class TestLoadAllPerformance:
 
         # Timed run
         start = time.perf_counter()
-        results = load_all(str(tmp_path))
+        results, _errors = load_all(str(tmp_path))
         elapsed = time.perf_counter() - start
 
         assert len(results) == SAMPLE_COUNT
@@ -70,18 +70,18 @@ class TestLoadAllPerformance:
 class TestSearchPerformance:
     def test_search_returns_matches(self, tmp_path):
         _generate_sample_files(tmp_path, 100)
-        results = search(str(tmp_path), "sample")
+        results, _errors = search(str(tmp_path), "sample")
         assert len(results) == 100  # all files contain "sample"
 
     def test_search_no_matches(self, tmp_path):
         _generate_sample_files(tmp_path, 100)
-        results = search(str(tmp_path), "nonexistent-xyzzy")
+        results, _errors = search(str(tmp_path), "nonexistent-xyzzy")
         assert len(results) == 0
 
     def test_search_case_insensitive(self, tmp_path):
         _generate_sample_files(tmp_path, 10)
-        lower = search(str(tmp_path), "sample")
-        upper = search(str(tmp_path), "SAMPLE")
+        lower, _ = search(str(tmp_path), "sample")
+        upper, _ = search(str(tmp_path), "SAMPLE")
         assert len(lower) == len(upper)
 
     def test_search_5000_files_under_threshold(self, tmp_path):
@@ -91,7 +91,7 @@ class TestSearchPerformance:
         search(str(tmp_path), "benchmark")
 
         start = time.perf_counter()
-        results = search(str(tmp_path), "benchmark")
+        results, _errors = search(str(tmp_path), "benchmark")
         elapsed = time.perf_counter() - start
 
         assert len(results) == SAMPLE_COUNT

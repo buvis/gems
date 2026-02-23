@@ -85,4 +85,6 @@ def _get_title_from_filename(filename: str) -> str | None:
         The extracted title, if any, otherwise None.
     """
     title_from_filename = DATETIME_PATTERN.sub("", filename).replace("-", " ").strip()
-    return title_from_filename.capitalize() if title_from_filename else None
+    if not title_from_filename:
+        return None
+    return title_from_filename[0].upper() + title_from_filename[1:]

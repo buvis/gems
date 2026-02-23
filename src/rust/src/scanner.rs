@@ -36,30 +36,30 @@ fn metadata_matches(meta: &IndexMap<String, YamlValue>, conditions: &[(String, M
 }
 
 /// Scan a directory for markdown files, parse all in parallel with migration + consistency.
-/// Returns Vec of fully processed ZettelData.
-pub fn load_all(directory: &str, extensions: &[String]) -> Result<Vec<ZettelData>, String> {
+/// Returns (results, errors) where errors are (path, message) pairs.
+pub fn load_all(directory: &str, extensions: &[String]) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
     let files = collect_files(directory, extensions)?;
 
-    // Parse in parallel with rayon
-    let results: Vec<Result<ZettelData, String>> = files
+    let results: Vec<Result<ZettelData, (String, String)>> = files
         .par_iter()
         .map(|path| {
-            let mut data = parser::parse_file(path)?;
+            let mut data = parser::parse_file(path)
+                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             Ok(data)
         })
         .collect();
 
-    // Collect results, skip errors
     let mut all_data = Vec::with_capacity(results.len());
+    let mut errors = Vec::new();
     for result in results {
         match result {
             Ok(data) => all_data.push(data),
-            Err(e) => eprintln!("Warning: {}", e),
+            Err(e) => errors.push(e),
         }
     }
 
-    Ok(all_data)
+    Ok((all_data, errors))
 }
 
 /// Like load_all but filters on metadata eq conditions after the pipeline.
@@ -68,29 +68,34 @@ pub fn load_filtered(
     directory: &str,
     extensions: &[String],
     conditions: &[(String, MetaFilterValue)],
-) -> Result<Vec<ZettelData>, String> {
+) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
     let files = collect_files(directory, extensions)?;
 
-    let results: Vec<Option<ZettelData>> = files
+    let results: Vec<Result<Option<ZettelData>, (String, String)>> = files
         .par_iter()
         .map(|path| {
-            let mut data = match parser::parse_file(path) {
-                Ok(d) => d,
-                Err(e) => {
-                    eprintln!("Warning: {}", e);
-                    return None;
-                }
-            };
+            let mut data = parser::parse_file(path)
+                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             if metadata_matches(&data.metadata, conditions) {
-                Some(data)
+                Ok(Some(data))
             } else {
-                None
+                Ok(None)
             }
         })
         .collect();
 
-    Ok(results.into_iter().flatten().collect())
+    let mut all_data = Vec::new();
+    let mut errors = Vec::new();
+    for result in results {
+        match result {
+            Ok(Some(data)) => all_data.push(data),
+            Ok(None) => {}
+            Err(e) => errors.push(e),
+        }
+    }
+
+    Ok((all_data, errors))
 }
 
 // ── Metadata cache ──────────────────────────────────────────────────────
@@ -150,7 +155,7 @@ pub fn load_cached(
     extensions: &[String],
     conditions: &[(String, MetaFilterValue)],
     cache_path: &str,
-) -> Result<Vec<ZettelData>, String> {
+) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
     let cp = Path::new(cache_path);
     let cache = load_cache(cp);
 
@@ -166,22 +171,26 @@ pub fn load_cached(
         .collect();
 
     // Full-parse only matching files for sections
-    let results: Vec<Option<ZettelData>> = match_paths
+    let results: Vec<Result<ZettelData, (String, String)>> = match_paths
         .par_iter()
         .map(|path| {
-            let mut data = match parser::parse_file(path) {
-                Ok(d) => d,
-                Err(e) => {
-                    eprintln!("Warning: {}", e);
-                    return None;
-                }
-            };
+            let mut data = parser::parse_file(path)
+                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
-            Some(data)
+            Ok(data)
         })
         .collect();
 
-    Ok(results.into_iter().flatten().collect())
+    let mut all_data = Vec::new();
+    let mut errors = Vec::new();
+    for result in results {
+        match result {
+            Ok(data) => all_data.push(data),
+            Err(e) => errors.push(e),
+        }
+    }
+
+    Ok((all_data, errors))
 }
 
 /// Cold path: local-only walk (no symlink following), parse + build cache.
@@ -191,19 +200,14 @@ fn load_cached_cold(
     extensions: &[String],
     conditions: &[(String, MetaFilterValue)],
     cache_path: &Path,
-) -> Result<Vec<ZettelData>, String> {
+) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
     let files = collect_files_opt(directory, extensions, false)?;
 
-    let parsed: Vec<Option<(String, CacheEntry, Option<ZettelData>)>> = files
+    let parsed: Vec<Result<(String, CacheEntry, Option<ZettelData>), (String, String)>> = files
         .par_iter()
         .map(|path| {
-            let mut data = match parser::parse_file(path) {
-                Ok(d) => d,
-                Err(e) => {
-                    eprintln!("Warning: {}", e);
-                    return None;
-                }
-            };
+            let mut data = parser::parse_file(path)
+                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             let key = path.to_string_lossy().to_string();
             let (secs, nanos) = get_mtime(path).unwrap_or((0, 0));
@@ -218,22 +222,27 @@ fn load_cached_cold(
             } else {
                 None
             };
-            Some((key, entry, matched))
+            Ok((key, entry, matched))
         })
         .collect();
 
     let mut cache = Cache::with_capacity(parsed.len());
     let mut results = Vec::new();
-    for item in parsed.into_iter().flatten() {
-        let (key, entry, matched) = item;
-        cache.insert(key, entry);
-        if let Some(data) = matched {
-            results.push(data);
+    let mut errors = Vec::new();
+    for item in parsed {
+        match item {
+            Ok((key, entry, matched)) => {
+                cache.insert(key, entry);
+                if let Some(data) = matched {
+                    results.push(data);
+                }
+            }
+            Err(e) => errors.push(e),
         }
     }
 
     save_cache(cache_path, &cache);
-    Ok(results)
+    Ok((results, errors))
 }
 
 /// Background cache refresh: walk directory, compare with existing cache, update.
@@ -283,20 +292,15 @@ pub fn refresh_cache(
     }
 
     // Parse new/stale files in parallel
-    let new_entries: Vec<Option<(String, CacheEntry)>> = stale_or_new
+    let new_entries: Vec<Result<(String, CacheEntry), (String, String)>> = stale_or_new
         .par_iter()
         .map(|path| {
-            let mut data = match parser::parse_file(path) {
-                Ok(d) => d,
-                Err(e) => {
-                    eprintln!("Warning: {}", e);
-                    return None;
-                }
-            };
+            let mut data = parser::parse_file(path)
+                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             let key = path.to_string_lossy().to_string();
             let (secs, nanos) = get_mtime(path).unwrap_or((0, 0));
-            Some((key, CacheEntry {
+            Ok((key, CacheEntry {
                 mtime_secs: secs,
                 mtime_nanos: nanos,
                 metadata: data.metadata,
@@ -306,8 +310,12 @@ pub fn refresh_cache(
         .collect();
 
     let mut cache = old_cache;
-    for item in new_entries.into_iter().flatten() {
-        cache.insert(item.0, item.1);
+    let mut n_errors = 0usize;
+    for item in new_entries {
+        match item {
+            Ok((key, entry)) => { cache.insert(key, entry); }
+            Err(_) => n_errors += 1,
+        }
     }
     // Remove deleted
     cache.retain(|k, _| new_keys.contains(k));
@@ -323,6 +331,9 @@ pub fn refresh_cache(
     }
     if n_deleted > 0 {
         parts.push(format!("{} deleted", n_deleted));
+    }
+    if n_errors > 0 {
+        parts.push(format!("{} errors", n_errors));
     }
     let summary = parts.join(", ");
 
@@ -391,30 +402,38 @@ fn matches_query(data: &ZettelData, query_lower: &str) -> bool {
 
 /// Full-text search: scan directory, parse in parallel, return matches.
 /// Searches raw content first, only runs migration+consistency on matches.
-pub fn search(directory: &str, query: &str, extensions: &[String]) -> Result<Vec<ZettelData>, String> {
+pub fn search(directory: &str, query: &str, extensions: &[String]) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
     let files = collect_files(directory, extensions)?;
     let query_lower = query.to_lowercase();
 
-    let results: Vec<Option<ZettelData>> = files
+    let results: Vec<Result<Option<ZettelData>, (String, String)>> = files
         .par_iter()
         .map(|path| {
-            let mut data = match parser::parse_file(path) {
-                Ok(d) => d,
-                Err(_) => return None,
-            };
+            let mut data = parser::parse_file(path)
+                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
 
             // Search on raw parsed data (before expensive pipeline)
             if !matches_query(&data, &query_lower) {
-                return None;
+                return Ok(None);
             }
 
             // Only process matches
             process_zettel(&mut data);
-            Some(data)
+            Ok(Some(data))
         })
         .collect();
 
-    Ok(results.into_iter().flatten().collect())
+    let mut all_data = Vec::new();
+    let mut errors = Vec::new();
+    for result in results {
+        match result {
+            Ok(Some(data)) => all_data.push(data),
+            Ok(None) => {}
+            Err(e) => errors.push(e),
+        }
+    }
+
+    Ok((all_data, errors))
 }
 
 /// Apply migration + consistency pipeline to parsed ZettelData.

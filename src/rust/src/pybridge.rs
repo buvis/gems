@@ -26,6 +26,13 @@ fn yaml_value_to_py(py: Python<'_>, val: &YamlValue) -> PyResult<Py<PyAny>> {
                 .collect::<PyResult<_>>()?;
             Ok(PyList::new(py, &py_items)?.into_any().unbind())
         }
+        YamlValue::Dict(map) => {
+            let dict = PyDict::new(py);
+            for (key, val) in map {
+                dict.set_item(key, yaml_value_to_py(py, val)?)?;
+            }
+            Ok(dict.into_any().unbind())
+        }
         YamlValue::DateTime(dt) => {
             let utc_dt = dt.with_timezone(&chrono::Utc);
             let datetime_mod = py.import("datetime")?;
@@ -57,6 +64,17 @@ fn map_to_pydict(
         dict.set_item(key, yaml_value_to_py(py, val)?)?;
     }
     Ok(dict.unbind())
+}
+
+/// Convert error pairs to Python list of (path, message) tuples.
+fn errors_to_pylist(py: Python<'_>, errors: &[(String, String)]) -> PyResult<Py<PyList>> {
+    let items: Vec<Py<PyTuple>> = errors
+        .iter()
+        .map(|(path, msg)| {
+            Ok(PyTuple::new(py, &[path.as_str(), msg.as_str()])?.unbind())
+        })
+        .collect::<PyResult<_>>()?;
+    Ok(PyList::new(py, &items)?.unbind())
 }
 
 /// Convert sections to Python list of tuples.
@@ -99,12 +117,12 @@ pub fn parse_file(py: Python<'_>, path: &str) -> PyResult<Py<PyAny>> {
 }
 
 /// Bulk load all markdown files from a directory.
-/// Returns a list of dicts.
+/// Returns (list_of_dicts, list_of_error_tuples).
 #[pyfunction]
 #[pyo3(signature = (directory, extensions=None))]
 pub fn load_all(py: Python<'_>, directory: &str, extensions: Option<Vec<String>>) -> PyResult<Py<PyAny>> {
     let exts = extensions.unwrap_or_else(|| vec!["md".to_string()]);
-    let results = scanner::load_all(directory, &exts)
+    let (results, errors) = scanner::load_all(directory, &exts)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
 
     let py_list: Vec<Py<PyAny>> = results
@@ -112,10 +130,14 @@ pub fn load_all(py: Python<'_>, directory: &str, extensions: Option<Vec<String>>
         .map(|data| zettel_data_to_pydict(py, data))
         .collect::<PyResult<_>>()?;
 
-    Ok(PyList::new(py, &py_list)?.into_any().unbind())
+    let py_errors = errors_to_pylist(py, &errors)?;
+    Ok(PyTuple::new(py, &[
+        PyList::new(py, &py_list)?.into_any().unbind(),
+        py_errors.into_any(),
+    ])?.into_any().unbind())
 }
 
-/// Bulk load with metadata eq filtering. Returns only matching dicts.
+/// Bulk load with metadata eq filtering. Returns (matching_dicts, error_tuples).
 #[pyfunction]
 #[pyo3(signature = (directory, extensions=None, metadata_eq=None, cache_path=None))]
 pub fn load_filtered(
@@ -137,7 +159,7 @@ pub fn load_filtered(
         return load_all(py, directory, Some(exts));
     }
 
-    let results = if let Some(cp) = cache_path {
+    let (results, errors) = if let Some(cp) = cache_path {
         scanner::load_cached(directory, &exts, &conditions, cp)
     } else {
         scanner::load_filtered(directory, &exts, &conditions)
@@ -149,7 +171,11 @@ pub fn load_filtered(
         .map(|data| zettel_data_to_pydict(py, data))
         .collect::<PyResult<_>>()?;
 
-    Ok(PyList::new(py, &py_list)?.into_any().unbind())
+    let py_errors = errors_to_pylist(py, &errors)?;
+    Ok(PyTuple::new(py, &[
+        PyList::new(py, &py_list)?.into_any().unbind(),
+        py_errors.into_any(),
+    ])?.into_any().unbind())
 }
 
 /// Convert a Python dict of {str: value} to Rust filter conditions.
@@ -173,7 +199,7 @@ fn pydict_to_conditions(_py: Python<'_>, dict: &Bound<'_, PyDict>) -> PyResult<V
     Ok(conditions)
 }
 
-/// Full-text search across a directory. Returns matching zettels.
+/// Full-text search across a directory. Returns (matching_zettels, error_tuples).
 #[pyfunction]
 #[pyo3(signature = (directory, query, extensions=None))]
 pub fn search(
@@ -183,7 +209,7 @@ pub fn search(
     extensions: Option<Vec<String>>,
 ) -> PyResult<Py<PyAny>> {
     let exts = extensions.unwrap_or_else(|| vec!["md".to_string()]);
-    let results = scanner::search(directory, query, &exts)
+    let (results, errors) = scanner::search(directory, query, &exts)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
 
     let py_list: Vec<Py<PyAny>> = results
@@ -191,7 +217,11 @@ pub fn search(
         .map(|data| zettel_data_to_pydict(py, data))
         .collect::<PyResult<_>>()?;
 
-    Ok(PyList::new(py, &py_list)?.into_any().unbind())
+    let py_errors = errors_to_pylist(py, &errors)?;
+    Ok(PyTuple::new(py, &[
+        PyList::new(py, &py_list)?.into_any().unbind(),
+        py_errors.into_any(),
+    ])?.into_any().unbind())
 }
 
 /// Background cache refresh: walk directory, update cache, write stale marker if changed.

@@ -89,9 +89,9 @@ class MarkdownZettelRepository(ZettelRepository):
         if _HAS_RUST:
             if metadata_eq:
                 cp = _default_cache_path()
-                raw_list = load_filtered(directory, self._extensions, metadata_eq, cp)
+                raw_list, _errors = load_filtered(directory, self._extensions, metadata_eq, cp)
             else:
-                raw_list = load_all(directory, self._extensions)
+                raw_list, _errors = load_all(directory, self._extensions)
             return [ZettelFactory.create(Zettel(_rust_dict_to_zettel_data(raw), from_rust=True)) for raw in raw_list]
 
         from buvis.pybase.zettel.infrastructure.persistence.file_parsers.zettel_file_parser import (

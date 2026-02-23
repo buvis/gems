@@ -13,6 +13,33 @@ from .front_matter_preprocessor import (
     ZettelParserMarkdownFrontMatterPreprocessor as FMPreprocessor,
 )
 
+
+class _ZettelSafeLoader(yaml.SafeLoader):
+    """SafeLoader without YAML 1.1 sexagesimal int resolver.
+
+    PyYAML parses ``11:30`` as int 690 (base-60). We replace the int
+    resolver regex with one that drops the sexagesimal alternative,
+    keeping time-like strings as strings to match Rust serde_yml.
+    """
+
+
+# PyYAML's int resolver uses one regex covering binary, octal, decimal, hex,
+# AND sexagesimal. We rebuild without the sexagesimal alternative
+# (^[1-9][0-9_]*(?::[0-5]?[0-9])+$).
+_INT_NO_SEXA = re.compile(
+    r"^[-+]?0b[0-1_]+$"
+    r"|^[-+]?0[0-7_]+$"
+    r"|^[-+]?(?:0|[1-9][0-9_]*)$"
+    r"|^[-+]?0x[0-9a-fA-F_]+$",
+)
+
+# Deep-copy the parent's resolvers to avoid mutating yaml.SafeLoader,
+# and swap the int pattern
+_ZettelSafeLoader.yaml_implicit_resolvers = {
+    k: [(tag, _INT_NO_SEXA if tag == "tag:yaml.org,2002:int" else regexp) for tag, regexp in v]
+    for k, v in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+
 METADATA_SECTION_REGEX = r"---\n(.*?)\n---"
 REFERENCE_SECTION_REGEX = r"\n---\n(.*)$"
 HEADING_REGEX = r"(#{1,6} .+?)\n"
@@ -27,7 +54,10 @@ def extract_metadata(content: str) -> tuple[dict[str, Any] | None, str]:
     front_matter = FMPreprocessor.preprocess(match.group(1))
 
     try:
-        metadata = cast(dict[str, Any], yaml.safe_load(front_matter) or {})
+        metadata = cast(
+            dict[str, Any],
+            yaml.load(front_matter, Loader=_ZettelSafeLoader) or {},  # noqa: S506
+        )
     except yaml.YAMLError as e:
         msg = f"Failed to parse metadata: {e}"
         raise ValueError(msg) from e
@@ -49,7 +79,11 @@ def extract_reference(content: str) -> tuple[dict[str, Any] | None, str]:
     try:
         reference_raw = cast(
             list[dict[str, Any]],
-            yaml.safe_load(preprocessed_reference_content) or [],
+            yaml.load(
+                preprocessed_reference_content,
+                Loader=_ZettelSafeLoader,  # noqa: S506
+            )
+            or [],
         )
         reference: dict[str, Any] = {}
 

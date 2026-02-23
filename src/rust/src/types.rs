@@ -31,6 +31,7 @@ pub enum YamlValue {
     Float(f64),
     String(String),
     List(Vec<YamlValue>),
+    Dict(#[bincode(with_serde)] IndexMap<String, YamlValue>),
     DateTime(#[bincode(with_serde)] chrono::DateTime<chrono::FixedOffset>),
 }
 
@@ -117,9 +118,18 @@ impl From<serde_yml::Value> for YamlValue {
             serde_yml::Value::Sequence(seq) => {
                 YamlValue::List(seq.into_iter().map(YamlValue::from).collect())
             }
-            serde_yml::Value::Mapping(_) => {
-                // Flatten mappings to string representation for now
-                YamlValue::String(format!("{:?}", v))
+            serde_yml::Value::Mapping(m) => {
+                let map: IndexMap<String, YamlValue> = m
+                    .into_iter()
+                    .filter_map(|(k, v)| {
+                        let key = match k {
+                            serde_yml::Value::String(s) => s,
+                            other => format!("{:?}", other),
+                        };
+                        Some((key, YamlValue::from(v)))
+                    })
+                    .collect();
+                YamlValue::Dict(map)
             }
             serde_yml::Value::Tagged(tagged) => YamlValue::from(tagged.value),
         }

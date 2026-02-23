@@ -178,7 +178,7 @@ class TestLoadAllParity:
     """Test that load_all produces same results as parsing files individually."""
 
     def test_load_all_matches_individual_parse(self):
-        rust_bulk = load_all(str(FIXTURES_DIR))
+        rust_bulk, _errors = load_all(str(FIXTURES_DIR))
         fixture_files = sorted(FIXTURES_DIR.glob("*.md"))
 
         assert len(rust_bulk) == len(fixture_files)
