@@ -145,7 +145,7 @@ class TestNormalizeErrors:
                 "fren.commands.normalize.normalize.unicodedata.normalize",
                 side_effect=lambda form, text: "nfc-dir" if text == "nfd-dir" else text,
             ),
-            patch.object(Path, "rename", side_effect=partial_rename),
+            patch.object(Path, "rename", new=partial_rename),
         ):
             result = CommandNormalize(directory=str(tmp_path)).execute()
 

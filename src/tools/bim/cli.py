@@ -83,6 +83,7 @@ def _resolve_output_path(
                 note.data.metadata["id"] = alternative_note_id
             else:
                 console.panic(f"Can't import {path_note}")
+                return path_output
 
     return path_output
 
@@ -330,8 +331,10 @@ def sync_note(
             console.failure(result.error or "Sync failed")
     except (ValueError, FileNotFoundError) as exc:
         console.panic(str(exc))
+        return
     except NotImplementedError:
         console.panic(f"Sync target '{target_system}' not supported")
+        return
 
 
 @cli.command("create", help="Create a new zettel from template")
