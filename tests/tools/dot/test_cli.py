@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from dot.cli import cli
 from dot.commands.add.add import CommandAdd
 from dot.commands.commit.commit import CommandCommit
 from dot.commands.pull.pull import CommandPull
@@ -306,3 +307,35 @@ class TestCommandPushExecute:
 
         assert not result.success
         assert result.error.startswith("Push failed")
+
+
+class TestDotCliHelp:
+    def test_help(self, runner) -> None:
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "status" in result.output
+        assert "add" in result.output
+        assert "pull" in result.output
+        assert "commit" in result.output
+        assert "push" in result.output
+
+    def test_status_help(self, runner) -> None:
+        result = runner.invoke(cli, ["status", "--help"])
+        assert result.exit_code == 0
+
+    def test_add_help(self, runner) -> None:
+        result = runner.invoke(cli, ["add", "--help"])
+        assert result.exit_code == 0
+
+    def test_pull_help(self, runner) -> None:
+        result = runner.invoke(cli, ["pull", "--help"])
+        assert result.exit_code == 0
+
+    def test_commit_help(self, runner) -> None:
+        result = runner.invoke(cli, ["commit", "--help"])
+        assert result.exit_code == 0
+        assert "--message" in result.output
+
+    def test_push_help(self, runner) -> None:
+        result = runner.invoke(cli, ["push", "--help"])
+        assert result.exit_code == 0

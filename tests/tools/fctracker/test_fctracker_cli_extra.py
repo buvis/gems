@@ -3,27 +3,25 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from buvis.pybase.result import CommandResult
-from click.testing import CliRunner
 from fctracker.cli import cli
 
 
 class TestFctrackerBalanceExtra:
     @patch("fctracker.commands.balance.balance.CommandBalance")
-    def test_balance_with_accounts(self, mock_cmd_cls: MagicMock) -> None:
+    def test_balance_with_accounts(self, mock_cmd_cls: MagicMock, runner) -> None:
         mock_account = MagicMock()
         mock_cmd_cls.return_value.execute.return_value = CommandResult(
             success=True,
             output="ok",
             metadata={"accounts": [mock_account]},
         )
-        runner = CliRunner()
         result = runner.invoke(cli, ["balance"])
         assert result.exit_code == 0
 
 
 class TestFctrackerTransactionsExtra:
     @patch("fctracker.commands.transactions.transactions.CommandTransactions")
-    def test_transactions_with_table_data(self, mock_cmd_cls: MagicMock) -> None:
+    def test_transactions_with_table_data(self, mock_cmd_cls: MagicMock, runner) -> None:
         table_data = {
             "title": "USD Transactions",
             "rows": [
@@ -43,13 +41,11 @@ class TestFctrackerTransactionsExtra:
             output="ok",
             metadata={"tables": [table_data]},
         )
-        runner = CliRunner()
         result = runner.invoke(cli, ["transactions"])
         assert result.exit_code == 0
 
     @patch("fctracker.commands.transactions.transactions.CommandTransactions")
-    def test_transactions_execute_file_not_found(self, mock_cmd_cls: MagicMock) -> None:
+    def test_transactions_execute_file_not_found(self, mock_cmd_cls: MagicMock, runner) -> None:
         mock_cmd_cls.return_value.execute.side_effect = FileNotFoundError("no transactions dir")
-        runner = CliRunner()
         result = runner.invoke(cli, ["transactions"])
         assert result.exit_code != 0 or "no transactions dir" in result.output

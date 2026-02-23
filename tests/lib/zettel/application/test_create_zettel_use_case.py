@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import (
@@ -22,106 +22,77 @@ def create_zettel_use_case(tmp_path, mock_zettel_writer):
     return CreateZettelUseCase(tmp_path, mock_zettel_writer)
 
 
-@patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_calls_writer_save(mock_zettel_factory, create_zettel_use_case, mock_zettel_writer):
+def _setup_factory_mock(mocker):
+    mock_factory = mocker.patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
+    return mock_factory
+
+
+def _make_template_and_zettel(mock_factory, zettel_id="20231026120000", with_hooks=False):
     mock_template = MagicMock(spec=ZettelTemplate)
     mock_data = MagicMock(spec=ZettelData)
-    mock_data.metadata = {"id": "20231026120000", "title": "Test Zettel"}
-    mock_data.file_path = None
-    mock_data.sections = []
-    mock_data.reference = {}
-    mock_template.build_data.return_value = mock_data
-    mock_template.hooks.return_value = []
-
-    mock_zettel = MagicMock(spec=Zettel)
-    mock_zettel.id = "20231026120000"
-    mock_zettel.get_data.return_value = mock_data
-
-    mock_zettel_factory.create.return_value = mock_zettel
-
-    answers = {"title": "Test Zettel"}
-    create_zettel_use_case.execute(mock_template, answers)
-
-    mock_zettel_writer.save.assert_called_once_with(mock_zettel)
-    assert mock_data.file_path == str(create_zettel_use_case.zettelkasten_path / "20231026120000.md")
-
-
-@patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_raises_file_exists(mock_zettel_factory, create_zettel_use_case, tmp_path):
-    mock_template = MagicMock(spec=ZettelTemplate)
-    mock_data = MagicMock(spec=ZettelData)
-    mock_data.metadata = {"id": "20231026120000"}
-    mock_data.sections = []
-    mock_data.reference = {}
-    mock_template.build_data.return_value = mock_data
-
-    mock_zettel = MagicMock(spec=Zettel)
-    mock_zettel.id = "20231026120000"
-    mock_zettel_factory.create.return_value = mock_zettel
-
-    # Create the file beforehand
-    (tmp_path / "20231026120000.md").touch()
-
-    answers = {"title": "Test Zettel"}
-
-    with pytest.raises(FileExistsError):
-        create_zettel_use_case.execute(mock_template, answers)
-
-
-@patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_runs_hooks(mock_zettel_factory, create_zettel_use_case, mock_zettel_writer):
-    hook_runner = MagicMock()
-    create_zettel_use_case = CreateZettelUseCase(
-        create_zettel_use_case.zettelkasten_path,
-        mock_zettel_writer,
-        hook_runner=hook_runner,
-    )
-    mock_template = MagicMock(spec=ZettelTemplate)
-    mock_data = MagicMock(spec=ZettelData)
-    mock_data.metadata = {"id": "20231026120000"}
+    mock_data.metadata = {"id": zettel_id}
     mock_data.file_path = None
     mock_data.sections = []
     mock_data.reference = {}
     mock_template.build_data.return_value = mock_data
 
-    mock_hook = MagicMock()
-    mock_template.hooks.return_value = [mock_hook]
-
     mock_zettel = MagicMock(spec=Zettel)
-    mock_zettel.id = "20231026120000"
+    mock_zettel.id = zettel_id
     mock_zettel.get_data.return_value = mock_data
+    mock_factory.create.return_value = mock_zettel
 
-    mock_zettel_factory.create.return_value = mock_zettel
+    if with_hooks:
+        mock_hook = MagicMock()
+        mock_template.hooks.return_value = [mock_hook]
+    else:
+        mock_template.hooks.return_value = []
 
-    answers = {"title": "Test Zettel"}
-    create_zettel_use_case.execute(mock_template, answers)
-
-    hook_runner.assert_called_once_with(
-        mock_template.hooks.return_value,
-        mock_data,
-        create_zettel_use_case.zettelkasten_path,
-    )
+    return mock_template, mock_data, mock_zettel
 
 
-@patch("buvis.pybase.zettel.application.use_cases.create_zettel_use_case.ZettelFactory")
-def test_execute_returns_path(mock_zettel_factory, create_zettel_use_case, mock_zettel_writer):
-    mock_template = MagicMock(spec=ZettelTemplate)
-    mock_data = MagicMock(spec=ZettelData)
-    mock_data.metadata = {"id": "20231026120000"}
-    mock_data.file_path = None
-    mock_data.sections = []
-    mock_data.reference = {}
-    mock_template.build_data.return_value = mock_data
-    mock_template.hooks.return_value = []
+class TestCreateZettelUseCase:
+    def test_calls_writer_save(self, mocker, create_zettel_use_case, mock_zettel_writer):
+        mock_factory = _setup_factory_mock(mocker)
+        mock_template, mock_data, mock_zettel = _make_template_and_zettel(mock_factory)
+        mock_data.metadata["title"] = "Test Zettel"
 
-    mock_zettel = MagicMock(spec=Zettel)
-    mock_zettel.id = "20231026120000"
-    mock_zettel.get_data.return_value = mock_data
+        create_zettel_use_case.execute(mock_template, {"title": "Test Zettel"})
 
-    mock_zettel_factory.create.return_value = mock_zettel
+        mock_zettel_writer.save.assert_called_once_with(mock_zettel)
+        assert mock_data.file_path == str(create_zettel_use_case.zettelkasten_path / "20231026120000.md")
 
-    answers = {"title": "Test Zettel"}
-    path = create_zettel_use_case.execute(mock_template, answers)
+    def test_raises_file_exists(self, mocker, create_zettel_use_case, tmp_path):
+        mock_factory = _setup_factory_mock(mocker)
+        mock_template, mock_data, mock_zettel = _make_template_and_zettel(mock_factory)
 
-    expected_path = create_zettel_use_case.zettelkasten_path / "20231026120000.md"
-    assert path == expected_path
+        (tmp_path / "20231026120000.md").touch()
+
+        with pytest.raises(FileExistsError):
+            create_zettel_use_case.execute(mock_template, {"title": "Test Zettel"})
+
+    def test_runs_hooks(self, mocker, create_zettel_use_case, mock_zettel_writer):
+        hook_runner = MagicMock()
+        create_zettel_use_case = CreateZettelUseCase(
+            create_zettel_use_case.zettelkasten_path,
+            mock_zettel_writer,
+            hook_runner=hook_runner,
+        )
+        mock_factory = _setup_factory_mock(mocker)
+        mock_template, mock_data, mock_zettel = _make_template_and_zettel(mock_factory, with_hooks=True)
+
+        create_zettel_use_case.execute(mock_template, {"title": "Test Zettel"})
+
+        hook_runner.assert_called_once_with(
+            mock_template.hooks.return_value,
+            mock_data,
+            create_zettel_use_case.zettelkasten_path,
+        )
+
+    def test_returns_path(self, mocker, create_zettel_use_case, mock_zettel_writer):
+        mock_factory = _setup_factory_mock(mocker)
+        mock_template, mock_data, mock_zettel = _make_template_and_zettel(mock_factory)
+
+        path = create_zettel_use_case.execute(mock_template, {"title": "Test Zettel"})
+
+        expected_path = create_zettel_use_case.zettelkasten_path / "20231026120000.md"
+        assert path == expected_path
