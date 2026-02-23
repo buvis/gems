@@ -7,6 +7,7 @@ Optionally builds the SvelteKit frontend for bim serve.
 
 from __future__ import annotations
 
+import platform
 import shutil
 import subprocess
 import sys
@@ -62,6 +63,11 @@ class RustBuildHook(BuildHookInterface):
                         data = whl.read(name)
                         dest = dest_dir / Path(name).name
                         dest.write_bytes(data)
+                        if platform.system() == "Darwin":
+                            subprocess.run(
+                                ["codesign", "-f", "-s", "-", str(dest)],
+                                check=True,
+                            )
                         break
 
     def _build_frontend(self) -> None:
