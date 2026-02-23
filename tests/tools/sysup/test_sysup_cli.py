@@ -2,8 +2,24 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import click
+
 from sysup.cli import cli
 from sysup.commands.step_result import StepResult
+
+
+class TestSysupCli:
+    def test_cli_group_exists(self) -> None:
+        assert isinstance(cli, click.Group)
+
+    def test_mac_command_exists(self) -> None:
+        assert "mac" in cli.commands
+
+    def test_pip_command_exists(self) -> None:
+        assert "pip" in cli.commands
+
+    def test_wsl_command_exists(self) -> None:
+        assert "wsl" in cli.commands
 
 
 class TestSysupCliHelp:

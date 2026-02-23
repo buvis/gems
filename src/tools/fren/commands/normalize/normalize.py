@@ -48,7 +48,7 @@ class CommandNormalize:
                 else:
                     d.rename(target)
                 normalized += 1
-            except Exception as exc:
+            except (OSError, ValueError) as exc:
                 warnings.append(f"Failed to normalize {d}: {exc}")
 
         return CommandResult(

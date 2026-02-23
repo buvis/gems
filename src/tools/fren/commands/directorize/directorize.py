@@ -28,7 +28,7 @@ class CommandDirectorize:
                     continue
                 item.rename(dest)
                 processed += 1
-            except Exception as exc:
+            except (OSError, ValueError) as exc:
                 warnings.append(f"Failed to directorize {item.name}: {exc}")
 
         return CommandResult(

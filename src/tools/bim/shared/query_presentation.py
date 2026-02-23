@@ -143,6 +143,7 @@ def _fzf_edit(rows: list[dict[str, Any]], columns: list[str]) -> None:
             text=True,
         )
     except KeyboardInterrupt:
+        console.info("Cancelled")
         return
 
     if result.returncode != 0:

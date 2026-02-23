@@ -18,30 +18,18 @@ class ProjectZettelJiraIssueDTOAssembler:
     def __init__(self, defaults: dict[str, Any] | None = None) -> None:
         self.defaults = defaults or {}
 
+    def _require_default(self, key: str) -> Any:
+        val = self.defaults.get(key)
+        if not val:
+            msg = f"Default {key} is required"
+            raise ValueError(msg)
+        return val
+
     def to_dto(self, source: ProjectZettel) -> JiraIssueDTO:
-        if not self.defaults.get("project"):
-            msg = "Default project is required"
-            raise ValueError(msg)
-
-        project = self.defaults["project"]
-
-        if not self.defaults.get("region"):
-            msg = "Default region is required"
-            raise ValueError(msg)
-
-        region = self.defaults["region"]
-
-        if not self.defaults.get("user"):
-            msg = "Default user is required"
-            raise ValueError(msg)
-
-        user = self.defaults["user"]
-
-        if not self.defaults.get("team"):
-            msg = "Default team is required"
-            raise ValueError(msg)
-
-        team = self.defaults["team"]
+        project = self._require_default("project")
+        region = self._require_default("region")
+        user = self._require_default("user")
+        team = self._require_default("team")
 
         if _get_field(source, "deliverable") == "enhancement":
             issue_type = self.defaults["enhancements"]["issue_type"]

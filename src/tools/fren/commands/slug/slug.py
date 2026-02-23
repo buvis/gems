@@ -30,7 +30,7 @@ class CommandSlug:
                     dest = self._resolve_collision(p.parent / new_name)
                     p.rename(dest)
                     renamed += 1
-            except Exception as exc:
+            except (OSError, ValueError) as exc:
                 warnings.append(f"Failed to rename {p.name}: {exc}")
 
         return CommandResult(

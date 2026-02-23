@@ -179,14 +179,17 @@ class JiraAdapter:
         Raises:
             JiraNotFoundError: Issue does not exist.
         """
+        issue = self._fetch_issue(issue_key)
+
+        return self._issue_to_dto(issue)
+
+    def _fetch_issue(self, issue_key: str) -> Issue:
         try:
-            issue = self._jira.issue(issue_key)
+            return self._jira.issue(issue_key)
         except JIRAError as error:
             if getattr(error, "status_code", None) == 404:
                 raise JiraNotFoundError(issue_key) from error
             raise
-
-        return self._issue_to_dto(issue)
 
     def search(
         self,
@@ -275,12 +278,7 @@ class JiraAdapter:
         Raises:
             JiraNotFoundError: Issue does not exist.
         """
-        try:
-            issue = self._jira.issue(issue_key)
-        except JIRAError as error:
-            if getattr(error, "status_code", None) == 404:
-                raise JiraNotFoundError(issue_key) from error
-            raise
+        issue = self._fetch_issue(issue_key)
 
         issue.update(fields=fields)
 
