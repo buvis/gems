@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from buvis.pybase.filesystem import DirTree
+from buvis.pybase.result import CommandResult
 
 
 class CommandTidy:
@@ -10,8 +11,9 @@ class CommandTidy:
         self.dir = directory
         self.junk_extensions = junk_extensions
 
-    def execute(self: CommandTidy) -> None:
+    def execute(self: CommandTidy) -> CommandResult:
         DirTree.merge_mac_metadata(self.dir)
         DirTree.normalize_file_extensions(self.dir)
         DirTree.delete_by_extension(self.dir, self.junk_extensions)
         DirTree.remove_empty_directories(self.dir)
+        return CommandResult(success=True, output=f"Tidied {self.dir}")
