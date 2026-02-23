@@ -46,10 +46,9 @@ class TestJiraLinkError:
         assert str(exc) == "Failed to link ABC-123 -> DEF-456 (Blocks): Permission denied"
         assert exc.reason == "Permission denied"
 
-
-@pytest.mark.parametrize(
-    "cls",
-    [JiraNotFoundError, JiraTransitionError, JiraLinkError],
-)
-def test_subclass_of_jira_error(cls: type) -> None:
-    assert issubclass(cls, JiraError)
+    @pytest.mark.parametrize(
+        "cls",
+        [JiraNotFoundError, JiraTransitionError, JiraLinkError],
+    )
+    def test_subclass_of_jira_error(self, cls: type) -> None:
+        assert issubclass(cls, JiraError)

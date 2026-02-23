@@ -4,17 +4,8 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 from buvis.pybase.result import CommandResult
 from dot.commands.add.add import CommandAdd
-
-
-@pytest.fixture
-def dotfiles_root(tmp_path: Path, monkeypatch) -> Path:
-    root = tmp_path / "dotfiles"
-    root.mkdir()
-    monkeypatch.setenv("DOTFILES_ROOT", str(root))
-    return root
 
 
 class TestCommandAddInit:

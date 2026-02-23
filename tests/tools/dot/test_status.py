@@ -3,16 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 from dot.commands.status.status import CommandStatus, get_git_modified_files
-
-
-@pytest.fixture
-def dotfiles_root(tmp_path, monkeypatch) -> Path:
-    root = tmp_path / "dotfiles"
-    root.mkdir()
-    monkeypatch.setenv("DOTFILES_ROOT", str(root))
-    return root
 
 
 class TestCommandStatusInit:
