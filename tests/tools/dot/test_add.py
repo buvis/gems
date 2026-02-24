@@ -68,7 +68,6 @@ class TestCommandAddExecute:
         assert result.success is True
         shell.interact.assert_called_once_with(
             "cfg add -p",
-            "Stage this hunk [y,n,q,a,d,j,J,g,/,e,?]?",
             dotfiles_root,
         )
 
@@ -85,7 +84,6 @@ class TestCommandAddExecute:
         shell.exe.assert_called_once()
         shell.interact.assert_called_once_with(
             f"cfg add -p {target}",
-            "Stage this hunk [y,n,q,a,d,j,J,g,/,e,?]?",
             dotfiles_root,
         )
 
@@ -101,7 +99,6 @@ class TestCommandAddExecute:
         assert result.success is True
         shell.interact.assert_called_once_with(
             f"cfg add {target}",
-            "Stage this hunk [y,n,q,a,d,j,J,g,/,e,?]?",
             dotfiles_root,
         )
 

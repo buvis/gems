@@ -13,7 +13,6 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
   "click>=8.1.0,<9",
   "inflection>=0.5.1,<1",
-  "pexpect>=4.9.0,<5",
   "pydantic>=2.0,<3",
   "pydantic-settings>=2.0,<3",
   "pyyaml>=6.0.3,<7",
@@ -104,7 +103,7 @@ namespace_packages = true
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["jira.*", "pexpect.*", "xattr.*", "inflection.*", "win32com.*", "ffmpeg.*", "ping3.*", "pyfiglet.*", "buvis.pybase.zettel._core", "tomli", "slugify", "markdownify"]
+module = ["jira.*", "xattr.*", "inflection.*", "win32com.*", "ffmpeg.*", "ping3.*", "pyfiglet.*", "buvis.pybase.zettel._core", "tomli", "slugify", "markdownify"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

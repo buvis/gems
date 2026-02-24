@@ -50,7 +50,6 @@ class CommandAdd:
 
         self.shell.interact(
             command,
-            "Stage this hunk [y,n,q,a,d,j,J,g,/,e,?]?",
             Path(os.environ["DOTFILES_ROOT"]),
         )
         return CommandResult(success=True, warnings=self.warnings)

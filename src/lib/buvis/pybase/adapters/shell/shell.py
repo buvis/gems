@@ -5,13 +5,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import pexpect
 from buvis.pybase.adapters.console import console
-
-# pexpect.expect() return indices
-_EXPECT_PROMPT = 0
-_EXPECT_EOF = 1
-_EXPECT_TIMEOUT = 2
 
 
 class ShellAdapter:
@@ -27,7 +21,6 @@ class ShellAdapter:
         Initialize the ShellCommandExecutor and set up the logger.
         """
         self.aliases: dict[str, str] = {}
-        self.child: pexpect.spawn | None = None
         self.is_logging = not suppress_logging
 
     def alias(self: ShellAdapter, alias: str, command: str) -> None:
@@ -85,7 +78,6 @@ class ShellAdapter:
     def interact(
         self: ShellAdapter,
         command: str,
-        prompt: str,
         working_dir: Path | None,
     ) -> None:
         expanded_command = self._expand_alias(command)
@@ -94,36 +86,15 @@ class ShellAdapter:
         cwd = Path(working_dir) if working_dir and Path(working_dir).is_dir() else Path.cwd()
 
         try:
-            child = pexpect.spawn(expanded_command, encoding="utf-8", cwd=cwd)
-            self.child = child
-
-            while True:
-                index = child.expect(
-                    [
-                        prompt,
-                        pexpect.EOF,
-                        pexpect.TIMEOUT,
-                    ],
-                )
-
-                if index == _EXPECT_PROMPT:
-                    print(
-                        child.before.decode("utf-8") if isinstance(child.before, bytes) else child.before,
-                    )
-                    user_input = input(prompt)
-                    child.sendline(user_input)
-                elif index == _EXPECT_EOF:
-                    break
-                elif index == _EXPECT_TIMEOUT:
-                    console.warning("Timeout occurred.")
-                    break
-
-        except pexpect.ExceptionPexpect:
+            subprocess.run(  # noqa: S602
+                expanded_command,
+                shell=True,
+                check=False,
+                cwd=cwd,
+                env=os.environ.copy(),
+            )
+        except OSError:
             console.failure("An error occurred")
-        finally:
-            if self.child:
-                self.child.close()
-                self.child = None
 
     def is_command_available(self: ShellAdapter, command: str) -> bool:
         """
