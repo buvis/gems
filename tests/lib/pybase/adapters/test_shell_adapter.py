@@ -257,12 +257,10 @@ class TestShellAdapterExe:
         assert call_args[0][0] == "echo test_value"
 
     @patch("subprocess.run")
-    @patch("buvis.pybase.adapters.shell.shell.logger.info")
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_exe_logging_enabled(
         self,
-        mock_log_error: Mock,
-        mock_log_info: Mock,
+        mock_console: Mock,
         mock_run: Mock,
     ) -> None:
         """Test that logging works when enabled."""
@@ -276,16 +274,14 @@ class TestShellAdapterExe:
 
         adapter.exe("echo test", None)
 
-        mock_log_info.assert_called_once_with("stdout content")
-        mock_log_error.assert_called_once_with("stderr content")
+        mock_console.info.assert_called_once_with("stdout content")
+        mock_console.warning.assert_called_once_with("stderr content")
 
     @patch("subprocess.run")
-    @patch("buvis.pybase.adapters.shell.shell.logger.info")
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_exe_logging_disabled(
         self,
-        mock_log_error: Mock,
-        mock_log_info: Mock,
+        mock_console: Mock,
         mock_run: Mock,
     ) -> None:
         """Test that logging is disabled when suppress_logging=True."""
@@ -299,8 +295,8 @@ class TestShellAdapterExe:
 
         adapter.exe("echo test", None)
 
-        mock_log_info.assert_not_called()
-        mock_log_error.assert_not_called()
+        mock_console.info.assert_not_called()
+        mock_console.warning.assert_not_called()
 
 
 class TestShellAdapterInteract:
@@ -331,10 +327,10 @@ class TestShellAdapterInteract:
         mock_child.close.assert_called_once()
 
     @patch("pexpect.spawn")
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_interact_timeout(
         self,
-        mock_log_error: Mock,
+        mock_console: Mock,
         mock_spawn: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
@@ -345,14 +341,14 @@ class TestShellAdapterInteract:
 
         shell_adapter.interact("python", ">>> ", None)
 
-        mock_log_error.assert_called_once_with("Timeout occurred.")
+        mock_console.warning.assert_called_once_with("Timeout occurred.")
         mock_child.close.assert_called_once()
 
     @patch("pexpect.spawn")
-    @patch("buvis.pybase.adapters.shell.shell.logger.exception")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_interact_exception(
         self,
-        mock_log_exception: Mock,
+        mock_console: Mock,
         mock_spawn: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
@@ -361,7 +357,7 @@ class TestShellAdapterInteract:
 
         shell_adapter.interact("python", ">>> ", None)
 
-        mock_log_exception.assert_called_once_with("An error occurred")
+        mock_console.failure.assert_called_once_with("An error occurred")
 
     @patch("pexpect.spawn")
     def test_interact_with_working_directory(
@@ -428,77 +424,69 @@ class TestShellAdapterIsCommandAvailable:
 class TestShellAdapterLogging:
     """Test logging functionality."""
 
-    @patch("buvis.pybase.adapters.shell.shell.logger.info")
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_log_normal_output_both(
         self,
-        mock_log_error: Mock,
-        mock_log_info: Mock,
+        mock_console: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test logging both stdout and stderr."""
         shell_adapter._log_normal_output("stdout content", "stderr content")
-        mock_log_info.assert_called_once_with("stdout content")
-        mock_log_error.assert_called_once_with("stderr content")
+        mock_console.info.assert_called_once_with("stdout content")
+        mock_console.warning.assert_called_once_with("stderr content")
 
-    @patch("buvis.pybase.adapters.shell.shell.logger.info")
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_log_normal_output_stdout_only(
         self,
-        mock_log_error: Mock,
-        mock_log_info: Mock,
+        mock_console: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test logging only stdout."""
         shell_adapter._log_normal_output("stdout content", None)
-        mock_log_info.assert_called_once_with("stdout content")
-        mock_log_error.assert_not_called()
+        mock_console.info.assert_called_once_with("stdout content")
+        mock_console.warning.assert_not_called()
 
-    @patch("buvis.pybase.adapters.shell.shell.logger.info")
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_log_normal_output_stderr_only(
         self,
-        mock_log_error: Mock,
-        mock_log_info: Mock,
+        mock_console: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test logging only stderr."""
         shell_adapter._log_normal_output(None, "stderr content")
-        mock_log_info.assert_not_called()
-        mock_log_error.assert_called_once_with("stderr content")
+        mock_console.info.assert_not_called()
+        mock_console.warning.assert_called_once_with("stderr content")
 
-    @patch("buvis.pybase.adapters.shell.shell.logger.info")
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_log_normal_output_neither(
         self,
-        mock_log_error: Mock,
-        mock_log_info: Mock,
+        mock_console: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test logging when both outputs are None."""
         shell_adapter._log_normal_output(None, None)
-        mock_log_info.assert_not_called()
-        mock_log_error.assert_not_called()
+        mock_console.info.assert_not_called()
+        mock_console.warning.assert_not_called()
 
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_log_error_output(
         self,
-        mock_log_error: Mock,
+        mock_console: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test logging error output."""
         error = subprocess.CalledProcessError(1, "false", "stdout", "stderr")
         shell_adapter._log_error_output(error)
 
-        assert mock_log_error.call_count == 3
-        mock_log_error.assert_any_call("Command failed with return code %s", 1)
-        mock_log_error.assert_any_call("STDOUT: %s", "stdout")
-        mock_log_error.assert_any_call("STDERR: %s", "stderr")
+        assert mock_console.failure.call_count == 3
+        mock_console.failure.assert_any_call("Command failed with return code 1")
+        mock_console.failure.assert_any_call("STDOUT: stdout")
+        mock_console.failure.assert_any_call("STDERR: stderr")
 
-    @patch("buvis.pybase.adapters.shell.shell.logger.error")
+    @patch("buvis.pybase.adapters.shell.shell.console")
     def test_log_error_output_no_output(
         self,
-        mock_log_error: Mock,
+        mock_console: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test logging error output when stdout/stderr are None."""
@@ -506,7 +494,7 @@ class TestShellAdapterLogging:
         shell_adapter._log_error_output(error)
 
         # Should only log the return code
-        mock_log_error.assert_called_once_with("Command failed with return code %s", 1)
+        mock_console.failure.assert_called_once_with("Command failed with return code 1")
 
 
 class TestShellAdapterIntegration:

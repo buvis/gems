@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,18 +18,18 @@ def mock_zettel_data() -> MagicMock:
     return MagicMock(spec=ZettelData)
 
 
-def test_print_zettel_use_case_initialization(mock_zettel_formatter: MagicMock) -> None:
-    use_case = PrintZettelUseCase(mock_zettel_formatter)
-    assert isinstance(use_case, PrintZettelUseCase)
-    assert use_case.formatter == mock_zettel_formatter
+class TestPrintZettelUseCase:
+    def test_print_zettel_use_case_initialization(self, mock_zettel_formatter: MagicMock) -> None:
+        use_case = PrintZettelUseCase(mock_zettel_formatter)
+        assert isinstance(use_case, PrintZettelUseCase)
+        assert use_case.formatter == mock_zettel_formatter
 
+    def test_print_zettel_use_case_execute(self, mock_zettel_formatter, mock_zettel_data):
+        formatted_output = "Formatted Zettel Data"
+        mock_zettel_formatter.format.return_value = formatted_output
 
-def test_print_zettel_use_case_execute(mock_zettel_formatter, mock_zettel_data):
-    formatted_output = "Formatted Zettel Data"
-    mock_zettel_formatter.format.return_value = formatted_output
+        use_case = PrintZettelUseCase(mock_zettel_formatter)
+        result = use_case.execute(mock_zettel_data)
 
-    use_case = PrintZettelUseCase(mock_zettel_formatter)
-    result = use_case.execute(mock_zettel_data)
-
-    assert result == formatted_output
-    mock_zettel_formatter.format.assert_called_once_with(mock_zettel_data)
+        assert result == formatted_output
+        mock_zettel_formatter.format.assert_called_once_with(mock_zettel_data)

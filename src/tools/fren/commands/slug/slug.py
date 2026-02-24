@@ -30,7 +30,7 @@ class CommandSlug:
                     dest = self._resolve_collision(p.parent / new_name)
                     p.rename(dest)
                     renamed += 1
-            except Exception as exc:
+            except (OSError, ValueError) as exc:
                 warnings.append(f"Failed to rename {p.name}: {exc}")
 
         return CommandResult(
@@ -75,7 +75,7 @@ class CommandSlug:
             slugged = slugify(subject, lowercase=False) if subject else "unnamed"
             return f"{date_prefix}{slugged}.eml"
 
-        except Exception:
+        except (OSError, ValueError, UnicodeDecodeError, email.errors.MessageError):
             # Fallback to regular slugify
             return self._slugify_name_plain(path)
 

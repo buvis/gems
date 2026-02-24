@@ -29,7 +29,7 @@ class CommandHtml2Md:
                 cleaned = self._clean_markdown(markdown_content)
                 html_file.with_suffix(".md").write_text(cleaned, encoding="utf-8")
                 converted += 1
-            except Exception as exc:
+            except (OSError, UnicodeDecodeError, ValueError) as exc:
                 warnings.append(f"Failed to convert {html_file}: {exc}")
 
         return CommandResult(

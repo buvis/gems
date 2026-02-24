@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
 from buvis.pybase.zettel.domain.entities.zettel.services.migration.upgrades.move_tag_to_tags import (
@@ -6,52 +8,50 @@ from buvis.pybase.zettel.domain.entities.zettel.services.migration.upgrades.move
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
-def test_move_tag_to_tags_with_string_tag():
-    # Arrange
-    zettel_data = MagicMock(spec=ZettelData)
-    zettel_data.metadata = {"tag": "example"}
+class TestMoveTagToTags:
+    def test_move_tag_to_tags_with_string_tag(self):
+        # Arrange
+        zettel_data = MagicMock(spec=ZettelData)
+        zettel_data.metadata = {"tag": "example"}
 
-    # Act
-    move_tag_to_tags(zettel_data)
+        # Act
+        move_tag_to_tags(zettel_data)
 
-    # Assert
-    assert "tag" not in zettel_data.metadata
-    assert zettel_data.metadata["tags"] == ["example"]
+        # Assert
+        assert "tag" not in zettel_data.metadata
+        assert zettel_data.metadata["tags"] == ["example"]
 
+    def test_move_tag_to_tags_with_list_tag(self):
+        # Arrange
+        zettel_data = MagicMock(spec=ZettelData)
+        zettel_data.metadata = {"tag": ["example1", "example2"]}
 
-def test_move_tag_to_tags_with_list_tag():
-    # Arrange
-    zettel_data = MagicMock(spec=ZettelData)
-    zettel_data.metadata = {"tag": ["example1", "example2"]}
+        # Act
+        move_tag_to_tags(zettel_data)
 
-    # Act
-    move_tag_to_tags(zettel_data)
+        # Assert
+        assert "tag" not in zettel_data.metadata
+        assert zettel_data.metadata["tags"] == ["example1", "example2"]
 
-    # Assert
-    assert "tag" not in zettel_data.metadata
-    assert zettel_data.metadata["tags"] == ["example1", "example2"]
+    def test_move_tag_to_tags_with_existing_tags(self):
+        # Arrange
+        zettel_data = MagicMock(spec=ZettelData)
+        zettel_data.metadata = {"tag": "example", "tags": ["existing"]}
 
+        # Act
+        move_tag_to_tags(zettel_data)
 
-def test_move_tag_to_tags_with_existing_tags():
-    # Arrange
-    zettel_data = MagicMock(spec=ZettelData)
-    zettel_data.metadata = {"tag": "example", "tags": ["existing"]}
+        # Assert
+        assert "tag" not in zettel_data.metadata
+        assert zettel_data.metadata["tags"] == ["existing", "example"]
 
-    # Act
-    move_tag_to_tags(zettel_data)
+    def test_move_tag_to_tags_no_tag(self):
+        # Arrange
+        zettel_data = MagicMock(spec=ZettelData)
+        zettel_data.metadata = {"tags": ["existing"]}
 
-    # Assert
-    assert "tag" not in zettel_data.metadata
-    assert zettel_data.metadata["tags"] == ["existing", "example"]
+        # Act
+        move_tag_to_tags(zettel_data)
 
-
-def test_move_tag_to_tags_no_tag():
-    # Arrange
-    zettel_data = MagicMock(spec=ZettelData)
-    zettel_data.metadata = {"tags": ["existing"]}
-
-    # Act
-    move_tag_to_tags(zettel_data)
-
-    # Assert
-    assert zettel_data.metadata["tags"] == ["existing"]
+        # Assert
+        assert zettel_data.metadata["tags"] == ["existing"]

@@ -13,16 +13,13 @@ class CommandPrintFiglet:
         self.text = text
 
     def execute(self) -> CommandResult:
+        output: str
         try:
             from pyfiglet import Figlet
 
             f = Figlet(font=self.font)
+            output = str(f.renderText(f"Hello {self.text}!"))
         except ImportError:
-            f = None
-
-        if f is None:
             output = f"Hello {self.text}!\n\n"
-        else:
-            output = f.renderText(f"Hello {self.text}!")
 
         return CommandResult(success=True, output=output)

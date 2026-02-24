@@ -27,7 +27,7 @@ class CommandFlatten:
                 dest = self._resolve_collision(self.destination / item.name)
                 shutil.copy2(item, dest)
                 copied += 1
-            except Exception as exc:
+            except (OSError, ValueError) as exc:
                 warnings.append(f"Failed to copy {item}: {exc}")
 
         return CommandResult(
