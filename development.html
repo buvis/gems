@@ -61,6 +61,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#setup">Setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#local-testing">Local Testing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#release">Release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installing-pre-releases">Installing Pre-releases</a></li>
 </ul>
 </li>
 </ul>
@@ -122,6 +123,19 @@ release<span class="w"> </span>--dry-run<span class="w"> </span><span class="o">
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">mise</span></code> adds <code class="docutils literal notranslate"><span class="pre">dev/bin</span></code> to PATH. Tags with <code class="docutils literal notranslate"><span class="pre">rc</span></code> publish to TestPyPI; stable tags go to PyPI.</p>
+</section>
+<section id="installing-pre-releases">
+<h2>Installing Pre-releases<a class="headerlink" href="#installing-pre-releases" title="Link to this heading"></a></h2>
+<p>To install a release candidate from TestPyPI:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;buvis-gems[all]==X.Y.Zrc1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--extra-index-url<span class="w"> </span>https://test.pypi.org/simple/
+</pre></div>
+</div>
+<p>Replace <code class="docutils literal notranslate"><span class="pre">X.Y.Zrc1</span></code> with the actual version (e.g. <code class="docutils literal notranslate"><span class="pre">0.4.0rc1</span></code>).</p>
+<p>To go back to the stable release:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span>buvis-gems<span class="o">[</span>all<span class="o">]</span>
+</pre></div>
+</div>
 </section>
 </section>
 
