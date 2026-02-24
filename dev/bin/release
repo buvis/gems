@@ -39,6 +39,9 @@ base_ver="${old_ver%%[a-z]*}"
 # --- local: build + install dev wheel for testing ---
 if [[ "$part" == "local" ]]; then
   tag="gems-v${base_ver}"
+  if ! git rev-parse "$tag" &>/dev/null; then
+    tag="gems-v${old_ver}"
+  fi
   distance=$(git rev-list "$tag..HEAD" --count 2>/dev/null) || die "tag $tag not found"
   dev_ver="${base_ver}.dev${distance}"
 
