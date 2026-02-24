@@ -34,6 +34,7 @@ class CommandResult:
     success: bool
     output: str | None = None
     error: str | None = None
+    info: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -43,6 +44,7 @@ class CommandResult:
             "success": self.success,
             "output": self.output,
             "error": self.error,
+            "info": self.info,
             "warnings": self.warnings,
             "metadata": _json_safe(self.metadata),
         }

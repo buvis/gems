@@ -257,6 +257,8 @@ class ConsoleAdapter:
             on_success: Custom handler called instead of default success output.
             on_failure: Custom handler called instead of default failure output.
         """
+        for i in result.info:
+            self.success(i)
         for w in result.warnings:
             self.warning(w)
         if result.success:

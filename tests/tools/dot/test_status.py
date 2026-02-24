@@ -100,9 +100,9 @@ class TestCommandStatusExecute:
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 2
-        assert "staged: .bashrc modified" in result.warnings
-        assert "staged: .vimrc modified" in result.warnings
+        assert len(result.info) == 2
+        assert "staged: .bashrc modified" in result.info
+        assert "staged: .vimrc modified" in result.info
 
     def test_unstaged_modified_files(self, dotfiles_root) -> None:
         shell = MagicMock()
@@ -126,8 +126,9 @@ class TestCommandStatusExecute:
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 2
-        assert "staged: .bashrc modified" in result.warnings
+        assert len(result.info) == 1
+        assert "staged: .bashrc modified" in result.info
+        assert len(result.warnings) == 1
         assert "unstaged: .vimrc modified" in result.warnings
 
     def test_both_staged_and_unstaged_same_file(self, dotfiles_root) -> None:
@@ -139,8 +140,9 @@ class TestCommandStatusExecute:
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 2
-        assert "staged: .bashrc modified" in result.warnings
+        assert len(result.info) == 1
+        assert "staged: .bashrc modified" in result.info
+        assert len(result.warnings) == 1
         assert "unstaged: .bashrc modified" in result.warnings
 
     def test_deleted_files(self, dotfiles_root) -> None:
@@ -164,8 +166,8 @@ class TestCommandStatusExecute:
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 1
-        assert "staged: .newrc new file" in result.warnings
+        assert len(result.info) == 1
+        assert "staged: .newrc new file" in result.info
 
     def test_untracked_files(self, dotfiles_root) -> None:
         shell = MagicMock()

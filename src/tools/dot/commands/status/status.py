@@ -49,11 +49,12 @@ class CommandStatus:
         if out and out.strip():
             staged, unstaged = parse_porcelain_status(out)
             if staged or unstaged:
+                info: list[str] = []
                 for path, change_type in staged:
-                    warnings.append(f"staged: {path} {change_type}")
+                    info.append(f"staged: {path} {change_type}")
                 for path, change_type in unstaged:
                     warnings.append(f"unstaged: {path} {change_type}")
-                return CommandResult(success=True, warnings=warnings)
+                return CommandResult(success=True, info=info, warnings=warnings)
 
         return CommandResult(success=True, output="No modifications found")
 
