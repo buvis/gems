@@ -32,6 +32,20 @@ Show git and git-secret status of your dotfiles repo.
 
     dot status
 
+dot run
+~~~~~~~
+
+Run any git command against the dotfiles bare repo. Everything after ``run``
+is appended to the ``cfg`` alias.
+
+.. code-block:: bash
+
+    dot run log --oneline -5    # recent commits
+    dot run diff                # unstaged changes
+    dot run remote -v           # list remotes
+    dot run stash list          # list stashes
+    dot run submodule update --init
+
 dot add
 ~~~~~~~
 
