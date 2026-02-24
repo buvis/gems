@@ -14,11 +14,12 @@ Setup
 Local Testing
 -------------
 
-Build and install from a temp dir to avoid corrupting the source tree:
+Build a ``.devN`` wheel (N = commits since version tag) and install it:
 
 .. code-block:: bash
 
-    uv build --out-dir /tmp/gems-test && uv tool install --force --from "/tmp/gems-test/$(ls /tmp/gems-test/buvis_gems-*.whl | head -1 | xargs basename)[all]" buvis-gems
+    release local                          # build + install as e.g. 0.3.2.dev3
+    release --dry-run local                # preview version without building
 
 This bypasses mise but installs to the same ``~/.local/bin``. After testing, restore the mise-managed version:
 
@@ -35,5 +36,6 @@ Release
     release --pre rc1                      # pre-release current version to TestPyPI
     release --pre rc1 minor                # bump + pre-release to TestPyPI
     release                                # after rc: strip suffix, release stable to PyPI
+    release --dry-run [--pre rc1] [patch]  # preview without changes
 
 ``mise`` adds ``dev/bin`` to PATH. Tags with ``rc`` publish to TestPyPI; stable tags go to PyPI.

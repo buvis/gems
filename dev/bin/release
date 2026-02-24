@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-usage() { echo "Usage: release [--dry-run] [--pre <suffix>] [patch|minor|major]"; exit 1; }
+usage() { echo "Usage: release [--dry-run] [--pre <suffix>] [patch|minor|major|local]"; exit 1; }
 die() { echo "error: $1" >&2; exit 1; }
 
 bump_version() {
@@ -36,6 +36,33 @@ old_ver=$(grep '^version' "$pyproject" | head -1 | sed 's/.*"\(.*\)".*/\1/')
 # Strip any existing pre-release suffix to get base version
 base_ver="${old_ver%%[a-z]*}"
 
+# --- local: build + install dev wheel for testing ---
+if [[ "$part" == "local" ]]; then
+  tag="gems-v${base_ver}"
+  distance=$(git rev-list "$tag..HEAD" --count 2>/dev/null) || die "tag $tag not found"
+  dev_ver="${base_ver}.dev${distance}"
+
+  if $dry_run; then
+    echo "$old_ver -> $dev_ver (local install)"
+    exit 0
+  fi
+
+  trap 'git checkout -- "$pyproject"' EXIT
+  sed -i.bak "s/version = \"$old_ver\"/version = \"$dev_ver\"/" "$pyproject" && rm -f "$pyproject.bak"
+
+  out_dir="/tmp/gems-test"
+  rm -rf "$out_dir"
+  uv build --out-dir "$out_dir" || die "build failed"
+
+  whl=$(ls "$out_dir"/buvis_gems-*.whl | head -1)
+  [[ -f "$whl" ]] || die "no wheel found in $out_dir"
+  uv tool install --force --from "${whl}[all]" buvis-gems || die "install failed"
+
+  echo "Installed buvis-gems $dev_ver"
+  exit 0
+fi
+
+# --- normal release flow ---
 if [[ -n "$part" ]]; then
   [[ "$part" =~ ^(patch|minor|major)$ ]] || usage
   new_base=$(bump_version "$base_ver" "$part")

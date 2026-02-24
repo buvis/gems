@@ -158,6 +158,7 @@ release patch|minor|major              # bump, tag, push → CI publishes to PyP
 release --pre rc1                      # pre-release current version to TestPyPI
 release --pre rc1 minor                # bump + pre-release to TestPyPI
 release                                # after rc: strip suffix, release stable to PyPI
+release local                          # build .devN wheel + install locally
 release --dry-run [--pre rc1] [patch]  # preview without changes
 ```
 
