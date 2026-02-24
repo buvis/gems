@@ -73,17 +73,23 @@ All 9 CLIs (`bim`, `dot`, `fctracker`, `hello-world`, `muc`, `outlookctl`, `ping
 
 **Library** (`src/lib/buvis/pybase/`) — shared adapters, CLI scaffolding, configuration, filesystem and formatting utilities, plus the zettel subsystem (domain logic, Jira integration, and a Rust extension via PyO3 for performance-critical parsing).
 
-**Tools** (`src/tools/`) — 9 Click-based CLIs built on the library:
+**Tools** (`src/tools/`) — 15 Click-based CLIs built on the library:
 
 | Tool | Purpose |
 |------|---------|
 | bim | BUVIS InfoMesh (zettel integration) |
 | dot | Dotfiles manager |
 | fctracker | Foreign currency account tracker |
+| fren | File renamer toolkit |
 | hello_world | Sample script template |
+| morph | File conversion toolkit |
 | muc | Music collection tools |
+| netscan | Network scanning tools |
 | outlookctl | Outlook CLI |
 | pinger | ICMP ping utilities |
+| puc | Photo utility collection |
 | readerctl | Readwise Reader CLI |
+| sysup | System update tools |
+| vuc | Video utility collection |
 | zseq | Zettelsequence utilities |
 
