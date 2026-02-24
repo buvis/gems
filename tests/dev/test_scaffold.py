@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 # dev/bin/scaffold.py is not a package — load directly
-_spec = importlib.util.spec_from_file_location("scaffold", Path(__file__).resolve().parents[2] / "dev" / "bin" / "scaffold.py")
+_script = Path(__file__).resolve().parents[2] / "dev" / "bin" / "scaffold.py"
+_spec = importlib.util.spec_from_file_location("scaffold", _script)
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["scaffold"] = _mod
 _spec.loader.exec_module(_mod)
