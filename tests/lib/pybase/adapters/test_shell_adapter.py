@@ -3,7 +3,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pexpect
 import pytest
 from buvis.pybase.adapters.shell.shell import ShellAdapter
 
@@ -27,14 +26,12 @@ class TestShellAdapterInit:
         """Test default initialization."""
         adapter = ShellAdapter()
         assert adapter.aliases == {}
-        assert adapter.child is None
         assert adapter.is_logging is True
 
     def test_init_suppress_logging(self) -> None:
         """Test initialization with logging suppressed."""
         adapter = ShellAdapter(suppress_logging=True)
         assert adapter.aliases == {}
-        assert adapter.child is None
         assert adapter.is_logging is False
 
 
@@ -302,95 +299,62 @@ class TestShellAdapterExe:
 class TestShellAdapterInteract:
     """Test interactive command functionality."""
 
-    @patch("pexpect.spawn")
-    @patch("builtins.input")
-    @patch("builtins.print")
+    @patch("subprocess.run")
     def test_interact_simple_session(
         self,
-        mock_print: Mock,
-        mock_input: Mock,
-        mock_spawn: Mock,
+        mock_run: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test a simple interactive session."""
-        mock_child = Mock()
-        mock_child.expect.side_effect = [0, 0, 1]  # prompt, prompt, EOF
-        mock_child.before = "output1"
-        mock_spawn.return_value = mock_child
-        mock_input.side_effect = ["input1", "exit"]
+        shell_adapter.interact("python", None)
 
-        shell_adapter.interact("python", ">>> ", None)
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        assert call_args[0][0] == "python"
+        assert call_args[1]["shell"] is True
+        assert call_args[1]["check"] is False
 
-        mock_spawn.assert_called_once_with("python", encoding="utf-8", cwd=Path.cwd())
-        assert mock_input.call_count == 2
-        mock_child.sendline.assert_called_with("exit")
-        mock_child.close.assert_called_once()
-
-    @patch("pexpect.spawn")
+    @patch("subprocess.run")
     @patch("buvis.pybase.adapters.shell.shell.console")
-    def test_interact_timeout(
+    def test_interact_os_error(
         self,
         mock_console: Mock,
-        mock_spawn: Mock,
+        mock_run: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
-        """Test interactive session with timeout."""
-        mock_child = Mock()
-        mock_child.expect.return_value = 2  # TIMEOUT
-        mock_spawn.return_value = mock_child
+        """Test interactive session with OSError."""
+        mock_run.side_effect = OSError("Test error")
 
-        shell_adapter.interact("python", ">>> ", None)
-
-        mock_console.warning.assert_called_once_with("Timeout occurred.")
-        mock_child.close.assert_called_once()
-
-    @patch("pexpect.spawn")
-    @patch("buvis.pybase.adapters.shell.shell.console")
-    def test_interact_exception(
-        self,
-        mock_console: Mock,
-        mock_spawn: Mock,
-        shell_adapter: ShellAdapter,
-    ) -> None:
-        """Test interactive session with pexpect exception."""
-        mock_spawn.side_effect = pexpect.ExceptionPexpect("Test error")
-
-        shell_adapter.interact("python", ">>> ", None)
+        shell_adapter.interact("python", None)
 
         mock_console.failure.assert_called_once_with("An error occurred")
 
-    @patch("pexpect.spawn")
+    @patch("subprocess.run")
     def test_interact_with_working_directory(
         self,
-        mock_spawn: Mock,
+        mock_run: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test interactive session with valid working directory."""
-        mock_child = Mock()
-        mock_child.expect.return_value = 1  # EOF
-        mock_spawn.return_value = mock_child
-
         working_dir = Path("/tmp")
         with patch.object(Path, "is_dir", return_value=True):
-            shell_adapter.interact("python", ">>> ", working_dir)
+            shell_adapter.interact("python", working_dir)
 
-        mock_spawn.assert_called_once_with("python", encoding="utf-8", cwd=working_dir)
+        call_args = mock_run.call_args
+        assert call_args[1]["cwd"] == working_dir
 
-    @patch("pexpect.spawn")
+    @patch("subprocess.run")
     def test_interact_expands_aliases(
         self,
-        mock_spawn: Mock,
+        mock_run: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
         """Test that interact expands aliases."""
-        mock_child = Mock()
-        mock_child.expect.return_value = 1  # EOF
-        mock_spawn.return_value = mock_child
-
         shell_adapter.alias("py", "python3")
-        shell_adapter.interact("py", ">>> ", None)
+        shell_adapter.interact("py", None)
 
-        mock_spawn.assert_called_once_with("python3", encoding="utf-8", cwd=Path.cwd())
+        call_args = mock_run.call_args
+        assert call_args[0][0] == "python3"
 
 
 class TestShellAdapterIsCommandAvailable:
