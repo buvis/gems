@@ -6,6 +6,10 @@ BUVIS Python toolkit and CLI tools, shipped as a single PyPI package.
 
 ## Install
 
+Pre-built wheels for Linux (x64, ARM), macOS (ARM), and Windows (x64). Python 3.10+.
+
+### uv
+
 ```bash
 uv tool install buvis-gems              # all 9 CLIs, no optional deps
 uv tool install buvis-gems[bim]         # + jira & textual deps for bim
@@ -13,7 +17,45 @@ uv tool install buvis-gems[bim,muc]     # combine extras
 uv tool install buvis-gems[all]         # all optional deps
 ```
 
-Pre-built wheels for Linux (x64, ARM), macOS (ARM), and Windows (x64). Python 3.10+.
+### pipx
+
+```bash
+pipx install buvis-gems                 # all 9 CLIs, no optional deps
+pipx install 'buvis-gems[all]'          # all optional deps
+```
+
+### mise
+
+mise's experimental `uvtool` backend doesn't support extras. Use the `pipx` backend instead.
+
+In `~/.config/mise/config.toml`:
+
+```toml
+[tools]
+"pipx:buvis-gems" = { version = "latest", extras = "all" }
+```
+
+Then run `mise install`.
+
+## Update
+
+### uv
+
+```bash
+uv tool upgrade buvis-gems
+```
+
+### pipx
+
+```bash
+pipx upgrade buvis-gems
+```
+
+### mise
+
+```bash
+mise upgrade pipx:buvis-gems
+```
 
 All 9 CLIs (`bim`, `dot`, `fctracker`, `hello-world`, `muc`, `outlookctl`, `pinger`, `readerctl`, `zseq`) are always installed. Extras add optional dependencies some tools need:
 
