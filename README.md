@@ -63,7 +63,9 @@ All 15 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `
 |-------|-----|------|
 | `bim` | jira, textual, fpdf2 | bim |
 | `bim-web` | fastapi, uvicorn, watchfiles | bim (web UI) |
+| `fren` | python-slugify, Unidecode | fren |
 | `hello-world` | pyfiglet | hello-world |
+| `morph` | markdownify | morph |
 | `muc` | ffmpeg-python | muc |
 | `pinger` | ping3 | pinger |
 | `readerctl` | requests | readerctl |
