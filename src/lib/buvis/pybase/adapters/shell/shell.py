@@ -77,9 +77,10 @@ class ShellAdapter:
         except subprocess.CalledProcessError as e:
             if self.is_logging:
                 self._log_error_output(e)
-            return str(e), ""
+            detail = e.stderr.strip() if e.stderr else str(e)
+            return detail, ""
         else:
-            return result.stderr, result.stdout
+            return "", result.stdout
 
     def interact(
         self: ShellAdapter,

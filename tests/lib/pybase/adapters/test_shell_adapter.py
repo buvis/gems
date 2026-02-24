@@ -158,7 +158,7 @@ class TestShellAdapterExe:
         stderr, stdout = shell_adapter.exe("some_command", None)
 
         assert stdout == ""
-        assert stderr == "Warning message"
+        assert stderr == ""
 
     @patch("subprocess.run")
     def test_exe_failed_command(
@@ -172,7 +172,7 @@ class TestShellAdapterExe:
 
         stderr, stdout = shell_adapter.exe("false", None)
 
-        assert "Command 'false' returned non-zero exit status 1" in stderr
+        assert stderr == "error"
         assert stdout == ""
 
     @patch("subprocess.run")

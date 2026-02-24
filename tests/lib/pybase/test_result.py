@@ -19,6 +19,7 @@ class TestCommandResult:
             "success": True,
             "output": "ok",
             "error": None,
+            "info": [],
             "warnings": [],
             "metadata": {"path": "notes", "nested": {"items": ["one", "two"]}},
         }
