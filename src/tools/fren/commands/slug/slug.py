@@ -75,7 +75,7 @@ class CommandSlug:
             slugged = slugify(subject, lowercase=False) if subject else "unnamed"
             return f"{date_prefix}{slugged}.eml"
 
-        except Exception:
+        except (OSError, ValueError, UnicodeDecodeError, email.errors.MessageError):
             # Fallback to regular slugify
             return self._slugify_name_plain(path)
 
