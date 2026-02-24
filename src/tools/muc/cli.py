@@ -83,7 +83,7 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
         directory=path_directory,
         junk_extensions=settings.tidy_junk_extensions,
     )
-    cmd.execute()
+    console.report_result(cmd.execute())
 
 
 @cli.command("cover", help="Keep only the newest cover image per directory")

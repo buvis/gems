@@ -33,12 +33,12 @@ class TestCommandTidy:
 
         assert call_order == ["merge_mac_metadata", "normalize", "delete", "remove_empty"]
 
-    def test_execute_returns_none(self, tmp_path) -> None:
+    def test_execute_returns_command_result(self, tmp_path) -> None:
         with patch("muc.commands.tidy.tidy.DirTree"):
             cmd = CommandTidy(directory=tmp_path, junk_extensions=[])
             result = cmd.execute()
 
-        assert result is None
+        assert result.success is True
 
     def test_stores_directory_and_extensions(self, tmp_path) -> None:
         junk = [".cue", ".m3u"]

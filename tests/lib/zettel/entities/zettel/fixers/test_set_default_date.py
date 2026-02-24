@@ -16,24 +16,24 @@ class FixedDateTime(datetime):
         return datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 
-def test_sets_date_when_missing(monkeypatch) -> None:
-    monkeypatch.setattr(_date_mod, "datetime", FixedDateTime)
+class TestSetDefaultDate:
+    def test_sets_date_when_missing(self, monkeypatch) -> None:
+        monkeypatch.setattr(_date_mod, "datetime", FixedDateTime)
 
-    zettel_data = MagicMock(spec=ZettelData)
-    zettel_data.metadata = {}
+        zettel_data = MagicMock(spec=ZettelData)
+        zettel_data.metadata = {}
 
-    set_default_date(zettel_data)
+        set_default_date(zettel_data)
 
-    assert zettel_data.metadata["date"] == datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        assert zettel_data.metadata["date"] == datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
+    def test_does_not_override_existing_date(self, monkeypatch) -> None:
+        monkeypatch.setattr(_date_mod, "datetime", FixedDateTime)
 
-def test_does_not_override_existing_date(monkeypatch) -> None:
-    monkeypatch.setattr(_date_mod, "datetime", FixedDateTime)
+        existing = datetime(2023, 12, 31, 8, 30, 0, tzinfo=timezone.utc)
+        zettel_data = MagicMock(spec=ZettelData)
+        zettel_data.metadata = {"date": existing}
 
-    existing = datetime(2023, 12, 31, 8, 30, 0, tzinfo=timezone.utc)
-    zettel_data = MagicMock(spec=ZettelData)
-    zettel_data.metadata = {"date": existing}
+        set_default_date(zettel_data)
 
-    set_default_date(zettel_data)
-
-    assert zettel_data.metadata["date"] == existing
+        assert zettel_data.metadata["date"] == existing

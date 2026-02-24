@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import logging
 import os
 import shutil
 import subprocess
 from pathlib import Path
 
 import pexpect
-
-logger = logging.getLogger(__name__)
+from buvis.pybase.adapters.console import console
 
 # pexpect.expect() return indices
 _EXPECT_PROMPT = 0
@@ -116,11 +114,11 @@ class ShellAdapter:
                 elif index == _EXPECT_EOF:
                     break
                 elif index == _EXPECT_TIMEOUT:
-                    logger.error("Timeout occurred.")
+                    console.warning("Timeout occurred.")
                     break
 
         except pexpect.ExceptionPexpect:
-            logger.exception("An error occurred")
+            console.failure("An error occurred")
         finally:
             if self.child:
                 self.child.close()
@@ -175,9 +173,9 @@ class ShellAdapter:
             stderr: The standard error output of the command.
         """
         if stdout:
-            logger.info(stdout)
+            console.info(stdout)
         if stderr:
-            logger.error(stderr)
+            console.warning(stderr)
 
     def _log_error_output(self: ShellAdapter, e: subprocess.CalledProcessError) -> None:
         """Log the error output of a failed command execution.
@@ -185,8 +183,8 @@ class ShellAdapter:
         Args:
             e: The exception raised for the failed command execution.
         """
-        logger.error("Command failed with return code %s", e.returncode)
+        console.failure(f"Command failed with return code {e.returncode}")
         if e.stdout:
-            logger.error("STDOUT: %s", e.stdout)
+            console.failure(f"STDOUT: {e.stdout}")
         if e.stderr:
-            logger.error("STDERR: %s", e.stderr)
+            console.failure(f"STDERR: {e.stderr}")

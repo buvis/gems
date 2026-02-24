@@ -178,7 +178,7 @@ class TestSlugEmlEdgeCases:
         # Force the eml parser to fail so it falls back to _slugify_name_plain
         with patch(
             "fren.commands.slug.slug.email.message_from_binary_file",
-            side_effect=Exception("bad"),
+            side_effect=OSError("bad"),
         ):
             CommandSlug(paths=(str(source),)).execute()
 
