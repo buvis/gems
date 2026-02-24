@@ -27,17 +27,42 @@ class TestCommandPullInit:
 class TestCommandPullExecute:
     def test_execute_pulls_and_updates_submodules(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
-        shell.exe.side_effect = [("", ""), ("", ""), ("", "")]
+        shell.is_command_available.return_value = False
+        shell.exe.side_effect = [("", ""), ("", ""), ("", ""), ("", "")]
 
         cmd = CommandPull(shell=shell)
         result = cmd.execute()
 
         assert result.success
         assert result.output == "Dotfiles pulled successfully"
-        assert shell.exe.call_count == 3
+        assert shell.exe.call_count == 4
         shell.exe.assert_any_call("cfg pull", dotfiles_root)
+        shell.exe.assert_any_call("cfg submodule foreach git reset --hard", dotfiles_root)
         shell.exe.assert_any_call("cfg submodule update --init", dotfiles_root)
         shell.exe.assert_any_call("cfg submodule update --remote --merge", dotfiles_root)
+
+    def test_execute_with_git_secret_reveal(self, dotfiles_root: Path) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [("", ""), ("", ""), ("", ""), ("", ""), ("", "")]
+
+        cmd = CommandPull(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert shell.exe.call_count == 5
+        shell.exe.assert_any_call("cfg secret reveal -f", dotfiles_root)
+
+    def test_execute_git_secret_reveal_error(self, dotfiles_root: Path) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [("", ""), ("", ""), ("", ""), ("", ""), ("reveal error", "")]
+
+        cmd = CommandPull(shell=shell)
+        result = cmd.execute()
+
+        assert not result.success
+        assert result.error.startswith("Secret reveal failed")
 
     def test_execute_fails_on_pull_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
@@ -49,9 +74,19 @@ class TestCommandPullExecute:
         assert not result.success
         assert result.error.startswith("Pull failed")
 
-    def test_execute_fails_on_submodule_init_error(self, dotfiles_root: Path) -> None:
+    def test_execute_fails_on_submodule_reset_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
         shell.exe.side_effect = [("", ""), ("error msg", "")]
+
+        cmd = CommandPull(shell=shell)
+        result = cmd.execute()
+
+        assert not result.success
+        assert result.error.startswith("Submodule reset failed")
+
+    def test_execute_fails_on_submodule_init_error(self, dotfiles_root: Path) -> None:
+        shell = MagicMock()
+        shell.exe.side_effect = [("", ""), ("", ""), ("error msg", "")]
 
         cmd = CommandPull(shell=shell)
         result = cmd.execute()
@@ -61,7 +96,7 @@ class TestCommandPullExecute:
 
     def test_execute_fails_on_submodule_update_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
-        shell.exe.side_effect = [("", ""), ("", ""), ("error msg", "")]
+        shell.exe.side_effect = [("", ""), ("", ""), ("", ""), ("error msg", "")]
 
         cmd = CommandPull(shell=shell)
         result = cmd.execute()

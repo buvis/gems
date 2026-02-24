@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from dot.commands.status.status import CommandStatus, get_git_modified_files
+from dot.commands.status.status import CommandStatus, get_git_changed_files
 
 
 class TestCommandStatusInit:
@@ -56,7 +56,7 @@ class TestCommandStatusExecute:
         result = cmd.execute()
 
         assert not result.success
-        assert "Error revealing secrets" in result.error
+        assert "Error hiding secrets" in result.error
 
     def test_cfg_status_error(self, dotfiles_root) -> None:
         shell = MagicMock()
@@ -117,24 +117,82 @@ class TestCommandStatusExecute:
         assert any(".bashrc was modified" in w for w in result.warnings)
         assert any(".vimrc was modified" in w for w in result.warnings)
 
+    def test_deleted_files_reported(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "deleted: .config/nushell/env.nu")
 
-class TestGetGitModifiedFiles:
-    def test_no_modified_lines(self) -> None:
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 1
+        assert any("env.nu was deleted" in w for w in result.warnings)
+
+    def test_mixed_changes_reported(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = (
+            "",
+            "modified: .config/nushell/config.nu\ndeleted: .config/nushell/env.nu",
+        )
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 2
+        assert any("config.nu was modified" in w for w in result.warnings)
+        assert any("env.nu was deleted" in w for w in result.warnings)
+
+    def test_new_file_reported(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "new file: .newrc")
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 1
+        assert any(".newrc was new file" in w for w in result.warnings)
+
+
+class TestGetGitChangedFiles:
+    def test_no_changed_lines(self) -> None:
         output = "On branch master\nnothing to commit\n"
 
-        result = get_git_modified_files(output, Path("/tmp"))
+        result = get_git_changed_files(output, Path("/tmp"))
 
         assert result == []
 
     def test_empty_output(self) -> None:
-        result = get_git_modified_files("", Path("/tmp"))
+        result = get_git_changed_files("", Path("/tmp"))
 
         assert result == []
 
     def test_mixed_lines(self, tmp_path) -> None:
         output = "new file: readme.md\nmodified: config.yaml\ndeleted: old.txt\n"
 
-        result = get_git_modified_files(output, tmp_path)
+        result = get_git_changed_files(output, tmp_path)
+
+        assert len(result) == 3
+        assert result[0] == ((tmp_path / "readme.md").resolve(), "new file")
+        assert result[1] == ((tmp_path / "config.yaml").resolve(), "modified")
+        assert result[2] == ((tmp_path / "old.txt").resolve(), "deleted")
+
+    def test_only_deleted(self, tmp_path) -> None:
+        output = "deleted: .config/nushell/env.nu\n"
+
+        result = get_git_changed_files(output, tmp_path)
 
         assert len(result) == 1
-        assert result[0] == (tmp_path / "config.yaml").resolve()
+        assert result[0][1] == "deleted"
+
+    def test_renamed(self, tmp_path) -> None:
+        output = "renamed: old.conf -> new.conf\n"
+
+        result = get_git_changed_files(output, tmp_path)
+
+        assert len(result) == 1
+        assert result[0][1] == "renamed"

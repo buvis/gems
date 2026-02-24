@@ -9,6 +9,8 @@ from buvis.pybase.result import CommandResult
 if TYPE_CHECKING:
     from buvis.pybase.adapters.shell.shell import ShellAdapter
 
+_CHANGE_TYPES = ("modified:", "deleted:", "new file:", "renamed:")
+
 
 class CommandStatus:
     def __init__(self: CommandStatus, shell: ShellAdapter) -> None:
@@ -30,7 +32,7 @@ class CommandStatus:
             err, out = self.shell.exe("cfg secret hide -m", Path(os.environ["DOTFILES_ROOT"]))
 
             if err:
-                return CommandResult(success=False, error=f"Error revealing secrets: {err}\n{out}")
+                return CommandResult(success=False, error=f"Error hiding secrets: {err}\n{out}")
 
         err, out = self.shell.exe("cfg status", Path(os.environ["DOTFILES_ROOT"]))
 
@@ -38,10 +40,10 @@ class CommandStatus:
             return CommandResult(success=False, error=f"Error executing command: {err}")
 
         if out:
-            modified_files = get_git_modified_files(out, Path.cwd())
-            if modified_files:
-                for m in modified_files:
-                    warnings.append(f"{m} was modified")
+            changed_files = get_git_changed_files(out, Path.cwd())
+            if changed_files:
+                for path, change_type in changed_files:
+                    warnings.append(f"{path} was {change_type}")
                 return CommandResult(success=True, warnings=warnings)
             elif "nothing to commit" in out:
                 return CommandResult(success=True, output="No modifications found")
@@ -51,15 +53,16 @@ class CommandStatus:
         return CommandResult(success=True, output="No modifications found")
 
 
-def get_git_modified_files(git_output: str, relative_to: Path) -> list[Path]:
-    modified_files = []
+def get_git_changed_files(git_output: str, relative_to: Path) -> list[tuple[Path, str]]:
+    changed_files: list[tuple[Path, str]] = []
 
     for line in git_output.split("\n"):
         clean_line = line.strip()
-        if clean_line.startswith("modified:"):
-            parts = clean_line.split("modified:")
-            if len(parts) > 1:
-                file_path = parts[1].strip()
+        for prefix in _CHANGE_TYPES:
+            if clean_line.startswith(prefix):
+                file_path = clean_line[len(prefix) :].strip()
                 absolute_path = Path(relative_to).joinpath(file_path).resolve()
-                modified_files.append(absolute_path)
-    return modified_files
+                change_type = prefix.rstrip(":")
+                changed_files.append((absolute_path, change_type))
+                break
+    return changed_files
