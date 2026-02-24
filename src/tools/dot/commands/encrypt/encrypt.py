@@ -38,7 +38,7 @@ class CommandEncrypt:
         if err:
             return CommandResult(success=False, error=f"Failed to encrypt: {err}")
 
-        stage_paths = f"{self.file_path}.secret .gitsecret/"
+        stage_paths = f"{self.file_path}.secret .gitsecret/ .gitignore"
         err, _ = self.shell.exe(f"cfg add {stage_paths}", cwd)
         if err:
             return CommandResult(success=False, error=f"Failed to stage: {err}")

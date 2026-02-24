@@ -48,7 +48,7 @@ class TestCommandEncryptExecute:
         assert shell.exe.call_count == 3
         shell.exe.assert_any_call("cfg secret add .secret_file", dotfiles_root)
         shell.exe.assert_any_call("cfg secret hide -m", dotfiles_root)
-        shell.exe.assert_any_call("cfg add .secret_file.secret .gitsecret/", dotfiles_root)
+        shell.exe.assert_any_call("cfg add .secret_file.secret .gitsecret/ .gitignore", dotfiles_root)
 
     def test_fails_on_secret_add_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
