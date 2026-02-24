@@ -140,12 +140,25 @@ git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </
 <h2>Installing Pre-releases<a class="headerlink" href="#installing-pre-releases" title="Link to this heading"></a></h2>
 <p>To install a release candidate from TestPyPI:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;buvis-gems[all]==X.Y.Zrc1&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--extra-index-url<span class="w"> </span>https://test.pypi.org/simple/
+<span class="w">    </span>--extra-index-url<span class="w"> </span>https://test.pypi.org/simple/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--index-strategy<span class="w"> </span>unsafe-best-match
 </pre></div>
 </div>
 <p>Replace <code class="docutils literal notranslate"><span class="pre">X.Y.Zrc1</span></code> with the actual version (e.g. <code class="docutils literal notranslate"><span class="pre">0.4.0rc1</span></code>).</p>
+<p>If you use <code class="docutils literal notranslate"><span class="pre">mise</span></code> to manage buvis-gems, install into the mise venv instead:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">mise_root</span><span class="o">=</span><span class="k">$(</span>mise<span class="w"> </span>where<span class="w"> </span>pipx:buvis-gems<span class="k">)</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--force-reinstall<span class="w"> </span><span class="s2">&quot;buvis-gems[all]==X.Y.Zrc1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--extra-index-url<span class="w"> </span>https://test.pypi.org/simple/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--index-strategy<span class="w"> </span>unsafe-best-match<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--python<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$mise_root</span><span class="s2">/buvis-gems/bin/python&quot;</span>
+</pre></div>
+</div>
 <p>To go back to the stable release:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span>buvis-gems<span class="o">[</span>all<span class="o">]</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># uv tool users</span>
+uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span>buvis-gems<span class="o">[</span>all<span class="o">]</span>
+
+<span class="c1"># mise users</span>
+mise<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">&quot;pipx:buvis-gems&quot;</span>
 </pre></div>
 </div>
 </section>
