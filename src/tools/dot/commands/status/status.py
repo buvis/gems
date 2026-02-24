@@ -9,7 +9,14 @@ from buvis.pybase.result import CommandResult
 if TYPE_CHECKING:
     from buvis.pybase.adapters.shell.shell import ShellAdapter
 
-_CHANGE_TYPES = ("modified:", "deleted:", "new file:", "renamed:")
+_STATUS_LABELS = {
+    "M": "modified",
+    "A": "new file",
+    "D": "deleted",
+    "R": "renamed",
+    "C": "copied",
+    "T": "type changed",
+}
 
 
 class CommandStatus:
@@ -34,35 +41,51 @@ class CommandStatus:
             if err:
                 return CommandResult(success=False, error=f"Error hiding secrets: {err}\n{out}")
 
-        err, out = self.shell.exe("cfg status", Path(os.environ["DOTFILES_ROOT"]))
+        err, out = self.shell.exe("cfg status --porcelain", Path(os.environ["DOTFILES_ROOT"]))
 
         if err:
             return CommandResult(success=False, error=f"Error executing command: {err}")
 
-        if out:
-            changed_files = get_git_changed_files(out, Path.cwd())
-            if changed_files:
-                for path, change_type in changed_files:
-                    warnings.append(f"{path} was {change_type}")
+        if out and out.strip():
+            staged, unstaged = parse_porcelain_status(out)
+            if staged or unstaged:
+                for path, change_type in staged:
+                    warnings.append(f"staged: {path} {change_type}")
+                for path, change_type in unstaged:
+                    warnings.append(f"unstaged: {path} {change_type}")
                 return CommandResult(success=True, warnings=warnings)
-            elif "nothing to commit" in out:
-                return CommandResult(success=True, output="No modifications found")
-            else:
-                return CommandResult(success=False, error="Unexpected git output", metadata={"details": out})
 
         return CommandResult(success=True, output="No modifications found")
 
 
-def get_git_changed_files(git_output: str, relative_to: Path) -> list[tuple[Path, str]]:
-    changed_files: list[tuple[Path, str]] = []
+def parse_porcelain_status(
+    git_output: str,
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Parse ``git status --porcelain`` output into staged and unstaged lists.
+
+    Returns:
+        Tuple of (staged, unstaged) where each is a list of (filepath, change_label).
+    """
+    staged: list[tuple[str, str]] = []
+    unstaged: list[tuple[str, str]] = []
 
     for line in git_output.split("\n"):
-        clean_line = line.strip()
-        for prefix in _CHANGE_TYPES:
-            if clean_line.startswith(prefix):
-                file_path = clean_line[len(prefix) :].strip()
-                absolute_path = Path(relative_to).joinpath(file_path).resolve()
-                change_type = prefix.rstrip(":")
-                changed_files.append((absolute_path, change_type))
-                break
-    return changed_files
+        if len(line) < 3:
+            continue
+
+        index_status = line[0]
+        worktree_status = line[1]
+        filepath = line[3:]
+
+        # untracked
+        if index_status == "?" and worktree_status == "?":
+            unstaged.append((filepath, "untracked"))
+            continue
+
+        if index_status != " " and index_status in _STATUS_LABELS:
+            staged.append((filepath, _STATUS_LABELS[index_status]))
+
+        if worktree_status != " " and worktree_status in _STATUS_LABELS:
+            unstaged.append((filepath, _STATUS_LABELS[worktree_status]))
+
+    return staged, unstaged

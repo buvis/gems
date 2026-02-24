@@ -13,6 +13,7 @@ class TestDotCliHelp:
         assert "pull" in result.output
         assert "commit" in result.output
         assert "push" in result.output
+        assert "unstage" in result.output
 
     def test_status_help(self, runner) -> None:
         result = runner.invoke(cli, ["status", "--help"])
@@ -29,7 +30,11 @@ class TestDotCliHelp:
     def test_commit_help(self, runner) -> None:
         result = runner.invoke(cli, ["commit", "--help"])
         assert result.exit_code == 0
-        assert "--message" in result.output
+        assert "MESSAGE" in result.output
+
+    def test_unstage_help(self, runner) -> None:
+        result = runner.invoke(cli, ["unstage", "--help"])
+        assert result.exit_code == 0
 
     def test_push_help(self, runner) -> None:
         result = runner.invoke(cli, ["push", "--help"])
@@ -87,7 +92,7 @@ class TestDotCommands:
         mocker.patch("dot.cli.ShellAdapter")
         mock_cmd_cls = mocker.patch("dot.commands.commit.commit.CommandCommit")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=True, output="Changes committed")
-        result = runner.invoke(cli, ["commit", "-m", "test msg"])
+        result = runner.invoke(cli, ["commit", "test msg"])
         assert result.exit_code == 0
 
     def test_commit_failure(self, mocker, runner) -> None:
@@ -96,7 +101,21 @@ class TestDotCommands:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(
             success=False, error="Commit failed", warnings=["unstaged"]
         )
-        result = runner.invoke(cli, ["commit", "-m", "test msg"])
+        result = runner.invoke(cli, ["commit", "test msg"])
+        assert result.exit_code == 0
+
+    def test_unstage_success(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.unstage.unstage.CommandUnstage")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=True, output="All files unstaged")
+        result = runner.invoke(cli, ["unstage"])
+        assert result.exit_code == 0
+
+    def test_unstage_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.unstage.unstage.CommandUnstage")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Unstage failed")
+        result = runner.invoke(cli, ["unstage"])
         assert result.exit_code == 0
 
     def test_push_success(self, mocker, runner) -> None:

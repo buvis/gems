@@ -61,7 +61,7 @@ def pull() -> None:
 
 
 @cli.command("commit", help="Commit dotfiles changes")
-@click.option("-m", "--message", required=True, help="Commit message")
+@click.argument("message")
 def commit(message: str) -> None:
     from dot.commands.commit.commit import CommandCommit
 
@@ -80,6 +80,15 @@ def run(args: tuple[str, ...]) -> None:
 
     shell = ShellAdapter(suppress_logging=True)
     console.report_result(CommandRun(shell=shell, args=args).execute())
+
+
+@cli.command("unstage", help="Unstage files, keep local changes")
+@click.argument("file_path", required=False)
+def unstage(file_path: str | None = None) -> None:
+    from dot.commands.unstage.unstage import CommandUnstage
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(CommandUnstage(shell=shell, file_path=file_path).execute())
 
 
 @cli.command("push", help="Push dotfiles to remote")

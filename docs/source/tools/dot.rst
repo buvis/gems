@@ -26,7 +26,8 @@ Commands
 dot status
 ~~~~~~~~~~
 
-Show git and git-secret status of your dotfiles repo.
+Show staged and unstaged changes in your dotfiles repo. Uses ``git status
+--porcelain`` and labels each file as ``staged`` or ``unstaged``.
 
 .. code-block:: bash
 
@@ -55,3 +56,49 @@ Interactively stage changes (cherry-pick mode).
 
     dot add                     # interactive selection
     dot add ~/.bashrc           # stage specific file
+
+dot unstage
+~~~~~~~~~~~
+
+Remove files from the staging area without touching local changes.
+
+.. code-block:: bash
+
+    dot unstage                 # unstage all
+    dot unstage .bashrc         # unstage specific file
+
+dot commit
+~~~~~~~~~~
+
+Commit staged dotfiles changes. Message is a positional argument.
+
+.. code-block:: bash
+
+    dot commit "update shell config"
+
+dot encrypt
+~~~~~~~~~~~
+
+Register a file for git-secret encryption.
+
+.. code-block:: bash
+
+    dot encrypt ~/.config/secrets.yaml
+
+dot pull
+~~~~~~~~
+
+Pull dotfiles and update submodules. Reveals git-secret files if available.
+
+.. code-block:: bash
+
+    dot pull
+
+dot push
+~~~~~~~~
+
+Push dotfiles to remote.
+
+.. code-block:: bash
+
+    dot push

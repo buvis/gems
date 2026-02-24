@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
-from dot.commands.status.status import CommandStatus, get_git_changed_files
+from dot.commands.status.status import CommandStatus, parse_porcelain_status
 
 
 class TestCommandStatusInit:
@@ -36,7 +35,7 @@ class TestCommandStatusExecute:
         shell.is_command_available.return_value = True
         shell.exe.side_effect = [
             ("", ""),  # cfg secret hide -m
-            ("", "nothing to commit, working tree clean"),  # cfg status
+            ("", ""),  # cfg status --porcelain (empty = clean)
         ]
 
         cmd = CommandStatus(shell=shell)
@@ -72,7 +71,7 @@ class TestCommandStatusExecute:
     def test_nothing_to_commit(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "On branch master\nnothing to commit, working tree clean")
+        shell.exe.return_value = ("", "")
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -80,18 +79,6 @@ class TestCommandStatusExecute:
         assert result.success
         assert result.output == "No modifications found"
         assert result.warnings == []
-
-    def test_unexpected_git_output(self, dotfiles_root) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "On branch master\nsome unexpected output")
-
-        cmd = CommandStatus(shell=shell)
-        result = cmd.execute()
-
-        assert not result.success
-        assert result.error == "Unexpected git output"
-        assert result.metadata["details"] == "On branch master\nsome unexpected output"
 
     def test_empty_output(self, dotfiles_root) -> None:
         shell = MagicMock()
@@ -104,95 +91,151 @@ class TestCommandStatusExecute:
         assert result.success
         assert result.output == "No modifications found"
 
-    def test_modified_files_reported(self, dotfiles_root) -> None:
+    def test_staged_modified_files(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "modified: .bashrc\nmodified: .vimrc")
+        shell.exe.return_value = ("", "M  .bashrc\nM  .vimrc")
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
 
         assert result.success
         assert len(result.warnings) == 2
-        assert any(".bashrc was modified" in w for w in result.warnings)
-        assert any(".vimrc was modified" in w for w in result.warnings)
+        assert "staged: .bashrc modified" in result.warnings
+        assert "staged: .vimrc modified" in result.warnings
 
-    def test_deleted_files_reported(self, dotfiles_root) -> None:
+    def test_unstaged_modified_files(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "deleted: .config/nushell/env.nu")
-
-        cmd = CommandStatus(shell=shell)
-        result = cmd.execute()
-
-        assert result.success
-        assert len(result.warnings) == 1
-        assert any("env.nu was deleted" in w for w in result.warnings)
-
-    def test_mixed_changes_reported(self, dotfiles_root) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.return_value = (
-            "",
-            "modified: .config/nushell/config.nu\ndeleted: .config/nushell/env.nu",
-        )
+        shell.exe.return_value = ("", " M .bashrc\n M .vimrc")
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
 
         assert result.success
         assert len(result.warnings) == 2
-        assert any("config.nu was modified" in w for w in result.warnings)
-        assert any("env.nu was deleted" in w for w in result.warnings)
+        assert "unstaged: .bashrc modified" in result.warnings
+        assert "unstaged: .vimrc modified" in result.warnings
 
-    def test_new_file_reported(self, dotfiles_root) -> None:
+    def test_staged_and_unstaged_mixed(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "new file: .newrc")
+        shell.exe.return_value = ("", "M  .bashrc\n M .vimrc")
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 2
+        assert "staged: .bashrc modified" in result.warnings
+        assert "unstaged: .vimrc modified" in result.warnings
+
+    def test_both_staged_and_unstaged_same_file(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "MM .bashrc")
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 2
+        assert "staged: .bashrc modified" in result.warnings
+        assert "unstaged: .bashrc modified" in result.warnings
+
+    def test_deleted_files(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", " D .config/nushell/env.nu")
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
 
         assert result.success
         assert len(result.warnings) == 1
-        assert any(".newrc was new file" in w for w in result.warnings)
+        assert "unstaged: .config/nushell/env.nu deleted" in result.warnings
+
+    def test_new_file_staged(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "A  .newrc")
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 1
+        assert "staged: .newrc new file" in result.warnings
+
+    def test_untracked_files(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "?? .newrc")
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 1
+        assert "unstaged: .newrc untracked" in result.warnings
 
 
-class TestGetGitChangedFiles:
-    def test_no_changed_lines(self) -> None:
-        output = "On branch master\nnothing to commit\n"
-
-        result = get_git_changed_files(output, Path("/tmp"))
-
-        assert result == []
-
+class TestParsePorcelainStatus:
     def test_empty_output(self) -> None:
-        result = get_git_changed_files("", Path("/tmp"))
+        staged, unstaged = parse_porcelain_status("")
 
-        assert result == []
+        assert staged == []
+        assert unstaged == []
 
-    def test_mixed_lines(self, tmp_path) -> None:
-        output = "new file: readme.md\nmodified: config.yaml\ndeleted: old.txt\n"
+    def test_staged_modified(self) -> None:
+        staged, unstaged = parse_porcelain_status("M  config.yaml")
 
-        result = get_git_changed_files(output, tmp_path)
+        assert len(staged) == 1
+        assert staged[0] == ("config.yaml", "modified")
+        assert unstaged == []
 
-        assert len(result) == 3
-        assert result[0] == ((tmp_path / "readme.md").resolve(), "new file")
-        assert result[1] == ((tmp_path / "config.yaml").resolve(), "modified")
-        assert result[2] == ((tmp_path / "old.txt").resolve(), "deleted")
+    def test_unstaged_modified(self) -> None:
+        staged, unstaged = parse_porcelain_status(" M config.yaml")
 
-    def test_only_deleted(self, tmp_path) -> None:
-        output = "deleted: .config/nushell/env.nu\n"
+        assert staged == []
+        assert len(unstaged) == 1
+        assert unstaged[0] == ("config.yaml", "modified")
 
-        result = get_git_changed_files(output, tmp_path)
+    def test_both_staged_and_unstaged(self) -> None:
+        staged, unstaged = parse_porcelain_status("MM config.yaml")
 
-        assert len(result) == 1
-        assert result[0][1] == "deleted"
+        assert len(staged) == 1
+        assert len(unstaged) == 1
+        assert staged[0] == ("config.yaml", "modified")
+        assert unstaged[0] == ("config.yaml", "modified")
 
-    def test_renamed(self, tmp_path) -> None:
-        output = "renamed: old.conf -> new.conf\n"
+    def test_mixed_changes(self) -> None:
+        output = "A  readme.md\nM  config.yaml\n D old.txt\n"
 
-        result = get_git_changed_files(output, tmp_path)
+        staged, unstaged = parse_porcelain_status(output)
 
-        assert len(result) == 1
-        assert result[0][1] == "renamed"
+        assert len(staged) == 2
+        assert staged[0] == ("readme.md", "new file")
+        assert staged[1] == ("config.yaml", "modified")
+        assert len(unstaged) == 1
+        assert unstaged[0] == ("old.txt", "deleted")
+
+    def test_untracked(self) -> None:
+        staged, unstaged = parse_porcelain_status("?? newfile.txt")
+
+        assert staged == []
+        assert len(unstaged) == 1
+        assert unstaged[0] == ("newfile.txt", "untracked")
+
+    def test_renamed(self) -> None:
+        staged, unstaged = parse_porcelain_status("R  old.conf -> new.conf")
+
+        assert len(staged) == 1
+        assert staged[0] == ("old.conf -> new.conf", "renamed")
+        assert unstaged == []
+
+    def test_short_lines_skipped(self) -> None:
+        staged, unstaged = parse_porcelain_status("ab\n\n")
+
+        assert staged == []
+        assert unstaged == []
