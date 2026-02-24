@@ -102,8 +102,9 @@ uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span
 </section>
 <section id="local-testing">
 <h2>Local Testing<a class="headerlink" href="#local-testing" title="Link to this heading"></a></h2>
-<p>Build and install from a temp dir to avoid corrupting the source tree:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>build<span class="w"> </span>--out-dir<span class="w"> </span>/tmp/gems-test<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span>--from<span class="w"> </span><span class="s2">&quot;/tmp/gems-test/</span><span class="k">$(</span>ls<span class="w"> </span>/tmp/gems-test/buvis_gems-*.whl<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>basename<span class="k">)</span><span class="s2">[all]&quot;</span><span class="w"> </span>buvis-gems
+<p>Build a <code class="docutils literal notranslate"><span class="pre">.devN</span></code> wheel (N = commits since version tag) and install it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>release<span class="w"> </span><span class="nb">local</span><span class="w">                          </span><span class="c1"># build + install as e.g. 0.3.2.dev3</span>
+release<span class="w"> </span>--dry-run<span class="w"> </span><span class="nb">local</span><span class="w">                </span><span class="c1"># preview version without building</span>
 </pre></div>
 </div>
 <p>This bypasses mise but installs to the same <code class="docutils literal notranslate"><span class="pre">~/.local/bin</span></code>. After testing, restore the mise-managed version:</p>
@@ -117,6 +118,7 @@ uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span
 release<span class="w"> </span>--pre<span class="w"> </span>rc1<span class="w">                      </span><span class="c1"># pre-release current version to TestPyPI</span>
 release<span class="w"> </span>--pre<span class="w"> </span>rc1<span class="w"> </span>minor<span class="w">                </span><span class="c1"># bump + pre-release to TestPyPI</span>
 release<span class="w">                                </span><span class="c1"># after rc: strip suffix, release stable to PyPI</span>
+release<span class="w"> </span>--dry-run<span class="w"> </span><span class="o">[</span>--pre<span class="w"> </span>rc1<span class="o">]</span><span class="w"> </span><span class="o">[</span>patch<span class="o">]</span><span class="w">  </span><span class="c1"># preview without changes</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">mise</span></code> adds <code class="docutils literal notranslate"><span class="pre">dev/bin</span></code> to PATH. Tags with <code class="docutils literal notranslate"><span class="pre">rc</span></code> publish to TestPyPI; stable tags go to PyPI.</p>
