@@ -43,6 +43,15 @@ def add(ctx: click.Context, file_path: str | None = None) -> None:
     console.report_result(cmd.execute())
 
 
+@cli.command("encrypt", help="Register a file for git-secret encryption")
+@click.argument("file_path")
+def encrypt(file_path: str) -> None:
+    from dot.commands.encrypt.encrypt import CommandEncrypt
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(CommandEncrypt(shell=shell, file_path=file_path).execute())
+
+
 @cli.command("pull", help="Pull dotfiles and update submodules")
 def pull() -> None:
     from dot.commands.pull.pull import CommandPull
@@ -58,6 +67,19 @@ def commit(message: str) -> None:
 
     shell = ShellAdapter(suppress_logging=True)
     console.report_result(CommandCommit(shell=shell, message=message).execute())
+
+
+@cli.command(
+    "run",
+    help="Run arbitrary git command on dotfiles repo",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+def run(args: tuple[str, ...]) -> None:
+    from dot.commands.run.run import CommandRun
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(CommandRun(shell=shell, args=args).execute())
 
 
 @cli.command("push", help="Push dotfiles to remote")
