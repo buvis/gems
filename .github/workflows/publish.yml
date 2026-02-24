@@ -44,7 +44,7 @@ jobs:
         run: uv pip install --system maturin tomli
 
       - name: Pin dependencies from lockfile
-        run: python dev/pin_deps.py .
+        run: python dev/bin/pin_deps.py .
 
       - name: Build wheel
         run: uv build --wheel

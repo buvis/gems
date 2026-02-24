@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
     pkg_dir = Path(sys.argv[1])
     if not pkg_dir.is_absolute():
-        pkg_dir = Path(__file__).parent.parent / pkg_dir
+        pkg_dir = Path(__file__).resolve().parents[2] / pkg_dir
 
     if "--unpin" in sys.argv:
         unpin(pkg_dir)

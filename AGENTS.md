@@ -49,9 +49,10 @@ tests/
 │   └── zettel_integrations/
 └── tools/                      # CLI tool tests
 dev/
-├── bin/release                 # bump+tag+push
-├── pin_deps.py                 # pin deps from uv.lock for publishing
-└── scaffold.py                 # scaffold a new tool
+└── bin/
+    ├── pin_deps.py             # pin deps from uv.lock for publishing
+    ├── release                 # bump+tag+push
+    └── scaffold.py             # scaffold a new tool
 ```
 
 **Key patterns:**
