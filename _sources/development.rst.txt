@@ -11,6 +11,21 @@ Setup
     uv run pytest
     uv run mypy src/lib/ src/tools/
 
+Local Testing
+-------------
+
+Build and install from a temp dir to avoid corrupting the source tree:
+
+.. code-block:: bash
+
+    uv build --out-dir /tmp/gems-test && uv tool install --force --from "/tmp/gems-test/$(ls /tmp/gems-test/buvis_gems-*.whl | head -1 | xargs basename)[all]" buvis-gems
+
+This bypasses mise but installs to the same ``~/.local/bin``. After testing, restore the mise-managed version:
+
+.. code-block:: bash
+
+    mise install --force "pipx:buvis-gems"
+
 Release
 -------
 

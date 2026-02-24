@@ -59,6 +59,7 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Development</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#setup">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#local-testing">Local Testing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#release">Release</a></li>
 </ul>
 </li>
@@ -96,6 +97,17 @@
 pre-commit<span class="w"> </span>install
 uv<span class="w"> </span>run<span class="w"> </span>pytest
 uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>src/lib/<span class="w"> </span>src/tools/
+</pre></div>
+</div>
+</section>
+<section id="local-testing">
+<h2>Local Testing<a class="headerlink" href="#local-testing" title="Link to this heading"></a></h2>
+<p>Build and install from a temp dir to avoid corrupting the source tree:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>build<span class="w"> </span>--out-dir<span class="w"> </span>/tmp/gems-test<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span>--from<span class="w"> </span><span class="s2">&quot;/tmp/gems-test/</span><span class="k">$(</span>ls<span class="w"> </span>/tmp/gems-test/buvis_gems-*.whl<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>basename<span class="k">)</span><span class="s2">[all]&quot;</span><span class="w"> </span>buvis-gems
+</pre></div>
+</div>
+<p>This bypasses mise but installs to the same <code class="docutils literal notranslate"><span class="pre">~/.local/bin</span></code>. After testing, restore the mise-managed version:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mise<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">&quot;pipx:buvis-gems&quot;</span>
 </pre></div>
 </div>
 </section>
