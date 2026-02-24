@@ -40,6 +40,18 @@ Release
 
 ``mise`` adds ``dev/bin`` to PATH. Tags with ``rc`` publish to TestPyPI; stable tags go to PyPI.
 
+Re-running a Failed Release
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If CI fails after a release tag was pushed (e.g. a lint error), fix the issue on master, then move the tag to the latest commit and force-push it:
+
+.. code-block:: bash
+
+    git tag -f gems-vX.Y.Z
+    git push origin gems-vX.Y.Z --force
+
+This re-triggers the publish workflow on the new commit.
+
 Installing Pre-releases
 -----------------------
 
