@@ -148,6 +148,18 @@
 </pre></div>
 </div>
 </section>
+<section id="dot-run">
+<h3>dot run<a class="headerlink" href="#dot-run" title="Link to this heading"></a></h3>
+<p>Run any git command against the dotfiles bare repo. Everything after <code class="docutils literal notranslate"><span class="pre">run</span></code>
+is appended to the <code class="docutils literal notranslate"><span class="pre">cfg</span></code> alias.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>run<span class="w"> </span>log<span class="w"> </span>--oneline<span class="w"> </span>-5<span class="w">    </span><span class="c1"># recent commits</span>
+dot<span class="w"> </span>run<span class="w"> </span>diff<span class="w">                </span><span class="c1"># unstaged changes</span>
+dot<span class="w"> </span>run<span class="w"> </span>remote<span class="w"> </span>-v<span class="w">           </span><span class="c1"># list remotes</span>
+dot<span class="w"> </span>run<span class="w"> </span>stash<span class="w"> </span>list<span class="w">          </span><span class="c1"># list stashes</span>
+dot<span class="w"> </span>run<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init
+</pre></div>
+</div>
+</section>
 <section id="dot-add">
 <h3>dot add<a class="headerlink" href="#dot-add" title="Link to this heading"></a></h3>
 <p>Interactively stage changes (cherry-pick mode).</p>
