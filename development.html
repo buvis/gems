@@ -60,7 +60,10 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Development</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#setup">Setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#local-testing">Local Testing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#release">Release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#release">Release</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#re-running-a-failed-release">Re-running a Failed Release</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#installing-pre-releases">Installing Pre-releases</a></li>
 </ul>
 </li>
@@ -123,6 +126,15 @@ release<span class="w"> </span>--dry-run<span class="w"> </span><span class="o">
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">mise</span></code> adds <code class="docutils literal notranslate"><span class="pre">dev/bin</span></code> to PATH. Tags with <code class="docutils literal notranslate"><span class="pre">rc</span></code> publish to TestPyPI; stable tags go to PyPI.</p>
+<section id="re-running-a-failed-release">
+<h3>Re-running a Failed Release<a class="headerlink" href="#re-running-a-failed-release" title="Link to this heading"></a></h3>
+<p>If CI fails after a release tag was pushed (e.g. a lint error), fix the issue on master, then move the tag to the latest commit and force-push it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>tag<span class="w"> </span>-f<span class="w"> </span>gems-vX.Y.Z
+git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>gems-vX.Y.Z<span class="w"> </span>--force
+</pre></div>
+</div>
+<p>This re-triggers the publish workflow on the new commit.</p>
+</section>
 </section>
 <section id="installing-pre-releases">
 <h2>Installing Pre-releases<a class="headerlink" href="#installing-pre-releases" title="Link to this heading"></a></h2>
