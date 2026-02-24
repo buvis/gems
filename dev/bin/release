@@ -56,6 +56,7 @@ if $dry_run; then
   exit 0
 fi
 
+git pull --ff-only || die "pull failed — resolve manually"
 [[ -z "$(git status --porcelain)" ]] || die "working tree is dirty"
 git tag -l "$tag" | grep -q . && die "tag $tag already exists"
 
