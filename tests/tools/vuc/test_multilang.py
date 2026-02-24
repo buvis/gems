@@ -5,7 +5,6 @@ import json
 import subprocess
 from pathlib import Path
 
-from click.testing import CliRunner
 from vuc.cli import cli
 from vuc.commands.multilang import CommandMultilang
 
@@ -35,7 +34,9 @@ class TestCommandMultilang:
     def test_single_audio_track_skipped(self, tmp_path, mocker) -> None:
         video = _touch(tmp_path / "single.mkv")
         output = tmp_path / "out.csv"
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=1)))
+        mocker.patch(
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=1))
+        )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -46,7 +47,9 @@ class TestCommandMultilang:
     def test_multi_audio_tracks_reported(self, tmp_path, mocker) -> None:
         video = _touch(tmp_path / "multi.mkv")
         output = tmp_path / "out.csv"
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2)))
+        mocker.patch(
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+        )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -64,7 +67,7 @@ class TestCommandMultilang:
                 return _completed(_mediainfo_json(audio_tracks=1))
             return _completed(_mediainfo_json(audio_tracks=3))
 
-        mocker.patch("vuc.commands.multilang.subprocess.run", side_effect=fake_run)
+        mocker.patch("vuc.commands.multilang.multilang.subprocess.run", side_effect=fake_run)
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -74,7 +77,9 @@ class TestCommandMultilang:
     def test_recursive_scan(self, tmp_path, mocker) -> None:
         video = _touch(tmp_path / "nested" / "deep" / "movie.mkv")
         output = tmp_path / "out.csv"
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2)))
+        mocker.patch(
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+        )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -88,7 +93,7 @@ class TestCommandMultilang:
         _touch(tmp_path / "cover.jpg")
         output = tmp_path / "out.csv"
         run = mocker.patch(
-            "vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
         )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
@@ -100,7 +105,9 @@ class TestCommandMultilang:
     def test_case_insensitive_extensions(self, tmp_path, mocker) -> None:
         video = _touch(tmp_path / "MOVIE.MKV")
         output = tmp_path / "out.csv"
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2)))
+        mocker.patch(
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+        )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -110,7 +117,9 @@ class TestCommandMultilang:
     def test_csv_headers(self, tmp_path, mocker) -> None:
         _touch(tmp_path / "movie.mkv")
         output = tmp_path / "out.csv"
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2)))
+        mocker.patch(
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+        )
 
         CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -119,7 +128,9 @@ class TestCommandMultilang:
     def test_csv_quoting(self, tmp_path, mocker) -> None:
         video = _touch(tmp_path / "movie,part1.mkv")
         output = tmp_path / "out.csv"
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2)))
+        mocker.patch(
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+        )
 
         CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -129,7 +140,9 @@ class TestCommandMultilang:
         first = _touch(tmp_path / "a.mkv")
         second = _touch(tmp_path / "z.mkv")
         output = tmp_path / "out.csv"
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2)))
+        mocker.patch(
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+        )
 
         CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -145,7 +158,7 @@ class TestCommandMultilang:
         symlink.symlink_to(target)
         output = tmp_path / "out.csv"
         run = mocker.patch(
-            "vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
         )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
@@ -159,7 +172,7 @@ class TestCommandMultilang:
         _touch(tmp_path / ".hidden.mkv")
         output = tmp_path / "out.csv"
         run = mocker.patch(
-            "vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
         )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
@@ -173,7 +186,7 @@ class TestCommandMultilang:
         _touch(tmp_path / ".secret" / "hidden.mkv")
         output = tmp_path / "out.csv"
         run = mocker.patch(
-            "vuc.commands.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
+            "vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(_mediainfo_json(audio_tracks=2))
         )
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
@@ -193,7 +206,7 @@ class TestCommandMultilang:
                 return _completed("", returncode=1, stderr="boom")
             return _completed(_mediainfo_json(audio_tracks=2))
 
-        mocker.patch("vuc.commands.multilang.subprocess.run", side_effect=fake_run)
+        mocker.patch("vuc.commands.multilang.multilang.subprocess.run", side_effect=fake_run)
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -212,7 +225,7 @@ class TestCommandMultilang:
                 raise subprocess.TimeoutExpired(cmd=args, timeout=30)
             return _completed(_mediainfo_json(audio_tracks=2))
 
-        mocker.patch("vuc.commands.multilang.subprocess.run", side_effect=fake_run)
+        mocker.patch("vuc.commands.multilang.multilang.subprocess.run", side_effect=fake_run)
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -231,7 +244,7 @@ class TestCommandMultilang:
                 return _completed("{not-json")
             return _completed(_mediainfo_json(audio_tracks=2))
 
-        mocker.patch("vuc.commands.multilang.subprocess.run", side_effect=fake_run)
+        mocker.patch("vuc.commands.multilang.multilang.subprocess.run", side_effect=fake_run)
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -241,7 +254,7 @@ class TestCommandMultilang:
 
     def test_empty_directory(self, tmp_path, mocker) -> None:
         output = tmp_path / "out.csv"
-        run = mocker.patch("vuc.commands.multilang.subprocess.run")
+        run = mocker.patch("vuc.commands.multilang.multilang.subprocess.run")
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -254,7 +267,7 @@ class TestCommandMultilang:
         video = _touch(tmp_path / "video_only.mkv")
         output = tmp_path / "out.csv"
         payload = json.dumps({"media": {"track": [{"@type": "General"}, {"@type": "Video"}]}})
-        mocker.patch("vuc.commands.multilang.subprocess.run", return_value=_completed(payload))
+        mocker.patch("vuc.commands.multilang.multilang.subprocess.run", return_value=_completed(payload))
 
         result = CommandMultilang(directory=tmp_path, output_csv=output).execute()
 
@@ -264,11 +277,10 @@ class TestCommandMultilang:
 
 
 class TestCliWiring:
-    def test_missing_mediainfo(self, tmp_path, mocker) -> None:
+    def test_missing_mediainfo(self, runner, tmp_path, mocker) -> None:
         output = tmp_path / "out.csv"
         mocker.patch("vuc.cli.shutil.which", return_value=None)
         panic = mocker.patch("vuc.cli.console.panic", side_effect=SystemExit(1))
-        runner = CliRunner()
 
         result = runner.invoke(cli, ["multilang", str(tmp_path), str(output)])
 
@@ -276,11 +288,10 @@ class TestCliWiring:
         panic.assert_called_once()
         assert "mediainfo is required" in panic.call_args.args[0]
 
-    def test_invalid_directory(self, tmp_path, mocker) -> None:
+    def test_invalid_directory(self, runner, tmp_path, mocker) -> None:
         missing = tmp_path / "missing"
         output = tmp_path / "out.csv"
         panic = mocker.patch("vuc.cli.console.panic", side_effect=SystemExit(1))
-        runner = CliRunner()
 
         result = runner.invoke(cli, ["multilang", str(missing), str(output)])
 

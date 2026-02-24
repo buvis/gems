@@ -27,33 +27,33 @@ def build_issue(key: str) -> JiraIssueDTO:
     )
 
 
-def test_jira_comment_dto_instantiation() -> None:
-    """All required fields populated, is_internal defaults to False."""
-    now = datetime.now(tz=timezone.utc)
-    comment = JiraCommentDTO(
-        id="12345",
-        author="jsmith",
-        body="Example note",
-        created=now,
-    )
+class TestJiraDomain:
+    def test_jira_comment_dto_instantiation(self) -> None:
+        """All required fields populated, is_internal defaults to False."""
+        now = datetime.now(tz=timezone.utc)
+        comment = JiraCommentDTO(
+            id="12345",
+            author="jsmith",
+            body="Example note",
+            created=now,
+        )
 
-    assert comment.id == "12345"
-    assert comment.author == "jsmith"
-    assert comment.body == "Example note"
-    assert comment.created == now
-    assert comment.is_internal is False
+        assert comment.id == "12345"
+        assert comment.author == "jsmith"
+        assert comment.body == "Example note"
+        assert comment.created == now
+        assert comment.is_internal is False
 
+    def test_jira_search_result_pagination(self) -> None:
+        """JiraSearchResult stores pagination info alongside issues."""
+        result = JiraSearchResult(
+            issues=[build_issue("PROJ-1")],
+            total=5,
+            start_at=0,
+            max_results=50,
+        )
 
-def test_jira_search_result_pagination() -> None:
-    """JiraSearchResult stores pagination info alongside issues."""
-    result = JiraSearchResult(
-        issues=[build_issue("PROJ-1")],
-        total=5,
-        start_at=0,
-        max_results=50,
-    )
-
-    assert len(result.issues) == 1
-    assert result.total == 5
-    assert result.start_at == 0
-    assert result.max_results == 50
+        assert len(result.issues) == 1
+        assert result.total == 5
+        assert result.start_at == 0
+        assert result.max_results == 50

@@ -33,6 +33,7 @@ def cli(ctx: click.Context) -> None:
 def mac() -> None:
     if sys.platform != "darwin":
         console.panic("mac command is only available on macOS")
+        return
 
     from sysup.commands.mac.mac import CommandMac
 
@@ -56,6 +57,7 @@ def pip() -> None:
 def wsl() -> None:
     if sys.platform != "linux":
         console.panic("wsl command is only available on Linux")
+        return
 
     from sysup.commands.wsl.wsl import CommandWsl
 

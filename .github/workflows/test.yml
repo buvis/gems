@@ -8,7 +8,7 @@ on:
   workflow_call:
 
 jobs:
-  test:
+  test-matrix:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -44,3 +44,15 @@ jobs:
 
       - name: Type check
         run: uv run mypy src/lib/ src/tools/
+
+  # Single status check for branch protection / automerge
+  test:
+    if: always()
+    needs: [test-matrix]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [ "${{ needs.test-matrix.result }}" != "success" ]; then
+            echo "Matrix jobs failed or were cancelled"
+            exit 1
+          fi
