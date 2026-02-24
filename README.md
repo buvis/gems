@@ -11,7 +11,7 @@ Pre-built wheels for Linux (x64, ARM), macOS (ARM), and Windows (x64). Python 3.
 ### uv
 
 ```bash
-uv tool install buvis-gems              # all 9 CLIs, no optional deps
+uv tool install buvis-gems              # all 15 CLIs, no optional deps
 uv tool install buvis-gems[bim]         # + jira & textual deps for bim
 uv tool install buvis-gems[bim,muc]     # combine extras
 uv tool install buvis-gems[all]         # all optional deps
@@ -20,7 +20,7 @@ uv tool install buvis-gems[all]         # all optional deps
 ### pipx
 
 ```bash
-pipx install buvis-gems                 # all 9 CLIs, no optional deps
+pipx install buvis-gems                 # all 15 CLIs, no optional deps
 pipx install 'buvis-gems[all]'          # all optional deps
 ```
 
@@ -57,7 +57,7 @@ pipx upgrade buvis-gems
 mise upgrade pipx:buvis-gems
 ```
 
-All 9 CLIs (`bim`, `dot`, `fctracker`, `hello-world`, `muc`, `outlookctl`, `pinger`, `readerctl`, `zseq`) are always installed. Extras add optional dependencies some tools need:
+All 15 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `netscan`, `outlookctl`, `pinger`, `puc`, `readerctl`, `sysup`, `vuc`, `zseq`) are always installed. Extras add optional dependencies some tools need:
 
 | Extra | Dep | Tool |
 |-------|-----|------|
