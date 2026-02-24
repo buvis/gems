@@ -143,7 +143,8 @@
 <h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
 <section id="dot-status">
 <h3>dot status<a class="headerlink" href="#dot-status" title="Link to this heading"></a></h3>
-<p>Show git and git-secret status of your dotfiles repo.</p>
+<p>Show staged and unstaged changes in your dotfiles repo. Uses <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span>
+<span class="pre">--porcelain</span></code> and labels each file as <code class="docutils literal notranslate"><span class="pre">staged</span></code> or <code class="docutils literal notranslate"><span class="pre">unstaged</span></code>.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>status
 </pre></div>
 </div>
@@ -165,6 +166,42 @@ dot<span class="w"> </span>run<span class="w"> </span>submodule<span class="w"> 
 <p>Interactively stage changes (cherry-pick mode).</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>add<span class="w">                     </span><span class="c1"># interactive selection</span>
 dot<span class="w"> </span>add<span class="w"> </span>~/.bashrc<span class="w">           </span><span class="c1"># stage specific file</span>
+</pre></div>
+</div>
+</section>
+<section id="dot-unstage">
+<h3>dot unstage<a class="headerlink" href="#dot-unstage" title="Link to this heading"></a></h3>
+<p>Remove files from the staging area without touching local changes.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>unstage<span class="w">                 </span><span class="c1"># unstage all</span>
+dot<span class="w"> </span>unstage<span class="w"> </span>.bashrc<span class="w">         </span><span class="c1"># unstage specific file</span>
+</pre></div>
+</div>
+</section>
+<section id="dot-commit">
+<h3>dot commit<a class="headerlink" href="#dot-commit" title="Link to this heading"></a></h3>
+<p>Commit staged dotfiles changes. Message is a positional argument.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>commit<span class="w"> </span><span class="s2">&quot;update shell config&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="dot-encrypt">
+<h3>dot encrypt<a class="headerlink" href="#dot-encrypt" title="Link to this heading"></a></h3>
+<p>Register a file for git-secret encryption.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>encrypt<span class="w"> </span>~/.config/secrets.yaml
+</pre></div>
+</div>
+</section>
+<section id="dot-pull">
+<h3>dot pull<a class="headerlink" href="#dot-pull" title="Link to this heading"></a></h3>
+<p>Pull dotfiles and update submodules. Reveals git-secret files if available.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>pull
+</pre></div>
+</div>
+</section>
+<section id="dot-push">
+<h3>dot push<a class="headerlink" href="#dot-push" title="Link to this heading"></a></h3>
+<p>Push dotfiles to remote.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>push
 </pre></div>
 </div>
 </section>
