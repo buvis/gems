@@ -60,12 +60,27 @@ To install a release candidate from TestPyPI:
 .. code-block:: bash
 
     uv tool install "buvis-gems[all]==X.Y.Zrc1" \
-        --extra-index-url https://test.pypi.org/simple/
+        --extra-index-url https://test.pypi.org/simple/ \
+        --index-strategy unsafe-best-match
 
 Replace ``X.Y.Zrc1`` with the actual version (e.g. ``0.4.0rc1``).
+
+If you use ``mise`` to manage buvis-gems, install into the mise venv instead:
+
+.. code-block:: bash
+
+    mise_root=$(mise where pipx:buvis-gems)
+    uv pip install --force-reinstall "buvis-gems[all]==X.Y.Zrc1" \
+        --extra-index-url https://test.pypi.org/simple/ \
+        --index-strategy unsafe-best-match \
+        --python "$mise_root/buvis-gems/bin/python"
 
 To go back to the stable release:
 
 .. code-block:: bash
 
+    # uv tool users
     uv tool install --force buvis-gems[all]
+
+    # mise users
+    mise install --force "pipx:buvis-gems"
