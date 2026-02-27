@@ -13,7 +13,7 @@ class TestSlugBasic:
 
         result = CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "Hello-World.txt").exists()
+        assert (tmp_path / "hello-world.txt").exists()
         assert result.output == "Renamed 1 file(s)"
 
     def test_slugify_diacritics(self, tmp_path: Path) -> None:
@@ -60,7 +60,7 @@ class TestSlugEml:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "2025-01-07_1530_Project-Update.eml").exists()
+        assert (tmp_path / "20250107153000-project-update.eml").exists()
 
     def test_eml_strips_re_prefix(self, tmp_path: Path) -> None:
         source = tmp_path / "reply.eml"
@@ -68,7 +68,7 @@ class TestSlugEml:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "Meeting-Notes.eml").exists()
+        assert (tmp_path / "meeting-notes.eml").exists()
 
     def test_eml_strips_fwd_prefix(self, tmp_path: Path) -> None:
         source = tmp_path / "forward.eml"
@@ -76,7 +76,7 @@ class TestSlugEml:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "Important.eml").exists()
+        assert (tmp_path / "important.eml").exists()
 
     def test_eml_missing_date(self, tmp_path: Path) -> None:
         source = tmp_path / "nodate.eml"
@@ -84,7 +84,7 @@ class TestSlugEml:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "Roadmap-Draft.eml").exists()
+        assert (tmp_path / "roadmap-draft.eml").exists()
 
     def test_eml_malformed(self, tmp_path: Path) -> None:
         source = tmp_path / "café ###.eml"
@@ -108,8 +108,8 @@ class TestSlugCollision:
 
         CommandSlug(paths=(str(first), str(second))).execute()
 
-        assert (tmp_path / "A.txt").exists()
-        assert (tmp_path / "A-1.txt").exists()
+        assert (tmp_path / "a.txt").exists()
+        assert (tmp_path / "a-1.txt").exists()
 
     def test_multiple_collisions(self, tmp_path: Path) -> None:
         first = tmp_path / "A!.txt"
@@ -121,9 +121,9 @@ class TestSlugCollision:
 
         CommandSlug(paths=(str(first), str(second), str(third))).execute()
 
-        assert (tmp_path / "A.txt").exists()
-        assert (tmp_path / "A-1.txt").exists()
-        assert (tmp_path / "A-2.txt").exists()
+        assert (tmp_path / "a.txt").exists()
+        assert (tmp_path / "a-1.txt").exists()
+        assert (tmp_path / "a-2.txt").exists()
 
 
 class TestSlugEmlEdgeCases:
@@ -138,7 +138,7 @@ class TestSlugEmlEdgeCases:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "2025-01-07_1000_Naive.eml").exists()
+        assert (tmp_path / "20250107100000-naive.eml").exists()
 
     def test_eml_unparseable_date(self, tmp_path: Path) -> None:
         """Covers lines 72-73: bad date string triggers ValueError, date_prefix stays empty."""
@@ -150,7 +150,7 @@ class TestSlugEmlEdgeCases:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "Good-Subject.eml").exists()
+        assert (tmp_path / "good-subject.eml").exists()
 
     def test_eml_no_subject(self, tmp_path: Path) -> None:
         """eml with empty subject falls back to 'unnamed'."""
@@ -159,7 +159,7 @@ class TestSlugEmlEdgeCases:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "2025-01-07_1200_unnamed.eml").exists()
+        assert (tmp_path / "20250107120000-unnamed.eml").exists()
 
     def test_eml_fw_prefix_stripped(self, tmp_path: Path) -> None:
         """Fw: prefix (short form) is stripped."""
@@ -168,7 +168,7 @@ class TestSlugEmlEdgeCases:
 
         CommandSlug(paths=(str(source),)).execute()
 
-        assert (tmp_path / "Ticket.eml").exists()
+        assert (tmp_path / "ticket.eml").exists()
 
     def test_slugify_name_plain_unnamed_fallback(self, tmp_path: Path) -> None:
         """Covers line 87: _slugify_name_plain returns 'unnamed' for empty slug."""

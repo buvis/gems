@@ -45,7 +45,7 @@ class CommandSlug:
 
         stem = path.stem
         suffix = path.suffix
-        slugged = slugify(stem, lowercase=False)
+        slugged = slugify(stem)
         if not slugged:
             slugged = "unnamed"
         return f"{slugged}{suffix}"
@@ -68,11 +68,11 @@ class CommandSlug:
                     parsed = email.utils.parsedate_to_datetime(date_str)
                     if parsed.tzinfo is None:
                         parsed = parsed.replace(tzinfo=timezone.utc)
-                    date_prefix = parsed.strftime("%Y-%m-%d_%H%M_")
+                    date_prefix = parsed.strftime("%Y%m%d%H%M%S-")
                 except (ValueError, TypeError):
                     pass
 
-            slugged = slugify(subject, lowercase=False) if subject else "unnamed"
+            slugged = slugify(subject) if subject else "unnamed"
             return f"{date_prefix}{slugged}.eml"
 
         except (OSError, ValueError, UnicodeDecodeError, email.errors.MessageError):
@@ -82,7 +82,7 @@ class CommandSlug:
     def _slugify_name_plain(self, path: Path) -> str:
         stem = path.stem
         suffix = path.suffix
-        slugged = slugify(stem, lowercase=False)
+        slugged = slugify(stem)
         if not slugged:
             slugged = "unnamed"
         return f"{slugged}{suffix}"
