@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import email
+import email.policy
 import email.utils
 import re
 from datetime import timezone
@@ -53,7 +54,7 @@ class CommandSlug:
     def _slugify_eml(self, path: Path) -> str:
         try:
             with open(path, "rb") as f:
-                msg = email.message_from_binary_file(f)
+                msg = email.message_from_binary_file(f, policy=email.policy.default)
 
             date_str = msg.get("Date", "")
             subject = msg.get("Subject", "") or ""

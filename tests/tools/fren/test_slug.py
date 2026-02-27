@@ -99,6 +99,19 @@ class TestSlugEml:
         assert (tmp_path / "cafe.eml").exists()
 
 
+    def test_eml_rfc2047_encoded_subject(self, tmp_path: Path) -> None:
+        source = tmp_path / "encoded.eml"
+        source.write_bytes(
+            b"Date: Fri, 27 Feb 2026 17:29:07 +0000\r\n"
+            b"Subject: =?utf-8?q?D=C4=9Bkujeme_za_objedn=C3=A1vku_#1119771906_na_Rohlik.cz?=\r\n"
+            b"\r\nbody\r\n"
+        )
+
+        CommandSlug(paths=(str(source),)).execute()
+
+        assert (tmp_path / "20260227172907-dekujeme-za-objednavku-1119771906-na-rohlik-cz.eml").exists()
+
+
 class TestSlugCollision:
     def test_collision_adds_suffix(self, tmp_path: Path) -> None:
         first = tmp_path / "A!.txt"
