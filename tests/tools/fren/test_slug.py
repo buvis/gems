@@ -98,7 +98,6 @@ class TestSlugEml:
 
         assert (tmp_path / "cafe.eml").exists()
 
-
     def test_eml_rfc2047_encoded_subject(self, tmp_path: Path) -> None:
         source = tmp_path / "encoded.eml"
         source.write_bytes(
