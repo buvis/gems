@@ -17,4 +17,4 @@ walkdir = "2"
 regex = "1"
 chrono = { version = "0.4", features = ["serde"] }
 indexmap = { version = "2", features = ["serde"] }
-bincode = { version = "2", features = ["serde"] }
+bincode = { version = "3", features = ["serde"] }
