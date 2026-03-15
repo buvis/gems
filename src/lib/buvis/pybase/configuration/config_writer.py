@@ -20,19 +20,18 @@ def _format_literal(annotation: Any) -> str:
     return f"one of: {formatted}"
 
 
-def _format_union(annotation: Any) -> str:
+def _format_union(annotation: Any, format_type: Callable[[Any], str]) -> str:
     args = get_args(annotation)
     non_none = [a for a in args if a is not type(None)]
     if len(non_none) == 1 and type(None) in args:
-        inner = ConfigWriter._format_type(non_none[0])
-        return f"{inner} | None (optional)"
-    return " | ".join(ConfigWriter._format_type(a) for a in args)
+        return f"{format_type(non_none[0])} | None (optional)"
+    return " | ".join(format_type(a) for a in args)
 
 
-def _format_generic(annotation: Any, origin: Any) -> str:
+def _format_generic(annotation: Any, origin: Any, format_type: Callable[[Any], str]) -> str:
     args = get_args(annotation)
     if args:
-        formatted_args = ", ".join(ConfigWriter._format_type(a) for a in args)
+        formatted_args = ", ".join(format_type(a) for a in args)
         return f"{origin.__name__!s}[{formatted_args}]"
     return str(origin.__name__)
 
@@ -52,17 +51,17 @@ def _format_str_value(value: str) -> str:
     return value
 
 
-def _format_collection_value(value: list[Any] | tuple[Any, ...]) -> str:
+def _format_collection_value(value: list[Any] | tuple[Any, ...], format_value: Callable[[Any], str]) -> str:
     if not value:
         return "[]"
-    items = ", ".join(ConfigWriter._format_value(v) for v in value)
+    items = ", ".join(format_value(v) for v in value)
     return f"[{items}]"
 
 
-def _format_dict_value(value: dict[str, Any]) -> str:
+def _format_dict_value(value: dict[str, Any], format_value: Callable[[Any], str]) -> str:
     if not value:
         return "{}"
-    items = ", ".join(f"{k}: {ConfigWriter._format_value(v)}" for k, v in value.items())
+    items = ", ".join(f"{k}: {format_value(v)}" for k, v in value.items())
     return "{" + items + "}"
 
 
@@ -93,9 +92,9 @@ class ConfigWriter:
         if origin is Literal:
             return _format_literal(annotation)
         if origin in (Union, types.UnionType):
-            return _format_union(annotation)
+            return _format_union(annotation, ConfigWriter._format_type)
         if origin is not None:
-            return _format_generic(annotation, origin)
+            return _format_generic(annotation, origin, ConfigWriter._format_type)
         if annotation is type(None):
             return "None"
         if hasattr(annotation, "__name__"):
@@ -121,9 +120,9 @@ class ConfigWriter:
         if isinstance(value, str):
             return _format_str_value(value)
         if isinstance(value, list | tuple):
-            return _format_collection_value(value)
+            return _format_collection_value(value, ConfigWriter._format_value)
         if isinstance(value, dict):
-            return _format_dict_value(value)
+            return _format_dict_value(value, ConfigWriter._format_value)
         return str(value)
 
     @staticmethod
@@ -286,7 +285,9 @@ class ConfigWriter:
         return lines
 
     @staticmethod
-    def _format_nested_field(name: str, lines: list[str], value: Any, is_optional: bool, nested_class: type[BaseModel]) -> str:
+    def _format_nested_field(
+        name: str, lines: list[str], value: Any, is_optional: bool, nested_class: type[BaseModel],
+    ) -> str:
         """Format a nested model field."""
         if is_optional and value is None:
             lines = ["# " + line for line in lines]

@@ -88,7 +88,7 @@ def _fmt_kanban(rows: list[dict[str, Any]], columns: list[str], output: Any) -> 
     format_query_kanban(rows, display_columns, output.group_by)
 
 
-def _fmt_table(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
+def _fmt_table(rows: list[dict[str, Any]], columns: list[str], _output: Any) -> None:
     _linkify_titles(rows)
     display_columns = [c for c in columns if c != "file_path"]
     format_query_table(rows, display_columns)
