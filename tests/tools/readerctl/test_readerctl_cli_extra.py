@@ -96,11 +96,9 @@ class TestReaderctlAddExtra:
         result = runner.invoke(cli, ["add", "--file", "/nonexistent/urls.txt"])
         assert "not found" in result.output
 
-    @patch("readerctl.commands.add.add.CommandAdd")
-    @patch("readerctl.commands.login.login.CommandLogin")
-    def test_add_no_url_no_file(self, mock_login_cls: MagicMock, mock_add_cls: MagicMock, runner) -> None:
+    def test_add_no_url_no_file(self, runner) -> None:
         result = runner.invoke(cli, ["add"])
-        assert "Not logged in" in result.output
+        assert "Provide --url or --file" in result.output
 
     def test_add_import_error(self, runner) -> None:
         mod_key = "readerctl.commands.add.add"

@@ -42,62 +42,68 @@ def login(ctx: click.Context) -> None:
         console.failure(result.error or "Failed")
 
 
+def _ensure_token(token_file: Path) -> str | None:
+    """Login and return token, or None on failure."""
+    from readerctl.commands.login.login import CommandLogin
+
+    cmd_login = CommandLogin(token_file=token_file)
+
+    try:
+        login_result = cmd_login.execute()
+    except FatalError as e:
+        console.panic(str(e))
+        return None
+
+    if login_result.success:
+        console.success(login_result.output or "Done")
+        return login_result.metadata.get("token")
+
+    console.failure(login_result.error or "Failed")
+    return None
+
+
+def _add_urls(token: str, urls: list[str]) -> None:
+    """Add one or more URLs via CommandAdd."""
+    from readerctl.commands.add.add import CommandAdd
+
+    cmd = CommandAdd(token=token)
+    for u in urls:
+        result = cmd.execute(u.strip())
+        if result.success:
+            console.success(result.output or "Done")
+        else:
+            console.failure(result.error or "Failed")
+
+
 @cli.command("add")
 @click.option("-u", "--url", default=None, help="URL to add to Reader")
 @click.option("-f", "--file", default=None, help="File with URLs to add to Reader")
 @click.pass_context
 def add(ctx: click.Context, url: str | None, file: str | None) -> None:
     try:
-        from readerctl.commands.add.add import CommandAdd
-        from readerctl.commands.login.login import CommandLogin
+        from readerctl.commands.add.add import CommandAdd  # noqa: F401
     except ImportError:
         console.require_import("readerctl")
         return
 
+    if url is None and file is None:
+        console.panic("Provide --url or --file")
+        return
+
     settings = get_settings(ctx, ReaderctlSettings)
-    token_file = Path(settings.token_file).expanduser()
-    token = None
-
-    if url is not None or file is not None:
-        cmd_login = CommandLogin(token_file=token_file)
-
-        try:
-            login_result = cmd_login.execute()
-        except FatalError as e:
-            console.panic(str(e))
-            return
-
-        if login_result.success:
-            console.success(login_result.output or "Done")
-            token = login_result.metadata.get("token")
-        else:
-            console.failure(login_result.error or "Failed")
-
+    token = _ensure_token(Path(settings.token_file).expanduser())
     if not token:
         console.panic("Not logged in. Run 'readerctl login' first.")
         return
 
     if url is not None:
-        cmd = CommandAdd(token=token)
-        result = cmd.execute(url)
-        if result.success:
-            console.success(result.output or "Done")
-        else:
-            console.failure(result.error or "Failed")
+        _add_urls(token, [url])
     elif file is not None:
-        if Path(file).is_file():
-            cmd = CommandAdd(token=token)
-            with Path(file).open() as f:
-                urls = f.readlines()
-
-            for u in urls:
-                result = cmd.execute(u.strip())
-                if result.success:
-                    console.success(result.output or "Done")
-                else:
-                    console.failure(result.error or "Failed")
-        else:
+        path = Path(file)
+        if not path.is_file():
             console.panic(f"File {file} not found")
+            return
+        _add_urls(token, path.read_text().splitlines())
 
 
 if __name__ == "__main__":
