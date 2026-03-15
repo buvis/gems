@@ -46,6 +46,34 @@ def _unwrap_optional(annotation: type) -> tuple[type, bool]:
     return annotation, False
 
 
+def _apply_bool_optional(name: str, field: FieldInfo, **_: Any) -> Callable[..., Any]:
+    pos = f"--{name.replace('_', '-')}"
+    neg = f"--no-{name.replace('_', '-')}"
+    return click.option(pos + "/" + neg, default=None, help=field.description)
+
+
+def _apply_bool(kwargs: dict[str, Any], field: FieldInfo, args: list[str], param_name: str) -> Callable[..., Any]:
+    kwargs["is_flag"] = True
+    kwargs["show_default"] = True
+    kwargs["default"] = field.default if field.default is not False else False
+    return click.option(*args, param_name, **kwargs)
+
+
+def _apply_literal(kwargs: dict[str, Any], inner: Any, args: list[str], param_name: str) -> Callable[..., Any]:
+    kwargs["type"] = click.Choice(list(get_args(inner)))
+    return click.option(*args, param_name, **kwargs)
+
+
+def _apply_path(kwargs: dict[str, Any], extra: dict[str, Any], args: list[str], param_name: str) -> Callable[..., Any]:
+    path_kwargs: dict[str, Any] = {}
+    for key, click_key in (("path_exists", "exists"), ("path_file_okay", "file_okay"), ("path_dir_okay", "dir_okay")):
+        if key in extra:
+            path_kwargs[click_key] = extra[key]
+    path_kwargs["resolve_path"] = extra.get("path_resolve", False)
+    kwargs["type"] = click.Path(path_type=Path, **path_kwargs)
+    return click.option(*args, param_name, **kwargs)
+
+
 def _field_to_option(name: str, field: FieldInfo) -> Callable[..., Any] | None:
     """Convert a single Pydantic field to a click.option decorator."""
     raw_extra = field.json_schema_extra
@@ -66,45 +94,19 @@ def _field_to_option(name: str, field: FieldInfo) -> Callable[..., Any] | None:
     }
 
     annotation = field.annotation
-    if annotation is None:
-        return click.option(*args, param_name, **kwargs)
-    inner, is_optional = _unwrap_optional(annotation)
+    if annotation is not None:
+        inner, is_optional = _unwrap_optional(annotation)
 
-    # bool | None -> --flag/--no-flag with default None
-    if inner is bool and is_optional:
-        pos = f"--{name.replace('_', '-')}"
-        neg = f"--no-{name.replace('_', '-')}"
-        return click.option(pos + "/" + neg, default=None, help=field.description)
-
-    # bool -> is_flag
-    if inner is bool:
-        kwargs["is_flag"] = True
-        kwargs["show_default"] = True
-        kwargs["default"] = field.default if field.default is not False else False
-        return click.option(*args, param_name, **kwargs)
-
-    # Literal -> Choice
-    if get_origin(inner) is Literal:
-        kwargs["type"] = click.Choice(list(get_args(inner)))
-        return click.option(*args, param_name, **kwargs)
-
-    # Path with validation hints from json_schema_extra
-    if inner is Path:
-        path_kwargs: dict[str, Any] = {}
-        if "path_exists" in extra:
-            path_kwargs["exists"] = extra["path_exists"]
-        if "path_file_okay" in extra:
-            path_kwargs["file_okay"] = extra["path_file_okay"]
-        if "path_dir_okay" in extra:
-            path_kwargs["dir_okay"] = extra["path_dir_okay"]
-        path_kwargs["resolve_path"] = extra.get("path_resolve", False)
-        kwargs["type"] = click.Path(path_type=Path, **path_kwargs)
-        return click.option(*args, param_name, **kwargs)
-
-    # int
-    if inner is int:
-        kwargs["type"] = click.INT
-        return click.option(*args, param_name, **kwargs)
+        if inner is bool and is_optional:
+            return _apply_bool_optional(name, field)
+        if inner is bool:
+            return _apply_bool(kwargs, field, args, param_name)
+        if get_origin(inner) is Literal:
+            return _apply_literal(kwargs, inner, args, param_name)
+        if inner is Path:
+            return _apply_path(kwargs, extra, args, param_name)
+        if inner is int:
+            kwargs["type"] = click.INT
 
     # Default: string
     return click.option(*args, param_name, **kwargs)

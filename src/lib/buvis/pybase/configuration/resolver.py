@@ -162,6 +162,64 @@ class ConfigResolver:
         self._sources: dict[str, ConfigSource] = {}
         logger.debug("ConfigResolver initialized")
 
+    def _load_yaml(
+        self, tool_name: str, config_dir: str | None, config_path: Path | None,
+    ) -> dict[str, Any]:
+        """Load YAML config from explicit path or discovered files."""
+        if config_dir is not None:
+            logger.debug("Using config_dir override: %s", config_dir)
+        if config_path is not None:
+            return _load_yaml_config(config_path)
+        discovered_files = self.loader.find_config_files(tool_name, config_dir=config_dir)
+        loaded_configs = [
+            self.loader.load_yaml(path)
+            for path in reversed(discovered_files)
+        ]
+        return self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
+
+    @staticmethod
+    def _merge_overrides(
+        settings_class: type[T],
+        base_settings: T,
+        yaml_config: dict[str, Any],
+        cli_overrides: dict[str, Any] | None,
+    ) -> T:
+        """Merge YAML and CLI overrides onto base settings."""
+        merged: dict[str, Any] = {}
+        for key, value in yaml_config.items():
+            if hasattr(base_settings, key):
+                field_value = getattr(base_settings, key)
+                default = settings_class.model_fields.get(key)
+                if default and field_value == default.default:
+                    merged[key] = value
+        if cli_overrides:
+            for key, value in cli_overrides.items():
+                if value is not None:
+                    merged[key] = value
+        if merged:
+            return settings_class.model_validate(base_settings.model_dump() | merged)
+        return base_settings
+
+    def _track_sources(
+        self,
+        settings_class: type[T],
+        env_prefix: str,
+        yaml_config: dict[str, Any],
+        cli_overrides: dict[str, Any] | None,
+    ) -> None:
+        """Record which source provided each field value."""
+        env_keys = {k.removeprefix(env_prefix).lower() for k in os.environ if k.startswith(env_prefix)}
+        self._sources.clear()
+        for field in settings_class.model_fields:
+            if cli_overrides and cli_overrides.get(field) is not None:
+                self._sources[field] = ConfigSource.CLI
+            elif field in env_keys:
+                self._sources[field] = ConfigSource.ENV
+            elif field in yaml_config:
+                self._sources[field] = ConfigSource.YAML
+            else:
+                self._sources[field] = ConfigSource.DEFAULT
+
     def resolve(
         self,
         settings_class: type[T],
@@ -169,93 +227,17 @@ class ConfigResolver:
         config_path: Path | None = None,
         cli_overrides: dict[str, Any] | None = None,
     ) -> T:
-        """Instantiate a settings class with precedence: CLI > ENV > YAML > Defaults.
-
-        Args:
-            settings_class: The Pydantic settings class to instantiate.
-            config_dir: Optional configuration directory that overrides
-                ``BUVIS_CONFIG_DIR`` environment variable for this resolution.
-            config_path: Optional path to YAML config file.
-            cli_overrides: Explicit overrides typically parsed from CLI options.
-
-        Returns:
-            An immutable instance of ``settings_class`` populated with resolved
-            values. The instance is frozen and cannot be modified after creation.
-
-        Raises:
-            ConfigurationError: If validation fails for any configuration value.
-
-        Note:
-            Precedence order (highest to lowest):
-
-            1. CLI overrides (explicit values passed in cli_overrides)
-            2. Environment variables (Pydantic handles automatically)
-            3. YAML config file values
-            4. Model field defaults
-
-            Config file discovery uses the tool name derived from
-            ``settings_class.model_config['env_prefix']`` (``BUVIS_{TOOL}_`` ->
-            ``"tool"``) to locate YAML files.
-        """
+        """Instantiate a settings class with precedence: CLI > ENV > YAML > Defaults."""
         env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
         tool_name = _extract_tool_name(env_prefix)
 
-        if config_dir is not None:
-            logger.debug("Using config_dir override: %s", config_dir)
-
-        # Load YAML config (priority 3)
-        if config_path is not None:
-            yaml_config = _load_yaml_config(config_path)
-        else:
-            discovered_files = self.loader.find_config_files(tool_name, config_dir=config_dir)
-            loaded_configs = [
-                self.loader.load_yaml(path)
-                for path in reversed(discovered_files)  # lowest -> highest
-            ]
-            yaml_config = self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
+        yaml_config = self._load_yaml(tool_name, config_dir, config_path)
         logger.debug("Loaded YAML config: %s", yaml_config)
 
         try:
-            # Create base settings with YAML + ENV (ENV overrides YAML via Pydantic)
-            # Note: Pydantic kwargs override env, so we create without YAML first
             base_settings = settings_class()
-
-            # Apply YAML for fields not set by env (check against defaults)
-            merged: dict[str, Any] = {}
-            for key, value in yaml_config.items():
-                if hasattr(base_settings, key):
-                    field_value = getattr(base_settings, key)
-                    default = settings_class.model_fields.get(key)
-                    if default and field_value == default.default:
-                        # Field has default value, apply YAML
-                        merged[key] = value
-
-            # Apply CLI overrides (priority 1, highest)
-            if cli_overrides:
-                for key, value in cli_overrides.items():
-                    if value is not None:
-                        merged[key] = value
-
-            # Build final settings
-            if merged:
-                final_settings = settings_class.model_validate(base_settings.model_dump() | merged)
-            else:
-                final_settings = base_settings
-
-            # Track sources for each field
-            env_keys = {k.removeprefix(env_prefix).lower() for k in os.environ if k.startswith(env_prefix)}
-
-            self._sources.clear()
-            for field in settings_class.model_fields:
-                if cli_overrides and cli_overrides.get(field) is not None:
-                    self._sources[field] = ConfigSource.CLI
-                elif field in env_keys:
-                    self._sources[field] = ConfigSource.ENV
-                elif field in yaml_config:
-                    self._sources[field] = ConfigSource.YAML
-                else:
-                    self._sources[field] = ConfigSource.DEFAULT
-
+            final_settings = self._merge_overrides(settings_class, base_settings, yaml_config, cli_overrides)
+            self._track_sources(settings_class, env_prefix, yaml_config, cli_overrides)
             self._log_sources()
             return final_settings
         except ValidationError as e:

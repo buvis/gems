@@ -14,6 +14,58 @@ from pydantic_core import PydanticUndefined
 from .validators import is_sensitive_field
 
 
+def _format_literal(annotation: Any) -> str:
+    values = get_args(annotation)
+    formatted = ", ".join(f"'{v}'" for v in values)
+    return f"one of: {formatted}"
+
+
+def _format_union(annotation: Any) -> str:
+    args = get_args(annotation)
+    non_none = [a for a in args if a is not type(None)]
+    if len(non_none) == 1 and type(None) in args:
+        inner = ConfigWriter._format_type(non_none[0])
+        return f"{inner} | None (optional)"
+    return " | ".join(ConfigWriter._format_type(a) for a in args)
+
+
+def _format_generic(annotation: Any, origin: Any) -> str:
+    args = get_args(annotation)
+    if args:
+        formatted_args = ", ".join(ConfigWriter._format_type(a) for a in args)
+        return f"{origin.__name__!s}[{formatted_args}]"
+    return str(origin.__name__)
+
+
+_VALUE_FORMATTERS: dict[type, Callable[[Any], str]] = {
+    bool: lambda v: "true" if v else "false",
+    Path: str,
+}
+
+
+def _format_str_value(value: str) -> str:
+    special_chars = ":{}[]#&*!|>'\"%@`\\\n\r\t"
+    if not value or any(c in value for c in special_chars):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        escaped = escaped.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+        return f'"{escaped}"'
+    return value
+
+
+def _format_collection_value(value: list[Any] | tuple[Any, ...]) -> str:
+    if not value:
+        return "[]"
+    items = ", ".join(ConfigWriter._format_value(v) for v in value)
+    return f"[{items}]"
+
+
+def _format_dict_value(value: dict[str, Any]) -> str:
+    if not value:
+        return "{}"
+    items = ", ".join(f"{k}: {ConfigWriter._format_value(v)}" for k, v in value.items())
+    return "{" + items + "}"
+
+
 class ConfigWriter:
     """Generate YAML config templates from pydantic settings classes.
 
@@ -38,33 +90,14 @@ class ConfigWriter:
         """
         origin = get_origin(annotation)
 
-        # Handle Literal["a", "b"] -> "one of: 'a', 'b'"
         if origin is Literal:
-            values = get_args(annotation)
-            formatted = ", ".join(f"'{v}'" for v in values)
-            return f"one of: {formatted}"
-
-        # Handle Optional/Union (X | None)
+            return _format_literal(annotation)
         if origin in (Union, types.UnionType):
-            args = get_args(annotation)
-            non_none = [a for a in args if a is not type(None)]
-            if len(non_none) == 1 and type(None) in args:
-                inner = ConfigWriter._format_type(non_none[0])
-                return f"{inner} | None (optional)"
-            return " | ".join(ConfigWriter._format_type(a) for a in args)
-
-        # Handle generic types like list[str], dict[str, int]
+            return _format_union(annotation)
         if origin is not None:
-            args = get_args(annotation)
-            if args:
-                formatted_args = ", ".join(ConfigWriter._format_type(a) for a in args)
-                return f"{origin.__name__!s}[{formatted_args}]"
-            return str(origin.__name__)
-
+            return _format_generic(annotation, origin)
         if annotation is type(None):
             return "None"
-
-        # Simple types: str, int, bool, Path, BaseModel subclass
         if hasattr(annotation, "__name__"):
             return str(annotation.__name__)
         return str(annotation)
@@ -81,28 +114,16 @@ class ConfigWriter:
         """
         if value is None:
             return "null"
-        if isinstance(value, bool):
-            return "true" if value else "false"
+        # Check exact type match first (bool before int)
+        formatter = _VALUE_FORMATTERS.get(type(value))
+        if formatter is not None:
+            return formatter(value)
         if isinstance(value, str):
-            # Quote strings with special chars or if empty
-            special_chars = ":{}[]#&*!|>'\"%@`\\\n\r\t"
-            if not value or any(c in value for c in special_chars):
-                escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-                escaped = escaped.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
-                return f'"{escaped}"'
-            return value
-        if isinstance(value, Path):
-            return str(value)
+            return _format_str_value(value)
         if isinstance(value, list | tuple):
-            if not value:
-                return "[]"
-            items = ", ".join(ConfigWriter._format_value(v) for v in value)
-            return f"[{items}]"
+            return _format_collection_value(value)
         if isinstance(value, dict):
-            if not value:
-                return "{}"
-            items = ", ".join(f"{k}: {ConfigWriter._format_value(v)}" for k, v in value.items())
-            return "{" + items + "}"
+            return _format_dict_value(value)
         return str(value)
 
     @staticmethod
@@ -244,70 +265,54 @@ class ConfigWriter:
         return "\n".join(lines)
 
     @staticmethod
-    def _format_field(name: str, field_info: FieldInfo) -> str:
-        """Format field with comments for YAML output.
+    def _get_field_default(field_info: FieldInfo) -> Any:
+        """Get default value for a field."""
+        if field_info.default is not PydanticUndefined:
+            return field_info.default
+        if field_info.default_factory is not None:
+            return cast(Callable[[], Any], field_info.default_factory)()
+        return ""
 
-        Args:
-            name: Field name.
-            field_info: Pydantic field info.
-
-        Returns:
-            YAML-formatted field with type/description/warning comments.
-        """
-        lines: list[str] = []
-
-        # Type comment (always present)
-        type_str = ConfigWriter._format_type(field_info.annotation)
-        lines.append(f"# Type: {type_str}")
-
-        # Description comment (only if exists)
+    @staticmethod
+    def _build_comment_lines(name: str, field_info: FieldInfo) -> list[str]:
+        """Build type/description/warning comment lines for a field."""
+        lines = [f"# Type: {ConfigWriter._format_type(field_info.annotation)}"]
         if field_info.description:
             lines.append(f"# Description: {field_info.description}")
-
-        # Required warning
-        is_required = ConfigWriter._is_required(field_info)
-        if is_required:
+        if ConfigWriter._is_required(field_info):
             lines.append("# REQUIRED - you must set this value")
-
-        # Sensitive warning
         if is_sensitive_field(name):
             lines.append("# SENSITIVE - do not commit to version control")
+        return lines
 
-        # Get default value
-        is_optional = ConfigWriter._is_optional(field_info)
-
-        if field_info.default is not PydanticUndefined:
-            value = field_info.default
-        elif field_info.default_factory is not None:
-            default_factory = cast(Callable[[], Any], field_info.default_factory)
-            value = default_factory()
+    @staticmethod
+    def _format_nested_field(name: str, lines: list[str], value: Any, is_optional: bool, nested_class: type[BaseModel]) -> str:
+        """Format a nested model field."""
+        if is_optional and value is None:
+            lines = ["# " + line for line in lines]
+            lines.append(f"# {name}:")
+            for nested_line in ConfigWriter._format_nested_model(nested_class).split("\n"):
+                lines.append(f"# {nested_line}")
+        elif isinstance(value, BaseModel):
+            lines.append(f"{name}:")
+            lines.append(ConfigWriter._format_model_instance(value))
         else:
-            value = ""  # Required fields get empty string
+            lines.append(f"{name}:")
+            lines.append(ConfigWriter._format_nested_model(nested_class))
+        return "\n".join(lines)
 
-        # Handle nested models
-        if ConfigWriter._is_nested_model(field_info.annotation):
-            nested_class = ConfigWriter._extract_model_class(field_info.annotation)
-            if nested_class:
-                if is_optional and value is None:
-                    # Comment out optional nested model
-                    lines = ["# " + line for line in lines]
-                    lines.append(f"# {name}:")
-                    nested_yaml = ConfigWriter._format_nested_model(nested_class)
-                    for nested_line in nested_yaml.split("\n"):
-                        lines.append(f"# {nested_line}")
-                elif isinstance(value, BaseModel):
-                    # Use actual instance values
-                    lines.append(f"{name}:")
-                    lines.append(ConfigWriter._format_model_instance(value))
-                else:
-                    lines.append(f"{name}:")
-                    lines.append(ConfigWriter._format_nested_model(nested_class))
-                return "\n".join(lines)
+    @staticmethod
+    def _format_field(name: str, field_info: FieldInfo) -> str:
+        """Format field with comments for YAML output."""
+        lines = ConfigWriter._build_comment_lines(name, field_info)
+        is_optional = ConfigWriter._is_optional(field_info)
+        value = ConfigWriter._get_field_default(field_info)
 
-        # Format value
+        nested_class = ConfigWriter._extract_model_class(field_info.annotation)
+        if nested_class and ConfigWriter._is_nested_model(field_info.annotation):
+            return ConfigWriter._format_nested_field(name, lines, value, is_optional, nested_class)
+
         formatted_value = ConfigWriter._format_value(value)
-
-        # Optional fields (None default) are commented out
         if is_optional and value is None:
             lines = ["# " + line for line in lines]
             lines.append(f"# {name}: null")
