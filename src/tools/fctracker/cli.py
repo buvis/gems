@@ -26,7 +26,6 @@ def balance(ctx: click.Context) -> None:
 
     if not result.success:
         console.panic(result.error or "Balance command failed")
-        return
 
     for account in result.metadata.get("accounts", []):
         console.render(account)
@@ -62,7 +61,6 @@ def transactions(ctx: click.Context, account: str = "", currency: str = "", mont
 
     if not result.success:
         console.panic(result.error or "Transactions command failed")
-        return
 
     from rich.table import Table
 
