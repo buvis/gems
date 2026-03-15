@@ -264,3 +264,24 @@ class TestCommandTransactions:
         row = result.metadata["tables"][0]["rows"][0]
         # precision is 2, so rate precision is 4 (2*2)
         assert "25.5000 Kc/E" in row["rate"]
+
+    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
+    def test_scanner_file_not_found(self, mock_scanner_cls: MagicMock) -> None:
+        mock_scanner_cls.side_effect = FileNotFoundError("transactions dir missing")
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "transactions dir missing" in result.error
+
+    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
+    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
+    def test_reader_file_not_found(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = FileNotFoundError("data file missing")
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "data file missing" in result.error
