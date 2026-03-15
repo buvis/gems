@@ -141,31 +141,33 @@ def _matches(
     return _apply_operator(f.operator, field_val, f.value)
 
 
+def _op_contains(field_val: Any, value: Any) -> bool:
+    return field_val is not None and value in field_val
+
+
+def _op_regex(field_val: Any, value: Any) -> bool:
+    return field_val is not None and bool(re.search(str(value), str(field_val)))
+
+
+_OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
+    "eq": lambda f, v: bool(f == v),
+    "ne": lambda f, v: bool(f != v),
+    "gt": lambda f, v: f is not None and f > v,
+    "ge": lambda f, v: f is not None and f >= v,
+    "lt": lambda f, v: f is not None and f < v,
+    "le": lambda f, v: f is not None and f <= v,
+    "in": lambda f, v: f in v,
+    "contains": _op_contains,
+    "regex": _op_regex,
+}
+
+
 def _apply_operator(op: str, field_val: Any, value: Any) -> bool:
-    if op == "eq":
-        return bool(field_val == value)
-    if op == "ne":
-        return bool(field_val != value)
-    if op == "gt":
-        return field_val is not None and field_val > value
-    if op == "ge":
-        return field_val is not None and field_val >= value
-    if op == "lt":
-        return field_val is not None and field_val < value
-    if op == "le":
-        return field_val is not None and field_val <= value
-    if op == "in":
-        return field_val in value
-    if op == "contains":
-        if field_val is None:
-            return False
-        return value in field_val
-    if op == "regex":
-        if field_val is None:
-            return False
-        return bool(re.search(str(value), str(field_val)))
-    msg = f"Unknown operator: {op}"
-    raise ValueError(msg)
+    handler = _OPERATORS.get(op)
+    if handler is None:
+        msg = f"Unknown operator: {op}"
+        raise ValueError(msg)
+    return handler(field_val, value)
 
 
 def _make_comparator(
