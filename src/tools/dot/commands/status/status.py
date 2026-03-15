@@ -34,6 +34,7 @@ class CommandStatus:
 
     def execute(self: CommandStatus) -> CommandResult:
         warnings: list[str] = []
+        info: list[str] = []
 
         if self.shell.is_command_available("git-secret"):
             err, out = self.shell.exe("cfg secret hide -m", Path(os.environ["DOTFILES_ROOT"]))
@@ -48,15 +49,40 @@ class CommandStatus:
 
         if out and out.strip():
             staged, unstaged = parse_porcelain_status(out)
-            if staged or unstaged:
-                info: list[str] = []
-                for path, change_type in staged:
-                    info.append(f"staged: {path} {change_type}")
-                for path, change_type in unstaged:
-                    warnings.append(f"unstaged: {path} {change_type}")
-                return CommandResult(success=True, info=info, warnings=warnings)
+            for path, change_type in staged:
+                info.append(f"staged: {path} {change_type}")
+            for path, change_type in unstaged:
+                warnings.append(f"unstaged: {path} {change_type}")
 
-        return CommandResult(success=True, output="No modifications found")
+        ahead, behind = self._get_ahead_behind()
+        if ahead:
+            warnings.append(f"{ahead} commit(s) not pushed")
+        if behind:
+            warnings.append(f"{behind} commit(s) not pulled")
+
+        if not info and not warnings:
+            return CommandResult(success=True, output="No modifications found")
+
+        return CommandResult(success=True, info=info, warnings=warnings)
+
+    def _get_ahead_behind(self: CommandStatus) -> tuple[int, int]:
+        """Return (ahead, behind) counts relative to upstream tracking branch."""
+        err, out = self.shell.exe(
+            "cfg rev-list --count --left-right @{u}...HEAD",
+            Path(os.environ["DOTFILES_ROOT"]),
+        )
+
+        if err or not out or not out.strip():
+            return 0, 0
+
+        parts = out.strip().split()
+        if len(parts) == 2:
+            try:
+                return int(parts[1]), int(parts[0])
+            except ValueError:
+                return 0, 0
+
+        return 0, 0
 
 
 def parse_porcelain_status(

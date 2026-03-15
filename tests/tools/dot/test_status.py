@@ -36,6 +36,7 @@ class TestCommandStatusExecute:
         shell.exe.side_effect = [
             ("", ""),  # cfg secret hide -m
             ("", ""),  # cfg status --porcelain (empty = clean)
+            ("", ""),  # cfg rev-list (no upstream)
         ]
 
         cmd = CommandStatus(shell=shell)
@@ -43,7 +44,7 @@ class TestCommandStatusExecute:
 
         assert result.success
         assert result.output == "No modifications found"
-        assert shell.exe.call_count == 2
+        assert shell.exe.call_count == 3
         shell.exe.assert_any_call("cfg secret hide -m", dotfiles_root)
 
     def test_git_secret_hide_error(self, dotfiles_root) -> None:
@@ -71,7 +72,10 @@ class TestCommandStatusExecute:
     def test_nothing_to_commit(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "")
+        shell.exe.side_effect = [
+            ("", ""),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -83,7 +87,10 @@ class TestCommandStatusExecute:
     def test_empty_output(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "")
+        shell.exe.side_effect = [
+            ("", ""),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -94,7 +101,10 @@ class TestCommandStatusExecute:
     def test_staged_modified_files(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "M  .bashrc\nM  .vimrc")
+        shell.exe.side_effect = [
+            ("", "M  .bashrc\nM  .vimrc"),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -107,7 +117,10 @@ class TestCommandStatusExecute:
     def test_unstaged_modified_files(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", " M .bashrc\n M .vimrc")
+        shell.exe.side_effect = [
+            ("", " M .bashrc\n M .vimrc"),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -120,7 +133,10 @@ class TestCommandStatusExecute:
     def test_staged_and_unstaged_mixed(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "M  .bashrc\n M .vimrc")
+        shell.exe.side_effect = [
+            ("", "M  .bashrc\n M .vimrc"),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -134,7 +150,10 @@ class TestCommandStatusExecute:
     def test_both_staged_and_unstaged_same_file(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "MM .bashrc")
+        shell.exe.side_effect = [
+            ("", "MM .bashrc"),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -148,7 +167,10 @@ class TestCommandStatusExecute:
     def test_deleted_files(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", " D .config/nushell/env.nu")
+        shell.exe.side_effect = [
+            ("", " D .config/nushell/env.nu"),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -160,7 +182,10 @@ class TestCommandStatusExecute:
     def test_new_file_staged(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "A  .newrc")
+        shell.exe.side_effect = [
+            ("", "A  .newrc"),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -172,7 +197,10 @@ class TestCommandStatusExecute:
     def test_untracked_files(self, dotfiles_root) -> None:
         shell = MagicMock()
         shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "?? .newrc")
+        shell.exe.side_effect = [
+            ("", "?? .newrc"),  # cfg status --porcelain
+            ("", ""),  # cfg rev-list (no upstream)
+        ]
 
         cmd = CommandStatus(shell=shell)
         result = cmd.execute()
@@ -180,6 +208,81 @@ class TestCommandStatusExecute:
         assert result.success
         assert len(result.warnings) == 1
         assert "unstaged: .newrc untracked" in result.warnings
+
+    def test_unpushed_commits(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.side_effect = [
+            ("", ""),  # cfg status --porcelain (clean)
+            ("", "0\t3"),  # cfg rev-list: 0 behind, 3 ahead
+        ]
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 1
+        assert "3 commit(s) not pushed" in result.warnings
+
+    def test_unpulled_commits(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.side_effect = [
+            ("", ""),  # cfg status --porcelain (clean)
+            ("", "2\t0"),  # cfg rev-list: 2 behind, 0 ahead
+        ]
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 1
+        assert "2 commit(s) not pulled" in result.warnings
+
+    def test_both_unpushed_and_unpulled(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.side_effect = [
+            ("", ""),  # cfg status --porcelain (clean)
+            ("", "2\t3"),  # cfg rev-list: 2 behind, 3 ahead
+        ]
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert len(result.warnings) == 2
+        assert "3 commit(s) not pushed" in result.warnings
+        assert "2 commit(s) not pulled" in result.warnings
+
+    def test_no_upstream_tracking(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.side_effect = [
+            ("", ""),  # cfg status --porcelain (clean)
+            ("fatal: no upstream", ""),  # cfg rev-list: error
+        ]
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert result.output == "No modifications found"
+
+    def test_staged_with_unpushed(self, dotfiles_root) -> None:
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.side_effect = [
+            ("", "M  .bashrc"),  # cfg status --porcelain
+            ("", "0\t1"),  # cfg rev-list: 1 ahead
+        ]
+
+        cmd = CommandStatus(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert "staged: .bashrc modified" in result.info
+        assert "1 commit(s) not pushed" in result.warnings
 
 
 class TestParsePorcelainStatus:
