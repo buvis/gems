@@ -72,8 +72,9 @@ class TestConsoleAdapterOutput:
     def test_panic(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
         message = "Panic message"
         details = "Panic details"
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.panic(message, details)
+        assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert captured.out.strip() == f"\u2718 {message} \n\n Details:\n\n {details}"
 
@@ -264,20 +265,23 @@ class TestReportResult:
 
 class TestRequireImport:
     def test_panics_with_install_hint(self, console_adapter: ConsoleAdapter) -> None:
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.require_import("muc")
+        assert exc_info.value.code == 1
 
     def test_message_format(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.require_import("muc")
+        assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "muc requires the 'muc' extra" in captured.out
         assert "uv tool install buvis-gems" in captured.out
         assert "muc" in captured.out
 
     def test_custom_tool_name(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.require_import("hello-world", tool_name="hello_world")
+        assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "hello_world requires the 'hello-world' extra" in captured.out
 
@@ -288,13 +292,15 @@ class TestValidatePath:
 
     def test_invalid_dir_panics(self, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
         bad = tmp_path / "nonexistent"
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.validate_path(bad)
+        assert exc_info.value.code == 1
 
     def test_invalid_dir_message(self, capsys: Any, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
         bad = tmp_path / "nonexistent"
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.validate_path(bad)
+        assert exc_info.value.code == 1
         captured = capsys.readouterr()
         output = " ".join(captured.out.split())
         assert "isn't a directory" in output
@@ -306,15 +312,17 @@ class TestValidatePath:
 
     def test_invalid_file_panics(self, capsys: Any, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
         bad = tmp_path / "missing.txt"
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.validate_path(bad, kind="file")
+        assert exc_info.value.code == 1
         captured = capsys.readouterr()
         output = " ".join(captured.out.split())
         assert "doesn't exist" in output
 
     def test_custom_label(self, capsys: Any, console_adapter: ConsoleAdapter, tmp_path: Path) -> None:
         bad = tmp_path / "nope"
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             console_adapter.validate_path(bad, label="music library")
+        assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "music library" in captured.out
