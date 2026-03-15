@@ -46,6 +46,9 @@ class TestFctrackerTransactionsExtra:
 
     @patch("fctracker.commands.transactions.transactions.CommandTransactions")
     def test_transactions_execute_file_not_found(self, mock_cmd_cls: MagicMock, runner) -> None:
-        mock_cmd_cls.return_value.execute.side_effect = FileNotFoundError("no transactions dir")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(
+            success=False, error="no transactions dir"
+        )
         result = runner.invoke(cli, ["transactions"])
-        assert result.exit_code != 0 or "no transactions dir" in result.output
+        assert result.exit_code != 0
+        assert "no transactions dir" in result.output
