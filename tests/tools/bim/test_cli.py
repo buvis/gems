@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
-from bim.cli import _resolve_output_path, cli
+from bim.cli import cli
+from bim.shared.import_helpers import resolve_output_path
 from bim.params.create_note import CreateNoteParams
 from bim.params.delete_note import DeleteNoteParams
 from bim.params.format_note import FormatNoteParams
@@ -128,7 +129,7 @@ class TestImportCommand:
 
         with (
             patch("bim.cli.get_settings") as mock_settings,
-            patch("bim.cli._interactive_import") as mock_interactive,
+            patch("bim.shared.import_helpers.interactive_import") as mock_interactive,
         ):
             settings = MagicMock(path_zettelkasten=str(tmp_path))
             mock_settings.return_value = settings
@@ -351,10 +352,10 @@ class TestImportInteractiveHelpers:
 
         path_output = zettelkasten_dir / "1.md"
 
-        with patch("bim.cli.console") as mock_console:
+        with patch("bim.shared.import_helpers.console") as mock_console:
             mock_console.confirm.side_effect = [False, True]
 
-            resolved_path = _resolve_output_path(note, path_output, path_note, zettelkasten_dir)
+            resolved_path = resolve_output_path(note, path_output, path_note, zettelkasten_dir)
 
         assert resolved_path == zettelkasten_dir / "4.md"
         assert note.data.metadata["id"] == 4

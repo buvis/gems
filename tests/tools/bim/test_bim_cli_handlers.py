@@ -164,7 +164,7 @@ class TestFormatHandlerOutputBranches:
             mock_console.warning.assert_called_once_with("warn1")
 
     def test_format_no_paths_no_query(self, runner: CliRunner) -> None:
-        with patch("bim.cli.console") as mock_console:
+        with patch("bim.shared.query_paths.console") as mock_console:
             result = runner.invoke(cli, ["format"], catch_exceptions=False)
 
             assert result.exit_code == 0
@@ -556,7 +556,7 @@ class TestResolvePathsBranches:
         note = tmp_path / "note.md"
         note.write_text("# Test")
 
-        with patch("bim.cli.console") as mock_console:
+        with patch("bim.shared.query_paths.console") as mock_console:
             result = runner.invoke(cli, ["format", str(note), "-q", "sort: title"], catch_exceptions=False)
 
             assert result.exit_code == 0
