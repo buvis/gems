@@ -1,3 +1,3 @@
 from __future__ import annotations
 
-__all__ = ["import_helpers", "query_paths", "query_presentation"]
+__all__ = ["edit_helpers", "import_helpers", "query_paths", "query_presentation"]

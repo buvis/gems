@@ -350,26 +350,6 @@ def query(
     console.info(f"{len(rows)} rows, query took {elapsed:.2f}s")
 
 
-_EDIT_FIELD_MAP = {"title": "title", "zettel_type": "type", "processed": "processed", "publish": "publish"}
-
-
-def _build_edit_changes(kwargs: dict[str, Any], extra_sets: tuple[str, ...]) -> dict[str, Any]:
-    """Extract edit changes from kwargs and --set flags."""
-    changes: dict[str, Any] = {}
-    for kwarg_key, change_key in _EDIT_FIELD_MAP.items():
-        value = kwargs.get(kwarg_key)
-        if value is not None:
-            changes[change_key] = value
-    tags = kwargs.get("tags")
-    if tags is not None:
-        changes["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
-    for s in extra_sets:
-        if "=" in s:
-            k, v = s.split("=", 1)
-            changes[k] = v
-    return changes
-
-
 @cli.command("edit", help="Edit zettel metadata")
 @click.argument("paths", nargs=-1, required=False)
 @click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
@@ -385,7 +365,9 @@ def edit_note(
     extra_sets: tuple[str, ...],
     **kwargs: Any,
 ) -> None:
-    changes = _build_edit_changes(kwargs, extra_sets)
+    from bim.shared.edit_helpers import build_edit_changes
+
+    changes = build_edit_changes(kwargs, extra_sets)
 
     resolved = resolve_paths(ctx, paths, query_file, query_string)
     if resolved is None:
