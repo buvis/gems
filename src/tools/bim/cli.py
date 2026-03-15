@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Any
 
 import click
 from buvis.pybase.adapters import console
@@ -349,6 +350,26 @@ def query(
     console.info(f"{len(rows)} rows, query took {elapsed:.2f}s")
 
 
+_EDIT_FIELD_MAP = {"title": "title", "zettel_type": "type", "processed": "processed", "publish": "publish"}
+
+
+def _build_edit_changes(kwargs: dict[str, Any], extra_sets: tuple[str, ...]) -> dict[str, Any]:
+    """Extract edit changes from kwargs and --set flags."""
+    changes: dict[str, Any] = {}
+    for kwarg_key, change_key in _EDIT_FIELD_MAP.items():
+        value = kwargs.get(kwarg_key)
+        if value is not None:
+            changes[change_key] = value
+    tags = kwargs.get("tags")
+    if tags is not None:
+        changes["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    for s in extra_sets:
+        if "=" in s:
+            k, v = s.split("=", 1)
+            changes[k] = v
+    return changes
+
+
 @cli.command("edit", help="Edit zettel metadata")
 @click.argument("paths", nargs=-1, required=False)
 @click.option("-Q", "--query-file", "query_file", default=None, help="Query name or path to YAML spec")
@@ -364,26 +385,7 @@ def edit_note(
     extra_sets: tuple[str, ...],
     **kwargs: Any,
 ) -> None:
-    changes: dict[str, Any] = {}
-    title = kwargs.get("title")
-    if title is not None:
-        changes["title"] = title
-    tags = kwargs.get("tags")
-    if tags is not None:
-        changes["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
-    zettel_type = kwargs.get("zettel_type")
-    if zettel_type is not None:
-        changes["type"] = zettel_type
-    processed = kwargs.get("processed")
-    if processed is not None:
-        changes["processed"] = processed
-    publish = kwargs.get("publish")
-    if publish is not None:
-        changes["publish"] = publish
-    for s in extra_sets:
-        if "=" in s:
-            k, v = s.split("=", 1)
-            changes[k] = v
+    changes = _build_edit_changes(kwargs, extra_sets)
 
     resolved = resolve_paths(ctx, paths, query_file, query_string)
     if resolved is None:
