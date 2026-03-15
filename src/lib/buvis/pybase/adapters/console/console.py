@@ -129,10 +129,10 @@ class ConsoleAdapter:
             details (str | None): Additional information to display after the failure message.
 
         Note:
-            Terminates the program by calling `sys.exit()`.
+            Terminates the program by calling `sys.exit(1)`.
         """
         self.failure(message, details)
-        sys.exit()
+        sys.exit(1)
 
     def status(self: ConsoleAdapter, message: str) -> Status:
         """Return a Rich Status context manager with arrow3 spinner.
