@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import call, patch
 
-import pytest
-from pinger.commands.wait.exceptions import CommandWaitTimeoutError
 from pinger.commands.wait.wait import CommandWait
 
 
@@ -15,8 +13,9 @@ class TestCommandWaitExecute:
             patch("pinger.commands.wait.wait.ping", return_value=0.25) as ping_mock,
             patch("pinger.commands.wait.wait.time.sleep") as sleep_mock,
         ):
-            cmd.execute()
+            result = cmd.execute()
 
+        assert result.success is True
         ping_mock.assert_called_once_with("example.com", timeout=1)
         sleep_mock.assert_not_called()
 
@@ -29,9 +28,10 @@ class TestCommandWaitExecute:
             patch("pinger.commands.wait.wait.time.sleep") as sleep_mock,
             patch("pinger.commands.wait.wait.time.time", side_effect=lambda: next(time_values)),
         ):
-            with pytest.raises(CommandWaitTimeoutError):
-                cmd.execute()
+            result = cmd.execute()
 
+        assert result.success is False
+        assert "Timeout" in result.error
         assert ping_mock.call_count == 2
         sleep_mock.assert_called_once_with(1)
 
@@ -42,8 +42,9 @@ class TestCommandWaitExecute:
             patch("pinger.commands.wait.wait.ping", side_effect=[None, None, 0.25]) as ping_mock,
             patch("pinger.commands.wait.wait.time.sleep") as sleep_mock,
         ):
-            cmd.execute()
+            result = cmd.execute()
 
+        assert result.success is True
         assert ping_mock.call_count == 3
         assert sleep_mock.call_count == 2
         sleep_mock.assert_has_calls([call(1), call(1)])

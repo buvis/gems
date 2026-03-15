@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import time
 
+from buvis.pybase.result import CommandResult
 from ping3 import ping
-
-from pinger.commands.wait.exceptions import CommandWaitTimeoutError
 
 
 class CommandWait:
@@ -12,12 +11,15 @@ class CommandWait:
         self.host = host
         self.timeout = timeout
 
-    def execute(self: CommandWait) -> None:
+    def execute(self: CommandWait) -> CommandResult:
         start_time = time.time()
         while True:
             response = ping(self.host, timeout=1)
             if response:
-                break
+                return CommandResult(success=True)
             if time.time() - start_time > self.timeout:
-                raise CommandWaitTimeoutError
+                return CommandResult(
+                    success=False,
+                    error=f"Timeout reached when waiting for {self.host}",
+                )
             time.sleep(1)
