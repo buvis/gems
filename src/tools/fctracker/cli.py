@@ -21,11 +21,11 @@ def balance(ctx: click.Context) -> None:
     from fctracker.commands.balance.balance import CommandBalance
 
     settings = get_settings(ctx, FctrackerSettings)
-    try:
-        cmd = CommandBalance(settings.foreign_currencies, settings.local_currency)
-        result = cmd.execute()
-    except FileNotFoundError as exc:
-        console.panic(str(exc))
+    cmd = CommandBalance(settings.foreign_currencies, settings.local_currency)
+    result = cmd.execute()
+
+    if not result.success:
+        console.panic(result.error or "Balance command failed")
         return
 
     for account in result.metadata.get("accounts", []):
@@ -57,11 +57,11 @@ def transactions(ctx: click.Context, account: str = "", currency: str = "", mont
     from fctracker.commands.transactions.transactions import CommandTransactions
 
     settings = get_settings(ctx, FctrackerSettings)
-    try:
-        cmd = CommandTransactions(settings.foreign_currencies, settings.local_currency, account, currency, month)
-        result = cmd.execute()
-    except FileNotFoundError as exc:
-        console.panic(str(exc))
+    cmd = CommandTransactions(settings.foreign_currencies, settings.local_currency, account, currency, month)
+    result = cmd.execute()
+
+    if not result.success:
+        console.panic(result.error or "Transactions command failed")
         return
 
     from rich.table import Table
