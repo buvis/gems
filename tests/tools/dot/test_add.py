@@ -44,6 +44,22 @@ class TestCommandAddInit:
         assert cmd.file_path == dotfiles_root / ".bashrc"
         assert cmd.warnings == []
 
+    def test_absolute_dir_path_resolved(self, dotfiles_root: Path) -> None:
+        target = dotfiles_root / "subdir"
+        target.mkdir()
+        shell = MagicMock()
+        cmd = CommandAdd(shell=shell, file_path=str(target))
+        assert cmd.file_path == target
+        assert cmd.warnings == []
+
+    def test_relative_dir_path_resolved_under_dotfiles(self, dotfiles_root: Path) -> None:
+        target = dotfiles_root / ".config"
+        target.mkdir()
+        shell = MagicMock()
+        cmd = CommandAdd(shell=shell, file_path=".config")
+        assert cmd.file_path == dotfiles_root / ".config"
+        assert cmd.warnings == []
+
     def test_nonexistent_file_warns(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
         cmd = CommandAdd(shell=shell, file_path="no_such_file.txt")

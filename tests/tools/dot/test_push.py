@@ -57,9 +57,20 @@ class TestCommandPushExecute:
         assert not result.success
         assert result.error.startswith("Push failed")
 
-    def test_execute_nothing_to_push_when_revlist_errors(self, dotfiles_root: Path) -> None:
+    def test_execute_pushes_when_revlist_errors(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
-        shell.exe.return_value = ("no upstream", "")
+        shell.exe.side_effect = [("no upstream", ""), ("", "")]
+
+        cmd = CommandPush(shell=shell)
+        result = cmd.execute()
+
+        assert result.success
+        assert result.output == "Changes pushed"
+        assert shell.exe.call_count == 2
+
+    def test_execute_nothing_to_push_when_no_output(self, dotfiles_root: Path) -> None:
+        shell = MagicMock()
+        shell.exe.return_value = ("", "")
 
         cmd = CommandPush(shell=shell)
         result = cmd.execute()

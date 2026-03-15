@@ -42,7 +42,10 @@ class CommandPush:
             dotfiles_root,
         )
 
-        if err or not out or not out.strip():
+        if err:
+            return True
+
+        if not out or not out.strip():
             return False
 
         try:

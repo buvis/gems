@@ -27,13 +27,13 @@ class CommandAdd:
         self.file_path: Path | None = None
 
         if file_path:
-            if Path(file_path).is_file():
+            if Path(file_path).exists():
                 self.file_path = Path(file_path)
-            elif Path(Path(Path(os.environ["DOTFILES_ROOT"])) / file_path).is_file():
-                self.file_path = Path(Path(Path(os.environ["DOTFILES_ROOT"])) / file_path)
+            elif (Path(os.environ["DOTFILES_ROOT"]) / file_path).exists():
+                self.file_path = Path(os.environ["DOTFILES_ROOT"]) / file_path
             else:
                 self.warnings.append(
-                    f"File {file_path} doesn't exist. Proceeding with cherry picking all.",
+                    f"Path {file_path} doesn't exist. Proceeding with cherry picking all.",
                 )
 
     def execute(self: CommandAdd) -> CommandResult:
