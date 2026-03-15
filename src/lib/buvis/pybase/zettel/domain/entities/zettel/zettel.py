@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import cast
 
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.zettel_consistency_service import (
+from buvis.pybase.zettel.domain.entities.zettel.zettel_consistency_service import (
     ZettelConsistencyService,
 )
 from buvis.pybase.zettel.domain.entities.zettel.services.migration.zettel_migration_service import (
