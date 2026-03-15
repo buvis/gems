@@ -47,59 +47,91 @@ def present_query_result(
 
     try:
         if tui:
-            if output.format == "kanban":
-                if not output.group_by:
-                    console.failure("kanban format requires output.group_by")
-                    return
-                _run_kanban_tui(rows, columns, output.group_by, archive_directory)
-            else:
-                _run_tui(rows, columns, archive_directory)
-        elif output.format == "kanban":
-            if not output.group_by:
-                console.failure("kanban format requires output.group_by")
-                return
-            display_columns = [c for c in columns if c != "file_path"]
-            format_query_kanban(rows, display_columns, output.group_by)
-        elif output.format == "table":
-            _linkify_titles(rows)
-            display_columns = [c for c in columns if c != "file_path"]
-            format_query_table(rows, display_columns)
-        elif output.format == "csv":
-            text = format_query_csv(rows, columns)
-            _write_output(text, output.file)
-        elif output.format == "markdown":
-            text = format_query_markdown(rows, columns)
-            _write_output(text, output.file)
-        elif output.format == "json":
-            text = format_query_json(rows, columns)
-            _write_output(text, output.file)
-        elif output.format == "jsonl":
-            text = format_query_jsonl(rows, columns)
-            _write_output(text, output.file)
-        elif output.format == "html":
-            text = format_query_html(rows, columns)
-            dest = output.file or _tmp_file("html")
-            _write_output(text, dest)
-            if not output.file:
-                _open_file(dest)
-        elif output.format == "pdf":
-            try:
-                raw = format_query_pdf(rows, columns)
-            except ImportError:
-                console.failure("PDF requires fpdf2: uv pip install 'buvis-gems[bim]'")
-                return
-            dest = output.file or _tmp_file("pdf")
-            Path(dest).write_bytes(raw)
-            console.success(f"Written to {dest}")
-            if not output.file:
-                _open_file(dest)
+            _present_tui(rows, columns, output, archive_directory)
         else:
-            console.failure(f"Unknown output format: {output.format}")
+            _present_format(rows, columns, output)
 
         if edit:
             _fzf_edit(rows, columns)
     finally:
         _finish_refresh(refresh_proc, rows, use_case, spec)
+
+
+def _present_tui(
+    rows: list[dict[str, Any]],
+    columns: list[str],
+    output: Any,
+    archive_directory: str | None,
+) -> None:
+    if output.format == "kanban":
+        if not output.group_by:
+            console.failure("kanban format requires output.group_by")
+            return
+        _run_kanban_tui(rows, columns, output.group_by, archive_directory)
+    else:
+        _run_tui(rows, columns, archive_directory)
+
+
+def _present_format(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
+    handler = _FORMAT_HANDLERS.get(output.format)
+    if handler is None:
+        console.failure(f"Unknown output format: {output.format}")
+        return
+    handler(rows, columns, output)
+
+
+def _fmt_kanban(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
+    if not output.group_by:
+        console.failure("kanban format requires output.group_by")
+        return
+    display_columns = [c for c in columns if c != "file_path"]
+    format_query_kanban(rows, display_columns, output.group_by)
+
+
+def _fmt_table(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
+    _linkify_titles(rows)
+    display_columns = [c for c in columns if c != "file_path"]
+    format_query_table(rows, display_columns)
+
+
+def _fmt_text(formatter: Any) -> Any:
+    def handler(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
+        text = formatter(rows, columns)
+        _write_output(text, output.file)
+    return handler
+
+
+def _fmt_html(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
+    text = format_query_html(rows, columns)
+    dest = output.file or _tmp_file("html")
+    _write_output(text, dest)
+    if not output.file:
+        _open_file(dest)
+
+
+def _fmt_pdf(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
+    try:
+        raw = format_query_pdf(rows, columns)
+    except ImportError:
+        console.failure("PDF requires fpdf2: uv pip install 'buvis-gems[bim]'")
+        return
+    dest = output.file or _tmp_file("pdf")
+    Path(dest).write_bytes(raw)
+    console.success(f"Written to {dest}")
+    if not output.file:
+        _open_file(dest)
+
+
+_FORMAT_HANDLERS: dict[str, Any] = {
+    "kanban": _fmt_kanban,
+    "table": _fmt_table,
+    "csv": _fmt_text(format_query_csv),
+    "markdown": _fmt_text(format_query_markdown),
+    "json": _fmt_text(format_query_json),
+    "jsonl": _fmt_text(format_query_jsonl),
+    "html": _fmt_html,
+    "pdf": _fmt_pdf,
+}
 
 
 def _linkify_titles(rows: list[dict[str, Any]]) -> None:
