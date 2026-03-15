@@ -31,7 +31,6 @@ def wait(ctx: click.Context, host: str, timeout: int | None = None) -> None:
     resolved_timeout = timeout if timeout is not None else settings.wait_timeout
 
     try:
-        from pinger.commands.wait.exceptions import CommandWaitTimeoutError
         from pinger.commands.wait.wait import CommandWait
     except ImportError:
         console.require_import("pinger")
@@ -39,11 +38,11 @@ def wait(ctx: click.Context, host: str, timeout: int | None = None) -> None:
 
     cmd = CommandWait(host=host, timeout=resolved_timeout)
     with console.status(f"Waiting for {host} to be online (max {resolved_timeout} seconds)"):
-        try:
-            cmd.execute()
-        except CommandWaitTimeoutError:
-            console.panic(f"Timeout reached when waiting for {host}")
-    console.success(f"{host} is now online")
+        result = cmd.execute()
+    if result.success:
+        console.success(f"{host} is now online")
+    else:
+        console.panic(result.error or "Wait failed")
 
 
 if __name__ == "__main__":

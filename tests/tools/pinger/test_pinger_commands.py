@@ -22,13 +22,13 @@ class TestPingerCommands:
         assert result.exit_code == 0
 
     def test_wait_timeout(self, mocker, runner) -> None:
-        mocker.patch("pinger.commands.wait.exceptions.CommandWaitTimeoutError", Exception)
         mock_cmd_cls = mocker.patch("pinger.commands.wait.wait.CommandWait")
-        from pinger.commands.wait.exceptions import CommandWaitTimeoutError
-
-        mock_cmd_cls.return_value.execute.side_effect = CommandWaitTimeoutError
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(
+            success=False, error="Timeout reached when waiting for 10.0.0.1"
+        )
         result = runner.invoke(cli, ["wait", "10.0.0.1"])
-        assert result.exit_code != 0 or "Timeout" in result.output
+        assert result.exit_code != 0
+        assert "Timeout" in result.output
 
 
 class TestPingerImportError:
