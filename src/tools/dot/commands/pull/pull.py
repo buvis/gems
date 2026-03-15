@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from buvis.pybase.adapters import console
 from buvis.pybase.result import CommandResult
 
 if TYPE_CHECKING:
@@ -43,6 +44,7 @@ class CommandPull:
             return CommandResult(success=False, error=f"Submodule update failed: {err}")
 
         if self.shell.is_command_available("git-secret"):
+            console.info("Decrypting secrets (GPG passphrase required)")
             err, _ = self.shell.exe("cfg secret reveal -f", cwd)
             if err:
                 return CommandResult(success=False, error=f"Secret reveal failed: {err}")
