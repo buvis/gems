@@ -125,11 +125,23 @@ def create(ctx):
 
 ## Error Handling
 
-- Fatal errors (cannot continue): use `console.panic(msg)` — prints formatted message + exits
-- Recoverable errors (skip and continue): use `console.failure(msg)` — prints formatted message, continues
-- Info/status messages: use `console.success()`, `console.warning()`, `console.info()`
+**Command layer** (`commands/`):
+- Return `CommandResult` for all outcomes — success and failure
+- Catch expected exceptions (e.g. `FileNotFoundError`) internally, return `CommandResult(success=False, error=str(exc))`
+- No `console.panic()` or `sys.exit()` inside command classes
+- No custom exception classes for control flow
+
+**CLI layer** (`cli.py`):
+- Inspect `CommandResult` and call `console.panic()` / `console.failure()` / `console.success()`
+- Use `console.report_result()` for standardized output
+- Catch `ImportError` for optional deps, call `console.require_import()`
+- Catch `FatalError` for unrecoverable infrastructure failures
+
+**Console methods**:
+- Fatal (exit): `console.panic(msg)` — prints + exits with code 1
+- Recoverable: `console.failure(msg)` — prints, continues
+- Status: `console.success()`, `console.warning()`, `console.info()`
 - Never let raw exceptions (stack traces) reach the user
-- Optional dependency `ImportError`: catch in `cli.py`, call `console.panic()` with install instructions
 - Do NOT use Python logging module in CLI tools; use `buvis.pybase.adapters.console`
 
 ## Testing
