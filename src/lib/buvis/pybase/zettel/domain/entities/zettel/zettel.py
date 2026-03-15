@@ -12,7 +12,7 @@ from typing import cast
 from buvis.pybase.zettel.domain.entities.zettel.zettel_consistency_service import (
     ZettelConsistencyService,
 )
-from buvis.pybase.zettel.domain.entities.zettel.services.migration.zettel_migration_service import (
+from buvis.pybase.zettel.domain.entities.zettel.zettel_migration_service import (
     ZettelMigrationService,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
