@@ -17,7 +17,11 @@ class CommandBalance:
         self.local_currency = local_currency
 
     def execute(self) -> CommandResult:
-        scanner = TransactionsDirScanner()
+        try:
+            scanner = TransactionsDirScanner()
+        except FileNotFoundError as exc:
+            return CommandResult(success=False, error=str(exc))
+
         accounts: list[Account] = []
 
         for account_name, currencies in scanner.accounts.items():
@@ -31,8 +35,11 @@ class CommandBalance:
                     self.local_currency.precision,
                     self.local_currency.symbol,
                 )
-                reader = TransactionsReader(account)
-                reader.get_transactions()
+                try:
+                    reader = TransactionsReader(account)
+                    reader.get_transactions()
+                except FileNotFoundError as exc:
+                    return CommandResult(success=False, error=str(exc))
                 accounts.append(account)
 
         return CommandResult(

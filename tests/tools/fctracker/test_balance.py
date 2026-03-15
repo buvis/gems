@@ -69,3 +69,24 @@ class TestCommandBalance:
 
         assert result.success is True
         assert len(result.metadata["accounts"]) == 2
+
+    @patch("fctracker.commands.balance.balance.TransactionsDirScanner")
+    def test_scanner_file_not_found(self, mock_scanner_cls: MagicMock) -> None:
+        mock_scanner_cls.side_effect = FileNotFoundError("transactions dir missing")
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "transactions dir missing" in result.error
+
+    @patch("fctracker.commands.balance.balance.TransactionsReader")
+    @patch("fctracker.commands.balance.balance.TransactionsDirScanner")
+    def test_reader_file_not_found(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = FileNotFoundError("data file missing")
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "data file missing" in result.error
