@@ -186,7 +186,7 @@ class ConsoleAdapter:
         """Print dimmed informational text."""
         self.console.print(f"[dim]{message}[/dim]")
 
-    def print_side_by_side(
+    def print_side_by_side(  # noqa: PLR0913  # side-by-side display needs both panels' title+text+mode
         self: ConsoleAdapter,
         title_left: str,
         text_left: str,

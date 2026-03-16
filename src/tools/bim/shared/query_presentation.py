@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
 
 
-def present_query_result(
+def present_query_result(  # noqa: PLR0913  # presentation dispatcher aggregates query context
     rows: list[dict[str, Any]],
     columns: list[str],
     spec: Any,
@@ -98,6 +98,7 @@ def _fmt_text(formatter: Any) -> Any:
     def handler(rows: list[dict[str, Any]], columns: list[str], output: Any) -> None:
         text = formatter(rows, columns)
         _write_output(text, output.file)
+
     return handler
 
 

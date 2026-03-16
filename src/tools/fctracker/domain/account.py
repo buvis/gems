@@ -9,7 +9,7 @@ from fctracker.domain.withdrawal import Withdrawal
 
 
 class Account:
-    def __init__(
+    def __init__(  # noqa: PLR0913  # domain model with required currency attributes
         self,
         name: str,
         currency: str,
