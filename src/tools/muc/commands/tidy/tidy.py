@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from buvis.pybase.filesystem import DirTree
+from muc.shared.dir_tree import DirTree
 from buvis.pybase.result import CommandResult
 
 

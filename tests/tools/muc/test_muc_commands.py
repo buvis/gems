@@ -24,7 +24,7 @@ class TestMucCommands:
         assert result.exit_code != 0 or "isn't a directory" in result.output
 
     @patch("muc.commands.tidy.tidy.CommandTidy")
-    @patch("buvis.pybase.filesystem.DirTree")
+    @patch("muc.shared.dir_tree.DirTree")
     def test_tidy_success(self, mock_dirtree: MagicMock, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_dirtree.count_files.return_value = 5
         mock_dirtree.get_max_depth.return_value = 1

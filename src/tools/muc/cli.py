@@ -60,7 +60,7 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
 def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
     settings = get_settings(ctx, MucSettings)
 
-    from buvis.pybase.filesystem import DirTree
+    from muc.shared.dir_tree import DirTree
 
     path_directory = Path(directory).resolve()
     console.validate_path(path_directory)
