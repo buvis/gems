@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from buvis.pybase.zettel.domain.entities.project.services.migration.upgrades.migrate_parent_reference import (
+from buvis.pybase.zettel.domain.entities.project.upgrades.migrate_parent_reference import (
     migrate_parent_reference,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

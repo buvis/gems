@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.sort_tags import (
+from buvis.pybase.zettel.domain.entities.zettel.fixers.sort_tags import (
     sort_tags,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

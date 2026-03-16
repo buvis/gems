@@ -1,10 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 from buvis.pybase.zettel.domain.entities.project.project import ProjectZettel
-from buvis.pybase.zettel.domain.entities.project.services.consistency.project_zettel_consistency_service import (
+from buvis.pybase.zettel.domain.entities.project.project_consistency_service import (
     ProjectZettelConsistencyService,
 )
-from buvis.pybase.zettel.domain.entities.project.services.migration.project_zettel_migration_service import (
+from buvis.pybase.zettel.domain.entities.project.project_migration_service import (
     ProjectZettelMigrationService,
 )
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel

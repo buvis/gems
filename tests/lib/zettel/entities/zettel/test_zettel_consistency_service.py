@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.zettel_consistency_service import (
+from buvis.pybase.zettel.domain.entities.zettel.zettel_consistency_service import (
     ZettelConsistencyService,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

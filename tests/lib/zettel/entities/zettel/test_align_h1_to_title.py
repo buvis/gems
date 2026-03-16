@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.align_h1_to_title import (
+from buvis.pybase.zettel.domain.entities.zettel.fixers.align_h1_to_title import (
     align_h1_to_title,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

@@ -1,19 +1,4 @@
-"""Define ProjectZettel and its project-specific services.
-
-This module defines the ProjectZettel class, which extends the functionality of the Zettel
-class by integrating project-specific migration and consistency services.
-
-The module imports necessary classes from the `zettel.domain.entities.project.services.consistency` and
-`zettel.domain.entities.project.services.migration` packages, specifically for handling the consistency
-and migration of project Zettels.
-
-Classes:
-    ProjectZettel: Represents a project-specific Zettel with additional methods for migration and consistency checks.
-    ProjectZettelConsistencyService: A service class from `project.services.consistency` used to ensure
-        data consistency.
-    ProjectZettelMigrationService: A service class from `project.services.migration` used to handle data migration.
-    Zettel: The base class for Zettel objects, extended by ProjectZettel to include project-specific functionality.
-"""
+"""ProjectZettel entity with project-specific consistency and migration services."""
 
 from __future__ import annotations
 

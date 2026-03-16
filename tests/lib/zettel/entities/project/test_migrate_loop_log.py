@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from buvis.pybase.zettel.domain.entities.project.services.migration.upgrades.migrate_loop_log import (
+from buvis.pybase.zettel.domain.entities.project.upgrades.migrate_loop_log import (
     extract_log_entries,
     format_log_entries,
     migrate_loop_log,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.remove_duplicate_tags import (
+from buvis.pybase.zettel.domain.entities.zettel.fixers.remove_duplicate_tags import (
     remove_duplicate_tags,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

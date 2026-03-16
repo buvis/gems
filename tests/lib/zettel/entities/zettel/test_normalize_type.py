@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from buvis.pybase.zettel.domain.entities.zettel.services.migration.upgrades.normalize_type import (
+from buvis.pybase.zettel.domain.entities.zettel.upgrades.normalize_type import (
     normalize_type,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

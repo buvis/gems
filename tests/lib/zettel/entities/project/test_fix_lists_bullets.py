@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from buvis.pybase.zettel.domain.entities.project.services.consistency.fixers.fix_lists_bullets import (
+from buvis.pybase.zettel.domain.entities.project.fixers.fix_lists_bullets import (
     fix_lists_bullets,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

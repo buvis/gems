@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.set_default_publish import (
+from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_publish import (
     set_default_publish,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

@@ -1,4 +1,4 @@
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.set_default_tags import (
+from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_tags import (
     set_default_tags,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

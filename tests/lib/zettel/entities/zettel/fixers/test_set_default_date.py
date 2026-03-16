@@ -2,12 +2,12 @@ import sys
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.set_default_date import (
+from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_date import (
     set_default_date,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
-_date_mod = sys.modules["buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.set_default_date"]
+_date_mod = sys.modules["buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_date"]
 
 
 class FixedDateTime(datetime):

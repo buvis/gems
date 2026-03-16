@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from buvis.pybase.zettel.domain.entities.project.services.consistency.fixers.set_default_completed import (
+from buvis.pybase.zettel.domain.entities.project.fixers.set_default_completed import (
     set_default_completed,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

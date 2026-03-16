@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from buvis.pybase.zettel.domain.entities.zettel.services.migration.upgrades.move_zkn_id_to_id import (
+from buvis.pybase.zettel.domain.entities.zettel.upgrades.move_zkn_id_to_id import (
     move_zkn_id_to_id,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

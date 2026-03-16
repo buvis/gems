@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from buvis.pybase.zettel.domain.entities.project.services.consistency.fixers.normalize_sections_order import (
+from buvis.pybase.zettel.domain.entities.project.fixers.normalize_sections_order import (
     normalize_sections_order,
 )
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

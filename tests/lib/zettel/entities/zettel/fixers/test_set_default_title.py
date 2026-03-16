@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from buvis.pybase.zettel.domain.entities.zettel.services.consistency.fixers.set_default_title import (
+from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_title import (
     DEFAULT_TITLE,
     set_default_title,
 )
