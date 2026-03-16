@@ -112,5 +112,3 @@ def validate_json_env_size(env_var_name: str) -> None:
     byte_length = len(env_value.encode("utf-8"))
     if byte_length > MAX_JSON_ENV_SIZE:
         raise ValueError(f"{env_var_name} exceeds max JSON size {MAX_JSON_ENV_SIZE} bytes (found {byte_length} bytes).")
-
-

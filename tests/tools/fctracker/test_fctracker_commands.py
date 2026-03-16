@@ -19,9 +19,7 @@ class TestFctrackerCommands:
 
     @patch("fctracker.commands.balance.balance.CommandBalance")
     def test_balance_file_not_found(self, mock_cmd_cls: MagicMock, runner) -> None:
-        mock_cmd_cls.return_value.execute.return_value = CommandResult(
-            success=False, error="no dir"
-        )
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="no dir")
         result = runner.invoke(cli, ["balance"])
         assert result.exit_code != 0
         assert "no dir" in result.output
@@ -48,9 +46,7 @@ class TestFctrackerCommands:
 
     @patch("fctracker.commands.transactions.transactions.CommandTransactions")
     def test_transactions_file_not_found(self, mock_cmd_cls: MagicMock, runner) -> None:
-        mock_cmd_cls.return_value.execute.return_value = CommandResult(
-            success=False, error="missing"
-        )
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="missing")
         result = runner.invoke(cli, ["transactions"])
         assert result.exit_code != 0
         assert "missing" in result.output

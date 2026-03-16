@@ -53,6 +53,7 @@ class ConfigSource(Enum):
     ENV = "env"
     CLI = "cli"
 
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseSettings)
@@ -172,7 +173,10 @@ class ConfigResolver:
         logger.debug("ConfigResolver initialized")
 
     def _load_yaml(
-        self, tool_name: str, config_dir: str | None, config_path: Path | None,
+        self,
+        tool_name: str,
+        config_dir: str | None,
+        config_path: Path | None,
     ) -> dict[str, Any]:
         """Load YAML config from explicit path or discovered files."""
         if config_dir is not None:
@@ -180,10 +184,7 @@ class ConfigResolver:
         if config_path is not None:
             return _load_yaml_config(config_path)
         discovered_files = self.loader.find_config_files(tool_name, config_dir=config_dir)
-        loaded_configs = [
-            self.loader.load_yaml(path)
-            for path in reversed(discovered_files)
-        ]
+        loaded_configs = [self.loader.load_yaml(path) for path in reversed(discovered_files)]
         return self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
 
     @staticmethod

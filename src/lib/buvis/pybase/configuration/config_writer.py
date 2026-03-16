@@ -286,7 +286,11 @@ class ConfigWriter:
 
     @staticmethod
     def _format_nested_field(
-        name: str, lines: list[str], value: Any, is_optional: bool, nested_class: type[BaseModel],
+        name: str,
+        lines: list[str],
+        value: Any,
+        is_optional: bool,
+        nested_class: type[BaseModel],
     ) -> str:
         """Format a nested model field."""
         if is_optional and value is None:
