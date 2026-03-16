@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Iterator
-from typing import Any, Protocol, cast, get_args, get_origin
+from typing import Any, Protocol, get_args, get_origin
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 
 _SENSITIVE_PATTERNS = re.compile(
     r"(authorization|api[_-]?key|secret|token|password|bearer|credential)",
@@ -114,64 +114,3 @@ def validate_json_env_size(env_var_name: str) -> None:
         raise ValueError(f"{env_var_name} exceeds max JSON size {MAX_JSON_ENV_SIZE} bytes (found {byte_length} bytes).")
 
 
-class SecureSettingsMixin:
-    """Mixin adding security validations for settings.
-
-    Validates:
-
-    - JSON env values don't exceed 64KB
-    - Complex types come from validated JSON, not eval()
-
-    Example::
-
-        class MySettings(SecureSettingsMixin, BaseSettings):
-            ...
-    """
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_json_sizes(cls, data: dict[str, Any]) -> dict[str, Any]:
-        """Check env var sizes before parsing.
-
-        Args:
-            data: Input data dict from pydantic.
-
-        Returns:
-            Unmodified data dict if all validations pass.
-
-        Raises:
-            ValueError: If any prefixed env var exceeds MAX_JSON_ENV_SIZE.
-        """
-        config = getattr(cls, "model_config", {})
-        prefix = config.get("env_prefix", "")
-
-        for key in os.environ:
-            if key.startswith(prefix):
-                validate_json_env_size(key)
-
-        return data
-
-
-class SafeLoggingMixin:
-    """Mixin that sanitizes sensitive values in __repr__.
-
-    Per PRD: "Sanitize before logging: Don't log raw JSON (may contain secrets)"
-
-    Masks values for fields whose names match sensitive patterns like
-    'api_key', 'password', 'token', 'authorization', etc.
-    """
-
-    def __repr__(self) -> str:
-        """Repr with sensitive values masked."""
-        fields = []
-        model_fields = cast(_ModelFieldsOwner, self.__class__).model_fields
-        for name in model_fields:
-            value = getattr(self, name, None)
-            if _SENSITIVE_PATTERNS.search(name):
-                fields.append(f"{name}='***'")
-            elif isinstance(value, dict):
-                safe_dict = {k: "***" if _SENSITIVE_PATTERNS.search(str(k)) else v for k, v in value.items()}
-                fields.append(f"{name}={safe_dict}")
-            else:
-                fields.append(f"{name}={value!r}")
-        return f"{self.__class__.__name__}({', '.join(fields)})"
