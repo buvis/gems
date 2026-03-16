@@ -22,10 +22,10 @@ jobs:
       - name: Detect changed paths
         id: filter
         run: |
-          ALL_TOOLS='["bim","dot","fctracker","fren","hello_world","morph","muc","netscan","outlookctl","pinger","puc","readerctl","sysup","vuc","zseq"]'
+          ALL_TOOLS=$(ls -1 src/tools/ | jq -R . | jq -sc .)
 
-          # workflow_dispatch always runs everything
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # workflow_dispatch and workflow_call always run everything
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "workflow_call" ]; then
             echo "run_all=true" >> "$GITHUB_OUTPUT"
             echo "changed_tools=${ALL_TOOLS}" >> "$GITHUB_OUTPUT"
             exit 0
@@ -38,11 +38,19 @@ jobs:
             BASE="${{ github.event.before }}"
           fi
 
+          # guard null SHA on first push to a new branch
+          NULL_SHA="0000000000000000000000000000000000000000"
+          if [ "${BASE}" = "${NULL_SHA}" ] || [ -z "${BASE}" ]; then
+            echo "run_all=true" >> "$GITHUB_OUTPUT"
+            echo "changed_tools=${ALL_TOOLS}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           CHANGED=$(git diff --name-only "${BASE}..HEAD" --)
 
           # check if shared infrastructure changed
           RUN_ALL=false
-          if echo "${CHANGED}" | grep -qE '^(src/lib/|tests/lib/|tests/conftest\.py|pyproject\.toml|\.github/workflows/test\.yml)'; then
+          if echo "${CHANGED}" | grep -qE '^(src/lib/|src/rust/|tests/lib/|tests/conftest\.py|pyproject\.toml|uv\.lock|hatch_build\.py|Cargo\.(toml|lock)|\.github/workflows/test\.yml)'; then
             RUN_ALL=true
           fi
 
@@ -61,6 +69,35 @@ jobs:
 
           echo "run_all=false" >> "$GITHUB_OUTPUT"
           echo "changed_tools=${JSON}" >> "$GITHUB_OUTPUT"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --group test --group dev
+
+      - name: Audit dependencies
+        run: uv run pip-audit
+
+      - name: Lint & format check
+        run: |
+          uv run ruff check src/ tests/
+          uv run ruff format --check src/ tests/
+
+      - name: Type check
+        run: uv run mypy src/lib/ src/tools/
 
   lib:
     runs-on: ${{ matrix.os }}
@@ -84,19 +121,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --group test --group dev
 
-      - name: Audit dependencies
-        run: uv run pip-audit
-
-      - name: Lint & format check
-        run: |
-          uv run ruff check src/ tests/
-          uv run ruff format --check src/ tests/
-
       - name: Run library tests
         run: uv run pytest -m lib --cov --cov-report=term-missing --cov-fail-under=80
-
-      - name: Type check
-        run: uv run mypy src/lib/ src/tools/
 
   tools:
     needs: [detect, lib]
@@ -124,15 +150,21 @@ jobs:
         run: uv sync --all-extras --group test --group dev
 
       - name: Run ${{ matrix.tool }} tests
-        run: uv run pytest -m ${{ matrix.tool }} --cov --cov-report=term-missing
+        env:
+          TOOL_MARKER: ${{ matrix.tool }}
+        run: uv run pytest -m "$TOOL_MARKER" --cov --cov-report=term-missing --cov-fail-under=50
 
   # Single status check for branch protection / automerge
   test:
     if: always()
-    needs: [lib, tools]
+    needs: [lint, lib, tools]
     runs-on: ubuntu-latest
     steps:
       - run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "Lint checks failed"
+            exit 1
+          fi
           if [ "${{ needs.lib.result }}" != "success" ]; then
             echo "Lib tests failed"
             exit 1
