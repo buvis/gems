@@ -59,8 +59,8 @@ PidashApp (App)
   ├─ PhasePipeline (Horizontal) — 5 phase labels: ✓ completed, ▸ active, dimmed future
   ├─ ProgressBar (Static) — task count + filled bar (visible during WORKING only)
   ├─ Horizontal (Container)
-  │   ├─ TaskPanel (Static, scrollable) — ✓ done, ▸ in-progress, ○ pending
-  │   ├─ DecisionPanel (Static, scrollable) — auto decisions dimmed, pending in red with ⚠
+  │   ├─ TaskPanel (Static, scrollable) — shows completed/total count and progress
+  │   ├─ DecisionPanel (Static, scrollable) — auto decisions dimmed, pending in red with ⚠; colored by severity
   │   └─ CyclePanel (Static, scrollable) — per-cycle severity breakdown
   └─ FooterBar (Static) — keybindings: q quit, r refresh
 ```
@@ -72,9 +72,9 @@ All widgets are read-only `Static`. On state change, re-parse JSON and call `upd
 ```
 src/tools/pidash/
 ├── __init__.py
+├── __main__.py            # python -m pidash support
 ├── manifest.toml          # tool metadata
-├── commands/
-│   └── __init__.py        # Click CLI: pidash [project-path]
+├── cli.py                 # Click CLI: pidash [project-path]
 └── tui/
     ├── __init__.py
     ├── app.py             # PidashApp
@@ -84,8 +84,10 @@ src/tools/pidash/
 ```
 
 Integration:
-- Entry point in `pyproject.toml`: `pidash = "buvis.tools.pidash.commands:cli"`
-- Optional deps: `pidash = ["textual>=3,<4", "watchfiles>=1.0"]`
+- Entry point in `pyproject.toml`: `pidash = "pidash.cli:cli"`
+- Add `"src/tools/pidash"` to `tool.hatch.build.targets.wheel.packages`
+- Add `pidash` marker to `tool.pytest.ini_options.markers`
+- Optional deps: `pidash = ["textual>=3,<9", "watchfiles>=1.0,<2"]`
 - Declared separately from bim — no cross-dependency
 
 ## File Watcher
@@ -107,10 +109,10 @@ Runs as a Textual `Worker`:
 
 ## Testing
 
-In `tests/pidash/`:
+In `tests/tools/pidash/`:
 
 - **`test_state.py`** — Pydantic parsing: valid JSON, minimal JSON, malformed returns None, defaults applied, phase mapping
-- **`test_widgets.py`** — Each widget renders given a PrdState: pipeline highlights, progress bar math, task icons (✓/▸/○), decision separation, cycle severity formatting
+- **`test_widgets.py`** — Each widget renders given a PrdState: pipeline highlights, progress bar math, task count display, decision separation and severity coloring, cycle severity formatting
 - **`test_app.py`** — Textual async pilot: starts empty, state update re-renders, file deletion reverts to empty
 
 No integration tests for file watcher — `watchfiles` and Textual workers are framework code.
