@@ -1,7 +1,7 @@
 Filesystem
 ==========
 
-Utilities for directory traversal, file metadata, and batch operations.
+Utilities for file metadata operations.
 
 .. contents:: Table of Contents
    :local:
@@ -10,13 +10,9 @@ Utilities for directory traversal, file metadata, and batch operations.
 Overview
 --------
 
-`DirTree` and `FileMetadataReader` are static utility classes under
-`buvis.pybase.filesystem`. Each exposes class-level helpers—no
-instantiation is required—to inspect directory depth, prune files, or read
-timestamps. DirTree bundles cleanup routines (counting files, normalizing
-extensions, removing empty folders, and merging Mac metadata), while
-FileMetadataReader surfaces creation and first-commit datetimes with
-platform-aware fallbacks.
+`FileMetadataReader` is a static utility class under
+`buvis.pybase.filesystem`. It surfaces creation and first-commit datetimes
+with platform-aware fallbacks. No instantiation is required.
 
 Quick Start
 -----------
@@ -24,27 +20,17 @@ Quick Start
 .. code-block:: python
 
     from pathlib import Path
-    from buvis.pybase.filesystem import DirTree, FileMetadataReader
+    from buvis.pybase.filesystem import FileMetadataReader
 
     project_root = Path(__file__).resolve().parent
 
-    # Static utilities: no DirTree() or FileMetadataReader() instantiation.
-    total_files = DirTree.count_files(project_root / "src")
     creation_dt = FileMetadataReader.get_creation_datetime(project_root / "pyproject.toml")
     first_commit = FileMetadataReader.get_first_commit_datetime(project_root / "pyproject.toml")
 
-    print(total_files, creation_dt, first_commit)
+    print(creation_dt, first_commit)
 
 API Reference
 -------------
-
-DirTree
-~~~~~~~
-
-.. autoclass:: buvis.pybase.filesystem.DirTree
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 FileMetadataReader
 ~~~~~~~~~~~~~~~~~~
@@ -56,31 +42,6 @@ FileMetadataReader
 
 Examples
 --------
-
-DirTree Example
-~~~~~~~~~~~~~~~
-
-Use `DirTree` to profile and clean a release artifact directory before publishing.
-
-.. code-block:: python
-
-    from pathlib import Path
-    from buvis.pybase.filesystem import DirTree
-
-    project_root = Path(__file__).resolve().parent
-    artifacts_dir = project_root / "dist" / "artifacts"
-
-    file_count = DirTree.count_files(artifacts_dir)
-    max_depth = DirTree.get_max_depth(artifacts_dir)
-    print(f"Artifact tree: {file_count} files across {max_depth} levels.")
-
-    DirTree.delete_by_extension(artifacts_dir, [".tmp", ".log"])
-    DirTree.normalize_file_extensions(artifacts_dir)
-    DirTree.remove_empty_directories(artifacts_dir)
-    DirTree.merge_mac_metadata(artifacts_dir)
-
-    # The cleanup routine removes stray caches, coerces extensions to the
-    # project standard, prunes empty folders, and restores macOS metadata.
 
 FileMetadataReader Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
