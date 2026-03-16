@@ -10,7 +10,6 @@ from typing import Any
 import yaml
 
 from .exceptions import MissingEnvVarError
-from .paths import get_config_dirs
 
 logger = logging.getLogger(__name__)
 
@@ -259,3 +258,16 @@ class ConfigurationLoader:
         for cfg in configs:
             _deep_merge(result, cfg)
         return result
+
+
+def get_config_dirs() -> list[Path]:
+    """Config dirs in priority order (highest first).
+
+    1. $BUVIS_CONFIG_DIR (if set and non-empty)
+    2. ~/.config/buvis (default)
+    """
+    dirs: list[Path] = []
+    if env_dir := os.getenv("BUVIS_CONFIG_DIR"):
+        dirs.append(Path(env_dir).expanduser())
+    dirs.append(Path.home() / ".config" / "buvis")
+    return dirs

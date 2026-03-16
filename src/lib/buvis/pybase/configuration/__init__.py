@@ -30,7 +30,7 @@ from .exceptions import (
 )
 from .generators import apply_generated_options, generate_click_options
 from .loader import ConfigurationLoader
-from .paths import get_config_dirs
+from .loader import get_config_dirs
 from .resolver import ConfigResolver
 from .settings import GlobalSettings, ToolSettings
 from .source import ConfigSource

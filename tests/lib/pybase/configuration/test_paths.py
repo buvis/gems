@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from buvis.pybase.configuration.paths import get_config_dirs
+from buvis.pybase.configuration.loader import get_config_dirs
 
 
 class TestGetConfigDirs:
