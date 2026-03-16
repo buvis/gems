@@ -995,37 +995,6 @@ pass <code class="docutils literal notranslate"><span class="pre">tool_name</spa
 <dt class="sig sig-object py" id="buvis.pybase.configuration.ConfigResolver.resolve">
 <span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cli_overrides</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">T</span></span></span><a class="headerlink" href="#buvis.pybase.configuration.ConfigResolver.resolve" title="Link to this definition"></a></dt>
 <dd><p>Instantiate a settings class with precedence: CLI &gt; ENV &gt; YAML &gt; Defaults.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>settings_class</strong> – The Pydantic settings class to instantiate.</p></li>
-<li><p><strong>config_dir</strong> – Optional configuration directory that overrides
-<code class="docutils literal notranslate"><span class="pre">BUVIS_CONFIG_DIR</span></code> environment variable for this resolution.</p></li>
-<li><p><strong>config_path</strong> – Optional path to YAML config file.</p></li>
-<li><p><strong>cli_overrides</strong> – Explicit overrides typically parsed from CLI options.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>An immutable instance of <code class="docutils literal notranslate"><span class="pre">settings_class</span></code> populated with resolved
-values. The instance is frozen and cannot be modified after creation.</p>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#buvis.pybase.configuration.ConfigurationError" title="buvis.pybase.configuration.ConfigurationError"><strong>ConfigurationError</strong></a> – If validation fails for any configuration value.</p>
-</dd>
-</dl>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Precedence order (highest to lowest):</p>
-<ol class="arabic simple">
-<li><p>CLI overrides (explicit values passed in cli_overrides)</p></li>
-<li><p>Environment variables (Pydantic handles automatically)</p></li>
-<li><p>YAML config file values</p></li>
-<li><p>Model field defaults</p></li>
-</ol>
-<p>Config file discovery uses the tool name derived from
-<code class="docutils literal notranslate"><span class="pre">settings_class.model_config['env_prefix']</span></code> (<code class="docutils literal notranslate"><span class="pre">BUVIS_{TOOL}_</span></code> -&gt;
-<code class="docutils literal notranslate"><span class="pre">&quot;tool&quot;</span></code>) to locate YAML files.</p>
-</div>
 </dd></dl>
 
 <dl class="py property">
