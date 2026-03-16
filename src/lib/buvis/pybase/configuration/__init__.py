@@ -28,7 +28,7 @@ from .exceptions import (
     ConfigurationKeyNotFoundError,
     MissingEnvVarError,
 )
-from .generators import apply_generated_options, generate_click_options
+from .click_integration import apply_generated_options, generate_click_options
 from .loader import ConfigurationLoader
 from .loader import get_config_dirs
 from .resolver import ConfigResolver

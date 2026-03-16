@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal, Union
 
 import click
-from buvis.pybase.configuration.generators import (
+from buvis.pybase.configuration.click_integration import (
     _field_to_option,
     _unwrap_optional,
     apply_generated_options,
