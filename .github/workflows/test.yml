@@ -6,15 +6,68 @@ on:
   pull_request:
     branches: [master]
   workflow_call:
+  workflow_dispatch:
 
 jobs:
-  test-matrix:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      changed_tools: ${{ steps.filter.outputs.changed_tools }}
+      run_all: ${{ steps.filter.outputs.run_all }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: filter
+        run: |
+          ALL_TOOLS='["bim","dot","fctracker","fren","hello_world","morph","muc","netscan","outlookctl","pinger","puc","readerctl","sysup","vuc","zseq"]'
+
+          # workflow_dispatch always runs everything
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_all=true" >> "$GITHUB_OUTPUT"
+            echo "changed_tools=${ALL_TOOLS}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # determine diff range
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+
+          CHANGED=$(git diff --name-only "${BASE}..HEAD" --)
+
+          # check if shared infrastructure changed
+          RUN_ALL=false
+          if echo "${CHANGED}" | grep -qE '^(src/lib/|tests/lib/|tests/conftest\.py|pyproject\.toml|\.github/workflows/test\.yml)'; then
+            RUN_ALL=true
+          fi
+
+          if [ "${RUN_ALL}" = "true" ]; then
+            echo "run_all=true" >> "$GITHUB_OUTPUT"
+            echo "changed_tools=${ALL_TOOLS}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # extract tool names from changed paths
+          TOOLS=$(echo "${CHANGED}" | grep -oE '^(src/tools|tests/tools)/[^/]+' | sed 's|.*/||' | sort -u)
+          JSON="[]"
+          if [ -n "${TOOLS}" ]; then
+            JSON=$(echo "${TOOLS}" | jq -R . | jq -sc .)
+          fi
+
+          echo "run_all=false" >> "$GITHUB_OUTPUT"
+          echo "changed_tools=${JSON}" >> "$GITHUB_OUTPUT"
+
+  lib:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -39,20 +92,52 @@ jobs:
           uv run ruff check src/ tests/
           uv run ruff format --check src/ tests/
 
-      - name: Run tests
-        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=80  # ratchet: bump after adding tests
+      - name: Run library tests
+        run: uv run pytest -m lib --cov --cov-report=term-missing --cov-fail-under=80
 
       - name: Type check
         run: uv run mypy src/lib/ src/tools/
 
+  tools:
+    needs: [detect, lib]
+    if: needs.detect.outputs.changed_tools != '[]'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        tool: ${{ fromJson(needs.detect.outputs.changed_tools) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --group test --group dev
+
+      - name: Run ${{ matrix.tool }} tests
+        run: uv run pytest -m ${{ matrix.tool }} --cov --cov-report=term-missing
+
   # Single status check for branch protection / automerge
   test:
     if: always()
-    needs: [test-matrix]
+    needs: [lib, tools]
     runs-on: ubuntu-latest
     steps:
       - run: |
-          if [ "${{ needs.test-matrix.result }}" != "success" ]; then
-            echo "Matrix jobs failed or were cancelled"
+          if [ "${{ needs.lib.result }}" != "success" ]; then
+            echo "Lib tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.tools.result }}" != "success" ] && [ "${{ needs.tools.result }}" != "skipped" ]; then
+            echo "Tool tests failed"
             exit 1
           fi
