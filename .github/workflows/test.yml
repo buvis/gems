@@ -22,7 +22,7 @@ jobs:
       - name: Detect changed paths
         id: filter
         run: |
-          ALL_TOOLS=$(ls -1 src/tools/ | jq -R . | jq -sc .)
+          ALL_TOOLS=$(find src/tools/ -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -sc .)
 
           # workflow_dispatch and workflow_call always run everything
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "workflow_call" ]; then
@@ -122,7 +122,7 @@ jobs:
         run: uv sync --all-extras --group test --group dev
 
       - name: Run library tests
-        run: uv run pytest -m lib --cov --cov-report=term-missing --cov-fail-under=80
+        run: uv run pytest -m lib --cov=src/lib --cov-report=term-missing --cov-fail-under=80
 
   tools:
     needs: [detect, lib]
@@ -152,7 +152,7 @@ jobs:
       - name: Run ${{ matrix.tool }} tests
         env:
           TOOL_MARKER: ${{ matrix.tool }}
-        run: uv run pytest -m "$TOOL_MARKER" --cov --cov-report=term-missing --cov-fail-under=50
+        run: uv run pytest -m "$TOOL_MARKER" --cov="src/tools/$TOOL_MARKER" --cov-report=term-missing --cov-fail-under=50
 
   # Single status check for branch protection / automerge
   test:
