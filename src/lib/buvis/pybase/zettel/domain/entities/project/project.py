@@ -23,7 +23,7 @@ from buvis.pybase.zettel.domain.entities.project.project_consistency_service imp
     ProjectZettelConsistencyService,
 )
 from buvis.pybase.zettel.domain.entities.project.services.log_parser import parse_log
-from buvis.pybase.zettel.domain.entities.project.services.migration.project_zettel_migration_service import (
+from buvis.pybase.zettel.domain.entities.project.project_migration_service import (
     ProjectZettelMigrationService,
 )
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
