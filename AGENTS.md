@@ -151,6 +151,7 @@ def create(ctx):
 - Mock subprocess calls heavily
 - Class-based test organization
 - **No unused imports/variables**
+- **Markers**: `pytest -m <tool>` runs one tool, `pytest -m lib` runs library tests, `pytest -m "not bim"` excludes a tool. Auto-applied by path in `tests/conftest.py` — no decorators needed. Scaffold registers markers for new tools.
 
 ## Installation
 
