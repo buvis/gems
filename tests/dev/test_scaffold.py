@@ -17,6 +17,7 @@ _to_snake = _mod._to_snake
 _to_pascal = _mod._to_pascal
 _to_kebab = _mod._to_kebab
 scaffold = _mod.scaffold
+main = _mod.main
 
 
 class TestNameConversions:
@@ -192,3 +193,26 @@ class TestScaffoldWiring:
         assert (tmp_path / "src" / "tools" / "my_app" / "cli.py").is_file()
         # No pyproject.toml created
         assert not (tmp_path / "pyproject.toml").exists()
+
+
+class TestMainCli:
+    @pytest.fixture
+    def repo(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "pyproject.toml").write_text(MINIMAL_PYPROJECT)
+        return tmp_path
+
+    def test_extras_preserves_version_specifiers_with_commas(self, repo, monkeypatch) -> None:
+        monkeypatch.setattr(
+            "sys.argv",
+            ["scaffold", "--name", "my-app", "--description", "Test", "--extras", "requests>=2,<3", "click>=8,<9"],
+        )
+        main()
+        text = (repo / "pyproject.toml").read_text()
+        assert 'my-app = ["requests>=2,<3", "click>=8,<9"]' in text
+
+    def test_no_extras_flag(self, repo, monkeypatch) -> None:
+        monkeypatch.setattr("sys.argv", ["scaffold", "--name", "my-app", "--description", "Test"])
+        main()
+        text = (repo / "pyproject.toml").read_text()
+        assert "my-app = [" not in text

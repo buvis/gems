@@ -328,10 +328,9 @@ def main() -> None:
     parser.add_argument("--name", required=True, help="Tool name (kebab-case or snake_case)")
     parser.add_argument("--description", required=True, help="Tool description")
     parser.add_argument("--multi-interface", action="store_true", help="Generate multi-interface layout")
-    parser.add_argument("--extras", help='Comma-separated optional deps (e.g. "requests>=2,<3")')
+    parser.add_argument("--extras", nargs="*", help='Optional deps (e.g. --extras "requests>=2,<3" "click>=8,<9")')
     args = parser.parse_args()
-    extras = [e.strip() for e in args.extras.split(",")] if args.extras else None
-    scaffold(args.name, args.description, multi_interface=args.multi_interface, extras=extras)
+    scaffold(args.name, args.description, multi_interface=args.multi_interface, extras=args.extras)
 
 
 if __name__ == "__main__":
