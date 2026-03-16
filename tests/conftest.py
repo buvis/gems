@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from pathlib import PurePosixPath
-
 import pytest
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Auto-apply markers based on test file path."""
     for item in items:
-        rel = PurePosixPath(item.fspath).as_posix()
+        rel = item.path.as_posix()
         if "/tests/tools/" in rel:
             parts = rel.split("/tests/tools/")[1].split("/")
             if parts:
