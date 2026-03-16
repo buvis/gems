@@ -999,7 +999,7 @@ pass <code class="docutils literal notranslate"><span class="pre">tool_name</spa
 
 <dl class="py property">
 <dt class="sig sig-object py" id="buvis.pybase.configuration.ConfigResolver.sources">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">sources</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#buvis.pybase.configuration.ConfigSource" title="buvis.pybase.configuration.source.ConfigSource"><span class="pre">ConfigSource</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#buvis.pybase.configuration.ConfigResolver.sources" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">sources</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#buvis.pybase.configuration.ConfigSource" title="buvis.pybase.configuration.resolver.ConfigSource"><span class="pre">ConfigSource</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#buvis.pybase.configuration.ConfigResolver.sources" title="Link to this definition"></a></dt>
 <dd><p>Get copy of source tracking dict.</p>
 </dd></dl>
 
@@ -1046,7 +1046,6 @@ pass <code class="docutils literal notranslate"><span class="pre">tool_name</spa
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.configuration.</span></span><span class="sig-name descname"><span class="pre">SafeLoggingMixin</span></span><a class="headerlink" href="#buvis.pybase.configuration.SafeLoggingMixin" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Mixin that sanitizes sensitive values in __repr__.</p>
-<p>Per PRD: “Sanitize before logging: Don’t log raw JSON (may contain secrets)”</p>
 <p>Masks values for fields whose names match sensitive patterns like
 ‘api_key’, ‘password’, ‘token’, ‘authorization’, etc.</p>
 </dd></dl>
@@ -1059,11 +1058,7 @@ pass <code class="docutils literal notranslate"><span class="pre">tool_name</spa
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.configuration.</span></span><span class="sig-name descname"><span class="pre">SecureSettingsMixin</span></span><a class="headerlink" href="#buvis.pybase.configuration.SecureSettingsMixin" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Mixin adding security validations for settings.</p>
-<p>Validates:</p>
-<ul class="simple">
-<li><p>JSON env values don’t exceed 64KB</p></li>
-<li><p>Complex types come from validated JSON, not eval()</p></li>
-</ul>
+<p>Validates JSON env values don’t exceed 64KB.</p>
 <p>Example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MySettings</span><span class="p">(</span><span class="n">SecureSettingsMixin</span><span class="p">,</span> <span class="n">BaseSettings</span><span class="p">):</span>
     <span class="o">...</span>
@@ -1073,17 +1068,6 @@ pass <code class="docutils literal notranslate"><span class="pre">tool_name</spa
 <dt class="sig sig-object py" id="buvis.pybase.configuration.SecureSettingsMixin.validate_json_sizes">
 <span class="sig-name descname"><span class="pre">validate_json_sizes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#buvis.pybase.configuration.SecureSettingsMixin.validate_json_sizes" title="Link to this definition"></a></dt>
 <dd><p>Check env var sizes before parsing.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>data</strong> – Input data dict from pydantic.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Unmodified data dict if all validations pass.</p>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ValueError</strong> – If any prefixed env var exceeds MAX_JSON_ENV_SIZE.</p>
-</dd>
-</dl>
 </dd></dl>
 
 </dd></dl>
