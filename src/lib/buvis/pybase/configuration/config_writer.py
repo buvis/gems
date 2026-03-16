@@ -70,7 +70,7 @@ class ConfigWriter:
 
     Provides static methods to introspect pydantic-settings models and
     generate documented YAML configuration templates. Follows the static
-    utility class pattern used by DirTree and StringOperator.
+    utility class pattern used by StringOperator.
 
     Example:
         >>> from buvis.pybase.configuration import ConfigWriter
