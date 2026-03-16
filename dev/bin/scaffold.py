@@ -251,6 +251,9 @@ def _wire_pyproject(
     _insert_sorted_line(lines, r"^\[project\.scripts\]$", script_line, r"^\[")
     _insert_sorted_line(lines, r"^packages\s*=\s*\[$", package_line, r"^\]$")
 
+    marker_line = f'    "{snake}: {snake} tests",'
+    _insert_sorted_line(lines, r"^markers\s*=\s*\[$", marker_line, r"^\]$")
+
     if extras:
         deps_str = ", ".join(f'"{d}"' for d in extras)
         extras_line = f'{kebab} = [{deps_str}]'
