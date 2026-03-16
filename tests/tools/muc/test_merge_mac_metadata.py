@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from buvis.pybase.filesystem.dir_tree.merge_mac_metadata import merge_mac_metadata
+from muc.shared.dir_tree.merge_mac_metadata import merge_mac_metadata
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
@@ -32,7 +32,7 @@ class TestMergeMacMetadata:
         apple_double = tmp_path / "._photo.jpg"
         apple_double.write_bytes(b"\x00\x05\x16\x07resource")
 
-        with patch("buvis.pybase.filesystem.dir_tree.merge_mac_metadata.xattr") as mock_xattr:
+        with patch("muc.shared.dir_tree.merge_mac_metadata.xattr") as mock_xattr:
             merge_mac_metadata(tmp_path)
             mock_xattr.setxattr.assert_called_once()
             assert not apple_double.exists()
@@ -44,7 +44,7 @@ class TestMergeMacMetadata:
         apple_double = tmp_path / "._photo.jpg"
         apple_double.write_bytes(b"\x00\x05\x16\x07")
 
-        with patch("buvis.pybase.filesystem.dir_tree.merge_mac_metadata.xattr") as mock_xattr:
+        with patch("muc.shared.dir_tree.merge_mac_metadata.xattr") as mock_xattr:
             mock_xattr.setxattr.side_effect = OSError("xattr failed")
             merge_mac_metadata(tmp_path)
             assert apple_double.exists()

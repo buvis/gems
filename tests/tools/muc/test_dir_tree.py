@@ -4,7 +4,7 @@ import platform
 from pathlib import Path
 
 import pytest
-from buvis.pybase.filesystem import DirTree
+from muc.shared.dir_tree import DirTree
 
 
 class TestCountFiles:

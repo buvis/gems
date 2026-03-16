@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from buvis.pybase.filesystem.dir_tree.safe_rglob import is_safe_path, safe_rglob
+from muc.shared.dir_tree.safe_rglob import is_safe_path, safe_rglob
 
 
 class TestIsSafePath:
