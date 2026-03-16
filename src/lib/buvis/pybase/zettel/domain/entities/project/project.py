@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from functools import cached_property
 
-from buvis.pybase.zettel.domain.entities.project.services.consistency.project_zettel_consistency_service import (
+from buvis.pybase.zettel.domain.entities.project.project_consistency_service import (
     ProjectZettelConsistencyService,
 )
 from buvis.pybase.zettel.domain.entities.project.services.log_parser import parse_log
