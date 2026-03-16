@@ -87,6 +87,24 @@ packages = [
 testpaths = ["tests"]
 strict_markers = true
 addopts = ["--import-mode=importlib"]
+markers = [
+    "bim: bim tests",
+    "dot: dot tests",
+    "fctracker: fctracker tests",
+    "fren: fren tests",
+    "hello_world: hello_world tests",
+    "lib: library tests",
+    "morph: morph tests",
+    "muc: muc tests",
+    "netscan: netscan tests",
+    "outlookctl: outlookctl tests",
+    "pinger: pinger tests",
+    "puc: puc tests",
+    "readerctl: readerctl tests",
+    "sysup: sysup tests",
+    "vuc: vuc tests",
+    "zseq: zseq tests",
+]
 
 [tool.coverage.run]
 source = ["src/lib", "src/tools"]
