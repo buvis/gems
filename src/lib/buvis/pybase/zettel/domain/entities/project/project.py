@@ -7,10 +7,10 @@ from functools import cached_property
 from buvis.pybase.zettel.domain.entities.project.project_consistency_service import (
     ProjectZettelConsistencyService,
 )
-from buvis.pybase.zettel.domain.entities.project.services.log_parser import parse_log
 from buvis.pybase.zettel.domain.entities.project.project_migration_service import (
     ProjectZettelMigrationService,
 )
+from buvis.pybase.zettel.domain.entities.project.services.log_parser import parse_log
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.value_objects.log_entry import LogEntry
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData

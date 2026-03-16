@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 from bim.cli import cli
-from bim.shared.import_helpers import resolve_output_path
 from bim.params.create_note import CreateNoteParams
 from bim.params.delete_note import DeleteNoteParams
 from bim.params.format_note import FormatNoteParams
@@ -12,6 +11,7 @@ from bim.params.import_note import ImportNoteParams
 from bim.params.query import QueryParams
 from bim.params.show_note import ShowNoteParams
 from bim.params.sync_note import SyncNoteParams
+from bim.shared.import_helpers import resolve_output_path
 from buvis.pybase.result import CommandResult
 
 
