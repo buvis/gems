@@ -29,8 +29,8 @@ from __future__ import annotations
 
 import logging
 import os
-from enum import Enum
 import re
+from enum import Enum
 from pathlib import Path
 from typing import Any, TypeVar
 

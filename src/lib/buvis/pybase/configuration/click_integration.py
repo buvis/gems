@@ -16,7 +16,6 @@ from pydantic.fields import FieldInfo
 from .resolver import ConfigResolver
 from .settings import GlobalSettings
 
-
 F = TypeVar("F", bound=Callable[..., Any])
 T = TypeVar("T", bound="BaseModel")
 
