@@ -206,7 +206,81 @@ TEST_TEMPLATES = {
 }
 
 
-def scaffold(name: str, description: str, *, multi_interface: bool = False) -> None:
+def _insert_sorted_line(lines: list[str], section_re: str, new_line: str, end_re: str) -> bool:
+    """Insert new_line alphabetically within a TOML section. Return True if inserted."""
+    in_section = False
+    insert_idx = -1
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if re.match(section_re, stripped):
+            in_section = True
+            continue
+        if in_section:
+            if re.match(end_re, stripped):
+                # Insert before the closing marker
+                insert_idx = i
+                break
+            # Compare alphabetically to find insertion point
+            if stripped and new_line.strip() < stripped:
+                insert_idx = i
+                break
+    if insert_idx == -1 and in_section:
+        return False
+    if insert_idx >= 0:
+        lines.insert(insert_idx, new_line)
+        return True
+    return False
+
+
+def _wire_pyproject(
+    snake: str, kebab: str, *, multi_interface: bool, extras: list[str] | None,
+) -> None:
+    """Add tool entries to pyproject.toml if it exists in cwd."""
+    pyproject = Path("pyproject.toml")
+    if not pyproject.exists():
+        print("  Warning: pyproject.toml not found, skipping auto-wiring")
+        return
+
+    text = pyproject.read_text()
+    lines = text.splitlines()
+
+    cli_module = f"{snake}.adapters.cli" if multi_interface else f"{snake}.cli"
+    script_line = f'{kebab} = "{cli_module}:cli"'
+    package_line = f'  "src/tools/{snake}",'
+
+    _insert_sorted_line(lines, r"^\[project\.scripts\]$", script_line, r"^\[")
+    _insert_sorted_line(lines, r"^packages\s*=\s*\[$", package_line, r"^\]$")
+
+    if extras:
+        deps_str = ", ".join(f'"{d}"' for d in extras)
+        extras_line = f'{kebab} = [{deps_str}]'
+        # Insert before the 'all' extra line
+        for i, line in enumerate(lines):
+            if line.strip().startswith("all = "):
+                lines.insert(i, extras_line)
+                break
+
+        # Update the 'all' extra to include new tool
+        for i, line in enumerate(lines):
+            if line.strip().startswith("all = "):
+                lines[i] = re.sub(
+                    r'(all = \["buvis-gems\[)([^]]*)',
+                    lambda m: m.group(1) + ",".join(sorted([*m.group(2).split(","), kebab])),
+                    line,
+                )
+                break
+
+    pyproject.write_text("\n".join(lines) + "\n")
+    print(f"  Wired {kebab} into pyproject.toml")
+
+
+def scaffold(
+    name: str,
+    description: str,
+    *,
+    multi_interface: bool = False,
+    extras: list[str] | None = None,
+) -> None:
     snake = _to_snake(name)
     pascal = _to_pascal(name)
     kebab = _to_kebab(name)
@@ -240,12 +314,13 @@ def scaffold(name: str, description: str, *, multi_interface: bool = False) -> N
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(template.format(**ctx) if template else "")
 
+    _wire_pyproject(snake, kebab, multi_interface=multi_interface, extras=extras)
+
     print(f"Created tool skeleton: {tool_dir}")
     print(f"Created test skeleton: {test_dir}")
-    print(f"\nNext steps:")
-    print(f'  1. Add entry point to pyproject.toml: {kebab} = "{snake}.cli:cli"')
-    print("  2. Edit commands/example.py or add new commands")
-    print(f"  3. Run: uv run {kebab} --help")
+    print("\nNext steps:")
+    print("  1. Edit commands/example.py or add new commands")
+    print(f"  2. Run: uv run {kebab} --help")
 
 
 def main() -> None:
@@ -253,8 +328,10 @@ def main() -> None:
     parser.add_argument("--name", required=True, help="Tool name (kebab-case or snake_case)")
     parser.add_argument("--description", required=True, help="Tool description")
     parser.add_argument("--multi-interface", action="store_true", help="Generate multi-interface layout")
+    parser.add_argument("--extras", help='Comma-separated optional deps (e.g. "requests>=2,<3")')
     args = parser.parse_args()
-    scaffold(args.name, args.description, multi_interface=args.multi_interface)
+    extras = [e.strip() for e in args.extras.split(",")] if args.extras else None
+    scaffold(args.name, args.description, multi_interface=args.multi_interface, extras=extras)
 
 
 if __name__ == "__main__":

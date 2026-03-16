@@ -57,6 +57,24 @@ class TestNameConversions:
         assert _to_kebab(input_name) == expected
 
 
+MINIMAL_PYPROJECT = """\
+[project.scripts]
+alpha = "alpha.cli:cli"
+zulu = "zulu.cli:cli"
+
+[project.optional-dependencies]
+alpha = ["some-dep>=1,<2"]
+all = ["buvis-gems[alpha]"]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "src/lib/buvis",
+  "src/tools/alpha",
+  "src/tools/zulu",
+]
+"""
+
+
 class TestScaffold:
     def test_creates_simple_tool(self, tmp_path, monkeypatch) -> None:
         monkeypatch.chdir(tmp_path)
@@ -106,3 +124,71 @@ class TestScaffold:
         settings = (tmp_path / "src" / "tools" / "my_app" / "settings.py").read_text()
         assert 'env_prefix="BUVIS_MY_APP_"' in settings
         assert "class MyAppSettings" in settings
+
+
+class TestScaffoldWiring:
+    @pytest.fixture
+    def repo(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "pyproject.toml").write_text(MINIMAL_PYPROJECT)
+        return tmp_path
+
+    def test_adds_scripts_entry(self, repo) -> None:
+        scaffold("my-app", "Test tool")
+        text = (repo / "pyproject.toml").read_text()
+        assert 'my-app = "my_app.cli:cli"' in text
+
+    def test_adds_packages_entry(self, repo) -> None:
+        scaffold("my-app", "Test tool")
+        text = (repo / "pyproject.toml").read_text()
+        assert '"src/tools/my_app",' in text
+
+    def test_multi_interface_scripts_entry(self, repo) -> None:
+        scaffold("my-app", "Test tool", multi_interface=True)
+        text = (repo / "pyproject.toml").read_text()
+        assert 'my-app = "my_app.adapters.cli:cli"' in text
+
+    def test_entries_sorted_alphabetically(self, repo) -> None:
+        scaffold("bravo", "B tool")
+        text = (repo / "pyproject.toml").read_text()
+        lines = text.splitlines()
+        scripts_lines = []
+        in_scripts = False
+        for line in lines:
+            if line.strip() == "[project.scripts]":
+                in_scripts = True
+                continue
+            if in_scripts:
+                if line.strip().startswith("["):
+                    break
+                if "=" in line:
+                    scripts_lines.append(line.strip())
+        keys = [entry.split("=")[0].strip() for entry in scripts_lines]
+        assert keys == sorted(keys), f"scripts not sorted: {keys}"
+
+    def test_extras_adds_optional_deps(self, repo) -> None:
+        scaffold("my-app", "Test tool", extras=["requests>=2,<3"])
+        text = (repo / "pyproject.toml").read_text()
+        assert 'my-app = ["requests>=2,<3"]' in text
+
+    def test_extras_updates_all(self, repo) -> None:
+        scaffold("my-app", "Test tool", extras=["requests>=2,<3"])
+        text = (repo / "pyproject.toml").read_text()
+        all_line = next(line for line in text.splitlines() if line.strip().startswith("all = "))
+        assert "my-app" in all_line
+
+    def test_no_extras_skips_optional_deps(self, repo) -> None:
+        scaffold("my-app", "Test tool")
+        text = (repo / "pyproject.toml").read_text()
+        assert "my-app = [" not in text
+        # all extra unchanged
+        all_line = next(line for line in text.splitlines() if line.strip().startswith("all = "))
+        assert "my-app" not in all_line
+
+    def test_no_pyproject_skips_wiring(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        scaffold("my-app", "Test tool")
+        # Tool files still created
+        assert (tmp_path / "src" / "tools" / "my_app" / "cli.py").is_file()
+        # No pyproject.toml created
+        assert not (tmp_path / "pyproject.toml").exists()
