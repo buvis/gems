@@ -33,7 +33,7 @@ from .loader import ConfigurationLoader
 from .loader import get_config_dirs
 from .resolver import ConfigResolver
 from .settings import GlobalSettings, ToolSettings
-from .source import ConfigSource
+from .resolver import ConfigSource
 from .validators import (
     MAX_JSON_ENV_SIZE,
     MAX_NESTING_DEPTH,

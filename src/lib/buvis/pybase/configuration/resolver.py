@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import os
+from enum import Enum
 import re
 from pathlib import Path
 from typing import Any, TypeVar
@@ -39,10 +40,18 @@ from pydantic_settings import BaseSettings
 
 from .exceptions import ConfigurationError
 from .loader import ConfigurationLoader
-from .source import ConfigSource
 from .validators import is_sensitive_field
 
-__all__ = ["ConfigResolver"]
+__all__ = ["ConfigResolver", "ConfigSource"]
+
+
+class ConfigSource(Enum):
+    """Source from which a configuration value was obtained."""
+
+    DEFAULT = "default"
+    YAML = "yaml"
+    ENV = "env"
+    CLI = "cli"
 
 logger = logging.getLogger(__name__)
 
