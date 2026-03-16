@@ -51,10 +51,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#api-reference">API Reference</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#dirtree">DirTree</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.filesystem.DirTree"><code class="docutils literal notranslate"><span class="pre">DirTree</span></code></a></li>
-</ul>
-</li>
 <li class="toctree-l3"><a class="reference internal" href="#filemetadatareader">FileMetadataReader</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.filesystem.FileMetadataReader"><code class="docutils literal notranslate"><span class="pre">FileMetadataReader</span></code></a></li>
 </ul>
@@ -62,7 +58,6 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#dirtree-example">DirTree Example</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#filemetadatareader-example">FileMetadataReader Example</a></li>
 </ul>
 </li>
@@ -107,7 +102,7 @@
              
   <section id="filesystem">
 <h1>Filesystem<a class="headerlink" href="#filesystem" title="Link to this heading"></a></h1>
-<p>Utilities for directory traversal, file metadata, and batch operations.</p>
+<p>Utilities for file metadata operations.</p>
 <nav class="contents local" id="table-of-contents">
 <p class="topic-title">Table of Contents</p>
 <ul class="simple">
@@ -115,160 +110,40 @@
 <li><p><a class="reference internal" href="#quick-start" id="id2">Quick Start</a></p></li>
 <li><p><a class="reference internal" href="#api-reference" id="id3">API Reference</a></p>
 <ul>
-<li><p><a class="reference internal" href="#dirtree" id="id4">DirTree</a></p></li>
-<li><p><a class="reference internal" href="#filemetadatareader" id="id5">FileMetadataReader</a></p></li>
+<li><p><a class="reference internal" href="#filemetadatareader" id="id4">FileMetadataReader</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#examples" id="id6">Examples</a></p>
+<li><p><a class="reference internal" href="#examples" id="id5">Examples</a></p>
 <ul>
-<li><p><a class="reference internal" href="#dirtree-example" id="id7">DirTree Example</a></p></li>
-<li><p><a class="reference internal" href="#filemetadatareader-example" id="id8">FileMetadataReader Example</a></p></li>
+<li><p><a class="reference internal" href="#filemetadatareader-example" id="id6">FileMetadataReader Example</a></p></li>
 </ul>
 </li>
 </ul>
 </nav>
 <section id="overview">
 <h2><a class="toc-backref" href="#id1" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
-<p><cite>DirTree</cite> and <cite>FileMetadataReader</cite> are static utility classes under
-<cite>buvis.pybase.filesystem</cite>. Each exposes class-level helpers—no
-instantiation is required—to inspect directory depth, prune files, or read
-timestamps. DirTree bundles cleanup routines (counting files, normalizing
-extensions, removing empty folders, and merging Mac metadata), while
-FileMetadataReader surfaces creation and first-commit datetimes with
-platform-aware fallbacks.</p>
+<p><cite>FileMetadataReader</cite> is a static utility class under
+<cite>buvis.pybase.filesystem</cite>. It surfaces creation and first-commit datetimes
+with platform-aware fallbacks. No instantiation is required.</p>
 </section>
 <section id="quick-start">
 <h2><a class="toc-backref" href="#id2" role="doc-backlink">Quick Start</a><a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirTree</span><span class="p">,</span> <span class="n">FileMetadataReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileMetadataReader</span>
 
 <span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>
 
-<span class="c1"># Static utilities: no DirTree() or FileMetadataReader() instantiation.</span>
-<span class="n">total_files</span> <span class="o">=</span> <span class="n">DirTree</span><span class="o">.</span><span class="n">count_files</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;src&quot;</span><span class="p">)</span>
 <span class="n">creation_dt</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_creation_datetime</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;pyproject.toml&quot;</span><span class="p">)</span>
 <span class="n">first_commit</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_first_commit_datetime</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;pyproject.toml&quot;</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="n">total_files</span><span class="p">,</span> <span class="n">creation_dt</span><span class="p">,</span> <span class="n">first_commit</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">creation_dt</span><span class="p">,</span> <span class="n">first_commit</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
 <section id="api-reference">
 <h2><a class="toc-backref" href="#id3" role="doc-backlink">API Reference</a><a class="headerlink" href="#api-reference" title="Link to this heading"></a></h2>
-<section id="dirtree">
-<h3><a class="toc-backref" href="#id4" role="doc-backlink">DirTree</a><a class="headerlink" href="#dirtree" title="Link to this heading"></a></h3>
-<dl class="py class">
-<dt class="sig sig-object py" id="buvis.pybase.filesystem.DirTree">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.filesystem.</span></span><span class="sig-name descname"><span class="pre">DirTree</span></span><a class="headerlink" href="#buvis.pybase.filesystem.DirTree" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Utility with static directory operations.</p>
-<p>Provides static methods for counting files, cleanup routines, and normalization
-helpers. No instantiation is required.</p>
-<p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirTree</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">count</span> <span class="o">=</span> <span class="n">DirTree</span><span class="o">.</span><span class="n">count_files</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s1">&#39;/data&#39;</span><span class="p">))</span>
-</pre></div>
-</div>
-<dl class="py method">
-<dt class="sig sig-object py" id="buvis.pybase.filesystem.DirTree.count_files">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">count_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#buvis.pybase.filesystem.DirTree.count_files" title="Link to this definition"></a></dt>
-<dd><p>Count the number of files in the directory and its subdirectories.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>directory</strong> – Path to the directory to process.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Number of files in the directory and its subdirectories.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="buvis.pybase.filesystem.DirTree.delete_by_extension">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">delete_by_extension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extensions_to_delete</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.filesystem.DirTree.delete_by_extension" title="Link to this definition"></a></dt>
-<dd><p>Delete files with specific extensions in the given directory.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>directory</strong> – Path to the directory to process.</p></li>
-<li><p><strong>extensions_to_delete</strong> – List of file extensions to delete.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>None. The function modifies the directory in place.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="buvis.pybase.filesystem.DirTree.get_max_depth">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_max_depth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#buvis.pybase.filesystem.DirTree.get_max_depth" title="Link to this definition"></a></dt>
-<dd><p>Determine the maximum depth of the directory tree.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>directory</strong> – Path to the directory to process.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Maximum depth of the directory tree.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="buvis.pybase.filesystem.DirTree.merge_mac_metadata">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">merge_mac_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.filesystem.DirTree.merge_mac_metadata" title="Link to this definition"></a></dt>
-<dd><p>Restore macOS metadata from AppleDouble helper files.</p>
-<p>Walks the directory tree for AppleDouble files (._*) and, when not on
-Windows, applies their extended attributes back to the corresponding
-originals before cleaning up any orphaned helper files. This serves as
-a post-copy cleanup for macOS metadata files.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>directory</strong> – Directory containing files and AppleDouble metadata.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="buvis.pybase.filesystem.DirTree.normalize_file_extensions">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">normalize_file_extensions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.filesystem.DirTree.normalize_file_extensions" title="Link to this definition"></a></dt>
-<dd><p>Normalize file extensions in the given directory:
-1) lowercase the extensions
-2) replace equivalents</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>directory</strong> – Path to the directory to process.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>None. The function modifies the directory in place.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="buvis.pybase.filesystem.DirTree.remove_empty_directories">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">remove_empty_directories</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#buvis.pybase.filesystem.DirTree.remove_empty_directories" title="Link to this definition"></a></dt>
-<dd><p>Recursively remove all empty directories.</p>
-<p>Traverses bottom-up to remove directories that become empty
-after their children are removed.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>directory</strong> – Root directory to clean.</p>
-</dd>
-</dl>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Modifies the directory tree in place. Non-empty directories
-and files are preserved.</p>
-</div>
-</dd></dl>
-
-</dd></dl>
-
-</section>
 <section id="filemetadatareader">
-<h3><a class="toc-backref" href="#id5" role="doc-backlink">FileMetadataReader</a><a class="headerlink" href="#filemetadatareader" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">FileMetadataReader</a><a class="headerlink" href="#filemetadatareader" title="Link to this heading"></a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="buvis.pybase.filesystem.FileMetadataReader">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">buvis.pybase.filesystem.</span></span><span class="sig-name descname"><span class="pre">FileMetadataReader</span></span><a class="headerlink" href="#buvis.pybase.filesystem.FileMetadataReader" title="Link to this definition"></a></dt>
@@ -327,32 +202,9 @@ platform specific (Windows uses <cite>st_ctime</cite> while Unix systems prefer
 </section>
 </section>
 <section id="examples">
-<h2><a class="toc-backref" href="#id6" role="doc-backlink">Examples</a><a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
-<section id="dirtree-example">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">DirTree Example</a><a class="headerlink" href="#dirtree-example" title="Link to this heading"></a></h3>
-<p>Use <cite>DirTree</cite> to profile and clean a release artifact directory before publishing.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirTree</span>
-
-<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>
-<span class="n">artifacts_dir</span> <span class="o">=</span> <span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;dist&quot;</span> <span class="o">/</span> <span class="s2">&quot;artifacts&quot;</span>
-
-<span class="n">file_count</span> <span class="o">=</span> <span class="n">DirTree</span><span class="o">.</span><span class="n">count_files</span><span class="p">(</span><span class="n">artifacts_dir</span><span class="p">)</span>
-<span class="n">max_depth</span> <span class="o">=</span> <span class="n">DirTree</span><span class="o">.</span><span class="n">get_max_depth</span><span class="p">(</span><span class="n">artifacts_dir</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Artifact tree: </span><span class="si">{</span><span class="n">file_count</span><span class="si">}</span><span class="s2"> files across </span><span class="si">{</span><span class="n">max_depth</span><span class="si">}</span><span class="s2"> levels.&quot;</span><span class="p">)</span>
-
-<span class="n">DirTree</span><span class="o">.</span><span class="n">delete_by_extension</span><span class="p">(</span><span class="n">artifacts_dir</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;.tmp&quot;</span><span class="p">,</span> <span class="s2">&quot;.log&quot;</span><span class="p">])</span>
-<span class="n">DirTree</span><span class="o">.</span><span class="n">normalize_file_extensions</span><span class="p">(</span><span class="n">artifacts_dir</span><span class="p">)</span>
-<span class="n">DirTree</span><span class="o">.</span><span class="n">remove_empty_directories</span><span class="p">(</span><span class="n">artifacts_dir</span><span class="p">)</span>
-<span class="n">DirTree</span><span class="o">.</span><span class="n">merge_mac_metadata</span><span class="p">(</span><span class="n">artifacts_dir</span><span class="p">)</span>
-
-<span class="c1"># The cleanup routine removes stray caches, coerces extensions to the</span>
-<span class="c1"># project standard, prunes empty folders, and restores macOS metadata.</span>
-</pre></div>
-</div>
-</section>
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">Examples</a><a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
 <section id="filemetadatareader-example">
-<h3><a class="toc-backref" href="#id8" role="doc-backlink">FileMetadataReader Example</a><a class="headerlink" href="#filemetadatareader-example" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">FileMetadataReader Example</a><a class="headerlink" href="#filemetadatareader-example" title="Link to this heading"></a></h3>
 <p><cite>FileMetadataReader</cite> can guard metadata-dependent builds while accounting for
 non-git working trees.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
