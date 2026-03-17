@@ -174,7 +174,7 @@ class ConfigResolver:
 
     def _load_yaml(
         self,
-        tool_name: str,
+        tool_name: str | None,
         config_dir: str | None,
         config_path: Path | None,
     ) -> dict[str, Any]:

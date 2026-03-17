@@ -1,0 +1,19 @@
+[tool]
+name = "pidash"
+display_name = "PI Dashboard"
+module_name = "pidash"
+description = "Read-only TUI dashboard for autopilot PRD cycle progress"
+category = "dev"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = true
+web = false
+
+[tool.commands]
+watch = "Watch PRD cycle state and display dashboard"
+
+[tool.requirements]
+python = ">=3.10"
+extras = ["pidash"]

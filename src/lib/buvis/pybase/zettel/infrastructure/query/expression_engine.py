@@ -178,29 +178,26 @@ def _eval_name(node: ast.AST, variables: dict[str, Any]) -> Any:
     raise ValueError(f"Unknown variable: {name}")
 
 
-def _eval_binop(node: ast.AST, variables: dict[str, Any]) -> Any:
-    n = node  # type: ignore[assignment]
-    left = _eval_node(n.left, variables)
-    right = _eval_node(n.right, variables)
-    op_fn = _SAFE_BINOPS.get(type(n.op))
+def _eval_binop(node: ast.BinOp, variables: dict[str, Any]) -> Any:
+    left = _eval_node(node.left, variables)
+    right = _eval_node(node.right, variables)
+    op_fn = _SAFE_BINOPS.get(type(node.op))
     if op_fn is None:
-        raise ValueError(f"Unsupported binary op: {type(n.op).__name__}")
+        raise ValueError(f"Unsupported binary op: {type(node.op).__name__}")
     return op_fn(left, right)
 
 
-def _eval_unaryop(node: ast.AST, variables: dict[str, Any]) -> Any:
-    n = node  # type: ignore[assignment]
-    operand = _eval_node(n.operand, variables)
-    unary_fn = _SAFE_UNARYOPS.get(type(n.op))
+def _eval_unaryop(node: ast.UnaryOp, variables: dict[str, Any]) -> Any:
+    operand = _eval_node(node.operand, variables)
+    unary_fn = _SAFE_UNARYOPS.get(type(node.op))
     if unary_fn is None:
-        raise ValueError(f"Unsupported unary op: {type(n.op).__name__}")
+        raise ValueError(f"Unsupported unary op: {type(node.op).__name__}")
     return unary_fn(operand)
 
 
-def _eval_compare(node: ast.AST, variables: dict[str, Any]) -> Any:
-    n = node  # type: ignore[assignment]
-    left = _eval_node(n.left, variables)
-    for op, comparator in zip(n.ops, n.comparators):
+def _eval_compare(node: ast.Compare, variables: dict[str, Any]) -> Any:
+    left = _eval_node(node.left, variables)
+    for op, comparator in zip(node.ops, node.comparators):
         right = _eval_node(comparator, variables)
         cmp_fn = _SAFE_CMPOPS.get(type(op))
         if cmp_fn is None:
@@ -211,34 +208,30 @@ def _eval_compare(node: ast.AST, variables: dict[str, Any]) -> Any:
     return True
 
 
-def _eval_boolop(node: ast.AST, variables: dict[str, Any]) -> Any:
-    n = node  # type: ignore[assignment]
-    values = [_eval_node(v, variables) for v in n.values]
-    bool_fn = _SAFE_BOOLOPS.get(type(n.op))
+def _eval_boolop(node: ast.BoolOp, variables: dict[str, Any]) -> Any:
+    values = [_eval_node(v, variables) for v in node.values]
+    bool_fn = _SAFE_BOOLOPS.get(type(node.op))
     if bool_fn is None:
-        raise ValueError(f"Unsupported bool op: {type(n.op).__name__}")
+        raise ValueError(f"Unsupported bool op: {type(node.op).__name__}")
     return bool_fn(values)
 
 
-def _eval_call(node: ast.AST, variables: dict[str, Any]) -> Any:
-    n = node  # type: ignore[assignment]
-    func = _eval_node(n.func, variables)
+def _eval_call(node: ast.Call, variables: dict[str, Any]) -> Any:
+    func = _eval_node(node.func, variables)
     if not callable(func):
         raise ValueError(f"Not callable: {func}")
-    args = [_eval_node(a, variables) for a in n.args]
+    args = [_eval_node(a, variables) for a in node.args]
     return func(*args)
 
 
-def _eval_ifexp(node: ast.AST, variables: dict[str, Any]) -> Any:
-    n = node  # type: ignore[assignment]
-    test = _eval_node(n.test, variables)
-    return _eval_node(n.body, variables) if test else _eval_node(n.orelse, variables)
+def _eval_ifexp(node: ast.IfExp, variables: dict[str, Any]) -> Any:
+    test = _eval_node(node.test, variables)
+    return _eval_node(node.body, variables) if test else _eval_node(node.orelse, variables)
 
 
-def _eval_subscript(node: ast.AST, variables: dict[str, Any]) -> Any:
-    n = node  # type: ignore[assignment]
-    value = _eval_node(n.value, variables)
-    sl = n.slice
+def _eval_subscript(node: ast.Subscript, variables: dict[str, Any]) -> Any:
+    value = _eval_node(node.value, variables)
+    sl = node.slice
     if isinstance(sl, ast.Slice):
         lower = _eval_node(sl.lower, variables) if sl.lower else None
         upper = _eval_node(sl.upper, variables) if sl.upper else None
@@ -251,7 +244,7 @@ def _eval_sequence(node: ast.AST, variables: dict[str, Any]) -> Any:
     return [_eval_node(e, variables) for e in node.elts]  # type: ignore[attr-defined]
 
 
-_NODE_HANDLERS: dict[type, Callable[[ast.AST, dict[str, Any]], Any]] = {
+_NODE_HANDLERS: dict[type, Callable[..., Any]] = {
     ast.Constant: _eval_constant,
     ast.Name: _eval_name,
     ast.BinOp: _eval_binop,
