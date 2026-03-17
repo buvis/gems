@@ -154,4 +154,4 @@ class PidashApp(App[None]):
     def _refresh_all(self) -> None:
         for widget in self.query(Static):
             if hasattr(widget, "refresh_state"):
-                widget.refresh_state(self._state)  # type: ignore[attr-defined]
+                widget.refresh_state(self._state)
