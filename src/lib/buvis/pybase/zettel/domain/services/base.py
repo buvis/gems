@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 Fixer = Callable[[ZettelData], None]
 
 
-def apply_fixers(zettel_data: ZettelData, fixers: list[Fixer]) -> None:
+def apply_fixers(zettel_data: ZettelData, fixers: Sequence[Fixer]) -> None:
     """Run fixers in order, modifying zettel_data in place."""
     for fixer in fixers:
         fixer(zettel_data)
@@ -17,7 +17,7 @@ def apply_fixers(zettel_data: ZettelData, fixers: list[Fixer]) -> None:
 
 def apply_defaults(
     zettel_data: ZettelData,
-    defaults: dict[str, Fixer],
+    defaults: Mapping[str, Fixer],
 ) -> None:
     """Apply fixers only when the corresponding metadata key is None."""
     for key, fixer in defaults.items():
