@@ -55,7 +55,7 @@ class TestHeaderBar:
         assert len(parts) == 4
         time_part = parts[3].strip()
         assert time_part.startswith("updated ")
-        time_str = time_part[len("updated "):]
+        time_str = time_part[len("updated ") :]
         assert len(time_str) == 8
         assert time_str[2] == ":" and time_str[5] == ":"
 
