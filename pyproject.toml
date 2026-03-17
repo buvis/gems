@@ -88,6 +88,7 @@ packages = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src/tools", "src/lib"]
 strict_markers = true
 addopts = ["--import-mode=importlib"]
 markers = [
