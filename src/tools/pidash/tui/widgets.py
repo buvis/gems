@@ -39,7 +39,7 @@ class ProgressSection:
         if state is None or state.tasks_total == 0:
             return ""
         bar_len = 30
-        filled = round(bar_len * state.tasks_completed / state.tasks_total)
+        filled = min(round(bar_len * state.tasks_completed / state.tasks_total), bar_len)
         bar = "█" * filled + "░" * (bar_len - filled)
         return f"Tasks {bar} {state.tasks_completed}/{state.tasks_total}"
 
@@ -81,7 +81,7 @@ class DecisionPanel:
             text.append(f"AUTO {d.description}\n", style=color)
         for d in state.deferred_decisions:
             color = self._severity_colors.get(d.severity, "white")
-            text.append(f"⚠ PENDING: {d.description}\n", style=color)
+            text.append(f"⚠ PENDING: {d.description}\n", style=f"bold {color}")
         return text
 
 
