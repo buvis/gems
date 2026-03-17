@@ -13,7 +13,8 @@ import click
 )
 def cli(project_path: str) -> None:
     try:
-        from textual import __version__ as _  # noqa: F401
+        from textual import __version__ as _t  # noqa: F401
+        from watchfiles import __version__ as _w  # noqa: F401
     except ImportError:
         click.echo("pidash requires the 'pidash' extra: pip install buvis-gems[pidash]")
         raise SystemExit(1)

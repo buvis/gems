@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 from textual.message import Message
@@ -30,7 +31,7 @@ def _read_and_post(app: object, state_file: Path) -> None:
         logger.debug("Failed to read state file", exc_info=True)
 
 
-def watch_state_file(app: object, project_path: Path) -> None:
+def watch_state_file(app: object, project_path: Path, stop_event: threading.Event | None = None) -> None:
     """Thread worker: watches for prd-cycle.json changes.
 
     Posts StateChanged or StateFileDeleted messages to the app.
@@ -45,13 +46,17 @@ def watch_state_file(app: object, project_path: Path) -> None:
     worker = get_current_worker()
     state_file = project_path / STATE_DIR / STATE_FILENAME
 
+    if stop_event is None:
+        stop_event = threading.Event()
+
     # If state file already exists, read it immediately
     if state_file.is_file():
         _read_and_post(app, state_file)
 
     # Always watch project root — catches .local/ creation and file writes
-    for changes in watch(project_path, stop_event=None, recursive=True):
+    for changes in watch(project_path, stop_event=stop_event, recursive=True):
         if worker.is_cancelled:
+            stop_event.set()
             break
 
         for change_type, changed_path in changes:

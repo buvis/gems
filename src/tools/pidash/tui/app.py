@@ -8,7 +8,7 @@ from textual.containers import Horizontal
 from textual.widgets import Static
 
 from pidash.tui.state import PrdState, parse_state
-from pidash.tui.watcher import StateChanged, StateFileDeleted, watch_state_file
+from pidash.tui.watcher import STATE_DIR, STATE_FILENAME, StateChanged, StateFileDeleted, watch_state_file
 from pidash.tui.widgets import (
     CyclePanel,
     DecisionPanel,
@@ -139,13 +139,13 @@ class PidashApp(App[None]):
         self._refresh_all()
 
     def action_refresh(self) -> None:
-        state_file = self._project_path / ".local" / "prd-cycle.json"
-        if state_file.is_file():
+        state_file = self._project_path / STATE_DIR / STATE_FILENAME
+        try:
             raw = state_file.read_text(encoding="utf-8")
             parsed = parse_state(raw)
             if parsed is not None:
                 self._state = parsed
-        else:
+        except OSError:
             self._state = None
         self._refresh_all()
 

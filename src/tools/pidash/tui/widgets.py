@@ -56,8 +56,8 @@ class TaskPanel:
 
 class DecisionPanel:
     _severity_colors: dict[str, str] = {
-        "critical": "bold red",
-        "high": "red",
+        "critical": "red",
+        "high": "orange1",
         "medium": "yellow",
         "low": "green",
     }
@@ -77,10 +77,10 @@ class DecisionPanel:
         if state is None:
             return text
         for d in state.autonomous_decisions:
-            color = self._severity_colors.get(d.severity, "white")
+            color = self._severity_colors.get(d.severity, "dim")
             text.append(f"AUTO {d.description}\n", style=color)
         for d in state.deferred_decisions:
-            color = self._severity_colors.get(d.severity, "white")
+            color = self._severity_colors.get(d.severity, "red")
             text.append(f"⚠ PENDING: {d.description}\n", style=f"bold {color}")
         return text
 
