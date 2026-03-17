@@ -26,7 +26,7 @@ class StateFileDeleted(Message):
 def _read_and_post(app: object, state_file: Path) -> None:
     try:
         raw = state_file.read_text(encoding="utf-8")
-        app.post_message(StateChanged(raw))  # type: ignore[union-attr]
+        app.post_message(StateChanged(raw))  # type: ignore[attr-defined]
     except OSError:
         logger.debug("Failed to read state file", exc_info=True)
 
@@ -64,6 +64,6 @@ def watch_state_file(app: object, project_path: Path, stop_event: threading.Even
                 continue
 
             if change_type == Change.deleted:
-                app.post_message(StateFileDeleted())  # type: ignore[union-attr]
+                app.post_message(StateFileDeleted())  # type: ignore[attr-defined]
             elif state_file.is_file():
                 _read_and_post(app, state_file)

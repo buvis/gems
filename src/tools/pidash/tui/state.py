@@ -40,8 +40,8 @@ class PrdInfo(BaseModel, frozen=True):
     filename: str = ""
 
 
-class PrdState(BaseModel, frozen=True):
-    model_config = {"extra": "ignore"}
+class PrdState(BaseModel):
+    model_config = {"frozen": True, "extra": "ignore"}
 
     prd: PrdInfo
     phase: str

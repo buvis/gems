@@ -24,12 +24,14 @@ class _HeaderWidget(Static):
     def __init__(self) -> None:
         super().__init__(id="header")
         self._renderer = HeaderBar()
+        self.last_text = ""
 
     def on_mount(self) -> None:
         self.refresh_state(None)
 
     def refresh_state(self, state: PrdState | None) -> None:
-        self.update(self._renderer.render_state(state))
+        self.last_text = self._renderer.render_state(state)
+        self.update(self.last_text)
 
 
 class _PipelineWidget(Static):
@@ -152,4 +154,4 @@ class PidashApp(App[None]):
     def _refresh_all(self) -> None:
         for widget in self.query(Static):
             if hasattr(widget, "refresh_state"):
-                widget.refresh_state(self._state)  # type: ignore[union-attr]
+                widget.refresh_state(self._state)  # type: ignore[attr-defined]
