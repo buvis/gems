@@ -36,3 +36,49 @@ def full_state_dict() -> dict:
         ],
         "done_prds": [],
     }
+
+
+@pytest.fixture
+def autopilot_state_dict() -> dict:
+    """Actual autopilot JSON format — string prd, issue field, nested severity."""
+    return {
+        "prd": "00002-add-feature",
+        "prd_path": ".local/prds/wip/00002-add-feature.md",
+        "phase": "review",
+        "phases_completed": ["catchup", "planning", "work"],
+        "cycle": 1,
+        "autonomous_decisions": [
+            {
+                "cycle": 1,
+                "issue": "Null check missing",
+                "severity": "critical",
+                "consensus": "2/3",
+                "action": "auto-fix",
+                "reason": "additive only",
+            },
+        ],
+        "deferred_decisions": [
+            {
+                "cycle": 1,
+                "issue": "Change API contract?",
+                "severity": "high",
+                "consensus": "3/3",
+                "reason": "touches public API",
+                "status": "pending",
+            },
+        ],
+        "review_cycles": [
+            {
+                "cycle": 1,
+                "issue_count": 5,
+                "severity": {"critical": 1, "high": 2, "medium": 1, "low": 1},
+                "auto_fixed": 3,
+                "escalated": 1,
+                "deferred": 1,
+                "recurring_issues": [],
+            },
+        ],
+        "follow_up_tasks": [],
+        "started_at": "2026-03-16T10:00:00Z",
+        "updated_at": "2026-03-16T10:30:00Z",
+    }

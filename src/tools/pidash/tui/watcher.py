@@ -54,7 +54,7 @@ def watch_state_file(app: object, project_path: Path, stop_event: threading.Even
         _read_and_post(app, state_file)
 
     # Always watch project root — catches .local/ creation and file writes
-    for changes in watch(project_path, stop_event=stop_event, recursive=True):
+    for changes in watch(project_path, stop_event=stop_event, recursive=True, rust_timeout=500):
         if worker.is_cancelled:
             stop_event.set()
             break

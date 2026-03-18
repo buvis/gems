@@ -40,24 +40,22 @@ def _make_state(phase: str = "work", **overrides) -> PrdState:
 
 class TestHeaderBar:
     def test_none_state(self) -> None:
-        assert HeaderBar().render_state(None) == "pidash │ no active PRD cycle │ watching..."
+        result = HeaderBar().render_state(None)
+        assert "no active PRD cycle" in result
+        assert "watching" in result
 
     def test_with_state(self) -> None:
         state = _make_state()
         result = HeaderBar().render_state(state)
-        assert result.startswith("pidash │ 00010-test-prd │ cycle 1 │ updated ")
+        assert "00010-test-prd" in result
+        assert "cycle 1" in result
 
     def test_with_state_contains_time(self) -> None:
         state = _make_state()
         result = HeaderBar().render_state(state)
-        # updated HH:MM:SS — colon-separated digits
-        parts = result.split("│")
-        assert len(parts) == 4
-        time_part = parts[3].strip()
-        assert time_part.startswith("updated ")
-        time_str = time_part[len("updated ") :]
-        assert len(time_str) == 8
-        assert time_str[2] == ":" and time_str[5] == ":"
+        # HH:MM:SS pattern
+        import re
+        assert re.search(r"\d{2}:\d{2}:\d{2}", result)
 
     def test_cycle_number_reflects_state(self) -> None:
         state = _make_state(cycle=3)
@@ -76,43 +74,46 @@ class TestPhasePipeline:
         assert "▸" not in result
         assert "✓" not in result
         assert "CATCHUP" in result
-        assert "PLANNING" in result
-        assert "WORKING" in result
-        assert "REVIEWING" in result
         assert "DONE" in result
+        assert "[dim]" in result
 
     def test_active_phase_marked(self) -> None:
         state = _make_state(phase="work")
         result = PhasePipeline().render_state(state)
         assert "▸ WORKING" in result
+        assert "on dark_green" in result
 
     def test_completed_phases_checked(self) -> None:
         state = _make_state(phase="work", phases_completed=["catchup", "planning"])
         result = PhasePipeline().render_state(state)
         assert "✓ CATCHUP" in result
         assert "✓ PLANNING" in result
+        assert "[green]" in result
 
-    def test_future_phases_plain(self) -> None:
+    def test_future_phases_dimmed(self) -> None:
         state = _make_state(phase="work", phases_completed=["catchup", "planning"])
         result = PhasePipeline().render_state(state)
-        # REVIEWING and DONE should have no marker prefix
         assert "✓ REVIEWING" not in result
         assert "▸ REVIEWING" not in result
-        assert "✓ DONE" not in result
-        assert "▸ DONE" not in result
+        assert "[dim]" in result
+        assert "REVIEWING" in result
+        assert "DONE" in result
 
-    def test_phases_joined_by_arrow(self) -> None:
+    def test_phases_separated(self) -> None:
         state = _make_state()
         result = PhasePipeline().render_state(state)
-        assert " → " in result
+        assert "CATCHUP" in result
+        assert "DONE" in result
 
-    def test_done_phase(self) -> None:
+    def test_done_phase_all_checked(self) -> None:
         state = _make_state(
             phase="done",
             phases_completed=["catchup", "planning", "work", "review"],
         )
         result = PhasePipeline().render_state(state)
-        assert "▸ DONE" in result
+        assert "✓ DONE" in result
+        assert "✓ CATCHUP" in result
+        assert "▸" not in result
 
 
 class TestProgressSection:
@@ -134,7 +135,6 @@ class TestProgressSection:
     def test_bar_length_30(self) -> None:
         state = _make_state(tasks_completed=3, tasks_total=5)
         result = ProgressSection().render_state(state)
-        # Extract bar characters
         bar_chars = [c for c in result if c in ("█", "░")]
         assert len(bar_chars) == 30
 
@@ -157,14 +157,13 @@ class TestTaskPanel:
 
     def test_zero_tasks_returns_no_tasks_yet(self) -> None:
         state = _make_state(tasks_total=0, tasks_completed=0)
-        assert TaskPanel().render_state(state) == "No tasks yet"
+        assert "No tasks yet" in TaskPanel().render_state(state)
 
     def test_shows_counts(self) -> None:
         state = _make_state(tasks_completed=3, tasks_total=5)
         result = TaskPanel().render_state(state)
         assert "3" in result
         assert "5" in result
-        # remaining = 2
         assert "2" in result
 
 
@@ -177,28 +176,25 @@ class TestDecisionPanel:
         result = DecisionPanel().render_state(state)
         assert "AUTO skip lint" in result
 
+    def test_auto_decision_colored_by_severity(self) -> None:
+        state = _make_state()
+        result = DecisionPanel().render_state(state)
+        assert "[green]" in result  # low severity
+
     def test_pending_decision_prefix(self) -> None:
         state = _make_state()
         result = DecisionPanel().render_state(state)
         assert "⚠ PENDING: change API?" in result
 
+    def test_pending_decision_bold(self) -> None:
+        state = _make_state()
+        result = DecisionPanel().render_state(state)
+        assert "[bold orange1]" in result  # high severity, bold
+
     def test_no_decisions(self) -> None:
         state = _make_state(autonomous_decisions=[], deferred_decisions=[])
         result = DecisionPanel().render_state(state)
         assert result == ""
-
-    def test_render_rich_returns_text_object(self) -> None:
-        from rich.text import Text
-
-        state = _make_state()
-        result = DecisionPanel().render_rich(state)
-        assert isinstance(result, Text)
-
-    def test_render_rich_none_returns_text_object(self) -> None:
-        from rich.text import Text
-
-        result = DecisionPanel().render_rich(None)
-        assert isinstance(result, Text)
 
     def test_severity_colors_dict_exists(self) -> None:
         panel = DecisionPanel()
@@ -219,7 +215,17 @@ class TestCyclePanel:
         assert "C1" in result
         assert "1 crit" in result
         assert "2 high" in result
-        assert "0 low" in result
+
+    def test_omits_zero_counts(self) -> None:
+        state = _make_state()
+        result = CyclePanel().render_state(state)
+        assert "0 low" not in result
+
+    def test_severity_colored(self) -> None:
+        state = _make_state()
+        result = CyclePanel().render_state(state)
+        assert "[red]" in result  # critical
+        assert "[orange1]" in result  # high
 
     def test_multiple_cycles(self) -> None:
         state = _make_state(
@@ -243,6 +249,5 @@ class TestFooterBar:
         assert result == "q quit │ r refresh │ watching .local/prd-cycle.json"
 
     def test_render_content_no_state_arg(self) -> None:
-        # FooterBar.render_content takes no state
         fb = FooterBar()
         assert callable(fb.render_content)

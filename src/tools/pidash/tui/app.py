@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 from textual.app import App, ComposeResult
@@ -92,8 +93,8 @@ class _FooterWidget(Static):
 class PidashApp(App[None]):
     TITLE = "pidash"
     CSS = """
-#header { dock: top; height: 1; background: $surface; color: $text-muted; padding: 0 1; }
-#pipeline { dock: top; height: 1; padding: 0 1; }
+#header { dock: top; height: 1; background: $primary; color: $text; padding: 0 1; }
+#pipeline { dock: top; height: 3; padding: 1 1; }
 #progress { dock: top; height: 1; padding: 0 1; }
 #panels { height: 1fr; }
 #panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; }
@@ -109,6 +110,7 @@ class PidashApp(App[None]):
         self._project_path = project_path
         self._state: PrdState | None = None
         self._watch = _watch
+        self._stop_event = threading.Event()
 
     def compose(self) -> ComposeResult:
         yield _HeaderWidget()
@@ -123,12 +125,16 @@ class PidashApp(App[None]):
     def on_mount(self) -> None:
         self._refresh_all()
         if self._watch:
+            stop = self._stop_event
             self.run_worker(
-                lambda: watch_state_file(self, self._project_path),
+                lambda: watch_state_file(self, self._project_path, stop_event=stop),
                 name="state-watcher",
                 thread=True,
                 exclusive=True,
             )
+
+    def on_unmount(self) -> None:
+        self._stop_event.set()
 
     def on_state_changed(self, message: StateChanged) -> None:
         parsed = parse_state(message.raw)

@@ -46,6 +46,44 @@ class TestParseState:
         assert state is not None
 
 
+class TestAutopilotFormat:
+    """Parse the actual autopilot JSON format (string prd, issue field, nested severity)."""
+
+    def test_string_prd_normalized(self, autopilot_state_dict: dict) -> None:
+        state = parse_state(json.dumps(autopilot_state_dict))
+        assert state is not None
+        assert state.prd.name == "00002-add-feature"
+        assert state.prd.path == ".local/prds/wip/00002-add-feature.md"
+
+    def test_issue_mapped_to_description(self, autopilot_state_dict: dict) -> None:
+        state = parse_state(json.dumps(autopilot_state_dict))
+        assert state is not None
+        assert state.autonomous_decisions[0].description == "Null check missing"
+        assert state.deferred_decisions[0].description == "Change API contract?"
+
+    def test_nested_severity_flattened(self, autopilot_state_dict: dict) -> None:
+        state = parse_state(json.dumps(autopilot_state_dict))
+        assert state is not None
+        rc = state.review_cycles[0]
+        assert rc.critical == 1
+        assert rc.high == 2
+        assert rc.medium == 1
+        assert rc.low == 1
+
+    def test_extra_autopilot_fields_ignored(self, autopilot_state_dict: dict) -> None:
+        state = parse_state(json.dumps(autopilot_state_dict))
+        assert state is not None
+        assert state.phase == "review"
+        assert state.cycle == 1
+
+    def test_minimal_string_prd(self) -> None:
+        raw = json.dumps({"prd": "my-prd", "phase": "catchup"})
+        state = parse_state(raw)
+        assert state is not None
+        assert state.prd.name == "my-prd"
+        assert state.prd.path == ""
+
+
 class TestDisplayPhaseMapping:
     @pytest.mark.parametrize(
         ("phase", "expected"),

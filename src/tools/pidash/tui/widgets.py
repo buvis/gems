@@ -2,36 +2,36 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from rich.text import Text
-
 from pidash.tui.state import DISPLAY_PHASES, PHASE_ORDER, PrdState
 
 
 class HeaderBar:
     def render_state(self, state: PrdState | None) -> str:
         if state is None:
-            return "pidash │ no active PRD cycle │ watching..."
+            return "[dim]no active PRD cycle — watching...[/dim]"
         now = datetime.now().strftime("%H:%M:%S")
-        return f"pidash │ {state.prd.name} │ cycle {state.cycle} │ updated {now}"
+        return f" [bold]{state.prd.name}[/bold]  cycle {state.cycle}  {now} "
 
 
 class PhasePipeline:
     def render_state(self, state: PrdState | None) -> str:
         if state is None:
-            return " → ".join(f"  {phase}" for phase in PHASE_ORDER)
+            return "  ".join(f"[dim]  {phase}  [/dim]" for phase in PHASE_ORDER)
 
         active = DISPLAY_PHASES.get(state.phase, state.phase.upper())
+        active_idx = PHASE_ORDER.index(active) if active in PHASE_ORDER else len(PHASE_ORDER)
         completed_display = {DISPLAY_PHASES.get(p, p.upper()) for p in state.phases_completed}
+        all_done = active == "DONE"
 
         parts: list[str] = []
-        for phase in PHASE_ORDER:
-            if phase == active:
-                parts.append(f"▸ {phase}")
-            elif phase in completed_display:
-                parts.append(f"✓ {phase}")
+        for i, phase in enumerate(PHASE_ORDER):
+            if all_done or (phase in completed_display and i < active_idx):
+                parts.append(f"[green] ✓ {phase} [/green]")
+            elif phase == active:
+                parts.append(f"[bold white on dark_green] ▸ {phase} [/bold white on dark_green]")
             else:
-                parts.append(f"  {phase}")
-        return " → ".join(parts)
+                parts.append(f"[dim]   {phase}  [/dim]")
+        return "  ".join(parts)
 
 
 class ProgressSection:
@@ -49,7 +49,7 @@ class TaskPanel:
         if state is None:
             return ""
         if state.tasks_total == 0:
-            return "No tasks yet"
+            return "[dim]No tasks yet[/dim]"
         remaining = state.tasks_total - state.tasks_completed
         return f"completed {state.tasks_completed}  remaining {remaining}  total {state.tasks_total}"
 
@@ -67,22 +67,12 @@ class DecisionPanel:
             return ""
         lines: list[str] = []
         for d in state.autonomous_decisions:
-            lines.append(f"AUTO {d.description}")
-        for d in state.deferred_decisions:
-            lines.append(f"⚠ PENDING: {d.description}")
-        return "\n".join(lines)
-
-    def render_rich(self, state: PrdState | None) -> Text:
-        text = Text()
-        if state is None:
-            return text
-        for d in state.autonomous_decisions:
             color = self._severity_colors.get(d.severity, "dim")
-            text.append(f"AUTO {d.description}\n", style=color)
+            lines.append(f"[{color}]AUTO {d.description}[/{color}]")
         for d in state.deferred_decisions:
             color = self._severity_colors.get(d.severity, "red")
-            text.append(f"⚠ PENDING: {d.description}\n", style=f"bold {color}")
-        return text
+            lines.append(f"[bold {color}]⚠ PENDING: {d.description}[/bold {color}]")
+        return "\n".join(lines)
 
 
 class CyclePanel:
@@ -93,7 +83,16 @@ class CyclePanel:
             return ""
         lines: list[str] = []
         for c in state.review_cycles:
-            lines.append(f"C{c.cycle}  {c.critical} crit  {c.high} high  {c.low} low")
+            parts = [f"C{c.cycle}"]
+            if c.critical:
+                parts.append(f"[red]{c.critical} crit[/red]")
+            if c.high:
+                parts.append(f"[orange1]{c.high} high[/orange1]")
+            if c.medium:
+                parts.append(f"[yellow]{c.medium} med[/yellow]")
+            if c.low:
+                parts.append(f"[green]{c.low} low[/green]")
+            lines.append("  ".join(parts))
         return "\n".join(lines)
 
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import logging
 
+from typing import Any
+
 from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,7 @@ class CycleResult(BaseModel, frozen=True):
     cycle: int
     critical: int = 0
     high: int = 0
+    medium: int = 0
     low: int = 0
 
 
@@ -59,11 +62,32 @@ class PrdState(BaseModel):
         return DISPLAY_PHASES.get(self.phase, self.phase.upper())
 
 
+def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize autopilot JSON variants to PrdState schema."""
+    prd = data.get("prd")
+    if isinstance(prd, str):
+        data["prd"] = {"name": prd, "path": data.pop("prd_path", "")}
+
+    for key in ("autonomous_decisions", "deferred_decisions"):
+        for d in data.get(key, []):
+            if "issue" in d and "description" not in d:
+                d["description"] = d.pop("issue")
+
+    for rc in data.get("review_cycles", []):
+        sev = rc.pop("severity", None)
+        if isinstance(sev, dict):
+            for k, v in sev.items():
+                rc.setdefault(k, v)
+
+    return data
+
+
 def parse_state(raw: str) -> PrdState | None:
     if not raw.strip():
         return None
     try:
         data = json.loads(raw)
+        _normalize_data(data)
         return PrdState.model_validate(data)
     except (json.JSONDecodeError, ValidationError):
         logger.debug("Failed to parse prd-cycle.json", exc_info=True)
