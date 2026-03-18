@@ -64,6 +64,7 @@ if [[ "$part" == "local" ]]; then
   mise_python="$mise_root/buvis-gems/bin/python"
   [[ -x "$mise_python" ]] || die "python not found at $mise_python"
   uv pip install --force-reinstall "${whl}[all]" --python "$mise_python" || die "install failed"
+  mise reshim
 
   echo "Installed buvis-gems $dev_ver"
   exit 0
