@@ -43,7 +43,7 @@ class PhasePipeline:
         phases = "  ".join(parts)
         lines = [header, "", phases]
         if progress:
-            lines.append(progress)
+            lines.extend(["", progress])
         return "\n".join(lines)
 
 
