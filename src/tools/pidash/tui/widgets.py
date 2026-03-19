@@ -17,6 +17,7 @@ class PhasePipeline:
     def __init__(self) -> None:
         self._header = HeaderBar()
         self._progress = ProgressSection()
+        self.spinner: str = "▸"
 
     def render_state(self, state: PrdState | None) -> str:
         header = self._header.render_state(state)
@@ -36,7 +37,7 @@ class PhasePipeline:
             if all_done or (phase in completed_display and i < active_idx):
                 parts.append(f"[green] ✓ {phase} [/green]")
             elif phase == active:
-                parts.append(f"[bold white on dark_green] ▸ {phase} [/bold white on dark_green]")
+                parts.append(f"[bold white on dark_green] {self.spinner} {phase} [/bold white on dark_green]")
             else:
                 parts.append(f"[dim]   {phase}  [/dim]")
         phases = "  ".join(parts)

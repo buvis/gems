@@ -19,15 +19,28 @@ from pidash.tui.widgets import (
 )
 
 
+_SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+
 class _PipelineWidget(Static):
     def __init__(self) -> None:
         super().__init__(id="pipeline")
         self._renderer = PhasePipeline()
+        self._state: PrdState | None = None
+        self._spin_idx = 0
 
     def on_mount(self) -> None:
         self.refresh_state(None)
+        self.set_interval(0.15, self._tick)
+
+    def _tick(self) -> None:
+        if self._state is not None and self._state.phase != "done":
+            self._spin_idx = (self._spin_idx + 1) % len(_SPINNER)
+            self._renderer.spinner = _SPINNER[self._spin_idx]
+            self.update(self._renderer.render_state(self._state))
 
     def refresh_state(self, state: PrdState | None) -> None:
+        self._state = state
         self.update(self._renderer.render_state(state))
 
 
