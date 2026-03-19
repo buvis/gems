@@ -14,25 +14,10 @@ from pidash.tui.widgets import (
     CyclePanel,
     DecisionPanel,
     FooterBar,
-    HeaderBar,
     PhasePipeline,
     ProgressSection,
     TaskPanel,
 )
-
-
-class _HeaderWidget(Static):
-    def __init__(self) -> None:
-        super().__init__(id="header")
-        self._renderer = HeaderBar()
-        self.last_text = ""
-
-    def on_mount(self) -> None:
-        self.refresh_state(None)
-
-    def refresh_state(self, state: PrdState | None) -> None:
-        self.last_text = self._renderer.render_state(state)
-        self.update(self.last_text)
 
 
 class _PipelineWidget(Static):
@@ -93,8 +78,7 @@ class _FooterWidget(Static):
 class PidashApp(App[None]):
     TITLE = "pidash"
     CSS = """
-#header { dock: top; height: 1; background: $primary; color: auto; padding: 0 1; }
-#pipeline { dock: top; height: 3; padding: 1 1; }
+#pipeline { dock: top; height: auto; padding: 0 1; }
 #progress { dock: top; height: 1; padding: 0 1; }
 #panels { height: 1fr; }
 #panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; }
@@ -113,7 +97,6 @@ class PidashApp(App[None]):
         self._stop_event = threading.Event()
 
     def compose(self) -> ComposeResult:
-        yield _HeaderWidget()
         yield _PipelineWidget()
         yield _ProgressWidget()
         with Horizontal(id="panels"):

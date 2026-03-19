@@ -10,13 +10,19 @@ class HeaderBar:
         if state is None:
             return "[dim]no active PRD cycle — watching...[/dim]"
         now = datetime.now().strftime("%H:%M:%S")
-        return f" [bold]{state.prd.name}[/bold]  cycle {state.cycle}  {now} "
+        return f"[bold reverse] {state.prd.name} [/bold reverse]  cycle {state.cycle}  {now}"
 
 
 class PhasePipeline:
+    def __init__(self) -> None:
+        self._header = HeaderBar()
+
     def render_state(self, state: PrdState | None) -> str:
+        header = self._header.render_state(state)
+
         if state is None:
-            return "  ".join(f"[dim]  {phase}  [/dim]" for phase in PHASE_ORDER)
+            phases = "  ".join(f"[dim]  {phase}  [/dim]" for phase in PHASE_ORDER)
+            return f"{header}\n{phases}"
 
         active = DISPLAY_PHASES.get(state.phase, state.phase.upper())
         active_idx = PHASE_ORDER.index(active) if active in PHASE_ORDER else len(PHASE_ORDER)
@@ -31,7 +37,8 @@ class PhasePipeline:
                 parts.append(f"[bold white on dark_green] ▸ {phase} [/bold white on dark_green]")
             else:
                 parts.append(f"[dim]   {phase}  [/dim]")
-        return "  ".join(parts)
+        phases = "  ".join(parts)
+        return f"{header}\n{phases}"
 
 
 class ProgressSection:
