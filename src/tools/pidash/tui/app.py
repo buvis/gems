@@ -93,7 +93,7 @@ class _FooterWidget(Static):
 class PidashApp(App[None]):
     TITLE = "pidash"
     CSS = """
-#header { dock: top; height: 1; background: $primary; color: $text; padding: 0 1; }
+#header { dock: top; height: 1; background: $primary; color: auto; padding: 0 1; }
 #pipeline { dock: top; height: 3; padding: 1 1; }
 #progress { dock: top; height: 1; padding: 0 1; }
 #panels { height: 1fr; }
