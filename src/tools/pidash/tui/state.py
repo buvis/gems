@@ -69,9 +69,16 @@ def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
         data["prd"] = {"name": prd, "path": data.pop("prd_path", "")}
 
     for key in ("autonomous_decisions", "deferred_decisions"):
+        normalized = []
         for d in data.get(key, []):
-            if "issue" in d and "description" not in d:
-                d["description"] = d.pop("issue")
+            if isinstance(d, str):
+                normalized.append({"description": d})
+            elif isinstance(d, dict):
+                if "issue" in d and "description" not in d:
+                    d["description"] = d.pop("issue")
+                normalized.append(d)
+        if key in data:
+            data[key] = normalized
 
     for rc in data.get("review_cycles", []):
         sev = rc.pop("severity", None)
