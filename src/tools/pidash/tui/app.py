@@ -11,7 +11,6 @@ from textual.widgets import Static
 from pidash.tui.state import PrdState, parse_state
 from pidash.tui.watcher import STATE_DIR, STATE_FILENAME, StateChanged, StateFileDeleted, watch_state_file
 from pidash.tui.widgets import (
-    CyclePanel,
     DecisionPanel,
     FooterBar,
     PhasePipeline,
@@ -45,7 +44,7 @@ class _PipelineWidget(Static):
 
 
 class _PanelWidget(Static):
-    def __init__(self, panel_id: str, title: str, renderer: TaskPanel | DecisionPanel | CyclePanel) -> None:
+    def __init__(self, panel_id: str, title: str, renderer: TaskPanel | DecisionPanel) -> None:
         super().__init__(id=panel_id)
         self._title = title
         self._renderer = renderer
@@ -98,7 +97,6 @@ class PidashApp(App[None]):
         with Horizontal(id="panels"):
             yield _PanelWidget("tasks", "Tasks", TaskPanel())
             yield _PanelWidget("decisions", "Decisions", DecisionPanel())
-            yield _PanelWidget("cycles", "Cycles", CyclePanel())
         yield _FooterWidget()
 
     def on_mount(self) -> None:
