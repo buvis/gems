@@ -15,7 +15,6 @@ from pidash.tui.widgets import (
     DecisionPanel,
     FooterBar,
     PhasePipeline,
-    ProgressSection,
     TaskPanel,
 )
 
@@ -30,20 +29,6 @@ class _PipelineWidget(Static):
 
     def refresh_state(self, state: PrdState | None) -> None:
         self.update(self._renderer.render_state(state))
-
-
-class _ProgressWidget(Static):
-    def __init__(self) -> None:
-        super().__init__(id="progress")
-        self._renderer = ProgressSection()
-
-    def on_mount(self) -> None:
-        self.refresh_state(None)
-
-    def refresh_state(self, state: PrdState | None) -> None:
-        content = self._renderer.render_state(state)
-        self.display = bool(content)
-        self.update(content)
 
 
 class _PanelWidget(Static):
@@ -79,7 +64,6 @@ class PidashApp(App[None]):
     TITLE = "pidash"
     CSS = """
 #pipeline { dock: top; height: auto; padding: 0 1; }
-#progress { dock: top; height: 1; padding: 0 1; }
 #panels { height: 1fr; }
 #panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; }
 #footer { dock: bottom; height: 1; background: $surface; color: $text-muted; padding: 0 1; }
@@ -98,7 +82,6 @@ class PidashApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield _PipelineWidget()
-        yield _ProgressWidget()
         with Horizontal(id="panels"):
             yield _PanelWidget("tasks", "Tasks", TaskPanel())
             yield _PanelWidget("decisions", "Decisions", DecisionPanel())

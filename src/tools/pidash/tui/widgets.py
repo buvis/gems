@@ -16,13 +16,15 @@ class HeaderBar:
 class PhasePipeline:
     def __init__(self) -> None:
         self._header = HeaderBar()
+        self._progress = ProgressSection()
 
     def render_state(self, state: PrdState | None) -> str:
         header = self._header.render_state(state)
+        progress = self._progress.render_state(state)
 
         if state is None:
             phases = "  ".join(f"[dim]  {phase}  [/dim]" for phase in PHASE_ORDER)
-            return f"{header}\n{phases}"
+            return f"{header}\n\n{phases}"
 
         active = DISPLAY_PHASES.get(state.phase, state.phase.upper())
         active_idx = PHASE_ORDER.index(active) if active in PHASE_ORDER else len(PHASE_ORDER)
@@ -38,7 +40,10 @@ class PhasePipeline:
             else:
                 parts.append(f"[dim]   {phase}  [/dim]")
         phases = "  ".join(parts)
-        return f"{header}\n{phases}"
+        lines = [header, "", phases]
+        if progress:
+            lines.append(progress)
+        return "\n".join(lines)
 
 
 class ProgressSection:
