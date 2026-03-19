@@ -57,11 +57,25 @@ class ProgressSection:
 
 
 class TaskPanel:
+    _status_markers: dict[str, str] = {
+        "completed": "[green]✓[/green]",
+        "in_progress": "[bold white]▸[/bold white]",
+        "pending": "[dim]·[/dim]",
+    }
+
     def render_state(self, state: PrdState | None) -> str:
         if state is None:
             return ""
-        if state.tasks_total == 0:
+        if not state.tasks and state.tasks_total == 0:
             return "[dim]No tasks yet[/dim]"
+        if state.tasks:
+            lines: list[str] = []
+            for t in state.tasks:
+                marker = self._status_markers.get(t.status, "[dim]·[/dim]")
+                style = "dim" if t.status == "completed" else ""
+                name = f"[{style}]{t.name}[/{style}]" if style else t.name
+                lines.append(f" {marker} {name}")
+            return "\n".join(lines)
         remaining = state.tasks_total - state.tasks_completed
         return f"completed {state.tasks_completed}  remaining {remaining}  total {state.tasks_total}"
 

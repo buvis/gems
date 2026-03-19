@@ -43,6 +43,11 @@ class PrdInfo(BaseModel, frozen=True):
     filename: str = ""
 
 
+class TaskInfo(BaseModel, frozen=True):
+    name: str
+    status: str = "pending"
+
+
 class PrdState(BaseModel):
     model_config = {"frozen": True, "extra": "ignore"}
 
@@ -52,6 +57,7 @@ class PrdState(BaseModel):
     cycle: int = 0
     tasks_completed: int = 0
     tasks_total: int = 0
+    tasks: list[TaskInfo] = []
     autonomous_decisions: list[Decision] = []
     deferred_decisions: list[Decision] = []
     review_cycles: list[CycleResult] = []
@@ -79,6 +85,15 @@ def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
                 normalized.append(d)
         if key in data:
             data[key] = normalized
+
+    tasks_normalized = []
+    for t in data.get("tasks", []):
+        if isinstance(t, str):
+            tasks_normalized.append({"name": t})
+        elif isinstance(t, dict):
+            tasks_normalized.append(t)
+    if "tasks" in data:
+        data["tasks"] = tasks_normalized
 
     for rc in data.get("review_cycles", []):
         sev = rc.pop("severity", None)
