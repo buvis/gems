@@ -54,7 +54,13 @@ class _AttentionOverlay(Static):
 
     def show(self) -> None:
         self.display = True
-        self.update("[bold white on red]  NEEDS YOUR ATTENTION  [/bold white on red]")
+        self.update(
+            "\n[bold white on red]"
+            "                                        \n"
+            "         NEEDS YOUR ATTENTION            \n"
+            "                                        "
+            "[/bold white on red]\n"
+        )
 
     def hide(self) -> None:
         self.display = False
