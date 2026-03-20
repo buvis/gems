@@ -34,6 +34,8 @@ class _PipelineWidget(Static):
 
     def _tick(self) -> None:
         if self._state is not None and self._state.phase != "done":
+            if self._state.needs_attention:
+                return  # stop spinner when waiting for user
             self._spin_idx = (self._spin_idx + 1) % len(_SPINNER)
             self._renderer.spinner = _SPINNER[self._spin_idx]
             self.update(self._renderer.render_state(self._state))
@@ -41,6 +43,28 @@ class _PipelineWidget(Static):
     def refresh_state(self, state: PrdState | None) -> None:
         self._state = state
         self.update(self._renderer.render_state(state))
+
+
+class _AttentionOverlay(Static):
+    def __init__(self) -> None:
+        super().__init__(id="attention")
+
+    def on_mount(self) -> None:
+        self.display = False
+
+    def show(self) -> None:
+        self.display = True
+        self.update("[bold white on red]  NEEDS YOUR ATTENTION  [/bold white on red]")
+
+    def hide(self) -> None:
+        self.display = False
+        self.update("")
+
+    def refresh_state(self, state: PrdState | None) -> None:
+        if state is not None and state.needs_attention:
+            self.show()
+        else:
+            self.hide()
 
 
 class _PanelWidget(Static):
@@ -76,9 +100,12 @@ class PidashApp(App[None]):
     TITLE = "pidash"
     CSS = """
 #pipeline { dock: top; height: auto; padding: 0 1; }
+#attention { dock: top; height: auto; padding: 1 1; text-align: center; }
 #panels { height: 1fr; }
 #panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; }
 #footer { dock: bottom; height: 1; background: $surface; color: $text-muted; padding: 0 1; }
+.attention-mode { background: #3a1a1a; }
+.attention-mode #panels > Static { border: solid red; }
 """
     BINDINGS = [
         Binding("q", "quit", "Quit", show=True),
@@ -94,6 +121,7 @@ class PidashApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield _PipelineWidget()
+        yield _AttentionOverlay()
         with Horizontal(id="panels"):
             yield _PanelWidget("tasks", "Tasks", TaskPanel())
             yield _PanelWidget("decisions", "Decisions", DecisionPanel())
@@ -135,6 +163,11 @@ class PidashApp(App[None]):
         self._refresh_all()
 
     def _refresh_all(self) -> None:
+        attention = self._state is not None and self._state.needs_attention
+        if attention:
+            self.add_class("attention-mode")
+        else:
+            self.remove_class("attention-mode")
         for widget in self.query(Static):
             if hasattr(widget, "refresh_state"):
                 widget.refresh_state(self._state)

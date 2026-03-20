@@ -54,6 +54,7 @@ class PrdState(BaseModel):
 
     prd: PrdInfo
     phase: str
+    needs_attention: bool = False
     phases_completed: list[str] = []
     cycle: int = 0
     tasks_completed: int = 0
