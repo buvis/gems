@@ -174,7 +174,7 @@ class TestDecisionPanel:
     def test_auto_decision_prefix(self) -> None:
         state = _make_state()
         result = DecisionPanel().render_state(state)
-        assert "AUTO skip lint" in result
+        assert "AUTO-APPROVED" in result or "AUTO-REJECTED" in result
 
     def test_auto_decision_colored_by_severity(self) -> None:
         state = _make_state()

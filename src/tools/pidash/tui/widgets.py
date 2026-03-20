@@ -89,13 +89,25 @@ class DecisionPanel:
         "low": "green",
     }
 
+    @staticmethod
+    def _classify(desc: str) -> tuple[str, str]:
+        lower = desc.lower()
+        for prefix in ("skip:", "skip ", "auto skip ", "auto skip:"):
+            if lower.startswith(prefix):
+                return "REJECTED", desc[len(prefix):].lstrip(" :-")
+        for prefix in ("auto-fix:", "auto-fix ", "auto-fix:", "autofix:"):
+            if lower.startswith(prefix):
+                return "APPROVED", desc[len(prefix):].lstrip(" :-")
+        return "APPROVED", desc
+
     def render_state(self, state: PrdState | None) -> str:
         if state is None:
             return ""
         lines: list[str] = []
         for d in state.autonomous_decisions:
             color = self._severity_colors.get(d.severity, "dim")
-            lines.append(f"[{color}]AUTO {d.description}[/{color}]")
+            label, text = self._classify(d.description)
+            lines.append(f"[{color}]AUTO-{label} {text}[/{color}]")
         for d in state.deferred_decisions:
             color = self._severity_colors.get(d.severity, "red")
             lines.append(f"[bold {color}]⚠ PENDING: {d.description}[/bold {color}]")
