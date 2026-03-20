@@ -44,6 +44,7 @@ class PrdInfo(BaseModel, frozen=True):
 
 
 class TaskInfo(BaseModel, frozen=True):
+    id: str = ""
     name: str
     status: str = "pending"
 
