@@ -75,7 +75,7 @@ class TaskPanel:
                 marker = self._status_markers.get(t.status, "[dim]·[/dim]")
                 style = "dim" if t.status == "completed" else ""
                 name = f"[{style}]{t.name}[/{style}]" if style else t.name
-                lines.append(f" {marker} {name}")
+                lines.append(f"{marker} {name}")
             return "\n".join(lines)
         remaining = state.tasks_total - state.tasks_completed
         return f"completed {state.tasks_completed}  remaining {remaining}  total {state.tasks_total}"
@@ -107,7 +107,7 @@ class DecisionPanel:
         for d in state.autonomous_decisions:
             color = self._severity_colors.get(d.severity, "dim")
             label, text = self._classify(d.description)
-            lines.append(f"[{color}]AUTO-{label} {text}[/{color}]")
+            lines.append(f"[{color}]AUTO-{label}: {text}[/{color}]")
         for d in state.deferred_decisions:
             color = self._severity_colors.get(d.severity, "red")
             lines.append(f"[bold {color}]⚠ PENDING: {d.description}[/bold {color}]")
