@@ -54,13 +54,7 @@ class _AttentionOverlay(Static):
 
     def show(self) -> None:
         self.display = True
-        self.update(
-            "\n[bold white on red]"
-            "                                        \n"
-            "         NEEDS YOUR ATTENTION            \n"
-            "                                        "
-            "[/bold white on red]\n"
-        )
+        self.update("[bold white on red]  NEEDS YOUR ATTENTION  [/bold white on red]")
 
     def hide(self) -> None:
         self.display = False
@@ -106,7 +100,7 @@ class PidashApp(App[None]):
     TITLE = "pidash"
     CSS = """
 #pipeline { dock: top; height: auto; padding: 0 1; }
-#attention { dock: top; height: auto; padding: 1 1; text-align: center; }
+#attention { dock: top; height: 5; content-align: center middle; padding: 1; }
 #panels { height: 1fr; }
 #panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; }
 #footer { dock: bottom; height: 1; background: $surface; color: $text-muted; padding: 0 1; }
