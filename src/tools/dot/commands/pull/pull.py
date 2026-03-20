@@ -28,25 +28,30 @@ class CommandPull:
         cwd = Path(os.environ["DOTFILES_ROOT"])
 
         err, _ = self.shell.exe("cfg pull", cwd)
+
         if err:
             return CommandResult(success=False, error=f"Pull failed: {err}")
 
         err, _ = self.shell.exe("cfg submodule foreach git reset --hard", cwd)
+
         if err:
             return CommandResult(success=False, error=f"Submodule reset failed: {err}")
 
         err, _ = self.shell.exe("cfg submodule update --init", cwd)
+
         if err:
             return CommandResult(success=False, error=f"Submodule init failed: {err}")
 
         err, _ = self.shell.exe("cfg submodule update --remote --merge", cwd)
+
         if err:
             return CommandResult(success=False, error=f"Submodule update failed: {err}")
 
         if self.shell.is_command_available("git-secret"):
-            console.info("Decrypting secrets (GPG passphrase required)")
+            console.info("[git-secret] GPG passphrase required to decrypt files")
             err, _ = self.shell.exe("cfg secret reveal -f", cwd)
+
             if err:
-                return CommandResult(success=False, error=f"Secret reveal failed: {err}")
+                return CommandResult(success=False, error=f"[git-secret] Decryption failed: {err}")
 
         return CommandResult(success=True, output="Dotfiles pulled successfully")
