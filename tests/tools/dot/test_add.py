@@ -118,6 +118,56 @@ class TestCommandAddExecute:
             dotfiles_root,
         )
 
+    def test_dir_with_untracked_files_runs_intent_to_add_then_patch(
+        self, dotfiles_root: Path
+    ) -> None:
+        target = dotfiles_root / "subdir"
+        target.mkdir()
+        shell = MagicMock()
+        shell.exe.side_effect = [
+            ("", "subdir/new.txt\nsubdir/other.txt\n"),
+            ("", ""),
+        ]
+
+        cmd = CommandAdd(shell=shell, file_path=str(target))
+        result = cmd.execute()
+
+        assert result.success is True
+        assert shell.exe.call_count == 2
+        shell.exe.assert_any_call(
+            f"cfg ls-files --others --exclude-standard {target}",
+            dotfiles_root,
+        )
+        shell.exe.assert_any_call(
+            f"cfg add --intent-to-add {target}",
+            dotfiles_root,
+        )
+        shell.interact.assert_called_once_with(
+            f"cfg add -p {target}",
+            dotfiles_root,
+        )
+
+    def test_dir_without_untracked_files_runs_patch_only(
+        self, dotfiles_root: Path
+    ) -> None:
+        target = dotfiles_root / "subdir"
+        target.mkdir()
+        shell = MagicMock()
+        shell.exe.return_value = ("", "")
+
+        cmd = CommandAdd(shell=shell, file_path=str(target))
+        result = cmd.execute()
+
+        assert result.success is True
+        shell.exe.assert_called_once_with(
+            f"cfg ls-files --others --exclude-standard {target}",
+            dotfiles_root,
+        )
+        shell.interact.assert_called_once_with(
+            f"cfg add -p {target}",
+            dotfiles_root,
+        )
+
     def test_warnings_propagated(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
         cmd = CommandAdd(shell=shell, file_path="missing.txt")

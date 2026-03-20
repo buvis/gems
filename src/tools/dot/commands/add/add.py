@@ -37,19 +37,30 @@ class CommandAdd:
                 )
 
     def execute(self: CommandAdd) -> CommandResult:
+        dotfiles_root = Path(os.environ["DOTFILES_ROOT"])
         command = "cfg add -p"
+
         if self.file_path:
-            command = f"cfg add -p {self.file_path}"
-            err, _ = self.shell.exe(
-                f"cfg ls-files --error-unmatch {self.file_path}",
-                Path(os.environ["DOTFILES_ROOT"]),
-            )
+            if self.file_path.is_dir():
+                _, untracked = self.shell.exe(
+                    f"cfg ls-files --others --exclude-standard {self.file_path}",
+                    dotfiles_root,
+                )
+                if untracked.strip():
+                    self.shell.exe(
+                        f"cfg add --intent-to-add {self.file_path}",
+                        dotfiles_root,
+                    )
+                command = f"cfg add -p {self.file_path}"
+            else:
+                err, _ = self.shell.exe(
+                    f"cfg ls-files --error-unmatch {self.file_path}",
+                    dotfiles_root,
+                )
+                if "returned non-zero exit status 1" in err:
+                    command = f"cfg add {self.file_path}"
+                else:
+                    command = f"cfg add -p {self.file_path}"
 
-            if "returned non-zero exit status 1" in err:
-                command = f"cfg add {self.file_path}"
-
-        self.shell.interact(
-            command,
-            Path(os.environ["DOTFILES_ROOT"]),
-        )
+        self.shell.interact(command, dotfiles_root)
         return CommandResult(success=True, warnings=self.warnings)
