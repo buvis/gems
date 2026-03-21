@@ -118,9 +118,7 @@ class TestCommandAddExecute:
             dotfiles_root,
         )
 
-    def test_dir_with_untracked_files_runs_intent_to_add_then_patch(
-        self, dotfiles_root: Path
-    ) -> None:
+    def test_dir_with_untracked_files_runs_intent_to_add_then_patch(self, dotfiles_root: Path) -> None:
         target = dotfiles_root / "subdir"
         target.mkdir()
         shell = MagicMock()
@@ -147,9 +145,7 @@ class TestCommandAddExecute:
             dotfiles_root,
         )
 
-    def test_dir_without_untracked_files_runs_patch_only(
-        self, dotfiles_root: Path
-    ) -> None:
+    def test_dir_without_untracked_files_runs_patch_only(self, dotfiles_root: Path) -> None:
         target = dotfiles_root / "subdir"
         target.mkdir()
         shell = MagicMock()

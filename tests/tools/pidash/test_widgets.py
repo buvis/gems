@@ -55,6 +55,7 @@ class TestHeaderBar:
         result = HeaderBar().render_state(state)
         # HH:MM:SS pattern
         import re
+
         assert re.search(r"\d{2}:\d{2}:\d{2}", result)
 
     def test_cycle_number_reflects_state(self) -> None:
