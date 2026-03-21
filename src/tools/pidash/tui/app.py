@@ -17,7 +17,6 @@ from pidash.tui.widgets import (
     TaskPanel,
 )
 
-
 _SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
 
@@ -84,6 +83,34 @@ class _PanelWidget(Static):
             self.update("")
 
 
+class _TaskPanelWidget(_PanelWidget):
+    def __init__(self) -> None:
+        self._task_renderer = TaskPanel()
+        super().__init__("tasks", "Tasks", self._task_renderer)
+        self._state: PrdState | None = None
+        self._spin_idx = 0
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        self.set_interval(0.15, self._tick)
+
+    def _tick(self) -> None:
+        if self._state is None:
+            return
+        has_active = any(t.status == "in_progress" for t in self._state.tasks)
+        if not has_active:
+            return
+        self._spin_idx = (self._spin_idx + 1) % len(_SPINNER)
+        self._task_renderer.spinner = _SPINNER[self._spin_idx]
+        content = self._task_renderer.render_state(self._state)
+        if content:
+            self.update(f"[bold]{self._title}[/bold]\n{content}")
+
+    def refresh_state(self, state: PrdState | None) -> None:
+        self._state = state
+        super().refresh_state(state)
+
+
 class _FooterWidget(Static):
     def __init__(self) -> None:
         super().__init__(id="footer")
@@ -123,7 +150,7 @@ class PidashApp(App[None]):
         yield _PipelineWidget()
         yield _AttentionOverlay()
         with Horizontal(id="panels"):
-            yield _PanelWidget("tasks", "Tasks", TaskPanel())
+            yield _TaskPanelWidget()
             yield _PanelWidget("decisions", "Decisions", DecisionPanel())
         yield _FooterWidget()
 

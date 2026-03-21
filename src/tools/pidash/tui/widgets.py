@@ -60,9 +60,11 @@ class ProgressSection:
 class TaskPanel:
     _status_markers: dict[str, str] = {
         "completed": "[green]✓[/green]",
-        "in_progress": "[bold white]▸[/bold white]",
         "pending": "[dim]·[/dim]",
     }
+
+    def __init__(self) -> None:
+        self.spinner: str = "▸"
 
     def render_state(self, state: PrdState | None) -> str:
         if state is None:
@@ -72,7 +74,10 @@ class TaskPanel:
         if state.tasks:
             lines: list[str] = []
             for t in state.tasks:
-                marker = self._status_markers.get(t.status, "[dim]·[/dim]")
+                if t.status == "in_progress":
+                    marker = f"[bold yellow]{self.spinner}[/bold yellow]"
+                else:
+                    marker = self._status_markers.get(t.status, "[dim]·[/dim]")
                 style = "dim" if t.status == "completed" else ""
                 name = f"[{style}]{t.name}[/{style}]" if style else t.name
                 lines.append(f"{marker} {name}")

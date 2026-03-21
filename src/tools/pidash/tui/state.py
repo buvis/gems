@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -70,12 +69,7 @@ class PrdState(BaseModel):
         return DISPLAY_PHASES.get(self.phase, self.phase.upper())
 
 
-def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
-    """Normalize autopilot JSON variants to PrdState schema."""
-    prd = data.get("prd")
-    if isinstance(prd, str):
-        data["prd"] = {"name": prd, "path": data.pop("prd_path", "")}
-
+def _normalize_decisions(data: dict[str, Any]) -> None:
     for key in ("autonomous_decisions", "deferred_decisions"):
         normalized = []
         for d in data.get(key, []):
@@ -87,6 +81,15 @@ def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
                 normalized.append(d)
         if key in data:
             data[key] = normalized
+
+
+def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize autopilot JSON variants to PrdState schema."""
+    prd = data.get("prd")
+    if isinstance(prd, str):
+        data["prd"] = {"name": prd, "path": data.pop("prd_path", "")}
+
+    _normalize_decisions(data)
 
     tasks_normalized = []
     for t in data.get("tasks", []):
