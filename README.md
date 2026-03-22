@@ -57,7 +57,7 @@ pipx upgrade buvis-gems
 mise upgrade pipx:buvis-gems
 ```
 
-All 15 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `netscan`, `outlookctl`, `pinger`, `puc`, `readerctl`, `sysup`, `vuc`, `zseq`) are always installed. Extras add optional dependencies some tools need:
+All 16 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `netscan`, `outlookctl`, `pidash`, `pinger`, `puc`, `readerctl`, `sysup`, `vuc`, `zseq`) are always installed. Extras add optional dependencies some tools need:
 
 | Extra | Dep | Tool |
 |-------|-----|------|
@@ -67,6 +67,7 @@ All 15 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `
 | `hello-world` | pyfiglet | hello-world |
 | `morph` | markdownify | morph |
 | `muc` | ffmpeg-python | muc |
+| `pidash` | textual, watchfiles | pidash |
 | `pinger` | ping3 | pinger |
 | `readerctl` | requests | readerctl |
 | `all` | all of the above | — |
@@ -75,7 +76,7 @@ All 15 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `
 
 **Library** (`src/lib/buvis/pybase/`) — shared adapters, CLI scaffolding, configuration, filesystem and formatting utilities, plus the zettel subsystem (domain logic, Jira integration, and a Rust extension via PyO3 for performance-critical parsing).
 
-**Tools** (`src/tools/`) — 15 Click-based CLIs built on the library:
+**Tools** (`src/tools/`) — 16 Click-based CLIs built on the library:
 
 | Tool | Purpose |
 |------|---------|
@@ -88,6 +89,7 @@ All 15 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `
 | muc | Music collection tools |
 | netscan | Network scanning tools |
 | outlookctl | Outlook CLI |
+| pidash | Autopilot PRD cycle dashboard |
 | pinger | ICMP ping utilities |
 | puc | Photo utility collection |
 | readerctl | Readwise Reader CLI |
