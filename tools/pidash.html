@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>vuc &mdash; buvis-gems  documentation</title>
+  <title>pidash &mdash; buvis-gems  documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
 
@@ -19,8 +19,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="zseq" href="zseq.html" />
-    <link rel="prev" title="sysup" href="sysup.html" /> 
+    <link rel="next" title="pinger" href="pinger.html" />
+    <link rel="prev" title="outlookctl" href="outlookctl.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -67,15 +67,17 @@
 <li class="toctree-l3"><a class="reference internal" href="muc.html">muc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="netscan.html">netscan</a></li>
 <li class="toctree-l3"><a class="reference internal" href="outlookctl.html">outlookctl</a></li>
-<li class="toctree-l3"><a class="reference internal" href="pidash.html">pidash</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">pidash</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#keybindings">Keybindings</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#display">Display</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
 <li class="toctree-l3"><a class="reference internal" href="puc.html">puc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sysup.html">sysup</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">vuc</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
 </ul>
 </li>
@@ -103,9 +105,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
-      <li class="breadcrumb-item active">vuc</li>
+      <li class="breadcrumb-item active">pidash</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/tools/vuc.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/tools/pidash.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -113,18 +115,35 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="vuc">
-<span id="tool-vuc"></span><h1>vuc<a class="headerlink" href="#vuc" title="Link to this heading"></a></h1>
-<p>Video utility collection. Requires <code class="docutils literal notranslate"><span class="pre">mediainfo</span></code> system package.</p>
-<section id="commands">
-<h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
-<section id="vuc-multilang">
-<h3>vuc multilang<a class="headerlink" href="#vuc-multilang" title="Link to this heading"></a></h3>
-<p>List video files with multiple audio tracks. Outputs results to a CSV file.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>vuc<span class="w"> </span>multilang<span class="w"> </span>~/videos/<span class="w"> </span>output.csv
+  <section id="pidash">
+<span id="tool-pidash"></span><h1>pidash<a class="headerlink" href="#pidash" title="Link to this heading"></a></h1>
+<p>Read-only TUI dashboard for monitoring autopilot PRD cycle progress.</p>
+<p><strong>Extra:</strong> <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[pidash]</span></code></p>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pidash<span class="w">              </span><span class="c1"># watch current directory</span>
+pidash<span class="w"> </span>/path/to/project
 </pre></div>
 </div>
+<p>Watches <code class="docutils literal notranslate"><span class="pre">.local/prd-cycle.json</span></code> for state changes written by autopilot and displays
+real-time progress through the PRD cycle phases.</p>
 </section>
+<section id="keybindings">
+<h2>Keybindings<a class="headerlink" href="#keybindings" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> — Refresh (manually reload state file)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">q</span></code> — Quit</p></li>
+</ul>
+</section>
+<section id="display">
+<h2>Display<a class="headerlink" href="#display" title="Link to this heading"></a></h2>
+<p><strong>Phase pipeline</strong> — shows progress through CATCHUP → PLANNING → WORKING → REVIEWING → DONE
+with an animated spinner on the active phase.</p>
+<p><strong>Progress bar</strong> — task completion (e.g. “4/6 completed”).</p>
+<p><strong>Tasks panel</strong> — per-task status with markers for pending, in-progress, and completed.</p>
+<p><strong>Decisions panel</strong> — autonomous and deferred decisions color-coded by severity
+(critical, high, medium, low).</p>
+<p><strong>Attention banner</strong> — red overlay when autopilot needs a human decision.</p>
 </section>
 </section>
 
@@ -132,8 +151,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="sysup.html" class="btn btn-neutral float-left" title="sysup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="zseq.html" class="btn btn-neutral float-right" title="zseq" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="outlookctl.html" class="btn btn-neutral float-left" title="outlookctl" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pinger.html" class="btn btn-neutral float-right" title="pinger" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
