@@ -111,70 +111,19 @@ jobs:
           format: cyclonedx-json
           output-file: dist/buvis-gems.cdx.json
 
-      - name: Generate changelog
+      - name: Extract changelog
         shell: bash
         run: |
           tag="${{ github.ref_name }}"
-          version="${tag#gems-}"
-          date=$(git log -1 --format=%cs "$tag")
-          prev_tag=$(git tag --sort=-v:refname | grep '^gems-v' | sed -n '2p')
-          range="${prev_tag:+$prev_tag..}$tag"
-          repo="${{ github.repository }}"
-
-          pkg_name=$(sed -n 's/^name = "\(.*\)"/\1/p' pyproject.toml)
-          echo "# ${pkg_name} $version ($date)" > CHANGELOG.md
-          echo "" >> CHANGELOG.md
-
+          version="${tag#gems-v}"
           echo "VERSION=$version" >> "$GITHUB_ENV"
-
-          declare -A sections=(
-            [feat]="Features"
-            [fix]="Bug Fixes"
-            [perf]="Performance"
-            [refactor]="Refactoring"
-            [build]="Build"
-            [ops]="Operations"
-            [docs]="Documentation"
-            [test]="Tests"
-            [style]="Style"
-            [chore]="Chores"
-          )
-          order="feat fix perf refactor build ops docs test style chore"
-          scope_re='([^)]+)'
-
-          for type in $order; do
-            heading="${sections[$type]}"
-            entries=""
-            while IFS='|' read -r hash msg; do
-              [ -z "$hash" ] && continue
-              [[ "$msg" =~ ^build.*:\ bump\ to ]] && continue
-              body="${msg#*: }"
-              scope=""
-              if [[ "$msg" =~ ^${type}\(${scope_re}\) ]]; then
-                scope="${BASH_REMATCH[1]}"
-              fi
-              if [ -n "$scope" ]; then
-                entries+="- **${scope}**: ${body}"$'\n'
-              else
-                entries+="- ${body}"$'\n'
-              fi
-              entries+="  ([\`${hash}\`](https://github.com/${repo}/commit/${hash}))"$'\n\n'
-            done < <(git log "$range" --no-merges --pretty="tformat:%h|%s" --grep="^${type}[:(]" --extended-regexp)
-
-            if [ -n "$entries" ]; then
-              {
-                echo "## $heading"
-                echo ""
-                printf '%s' "$entries"
-              } >> CHANGELOG.md
-            fi
-          done
+          awk "/^## \[${version//./\\.}\]/{found=1; next} /^## \[/{if(found) exit} found" CHANGELOG.md > release-notes.md
 
       - uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ env.VERSION }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           files: |
             dist/*.whl
             dist/*.cdx.json

@@ -6,6 +6,33 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 usage() { echo "Usage: release [--dry-run] [--pre <suffix>] [patch|minor|major|local]"; exit 1; }
 die() { echo "error: $1" >&2; exit 1; }
 
+update_changelog() {
+  local ver="$1" tag="$2"
+  local changelog="$ROOT/CHANGELOG.md"
+  [[ -f "$changelog" ]] || return 0
+
+  local date prev_tag
+  date=$(date +%Y-%m-%d)
+  prev_tag=$(sed -n 's|^\[Unreleased\]: .*/compare/\(.*\)\.\.\.HEAD|\1|p' "$changelog")
+
+  awk -v ver="$ver" -v date="$date" -v tag="$tag" -v prev="$prev_tag" '
+    /^## \[Unreleased\]/ {
+      print
+      print ""
+      print "## [" ver "] - " date
+      next
+    }
+    /^\[Unreleased\]:/ {
+      match($0, /https:\/\/[^/]*\/[^/]*\/[^/]*/)
+      base = substr($0, RSTART, RLENGTH)
+      print "[Unreleased]: " base "/compare/" tag "...HEAD"
+      print "[" ver "]: " base "/compare/" prev "..." tag
+      next
+    }
+    { print }
+  ' "$changelog" > "$changelog.tmp" && mv "$changelog.tmp" "$changelog"
+}
+
 bump_version() {
   local ver="$1" part="$2"
   IFS='.' read -r major minor patch <<< "$ver"
@@ -99,9 +126,12 @@ git tag -l "$tag" | grep -q . && die "tag $tag already exists"
 
 sed -i.bak "s/version = \"$old_ver\"/version = \"$new_ver\"/" "$pyproject" && rm -f "$pyproject.bak"
 
+[[ -z "$pre_suffix" ]] && update_changelog "$new_ver" "$tag"
+
 uv lock || die "uv lock failed"
 
 git add "$pyproject" uv.lock
+[[ -f "$ROOT/CHANGELOG.md" ]] && git add "$ROOT/CHANGELOG.md"
 git commit -m "build(gems): bump to v$new_ver"
 git tag "$tag"
 git push origin HEAD --tags
