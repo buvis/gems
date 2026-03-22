@@ -100,15 +100,13 @@ pub fn load_filtered(
 
 // ── Metadata cache ──────────────────────────────────────────────────────
 
-const CACHE_VERSION: u8 = 3;
+const CACHE_VERSION: u8 = 4;
 
-#[derive(Serialize, Deserialize, bincode::Encode, bincode::Decode)]
+#[derive(Serialize, Deserialize)]
 struct CacheEntry {
     mtime_secs: i64,
     mtime_nanos: u32,
-    #[bincode(with_serde)]
     metadata: IndexMap<String, YamlValue>,
-    #[bincode(with_serde)]
     reference: IndexMap<String, YamlValue>,
 }
 
@@ -122,9 +120,7 @@ fn load_cache(path: &Path) -> Cache {
     if bytes.is_empty() || bytes[0] != CACHE_VERSION {
         return Cache::new();
     }
-    bincode::decode_from_slice(&bytes[1..], bincode::config::standard())
-        .map(|(v, _)| v)
-        .unwrap_or_default()
+    rmp_serde::from_slice(&bytes[1..]).unwrap_or_default()
 }
 
 fn save_cache(path: &Path, cache: &Cache) {
@@ -132,7 +128,7 @@ fn save_cache(path: &Path, cache: &Cache) {
         let _ = fs::create_dir_all(parent);
     }
     let mut bytes = vec![CACHE_VERSION];
-    if let Ok(encoded) = bincode::encode_to_vec(cache, bincode::config::standard()) {
+    if let Ok(encoded) = rmp_serde::to_vec(cache) {
         bytes.extend(encoded);
         let _ = fs::write(path, bytes);
     }
