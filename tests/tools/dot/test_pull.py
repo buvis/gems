@@ -62,7 +62,7 @@ class TestCommandPullExecute:
         result = cmd.execute()
 
         assert not result.success
-        assert result.error.startswith("Secret reveal failed")
+        assert result.error.startswith("[git-secret] Decryption failed")
 
     def test_execute_fails_on_pull_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
