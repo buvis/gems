@@ -48,7 +48,7 @@ class TestShowScreen:
                 await pilot.pause()
                 screen = app.screen
                 content = screen.query_one("#show-content", Static)
-                assert "Test Note" in content.renderable
+                assert "Test Note" in content.content
 
     @pytest.mark.anyio
     async def test_close_button_dismisses(self):
