@@ -106,14 +106,25 @@ class TestPhasePipeline:
         assert "CATCHUP" in result
         assert "DONE" in result
 
+    def test_doubt_phase_active(self) -> None:
+        state = _make_state(
+            phase="doubt-review",
+            phases_completed=["catchup", "planning", "work", "review"],
+        )
+        result = PhasePipeline().render_state(state)
+        assert "▸ DOUBT" in result
+        assert "✓ REVIEWING" in result
+        assert "DONE" in result
+
     def test_done_phase_all_checked(self) -> None:
         state = _make_state(
             phase="done",
-            phases_completed=["catchup", "planning", "work", "review"],
+            phases_completed=["catchup", "planning", "work", "review", "doubt-review"],
         )
         result = PhasePipeline().render_state(state)
         assert "✓ DONE" in result
         assert "✓ CATCHUP" in result
+        assert "✓ DOUBT" in result
         assert "▸" not in result
 
 
@@ -166,6 +177,31 @@ class TestTaskPanel:
         assert "3" in result
         assert "5" in result
         assert "2" in result
+
+    def test_doubt_task_tagged(self) -> None:
+        state = _make_state(
+            tasks=[
+                {"name": "[DOUBT] Fix edge case", "status": "pending"},
+                {"name": "Normal task", "status": "completed"},
+            ],
+            tasks_total=2,
+            tasks_completed=1,
+        )
+        result = TaskPanel().render_state(state)
+        assert "\\[DOUBT]" in result
+        assert "[cyan]" in result
+        assert "Fix edge case" in result
+        assert "Normal task" in result
+
+    def test_doubt_task_completed_dimmed(self) -> None:
+        state = _make_state(
+            tasks=[{"name": "[DOUBT] Fix edge case", "status": "completed"}],
+            tasks_total=1,
+            tasks_completed=1,
+        )
+        result = TaskPanel().render_state(state)
+        assert "\\[DOUBT]" in result
+        assert "[dim]" in result
 
 
 class TestDecisionPanel:

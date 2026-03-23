@@ -95,6 +95,7 @@ class TestDisplayPhaseMapping:
             ("review", "REVIEWING"),
             ("decision-gate", "REVIEWING"),
             ("paused", "REVIEWING"),
+            ("doubt-review", "DOUBT"),
             ("done", "DONE"),
         ],
     )

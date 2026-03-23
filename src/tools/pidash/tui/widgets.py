@@ -62,6 +62,7 @@ class TaskPanel:
         "completed": "[green]✓[/green]",
         "pending": "[dim]·[/dim]",
     }
+    _DOUBT_PREFIX = "[DOUBT] "
 
     def __init__(self) -> None:
         self.spinner: str = "▸"
@@ -78,9 +79,14 @@ class TaskPanel:
                     marker = f"[bold yellow]{self.spinner}[/bold yellow]"
                 else:
                     marker = self._status_markers.get(t.status, "[dim]·[/dim]")
+                name = t.name
+                tag = ""
+                if name.startswith(self._DOUBT_PREFIX):
+                    name = name[len(self._DOUBT_PREFIX) :]
+                    tag = "[cyan]\\[DOUBT][/cyan] "
                 style = "dim" if t.status == "completed" else ""
-                name = f"[{style}]{t.name}[/{style}]" if style else t.name
-                lines.append(f"{marker} {name}")
+                name = f"[{style}]{name}[/{style}]" if style else name
+                lines.append(f"{marker} {tag}{name}")
             return "\n".join(lines)
         remaining = state.tasks_total - state.tasks_completed
         return f"completed {state.tasks_completed}  remaining {remaining}  total {state.tasks_total}"

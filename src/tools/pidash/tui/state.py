@@ -16,10 +16,11 @@ DISPLAY_PHASES: dict[str, str] = {
     "review": "REVIEWING",
     "decision-gate": "REVIEWING",
     "paused": "REVIEWING",
+    "doubt-review": "DOUBT",
     "done": "DONE",
 }
 
-PHASE_ORDER: list[str] = ["CATCHUP", "PLANNING", "WORKING", "REVIEWING", "DONE"]
+PHASE_ORDER: list[str] = ["CATCHUP", "PLANNING", "WORKING", "REVIEWING", "DOUBT", "DONE"]
 
 
 class Decision(BaseModel, frozen=True):
