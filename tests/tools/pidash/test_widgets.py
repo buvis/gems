@@ -203,6 +203,43 @@ class TestTaskPanel:
         assert "\\[DOUBT]" in result
         assert "[dim]" in result
 
+    def test_cycle_task_tagged(self) -> None:
+        state = _make_state(
+            tasks=[
+                {"name": "[C1] Fix blob test", "status": "pending"},
+                {"name": "[C2] Update docs", "status": "in_progress"},
+                {"name": "Original task", "status": "completed"},
+            ],
+            tasks_total=3,
+            tasks_completed=1,
+        )
+        result = TaskPanel().render_state(state)
+        assert "\\[C1]" in result
+        assert "\\[C2]" in result
+        assert "[magenta]" in result
+        assert "Fix blob test" in result
+        assert "Update docs" in result
+        assert "Original task" in result
+
+    def test_cycle_task_completed_dimmed(self) -> None:
+        state = _make_state(
+            tasks=[{"name": "[C1] Fix issue", "status": "completed"}],
+            tasks_total=1,
+            tasks_completed=1,
+        )
+        result = TaskPanel().render_state(state)
+        assert "\\[C1]" in result
+        assert "[dim]" in result
+
+    def test_brackets_in_name_escaped(self) -> None:
+        state = _make_state(
+            tasks=[{"name": "Fix [important] bug", "status": "pending"}],
+            tasks_total=1,
+            tasks_completed=0,
+        )
+        result = TaskPanel().render_state(state)
+        assert "\\[important]" in result
+
 
 class TestDecisionPanel:
     def test_none_state_returns_empty(self) -> None:

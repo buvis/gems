@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from pidash.tui.state import DISPLAY_PHASES, PHASE_ORDER, PrdState
+
+_CYCLE_RE = re.compile(r"^\[C(\d+)\] ")
 
 
 class HeaderBar:
@@ -84,6 +87,12 @@ class TaskPanel:
                 if name.startswith(self._DOUBT_PREFIX):
                     name = name[len(self._DOUBT_PREFIX) :]
                     tag = "[cyan]\\[DOUBT][/cyan] "
+                else:
+                    m = _CYCLE_RE.match(name)
+                    if m:
+                        name = name[m.end() :]
+                        tag = f"[magenta]\\[C{m.group(1)}][/magenta] "
+                name = name.replace("[", "\\[")
                 style = "dim" if t.status == "completed" else ""
                 name = f"[{style}]{name}[/{style}]" if style else name
                 lines.append(f"{marker} {tag}{name}")
