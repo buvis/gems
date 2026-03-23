@@ -6,6 +6,7 @@ from datetime import datetime
 from pidash.tui.state import DISPLAY_PHASES, PHASE_ORDER, PrdState
 
 _CYCLE_RE = re.compile(r"^\[C(\d+)\] ")
+_DECISION_RE = re.compile(r"^\[D(\d+)\] ")
 
 
 class HeaderBar:
@@ -92,6 +93,11 @@ class TaskPanel:
                     if m:
                         name = name[m.end() :]
                         tag = f"[magenta]\\[C{m.group(1)}][/magenta] "
+                    else:
+                        m = _DECISION_RE.match(name)
+                        if m:
+                            name = name[m.end() :]
+                            tag = f"[green]\\[D{m.group(1)}][/green] "
                 name = name.replace("[", "\\[")
                 style = "dim" if t.status == "completed" else ""
                 name = f"[{style}]{name}[/{style}]" if style else name

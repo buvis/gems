@@ -222,6 +222,24 @@ class TestTaskPanel:
         assert "\\[C1]" in result
         assert "[dim]" in result
 
+    def test_decision_task_tagged(self) -> None:
+        state = _make_state(
+            tasks=[
+                {"name": "[D1] Fix GraphQL scalar", "status": "pending"},
+                {"name": "[D2] Update docs", "status": "completed"},
+                {"name": "Original task", "status": "completed"},
+            ],
+            tasks_total=3,
+            tasks_completed=2,
+        )
+        result = TaskPanel().render_state(state)
+        assert "\\[D1]" in result
+        assert "\\[D2]" in result
+        assert "[green]" in result
+        assert "Fix GraphQL scalar" in result
+        assert "Update docs" in result
+        assert "Original task" in result
+
     def test_brackets_in_name_escaped(self) -> None:
         state = _make_state(
             tasks=[{"name": "Fix [important] bug", "status": "pending"}],
