@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **pidash**: doubt-review phase in pipeline (CATCHUP → PLANNING → WORKING → REVIEWING → DOUBT → DONE)
+- **pidash**: dedicated Doubts panel for doubt review findings
+- **pidash**: render `[C{n}]` cycle tags in magenta, `[DOUBT]` tags in cyan
+
+### Fixed
+
+- **pidash**: escape brackets in task names to prevent Rich markup swallowing
+- **dev**: `release local` reliably restores pyproject.toml after build
+
 ## [0.4.0] - 2026-03-22
 
 ### Added
