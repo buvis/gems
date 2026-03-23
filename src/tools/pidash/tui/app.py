@@ -113,40 +113,15 @@ class _TaskPanelWidget(_PanelWidget):
 
 
 class _DoubtPanelWidget(_PanelWidget):
-    _DOUBT_PREFIX = "[DOUBT] "
-
     def __init__(self) -> None:
-        self._doubt_renderer = DoubtPanel()
-        super().__init__("doubts", "Doubts", self._doubt_renderer)
-        self._state: PrdState | None = None
-        self._spin_idx = 0
+        super().__init__("doubts", "Doubts", DoubtPanel())
 
     def on_mount(self) -> None:
         self.display = False
         super().on_mount()
-        self.set_interval(0.15, self._tick)
-
-    def _tick(self) -> None:
-        if self._state is None:
-            return
-        has_active = any(
-            t.status == "in_progress" and t.name.startswith(self._DOUBT_PREFIX)
-            for t in self._state.tasks
-        )
-        if not has_active:
-            return
-        self._spin_idx = (self._spin_idx + 1) % len(_SPINNER)
-        self._doubt_renderer.spinner = _SPINNER[self._spin_idx]
-        content = self._doubt_renderer.render_state(self._state)
-        if content:
-            self.update(f"[bold]{self._title}[/bold]\n{content}")
 
     def refresh_state(self, state: PrdState | None) -> None:
-        self._state = state
-        has_doubts = state is not None and any(
-            t.name.startswith(self._DOUBT_PREFIX) for t in state.tasks
-        )
-        self.display = has_doubts
+        self.display = state is not None and len(state.doubts) > 0
         super().refresh_state(state)
 
 

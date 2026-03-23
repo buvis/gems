@@ -29,6 +29,12 @@ class Decision(BaseModel, frozen=True):
     resolution: str = "pending"
 
 
+class Doubt(BaseModel, frozen=True):
+    description: str
+    severity: str = "medium"
+    status: str = "pending"
+
+
 class CycleResult(BaseModel, frozen=True):
     cycle: int
     critical: int = 0
@@ -62,6 +68,7 @@ class PrdState(BaseModel):
     tasks: list[TaskInfo] = []
     autonomous_decisions: list[Decision] = []
     deferred_decisions: list[Decision] = []
+    doubts: list[Doubt] = []
     review_cycles: list[CycleResult] = []
     done_prds: list[str] = []
 
@@ -91,6 +98,17 @@ def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
         data["prd"] = {"name": prd, "path": data.pop("prd_path", "")}
 
     _normalize_decisions(data)
+
+    doubts_normalized = []
+    for d in data.get("doubts", []):
+        if isinstance(d, str):
+            doubts_normalized.append({"description": d})
+        elif isinstance(d, dict):
+            if "issue" in d and "description" not in d:
+                d["description"] = d.pop("issue")
+            doubts_normalized.append(d)
+    if "doubts" in data:
+        data["doubts"] = doubts_normalized
 
     tasks_normalized = []
     for t in data.get("tasks", []):

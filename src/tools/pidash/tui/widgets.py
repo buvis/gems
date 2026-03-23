@@ -76,21 +76,22 @@ class TaskPanel:
         if not state.tasks and state.tasks_total == 0:
             return "[dim]No tasks yet[/dim]"
         if state.tasks:
-            filtered = [t for t in state.tasks if not t.name.startswith(self._DOUBT_PREFIX)]
-            if not filtered:
-                return "[dim]No tasks[/dim]"
             lines: list[str] = []
-            for t in filtered:
+            for t in state.tasks:
                 if t.status == "in_progress":
                     marker = f"[bold yellow]{self.spinner}[/bold yellow]"
                 else:
                     marker = self._status_markers.get(t.status, "[dim]·[/dim]")
                 name = t.name
                 tag = ""
-                m = _CYCLE_RE.match(name)
-                if m:
-                    name = name[m.end() :]
-                    tag = f"[magenta]\\[C{m.group(1)}][/magenta] "
+                if name.startswith(self._DOUBT_PREFIX):
+                    name = name[len(self._DOUBT_PREFIX) :]
+                    tag = "[cyan]\\[DOUBT][/cyan] "
+                else:
+                    m = _CYCLE_RE.match(name)
+                    if m:
+                        name = name[m.end() :]
+                        tag = f"[magenta]\\[C{m.group(1)}][/magenta] "
                 name = name.replace("[", "\\[")
                 style = "dim" if t.status == "completed" else ""
                 name = f"[{style}]{name}[/{style}]" if style else name
@@ -101,32 +102,27 @@ class TaskPanel:
 
 
 class DoubtPanel:
-    _status_markers: dict[str, str] = {
-        "completed": "[green]✓[/green]",
-        "pending": "[dim]·[/dim]",
+    _severity_colors: dict[str, str] = {
+        "critical": "red",
+        "high": "orange1",
+        "medium": "yellow",
+        "low": "cyan",
     }
-    _DOUBT_PREFIX = "[DOUBT] "
-
-    def __init__(self) -> None:
-        self.spinner: str = "▸"
 
     def render_state(self, state: PrdState | None) -> str:
         if state is None:
             return ""
-        doubts = [t for t in state.tasks if t.name.startswith(self._DOUBT_PREFIX)]
-        if not doubts:
+        if not state.doubts:
             return ""
-        resolved = sum(1 for t in doubts if t.status == "completed")
-        lines: list[str] = [f"[dim]{resolved}/{len(doubts)} resolved[/dim]"]
-        for t in doubts:
-            if t.status == "in_progress":
-                marker = f"[bold yellow]{self.spinner}[/bold yellow]"
+        resolved = sum(1 for d in state.doubts if d.status == "resolved")
+        lines: list[str] = [f"[dim]{resolved}/{len(state.doubts)} resolved[/dim]"]
+        for d in state.doubts:
+            color = self._severity_colors.get(d.severity, "dim")
+            desc = d.description.replace("[", "\\[")
+            if d.status == "resolved":
+                lines.append(f"[green]✓[/green] [{color}][dim]{desc}[/dim][/{color}]")
             else:
-                marker = self._status_markers.get(t.status, "[dim]·[/dim]")
-            name = t.name[len(self._DOUBT_PREFIX) :].replace("[", "\\[")
-            style = "dim" if t.status == "completed" else ""
-            name = f"[{style}]{name}[/{style}]" if style else name
-            lines.append(f"{marker} {name}")
+                lines.append(f"[{color}]· {desc}[/{color}]")
         return "\n".join(lines)
 
 

@@ -179,7 +179,7 @@ class TestTaskPanel:
         assert "5" in result
         assert "2" in result
 
-    def test_doubt_tasks_excluded(self) -> None:
+    def test_doubt_task_tagged(self) -> None:
         state = _make_state(
             tasks=[
                 {"name": "[DOUBT] Fix edge case", "status": "pending"},
@@ -189,17 +189,10 @@ class TestTaskPanel:
             tasks_completed=1,
         )
         result = TaskPanel().render_state(state)
-        assert "Fix edge case" not in result
+        assert "\\[DOUBT]" in result
+        assert "[cyan]" in result
+        assert "Fix edge case" in result
         assert "Normal task" in result
-
-    def test_only_doubt_tasks_shows_no_tasks(self) -> None:
-        state = _make_state(
-            tasks=[{"name": "[DOUBT] Fix edge case", "status": "pending"}],
-            tasks_total=1,
-            tasks_completed=0,
-        )
-        result = TaskPanel().render_state(state)
-        assert "No tasks" in result
 
     def test_cycle_task_tagged(self) -> None:
         state = _make_state(
@@ -243,56 +236,53 @@ class TestDoubtPanel:
     def test_none_state_returns_empty(self) -> None:
         assert DoubtPanel().render_state(None) == ""
 
-    def test_no_doubt_tasks_returns_empty(self) -> None:
-        state = _make_state(
-            tasks=[{"name": "Normal task", "status": "completed"}],
-            tasks_total=1,
-            tasks_completed=1,
-        )
+    def test_no_doubts_returns_empty(self) -> None:
+        state = _make_state()
         assert DoubtPanel().render_state(state) == ""
 
-    def test_shows_doubt_tasks(self) -> None:
+    def test_shows_doubts(self) -> None:
         state = _make_state(
-            tasks=[
-                {"name": "[DOUBT] Fix edge case", "status": "pending"},
-                {"name": "[DOUBT] Handle timeout", "status": "completed"},
-                {"name": "Normal task", "status": "completed"},
+            doubts=[
+                {"description": "Missing edge case", "severity": "medium", "status": "pending"},
+                {"description": "No timeout handling", "severity": "high", "status": "resolved"},
             ],
-            tasks_total=3,
-            tasks_completed=2,
         )
         result = DoubtPanel().render_state(state)
-        assert "Fix edge case" in result
-        assert "Handle timeout" in result
-        assert "Normal task" not in result
+        assert "Missing edge case" in result
+        assert "No timeout handling" in result
 
     def test_resolved_count(self) -> None:
         state = _make_state(
-            tasks=[
-                {"name": "[DOUBT] Fix edge case", "status": "pending"},
-                {"name": "[DOUBT] Handle timeout", "status": "completed"},
+            doubts=[
+                {"description": "Issue A", "severity": "low", "status": "pending"},
+                {"description": "Issue B", "severity": "low", "status": "resolved"},
             ],
-            tasks_total=2,
-            tasks_completed=1,
         )
         result = DoubtPanel().render_state(state)
         assert "1/2 resolved" in result
 
-    def test_completed_doubt_dimmed(self) -> None:
+    def test_resolved_doubt_dimmed_with_check(self) -> None:
         state = _make_state(
-            tasks=[{"name": "[DOUBT] Fix edge case", "status": "completed"}],
-            tasks_total=1,
-            tasks_completed=1,
+            doubts=[{"description": "Fixed issue", "severity": "medium", "status": "resolved"}],
         )
         result = DoubtPanel().render_state(state)
         assert "[dim]" in result
         assert "✓" in result
 
+    def test_severity_colored(self) -> None:
+        state = _make_state(
+            doubts=[
+                {"description": "Critical flaw", "severity": "critical", "status": "pending"},
+                {"description": "Minor thing", "severity": "low", "status": "pending"},
+            ],
+        )
+        result = DoubtPanel().render_state(state)
+        assert "[red]" in result
+        assert "[cyan]" in result
+
     def test_brackets_escaped(self) -> None:
         state = _make_state(
-            tasks=[{"name": "[DOUBT] Fix [edge] case", "status": "pending"}],
-            tasks_total=1,
-            tasks_completed=0,
+            doubts=[{"description": "Fix [edge] case", "severity": "medium", "status": "pending"}],
         )
         result = DoubtPanel().render_state(state)
         assert "\\[edge]" in result
