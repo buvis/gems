@@ -33,7 +33,10 @@ with an animated spinner on the active phase.
 **Progress bar** — task completion (e.g. "4/6 completed").
 
 **Tasks panel** — per-task status with markers for pending, in-progress, and completed.
-Tasks tagged ``[DOUBT]`` (from the doubt review phase) are shown with a cyan tag.
+Cycle rework tasks (``[C1]``, ``[C2]``, etc.) are shown with magenta tags.
+
+**Doubts panel** — appears during/after the doubt review phase, showing ``[DOUBT]``
+tasks with resolved/total count. Hidden when no doubt tasks exist.
 
 **Decisions panel** — autonomous and deferred decisions color-coded by severity
 (critical, high, medium, low).

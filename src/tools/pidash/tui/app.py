@@ -12,6 +12,7 @@ from pidash.tui.state import PrdState, parse_state
 from pidash.tui.watcher import STATE_DIR, STATE_FILENAME, StateChanged, StateFileDeleted, watch_state_file
 from pidash.tui.widgets import (
     DecisionPanel,
+    DoubtPanel,
     FooterBar,
     PhasePipeline,
     TaskPanel,
@@ -67,7 +68,7 @@ class _AttentionOverlay(Static):
 
 
 class _PanelWidget(Static):
-    def __init__(self, panel_id: str, title: str, renderer: TaskPanel | DecisionPanel) -> None:
+    def __init__(self, panel_id: str, title: str, renderer: TaskPanel | DecisionPanel | DoubtPanel) -> None:
         super().__init__(id=panel_id)
         self._title = title
         self._renderer = renderer
@@ -108,6 +109,44 @@ class _TaskPanelWidget(_PanelWidget):
 
     def refresh_state(self, state: PrdState | None) -> None:
         self._state = state
+        super().refresh_state(state)
+
+
+class _DoubtPanelWidget(_PanelWidget):
+    _DOUBT_PREFIX = "[DOUBT] "
+
+    def __init__(self) -> None:
+        self._doubt_renderer = DoubtPanel()
+        super().__init__("doubts", "Doubts", self._doubt_renderer)
+        self._state: PrdState | None = None
+        self._spin_idx = 0
+
+    def on_mount(self) -> None:
+        self.display = False
+        super().on_mount()
+        self.set_interval(0.15, self._tick)
+
+    def _tick(self) -> None:
+        if self._state is None:
+            return
+        has_active = any(
+            t.status == "in_progress" and t.name.startswith(self._DOUBT_PREFIX)
+            for t in self._state.tasks
+        )
+        if not has_active:
+            return
+        self._spin_idx = (self._spin_idx + 1) % len(_SPINNER)
+        self._doubt_renderer.spinner = _SPINNER[self._spin_idx]
+        content = self._doubt_renderer.render_state(self._state)
+        if content:
+            self.update(f"[bold]{self._title}[/bold]\n{content}")
+
+    def refresh_state(self, state: PrdState | None) -> None:
+        self._state = state
+        has_doubts = state is not None and any(
+            t.name.startswith(self._DOUBT_PREFIX) for t in state.tasks
+        )
+        self.display = has_doubts
         super().refresh_state(state)
 
 
@@ -152,6 +191,7 @@ class PidashApp(App[None]):
         with Horizontal(id="panels"):
             yield _TaskPanelWidget()
             yield _PanelWidget("decisions", "Decisions", DecisionPanel())
+            yield _DoubtPanelWidget()
         yield _FooterWidget()
 
     def on_mount(self) -> None:

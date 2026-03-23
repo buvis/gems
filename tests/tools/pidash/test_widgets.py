@@ -6,6 +6,7 @@ from pidash.tui.state import PrdState, parse_state
 from pidash.tui.widgets import (
     CyclePanel,
     DecisionPanel,
+    DoubtPanel,
     FooterBar,
     HeaderBar,
     PhasePipeline,
@@ -178,7 +179,7 @@ class TestTaskPanel:
         assert "5" in result
         assert "2" in result
 
-    def test_doubt_task_tagged(self) -> None:
+    def test_doubt_tasks_excluded(self) -> None:
         state = _make_state(
             tasks=[
                 {"name": "[DOUBT] Fix edge case", "status": "pending"},
@@ -188,20 +189,17 @@ class TestTaskPanel:
             tasks_completed=1,
         )
         result = TaskPanel().render_state(state)
-        assert "\\[DOUBT]" in result
-        assert "[cyan]" in result
-        assert "Fix edge case" in result
+        assert "Fix edge case" not in result
         assert "Normal task" in result
 
-    def test_doubt_task_completed_dimmed(self) -> None:
+    def test_only_doubt_tasks_shows_no_tasks(self) -> None:
         state = _make_state(
-            tasks=[{"name": "[DOUBT] Fix edge case", "status": "completed"}],
+            tasks=[{"name": "[DOUBT] Fix edge case", "status": "pending"}],
             tasks_total=1,
-            tasks_completed=1,
+            tasks_completed=0,
         )
         result = TaskPanel().render_state(state)
-        assert "\\[DOUBT]" in result
-        assert "[dim]" in result
+        assert "No tasks" in result
 
     def test_cycle_task_tagged(self) -> None:
         state = _make_state(
@@ -239,6 +237,65 @@ class TestTaskPanel:
         )
         result = TaskPanel().render_state(state)
         assert "\\[important]" in result
+
+
+class TestDoubtPanel:
+    def test_none_state_returns_empty(self) -> None:
+        assert DoubtPanel().render_state(None) == ""
+
+    def test_no_doubt_tasks_returns_empty(self) -> None:
+        state = _make_state(
+            tasks=[{"name": "Normal task", "status": "completed"}],
+            tasks_total=1,
+            tasks_completed=1,
+        )
+        assert DoubtPanel().render_state(state) == ""
+
+    def test_shows_doubt_tasks(self) -> None:
+        state = _make_state(
+            tasks=[
+                {"name": "[DOUBT] Fix edge case", "status": "pending"},
+                {"name": "[DOUBT] Handle timeout", "status": "completed"},
+                {"name": "Normal task", "status": "completed"},
+            ],
+            tasks_total=3,
+            tasks_completed=2,
+        )
+        result = DoubtPanel().render_state(state)
+        assert "Fix edge case" in result
+        assert "Handle timeout" in result
+        assert "Normal task" not in result
+
+    def test_resolved_count(self) -> None:
+        state = _make_state(
+            tasks=[
+                {"name": "[DOUBT] Fix edge case", "status": "pending"},
+                {"name": "[DOUBT] Handle timeout", "status": "completed"},
+            ],
+            tasks_total=2,
+            tasks_completed=1,
+        )
+        result = DoubtPanel().render_state(state)
+        assert "1/2 resolved" in result
+
+    def test_completed_doubt_dimmed(self) -> None:
+        state = _make_state(
+            tasks=[{"name": "[DOUBT] Fix edge case", "status": "completed"}],
+            tasks_total=1,
+            tasks_completed=1,
+        )
+        result = DoubtPanel().render_state(state)
+        assert "[dim]" in result
+        assert "✓" in result
+
+    def test_brackets_escaped(self) -> None:
+        state = _make_state(
+            tasks=[{"name": "[DOUBT] Fix [edge] case", "status": "pending"}],
+            tasks_total=1,
+            tasks_completed=0,
+        )
+        result = DoubtPanel().render_state(state)
+        assert "\\[edge]" in result
 
 
 class TestDecisionPanel:
