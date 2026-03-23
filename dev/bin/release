@@ -77,7 +77,9 @@ if [[ "$part" == "local" ]]; then
     exit 0
   fi
 
-  trap 'git checkout -- "$pyproject"' EXIT
+  [[ -f "$pyproject.orig" ]] && mv -f "$pyproject.orig" "$pyproject"
+  cp "$pyproject" "$pyproject.orig"
+  trap 'mv -f "$pyproject.orig" "$pyproject"' EXIT
   sed -i.bak "s/version = \"$old_ver\"/version = \"$dev_ver\"/" "$pyproject" && rm -f "$pyproject.bak"
 
   out_dir="/tmp/gems-test"
