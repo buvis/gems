@@ -15,7 +15,7 @@ Usage
     pidash              # watch current directory
     pidash /path/to/project
 
-Watches ``.local/prd-cycle.json`` for state changes written by autopilot and displays
+Watches ``.local/autopilot/state.json`` for state changes written by autopilot and displays
 real-time progress through the PRD cycle phases.
 
 Keybindings
