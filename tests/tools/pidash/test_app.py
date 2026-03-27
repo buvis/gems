@@ -67,9 +67,9 @@ class TestPidashApp:
 
     @pytest.mark.anyio
     async def test_manual_refresh_reads_file(self, app: PidashApp, autopilot_state_dict: dict) -> None:
-        state_dir = app._project_path / ".local"
+        state_dir = app._project_path / ".local" / "autopilot"
         state_dir.mkdir(parents=True, exist_ok=True)
-        (state_dir / "prd-cycle.json").write_text(json.dumps(autopilot_state_dict))
+        (state_dir / "state.json").write_text(json.dumps(autopilot_state_dict))
         async with app.run_test() as pilot:
             await pilot.pause()
             await pilot.press("r")
@@ -79,9 +79,9 @@ class TestPidashApp:
 
     @pytest.mark.anyio
     async def test_watcher_loads_existing_file(self, tmp_path: Path, autopilot_state_dict: dict) -> None:
-        state_dir = tmp_path / ".local"
-        state_dir.mkdir()
-        (state_dir / "prd-cycle.json").write_text(json.dumps(autopilot_state_dict))
+        state_dir = tmp_path / ".local" / "autopilot"
+        state_dir.mkdir(parents=True)
+        (state_dir / "state.json").write_text(json.dumps(autopilot_state_dict))
         watch_app = PidashApp(project_path=tmp_path, _watch=True)
         async with watch_app.run_test() as pilot:
             await pilot.pause(delay=0.5)

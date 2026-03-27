@@ -136,5 +136,5 @@ def parse_state(raw: str) -> PrdState | None:
         _normalize_data(data)
         return PrdState.model_validate(data)
     except (json.JSONDecodeError, ValidationError):
-        logger.debug("Failed to parse prd-cycle.json", exc_info=True)
+        logger.debug("Failed to parse state.json", exc_info=True)
         return None

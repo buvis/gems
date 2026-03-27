@@ -9,8 +9,8 @@ from textual.worker import get_current_worker
 
 logger = logging.getLogger(__name__)
 
-STATE_FILENAME = "prd-cycle.json"
-STATE_DIR = ".local"
+STATE_FILENAME = "state.json"
+STATE_DIR = ".local/autopilot"
 
 
 class StateChanged(Message):
@@ -32,7 +32,7 @@ def _read_and_post(app: object, state_file: Path) -> None:
 
 
 def watch_state_file(app: object, project_path: Path, stop_event: threading.Event | None = None) -> None:
-    """Thread worker: watches for prd-cycle.json changes.
+    """Thread worker: watches for state.json changes.
 
     Posts StateChanged or StateFileDeleted messages to the app.
     Must be run via app.run_worker(..., thread=True).
