@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pidash**: doubt-review phase in pipeline (CATCHUP → PLANNING → WORKING → REVIEWING → DOUBT → DONE)
 - **pidash**: dedicated Doubts panel for doubt review findings
 - **pidash**: render `[C{n}]` cycle tags in magenta, `[DOUBT]` tags in cyan
+- **dot**: `rm` command for removing files from dotfiles tracking (handles git-secret cleanup)
 
 ### Fixed
 

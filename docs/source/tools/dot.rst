@@ -76,6 +76,19 @@ Commit staged dotfiles changes. Message is a positional argument.
 
     dot commit "update shell config"
 
+dot rm
+~~~~~~
+
+Remove a file from dotfiles tracking. Detects whether the file is encrypted
+by git-secret and handles cleanup accordingly: encrypted files go through
+full git-secret removal (untrack, clean ``.gitignore``, delete plaintext),
+normal files use standard ``cfg rm``.
+
+.. code-block:: bash
+
+    dot rm .bashrc                  # remove unencrypted file
+    dot rm .config/secrets.yaml     # remove encrypted file
+
 dot encrypt
 ~~~~~~~~~~~
 
