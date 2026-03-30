@@ -87,14 +87,16 @@ class _SecretListWidget(Widget, can_focus=True):
         return self._entries[self._cursor]
 
     def move_down(self) -> None:
-        if self._entries and self._cursor < len(self._entries) - 1:
-            self._cursor += 1
-            self.refresh()
+        if not self._entries:
+            return
+        self._cursor = (self._cursor + 1) % len(self._entries)
+        self.refresh()
 
     def move_up(self) -> None:
-        if self._entries and self._cursor > 0:
-            self._cursor -= 1
-            self.refresh()
+        if not self._entries:
+            return
+        self._cursor = (self._cursor - 1) % len(self._entries)
+        self.refresh()
 
     def render(self) -> Text:
         if not self._entries:

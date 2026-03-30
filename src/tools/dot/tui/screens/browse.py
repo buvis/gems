@@ -110,7 +110,10 @@ class BrowseScreen(Screen):
         def _on_dismiss(pattern: str | None) -> None:
             if pattern is None:
                 return
-            self._git_ops.add_to_gitignore(pattern)
+            result = self._git_ops.add_to_gitignore(pattern)
+            if not result.success:
+                self._show_message(f"Error adding to .gitignore: {result.error}")
+                return
             self._refresh_listing()
 
         self.app.push_screen(GitignoreModal(entry.path), callback=_on_dismiss)
