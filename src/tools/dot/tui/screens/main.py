@@ -88,6 +88,7 @@ class MainScreen(Screen):
         Binding("r", "refresh", "Refresh", show=True),
         Binding("b", "browse", "Browse", show=True),
         Binding("S", "secrets", "Secrets", show=True),
+        Binding("e", "encrypt", "Encrypt", show=True),
         Binding("enter", "stage_hunk", "Stage hunk", show=False),
     ]
 
@@ -259,6 +260,21 @@ class MainScreen(Screen):
         self.refresh_status()
 
     def action_refresh(self) -> None:
+        self.refresh_status()
+
+    def action_encrypt(self) -> None:
+        from dot.tui.commands.secrets import register_secret
+
+        entry = self._selected_entry()
+        if entry is None:
+            return
+        if not self._git_ops.shell.is_command_available("git-secret"):
+            self._show_message("git-secret is not installed")
+            return
+        result = register_secret(self._git_ops, entry.path)
+        if not result.success:
+            self._show_message(f"Encrypt failed: {result.error}")
+            return
         self.refresh_status()
 
     def action_browse(self) -> None:

@@ -26,6 +26,7 @@ class BrowseScreen(Screen):
         Binding("escape", "dismiss_screen", "Back"),
         Binding("a", "stage_entry", "Stage"),
         Binding("i", "ignore_entry", "Ignore"),
+        Binding("e", "encrypt_entry", "Encrypt"),
         Binding("enter", "open_entry", "Open", show=False),
         Binding("backspace", "go_parent", "Parent", show=False),
     ]
@@ -75,6 +76,18 @@ class BrowseScreen(Screen):
         if entry.status != TrackingStatus.UNTRACKED:
             return
         self._git_ops.stage(entry.path)
+        self._refresh_listing()
+
+    def action_encrypt_entry(self) -> None:
+        from dot.tui.commands.secrets import register_secret
+
+        widget = self.query_one("#dir-list", DirListWidget)
+        entry = widget.selected_entry
+        if entry is None:
+            return
+        if not self._git_ops.shell.is_command_available("git-secret"):
+            return
+        register_secret(self._git_ops, entry.path)
         self._refresh_listing()
 
     def action_ignore_entry(self) -> None:
