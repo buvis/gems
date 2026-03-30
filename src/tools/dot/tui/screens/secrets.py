@@ -125,6 +125,7 @@ class SecretsScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield _SecretListWidget(id="secret-list")
+        yield Label("", id="secrets-status")
 
     def render(self) -> str:
         widget = self.query_one("#secret-list", _SecretListWidget)
@@ -134,6 +135,9 @@ class SecretsScreen(Screen):
         self._refresh_list()
         self.query_one("#secret-list", _SecretListWidget).focus()
 
+    def _show_message(self, msg: str) -> None:
+        self.query_one("#secrets-status", Label).update(msg)
+
     def _refresh_list(self) -> None:
         entries = list_secrets(self._git_ops)
         self.query_one("#secret-list", _SecretListWidget).update_entries(entries)
@@ -142,11 +146,17 @@ class SecretsScreen(Screen):
         self.dismiss()
 
     def action_reveal(self) -> None:
-        reveal_all(self._git_ops)
+        result = reveal_all(self._git_ops)
+        if not result.success:
+            self._show_message(f"Reveal failed: {result.error}")
+            return
         self._refresh_list()
 
     def action_hide(self) -> None:
-        hide_all(self._git_ops)
+        result = hide_all(self._git_ops)
+        if not result.success:
+            self._show_message(f"Hide failed: {result.error}")
+            return
         self._refresh_list()
 
     def action_unregister(self) -> None:
@@ -158,7 +168,10 @@ class SecretsScreen(Screen):
         def _on_confirm(confirmed: bool | None) -> None:
             if not confirmed:
                 return
-            unregister_secret(self._git_ops, entry.path)
+            result = unregister_secret(self._git_ops, entry.path)
+            if not result.success:
+                self._show_message(f"Unregister failed: {result.error}")
+                return
             self._refresh_list()
 
         self.app.push_screen(_ConfirmUnregisterScreen(entry.path), callback=_on_confirm)
