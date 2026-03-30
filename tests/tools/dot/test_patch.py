@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from dot.tui.patch import Hunk, build_hunk_patch, build_line_patch, parse_diff
+from dot.tui.patch import Hunk, build_hunk_patch, build_line_patch, parse_diff, reverse_patch
 
 
 SINGLE_HUNK_DIFF = """\
@@ -410,3 +410,104 @@ class TestBuildLinePatch:
         assert patch.startswith("diff --git a/some/path.py b/some/path.py\n")
         assert "\n--- a/some/path.py\n" in patch
         assert "\n+++ b/some/path.py\n" in patch
+
+
+class TestReversePatch:
+    def _reverse_lines(self, patch: str) -> list[str]:
+        """Split reversed patch into lines for assertion helpers."""
+        return patch.splitlines()
+
+    def test_file_headers_swapped(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        rev = reverse_patch(patch)
+        assert "\n--- b/hello.py\n" in rev
+        assert "\n+++ a/hello.py\n" in rev
+        assert "\n--- a/hello.py\n" not in rev
+        assert "\n+++ b/hello.py\n" not in rev
+
+    def test_addition_becomes_deletion(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        rev = reverse_patch(patch)
+        assert "\n-import sys\n" in rev
+        assert "\n+import sys\n" not in rev
+
+    def test_deletion_becomes_addition(self) -> None:
+        hunk = parse_diff(DELETIONS_ONLY_DIFF)[0]
+        patch = build_hunk_patch("old.py", hunk)
+        rev = reverse_patch(patch)
+        assert "\n+removed one\n" in rev
+        assert "\n+removed two\n" in rev
+        assert "\n+removed three\n" in rev
+        assert "\n-removed one\n" not in rev
+
+    def test_context_lines_unchanged(self) -> None:
+        hunk = Hunk(
+            header="@@ -1,3 +1,3 @@",
+            lines=[" context", "-old line", "+new line", " more context"],
+            start_old=1,
+            count_old=3,
+            start_new=1,
+            count_new=3,
+        )
+        patch = build_hunk_patch("mixed.py", hunk)
+        rev = reverse_patch(patch)
+        assert "\n context\n" in rev
+        assert "\n more context\n" in rev
+
+    def test_hunk_header_counts_swapped(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        rev = reverse_patch(patch)
+        # original: @@ -1,3 +1,4 @@ -> reversed: @@ -1,4 +1,3 @@
+        so, co, sn, cn = _parse_hunk_header(rev)
+        assert so == hunk.start_new
+        assert co == hunk.count_new
+        assert sn == hunk.start_old
+        assert cn == hunk.count_old
+
+    def test_diff_git_line_unchanged(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        rev = reverse_patch(patch)
+        first_line = rev.splitlines()[0]
+        assert first_line == "diff --git a/hello.py b/hello.py"
+
+    def test_addition_only_patch_reversed(self) -> None:
+        hunk = parse_diff(ADDITIONS_ONLY_DIFF)[0]
+        patch = build_hunk_patch("new.py", hunk)
+        rev = reverse_patch(patch)
+        # all + become -, counts swap: @@ -0,0 +1,3 @@ -> @@ -1,3 +0,0 @@
+        so, co, sn, cn = _parse_hunk_header(rev)
+        assert so == 1
+        assert co == 3
+        assert sn == 0
+        assert cn == 0
+        assert "\n-line one\n" in rev
+        assert "\n-line two\n" in rev
+        assert "\n-line three\n" in rev
+        assert "+" not in rev.split("@@")[-1]
+
+    def test_deletion_only_patch_reversed(self) -> None:
+        hunk = parse_diff(DELETIONS_ONLY_DIFF)[0]
+        patch = build_hunk_patch("old.py", hunk)
+        rev = reverse_patch(patch)
+        # all - become +, counts swap: @@ -1,3 +0,0 @@ -> @@ -0,0 +1,3 @@
+        so, co, sn, cn = _parse_hunk_header(rev)
+        assert so == 0
+        assert co == 0
+        assert sn == 1
+        assert cn == 3
+        assert "\n+removed one\n" in rev
+        assert "\n+removed two\n" in rev
+        assert "\n+removed three\n" in rev
+        # no deletion lines in body
+        body = rev.split("@@")[-1]
+        assert "-" not in body
+
+    def test_trailing_newline_preserved(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        rev = reverse_patch(patch)
+        assert rev.endswith("\n")
