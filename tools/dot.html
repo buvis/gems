@@ -142,6 +142,57 @@
 </section>
 <section id="commands">
 <h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
+<section id="dot-tui">
+<h3>dot (TUI)<a class="headerlink" href="#dot-tui" title="Link to this heading"></a></h3>
+<p>Launch the interactive TUI for managing dotfiles. Shows unstaged and staged
+files with diff preview, supports keyboard navigation and staging/unstaging.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w">                         </span><span class="c1"># launches TUI (default when no subcommand)</span>
+dot<span class="w"> </span>tui<span class="w">                     </span><span class="c1"># explicit TUI launch</span>
+</pre></div>
+</div>
+<p><strong>Keybindings:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">j</span></code>/<code class="docutils literal notranslate"><span class="pre">k</span></code> - navigate file lists (in file pane), navigate hunks (in diff pane)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Tab</span></code> - cycle focus between Unstaged, Staged, and Diff panes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">s</span></code> / <code class="docutils literal notranslate"><span class="pre">Space</span></code> - stage focused file (from Unstaged pane)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">u</span></code> / <code class="docutils literal notranslate"><span class="pre">Space</span></code> - unstage focused file (from Staged pane)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> - stage/unstage focused hunk (in diff pane)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">v</span></code> - enter line-select mode (in diff pane, on focused hunk)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">j</span></code>/<code class="docutils literal notranslate"><span class="pre">k</span></code> - navigate changed lines (in line-select mode)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Space</span></code> - toggle line selection (in line-select mode)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> - stage selected lines (in line-select mode)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Escape</span></code> - exit line-select mode</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">c</span></code> - commit staged files (opens message input)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">d</span></code> - delete tracked file (with confirmation)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">i</span></code> - add file to .gitignore (opens pattern input)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">p</span></code> - push commits to remote</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">P</span></code> (shift+p) - pull from remote with submodule update</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">b</span></code> - open file browser (browse untracked files, add to tracking)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">S</span></code> (shift+s) - open secrets panel (manage git-secret files)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">e</span></code> - quick encrypt (register focused file with git-secret)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> - refresh all panes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">q</span></code> - quit</p></li>
+</ul>
+<p><strong>Browse view</strong> (<code class="docutils literal notranslate"><span class="pre">b</span></code>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">j</span></code>/<code class="docutils literal notranslate"><span class="pre">k</span></code> - navigate entries</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> - drill into directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Backspace</span></code> - go to parent directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">a</span></code> - add untracked file to tracking</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">i</span></code> - add file to .gitignore</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">e</span></code> - register file with git-secret</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Escape</span></code> - return to main view</p></li>
+</ul>
+<p><strong>Secrets panel</strong> (<code class="docutils literal notranslate"><span class="pre">S</span></code>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">j</span></code>/<code class="docutils literal notranslate"><span class="pre">k</span></code> - navigate secret list</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> - reveal all secrets (decrypt)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">h</span></code> - hide all secrets (encrypt)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">E</span></code> (shift+e) - unregister secret (with confirmation)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Escape</span></code> - return to main view</p></li>
+</ul>
+<p>Requires the <code class="docutils literal notranslate"><span class="pre">dot</span></code> extra: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">buvis-gems[dot]</span></code></p>
+</section>
 <section id="dot-status">
 <h3>dot status<a class="headerlink" href="#dot-status" title="Link to this heading"></a></h3>
 <p>Show staged and unstaged changes in your dotfiles repo. Uses <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span>
@@ -182,6 +233,26 @@ dot<span class="w"> </span>unstage<span class="w"> </span>.bashrc<span class="w"
 <h3>dot commit<a class="headerlink" href="#dot-commit" title="Link to this heading"></a></h3>
 <p>Commit staged dotfiles changes. Message is a positional argument.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>commit<span class="w"> </span><span class="s2">&quot;update shell config&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="dot-rm">
+<h3>dot rm<a class="headerlink" href="#dot-rm" title="Link to this heading"></a></h3>
+<p>Remove a file from dotfiles tracking, keeping the file on disk. For encrypted
+files, goes through full git-secret removal (untrack, clean <code class="docutils literal notranslate"><span class="pre">.gitignore</span></code>,
+delete plaintext).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>rm<span class="w"> </span>.bashrc<span class="w">                  </span><span class="c1"># stop tracking (file stays on disk)</span>
+dot<span class="w"> </span>rm<span class="w"> </span>.config/secrets.yaml<span class="w">     </span><span class="c1"># unregister encrypted file</span>
+</pre></div>
+</div>
+</section>
+<section id="dot-delete">
+<h3>dot delete<a class="headerlink" href="#dot-delete" title="Link to this heading"></a></h3>
+<p>Delete a file from dotfiles tracking and disk. For encrypted files, handles
+full git-secret cleanup. For normal files, uses <code class="docutils literal notranslate"><span class="pre">cfg</span> <span class="pre">rm</span></code> which removes from
+both tracking and disk.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>delete<span class="w"> </span>.bashrc<span class="w">              </span><span class="c1"># remove from tracking and disk</span>
+dot<span class="w"> </span>delete<span class="w"> </span>.config/secrets.yaml<span class="w"> </span><span class="c1"># delete encrypted file entirely</span>
 </pre></div>
 </div>
 </section>

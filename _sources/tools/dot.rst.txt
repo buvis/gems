@@ -23,6 +23,60 @@ Configuration
 Commands
 --------
 
+dot (TUI)
+~~~~~~~~~
+
+Launch the interactive TUI for managing dotfiles. Shows unstaged and staged
+files with diff preview, supports keyboard navigation and staging/unstaging.
+
+.. code-block:: bash
+
+    dot                         # launches TUI (default when no subcommand)
+    dot tui                     # explicit TUI launch
+
+**Keybindings:**
+
+- ``j``/``k`` - navigate file lists (in file pane), navigate hunks (in diff pane)
+- ``Tab`` - cycle focus between Unstaged, Staged, and Diff panes
+- ``s`` / ``Space`` - stage focused file (from Unstaged pane)
+- ``u`` / ``Space`` - unstage focused file (from Staged pane)
+- ``Enter`` - stage/unstage focused hunk (in diff pane)
+- ``v`` - enter line-select mode (in diff pane, on focused hunk)
+- ``j``/``k`` - navigate changed lines (in line-select mode)
+- ``Space`` - toggle line selection (in line-select mode)
+- ``Enter`` - stage selected lines (in line-select mode)
+- ``Escape`` - exit line-select mode
+- ``c`` - commit staged files (opens message input)
+- ``d`` - delete tracked file (with confirmation)
+- ``i`` - add file to .gitignore (opens pattern input)
+- ``p`` - push commits to remote
+- ``P`` (shift+p) - pull from remote with submodule update
+- ``b`` - open file browser (browse untracked files, add to tracking)
+- ``S`` (shift+s) - open secrets panel (manage git-secret files)
+- ``e`` - quick encrypt (register focused file with git-secret)
+- ``r`` - refresh all panes
+- ``q`` - quit
+
+**Browse view** (``b``):
+
+- ``j``/``k`` - navigate entries
+- ``Enter`` - drill into directory
+- ``Backspace`` - go to parent directory
+- ``a`` - add untracked file to tracking
+- ``i`` - add file to .gitignore
+- ``e`` - register file with git-secret
+- ``Escape`` - return to main view
+
+**Secrets panel** (``S``):
+
+- ``j``/``k`` - navigate secret list
+- ``r`` - reveal all secrets (decrypt)
+- ``h`` - hide all secrets (encrypt)
+- ``E`` (shift+e) - unregister secret (with confirmation)
+- ``Escape`` - return to main view
+
+Requires the ``dot`` extra: ``pip install buvis-gems[dot]``
+
 dot status
 ~~~~~~~~~~
 
@@ -75,6 +129,30 @@ Commit staged dotfiles changes. Message is a positional argument.
 .. code-block:: bash
 
     dot commit "update shell config"
+
+dot rm
+~~~~~~
+
+Remove a file from dotfiles tracking, keeping the file on disk. For encrypted
+files, goes through full git-secret removal (untrack, clean ``.gitignore``,
+delete plaintext).
+
+.. code-block:: bash
+
+    dot rm .bashrc                  # stop tracking (file stays on disk)
+    dot rm .config/secrets.yaml     # unregister encrypted file
+
+dot delete
+~~~~~~~~~~
+
+Delete a file from dotfiles tracking and disk. For encrypted files, handles
+full git-secret cleanup. For normal files, uses ``cfg rm`` which removes from
+both tracking and disk.
+
+.. code-block:: bash
+
+    dot delete .bashrc              # remove from tracking and disk
+    dot delete .config/secrets.yaml # delete encrypted file entirely
 
 dot encrypt
 ~~~~~~~~~~~
