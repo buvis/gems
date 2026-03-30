@@ -38,6 +38,7 @@ class MainScreen(Screen):
         Binding("tab", "focus_next_pane", "Next pane", show=False),
         Binding("s", "stage_file", "Stage", show=True),
         Binding("u", "unstage_file", "Unstage", show=True),
+        Binding("space", "toggle_stage", "Toggle", show=True),
     ]
 
     _FOCUS_ORDER = ["unstaged", "staged", "diff"]
@@ -99,6 +100,13 @@ class MainScreen(Screen):
             next_idx = 0
 
         self.query_one(f"#{self._FOCUS_ORDER[next_idx]}").focus()
+
+    def action_toggle_stage(self) -> None:
+        focused = self.focused
+        if focused and focused.id == "unstaged":
+            self.action_stage_file()
+        elif focused and focused.id == "staged":
+            self.action_unstage_file()
 
     def action_stage_file(self) -> None:
         widget = self.query_one("#unstaged", FileListWidget)
