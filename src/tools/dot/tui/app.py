@@ -26,7 +26,8 @@ class _ConfirmQuitScreen(ModalScreen[bool]):
         align: center middle;
     }
     #confirm-box {
-        width: 60;
+        width: auto;
+        max-width: 80%;
         height: auto;
         border: thick $accent;
         background: $surface;
@@ -63,10 +64,11 @@ class DotApp(App):
         Binding("q", "quit", "Quit"),
     ]
 
-    def __init__(self, dotfiles_root: str) -> None:
+    def __init__(self, dotfiles_root: str, theme: str = "textual-dark") -> None:
         super().__init__()
         shell = ShellAdapter(suppress_logging=True)
         self._git_ops = GitOps(shell, dotfiles_root)
+        self.theme = theme
 
     def on_mount(self) -> None:
         self.push_screen(MainScreen(self._git_ops))
