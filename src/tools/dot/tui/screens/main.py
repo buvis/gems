@@ -86,6 +86,8 @@ class MainScreen(Screen):
         Binding("p", "push", "Push", show=True),
         Binding("P", "pull", "Pull", show=True),
         Binding("r", "refresh", "Refresh", show=True),
+        Binding("b", "browse", "Browse", show=True),
+        Binding("S", "secrets", "Secrets", show=True),
         Binding("enter", "stage_hunk", "Stage hunk", show=False),
     ]
 
@@ -258,6 +260,22 @@ class MainScreen(Screen):
 
     def action_refresh(self) -> None:
         self.refresh_status()
+
+    def action_browse(self) -> None:
+        from dot.tui.screens.browse import BrowseScreen
+
+        def _on_dismiss(_result: None) -> None:
+            self.refresh_status()
+
+        self.app.push_screen(BrowseScreen(self._git_ops), callback=_on_dismiss)
+
+    def action_secrets(self) -> None:
+        from dot.tui.screens.secrets import SecretsScreen
+
+        def _on_dismiss(_result: None) -> None:
+            self.refresh_status()
+
+        self.app.push_screen(SecretsScreen(self._git_ops), callback=_on_dismiss)
 
     def action_stage_hunk(self) -> None:
         focused = self.focused
