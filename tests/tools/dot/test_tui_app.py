@@ -379,3 +379,113 @@ class TestMainScreen:
                 await pilot.press("enter")
                 await pilot.pause()
                 ops.commit.assert_called_once_with("fix: test commit")
+
+
+_HUNK_DIFF = (
+    "--- a/unstaged.txt\n"
+    "+++ b/unstaged.txt\n"
+    "@@ -1,3 +1,4 @@\n"
+    " line1\n"
+    "+added\n"
+    " line2\n"
+    " line3"
+)
+
+_STAGED_HUNK_DIFF = (
+    "--- a/staged.txt\n"
+    "+++ b/staged.txt\n"
+    "@@ -1,3 +1,4 @@\n"
+    " line1\n"
+    "+added\n"
+    " line2\n"
+    " line3"
+)
+
+
+class TestMainScreenHunkStaging:
+    @pytest.mark.anyio
+    async def test_enter_on_diff_with_hunk_calls_apply_patch(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.diff.return_value = _HUNK_DIFF
+            ops.apply_patch.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Tab twice to reach diff pane
+                await pilot.press("tab")
+                await pilot.pause()
+                await pilot.press("tab")
+                await pilot.pause()
+
+                assert app.screen.focused is not None
+                assert app.screen.focused.id == "diff"
+
+                await pilot.press("enter")
+                await pilot.pause()
+
+                ops.apply_patch.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_enter_on_empty_diff_does_nothing(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.apply_patch.return_value = CommandResult(success=True)
+            ops.apply_patch_reverse.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Tab twice to reach diff pane (diff is empty by default)
+                await pilot.press("tab")
+                await pilot.pause()
+                await pilot.press("tab")
+                await pilot.pause()
+
+                assert app.screen.focused is not None
+                assert app.screen.focused.id == "diff"
+
+                await pilot.press("enter")
+                await pilot.pause()
+
+                ops.apply_patch.assert_not_called()
+                ops.apply_patch_reverse.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_hunk_staging_refreshes_status(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.diff.return_value = _HUNK_DIFF
+            ops.apply_patch.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Tab twice to reach diff pane
+                await pilot.press("tab")
+                await pilot.pause()
+                await pilot.press("tab")
+                await pilot.pause()
+
+                ops.status.reset_mock()
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # refresh_status calls status() again
+                ops.status.assert_called()
