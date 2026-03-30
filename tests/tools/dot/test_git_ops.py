@@ -145,7 +145,7 @@ class TestGitOpsDiff:
     def test_staged_diff(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.exe.return_value = ("", "diff --git a/.bashrc b/.bashrc\n-old\n+new")
 
-        result = git_ops.diff(".bashrc", staged=True)
+        git_ops.diff(".bashrc", staged=True)
 
         cmd = shell.exe.call_args[0][0]
         assert "--cached" in cmd
@@ -255,17 +255,32 @@ class TestGitOpsCommit:
 
 
 class TestGitOpsPush:
-    def test_success(self, git_ops: GitOps, shell: MagicMock) -> None:
-        shell.exe.return_value = ("", "Everything up-to-date")
+    def test_success_with_unpushed(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", "1\n"),  # rev-list count: 1 unpushed
+            ("", "Everything up-to-date"),  # cfg push
+        ]
 
         result = git_ops.push()
 
         assert result.success is True
-        cmd = shell.exe.call_args[0][0]
-        assert "cfg push" in cmd
+        push_cmd = shell.exe.call_args_list[1][0][0]
+        assert "cfg push" in push_cmd
+
+    def test_nothing_to_push(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "0\n")  # rev-list count: 0 unpushed
+
+        result = git_ops.push()
+
+        assert result.success is True
+        assert result.output == "Nothing to push"
+        assert shell.exe.call_count == 1  # only the check, no push
 
     def test_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
-        shell.exe.return_value = ("rejected: non-fast-forward", "")
+        shell.exe.side_effect = [
+            ("", "1\n"),  # has unpushed
+            ("rejected: non-fast-forward", ""),  # push fails
+        ]
 
         result = git_ops.push()
 
@@ -273,21 +288,49 @@ class TestGitOpsPush:
 
 
 class TestGitOpsPull:
-    def test_success(self, git_ops: GitOps, shell: MagicMock) -> None:
-        shell.exe.return_value = ("", "Already up to date.")
+    def test_success_full_flow(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "ok")
 
         result = git_ops.pull()
 
         assert result.success is True
-        cmd = shell.exe.call_args[0][0]
-        assert "cfg pull" in cmd
+        assert shell.exe.call_count == 4  # pull + 3 submodule commands
+        cmds = [c[0][0] for c in shell.exe.call_args_list]
+        assert "cfg pull" in cmds[0]
+        assert "submodule foreach" in cmds[1]
+        assert "submodule update --init" in cmds[2]
+        assert "submodule update --remote --merge" in cmds[3]
 
-    def test_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
+    def test_success_with_secret_reveal(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.return_value = ("", "ok")
+
+        result = git_ops.pull()
+
+        assert result.success is True
+        assert shell.exe.call_count == 5  # pull + 3 submodule + secret reveal
+        last_cmd = shell.exe.call_args_list[4][0][0]
+        assert "cfg secret reveal -f" in last_cmd
+
+    def test_pull_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.exe.return_value = ("merge conflict", "")
 
         result = git_ops.pull()
 
         assert result.success is False
+
+    def test_submodule_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+        shell.exe.side_effect = [
+            ("", "ok"),  # pull ok
+            ("submodule error", ""),  # submodule fails
+        ]
+
+        result = git_ops.pull()
+
+        assert result.success is False
+        assert "Submodule" in (result.error or "")
 
 
 class TestGitOpsRm:

@@ -94,16 +94,48 @@ class GitOps:
         return CommandResult(success=True)
 
     def push(self) -> CommandResult:
+        if not self._has_unpushed_commits():
+            return CommandResult(success=True, output="Nothing to push")
+
         err, _out = self.shell.exe("cfg push", self._wd)
         if err:
             return CommandResult(success=False, error=err)
-        return CommandResult(success=True)
+        return CommandResult(success=True, output="Changes pushed")
 
     def pull(self) -> CommandResult:
         err, _out = self.shell.exe("cfg pull", self._wd)
         if err:
             return CommandResult(success=False, error=err)
-        return CommandResult(success=True)
+
+        err, _out = self.shell.exe("cfg submodule foreach git reset --hard", self._wd)
+        if err:
+            return CommandResult(success=False, error=f"Submodule reset failed: {err}")
+
+        err, _out = self.shell.exe("cfg submodule update --init", self._wd)
+        if err:
+            return CommandResult(success=False, error=f"Submodule init failed: {err}")
+
+        err, _out = self.shell.exe("cfg submodule update --remote --merge", self._wd)
+        if err:
+            return CommandResult(success=False, error=f"Submodule update failed: {err}")
+
+        if self.shell.is_command_available("git-secret"):
+            err, _out = self.shell.exe("cfg secret reveal -f", self._wd)
+            if err:
+                return CommandResult(success=False, error=f"Secret reveal failed: {err}")
+
+        return CommandResult(success=True, output="Dotfiles pulled successfully")
+
+    def _has_unpushed_commits(self) -> bool:
+        err, out = self.shell.exe("cfg rev-list --count @{u}..HEAD", self._wd)
+        if err:
+            return True
+        if not out or not out.strip():
+            return False
+        try:
+            return int(out.strip()) > 0
+        except ValueError:
+            return False
 
     def rm(self, path: str) -> CommandResult:
         err, _out = self.shell.exe(
