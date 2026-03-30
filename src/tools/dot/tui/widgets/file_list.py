@@ -75,7 +75,7 @@ class FileListWidget(Widget, can_focus=True):
             output.append(entry.path, style=style)
 
             if entry.is_secret:
-                output.append(" [secret]", style="red bold")
+                output.append(" [secret]", style="magenta bold")
 
             output.append("\n")
 
@@ -90,6 +90,13 @@ class FileListWidget(Widget, can_focus=True):
         if not self._files:
             return
         self.cursor_index = (self.cursor_index - 1) % len(self._files)
+
+    @property
+    def selected_entry(self) -> FileEntry | None:
+        """Return the currently focused FileEntry, or None if empty."""
+        if not self._files:
+            return None
+        return self._files[self.cursor_index]
 
     BINDINGS = [
         ("j", "cursor_down", "Down"),

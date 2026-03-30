@@ -105,16 +105,22 @@ class MainScreen(Screen):
 
     def action_stage_file(self) -> None:
         widget = self.query_one("#unstaged", FileListWidget)
-        if not widget._files:
+        entry = widget.selected_entry
+        if entry is None:
             return
-        entry = widget._files[widget.cursor_index]
-        self._git_ops.stage(entry.path)
+        result = self._git_ops.stage(entry.path)
+        if not result.success:
+            self.query_one("#diff", _DiffPane).update(f"Error staging: {result.error}")
+            return
         self.refresh_status()
 
     def action_unstage_file(self) -> None:
         widget = self.query_one("#staged", FileListWidget)
-        if not widget._files:
+        entry = widget.selected_entry
+        if entry is None:
             return
-        entry = widget._files[widget.cursor_index]
-        self._git_ops.unstage(entry.path)
+        result = self._git_ops.unstage(entry.path)
+        if not result.success:
+            self.query_one("#diff", _DiffPane).update(f"Error unstaging: {result.error}")
+            return
         self.refresh_status()

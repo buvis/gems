@@ -11,7 +11,11 @@ from dot.settings import DotSettings
 
 
 def _launch_tui() -> None:
-    from dot.tui.app import DotApp
+    try:
+        from dot.tui.app import DotApp
+    except ImportError:
+        click.echo("dot TUI requires the 'dot' extra: pip install buvis-gems[dot]")
+        raise SystemExit(1)
 
     dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
     DotApp(dotfiles_root=dotfiles_root).run()

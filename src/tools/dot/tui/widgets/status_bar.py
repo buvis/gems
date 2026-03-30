@@ -25,9 +25,6 @@ class StatusBar(Static):
         self._info = info
         self.update(self._render_info())
 
-    def render(self) -> Text:
-        return self._render_info()
-
     def _render_info(self) -> Text:
         if self._info is None:
             return Text("(no branch info)", style="dim")
