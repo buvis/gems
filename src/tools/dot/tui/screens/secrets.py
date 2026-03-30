@@ -7,7 +7,7 @@ from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widget import Widget
-from textual.widgets import Label
+from textual.widgets import Footer, Label
 
 from dot.tui.commands.secrets import (
     SecretEntry,
@@ -119,6 +119,8 @@ class SecretsScreen(Screen):
         Binding("E", "unregister", "Unregister", key_display="E"),
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
+        Binding("down", "cursor_down", "Down", show=False),
+        Binding("up", "cursor_up", "Up", show=False),
     ]
 
     def __init__(self, git_ops: GitOps) -> None:
@@ -128,6 +130,7 @@ class SecretsScreen(Screen):
     def compose(self) -> ComposeResult:
         yield _SecretListWidget(id="secret-list")
         yield Label("", id="secrets-status")
+        yield Footer()
 
     def render(self) -> str:
         widget = self.query_one("#secret-list", _SecretListWidget)

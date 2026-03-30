@@ -15,6 +15,8 @@ class DiffView(Widget, can_focus=True):
     BINDINGS = [
         Binding("j", "next_hunk", "Next hunk", show=False),
         Binding("k", "prev_hunk", "Prev hunk", show=False),
+        Binding("down", "next_hunk", "Next hunk", show=False),
+        Binding("up", "prev_hunk", "Prev hunk", show=False),
         Binding("v", "enter_line_select", "Line select", show=False),
         Binding("escape", "exit_line_select", "Exit select", show=False),
     ]

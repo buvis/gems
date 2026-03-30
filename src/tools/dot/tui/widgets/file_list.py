@@ -107,4 +107,6 @@ class FileListWidget(Widget, can_focus=True):
     BINDINGS = [
         ("j", "cursor_down", "Down"),
         ("k", "cursor_up", "Up"),
+        ("down", "cursor_down", "Down"),
+        ("up", "cursor_up", "Up"),
     ]
