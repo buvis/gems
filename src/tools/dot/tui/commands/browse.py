@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -55,14 +56,14 @@ def list_directory(git_ops: GitOps, path: str) -> list[DirEntry]:
     # Batch query: tracked files
     tracked: set[str] = set()
     if rel_paths:
-        err, out = git_ops.shell.exe(f"cfg ls-files {rel_query}", git_ops._wd)
+        err, out = git_ops.shell.exe(f"cfg ls-files {shlex.quote(rel_query)}", git_ops._wd)
         if not err and out and out.strip():
             tracked = {line for line in out.strip().split("\n") if line}
 
     # Batch query: ignored files
     ignored: set[str] = set()
     if rel_paths:
-        err, out = git_ops.shell.exe(f"cfg check-ignore {rel_query}/*", git_ops._wd)
+        err, out = git_ops.shell.exe(f"cfg check-ignore {shlex.quote(rel_query)}/*", git_ops._wd)
         if not err and out and out.strip():
             ignored = {line for line in out.strip().split("\n") if line}
 
@@ -101,11 +102,11 @@ def list_directory(git_ops: GitOps, path: str) -> list[DirEntry]:
 
 def get_tracking_status(git_ops: GitOps, path: str) -> TrackingStatus:
     """Check tracking status for a single path."""
-    err, out = git_ops.shell.exe(f"cfg ls-files {path}", git_ops._wd)
+    err, out = git_ops.shell.exe(f"cfg ls-files {shlex.quote(path)}", git_ops._wd)
     if not err and out and path in out:
         return TrackingStatus.TRACKED
 
-    err, out = git_ops.shell.exe(f"cfg check-ignore {path}", git_ops._wd)
+    err, out = git_ops.shell.exe(f"cfg check-ignore {shlex.quote(path)}", git_ops._wd)
     if not err and out and path in out:
         return TrackingStatus.IGNORED
 
