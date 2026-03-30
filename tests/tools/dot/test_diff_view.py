@@ -321,13 +321,15 @@ class TestDiffViewLineSelect:
         widget.action_enter_line_select()
         assert widget.selected_line_indices == set()
 
-    def test_hunk_navigation_exits_line_select(self) -> None:
+    def test_j_in_line_select_navigates_lines_not_hunks(self) -> None:
         widget = DiffView(id="diff")
         widget.update_diff(MULTI_HUNK)
         widget.action_enter_line_select()
         assert widget.in_line_select_mode is True
-        widget.action_next_hunk()
-        assert widget.in_line_select_mode is False
+        initial_hunk = widget.focused_hunk_index
+        widget.action_next_hunk()  # j key - should move line, not hunk
+        assert widget.in_line_select_mode is True
+        assert widget.focused_hunk_index == initial_hunk
 
     def test_update_diff_exits_line_select(self) -> None:
         widget = DiffView(id="diff")

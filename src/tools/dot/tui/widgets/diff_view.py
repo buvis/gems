@@ -96,17 +96,21 @@ class DiffView(Widget, can_focus=True):
         return [i for i, line in enumerate(hunk.lines) if line.startswith("+") or line.startswith("-")]
 
     def action_next_hunk(self) -> None:
-        """Move focus to the next hunk."""
+        """Move focus to the next hunk, or next line in line-select mode."""
+        if self._line_select_mode:
+            self.action_line_down()
+            return
         if self._hunks and self._focused_hunk < len(self._hunks) - 1:
             self._focused_hunk += 1
-            self._exit_line_select()
             self.refresh()
 
     def action_prev_hunk(self) -> None:
-        """Move focus to the previous hunk."""
+        """Move focus to the previous hunk, or previous line in line-select mode."""
+        if self._line_select_mode:
+            self.action_line_up()
+            return
         if self._focused_hunk > 0:
             self._focused_hunk -= 1
-            self._exit_line_select()
             self.refresh()
 
     def action_enter_line_select(self) -> None:
