@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-__all__ = ["Hunk", "build_hunk_patch", "parse_diff"]
+__all__ = ["Hunk", "build_hunk_patch", "build_line_patch", "parse_diff"]
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -94,3 +94,45 @@ def build_hunk_patch(path: str, hunk: Hunk) -> str:
         "",
     ]
     return "\n".join(lines)
+
+
+def build_line_patch(path: str, hunk: Hunk, selected_indices: set[int]) -> str:
+    """Construct a patch from selected lines within a hunk.
+
+    Args:
+        path: File path relative to repo root.
+        hunk: Hunk containing the lines.
+        selected_indices: 0-based indices into hunk.lines to include.
+
+    Returns:
+        Patch string suitable for ``git apply --cached``.
+    """
+    out_lines: list[str] = []
+    for i, line in enumerate(hunk.lines):
+        if line.startswith("+"):
+            if i in selected_indices:
+                out_lines.append(line)
+            # unselected additions: excluded entirely
+        elif line.startswith("-"):
+            if i in selected_indices:
+                out_lines.append(line)
+            else:
+                # unselected deletions become context
+                out_lines.append(" " + line[1:])
+        else:
+            # context lines always included
+            out_lines.append(line)
+
+    old_count = sum(1 for l in out_lines if l.startswith(" ") or l.startswith("-"))
+    new_count = sum(1 for l in out_lines if l.startswith(" ") or l.startswith("+"))
+    header = f"@@ -{hunk.start_old},{old_count} +{hunk.start_new},{new_count} @@"
+
+    parts = [
+        f"diff --git a/{path} b/{path}",
+        f"--- a/{path}",
+        f"+++ b/{path}",
+        header,
+        *out_lines,
+        "",
+    ]
+    return "\n".join(parts)
