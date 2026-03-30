@@ -14,6 +14,7 @@ class TestDotCliHelp:
         assert "commit" in result.output
         assert "push" in result.output
         assert "unstage" in result.output
+        assert "rm" in result.output
 
     def test_status_help(self, runner) -> None:
         result = runner.invoke(cli, ["status", "--help"])
@@ -130,4 +131,23 @@ class TestDotCommands:
         mock_cmd_cls = mocker.patch("dot.commands.push.push.CommandPush")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Push failed")
         result = runner.invoke(cli, ["push"])
+        assert result.exit_code == 0
+
+    def test_rm_help(self, runner) -> None:
+        result = runner.invoke(cli, ["rm", "--help"])
+        assert result.exit_code == 0
+        assert "FILE_PATH" in result.output
+
+    def test_rm_success(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.rm.rm.CommandRm")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=True, output="Removed")
+        result = runner.invoke(cli, ["rm", ".bashrc"])
+        assert result.exit_code == 0
+
+    def test_rm_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.rm.rm.CommandRm")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Remove failed")
+        result = runner.invoke(cli, ["rm", ".bashrc"])
         assert result.exit_code == 0
