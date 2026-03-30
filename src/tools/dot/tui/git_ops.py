@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shlex
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,6 +22,7 @@ class GitOps:
         self.shell = shell
         self.dotfiles_root = dotfiles_root
         self._wd = Path(dotfiles_root)
+        os.environ.setdefault("DOTFILES_ROOT", dotfiles_root)
         self.shell.alias(
             "cfg",
             "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",

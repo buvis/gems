@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Static
+from textual.widgets import Footer, Static
 
 from dot.tui.widgets import FileListWidget, StatusBar
 
@@ -57,6 +57,7 @@ class MainScreen(Screen):
                 yield FileListWidget("Unstaged", staged=False, id="unstaged")
                 yield FileListWidget("Staged", staged=True, id="staged")
             yield _DiffPane("", id="diff")
+        yield Footer()
 
     def on_mount(self) -> None:
         self.refresh_status()
