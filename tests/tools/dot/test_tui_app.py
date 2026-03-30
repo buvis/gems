@@ -493,3 +493,41 @@ class TestMainScreenHunkStaging:
 
                 # refresh_status calls status() again
                 ops.status.assert_called()
+
+    @pytest.mark.anyio
+    async def test_unstaging_calls_apply_patch_reverse(self) -> None:
+        from dot.tui.app import DotApp
+
+        staged_entries = [
+            FileEntry(path="a.txt", status="M "),
+            FileEntry(path="b.txt", status="M "),
+        ]
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(staged_entries)
+            ops.diff.return_value = _HUNK_DIFF
+            ops.apply_patch_reverse.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Move to staged pane, trigger FileSelected
+                await pilot.press("tab")
+                await pilot.pause()
+                await pilot.press("j")
+                await pilot.pause()
+
+                # Tab to diff pane
+                await pilot.press("tab")
+                await pilot.pause()
+
+                assert app.screen.focused is not None
+                assert app.screen.focused.id == "diff"
+
+                await pilot.press("enter")
+                await pilot.pause()
+
+                ops.apply_patch_reverse.assert_called_once()
