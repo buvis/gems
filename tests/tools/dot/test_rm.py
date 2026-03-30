@@ -28,6 +28,8 @@ class TestCommandRmIsEncrypted:
         shell.exe.return_value = ("git-secret: abort", "")
         cmd = CommandRm(shell=shell, file_path=".secret_file")
         assert not cmd._is_encrypted()
+        assert len(cmd.warnings) == 1
+        assert "git-secret" in cmd.warnings[0]
 
 
 class TestCommandRmRemoveNormal:
@@ -66,6 +68,7 @@ class TestCommandRmRemoveEncrypted:
         shell.exe.assert_any_call(
             "cfg secret remove -c .secret_file", dotfiles_root
         )
+        shell.exe.assert_any_call("cfg add .gitignore", dotfiles_root)
         assert ".secret_file" not in gitignore.read_text()
         assert ".other_file" in gitignore.read_text()
         assert not plaintext.exists()
@@ -84,6 +87,23 @@ class TestCommandRmRemoveEncrypted:
         cmd = CommandRm(shell=shell, file_path=".secret_file")
         result = cmd._remove_encrypted()
         assert result.success
+
+    def test_fails_on_plaintext_unlink_error(self, dotfiles_root: Path) -> None:
+        plaintext = dotfiles_root / ".secret_file"
+        plaintext.write_text("secret")
+        plaintext.chmod(0o000)
+        dotfiles_root.chmod(0o555)
+
+        shell = MagicMock()
+        shell.exe.return_value = ("", "")
+        cmd = CommandRm(shell=shell, file_path=".secret_file")
+        result = cmd._remove_encrypted()
+
+        dotfiles_root.chmod(0o755)
+        plaintext.chmod(0o644)
+
+        assert not result.success
+        assert "Failed to delete plaintext" in result.error
 
     def test_cleans_only_matching_gitignore_line(
         self, dotfiles_root: Path
@@ -114,6 +134,7 @@ class TestCommandRmExecute:
         shell.exe.side_effect = [
             ("", ".secret_file"),  # cfg secret list
             ("", ""),              # cfg secret remove -c
+            ("", ""),              # cfg add .gitignore
         ]
         cmd = CommandRm(shell=shell, file_path=".secret_file")
         result = cmd.execute()
