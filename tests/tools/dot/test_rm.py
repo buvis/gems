@@ -33,14 +33,14 @@ class TestCommandRmIsEncrypted:
 
 
 class TestCommandRmRemoveNormal:
-    def test_removes_file_successfully(self, dotfiles_root: Path) -> None:
+    def test_removes_from_tracking_with_cached(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
         shell.exe.return_value = ("", "")
         cmd = CommandRm(shell=shell, file_path=".config/app.conf")
         result = cmd._remove_normal()
         assert result.success
         shell.exe.assert_called_once_with(
-            "cfg rm .config/app.conf", dotfiles_root
+            "cfg rm --cached .config/app.conf", dotfiles_root
         )
 
     def test_fails_on_cfg_rm_error(self, dotfiles_root: Path) -> None:
@@ -149,12 +149,12 @@ class TestCommandRmExecute:
         # _is_encrypted returns empty list, then _remove_normal succeeds
         shell.exe.side_effect = [
             ("", ""),   # cfg secret list (empty)
-            ("", ""),   # cfg rm
+            ("", ""),   # cfg rm --cached
         ]
         cmd = CommandRm(shell=shell, file_path=".config/app.conf")
         result = cmd.execute()
 
         assert result.success
         shell.exe.assert_any_call(
-            "cfg rm .config/app.conf", dotfiles_root
+            "cfg rm --cached .config/app.conf", dotfiles_root
         )

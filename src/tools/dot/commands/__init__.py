@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .add.add import CommandAdd
 from .commit.commit import CommandCommit
+from .delete.delete import CommandDelete
 from .encrypt.encrypt import CommandEncrypt
 from .pull.pull import CommandPull
 from .push.push import CommandPush
@@ -13,6 +14,7 @@ from .unstage.unstage import CommandUnstage
 __all__ = [
     "CommandAdd",
     "CommandCommit",
+    "CommandDelete",
     "CommandEncrypt",
     "CommandPull",
     "CommandPush",

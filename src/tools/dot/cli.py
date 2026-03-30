@@ -72,13 +72,22 @@ def encrypt(file_path: str) -> None:
     console.report_result(CommandEncrypt(shell=shell, file_path=file_path).execute())
 
 
-@cli.command("rm", help="Remove file from dotfiles tracking")
+@cli.command("rm", help="Remove file from tracking (keeps file on disk)")
 @click.argument("file_path")
 def rm(file_path: str) -> None:
     from dot.commands.rm.rm import CommandRm
 
     shell = ShellAdapter(suppress_logging=True)
     console.report_result(CommandRm(shell=shell, file_path=file_path).execute())
+
+
+@cli.command("delete", help="Delete file from tracking and disk")
+@click.argument("file_path")
+def delete(file_path: str) -> None:
+    from dot.commands.delete.delete import CommandDelete
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(CommandDelete(shell=shell, file_path=file_path).execute())
 
 
 @cli.command("pull", help="Pull dotfiles and update submodules")

@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pidash**: doubt-review phase in pipeline (CATCHUP → PLANNING → WORKING → REVIEWING → DOUBT → DONE)
 - **pidash**: dedicated Doubts panel for doubt review findings
 - **pidash**: render `[C{n}]` cycle tags in magenta, `[DOUBT]` tags in cyan
-- **dot**: `rm` command for removing files from dotfiles tracking (handles git-secret cleanup)
+- **dot**: `delete` command for removing files from tracking and disk (handles git-secret cleanup)
 - **dot**: TUI mode - interactive terminal UI for dotfiles management (`dot` or `dot tui`)
 - **dot**: TUI colored diff preview with auto-update on cursor movement
 - **dot**: TUI commit modal, gitignore modal, delete confirmation dialog
@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **dot**: TUI file browser for discovering untracked files (b key, browse directories with tracking status)
 - **dot**: TUI secrets panel for git-secret management (S key, reveal/hide/register/unregister)
 - **dot**: TUI quick encrypt from any view (e key, register file with git-secret)
+
+### Changed
+
+- **dot**: `rm` command now keeps file on disk (uses `--cached`), use `delete` to remove from disk
 
 ### Fixed
 

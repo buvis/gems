@@ -133,15 +133,26 @@ Commit staged dotfiles changes. Message is a positional argument.
 dot rm
 ~~~~~~
 
-Remove a file from dotfiles tracking. Detects whether the file is encrypted
-by git-secret and handles cleanup accordingly: encrypted files go through
-full git-secret removal (untrack, clean ``.gitignore``, delete plaintext),
-normal files use standard ``cfg rm``.
+Remove a file from dotfiles tracking, keeping the file on disk. For encrypted
+files, goes through full git-secret removal (untrack, clean ``.gitignore``,
+delete plaintext).
 
 .. code-block:: bash
 
-    dot rm .bashrc                  # remove unencrypted file
-    dot rm .config/secrets.yaml     # remove encrypted file
+    dot rm .bashrc                  # stop tracking (file stays on disk)
+    dot rm .config/secrets.yaml     # unregister encrypted file
+
+dot delete
+~~~~~~~~~~
+
+Delete a file from dotfiles tracking and disk. For encrypted files, handles
+full git-secret cleanup. For normal files, uses ``cfg rm`` which removes from
+both tracking and disk.
+
+.. code-block:: bash
+
+    dot delete .bashrc              # remove from tracking and disk
+    dot delete .config/secrets.yaml # delete encrypted file entirely
 
 dot encrypt
 ~~~~~~~~~~~

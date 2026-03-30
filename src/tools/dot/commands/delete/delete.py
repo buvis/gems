@@ -10,8 +10,8 @@ if TYPE_CHECKING:
     from buvis.pybase.adapters.shell.shell import ShellAdapter
 
 
-class CommandRm:
-    def __init__(self: CommandRm, shell: ShellAdapter, file_path: str) -> None:
+class CommandDelete:
+    def __init__(self: CommandDelete, shell: ShellAdapter, file_path: str) -> None:
         self.shell = shell
         self.file_path = file_path
         self.warnings: list[str] = []
@@ -25,7 +25,7 @@ class CommandRm:
             "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
         )
 
-    def _is_encrypted(self: CommandRm) -> bool:
+    def _is_encrypted(self: CommandDelete) -> bool:
         cwd = Path(os.environ["DOTFILES_ROOT"])
         err, out = self.shell.exe("cfg secret list", cwd)
         if err:
@@ -33,14 +33,14 @@ class CommandRm:
             return False
         return self.file_path in out.splitlines()
 
-    def _remove_normal(self: CommandRm) -> CommandResult:
+    def _delete_normal(self: CommandDelete) -> CommandResult:
         cwd = Path(os.environ["DOTFILES_ROOT"])
-        err, _ = self.shell.exe(f"cfg rm --cached {self.file_path}", cwd)
+        err, _ = self.shell.exe(f"cfg rm {self.file_path}", cwd)
         if err:
-            return CommandResult(success=False, error=f"Failed to remove: {err}")
-        return CommandResult(success=True, output=f"{self.file_path} removed from tracking", warnings=self.warnings)
+            return CommandResult(success=False, error=f"Failed to delete: {err}")
+        return CommandResult(success=True, output=f"{self.file_path} deleted from dotfiles", warnings=self.warnings)
 
-    def _remove_encrypted(self: CommandRm) -> CommandResult:
+    def _delete_encrypted(self: CommandDelete) -> CommandResult:
         cwd = Path(os.environ["DOTFILES_ROOT"])
 
         err, _ = self.shell.exe(f"cfg secret remove -c {self.file_path}", cwd)
@@ -65,10 +65,10 @@ class CommandRm:
                 return CommandResult(success=False, error=f"Failed to delete plaintext: {exc}")
 
         return CommandResult(
-            success=True, output=f"{self.file_path} removed from git-secret and disk", warnings=self.warnings,
+            success=True, output=f"{self.file_path} deleted from git-secret and disk", warnings=self.warnings,
         )
 
-    def execute(self: CommandRm) -> CommandResult:
+    def execute(self: CommandDelete) -> CommandResult:
         if self._is_encrypted():
-            return self._remove_encrypted()
-        return self._remove_normal()
+            return self._delete_encrypted()
+        return self._delete_normal()
