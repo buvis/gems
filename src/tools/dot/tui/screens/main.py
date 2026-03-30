@@ -219,7 +219,7 @@ class MainScreen(Screen):
 
     def action_commit(self) -> None:
         staged_widget = self.query_one("#staged", FileListWidget)
-        if staged_widget.selected_entry is None and not staged_widget._files:
+        if staged_widget.is_empty:
             self._show_message("Nothing staged to commit")
             return
 
@@ -247,4 +247,3 @@ class MainScreen(Screen):
 
     def action_refresh(self) -> None:
         self.refresh_status()
-        self._show_message("Refreshed")

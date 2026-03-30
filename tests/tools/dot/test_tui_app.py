@@ -356,3 +356,26 @@ class TestMainScreen:
                 await pilot.press("enter")
                 await pilot.pause()
                 ops.add_to_gitignore.assert_called_once_with("unstaged.txt")
+
+    @pytest.mark.anyio
+    async def test_commit_happy_path(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.commit.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("c")
+                await pilot.pause()
+                # CommitModal should be showing
+                from textual.widgets import Input
+                inp = app.screen.query_one("#commit-input", Input)
+                inp.value = "fix: test commit"
+                await pilot.press("enter")
+                await pilot.pause()
+                ops.commit.assert_called_once_with("fix: test commit")

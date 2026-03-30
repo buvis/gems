@@ -92,6 +92,11 @@ class FileListWidget(Widget, can_focus=True):
         self.cursor_index = (self.cursor_index - 1) % len(self._files)
 
     @property
+    def is_empty(self) -> bool:
+        """Return True if the file list has no entries."""
+        return not self._files
+
+    @property
     def selected_entry(self) -> FileEntry | None:
         """Return the currently focused FileEntry, or None if empty."""
         if not self._files:

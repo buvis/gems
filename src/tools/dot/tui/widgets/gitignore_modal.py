@@ -40,7 +40,8 @@ class GitignoreModal(ModalScreen[str | None]):
         self.query_one("#pattern-input", Input).focus()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        self.dismiss(event.value)
+        if event.value.strip():
+            self.dismiss(event.value.strip())
 
     def action_cancel(self) -> None:
         self.dismiss(None)

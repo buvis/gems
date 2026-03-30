@@ -65,3 +65,21 @@ class TestGitignoreModal:
             await pilot.press("enter")
             await pilot.pause()
             assert app.dismissed_value == "edited_pattern"
+
+    @pytest.mark.anyio
+    async def test_empty_pattern_does_not_dismiss(self) -> None:
+        app = ModalHost("")
+        async with app.run_test(size=(80, 10)) as pilot:
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause()
+            assert app.dismissed_value == "NOT_SET"
+
+    @pytest.mark.anyio
+    async def test_whitespace_pattern_does_not_dismiss(self) -> None:
+        app = ModalHost("  ")
+        async with app.run_test(size=(80, 10)) as pilot:
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause()
+            assert app.dismissed_value == "NOT_SET"
