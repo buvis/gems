@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pidash**: dedicated Doubts panel for doubt review findings
 - **pidash**: render `[C{n}]` cycle tags in magenta, `[DOUBT]` tags in cyan
 - **dot**: `rm` command for removing files from dotfiles tracking (handles git-secret cleanup)
+- **dot**: TUI mode - interactive terminal UI for dotfiles management (`dot` or `dot tui`)
 
 ### Fixed
 

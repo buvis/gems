@@ -23,6 +23,27 @@ Configuration
 Commands
 --------
 
+dot (TUI)
+~~~~~~~~~
+
+Launch the interactive TUI for managing dotfiles. Shows unstaged and staged
+files with diff preview, supports keyboard navigation and staging/unstaging.
+
+.. code-block:: bash
+
+    dot                         # launches TUI (default when no subcommand)
+    dot tui                     # explicit TUI launch
+
+**Keybindings:**
+
+- ``j``/``k`` - navigate file lists
+- ``Tab`` - cycle focus between Unstaged, Staged, and Diff panes
+- ``s`` - stage focused file
+- ``u`` - unstage focused file
+- ``q`` - quit
+
+Requires the ``dot`` extra: ``pip install buvis-gems[dot]``
+
 dot status
 ~~~~~~~~~~
 
