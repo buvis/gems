@@ -48,6 +48,7 @@ class FileListWidget(Widget, can_focus=True):
         """Replace the file list and reset cursor."""
         self._files = list(files)
         self.cursor_index = 0
+        self.refresh()
 
     def watch_cursor_index(self, value: int) -> None:
         """Post FileSelected when cursor changes and files exist."""

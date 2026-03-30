@@ -42,6 +42,7 @@ class DirListWidget(Widget, can_focus=True):
         """Replace the entry list and reset cursor."""
         self._entries = list(entries)
         self.cursor_index = 0
+        self.refresh()
 
     def watch_cursor_index(self, value: int) -> None:
         """Post DirEntrySelected when cursor changes and entries exist."""
