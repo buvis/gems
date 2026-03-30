@@ -22,6 +22,7 @@ class DiffView(Widget, can_focus=True):
     def update_diff(self, diff_text: str) -> None:
         """Replace the current diff content."""
         self._diff_text = diff_text
+        self.refresh()
 
     def render(self) -> Text:
         output = Text()

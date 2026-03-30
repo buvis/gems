@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Footer, Static
+from textual.widgets import Footer
 
-from dot.tui.widgets import FileListWidget, StatusBar
+from dot.tui.widgets import DiffView, FileListWidget, StatusBar
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -16,10 +16,6 @@ if TYPE_CHECKING:
     from dot.tui.models import FileEntry
 
 __all__ = ["MainScreen"]
-
-
-class _DiffPane(Static, can_focus=True):
-    """Focusable diff viewer."""
 
 
 class MainScreen(Screen):
@@ -56,7 +52,7 @@ class MainScreen(Screen):
             with Vertical(id="left"):
                 yield FileListWidget("Unstaged", staged=False, id="unstaged")
                 yield FileListWidget("Staged", staged=True, id="staged")
-            yield _DiffPane("", id="diff")
+            yield DiffView(id="diff")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -67,7 +63,7 @@ class MainScreen(Screen):
         self, message: FileListWidget.FileSelected
     ) -> None:
         diff_text = self._git_ops.diff(message.entry.path, staged=message.staged)
-        self.query_one("#diff", _DiffPane).update(diff_text or "(no diff)")
+        self.query_one("#diff", DiffView).update_diff(diff_text or "")
 
     def refresh_status(self) -> None:
         entries = self._git_ops.status()
@@ -111,7 +107,7 @@ class MainScreen(Screen):
             return
         result = self._git_ops.stage(entry.path)
         if not result.success:
-            self.query_one("#diff", _DiffPane).update(f"Error staging: {result.error}")
+            self.query_one("#diff", DiffView).update_diff(f"Error staging: {result.error}")
             return
         self.refresh_status()
 
@@ -122,6 +118,6 @@ class MainScreen(Screen):
             return
         result = self._git_ops.unstage(entry.path)
         if not result.success:
-            self.query_one("#diff", _DiffPane).update(f"Error unstaging: {result.error}")
+            self.query_one("#diff", DiffView).update_diff(f"Error unstaging: {result.error}")
             return
         self.refresh_status()
