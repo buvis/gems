@@ -1,0 +1,97 @@
+from __future__ import annotations
+
+from rich.text import Text
+from textual.message import Message
+from textual.reactive import reactive
+from textual.widget import Widget
+
+from dot.tui.models import FileEntry
+
+__all__ = ["FileListWidget"]
+
+_STATUS_COLORS: dict[str, str] = {
+    "M": "yellow",
+    "A": "green",
+    "D": "red",
+    "?": "dim",
+}
+
+
+class FileListWidget(Widget, can_focus=True):
+    """Displays a list of files with git status indicators."""
+
+    cursor_index: reactive[int] = reactive(0)
+
+    class FileSelected(Message):
+        """Posted when the cursor moves to a new file."""
+
+        def __init__(self, entry: FileEntry, staged: bool) -> None:
+            super().__init__()
+            self.entry = entry
+            self.staged = staged
+
+    def __init__(
+        self,
+        title: str,
+        *,
+        staged: bool = False,
+        name: str | None = None,
+        id: str | None = None,
+        classes: str | None = None,
+    ) -> None:
+        super().__init__(name=name, id=id, classes=classes)
+        self._title = title
+        self._staged = staged
+        self._files: list[FileEntry] = []
+
+    def update_files(self, files: list[FileEntry]) -> None:
+        """Replace the file list and reset cursor."""
+        self._files = list(files)
+        self.cursor_index = 0
+
+    def watch_cursor_index(self, value: int) -> None:
+        """Post FileSelected when cursor changes and files exist."""
+        if self._files:
+            self.post_message(self.FileSelected(self._files[value], self._staged))
+
+    def render(self) -> Text:
+        output = Text()
+        output.append(self._title, style="bold underline")
+        output.append("\n")
+
+        if not self._files:
+            output.append("  No changes", style="dim")
+            return output
+
+        for idx, entry in enumerate(self._files):
+            prefix = "▸ " if idx == self.cursor_index else "  "
+            style = "reverse" if idx == self.cursor_index else ""
+
+            status_char = entry.status.strip() or "?"
+            color = _STATUS_COLORS.get(status_char[0], "white")
+
+            output.append(prefix)
+            output.append(f"[{entry.status.strip():>2}] ", style=color)
+            output.append(entry.path, style=style)
+
+            if entry.is_secret:
+                output.append(" [secret]", style="red bold")
+
+            output.append("\n")
+
+        return output
+
+    def action_cursor_down(self) -> None:
+        if not self._files:
+            return
+        self.cursor_index = (self.cursor_index + 1) % len(self._files)
+
+    def action_cursor_up(self) -> None:
+        if not self._files:
+            return
+        self.cursor_index = (self.cursor_index - 1) % len(self._files)
+
+    BINDINGS = [
+        ("j", "cursor_down", "Down"),
+        ("k", "cursor_up", "Up"),
+    ]
