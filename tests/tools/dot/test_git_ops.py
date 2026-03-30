@@ -485,3 +485,68 @@ class TestGitOpsBranchInfo:
 
         assert isinstance(result, BranchInfo)
         assert result == BranchInfo(name="feature-branch", ahead=5, behind=1, secret_count=0)
+
+
+class TestGitOpsApplyPatch:
+    def test_success(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_ops.apply_patch("diff --git a/.bashrc\n-old\n+new")
+
+        assert result.success is True
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg apply --cached" in cmd
+
+    def test_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("error: patch does not apply", "")
+
+        result = git_ops.apply_patch("bad patch")
+
+        assert result.success is False
+        assert result.error is not None
+
+    def test_temp_file_cleaned_up_on_success(
+        self, git_ops: GitOps, shell: MagicMock
+    ) -> None:
+        shell.exe.return_value = ("", "")
+
+        git_ops.apply_patch("diff content")
+
+        cmd = shell.exe.call_args[0][0]
+        # Extract the temp file path from the command
+        parts = cmd.split("cfg apply --cached ")
+        assert len(parts) == 2
+        tmpfile = parts[1].strip()
+        assert not Path(tmpfile).exists()
+
+    def test_temp_file_cleaned_up_on_failure(
+        self, git_ops: GitOps, shell: MagicMock
+    ) -> None:
+        shell.exe.return_value = ("apply failed", "")
+
+        git_ops.apply_patch("bad patch")
+
+        cmd = shell.exe.call_args[0][0]
+        parts = cmd.split("cfg apply --cached ")
+        assert len(parts) == 2
+        tmpfile = parts[1].strip()
+        assert not Path(tmpfile).exists()
+
+
+class TestGitOpsApplyPatchReverse:
+    def test_success(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_ops.apply_patch_reverse("diff --git a/.bashrc\n-old\n+new")
+
+        assert result.success is True
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg apply --cached --reverse" in cmd
+
+    def test_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("error: patch does not apply", "")
+
+        result = git_ops.apply_patch_reverse("bad patch")
+
+        assert result.success is False
+        assert result.error is not None
