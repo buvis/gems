@@ -33,10 +33,12 @@ class StatusBar(Static):
         output.append(self._info.name, style="bold cyan")
 
         if self._info.ahead > 0:
-            output.append(f"  \u2191{self._info.ahead} ahead", style="yellow")
+            arrows_up = "\u2191" * min(self._info.ahead, 5)
+            output.append(f"  {arrows_up} {self._info.ahead} unpushed", style="bold yellow")
 
         if self._info.behind > 0:
-            output.append(f"  \u2193{self._info.behind} behind", style="red")
+            arrows_down = "\u2193" * min(self._info.behind, 5)
+            output.append(f"  {arrows_down} {self._info.behind} unpulled", style="bold red")
 
         if self._info.secret_count > 0:
             output.append(f"  \U0001f512{self._info.secret_count} secrets", style="magenta")

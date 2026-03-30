@@ -129,6 +129,15 @@ class GitOps:
 
         return CommandResult(success=True, output="Dotfiles pulled successfully")
 
+    def has_uncommitted_changes(self) -> bool:
+        err, out = self.shell.exe("cfg status --porcelain", self._wd)
+        if err:
+            return False
+        return bool(out and out.strip())
+
+    def has_unpushed_commits(self) -> bool:
+        return self._has_unpushed_commits()
+
     def _has_unpushed_commits(self) -> bool:
         err, out = self.shell.exe("cfg rev-list --count @{u}..HEAD", self._wd)
         if err:
