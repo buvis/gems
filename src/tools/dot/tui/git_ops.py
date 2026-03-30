@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -155,6 +156,38 @@ class GitOps:
         if err:
             return CommandResult(success=False, error=err)
         return CommandResult(success=True)
+
+    def apply_patch(self, patch: str) -> CommandResult:
+        """Stage changes from a patch string using git apply --cached."""
+        fd, tmpfile = tempfile.mkstemp(suffix=".patch")
+        try:
+            os.write(fd, patch.encode())
+            os.close(fd)
+            err, _out = self.shell.exe(
+                f"cfg apply --cached {tmpfile}", self._wd
+            )
+            if err:
+                return CommandResult(success=False, error=err)
+            return CommandResult(success=True)
+        finally:
+            if Path(tmpfile).exists():
+                os.unlink(tmpfile)
+
+    def apply_patch_reverse(self, patch: str) -> CommandResult:
+        """Unstage changes by applying a patch in reverse."""
+        fd, tmpfile = tempfile.mkstemp(suffix=".patch")
+        try:
+            os.write(fd, patch.encode())
+            os.close(fd)
+            err, _out = self.shell.exe(
+                f"cfg apply --cached --reverse {tmpfile}", self._wd
+            )
+            if err:
+                return CommandResult(success=False, error=err)
+            return CommandResult(success=True)
+        finally:
+            if Path(tmpfile).exists():
+                os.unlink(tmpfile)
 
     def branch_info(self) -> BranchInfo:
         name = "unknown"
