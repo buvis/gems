@@ -65,9 +65,8 @@ class TestDotCli:
         assert result.exit_code == 0
 
     def test_bare_dot_launches_tui(self, runner, mocker) -> None:
-        mock_app_cls = mocker.patch("dot.cli.DotApp")
         mock_app_instance = MagicMock()
-        mock_app_cls.return_value = mock_app_instance
+        mocker.patch("dot.tui.app.DotApp", return_value=mock_app_instance)
 
         result = runner.invoke(cli, [])
         assert result.exit_code == 0
@@ -80,6 +79,6 @@ class TestDotCli:
             success=True, output="ok", warnings=[], error=None, metadata={}
         )
 
-        with patch("dot.cli.DotApp") as mock_app_cls:
+        with patch("dot.tui.app.DotApp") as mock_app_cls:
             runner.invoke(cli, ["status"])
             mock_app_cls.assert_not_called()

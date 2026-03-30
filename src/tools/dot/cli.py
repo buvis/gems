@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import click
 from buvis.pybase.adapters import ShellAdapter, console
 from buvis.pybase.configuration import buvis_options, get_settings
@@ -7,11 +10,24 @@ from buvis.pybase.configuration import buvis_options, get_settings
 from dot.settings import DotSettings
 
 
-@click.group(help="CLI for bare repo dotfiles")
+def _launch_tui() -> None:
+    from dot.tui.app import DotApp
+
+    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
+    DotApp(dotfiles_root=dotfiles_root).run()
+
+
+@click.group(invoke_without_command=True, help="CLI for bare repo dotfiles")
 @buvis_options(settings_class=DotSettings)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    pass
+    if ctx.invoked_subcommand is None:
+        _launch_tui()
+
+
+@cli.command("tui", help="Launch dotfiles TUI")
+def tui() -> None:
+    _launch_tui()
 
 
 @cli.command("status", help="Report status")
