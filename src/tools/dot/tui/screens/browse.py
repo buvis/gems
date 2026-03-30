@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import Label
+from textual.widgets import Footer, Label
 
 from dot.tui.commands.browse import TrackingStatus, list_directory
 from dot.tui.widgets.dir_list import DirListWidget
@@ -40,6 +40,7 @@ class BrowseScreen(Screen):
         yield Label(self._current_path, id="browse-path")
         yield DirListWidget(id="dir-list")
         yield Label("", id="browse-status")
+        yield Footer()
 
     def on_mount(self) -> None:
         self._refresh_listing()
