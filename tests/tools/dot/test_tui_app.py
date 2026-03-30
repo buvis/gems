@@ -194,3 +194,165 @@ class TestMainScreen:
                 await pilot.pause()
 
                 ops.diff.assert_called_with("second.txt", staged=False)
+
+    @pytest.mark.anyio
+    async def test_space_stages_from_unstaged(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("space")
+                await pilot.pause()
+                ops.stage.assert_called_once_with("unstaged.txt")
+
+    @pytest.mark.anyio
+    async def test_space_unstages_from_staged(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("tab")
+                await pilot.pause()
+                await pilot.press("space")
+                await pilot.pause()
+                ops.unstage.assert_called_once_with("staged.txt")
+
+    @pytest.mark.anyio
+    async def test_push_calls_git_ops(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.push.return_value = CommandResult(success=True, output="Changes pushed")
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("p")
+                await pilot.pause()
+                ops.push.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_pull_calls_git_ops(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.pull.return_value = CommandResult(success=True, output="Pulled")
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("P")
+                await pilot.pause()
+                ops.pull.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_refresh_updates_status(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                ops.status.reset_mock()
+                await pilot.press("r")
+                await pilot.pause()
+                ops.status.assert_called()
+
+    @pytest.mark.anyio
+    async def test_commit_blocked_when_staged_empty(self) -> None:
+        from dot.tui.app import DotApp
+
+        entries = [FileEntry(path="only_unstaged.txt", status=" M")]
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(entries)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("c")
+                await pilot.pause()
+                # Commit should NOT have been called (no staged files)
+                ops.commit.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_delete_file_with_confirmation(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.rm.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("d")
+                await pilot.pause()
+                # Confirmation screen should be showing
+                await pilot.press("y")
+                await pilot.pause()
+                ops.rm.assert_called_once_with("unstaged.txt")
+
+    @pytest.mark.anyio
+    async def test_delete_cancelled(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("d")
+                await pilot.pause()
+                await pilot.press("n")
+                await pilot.pause()
+                ops.rm.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_ignore_opens_modal(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops.add_to_gitignore.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                await pilot.press("i")
+                await pilot.pause()
+                # GitignoreModal should be showing with pre-filled value
+                await pilot.press("enter")
+                await pilot.pause()
+                ops.add_to_gitignore.assert_called_once_with("unstaged.txt")
