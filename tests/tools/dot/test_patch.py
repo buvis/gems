@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dot.tui.patch import Hunk, parse_diff
+from dot.tui.patch import Hunk, build_hunk_patch, parse_diff
 
 
 SINGLE_HUNK_DIFF = """\
@@ -195,3 +195,87 @@ class TestHunkDataclass:
         except AttributeError:
             raised = True
         assert raised
+
+
+class TestBuildHunkPatch:
+    def test_diff_git_header_contains_path(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        assert patch.startswith("diff --git a/hello.py b/hello.py\n")
+
+    def test_minus_header_contains_path(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        assert "\n--- a/hello.py\n" in patch
+
+    def test_plus_header_contains_path(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        assert "\n+++ b/hello.py\n" in patch
+
+    def test_contains_hunk_header(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        assert "\n@@ -1,3 +1,4 @@\n" in patch
+
+    def test_contains_all_hunk_lines(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        for line in hunk.lines:
+            assert line in patch
+
+    def test_ends_with_trailing_newline(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("hello.py", hunk)
+        assert patch.endswith("\n")
+
+    def test_addition_only_hunk(self) -> None:
+        hunk = parse_diff(ADDITIONS_ONLY_DIFF)[0]
+        patch = build_hunk_patch("new.py", hunk)
+        assert "diff --git a/new.py b/new.py\n" in patch
+        assert "--- a/new.py\n" in patch
+        assert "+++ b/new.py\n" in patch
+        assert "@@ -0,0 +1,3 @@\n" in patch
+        assert "+line one\n" in patch
+        assert "+line two\n" in patch
+        assert "+line three\n" in patch
+        assert patch.endswith("\n")
+
+    def test_deletion_only_hunk(self) -> None:
+        hunk = parse_diff(DELETIONS_ONLY_DIFF)[0]
+        patch = build_hunk_patch("old.py", hunk)
+        assert "diff --git a/old.py b/old.py\n" in patch
+        assert "--- a/old.py\n" in patch
+        assert "+++ b/old.py\n" in patch
+        assert "@@ -1,3 +0,0 @@\n" in patch
+        assert "-removed one\n" in patch
+        assert "-removed two\n" in patch
+        assert "-removed three\n" in patch
+        assert patch.endswith("\n")
+
+    def test_mixed_hunk(self) -> None:
+        hunk = Hunk(
+            header="@@ -1,3 +1,3 @@",
+            lines=[" context", "-old line", "+new line", " more context"],
+            start_old=1,
+            count_old=3,
+            start_new=1,
+            count_new=3,
+        )
+        patch = build_hunk_patch("mixed.py", hunk)
+        assert "diff --git a/mixed.py b/mixed.py\n" in patch
+        assert "--- a/mixed.py\n" in patch
+        assert "+++ b/mixed.py\n" in patch
+        assert "@@ -1,3 +1,3 @@\n" in patch
+        assert " context\n" in patch
+        assert "-old line\n" in patch
+        assert "+new line\n" in patch
+        assert " more context\n" in patch
+        assert patch.endswith("\n")
+
+    def test_path_with_subdirectory(self) -> None:
+        hunk = parse_diff(SINGLE_HUNK_DIFF)[0]
+        patch = build_hunk_patch("src/lib/hello.py", hunk)
+        assert "diff --git a/src/lib/hello.py b/src/lib/hello.py\n" in patch
+        assert "--- a/src/lib/hello.py\n" in patch
+        assert "+++ b/src/lib/hello.py\n" in patch
