@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-__all__ = ["Hunk", "build_hunk_patch", "build_line_patch", "parse_diff"]
+__all__ = ["Hunk", "build_hunk_patch", "build_line_patch", "parse_diff", "reverse_patch"]
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -136,3 +136,38 @@ def build_line_patch(path: str, hunk: Hunk, selected_indices: set[int]) -> str:
         "",
     ]
     return "\n".join(parts)
+
+
+def reverse_patch(patch: str) -> str:
+    """Construct a reverse patch for unstaging.
+
+    Args:
+        patch: Forward patch string.
+
+    Returns:
+        Reversed patch string.
+    """
+    out: list[str] = []
+    for line in patch.splitlines():
+        if line.startswith("--- a/"):
+            out.append("--- b/" + line[6:])
+        elif line.startswith("+++ b/"):
+            out.append("+++ a/" + line[6:])
+        elif _HUNK_RE.match(line):
+            m = _HUNK_RE.match(line)
+            assert m is not None
+            so = int(m.group(1))
+            co = int(m.group(2)) if m.group(2) is not None else 1
+            sn = int(m.group(3))
+            cn = int(m.group(4)) if m.group(4) is not None else 1
+            out.append(f"@@ -{sn},{cn} +{so},{co} @@")
+        elif line.startswith("+"):
+            out.append("-" + line[1:])
+        elif line.startswith("-"):
+            out.append("+" + line[1:])
+        else:
+            out.append(line)
+    result = "\n".join(out)
+    if patch.endswith("\n") and not result.endswith("\n"):
+        result += "\n"
+    return result
