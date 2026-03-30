@@ -95,4 +95,11 @@ class BrowseScreen(Screen):
         entry = widget.selected_entry
         if entry is None:
             return
-        self.app.push_screen(GitignoreModal(entry.name))
+
+        def _on_dismiss(pattern: str | None) -> None:
+            if pattern is None:
+                return
+            self._git_ops.add_to_gitignore(pattern)
+            self._refresh_listing()
+
+        self.app.push_screen(GitignoreModal(entry.path), callback=_on_dismiss)
