@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dot.tui.patch import Hunk, build_hunk_patch, parse_diff
+import re
+
+from dot.tui.patch import Hunk, build_hunk_patch, build_line_patch, parse_diff
 
 
 SINGLE_HUNK_DIFF = """\
@@ -279,3 +281,132 @@ class TestBuildHunkPatch:
         assert "diff --git a/src/lib/hello.py b/src/lib/hello.py\n" in patch
         assert "--- a/src/lib/hello.py\n" in patch
         assert "+++ b/src/lib/hello.py\n" in patch
+
+
+def _make_hunk() -> Hunk:
+    """Shared hunk: context1, -old1, -old2, +new1, +new2, context2."""
+    return Hunk(
+        header="@@ -1,4 +1,4 @@",
+        lines=[" context1", "-old1", "-old2", "+new1", "+new2", " context2"],
+        start_old=1,
+        count_old=4,
+        start_new=1,
+        count_new=4,
+    )
+
+
+def _parse_hunk_header(patch: str) -> tuple[int, int, int, int]:
+    """Extract (start_old, count_old, start_new, count_new) from patch."""
+    m = re.search(r"@@ -(\d+),(\d+) \+(\d+),(\d+) @@", patch)
+    assert m is not None, f"No hunk header found in patch:\n{patch}"
+    return int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))
+
+
+class TestBuildLinePatch:
+    def test_select_all_changed_lines(self) -> None:
+        hunk = _make_hunk()
+        # indices 1,2 = deletions; 3,4 = additions
+        patch = build_line_patch("f.py", hunk, {1, 2, 3, 4})
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        assert old_count == hunk.count_old
+        assert new_count == hunk.count_new
+        for line in hunk.lines:
+            assert line in patch
+
+    def test_select_only_additions(self) -> None:
+        hunk = _make_hunk()
+        # select +new1 (3) and +new2 (4); -old1, -old2 become context
+        patch = build_line_patch("f.py", hunk, {3, 4})
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # output lines: context1, old1(ctx), old2(ctx), +new1, +new2, context2
+        assert old_count == 4  # 2 original ctx + 2 converted ctx
+        assert new_count == 6  # 4 ctx + 2 additions
+        assert " old1" in patch
+        assert " old2" in patch
+        assert "+new1" in patch
+        assert "+new2" in patch
+
+    def test_select_only_deletions(self) -> None:
+        hunk = _make_hunk()
+        # select -old1 (1) and -old2 (2); +new1, +new2 excluded
+        patch = build_line_patch("f.py", hunk, {1, 2})
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # output lines: context1, -old1, -old2, context2
+        assert old_count == 4  # 2 ctx + 2 deletions
+        assert new_count == 2  # 2 ctx only
+        assert "-old1" in patch
+        assert "-old2" in patch
+        assert "+new1" not in patch
+        assert "+new2" not in patch
+
+    def test_select_one_addition_and_one_deletion(self) -> None:
+        hunk = _make_hunk()
+        # select -old1 (1) and +new1 (3)
+        patch = build_line_patch("f.py", hunk, {1, 3})
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # output: context1, -old1, old2(ctx), +new1, context2
+        assert old_count == 4  # 2 ctx + 1 converted ctx + 1 deletion
+        assert new_count == 4  # 2 ctx + 1 converted ctx + 1 addition
+        assert "-old1" in patch
+        assert " old2" in patch
+        assert "+new1" in patch
+        assert "+new2" not in patch
+
+    def test_select_single_addition(self) -> None:
+        hunk = _make_hunk()
+        # select only +new1 (3)
+        patch = build_line_patch("f.py", hunk, {3})
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # output: context1, old1(ctx), old2(ctx), +new1, context2
+        assert old_count == 4  # 2 ctx + 2 converted ctx
+        assert new_count == 5  # 4 ctx + 1 addition
+        assert "+new1" in patch
+        assert "+new2" not in patch
+        assert " old1" in patch
+        assert " old2" in patch
+
+    def test_select_single_deletion(self) -> None:
+        hunk = _make_hunk()
+        # select only -old1 (1)
+        patch = build_line_patch("f.py", hunk, {1})
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # output: context1, -old1, old2(ctx), context2
+        assert old_count == 4  # 2 ctx + 1 deletion + 1 converted ctx
+        assert new_count == 3  # 2 ctx + 1 converted ctx
+        assert "-old1" in patch
+        assert " old2" in patch
+        assert "+new1" not in patch
+        assert "+new2" not in patch
+
+    def test_header_recalculation(self) -> None:
+        hunk = _make_hunk()
+        # select -old2 (2) and +new2 (4)
+        patch = build_line_patch("f.py", hunk, {2, 4})
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # output: context1, old1(ctx), -old2, +new2, context2
+        # old_count = context1 + old1(ctx) + -old2 + context2 = 4
+        # new_count = context1 + old1(ctx) + +new2 + context2 = 4
+        assert old_count == 4
+        assert new_count == 4
+
+    def test_context_lines_always_present(self) -> None:
+        hunk = _make_hunk()
+        # empty selection - no changed lines selected
+        patch = build_line_patch("f.py", hunk, set())
+        assert " context1" in patch
+        assert " context2" in patch
+        # unselected deletions become context
+        assert " old1" in patch
+        assert " old2" in patch
+
+    def test_patch_ends_with_trailing_newline(self) -> None:
+        hunk = _make_hunk()
+        patch = build_line_patch("f.py", hunk, {1, 3})
+        assert patch.endswith("\n")
+
+    def test_patch_has_valid_diff_headers(self) -> None:
+        hunk = _make_hunk()
+        patch = build_line_patch("some/path.py", hunk, {1, 2, 3, 4})
+        assert patch.startswith("diff --git a/some/path.py b/some/path.py\n")
+        assert "\n--- a/some/path.py\n" in patch
+        assert "\n+++ b/some/path.py\n" in patch
