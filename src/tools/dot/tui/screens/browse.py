@@ -39,6 +39,7 @@ class BrowseScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Label(self._current_path, id="browse-path")
         yield DirListWidget(id="dir-list")
+        yield Label("", id="browse-status")
 
     def on_mount(self) -> None:
         self._refresh_listing()
@@ -48,6 +49,9 @@ class BrowseScreen(Screen):
         entries = list_directory(self._git_ops, self._current_path)
         self.query_one("#dir-list", DirListWidget).update_entries(entries)
         self.query_one("#browse-path", Label).update(self._current_path)
+
+    def _show_message(self, msg: str) -> None:
+        self.query_one("#browse-status", Label).update(msg)
 
     def _navigate_to(self, path: str) -> None:
         self._current_path = path
@@ -75,7 +79,10 @@ class BrowseScreen(Screen):
             return
         if entry.status != TrackingStatus.UNTRACKED:
             return
-        self._git_ops.stage(entry.path)
+        result = self._git_ops.stage(entry.path)
+        if not result.success:
+            self._show_message(f"Error staging: {result.error}")
+            return
         self._refresh_listing()
 
     def action_encrypt_entry(self) -> None:
@@ -86,8 +93,12 @@ class BrowseScreen(Screen):
         if entry is None:
             return
         if not self._git_ops.shell.is_command_available("git-secret"):
+            self._show_message("git-secret is not installed")
             return
-        register_secret(self._git_ops, entry.path)
+        result = register_secret(self._git_ops, entry.path)
+        if not result.success:
+            self._show_message(f"Encrypt failed: {result.error}")
+            return
         self._refresh_listing()
 
     def action_ignore_entry(self) -> None:
