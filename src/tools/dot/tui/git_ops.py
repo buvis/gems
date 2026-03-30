@@ -139,6 +139,15 @@ class GitOps:
         except ValueError:
             return False
 
+    def add_to_gitignore(self, pattern: str) -> CommandResult:
+        try:
+            gitignore = self._wd / ".gitignore"
+            with gitignore.open("a") as f:
+                f.write(f"{pattern}\n")
+        except OSError as exc:
+            return CommandResult(success=False, error=str(exc))
+        return self.stage(".gitignore")
+
     def rm(self, path: str) -> CommandResult:
         err, _out = self.shell.exe(
             f"cfg rm {shlex.quote(path)}", self._wd

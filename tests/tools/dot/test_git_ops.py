@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -350,6 +351,42 @@ class TestGitOpsRm:
         result = git_ops.rm("missing")
 
         assert result.success is False
+
+
+class TestGitOpsAddToGitignore:
+    def test_appends_pattern(self, git_ops: GitOps, tmp_path: Path) -> None:
+        git_ops._wd = tmp_path
+        gitignore = tmp_path / ".gitignore"
+        gitignore.write_text("*.pyc\n")
+        shell = git_ops.shell
+        shell.exe.return_value = ("", "")
+
+        result = git_ops.add_to_gitignore("node_modules/")
+
+        assert result.success is True
+        assert "node_modules/" in gitignore.read_text()
+        assert "*.pyc" in gitignore.read_text()
+
+    def test_creates_gitignore_if_missing(self, git_ops: GitOps, tmp_path: Path) -> None:
+        git_ops._wd = tmp_path
+        shell = git_ops.shell
+        shell.exe.return_value = ("", "")
+
+        result = git_ops.add_to_gitignore("*.log")
+
+        assert result.success is True
+        assert (tmp_path / ".gitignore").read_text() == "*.log\n"
+
+    def test_stages_gitignore_after_write(self, git_ops: GitOps, tmp_path: Path) -> None:
+        git_ops._wd = tmp_path
+        shell = git_ops.shell
+        shell.exe.return_value = ("", "")
+
+        git_ops.add_to_gitignore("tmp/")
+
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg add" in cmd
+        assert ".gitignore" in cmd
 
 
 class TestGitOpsBranchInfo:
