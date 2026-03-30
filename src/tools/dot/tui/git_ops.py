@@ -141,8 +141,16 @@ class GitOps:
     def _has_unpushed_commits(self) -> bool:
         err, out = self.shell.exe("cfg rev-list --count @{u}..HEAD", self._wd)
         if err:
-            return True
-        if not out or not out.strip():
+            berr, bout = self.shell.exe(
+                "cfg rev-parse --abbrev-ref HEAD", self._wd
+            )
+            if berr or not bout or not bout.strip():
+                return False
+            branch = bout.strip()
+            err, out = self.shell.exe(
+                f"cfg rev-list --count origin/{branch}..HEAD", self._wd
+            )
+        if err or not out or not out.strip():
             return False
         try:
             return int(out.strip()) > 0
@@ -213,6 +221,11 @@ class GitOps:
         err, out = self.shell.exe(
             "cfg rev-list --count --left-right @{u}...HEAD", self._wd
         )
+        if err:
+            err, out = self.shell.exe(
+                f"cfg rev-list --count --left-right origin/{name}...HEAD",
+                self._wd,
+            )
         if not err and out and out.strip():
             parts = out.strip().split("\t")
             if len(parts) == 2:

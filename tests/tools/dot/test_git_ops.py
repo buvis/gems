@@ -440,7 +440,8 @@ class TestGitOpsBranchInfo:
         shell.is_command_available.return_value = False
         shell.exe.side_effect = [
             ("fatal: not a git repo", ""),  # rev-parse fails
-            ("fatal: no upstream", ""),  # rev-list fails
+            ("fatal: no upstream", ""),  # rev-list @{u} fails
+            ("fatal: no remote", ""),  # rev-list origin/unknown fails
         ]
 
         result = git_ops.branch_info()
@@ -453,7 +454,8 @@ class TestGitOpsBranchInfo:
         shell.is_command_available.return_value = False
         shell.exe.side_effect = [
             ("", "master\n"),  # rev-parse ok
-            ("fatal: no upstream", ""),  # rev-list fails
+            ("fatal: no upstream", ""),  # rev-list @{u} fails
+            ("fatal: no remote", ""),  # rev-list origin/master fails
         ]
 
         result = git_ops.branch_info()
