@@ -76,11 +76,14 @@ def unregister_secret(git_ops: GitOps, path: str) -> CommandResult:
     return CommandResult(success=True)
 
 
-def reveal_all(git_ops: GitOps) -> CommandResult:
+def reveal_all(git_ops: GitOps, passphrase: str | None = None) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 
-    err, _out = git_ops.shell.exe("cfg secret reveal", git_ops._wd)
+    cmd = "cfg secret reveal -f"
+    if passphrase:
+        cmd += f" -p {shlex.quote(passphrase)}"
+    err, _out = git_ops.shell.exe(cmd, git_ops._wd)
     if err:
         return CommandResult(success=False, error=err)
     return CommandResult(success=True)

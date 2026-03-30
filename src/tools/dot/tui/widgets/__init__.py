@@ -5,6 +5,15 @@ from dot.tui.widgets.diff_view import DiffView
 from dot.tui.widgets.dir_list import DirListWidget
 from dot.tui.widgets.file_list import FileListWidget
 from dot.tui.widgets.gitignore_modal import GitignoreModal
+from dot.tui.widgets.passphrase_modal import PassphraseModal
 from dot.tui.widgets.status_bar import StatusBar
 
-__all__ = ["CommitModal", "DiffView", "DirListWidget", "FileListWidget", "GitignoreModal", "StatusBar"]
+__all__ = [
+    "CommitModal",
+    "DiffView",
+    "DirListWidget",
+    "FileListWidget",
+    "GitignoreModal",
+    "PassphraseModal",
+    "StatusBar",
+]

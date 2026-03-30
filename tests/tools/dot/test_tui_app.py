@@ -20,6 +20,7 @@ def _mock_git_ops(
     ops.unstage.return_value = CommandResult(success=True)
     ops.has_uncommitted_changes.return_value = False
     ops.has_unpushed_commits.return_value = False
+    ops.shell.is_command_available.return_value = False
     return ops
 
 

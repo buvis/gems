@@ -155,8 +155,8 @@ class TestSecretsScreenReveal:
         reveal_calls = []
         list_calls = []
 
-        def mock_reveal(ops):
-            reveal_calls.append(ops)
+        def mock_reveal(ops, passphrase=None):
+            reveal_calls.append((ops, passphrase))
             return CommandResult(success=True)
 
         def mock_list(ops):
@@ -180,6 +180,10 @@ class TestSecretsScreenReveal:
             initial_list_count = len(list_calls)
 
             await pilot.press("r")
+            await pilot.pause()
+            # Type passphrase into the modal and submit
+            await pilot.press(*"test")
+            await pilot.press("enter")
             await pilot.pause()
 
             assert len(reveal_calls) == 1

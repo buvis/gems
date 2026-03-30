@@ -8,7 +8,7 @@ from textual.screen import ModalScreen, Screen
 from textual.widgets import Footer
 
 from dot.tui.patch import build_hunk_patch, build_line_patch
-from dot.tui.widgets import CommitModal, DiffView, FileListWidget, GitignoreModal, StatusBar
+from dot.tui.widgets import CommitModal, DiffView, FileListWidget, GitignoreModal, PassphraseModal, StatusBar
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -255,9 +255,17 @@ class MainScreen(Screen):
         self.refresh_status()
 
     def action_pull(self) -> None:
-        result = self._git_ops.pull()
-        self._show_message(result.output or result.error or "Pull complete")
-        self.refresh_status()
+        if self._git_ops.shell.is_command_available("git-secret"):
+            def _on_passphrase(passphrase: str | None) -> None:
+                result = self._git_ops.pull(passphrase=passphrase)
+                self._show_message(result.output or result.error or "Pull complete")
+                self.refresh_status()
+
+            self.app.push_screen(PassphraseModal(), callback=_on_passphrase)
+        else:
+            result = self._git_ops.pull()
+            self._show_message(result.output or result.error or "Pull complete")
+            self.refresh_status()
 
     def action_refresh(self) -> None:
         self.refresh_status()

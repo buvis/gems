@@ -16,6 +16,7 @@ from dot.tui.commands.secrets import (
     reveal_all,
     unregister_secret,
 )
+from dot.tui.widgets.passphrase_modal import PassphraseModal
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -151,11 +152,16 @@ class SecretsScreen(Screen):
         self.dismiss()
 
     def action_reveal(self) -> None:
-        result = reveal_all(self._git_ops)
-        if not result.success:
-            self._show_message(f"Reveal failed: {result.error}")
-            return
-        self._refresh_list()
+        def _on_passphrase(passphrase: str | None) -> None:
+            if passphrase is None:
+                return
+            result = reveal_all(self._git_ops, passphrase=passphrase)
+            if not result.success:
+                self._show_message(f"Reveal failed: {result.error}")
+                return
+            self._refresh_list()
+
+        self.app.push_screen(PassphraseModal(), callback=_on_passphrase)
 
     def action_hide(self) -> None:
         result = hide_all(self._git_ops)

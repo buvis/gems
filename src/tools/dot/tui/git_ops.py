@@ -118,7 +118,7 @@ class GitOps:
             return CommandResult(success=False, error=err)
         return CommandResult(success=True, output="Changes pushed")
 
-    def pull(self) -> CommandResult:
+    def pull(self, passphrase: str | None = None) -> CommandResult:
         err, _out = self.shell.exe("cfg pull", self._wd)
         if err:
             return CommandResult(success=False, error=err)
@@ -136,7 +136,10 @@ class GitOps:
             return CommandResult(success=False, error=f"Submodule update failed: {err}")
 
         if self.shell.is_command_available("git-secret"):
-            err, _out = self.shell.exe("cfg secret reveal -f", self._wd)
+            cmd = "cfg secret reveal -f"
+            if passphrase:
+                cmd += f" -p {shlex.quote(passphrase)}"
+            err, _out = self.shell.exe(cmd, self._wd)
             if err:
                 return CommandResult(success=False, error=f"Secret reveal failed: {err}")
 
