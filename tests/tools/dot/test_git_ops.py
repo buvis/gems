@@ -11,12 +11,16 @@ from dot.tui.models import BranchInfo, FileEntry
 
 @pytest.fixture
 def shell() -> MagicMock:
-    return MagicMock()
+    mock = MagicMock()
+    mock.exe.return_value = ("", "")
+    return mock
 
 
 @pytest.fixture
 def git_ops(shell: MagicMock) -> GitOps:
-    return GitOps(shell=shell, dotfiles_root="/home/user/dotfiles")
+    ops = GitOps(shell=shell, dotfiles_root="/home/user/dotfiles")
+    shell.exe.reset_mock()
+    return ops
 
 
 class TestGitOpsStatus:

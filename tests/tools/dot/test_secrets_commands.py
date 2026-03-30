@@ -18,7 +18,9 @@ from dot.tui.git_ops import GitOps
 
 @pytest.fixture
 def shell() -> MagicMock:
-    return MagicMock()
+    mock = MagicMock()
+    mock.exe.return_value = ("", "")
+    return mock
 
 
 @pytest.fixture

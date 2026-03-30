@@ -28,6 +28,19 @@ class GitOps:
             "cfg",
             "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
         )
+        self._ensure_fetch_refspec()
+
+    def _ensure_fetch_refspec(self) -> None:
+        """Add fetch refspec if missing (common in bare-repo dotfiles setups)."""
+        err, out = self.shell.exe(
+            "cfg config remote.origin.fetch", self._wd
+        )
+        if err or not out or not out.strip():
+            self.shell.exe(
+                "cfg config remote.origin.fetch"
+                " +refs/heads/*:refs/remotes/origin/*",
+                self._wd,
+            )
 
     def status(self) -> list[FileEntry]:
         has_secret = self.shell.is_command_available("git-secret")
