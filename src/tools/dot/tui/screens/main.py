@@ -7,7 +7,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Footer
 
-from dot.tui.patch import build_hunk_patch
+from dot.tui.patch import build_hunk_patch, build_line_patch
 from dot.tui.widgets import CommitModal, DiffView, FileListWidget, GitignoreModal, StatusBar
 
 if TYPE_CHECKING:
@@ -262,7 +262,12 @@ class MainScreen(Screen):
         hunk = diff_view.focused_hunk
         if hunk is None or not self._current_diff_path:
             return
-        patch = build_hunk_patch(self._current_diff_path, hunk)
+        if diff_view.in_line_select_mode and diff_view.selected_line_indices:
+            patch = build_line_patch(
+                self._current_diff_path, hunk, diff_view.selected_line_indices
+            )
+        else:
+            patch = build_hunk_patch(self._current_diff_path, hunk)
         if diff_view.is_staged:
             result = self._git_ops.apply_patch_reverse(patch)
         else:
