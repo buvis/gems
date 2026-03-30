@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-__all__ = ["Hunk", "parse_diff"]
+__all__ = ["Hunk", "build_hunk_patch", "parse_diff"]
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -73,3 +73,24 @@ def parse_diff(raw_diff: str) -> list[Hunk]:
         )
 
     return hunks
+
+
+def build_hunk_patch(path: str, hunk: Hunk) -> str:
+    """Construct a valid git patch for a single hunk.
+
+    Args:
+        path: File path relative to repo root.
+        hunk: Hunk to include in the patch.
+
+    Returns:
+        Patch string suitable for ``git apply --cached``.
+    """
+    lines = [
+        f"diff --git a/{path} b/{path}",
+        f"--- a/{path}",
+        f"+++ b/{path}",
+        hunk.header,
+        *hunk.lines,
+        "",
+    ]
+    return "\n".join(lines)
