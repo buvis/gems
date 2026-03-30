@@ -49,6 +49,8 @@ class FileListWidget(Widget, can_focus=True):
         self._files = list(files)
         self.cursor_index = 0
         self.refresh()
+        if self._files:
+            self.post_message(self.FileSelected(self._files[0], self._staged))
 
     def watch_cursor_index(self, value: int) -> None:
         """Post FileSelected when cursor changes and files exist."""
