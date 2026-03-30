@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.screen import Screen
+from textual.screen import ModalScreen, Screen
 from textual.widgets import Footer
 
 from dot.tui.widgets import CommitModal, DiffView, FileListWidget, GitignoreModal, StatusBar
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 __all__ = ["MainScreen"]
 
 
-class _ConfirmDeleteScreen(Screen[bool]):
+class _ConfirmDeleteScreen(ModalScreen[bool]):
     """Yes/no confirmation for file deletion."""
 
     CSS = """
