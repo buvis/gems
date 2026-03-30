@@ -13,7 +13,7 @@ class Hunk:
     """A single hunk from a unified diff."""
 
     header: str
-    lines: list[str]
+    lines: tuple[str, ...]
     start_old: int
     count_old: int
     start_new: int
@@ -44,7 +44,7 @@ def parse_diff(raw_diff: str) -> list[Hunk]:
                 hunks.append(
                     Hunk(
                         header=current_header,
-                        lines=current_lines,
+                        lines=tuple(current_lines),
                         start_old=start_old,
                         count_old=count_old,
                         start_new=start_new,

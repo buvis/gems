@@ -164,6 +164,11 @@ class MainScreen(Screen):
 
     def action_toggle_stage(self) -> None:
         focused = self.focused
+        if focused and focused.id == "diff":
+            diff_view = self.query_one("#diff", DiffView)
+            if diff_view.in_line_select_mode:
+                diff_view.action_toggle_line()
+            return
         if focused and focused.id == "unstaged":
             self.action_stage_file()
         elif focused and focused.id == "staged":

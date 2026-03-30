@@ -17,7 +17,6 @@ class DiffView(Widget, can_focus=True):
         Binding("k", "prev_hunk", "Prev hunk", show=False),
         Binding("v", "enter_line_select", "Line select", show=False),
         Binding("escape", "exit_line_select", "Exit select", show=False),
-        Binding("space", "toggle_line", "Toggle line", show=False),
     ]
 
     def __init__(

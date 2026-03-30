@@ -185,7 +185,7 @@ class TestHunkDataclass:
     def test_hunk_is_frozen(self) -> None:
         hunk = Hunk(
             header="@@ -1,2 +1,2 @@",
-            lines=[" a", "-b", "+c"],
+            lines=(" a", "-b", "+c"),
             start_old=1,
             count_old=2,
             start_new=1,
@@ -258,7 +258,7 @@ class TestBuildHunkPatch:
     def test_mixed_hunk(self) -> None:
         hunk = Hunk(
             header="@@ -1,3 +1,3 @@",
-            lines=[" context", "-old line", "+new line", " more context"],
+            lines=(" context", "-old line", "+new line", " more context"),
             start_old=1,
             count_old=3,
             start_new=1,
@@ -287,7 +287,7 @@ def _make_hunk() -> Hunk:
     """Shared hunk: context1, -old1, -old2, +new1, +new2, context2."""
     return Hunk(
         header="@@ -1,4 +1,4 @@",
-        lines=[" context1", "-old1", "-old2", "+new1", "+new2", " context2"],
+        lines=(" context1", "-old1", "-old2", "+new1", "+new2", " context2"),
         start_old=1,
         count_old=4,
         start_new=1,
@@ -445,7 +445,7 @@ class TestReversePatch:
     def test_context_lines_unchanged(self) -> None:
         hunk = Hunk(
             header="@@ -1,3 +1,3 @@",
-            lines=[" context", "-old line", "+new line", " more context"],
+            lines=(" context", "-old line", "+new line", " more context"),
             start_old=1,
             count_old=3,
             start_new=1,
