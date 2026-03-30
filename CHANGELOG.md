@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **dot**: TUI commit modal, gitignore modal, delete confirmation dialog
 - **dot**: TUI push/pull/refresh keybindings (p/P/r)
 - **dot**: TUI space key as stage/unstage toggle
+- **dot**: TUI hunk-level staging/unstaging (enter on focused hunk in diff pane)
+- **dot**: TUI line-select mode for fine-grained staging (v to enter, space to toggle lines, enter to stage)
 
 ### Fixed
 

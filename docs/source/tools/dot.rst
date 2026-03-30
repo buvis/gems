@@ -36,10 +36,16 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 
 **Keybindings:**
 
-- ``j``/``k`` - navigate file lists
+- ``j``/``k`` - navigate file lists (in file pane), navigate hunks (in diff pane)
 - ``Tab`` - cycle focus between Unstaged, Staged, and Diff panes
 - ``s`` / ``Space`` - stage focused file (from Unstaged pane)
 - ``u`` / ``Space`` - unstage focused file (from Staged pane)
+- ``Enter`` - stage/unstage focused hunk (in diff pane)
+- ``v`` - enter line-select mode (in diff pane, on focused hunk)
+- ``j``/``k`` - navigate changed lines (in line-select mode)
+- ``Space`` - toggle line selection (in line-select mode)
+- ``Enter`` - stage selected lines (in line-select mode)
+- ``Escape`` - exit line-select mode
 - ``c`` - commit staged files (opens message input)
 - ``d`` - delete tracked file (with confirmation)
 - ``i`` - add file to .gitignore (opens pattern input)
