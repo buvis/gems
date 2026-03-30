@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-__all__ = ["Hunk", "build_hunk_patch", "build_line_patch", "parse_diff", "reverse_patch"]
+__all__ = ["Hunk", "build_hunk_patch", "build_line_patch", "parse_diff"]
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
