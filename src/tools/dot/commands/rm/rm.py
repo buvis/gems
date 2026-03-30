@@ -50,12 +50,12 @@ class CommandRm:
         gitignore = cwd / ".gitignore"
         if gitignore.exists():
             lines = gitignore.read_text().splitlines()
-            lines = [line for line in lines if line != self.file_path]
-            gitignore.write_text(("\n".join(lines) + "\n") if lines else "")
-
-        err, _ = self.shell.exe("cfg add .gitignore", cwd)
-        if err:
-            self.warnings.append(f"Failed to stage .gitignore: {err}")
+            cleaned = [line for line in lines if line != self.file_path]
+            if len(cleaned) != len(lines):
+                gitignore.write_text(("\n".join(cleaned) + "\n") if cleaned else "")
+                err, _ = self.shell.exe("cfg add .gitignore", cwd)
+                if err:
+                    self.warnings.append(f"Failed to stage .gitignore: {err}")
 
         plaintext = cwd / self.file_path
         if plaintext.exists():
