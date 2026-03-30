@@ -4,15 +4,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from buvis.pybase.result import CommandResult
 from dot.cli import cli
-from dot.tui.models import BranchInfo
+from dot.tui.models import BranchInfo, FileEntry
 
 
-def _mock_git_ops() -> MagicMock:
+def _mock_git_ops(
+    entries: list[FileEntry] | None = None,
+) -> MagicMock:
     ops = MagicMock()
-    ops.status.return_value = []
+    ops.status.return_value = entries or []
     ops.branch_info.return_value = BranchInfo(name="master")
     ops.diff.return_value = ""
+    ops.stage.return_value = CommandResult(success=True)
+    ops.unstage.return_value = CommandResult(success=True)
     return ops
 
 
@@ -82,3 +87,110 @@ class TestDotCli:
         with patch("dot.tui.app.DotApp") as mock_app_cls:
             runner.invoke(cli, ["status"])
             mock_app_cls.assert_not_called()
+
+
+_TEST_ENTRIES = [
+    FileEntry(path="unstaged.txt", status=" M"),
+    FileEntry(path="staged.txt", status="M "),
+]
+
+
+class TestMainScreen:
+    @pytest.mark.anyio
+    async def test_tab_cycles_focus(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            mock_cls.return_value = _mock_git_ops(_TEST_ENTRIES)
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                assert app.screen.focused is not None
+                assert app.screen.focused.id == "unstaged"
+
+                await pilot.press("tab")
+                await pilot.pause()
+                assert app.screen.focused is not None
+                assert app.screen.focused.id == "staged"
+
+                await pilot.press("tab")
+                await pilot.pause()
+                assert app.screen.focused is not None
+                assert app.screen.focused.id == "diff"
+
+                await pilot.press("tab")
+                await pilot.pause()
+                assert app.screen.focused is not None
+                assert app.screen.focused.id == "unstaged"
+
+    @pytest.mark.anyio
+    async def test_stage_action_calls_git_ops(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Focus is on unstaged by default, press s to stage
+                ops.status.reset_mock()
+                await pilot.press("s")
+                await pilot.pause()
+
+                ops.stage.assert_called_once_with("unstaged.txt")
+                # refresh_status calls status() again
+                ops.status.assert_called()
+
+    @pytest.mark.anyio
+    async def test_unstage_action_calls_git_ops(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Move focus to staged list, then press u
+                await pilot.press("tab")
+                await pilot.pause()
+                await pilot.press("u")
+                await pilot.pause()
+
+                ops.unstage.assert_called_once_with("staged.txt")
+
+    @pytest.mark.anyio
+    async def test_file_selected_updates_diff(self) -> None:
+        from dot.tui.app import DotApp
+
+        entries = [
+            FileEntry(path="first.txt", status=" M"),
+            FileEntry(path="second.txt", status=" M"),
+        ]
+
+        with patch("dot.tui.app.ShellAdapter"), \
+             patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(entries)
+            ops.diff.return_value = "diff --git a/second.txt"
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Move cursor down in unstaged list (j binding)
+                ops.diff.reset_mock()
+                await pilot.press("j")
+                await pilot.pause()
+
+                ops.diff.assert_called_with("second.txt", staged=False)
