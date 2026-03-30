@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pidash**: render `[C{n}]` cycle tags in magenta, `[DOUBT]` tags in cyan
 - **dot**: `rm` command for removing files from dotfiles tracking (handles git-secret cleanup)
 - **dot**: TUI mode - interactive terminal UI for dotfiles management (`dot` or `dot tui`)
+- **dot**: TUI colored diff preview with auto-update on cursor movement
+- **dot**: TUI commit modal, gitignore modal, delete confirmation dialog
+- **dot**: TUI push/pull/refresh keybindings (p/P/r)
+- **dot**: TUI space key as stage/unstage toggle
 
 ### Fixed
 

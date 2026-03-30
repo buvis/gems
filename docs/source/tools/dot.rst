@@ -38,8 +38,14 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 
 - ``j``/``k`` - navigate file lists
 - ``Tab`` - cycle focus between Unstaged, Staged, and Diff panes
-- ``s`` - stage focused file
-- ``u`` - unstage focused file
+- ``s`` / ``Space`` - stage focused file (from Unstaged pane)
+- ``u`` / ``Space`` - unstage focused file (from Staged pane)
+- ``c`` - commit staged files (opens message input)
+- ``d`` - delete tracked file (with confirmation)
+- ``i`` - add file to .gitignore (opens pattern input)
+- ``p`` - push commits to remote
+- ``P`` (shift+p) - pull from remote with submodule update
+- ``r`` - refresh all panes
 - ``q`` - quit
 
 Requires the ``dot`` extra: ``pip install buvis-gems[dot]``
