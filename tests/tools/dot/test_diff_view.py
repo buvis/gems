@@ -209,3 +209,130 @@ class TestDiffViewHunkNavigation:
         second_header = widget.focused_hunk.header
         assert first_header != second_header
         assert "@@ -10,3 +11,4 @@" in second_header
+
+
+LINE_SELECT_DIFF = (
+    "--- a/f.py\n+++ b/f.py\n@@ -1,4 +1,4 @@\n"
+    " context1\n-old1\n-old2\n+new1\n+new2\n context2"
+)
+
+# Hunk with context between changed lines for skip-context test:
+# 0: " ctx1"  <- context
+# 1: "-a"     <- changed
+# 2: " ctx2"  <- context (should be skipped)
+# 3: "+b"     <- changed
+# 4: " ctx3"  <- context
+LINE_SELECT_SKIP_DIFF = (
+    "--- a/f.py\n+++ b/f.py\n@@ -1,4 +1,4 @@\n"
+    " ctx1\n-a\n ctx2\n+b\n ctx3"
+)
+
+
+class TestDiffViewLineSelect:
+    def test_enter_sets_mode(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        assert widget.in_line_select_mode is True
+
+    def test_enter_positions_cursor_on_first_changed_line(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        assert widget.line_cursor == 1
+
+    def test_enter_with_no_hunk_is_noop(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff("")
+        widget.action_enter_line_select()
+        assert widget.in_line_select_mode is False
+
+    def test_line_down_moves_to_next_changed(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        assert widget.line_cursor == 1
+        widget.action_line_down()
+        assert widget.line_cursor == 2
+
+    def test_line_down_skips_context_lines(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_SKIP_DIFF)
+        widget.action_enter_line_select()
+        assert widget.line_cursor == 1  # "-a"
+        widget.action_line_down()
+        assert widget.line_cursor == 3  # "+b", skipped " ctx2" at index 2
+
+    def test_line_up_moves_to_prev_changed(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        widget.action_line_down()
+        assert widget.line_cursor == 2
+        widget.action_line_up()
+        assert widget.line_cursor == 1
+
+    def test_line_up_clamps_at_first_changed(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        assert widget.line_cursor == 1
+        widget.action_line_up()
+        assert widget.line_cursor == 1
+
+    def test_line_down_clamps_at_last_changed(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        # Move to last changed line (index 4: "+new2")
+        widget.action_line_down()  # 1 -> 2
+        widget.action_line_down()  # 2 -> 3
+        widget.action_line_down()  # 3 -> 4
+        widget.action_line_down()  # should clamp at 4
+        assert widget.line_cursor == 4
+
+    def test_toggle_adds_to_selection(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        widget.action_toggle_line()
+        assert 1 in widget.selected_line_indices
+
+    def test_toggle_twice_removes_from_selection(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        widget.action_toggle_line()
+        widget.action_toggle_line()
+        assert 1 not in widget.selected_line_indices
+
+    def test_exit_clears_mode_and_selection(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        widget.action_toggle_line()
+        widget.action_exit_line_select()
+        assert widget.in_line_select_mode is False
+        assert widget.selected_line_indices == set()
+
+    def test_selected_line_indices_starts_empty(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        assert widget.selected_line_indices == set()
+
+    def test_hunk_navigation_exits_line_select(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        widget.action_enter_line_select()
+        assert widget.in_line_select_mode is True
+        widget.action_next_hunk()
+        assert widget.in_line_select_mode is False
+
+    def test_update_diff_exits_line_select(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        assert widget.in_line_select_mode is True
+        widget.update_diff(LINE_SELECT_DIFF)
+        assert widget.in_line_select_mode is False
