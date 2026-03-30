@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **dot**: TUI space key as stage/unstage toggle
 - **dot**: TUI hunk-level staging/unstaging (enter on focused hunk in diff pane)
 - **dot**: TUI line-select mode for fine-grained staging (v to enter, space to toggle lines, enter to stage)
+- **dot**: TUI file browser for discovering untracked files (b key, browse directories with tracking status)
+- **dot**: TUI secrets panel for git-secret management (S key, reveal/hide/register/unregister)
+- **dot**: TUI quick encrypt from any view (e key, register file with git-secret)
 
 ### Fixed
 

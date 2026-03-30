@@ -51,8 +51,29 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 - ``i`` - add file to .gitignore (opens pattern input)
 - ``p`` - push commits to remote
 - ``P`` (shift+p) - pull from remote with submodule update
+- ``b`` - open file browser (browse untracked files, add to tracking)
+- ``S`` (shift+s) - open secrets panel (manage git-secret files)
+- ``e`` - quick encrypt (register focused file with git-secret)
 - ``r`` - refresh all panes
 - ``q`` - quit
+
+**Browse view** (``b``):
+
+- ``j``/``k`` - navigate entries
+- ``Enter`` - drill into directory
+- ``Backspace`` - go to parent directory
+- ``a`` - add untracked file to tracking
+- ``i`` - add file to .gitignore
+- ``e`` - register file with git-secret
+- ``Escape`` - return to main view
+
+**Secrets panel** (``S``):
+
+- ``j``/``k`` - navigate secret list
+- ``r`` - reveal all secrets (decrypt)
+- ``h`` - hide all secrets (encrypt)
+- ``E`` (shift+e) - unregister secret (with confirmation)
+- ``Escape`` - return to main view
 
 Requires the ``dot`` extra: ``pip install buvis-gems[dot]``
 
