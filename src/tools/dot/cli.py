@@ -52,6 +52,15 @@ def encrypt(file_path: str) -> None:
     console.report_result(CommandEncrypt(shell=shell, file_path=file_path).execute())
 
 
+@cli.command("rm", help="Remove file from dotfiles tracking")
+@click.argument("file_path")
+def rm(file_path: str) -> None:
+    from dot.commands.rm.rm import CommandRm
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(CommandRm(shell=shell, file_path=file_path).execute())
+
+
 @cli.command("pull", help="Pull dotfiles and update submodules")
 def pull() -> None:
     from dot.commands.pull.pull import CommandPull
