@@ -7,6 +7,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Footer
 
+from dot.tui.patch import build_hunk_patch
 from dot.tui.widgets import CommitModal, DiffView, FileListWidget, GitignoreModal, StatusBar
 
 if TYPE_CHECKING:
@@ -85,6 +86,7 @@ class MainScreen(Screen):
         Binding("p", "push", "Push", show=True),
         Binding("P", "pull", "Pull", show=True),
         Binding("r", "refresh", "Refresh", show=True),
+        Binding("enter", "stage_hunk", "Stage hunk", show=False),
     ]
 
     _FOCUS_ORDER = ["unstaged", "staged", "diff"]
@@ -92,6 +94,8 @@ class MainScreen(Screen):
     def __init__(self, git_ops: GitOps) -> None:
         super().__init__()
         self._git_ops = git_ops
+        self._current_diff_path: str = ""
+        self._current_diff_staged: bool = False
 
     def compose(self) -> ComposeResult:
         yield StatusBar(id="status-bar")
@@ -109,8 +113,10 @@ class MainScreen(Screen):
     def on_file_list_widget_file_selected(
         self, message: FileListWidget.FileSelected
     ) -> None:
+        self._current_diff_path = message.entry.path
+        self._current_diff_staged = message.staged
         diff_text = self._git_ops.diff(message.entry.path, staged=message.staged)
-        self.query_one("#diff", DiffView).update_diff(diff_text or "")
+        self.query_one("#diff", DiffView).update_diff(diff_text or "", staged=message.staged)
 
     def _show_message(self, msg: str) -> None:
         self.query_one("#diff", DiffView).update_diff(msg)
@@ -247,3 +253,25 @@ class MainScreen(Screen):
 
     def action_refresh(self) -> None:
         self.refresh_status()
+
+    def action_stage_hunk(self) -> None:
+        focused = self.focused
+        if not focused or focused.id != "diff":
+            return
+        diff_view = self.query_one("#diff", DiffView)
+        hunk = diff_view.focused_hunk
+        if hunk is None or not self._current_diff_path:
+            return
+        patch = build_hunk_patch(self._current_diff_path, hunk)
+        if diff_view.is_staged:
+            result = self._git_ops.apply_patch_reverse(patch)
+        else:
+            result = self._git_ops.apply_patch(patch)
+        if not result.success:
+            self._show_message(f"Error applying patch: {result.error}")
+            return
+        self.refresh_status()
+        diff_text = self._git_ops.diff(
+            self._current_diff_path, staged=self._current_diff_staged
+        )
+        diff_view.update_diff(diff_text or "", staged=self._current_diff_staged)

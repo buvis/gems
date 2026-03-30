@@ -391,15 +391,11 @@ _HUNK_DIFF = (
     " line3"
 )
 
-_STAGED_HUNK_DIFF = (
-    "--- a/staged.txt\n"
-    "+++ b/staged.txt\n"
-    "@@ -1,3 +1,4 @@\n"
-    " line1\n"
-    "+added\n"
-    " line2\n"
-    " line3"
-)
+_HUNK_ENTRIES = [
+    FileEntry(path="a.txt", status=" M"),
+    FileEntry(path="b.txt", status=" M"),
+    FileEntry(path="staged.txt", status="M "),
+]
 
 
 class TestMainScreenHunkStaging:
@@ -409,13 +405,17 @@ class TestMainScreenHunkStaging:
 
         with patch("dot.tui.app.ShellAdapter"), \
              patch("dot.tui.app.GitOps") as mock_cls:
-            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops = _mock_git_ops(_HUNK_ENTRIES)
             ops.diff.return_value = _HUNK_DIFF
             ops.apply_patch.return_value = CommandResult(success=True)
             mock_cls.return_value = ops
 
             app = DotApp(dotfiles_root="/tmp/test")
             async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Trigger FileSelected by moving cursor (j changes index 0->1)
+                await pilot.press("j")
                 await pilot.pause()
 
                 # Tab twice to reach diff pane
@@ -468,13 +468,17 @@ class TestMainScreenHunkStaging:
 
         with patch("dot.tui.app.ShellAdapter"), \
              patch("dot.tui.app.GitOps") as mock_cls:
-            ops = _mock_git_ops(_TEST_ENTRIES)
+            ops = _mock_git_ops(_HUNK_ENTRIES)
             ops.diff.return_value = _HUNK_DIFF
             ops.apply_patch.return_value = CommandResult(success=True)
             mock_cls.return_value = ops
 
             app = DotApp(dotfiles_root="/tmp/test")
             async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                # Trigger FileSelected
+                await pilot.press("j")
                 await pilot.pause()
 
                 # Tab twice to reach diff pane
