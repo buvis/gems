@@ -383,7 +383,10 @@ class PidashApp(App[None]):
                 continue
             if session.stopped or (session.state is not None and session.state.phase == "done"):
                 continue
-            age = (now - session.updated_at).total_seconds()
+            updated = session.updated_at
+            if updated.tzinfo is None:
+                updated = updated.replace(tzinfo=timezone.utc)
+            age = (now - updated).total_seconds()
             if age > _STALE_SECONDS:
                 stale.add(sid)
         if stale != self._stale_ids:
