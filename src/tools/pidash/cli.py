@@ -36,11 +36,12 @@ def cli(project_path: str | None, cleanup: bool) -> None:
     app.run()
 
 
-def _cleanup_sessions(max_age_hours: int = 24) -> None:
+def _cleanup_sessions(max_age_hours: int = 24, *, quiet: bool = False) -> None:
     from pidash.tui.watcher import SESSIONS_DIR
 
     if not SESSIONS_DIR.is_dir():
-        click.echo("No sessions directory found.")
+        if not quiet:
+            click.echo("No sessions directory found.")
         return
 
     now = time.time()
@@ -50,21 +51,12 @@ def _cleanup_sessions(max_age_hours: int = 24) -> None:
         if age_hours > max_age_hours:
             f.unlink()
             removed += 1
-    click.echo(f"Removed {removed} stale session file(s).")
+    if not quiet:
+        click.echo(f"Removed {removed} stale session file(s).")
 
 
 def _auto_cleanup_sessions() -> None:
-    """Remove session files older than 24h on multi-session startup."""
-    from pidash.tui.watcher import SESSIONS_DIR
-
-    if not SESSIONS_DIR.is_dir():
-        return
-
-    now = time.time()
-    for f in SESSIONS_DIR.glob("*.json"):
-        age_hours = (now - f.stat().st_mtime) / 3600
-        if age_hours > 24:
-            f.unlink()
+    _cleanup_sessions(quiet=True)
 
 
 if __name__ == "__main__":
