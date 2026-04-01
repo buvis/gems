@@ -102,7 +102,6 @@ def watch_sessions_dir(app: object, stop_event: threading.Event) -> None:
 
     worker = get_current_worker()
 
-    # Read all existing session files on startup
     if SESSIONS_DIR.is_dir():
         for f in sorted(SESSIONS_DIR.glob("*.json")):
             _read_and_post_session(app, f)

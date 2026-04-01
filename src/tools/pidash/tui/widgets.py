@@ -187,14 +187,11 @@ class CyclePanel:
 
 
 class SessionListRenderer:
-    """Renders a single session entry for the sidebar list."""
-
     def render_entry(self, session: SessionState, is_selected: bool) -> str:
         name = session.project_name or session.session_id
         is_done = session.state is not None and session.state.phase == "done"
         is_inactive = session.stopped or is_done
 
-        # Phase badge
         if session.state is not None:
             phase = session.state.display_phase
         elif session.stopped:
@@ -202,7 +199,6 @@ class SessionListRenderer:
         else:
             phase = ""
 
-        # Attention indicator
         attention = ""
         if session.state is not None and session.state.needs_attention:
             attention = " [red]\u25cf[/red]"

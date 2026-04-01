@@ -177,7 +177,6 @@ def parse_session_file(raw: str) -> SessionState | None:
     updated_at = data.get("updated_at")
     stopped = data.get("stopped", False)
 
-    # Try to parse the inner PrdState from the same data
     inner_state: PrdState | None = None
     if "prd" in data and "phase" in data:
         inner_state = parse_state(raw)

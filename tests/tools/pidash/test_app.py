@@ -164,7 +164,6 @@ class TestMultiSessionApp:
             await pilot.pause()
             app.post_message(SessionUpdated("s2", _session_json("s2", "/tmp/proj-beta", prd_name="beta-prd")))
             await pilot.pause()
-            # Navigate to the next session
             await pilot.press("down")
             await pilot.pause()
             text = str(_pipeline_text(app))
@@ -205,7 +204,6 @@ class TestMultiSessionApp:
         app = PidashApp(_watch=False)
         async with app.run_test() as pilot:
             await pilot.pause()
-            # Use a timestamp more than 5 minutes old
             old_ts = "2020-01-01T00:00:00+00:00"
             app.post_message(SessionUpdated("s1", _session_json("s1", "/tmp/stale-proj", updated_at=old_ts)))
             await pilot.pause()

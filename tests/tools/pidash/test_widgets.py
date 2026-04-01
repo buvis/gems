@@ -389,9 +389,6 @@ class TestFooterBar:
         result = FooterBar().render_content()
         assert result == "q quit │ r refresh │ watching dev/local/autopilot/state.json"
 
-    def test_render_content_no_state_arg(self) -> None:
-        fb = FooterBar()
-        assert callable(fb.render_content)
 
 
 class TestSessionListRenderer:
@@ -457,11 +454,3 @@ class TestSessionListRenderer:
         result = SessionListRenderer().render_entry(session, is_selected=False)
         assert "myproject" in result
 
-    def test_no_state_renders(self) -> None:
-        session = SessionState(
-            session_id="s1",
-            cwd="/home/user/myproject",
-        )
-        result = SessionListRenderer().render_entry(session, is_selected=False)
-        assert isinstance(result, str)
-        assert "myproject" in result

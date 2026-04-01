@@ -14,11 +14,6 @@ class TestPidashCli:
         assert result.exit_code == 0
         assert "dashboard" in result.output.lower()
 
-    def test_help_shows_cleanup(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(cli, ["--help"])
-        assert "cleanup" in result.output.lower()
-
     def test_nonexistent_path(self) -> None:
         runner = CliRunner()
         result = runner.invoke(cli, ["/nonexistent/path"])

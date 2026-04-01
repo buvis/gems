@@ -234,7 +234,6 @@ class PidashApp(App[None]):
         self._state: PrdState | None = None
         self._watch = _watch
         self._stop_event = threading.Event()
-        # Multi-session state
         self._sessions: dict[str, SessionState] = {}
         self._active_session_id: str | None = None
         self._stale_ids: set[str] = set()
@@ -281,8 +280,10 @@ class PidashApp(App[None]):
             self._refresh_all()
             if self._watch:
                 stop = self._stop_event
+                project_path = self._project_path
+                assert project_path is not None
                 self.run_worker(
-                    lambda: watch_state_file(self, self._project_path, stop_event=stop),  # type: ignore[arg-type]
+                    lambda: watch_state_file(self, project_path, stop_event=stop),
                     name="state-watcher",
                     thread=True,
                     exclusive=True,
@@ -326,7 +327,8 @@ class PidashApp(App[None]):
         if self._is_multi_session:
             self._reload_sessions()
         else:
-            state_file = self._project_path / STATE_DIR / STATE_FILENAME  # type: ignore[operator]
+            assert self._project_path is not None
+            state_file = self._project_path / STATE_DIR / STATE_FILENAME
             try:
                 raw = state_file.read_text(encoding="utf-8")
                 parsed = parse_state(raw)
