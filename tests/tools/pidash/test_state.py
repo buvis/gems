@@ -127,30 +127,33 @@ class TestAutopilotFormat:
         assert state.updated_at == "2026-03-16T10:30:00Z"
 
     def test_autopilot_research_on_decision(self) -> None:
-        raw = json.dumps({
-            "prd": {"name": "test"},
-            "phase": "review",
-            "autonomous_decisions": [
-                {
-                    "issue": "New dep: zod",
-                    "severity": "high",
-                    "action": "auto-fix",
-                    "reason": "research-passed",
-                    "research": {
-                        "category": "new-dependency",
-                        "verdict": "proceed",
-                        "checks": [{"check": "license", "result": "MIT", "pass": True}],
-                        "evidence_summary": "zod: MIT, active",
-                    },
-                }
-            ],
-        })
+        raw = json.dumps(
+            {
+                "prd": {"name": "test"},
+                "phase": "review",
+                "autonomous_decisions": [
+                    {
+                        "issue": "New dep: zod",
+                        "severity": "high",
+                        "action": "auto-fix",
+                        "reason": "research-passed",
+                        "research": {
+                            "category": "new-dependency",
+                            "verdict": "proceed",
+                            "checks": [{"check": "license", "result": "MIT", "pass": True}],
+                            "evidence_summary": "zod: MIT, active",
+                        },
+                    }
+                ],
+            }
+        )
         state = parse_state(raw)
         assert state is not None
         d = state.autonomous_decisions[0]
         assert d.research is not None
         assert d.research["verdict"] == "proceed"
         assert d.research["category"] == "new-dependency"
+
 
 class TestDisplayPhaseMapping:
     @pytest.mark.parametrize(
