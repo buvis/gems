@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from textual.app import App, ComposeResult
-
 from dot.tui.models import BranchInfo
 from dot.tui.widgets.status_bar import StatusBar
+from textual.app import App, ComposeResult
 
 
 class StatusBarHost(App[None]):

@@ -34,7 +34,7 @@ def list_secrets(git_ops: GitOps) -> list[SecretEntry]:
     if not _git_secret_available(git_ops):
         return []
 
-    err, out = git_ops.shell.exe("cfg secret list", git_ops._wd)
+    err, out = git_ops.shell.exe("cfg secret list", git_ops.wd)
     if err or not out.strip():
         return []
 
@@ -56,9 +56,7 @@ def register_secret(git_ops: GitOps, path: str) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 
-    err, _out = git_ops.shell.exe(
-        f"cfg secret add {shlex.quote(path)}", git_ops._wd
-    )
+    err, _out = git_ops.shell.exe(f"cfg secret add {shlex.quote(path)}", git_ops.wd)
     if err:
         return CommandResult(success=False, error=err)
     return CommandResult(success=True)
@@ -68,9 +66,7 @@ def unregister_secret(git_ops: GitOps, path: str) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 
-    err, _out = git_ops.shell.exe(
-        f"cfg secret remove {shlex.quote(path)}", git_ops._wd
-    )
+    err, _out = git_ops.shell.exe(f"cfg secret remove {shlex.quote(path)}", git_ops.wd)
     if err:
         return CommandResult(success=False, error=err)
     return CommandResult(success=True)
@@ -83,7 +79,7 @@ def reveal_all(git_ops: GitOps, passphrase: str | None = None) -> CommandResult:
     cmd = "cfg secret reveal -f"
     if passphrase:
         cmd += f" -p {shlex.quote(passphrase)}"
-    err, _out = git_ops.shell.exe(cmd, git_ops._wd)
+    err, _out = git_ops.shell.exe(cmd, git_ops.wd)
     if err:
         return CommandResult(success=False, error=err)
     return CommandResult(success=True)
@@ -93,7 +89,7 @@ def hide_all(git_ops: GitOps) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 
-    err, _out = git_ops.shell.exe("cfg secret hide", git_ops._wd)
+    err, _out = git_ops.shell.exe("cfg secret hide", git_ops.wd)
     if err:
         return CommandResult(success=False, error=err)
     return CommandResult(success=True)

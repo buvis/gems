@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from rich.text import Text
-
 from dot.tui.patch import Hunk
 from dot.tui.widgets.diff_view import DiffView
+from rich.text import Text
 
 
 def _render(diff_text: str) -> Text:
@@ -40,10 +39,7 @@ class TestDiffView:
     def test_context_line_default(self) -> None:
         result = _render(" context line")
         assert "context line" in str(result)
-        styled = [
-            s for s in result._spans
-            if any(k in str(s.style) for k in ("green", "red", "cyan", "bold", "dim"))
-        ]
+        styled = [s for s in result._spans if any(k in str(s.style) for k in ("green", "red", "cyan", "bold", "dim"))]
         assert len(styled) == 0
 
     def test_binary_file_message(self) -> None:
@@ -66,15 +62,17 @@ class TestDiffView:
         assert not any("red" in str(s.style) for s in spans)
 
     def test_mixed_diff_output(self) -> None:
-        diff = "\n".join([
-            "--- a/hello.py",
-            "+++ b/hello.py",
-            "@@ -1,3 +1,4 @@",
-            " import os",
-            "-old_line",
-            "+new_line",
-            " unchanged",
-        ])
+        diff = "\n".join(
+            [
+                "--- a/hello.py",
+                "+++ b/hello.py",
+                "@@ -1,3 +1,4 @@",
+                " import os",
+                "-old_line",
+                "+new_line",
+                " unchanged",
+            ]
+        )
         result = _render(diff)
         text = str(result)
         spans = result._spans
@@ -211,10 +209,7 @@ class TestDiffViewHunkNavigation:
         assert "@@ -10,3 +11,4 @@" in second_header
 
 
-LINE_SELECT_DIFF = (
-    "--- a/f.py\n+++ b/f.py\n@@ -1,4 +1,4 @@\n"
-    " context1\n-old1\n-old2\n+new1\n+new2\n context2"
-)
+LINE_SELECT_DIFF = "--- a/f.py\n+++ b/f.py\n@@ -1,4 +1,4 @@\n context1\n-old1\n-old2\n+new1\n+new2\n context2"
 
 # Hunk with context between changed lines for skip-context test:
 # 0: " ctx1"  <- context
@@ -222,10 +217,7 @@ LINE_SELECT_DIFF = (
 # 2: " ctx2"  <- context (should be skipped)
 # 3: "+b"     <- changed
 # 4: " ctx3"  <- context
-LINE_SELECT_SKIP_DIFF = (
-    "--- a/f.py\n+++ b/f.py\n@@ -1,4 +1,4 @@\n"
-    " ctx1\n-a\n ctx2\n+b\n ctx3"
-)
+LINE_SELECT_SKIP_DIFF = "--- a/f.py\n+++ b/f.py\n@@ -1,4 +1,4 @@\n ctx1\n-a\n ctx2\n+b\n ctx3"
 
 
 class TestDiffViewLineSelect:

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from textual.app import App, ComposeResult
-
 from dot.tui.models import FileEntry
 from dot.tui.widgets.file_list import FileListWidget
+from textual.app import App, ComposeResult
 
 
 def _entries(*specs: tuple[str, str, bool]) -> list[FileEntry]:

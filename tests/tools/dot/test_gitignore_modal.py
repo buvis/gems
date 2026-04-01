@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import pytest
+from dot.tui.widgets.gitignore_modal import GitignoreModal
 from textual.app import App, ComposeResult
 from textual.widgets import Static
-
-from dot.tui.widgets.gitignore_modal import GitignoreModal
 
 
 class ModalHost(App[None]):
@@ -33,6 +32,7 @@ class TestGitignoreModal:
         async with app.run_test(size=(80, 10)) as pilot:
             await pilot.pause()
             from textual.widgets import Input
+
             inp = app.screen.query_one("#pattern-input", Input)
             assert inp.value == "myfile.txt"
 
@@ -60,6 +60,7 @@ class TestGitignoreModal:
         async with app.run_test(size=(80, 10)) as pilot:
             await pilot.pause()
             from textual.widgets import Input
+
             inp = app.screen.query_one("#pattern-input", Input)
             inp.value = "edited_pattern"
             await pilot.press("enter")

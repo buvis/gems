@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
 from dot.tui.commands.secrets import (
     SecretEntry,
     hide_all,
@@ -29,18 +28,14 @@ def git_ops(shell: MagicMock, tmp_path: Path) -> GitOps:
 
 
 class TestListSecrets:
-    def test_empty_when_git_secret_not_installed(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_empty_when_git_secret_not_installed(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
 
         result = list_secrets(git_ops)
 
         assert result == []
 
-    def test_empty_when_secret_list_returns_empty(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_empty_when_secret_list_returns_empty(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.return_value = ("", "")
 
@@ -72,9 +67,7 @@ class TestListSecrets:
 
         assert result == [SecretEntry(path=".ssh/config", status="hidden")]
 
-    def test_mixed_revealed_and_hidden(
-        self, git_ops: GitOps, shell: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_mixed_revealed_and_hidden(self, git_ops: GitOps, shell: MagicMock, tmp_path: Path) -> None:
         shell.is_command_available.return_value = True
         shell.exe.return_value = ("", ".ssh/config\n.gnupg/keys\n.env\n")
         (tmp_path / ".ssh").mkdir()
@@ -90,9 +83,7 @@ class TestListSecrets:
         assert SecretEntry(path=".gnupg/keys", status="hidden") in result
         assert SecretEntry(path=".env", status="revealed") in result
 
-    def test_error_returns_empty_list(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_error_returns_empty_list(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.return_value = ("error listing secrets", "")
 
@@ -102,9 +93,7 @@ class TestListSecrets:
 
 
 class TestRegisterSecret:
-    def test_failure_when_git_secret_not_installed(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_when_git_secret_not_installed(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
 
         result = register_secret(git_ops, ".ssh/config")
@@ -122,9 +111,7 @@ class TestRegisterSecret:
         assert "cfg secret add" in cmd
         assert ".ssh/config" in cmd
 
-    def test_failure_on_command_error(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_on_command_error(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.return_value = ("cannot add file", "")
 
@@ -135,9 +122,7 @@ class TestRegisterSecret:
 
 
 class TestUnregisterSecret:
-    def test_failure_when_git_secret_not_installed(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_when_git_secret_not_installed(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
 
         result = unregister_secret(git_ops, ".ssh/config")
@@ -155,9 +140,7 @@ class TestUnregisterSecret:
         assert "cfg secret remove" in cmd
         assert ".ssh/config" in cmd
 
-    def test_failure_on_command_error(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_on_command_error(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.return_value = ("remove failed", "")
 
@@ -168,9 +151,7 @@ class TestUnregisterSecret:
 
 
 class TestRevealAll:
-    def test_failure_when_git_secret_not_installed(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_when_git_secret_not_installed(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
 
         result = reveal_all(git_ops)
@@ -187,9 +168,7 @@ class TestRevealAll:
         cmd = shell.exe.call_args[0][0]
         assert "cfg secret reveal" in cmd
 
-    def test_failure_on_command_error(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_on_command_error(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.return_value = ("reveal failed", "")
 
@@ -200,9 +179,7 @@ class TestRevealAll:
 
 
 class TestHideAll:
-    def test_failure_when_git_secret_not_installed(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_when_git_secret_not_installed(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
 
         result = hide_all(git_ops)
@@ -219,9 +196,7 @@ class TestHideAll:
         cmd = shell.exe.call_args[0][0]
         assert "cfg secret hide" in cmd
 
-    def test_failure_on_command_error(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_failure_on_command_error(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.return_value = ("hide failed", "")
 

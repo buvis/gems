@@ -13,17 +13,13 @@ class TestCommandRmIsEncrypted:
         cmd = CommandRm(shell=shell, file_path=".secret_file")
         assert cmd._is_encrypted()
 
-    def test_returns_false_when_file_not_in_secret_list(
-        self, dotfiles_root: Path
-    ) -> None:
+    def test_returns_false_when_file_not_in_secret_list(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
         shell.exe.return_value = ("", ".other_file\n.another_file")
         cmd = CommandRm(shell=shell, file_path=".secret_file")
         assert not cmd._is_encrypted()
 
-    def test_returns_false_when_secret_list_errors(
-        self, dotfiles_root: Path
-    ) -> None:
+    def test_returns_false_when_secret_list_errors(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
         shell.exe.return_value = ("git-secret: abort", "")
         cmd = CommandRm(shell=shell, file_path=".secret_file")
@@ -39,9 +35,7 @@ class TestCommandRmRemoveNormal:
         cmd = CommandRm(shell=shell, file_path=".config/app.conf")
         result = cmd._remove_normal()
         assert result.success
-        shell.exe.assert_called_once_with(
-            "cfg rm --cached .config/app.conf", dotfiles_root
-        )
+        shell.exe.assert_called_once_with("cfg rm --cached .config/app.conf", dotfiles_root)
 
     def test_fails_on_cfg_rm_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
@@ -65,9 +59,7 @@ class TestCommandRmRemoveEncrypted:
         result = cmd._remove_encrypted()
 
         assert result.success
-        shell.exe.assert_any_call(
-            "cfg secret remove -c .secret_file", dotfiles_root
-        )
+        shell.exe.assert_any_call("cfg secret remove -c .secret_file", dotfiles_root)
         shell.exe.assert_any_call("cfg add .gitignore", dotfiles_root)
         assert ".secret_file" not in gitignore.read_text()
         assert ".other_file" in gitignore.read_text()
@@ -105,9 +97,7 @@ class TestCommandRmRemoveEncrypted:
         assert not result.success
         assert "Failed to delete plaintext" in result.error
 
-    def test_cleans_only_matching_gitignore_line(
-        self, dotfiles_root: Path
-    ) -> None:
+    def test_cleans_only_matching_gitignore_line(self, dotfiles_root: Path) -> None:
         gitignore = dotfiles_root / ".gitignore"
         gitignore.write_text(".secret_file\n.secret_file_backup\n.other\n")
 
@@ -133,28 +123,24 @@ class TestCommandRmExecute:
         # _is_encrypted call returns file in list, then _remove_encrypted succeeds
         shell.exe.side_effect = [
             ("", ".secret_file"),  # cfg secret list
-            ("", ""),              # cfg secret remove -c
-            ("", ""),              # cfg add .gitignore
+            ("", ""),  # cfg secret remove -c
+            ("", ""),  # cfg add .gitignore
         ]
         cmd = CommandRm(shell=shell, file_path=".secret_file")
         result = cmd.execute()
 
         assert result.success
-        shell.exe.assert_any_call(
-            "cfg secret remove -c .secret_file", dotfiles_root
-        )
+        shell.exe.assert_any_call("cfg secret remove -c .secret_file", dotfiles_root)
 
     def test_dispatches_to_normal_path(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
         # _is_encrypted returns empty list, then _remove_normal succeeds
         shell.exe.side_effect = [
-            ("", ""),   # cfg secret list (empty)
-            ("", ""),   # cfg rm --cached
+            ("", ""),  # cfg secret list (empty)
+            ("", ""),  # cfg rm --cached
         ]
         cmd = CommandRm(shell=shell, file_path=".config/app.conf")
         result = cmd.execute()
 
         assert result.success
-        shell.exe.assert_any_call(
-            "cfg rm --cached .config/app.conf", dotfiles_root
-        )
+        shell.exe.assert_any_call("cfg rm --cached .config/app.conf", dotfiles_root)

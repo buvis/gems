@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import json
 
-from pidash.tui.state import PrdState, parse_state
-from pidash.tui.state import SessionState
+from pidash.tui.state import PrdState, SessionState, parse_state
 from pidash.tui.widgets import (
     CyclePanel,
     DecisionPanel,
@@ -390,7 +389,6 @@ class TestFooterBar:
         assert result == "q quit │ r refresh │ watching dev/local/autopilot/state.json"
 
 
-
 class TestSessionListRenderer:
     def test_selected_entry_highlighted(self) -> None:
         session = SessionState(
@@ -453,4 +451,3 @@ class TestSessionListRenderer:
         )
         result = SessionListRenderer().render_entry(session, is_selected=False)
         assert "myproject" in result
-

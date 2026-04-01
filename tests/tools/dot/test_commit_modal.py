@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import pytest
+from dot.tui.widgets.commit_modal import CommitModal
 from textual.app import App, ComposeResult
 from textual.widgets import Static
-
-from dot.tui.widgets.commit_modal import CommitModal
 
 
 class ModalHost(App[None]):
@@ -29,6 +28,7 @@ class TestCommitModal:
         async with app.run_test(size=(80, 10)) as pilot:
             await pilot.pause()
             from textual.widgets import Input
+
             inp = app.screen.query_one("#commit-input", Input)
             inp.value = "fix: something"
             await pilot.press("enter")
@@ -60,6 +60,7 @@ class TestCommitModal:
         async with app.run_test(size=(80, 10)) as pilot:
             await pilot.pause()
             from textual.widgets import Input
+
             inp = app.screen.query_one("#commit-input", Input)
             inp.value = "   "
             await pilot.press("enter")

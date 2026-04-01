@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rich.text import Text
 from textual.binding import Binding
@@ -68,7 +68,7 @@ class _ConfirmUnregisterScreen(ModalScreen[bool]):
 class _SecretListWidget(Widget, can_focus=True):
     """Simple navigable list of secret entries."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._entries: list[SecretEntry] = []
         self._cursor: int = 0

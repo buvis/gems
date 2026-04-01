@@ -93,6 +93,20 @@ def _normalize_decisions(data: dict[str, Any]) -> None:
             data[key] = normalized
 
 
+def _normalize_list(data: dict[str, Any], key: str, name_field: str) -> None:
+    """Normalize a list field: strings become dicts, 'issue' renamed to 'description'."""
+    normalized = []
+    for item in data.get(key, []):
+        if isinstance(item, str):
+            normalized.append({name_field: item})
+        elif isinstance(item, dict):
+            if "issue" in item and "description" not in item:
+                item["description"] = item.pop("issue")
+            normalized.append(item)
+    if key in data:
+        data[key] = normalized
+
+
 def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize autopilot JSON variants to PrdState schema."""
     prd = data.get("prd")
@@ -100,26 +114,8 @@ def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
         data["prd"] = {"name": prd, "path": data.pop("prd_path", "")}
 
     _normalize_decisions(data)
-
-    doubts_normalized = []
-    for d in data.get("doubts", []):
-        if isinstance(d, str):
-            doubts_normalized.append({"description": d})
-        elif isinstance(d, dict):
-            if "issue" in d and "description" not in d:
-                d["description"] = d.pop("issue")
-            doubts_normalized.append(d)
-    if "doubts" in data:
-        data["doubts"] = doubts_normalized
-
-    tasks_normalized = []
-    for t in data.get("tasks", []):
-        if isinstance(t, str):
-            tasks_normalized.append({"name": t})
-        elif isinstance(t, dict):
-            tasks_normalized.append(t)
-    if "tasks" in data:
-        data["tasks"] = tasks_normalized
+    _normalize_list(data, "doubts", "description")
+    _normalize_list(data, "tasks", "name")
 
     for rc in data.get("review_cycles", []):
         sev = rc.pop("severity", None)

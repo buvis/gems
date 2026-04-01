@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-__all__ = ["FileEntry", "BranchInfo"]
+__all__ = ["BranchInfo", "FileEntry"]
 
 
 @dataclass(frozen=True, slots=True)

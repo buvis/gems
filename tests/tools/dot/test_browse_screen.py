@@ -3,12 +3,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from textual.app import App, ComposeResult
-from textual.widgets import Static
-
 from buvis.pybase.result import CommandResult
 from dot.tui.commands.browse import DirEntry, TrackingStatus
 from dot.tui.widgets.dir_list import DirListWidget
+from textual.app import App, ComposeResult
+from textual.widgets import Static
 
 
 def _entry(
@@ -25,7 +24,7 @@ def _entry(
 def git_ops(tmp_path):
     mock = MagicMock()
     mock.dotfiles_root = str(tmp_path)
-    mock._wd = tmp_path
+    mock.wd = tmp_path
     mock.stage.return_value = CommandResult(success=True)
     mock.add_to_gitignore.return_value = CommandResult(success=True)
     return mock

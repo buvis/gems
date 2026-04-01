@@ -123,8 +123,8 @@ def build_line_patch(path: str, hunk: Hunk, selected_indices: set[int]) -> str:
             # context lines always included
             out_lines.append(line)
 
-    old_count = sum(1 for l in out_lines if l.startswith(" ") or l.startswith("-"))
-    new_count = sum(1 for l in out_lines if l.startswith(" ") or l.startswith("+"))
+    old_count = sum(1 for ln in out_lines if ln.startswith(" ") or ln.startswith("-"))
+    new_count = sum(1 for ln in out_lines if ln.startswith(" ") or ln.startswith("+"))
     header = f"@@ -{hunk.start_old},{old_count} +{hunk.start_new},{new_count} @@"
 
     parts = [
@@ -155,7 +155,9 @@ def reverse_patch(patch: str) -> str:
             out.append("+++ a/" + line[6:])
         elif _HUNK_RE.match(line):
             m = _HUNK_RE.match(line)
-            assert m is not None
+            if m is None:
+                out.append(line)
+                continue
             so = int(m.group(1))
             co = int(m.group(2)) if m.group(2) is not None else 1
             sn = int(m.group(3))

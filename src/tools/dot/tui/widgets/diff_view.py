@@ -163,34 +163,30 @@ class DiffView(Widget, can_focus=True):
             self._selected_lines.add(self._line_cursor)
         self.refresh()
 
-    def render(self) -> Text:
-        output = Text()
+    def _render_raw_diff(self, output: Text) -> None:
+        for i, line in enumerate(self._diff_text.split("\n")):
+            if i > 0:
+                output.append("\n")
+            if line.startswith("---") or line.startswith("+++"):
+                output.append(line, style="bold")
+            elif line.startswith("@@"):
+                output.append(line, style="dim")
+            elif line.startswith("+"):
+                output.append(line, style="green")
+            elif line.startswith("-"):
+                output.append(line, style="red")
+            else:
+                output.append(line)
 
-        if not self._diff_text:
-            output.append("(no diff)")
-            return output
+    def _line_prefix(self, is_focused: bool, prefix: str, line_idx: int) -> str:
+        if is_focused and self._line_select_mode:
+            if line_idx == self._line_cursor:
+                return "@ "
+            if line_idx in self._selected_lines:
+                return "* "
+        return prefix
 
-        if "Binary files" in self._diff_text:
-            output.append("(binary file)")
-            return output
-
-        if not self._hunks:
-            # Diff text with no parseable hunks - render raw with styling
-            for i, line in enumerate(self._diff_text.split("\n")):
-                if i > 0:
-                    output.append("\n")
-                if line.startswith("---") or line.startswith("+++"):
-                    output.append(line, style="bold")
-                elif line.startswith("@@"):
-                    output.append(line, style="dim")
-                elif line.startswith("+"):
-                    output.append(line, style="green")
-                elif line.startswith("-"):
-                    output.append(line, style="red")
-                else:
-                    output.append(line)
-            return output
-
+    def _render_hunks(self, output: Text) -> None:
         # Render file headers (lines before first hunk)
         lines = self._diff_text.split("\n")
         for i, line in enumerate(lines):
@@ -203,7 +199,6 @@ class DiffView(Widget, can_focus=True):
             else:
                 output.append(line)
 
-        # Render each hunk
         for hunk_idx, hunk in enumerate(self._hunks):
             is_focused = hunk_idx == self._focused_hunk
             prefix = "> " if is_focused else "  "
@@ -214,20 +209,28 @@ class DiffView(Widget, can_focus=True):
 
             for line_idx, line in enumerate(hunk.lines):
                 output.append("\n")
-                line_prefix = prefix
-
-                if is_focused and self._line_select_mode:
-                    if line_idx == self._line_cursor:
-                        line_prefix = "@ "
-                    elif line_idx in self._selected_lines:
-                        line_prefix = "* "
-
-                output.append(line_prefix)
+                output.append(self._line_prefix(is_focused, prefix, line_idx))
                 if line.startswith("+"):
                     output.append(line, style="green")
                 elif line.startswith("-"):
                     output.append(line, style="red")
                 else:
                     output.append(line)
+
+    def render(self) -> Text:
+        output = Text()
+
+        if not self._diff_text:
+            output.append("(no diff)")
+            return output
+
+        if "Binary files" in self._diff_text:
+            output.append("(binary file)")
+            return output
+
+        if not self._hunks:
+            self._render_raw_diff(output)
+        else:
+            self._render_hunks(output)
 
         return output

@@ -3,7 +3,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from buvis.pybase.result import CommandResult
 from dot.cli import cli
 from dot.tui.models import BranchInfo, FileEntry
@@ -29,8 +28,7 @@ class TestDotApp:
     async def test_app_launches(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_git_ops_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_git_ops_cls:
             mock_git_ops_cls.return_value = _mock_git_ops()
 
             app = DotApp(dotfiles_root="/tmp/test")
@@ -41,8 +39,7 @@ class TestDotApp:
     async def test_q_quits(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_git_ops_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_git_ops_cls:
             mock_git_ops_cls.return_value = _mock_git_ops()
 
             app = DotApp(dotfiles_root="/tmp/test")
@@ -57,8 +54,7 @@ class TestDotApp:
         from dot.tui.app import DotApp
         from dot.tui.screens.main import MainScreen
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_git_ops_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_git_ops_cls:
             mock_git_ops_cls.return_value = _mock_git_ops()
 
             app = DotApp(dotfiles_root="/tmp/test")
@@ -103,8 +99,7 @@ class TestMainScreen:
     async def test_tab_cycles_focus(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             mock_cls.return_value = _mock_git_ops(_TEST_ENTRIES)
 
             app = DotApp(dotfiles_root="/tmp/test")
@@ -133,8 +128,7 @@ class TestMainScreen:
     async def test_stage_action_calls_git_ops(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             mock_cls.return_value = ops
 
@@ -155,8 +149,7 @@ class TestMainScreen:
     async def test_unstage_action_calls_git_ops(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             mock_cls.return_value = ops
 
@@ -181,8 +174,7 @@ class TestMainScreen:
             FileEntry(path="second.txt", status=" M"),
         ]
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(entries)
             ops.diff.return_value = "diff --git a/second.txt"
             mock_cls.return_value = ops
@@ -202,8 +194,7 @@ class TestMainScreen:
     async def test_space_stages_from_unstaged(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             mock_cls.return_value = ops
 
@@ -218,8 +209,7 @@ class TestMainScreen:
     async def test_space_unstages_from_staged(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             mock_cls.return_value = ops
 
@@ -236,8 +226,7 @@ class TestMainScreen:
     async def test_push_calls_git_ops(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             ops.push.return_value = CommandResult(success=True, output="Changes pushed")
             mock_cls.return_value = ops
@@ -253,8 +242,7 @@ class TestMainScreen:
     async def test_pull_calls_git_ops(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             ops.pull.return_value = CommandResult(success=True, output="Pulled")
             mock_cls.return_value = ops
@@ -270,8 +258,7 @@ class TestMainScreen:
     async def test_refresh_updates_status(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             mock_cls.return_value = ops
 
@@ -289,8 +276,7 @@ class TestMainScreen:
 
         entries = [FileEntry(path="only_unstaged.txt", status=" M")]
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(entries)
             mock_cls.return_value = ops
 
@@ -306,8 +292,7 @@ class TestMainScreen:
     async def test_delete_file_with_confirmation(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             ops.rm.return_value = CommandResult(success=True)
             mock_cls.return_value = ops
@@ -326,8 +311,7 @@ class TestMainScreen:
     async def test_delete_cancelled(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             mock_cls.return_value = ops
 
@@ -344,8 +328,7 @@ class TestMainScreen:
     async def test_ignore_opens_modal(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             ops.add_to_gitignore.return_value = CommandResult(success=True)
             mock_cls.return_value = ops
@@ -364,8 +347,7 @@ class TestMainScreen:
     async def test_commit_happy_path(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             ops.commit.return_value = CommandResult(success=True)
             mock_cls.return_value = ops
@@ -377,6 +359,7 @@ class TestMainScreen:
                 await pilot.pause()
                 # CommitModal should be showing
                 from textual.widgets import Input
+
                 inp = app.screen.query_one("#commit-input", Input)
                 inp.value = "fix: test commit"
                 await pilot.press("enter")
@@ -384,15 +367,7 @@ class TestMainScreen:
                 ops.commit.assert_called_once_with("fix: test commit")
 
 
-_HUNK_DIFF = (
-    "--- a/unstaged.txt\n"
-    "+++ b/unstaged.txt\n"
-    "@@ -1,3 +1,4 @@\n"
-    " line1\n"
-    "+added\n"
-    " line2\n"
-    " line3"
-)
+_HUNK_DIFF = "--- a/unstaged.txt\n+++ b/unstaged.txt\n@@ -1,3 +1,4 @@\n line1\n+added\n line2\n line3"
 
 _HUNK_ENTRIES = [
     FileEntry(path="a.txt", status=" M"),
@@ -406,8 +381,7 @@ class TestMainScreenHunkStaging:
     async def test_enter_on_diff_with_hunk_calls_apply_patch(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_HUNK_ENTRIES)
             ops.diff.return_value = _HUNK_DIFF
             ops.apply_patch.return_value = CommandResult(success=True)
@@ -439,8 +413,7 @@ class TestMainScreenHunkStaging:
     async def test_enter_on_empty_diff_does_nothing(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
             ops.apply_patch.return_value = CommandResult(success=True)
             ops.apply_patch_reverse.return_value = CommandResult(success=True)
@@ -469,8 +442,7 @@ class TestMainScreenHunkStaging:
     async def test_hunk_staging_refreshes_status(self) -> None:
         from dot.tui.app import DotApp
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(_HUNK_ENTRIES)
             ops.diff.return_value = _HUNK_DIFF
             ops.apply_patch.return_value = CommandResult(success=True)
@@ -506,8 +478,7 @@ class TestMainScreenHunkStaging:
             FileEntry(path="b.txt", status="M "),
         ]
 
-        with patch("dot.tui.app.ShellAdapter"), \
-             patch("dot.tui.app.GitOps") as mock_cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
             ops = _mock_git_ops(staged_entries)
             ops.diff.return_value = _HUNK_DIFF
             ops.apply_patch_reverse.return_value = CommandResult(success=True)

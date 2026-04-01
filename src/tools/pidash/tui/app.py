@@ -281,7 +281,8 @@ class PidashApp(App[None]):
             if self._watch:
                 stop = self._stop_event
                 project_path = self._project_path
-                assert project_path is not None
+                if project_path is None:
+                    return
                 self.run_worker(
                     lambda: watch_state_file(self, project_path, stop_event=stop),
                     name="state-watcher",
@@ -327,7 +328,8 @@ class PidashApp(App[None]):
         if self._is_multi_session:
             self._reload_sessions()
         else:
-            assert self._project_path is not None
+            if self._project_path is None:
+                return
             state_file = self._project_path / STATE_DIR / STATE_FILENAME
             try:
                 raw = state_file.read_text(encoding="utf-8")

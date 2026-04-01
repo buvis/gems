@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import pytest
-from rich.text import Text
-from textual.app import App, ComposeResult
-
 from dot.tui.commands.browse import DirEntry, TrackingStatus
 from dot.tui.widgets.dir_list import DirListWidget
+from rich.text import Text
+from textual.app import App, ComposeResult
 
 
 def _entry(

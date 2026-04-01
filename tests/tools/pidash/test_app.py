@@ -174,9 +174,7 @@ class TestMultiSessionApp:
         app = PidashApp(_watch=False)
         async with app.run_test() as pilot:
             await pilot.pause()
-            app.post_message(
-                SessionUpdated("s1", _session_json("s1", "/tmp/proj-urgent", needs_attention=True))
-            )
+            app.post_message(SessionUpdated("s1", _session_json("s1", "/tmp/proj-urgent", needs_attention=True)))
             await pilot.pause()
             text = str(app.query_one("#sidebar").render())
             assert "\u25cf" in text

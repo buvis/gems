@@ -65,7 +65,9 @@ class CommandRm:
                 return CommandResult(success=False, error=f"Failed to delete plaintext: {exc}")
 
         return CommandResult(
-            success=True, output=f"{self.file_path} removed from git-secret and disk", warnings=self.warnings,
+            success=True,
+            output=f"{self.file_path} removed from git-secret and disk",
+            warnings=self.warnings,
         )
 
     def execute(self: CommandRm) -> CommandResult:

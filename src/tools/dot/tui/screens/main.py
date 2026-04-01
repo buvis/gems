@@ -113,9 +113,7 @@ class MainScreen(Screen):
         self.refresh_status()
         self.query_one("#unstaged", FileListWidget).focus()
 
-    def on_file_list_widget_file_selected(
-        self, message: FileListWidget.FileSelected
-    ) -> None:
+    def on_file_list_widget_file_selected(self, message: FileListWidget.FileSelected) -> None:
         self._current_diff_path = message.entry.path
         self._current_diff_staged = message.staged
         diff_text = self._git_ops.diff(message.entry.path, staged=message.staged)
@@ -142,16 +140,14 @@ class MainScreen(Screen):
             if entry.status == "??":
                 unstaged.append(entry)
             else:
-                if x_char != " " and x_char != "?":
+                if x_char not in {" ", "?"}:
                     staged.append(entry)
                 if y_char != " ":
                     unstaged.append(entry)
 
         self.query_one("#unstaged", FileListWidget).update_files(unstaged)
         self.query_one("#staged", FileListWidget).update_files(staged)
-        self.query_one("#status-bar", StatusBar).update_info(
-            self._git_ops.branch_info()
-        )
+        self.query_one("#status-bar", StatusBar).update_info(self._git_ops.branch_info())
 
     def action_focus_next_pane(self) -> None:
         focused = self.focused
@@ -256,6 +252,7 @@ class MainScreen(Screen):
 
     def action_pull(self) -> None:
         if self._git_ops.shell.is_command_available("git-secret"):
+
             def _on_passphrase(passphrase: str | None) -> None:
                 result = self._git_ops.pull(passphrase=passphrase)
                 self._show_message(result.output or result.error or "Pull complete")
@@ -310,9 +307,7 @@ class MainScreen(Screen):
         if hunk is None or not self._current_diff_path:
             return
         if diff_view.in_line_select_mode and diff_view.selected_line_indices:
-            patch = build_line_patch(
-                self._current_diff_path, hunk, diff_view.selected_line_indices
-            )
+            patch = build_line_patch(self._current_diff_path, hunk, diff_view.selected_line_indices)
         else:
             patch = build_hunk_patch(self._current_diff_path, hunk)
         if diff_view.is_staged:
@@ -323,7 +318,5 @@ class MainScreen(Screen):
             self._show_message(f"Error applying patch: {result.error}")
             return
         self.refresh_status()
-        diff_text = self._git_ops.diff(
-            self._current_diff_path, staged=self._current_diff_staged
-        )
+        diff_text = self._git_ops.diff(self._current_diff_path, staged=self._current_diff_staged)
         diff_view.update_diff(diff_text or "", staged=self._current_diff_staged)

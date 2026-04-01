@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
 from dot.tui.git_ops import GitOps
 from dot.tui.models import BranchInfo, FileEntry
 
@@ -110,9 +109,7 @@ class TestGitOpsStatus:
         assert bashrc.is_secret is False
         assert ssh_config.is_secret is True
 
-    def test_git_secret_unavailable_all_not_secret(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_git_secret_unavailable_all_not_secret(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "M  .bashrc\nM  .ssh/config")
 
@@ -120,9 +117,7 @@ class TestGitOpsStatus:
 
         assert all(not f.is_secret for f in result)
 
-    def test_git_secret_list_error_all_not_secret(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_git_secret_list_error_all_not_secret(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.side_effect = [
             ("", "M  .bashrc"),  # cfg status --porcelain
@@ -223,9 +218,7 @@ class TestGitOpsCommit:
         assert "cfg commit -m" in cmd
         assert "my message" in cmd
 
-    def test_commit_with_git_secret_hides_first(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_commit_with_git_secret_hides_first(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.side_effect = [
             ("", ""),  # cfg secret hide -m
@@ -359,7 +352,7 @@ class TestGitOpsRm:
 
 class TestGitOpsAddToGitignore:
     def test_appends_pattern(self, git_ops: GitOps, tmp_path: Path) -> None:
-        git_ops._wd = tmp_path
+        git_ops.wd = tmp_path
         gitignore = tmp_path / ".gitignore"
         gitignore.write_text("*.pyc\n")
         shell = git_ops.shell
@@ -372,7 +365,7 @@ class TestGitOpsAddToGitignore:
         assert "*.pyc" in gitignore.read_text()
 
     def test_creates_gitignore_if_missing(self, git_ops: GitOps, tmp_path: Path) -> None:
-        git_ops._wd = tmp_path
+        git_ops.wd = tmp_path
         shell = git_ops.shell
         shell.exe.return_value = ("", "")
 
@@ -382,7 +375,7 @@ class TestGitOpsAddToGitignore:
         assert (tmp_path / ".gitignore").read_text() == "*.log\n"
 
     def test_stages_gitignore_after_write(self, git_ops: GitOps, tmp_path: Path) -> None:
-        git_ops._wd = tmp_path
+        git_ops.wd = tmp_path
         shell = git_ops.shell
         shell.exe.return_value = ("", "")
 
@@ -511,9 +504,7 @@ class TestGitOpsApplyPatch:
         assert result.success is False
         assert result.error is not None
 
-    def test_temp_file_cleaned_up_on_success(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_temp_file_cleaned_up_on_success(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.exe.return_value = ("", "")
 
         git_ops.apply_patch("diff content")
@@ -525,9 +516,7 @@ class TestGitOpsApplyPatch:
         tmpfile = parts[1].strip()
         assert not Path(tmpfile).exists()
 
-    def test_temp_file_cleaned_up_on_failure(
-        self, git_ops: GitOps, shell: MagicMock
-    ) -> None:
+    def test_temp_file_cleaned_up_on_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.exe.return_value = ("apply failed", "")
 
         git_ops.apply_patch("bad patch")

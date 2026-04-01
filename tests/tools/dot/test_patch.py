@@ -4,7 +4,6 @@ import re
 
 from dot.tui.patch import Hunk, build_hunk_patch, build_line_patch, parse_diff, reverse_patch
 
-
 SINGLE_HUNK_DIFF = """\
 --- a/hello.py
 +++ b/hello.py

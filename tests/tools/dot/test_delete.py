@@ -16,9 +16,7 @@ class TestCommandDeleteNormal:
         cmd = CommandDelete(shell=shell, file_path=".config/app.conf")
         result = cmd.execute()
         assert result.success
-        shell.exe.assert_any_call(
-            "cfg rm .config/app.conf", dotfiles_root
-        )
+        shell.exe.assert_any_call("cfg rm .config/app.conf", dotfiles_root)
 
     def test_fails_on_cfg_rm_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
@@ -41,16 +39,14 @@ class TestCommandDeleteEncrypted:
         shell = MagicMock()
         shell.exe.side_effect = [
             ("", ".secret_file"),  # cfg secret list
-            ("", ""),              # cfg secret remove -c
-            ("", ""),              # cfg add .gitignore
+            ("", ""),  # cfg secret remove -c
+            ("", ""),  # cfg add .gitignore
         ]
         cmd = CommandDelete(shell=shell, file_path=".secret_file")
         result = cmd.execute()
 
         assert result.success
-        shell.exe.assert_any_call(
-            "cfg secret remove -c .secret_file", dotfiles_root
-        )
+        shell.exe.assert_any_call("cfg secret remove -c .secret_file", dotfiles_root)
         assert not plaintext.exists()
 
     def test_fails_on_secret_remove_error(self, dotfiles_root: Path) -> None:

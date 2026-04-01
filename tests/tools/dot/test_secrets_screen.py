@@ -3,11 +3,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from textual.app import App, ComposeResult
-from textual.widgets import Static
-
 from buvis.pybase.result import CommandResult
 from dot.tui.commands.secrets import SecretEntry
+from textual.app import App, ComposeResult
+from textual.widgets import Static
 
 _SAMPLE_SECRETS = [
     SecretEntry(path=".ssh/config", status="revealed"),
@@ -20,7 +19,7 @@ _SAMPLE_SECRETS = [
 def git_ops(tmp_path):
     mock = MagicMock()
     mock.dotfiles_root = str(tmp_path)
-    mock._wd = tmp_path
+    mock.wd = tmp_path
     return mock
 
 
@@ -109,8 +108,7 @@ class TestSecretsScreenMount:
         app = SecretsHost(git_ops)
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
-            text = app.screen.render().strip() if hasattr(app.screen, "render") else ""
-            # Check rendered text via query - just verify no crash and screen is up
+            # Verify no crash and screen is up
             from dot.tui.screens.secrets import SecretsScreen
 
             assert isinstance(app.screen, SecretsScreen)
@@ -249,9 +247,7 @@ class TestSecretsScreenUnregister:
             "dot.tui.screens.secrets.hide_all",
             lambda _ops: CommandResult(success=True),
         )
-        monkeypatch.setattr(
-            "dot.tui.screens.secrets.unregister_secret", mock_unreg
-        )
+        monkeypatch.setattr("dot.tui.screens.secrets.unregister_secret", mock_unreg)
 
         app = SecretsHost(git_ops)
         async with app.run_test(size=(80, 24)) as pilot:
