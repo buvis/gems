@@ -1,24 +1,37 @@
 from __future__ import annotations
 
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
-from pidash.tui.state import PrdState, parse_state
-from pidash.tui.watcher import STATE_DIR, STATE_FILENAME, StateChanged, StateFileDeleted, watch_state_file
+from pidash.tui.state import PrdState, SessionState, parse_session_file, parse_state
+from pidash.tui.watcher import (
+    SESSIONS_DIR,
+    STATE_DIR,
+    STATE_FILENAME,
+    SessionRemoved,
+    SessionUpdated,
+    StateChanged,
+    StateFileDeleted,
+    watch_sessions_dir,
+    watch_state_file,
+)
 from pidash.tui.widgets import (
     DecisionPanel,
     DoubtPanel,
     FooterBar,
     PhasePipeline,
+    SessionListRenderer,
     TaskPanel,
 )
 
 _SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+_STALE_SECONDS = 300  # 5 minutes
 
 
 class _PipelineWidget(Static):
@@ -125,16 +138,72 @@ class _DoubtPanelWidget(_PanelWidget):
         super().refresh_state(state)
 
 
-class _FooterWidget(Static):
+class _SidebarWidget(Static):
     def __init__(self) -> None:
+        super().__init__(id="sidebar")
+        self._renderer = SessionListRenderer()
+
+    def refresh_sessions(
+        self,
+        sessions: dict[str, SessionState],
+        active_id: str | None,
+        stale_ids: set[str],
+    ) -> None:
+        if not sessions:
+            self.update("[dim]no active sessions[/dim]")
+            return
+        sorted_sessions = _sort_sessions(sessions)
+        lines: list[str] = []
+        for s in sorted_sessions:
+            is_selected = s.session_id == active_id
+            line = self._renderer.render_entry(s, is_selected)
+            if s.session_id in stale_ids and not s.stopped:
+                line = f"[dim]{line}[/dim]"
+            lines.append(line)
+        self.update("\n".join(lines))
+
+
+def _sort_sessions(sessions: dict[str, SessionState]) -> list[SessionState]:
+    """Sort: attention first, then active, then done/stopped."""
+
+    def key(s: SessionState) -> tuple[int, str]:
+        has_attention = s.state is not None and s.state.needs_attention
+        is_done = s.stopped or (s.state is not None and s.state.phase == "done")
+        if has_attention:
+            rank = 0
+        elif is_done:
+            rank = 2
+        else:
+            rank = 1
+        return (rank, s.project_name.lower())
+
+    return sorted(sessions.values(), key=key)
+
+
+class _FooterWidget(Static):
+    def __init__(self, multi_session: bool = False) -> None:
         super().__init__(id="footer")
         self._renderer = FooterBar()
+        self._multi_session = multi_session
+        self._session_count = 0
 
     def on_mount(self) -> None:
-        self.update(self._renderer.render_content())
+        self._update_content()
 
     def refresh_state(self, state: PrdState | None) -> None:
         pass
+
+    def set_session_count(self, count: int) -> None:
+        self._session_count = count
+        self._update_content()
+
+    def _update_content(self) -> None:
+        if self._multi_session:
+            self.update(
+                f"q quit \u2502 r refresh \u2502 \u2191/\u2193 switch session \u2502 {self._session_count} sessions"
+            )
+        else:
+            self.update(self._renderer.render_content())
 
 
 class PidashApp(App[None]):
@@ -142,6 +211,9 @@ class PidashApp(App[None]):
     CSS = """
 #pipeline { dock: top; height: auto; padding: 0 1; }
 #attention { dock: top; height: 5; content-align: center middle; padding: 1; }
+#main-container { height: 1fr; }
+#sidebar { width: 25; padding: 1; border-right: solid $surface-lighten-2; }
+#detail { width: 1fr; }
 #panels { height: 1fr; }
 #panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; }
 #footer { dock: bottom; height: 1; background: $surface; color: $text-muted; padding: 0 1; }
@@ -151,37 +223,73 @@ class PidashApp(App[None]):
     BINDINGS = [
         Binding("q", "quit", "Quit", show=True),
         Binding("r", "refresh", "Refresh", show=True),
+        Binding("up", "prev_session", "Prev session", show=False),
+        Binding("down", "next_session", "Next session", show=False),
     ]
 
-    def __init__(self, project_path: Path, *, _watch: bool = True) -> None:
+    def __init__(self, project_path: Path | None = None, *, _watch: bool = True) -> None:
         super().__init__()
         self._project_path = project_path
         self._state: PrdState | None = None
         self._watch = _watch
         self._stop_event = threading.Event()
+        # Multi-session state
+        self._sessions: dict[str, SessionState] = {}
+        self._active_session_id: str | None = None
+        self._stale_ids: set[str] = set()
+
+    @property
+    def _is_multi_session(self) -> bool:
+        return self._project_path is None
 
     def compose(self) -> ComposeResult:
-        yield _PipelineWidget()
-        yield _AttentionOverlay()
-        with Horizontal(id="panels"):
-            yield _TaskPanelWidget()
-            yield _PanelWidget("decisions", "Decisions", DecisionPanel())
-            yield _DoubtPanelWidget()
-        yield _FooterWidget()
+        if self._is_multi_session:
+            yield _PipelineWidget()
+            yield _AttentionOverlay()
+            with Horizontal(id="main-container"):
+                yield _SidebarWidget()
+                with Vertical(id="detail"):
+                    with Horizontal(id="panels"):
+                        yield _TaskPanelWidget()
+                        yield _PanelWidget("decisions", "Decisions", DecisionPanel())
+                        yield _DoubtPanelWidget()
+            yield _FooterWidget(multi_session=True)
+        else:
+            yield _PipelineWidget()
+            yield _AttentionOverlay()
+            with Horizontal(id="panels"):
+                yield _TaskPanelWidget()
+                yield _PanelWidget("decisions", "Decisions", DecisionPanel())
+                yield _DoubtPanelWidget()
+            yield _FooterWidget()
 
     def on_mount(self) -> None:
-        self._refresh_all()
-        if self._watch:
-            stop = self._stop_event
-            self.run_worker(
-                lambda: watch_state_file(self, self._project_path, stop_event=stop),
-                name="state-watcher",
-                thread=True,
-                exclusive=True,
-            )
+        if self._is_multi_session:
+            self._refresh_all()
+            if self._watch:
+                stop = self._stop_event
+                self.run_worker(
+                    lambda: watch_sessions_dir(self, stop),
+                    name="session-watcher",
+                    thread=True,
+                    exclusive=True,
+                )
+            self.set_interval(30, self._check_stale)
+        else:
+            self._refresh_all()
+            if self._watch:
+                stop = self._stop_event
+                self.run_worker(
+                    lambda: watch_state_file(self, self._project_path, stop_event=stop),  # type: ignore[arg-type]
+                    name="state-watcher",
+                    thread=True,
+                    exclusive=True,
+                )
 
     def on_unmount(self) -> None:
         self._stop_event.set()
+
+    # --- Single-project handlers ---
 
     def on_state_changed(self, message: StateChanged) -> None:
         parsed = parse_state(message.raw)
@@ -193,16 +301,108 @@ class PidashApp(App[None]):
         self._state = None
         self._refresh_all()
 
+    # --- Multi-session handlers ---
+
+    def on_session_updated(self, message: SessionUpdated) -> None:
+        session = parse_session_file(message.raw)
+        if session is None:
+            return
+        self._sessions[message.session_id] = session
+        if self._active_session_id is None:
+            self._active_session_id = message.session_id
+        self._refresh_multi()
+
+    def on_session_removed(self, message: SessionRemoved) -> None:
+        self._sessions.pop(message.session_id, None)
+        if self._active_session_id == message.session_id:
+            self._active_session_id = next(iter(self._sessions), None)
+        self._refresh_multi()
+
+    # --- Actions ---
+
     def action_refresh(self) -> None:
-        state_file = self._project_path / STATE_DIR / STATE_FILENAME
-        try:
-            raw = state_file.read_text(encoding="utf-8")
-            parsed = parse_state(raw)
-            if parsed is not None:
-                self._state = parsed
-        except OSError:
-            self._state = None
+        if self._is_multi_session:
+            self._reload_sessions()
+        else:
+            state_file = self._project_path / STATE_DIR / STATE_FILENAME  # type: ignore[operator]
+            try:
+                raw = state_file.read_text(encoding="utf-8")
+                parsed = parse_state(raw)
+                if parsed is not None:
+                    self._state = parsed
+            except OSError:
+                self._state = None
+            self._refresh_all()
+
+    def action_prev_session(self) -> None:
+        if not self._is_multi_session or not self._sessions:
+            return
+        self._switch_session(-1)
+
+    def action_next_session(self) -> None:
+        if not self._is_multi_session or not self._sessions:
+            return
+        self._switch_session(1)
+
+    # --- Internal ---
+
+    def _switch_session(self, direction: int) -> None:
+        sorted_sessions = _sort_sessions(self._sessions)
+        if not sorted_sessions:
+            return
+        ids = [s.session_id for s in sorted_sessions]
+        if self._active_session_id in ids:
+            idx = ids.index(self._active_session_id)
+            idx = (idx + direction) % len(ids)
+        else:
+            idx = 0
+        self._active_session_id = ids[idx]
+        self._refresh_multi()
+
+    def _reload_sessions(self) -> None:
+        self._sessions.clear()
+        if SESSIONS_DIR.is_dir():
+            for f in sorted(SESSIONS_DIR.glob("*.json")):
+                try:
+                    raw = f.read_text(encoding="utf-8")
+                    session = parse_session_file(raw)
+                    if session is not None:
+                        self._sessions[session.session_id] = session
+                except OSError:
+                    pass
+        if self._active_session_id not in self._sessions:
+            self._active_session_id = next(iter(self._sessions), None)
+        self._refresh_multi()
+
+    def _check_stale(self) -> None:
+        now = datetime.now(timezone.utc)
+        stale: set[str] = set()
+        for sid, session in self._sessions.items():
+            if session.updated_at is None:
+                continue
+            if session.stopped or (session.state is not None and session.state.phase == "done"):
+                continue
+            age = (now - session.updated_at).total_seconds()
+            if age > _STALE_SECONDS:
+                stale.add(sid)
+        if stale != self._stale_ids:
+            self._stale_ids = stale
+            self._refresh_sidebar()
+
+    def _refresh_multi(self) -> None:
+        active = self._sessions.get(self._active_session_id) if self._active_session_id else None  # type: ignore[arg-type]
+        self._state = active.state if active else None
         self._refresh_all()
+        self._refresh_sidebar()
+        footer = self.query_one("#footer", _FooterWidget)
+        footer.set_session_count(len(self._sessions))
+
+    def _refresh_sidebar(self) -> None:
+        try:
+            sidebar = self.query_one("#sidebar", _SidebarWidget)
+            sidebar.refresh_sessions(self._sessions, self._active_session_id, self._stale_ids)
+        except Exception:
+            pass
 
     def _refresh_all(self) -> None:
         attention = self._state is not None and self._state.needs_attention
