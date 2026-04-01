@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **pidash**: multi-session mode - `pidash` (no args) watches `~/.pidash/sessions/` and shows all active sessions in sidebar + detail layout
+- **pidash**: session sidebar with project name, phase badge, attention indicator, stale/done dimming
+- **pidash**: keyboard navigation (up/down) to switch between sessions
+- **pidash**: stale session detection (5min threshold, dimmed in sidebar)
+- **pidash**: `--cleanup` flag to remove session files older than 24h
+- **pidash**: auto-cleanup of stale session files on multi-session startup
 - **pidash**: doubt-review phase in pipeline (CATCHUP → PLANNING → WORKING → REVIEWING → DOUBT → DONE)
 - **pidash**: dedicated Doubts panel for doubt review findings
 - **pidash**: render `[C{n}]` cycle tags in magenta, `[DOUBT]` tags in cyan
@@ -30,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **pidash**: correct STATE_DIR from `.local/autopilot` to `dev/local/autopilot`
 - **pidash**: escape brackets in task names to prevent Rich markup swallowing
 - **dev**: `release local` reliably restores pyproject.toml after build
 
