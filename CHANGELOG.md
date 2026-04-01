@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pidash**: doubt-review phase in pipeline (CATCHUP → PLANNING → WORKING → REVIEWING → DOUBT → DONE)
 - **pidash**: dedicated Doubts panel for doubt review findings
 - **pidash**: render `[C{n}]` cycle tags in magenta, `[DOUBT]` tags in cyan
+- **pidash**: render `[D{n}]` decision tags in task panel
 - **dot**: `delete` command for removing files from tracking and disk (handles git-secret cleanup)
 - **dot**: TUI mode - interactive terminal UI for dotfiles management (`dot` or `dot tui`)
 - **dot**: TUI colored diff preview with auto-update on cursor movement
@@ -29,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **dot**: TUI file browser for discovering untracked files (b key, browse directories with tracking status)
 - **dot**: TUI secrets panel for git-secret management (S key, reveal/hide/register/unregister)
 - **dot**: TUI quick encrypt from any view (e key, register file with git-secret)
+- **dot**: TUI configurable theme via `BUVIS_DOT_THEME` env var
+- **dot**: TUI confirm-quit dialog on unsaved changes
+- **dot**: TUI unpushed/unpulled arrow indicators in status bar
 
 ### Changed
 
@@ -38,7 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **pidash**: correct STATE_DIR from `.local/autopilot` to `dev/local/autopilot`
 - **pidash**: escape brackets in task names to prevent Rich markup swallowing
+- **dot**: GPG passphrase prompt in TUI instead of blocking on pinentry
+- **dot**: auto-configure fetch refspec for bare repo remote tracking
+- **dot**: fall back to `origin/<branch>` when `@{u}` upstream not set
+- **dot**: refresh widgets immediately after list updates
 - **dev**: `release local` reliably restores pyproject.toml after build
+- **dev**: extract changelog from CHANGELOG.md for release notes
+- **ci**: bump requests for CVE-2026-25645, ignore unfixable pygments CVE
 
 ## [0.4.0] - 2026-03-22
 

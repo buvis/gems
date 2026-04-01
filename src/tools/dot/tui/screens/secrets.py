@@ -110,7 +110,7 @@ class _SecretListWidget(Widget, can_focus=True):
         return Text("\n".join(lines))
 
 
-class SecretsScreen(Screen):
+class SecretsScreen(Screen[None]):
     """Screen for managing git-secret entries."""
 
     BINDINGS = [

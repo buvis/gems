@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 __all__ = ["BrowseScreen"]
 
 
-class BrowseScreen(Screen):
+class BrowseScreen(Screen[None]):
     """Browse dotfiles directory tree with tracking status."""
 
     BINDINGS = [

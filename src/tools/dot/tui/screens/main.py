@@ -59,7 +59,7 @@ class _ConfirmDeleteScreen(ModalScreen[bool]):
         self.dismiss(False)
 
 
-class MainScreen(Screen):
+class MainScreen(Screen[None]):
     """Two-pane dotfiles status screen."""
 
     CSS = """
@@ -154,7 +154,7 @@ class MainScreen(Screen):
         current_id = focused.id if focused else ""
 
         try:
-            idx = self._FOCUS_ORDER.index(current_id)
+            idx = self._FOCUS_ORDER.index(current_id or "")
             next_idx = (idx + 1) % len(self._FOCUS_ORDER)
         except ValueError:
             next_idx = 0
@@ -200,7 +200,7 @@ class MainScreen(Screen):
         if entry is None:
             return
 
-        def _on_confirm(confirmed: bool) -> None:
+        def _on_confirm(confirmed: bool | None) -> None:
             if not confirmed:
                 return
             result = self._git_ops.rm(entry.path)

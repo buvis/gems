@@ -57,8 +57,8 @@ def list_directory(git_ops: GitOps, path: str) -> list[DirEntry]:
     rel_paths = []
     for child in children:
         try:
-            rel = child.relative_to(git_ops.wd)
-            rel_paths.append(str(rel))
+            rel_path = child.relative_to(git_ops.wd)
+            rel_paths.append(str(rel_path))
         except ValueError:
             rel_paths.append(child.name)
 

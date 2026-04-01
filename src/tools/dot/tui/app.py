@@ -57,7 +57,7 @@ class _ConfirmQuitScreen(ModalScreen[bool]):
         self.dismiss(False)
 
 
-class DotApp(App):
+class DotApp(App[None]):
     """Dotfiles TUI application."""
 
     BINDINGS = [
@@ -73,7 +73,7 @@ class DotApp(App):
     def on_mount(self) -> None:
         self.push_screen(MainScreen(self._git_ops))
 
-    def action_quit(self) -> None:
+    async def action_quit(self) -> None:
         uncommitted = self._git_ops.has_uncommitted_changes()
         unpushed = self._git_ops.has_unpushed_commits()
 
