@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from pidash.tui.state import PrdState, parse_state
+from pidash.tui.state import SessionState
 from pidash.tui.widgets import (
     CyclePanel,
     DecisionPanel,
@@ -11,6 +12,7 @@ from pidash.tui.widgets import (
     HeaderBar,
     PhasePipeline,
     ProgressSection,
+    SessionListRenderer,
     TaskPanel,
 )
 
@@ -390,3 +392,76 @@ class TestFooterBar:
     def test_render_content_no_state_arg(self) -> None:
         fb = FooterBar()
         assert callable(fb.render_content)
+
+
+class TestSessionListRenderer:
+    def test_selected_entry_highlighted(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+            state=_make_state(phase="work"),
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=True)
+        assert "bold" in result
+
+    def test_unselected_entry(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+            state=_make_state(phase="work"),
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=False)
+        assert "bold" not in result
+
+    def test_attention_indicator_shown(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+            state=_make_state(phase="work", needs_attention=True),
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=False)
+        assert "red" in result
+
+    def test_done_session_dimmed(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+            state=_make_state(phase="done"),
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=False)
+        assert "dim" in result
+
+    def test_stopped_session_dimmed(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+            stopped=True,
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=False)
+        assert "dim" in result
+
+    def test_phase_badge_present(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+            state=_make_state(phase="work"),
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=False)
+        assert "WORKING" in result
+
+    def test_project_name_shown(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=False)
+        assert "myproject" in result
+
+    def test_no_state_renders(self) -> None:
+        session = SessionState(
+            session_id="s1",
+            cwd="/home/user/myproject",
+        )
+        result = SessionListRenderer().render_entry(session, is_selected=False)
+        assert isinstance(result, str)
+        assert "myproject" in result
