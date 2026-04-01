@@ -100,12 +100,13 @@ def _session_json(
     phase: str = "work",
     prd_name: str = "test-prd",
     needs_attention: bool = False,
+    updated_at: str = "2026-04-01T12:00:00+00:00",
 ) -> str:
     return json.dumps(
         {
             "session_id": session_id,
             "cwd": cwd,
-            "updated_at": "2026-04-01T12:00:00+00:00",
+            "updated_at": updated_at,
             "prd": {"name": prd_name},
             "phase": phase,
             "needs_attention": needs_attention,
@@ -203,3 +204,28 @@ class TestMultiSessionApp:
             await pilot.pause()
             text = str(app.query_one("#footer").render())
             assert "sessions" in text.lower()
+
+    @pytest.mark.anyio
+    async def test_stale_session_detected(self) -> None:
+        app = PidashApp(_watch=False)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            # Use a timestamp more than 5 minutes old
+            old_ts = "2020-01-01T00:00:00+00:00"
+            app.post_message(SessionUpdated("s1", _session_json("s1", "/tmp/stale-proj", updated_at=old_ts)))
+            await pilot.pause()
+            app._check_stale()
+            assert "s1" in app._stale_ids
+
+    @pytest.mark.anyio
+    async def test_done_session_not_stale(self) -> None:
+        app = PidashApp(_watch=False)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            old_ts = "2020-01-01T00:00:00+00:00"
+            app.post_message(
+                SessionUpdated("s1", _session_json("s1", "/tmp/done-proj", phase="done", updated_at=old_ts))
+            )
+            await pilot.pause()
+            app._check_stale()
+            assert "s1" not in app._stale_ids
