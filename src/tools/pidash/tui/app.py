@@ -7,6 +7,7 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.widgets import Static
 
 from pidash.tui.state import PrdState, SessionState, parse_session_file, parse_state
@@ -390,7 +391,7 @@ class PidashApp(App[None]):
             self._refresh_sidebar()
 
     def _refresh_multi(self) -> None:
-        active = self._sessions.get(self._active_session_id) if self._active_session_id else None  # type: ignore[arg-type]
+        active = self._sessions.get(self._active_session_id) if self._active_session_id else None
         self._state = active.state if active else None
         self._refresh_all()
         self._refresh_sidebar()
@@ -401,7 +402,7 @@ class PidashApp(App[None]):
         try:
             sidebar = self.query_one("#sidebar", _SidebarWidget)
             sidebar.refresh_sessions(self._sessions, self._active_session_id, self._stale_ids)
-        except Exception:
+        except NoMatches:
             pass
 
     def _refresh_all(self) -> None:
