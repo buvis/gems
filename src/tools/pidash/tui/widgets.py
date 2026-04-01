@@ -188,4 +188,4 @@ class CyclePanel:
 
 class FooterBar:
     def render_content(self) -> str:
-        return "q quit │ r refresh │ watching .local/autopilot/state.json"
+        return "q quit │ r refresh │ watching dev/local/autopilot/state.json"

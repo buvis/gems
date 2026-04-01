@@ -385,7 +385,7 @@ class TestCyclePanel:
 class TestFooterBar:
     def test_render_content(self) -> None:
         result = FooterBar().render_content()
-        assert result == "q quit │ r refresh │ watching .local/autopilot/state.json"
+        assert result == "q quit │ r refresh │ watching dev/local/autopilot/state.json"
 
     def test_render_content_no_state_arg(self) -> None:
         fb = FooterBar()
