@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
-from pidash.tui.state import DISPLAY_PHASES, PHASE_ORDER, PrdState
+from pidash.tui.state import DISPLAY_PHASES, PHASE_ORDER, PrdState, SessionState
 
 _CYCLE_RE = re.compile(r"^\[C(\d+)\] ")
 _DECISION_RE = re.compile(r"^\[D(\d+)\] ")
@@ -184,6 +184,37 @@ class CyclePanel:
                 parts.append(f"[green]{c.low} low[/green]")
             lines.append("  ".join(parts))
         return "\n".join(lines)
+
+
+class SessionListRenderer:
+    """Renders a single session entry for the sidebar list."""
+
+    def render_entry(self, session: SessionState, is_selected: bool) -> str:
+        name = session.project_name or session.session_id
+        is_done = session.state is not None and session.state.phase == "done"
+        is_inactive = session.stopped or is_done
+
+        # Phase badge
+        if session.state is not None:
+            phase = session.state.display_phase
+        elif session.stopped:
+            phase = "STOPPED"
+        else:
+            phase = ""
+
+        # Attention indicator
+        attention = ""
+        if session.state is not None and session.state.needs_attention:
+            attention = " [red]\u25cf[/red]"
+
+        line = f"{name}  {phase}{attention}"
+
+        if is_inactive:
+            line = f"[dim]{line}[/dim]"
+        elif is_selected:
+            line = f"[bold]{line}[/bold]"
+
+        return line
 
 
 class FooterBar:
