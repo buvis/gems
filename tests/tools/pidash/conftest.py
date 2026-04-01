@@ -39,6 +39,27 @@ def full_state_dict() -> dict:
 
 
 @pytest.fixture
+def session_file_dict() -> dict:
+    return {
+        "session_id": "abc123",
+        "cwd": "/Users/bob/git/src/github.com/buvis/gems",
+        "updated_at": "2026-04-01T12:00:00+00:00",
+        "prd": {"name": "00016-foo", "path": "dev/local/prds/wip/00016-foo.md"},
+        "phase": "work",
+        "phases_completed": ["catchup", "planning"],
+        "cycle": 1,
+        "tasks_total": 5,
+        "tasks_completed": 2,
+        "tasks": [],
+        "needs_attention": False,
+        "autonomous_decisions": [],
+        "deferred_decisions": [],
+        "doubts": [],
+        "review_cycles": [],
+    }
+
+
+@pytest.fixture
 def autopilot_state_dict() -> dict:
     """Actual autopilot JSON format — string prd, issue field, nested severity."""
     return {
