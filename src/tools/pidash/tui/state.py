@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -137,4 +139,57 @@ def parse_state(raw: str) -> PrdState | None:
         return PrdState.model_validate(data)
     except (json.JSONDecodeError, ValidationError):
         logger.debug("Failed to parse state.json", exc_info=True)
+        return None
+
+
+class SessionState(BaseModel):
+    model_config = {"frozen": True}
+
+    session_id: str
+    cwd: str
+    project_name: str = ""
+    state: PrdState | None = None
+    stopped: bool = False
+    updated_at: datetime | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _compute_project_name(cls, values: Any) -> Any:
+        if isinstance(values, dict) and not values.get("project_name"):
+            cwd = values.get("cwd", "")
+            values["project_name"] = Path(cwd).name if cwd else ""
+        return values
+
+
+def parse_session_file(raw: str) -> SessionState | None:
+    if not raw.strip():
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+    session_id = data.get("session_id")
+    if not session_id:
+        return None
+
+    cwd = data.get("cwd", "")
+    updated_at = data.get("updated_at")
+    stopped = data.get("stopped", False)
+
+    # Try to parse the inner PrdState from the same data
+    inner_state: PrdState | None = None
+    if "prd" in data and "phase" in data:
+        inner_state = parse_state(raw)
+
+    try:
+        return SessionState(
+            session_id=session_id,
+            cwd=cwd,
+            state=inner_state,
+            stopped=stopped,
+            updated_at=updated_at,
+        )
+    except ValidationError:
+        logger.debug("Failed to parse session file", exc_info=True)
         return None
