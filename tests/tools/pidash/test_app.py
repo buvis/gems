@@ -129,11 +129,6 @@ class TestMultiSessionApp:
         app = PidashApp(_watch=False)
         async with app.run_test() as pilot:
             await pilot.pause()
-            # Post+remove a session to trigger _refresh_multi with empty dict
-            app.post_message(SessionUpdated("tmp", _session_json("tmp", "/tmp/x")))
-            await pilot.pause()
-            app.post_message(SessionRemoved("tmp"))
-            await pilot.pause()
             text = str(app.query_one("#sidebar").render()).lower()
             assert "no active sessions" in text
 

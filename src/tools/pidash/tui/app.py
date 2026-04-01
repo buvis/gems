@@ -267,6 +267,7 @@ class PidashApp(App[None]):
     def on_mount(self) -> None:
         if self._is_multi_session:
             self._refresh_all()
+            self._refresh_sidebar()
             if self._watch:
                 stop = self._stop_event
                 self.run_worker(
