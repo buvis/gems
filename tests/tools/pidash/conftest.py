@@ -25,16 +25,52 @@ def full_state_dict() -> dict:
         "tasks_completed": 4,
         "tasks_total": 6,
         "autonomous_decisions": [
-            {"description": "skip lint fix", "severity": "low", "resolution": "auto-skipped"},
-            {"description": "add missing dep", "severity": "medium", "resolution": "auto-added"},
+            {
+                "issue": "skip lint fix",
+                "severity": "low",
+                "cycle": 1,
+                "action": "skip",
+                "reason": "non-blocking lint issue",
+            },
+            {
+                "issue": "add missing dep",
+                "severity": "medium",
+                "cycle": 1,
+                "action": "auto-fix",
+                "reason": "mechanical fix",
+            },
         ],
         "deferred_decisions": [
-            {"description": "change API contract?", "severity": "high", "resolution": "pending"},
+            {
+                "issue": "change API contract?",
+                "severity": "high",
+                "cycle": 1,
+                "consensus": "3/3",
+                "reason": "touches public API",
+                "status": "pending",
+            },
         ],
         "review_cycles": [
-            {"cycle": 1, "critical": 0, "high": 1, "low": 2},
+            {
+                "cycle": 1,
+                "critical": 0,
+                "high": 1,
+                "low": 2,
+                "issue_count": 3,
+                "auto_fixed": 2,
+                "escalated": 1,
+                "deferred": 0,
+            },
         ],
-        "done_prds": [],
+        "batch": {
+            "id": "202604011000",
+            "mode": "autopilot",
+            "completed_prds": [
+                {"filename": "00009-auth.md", "cycles": 2, "autonomous_decisions": 3, "escalated_decisions": 0},
+            ],
+        },
+        "started_at": "2026-04-01T10:00:00Z",
+        "updated_at": "2026-04-01T10:30:00Z",
     }
 
 
@@ -61,10 +97,13 @@ def session_file_dict() -> dict:
 
 @pytest.fixture
 def autopilot_state_dict() -> dict:
-    """Actual autopilot JSON format — string prd, issue field, nested severity."""
+    """Autopilot JSON with nested severity dict in review_cycles."""
     return {
-        "prd": "00002-add-feature",
-        "prd_path": ".local/prds/wip/00002-add-feature.md",
+        "prd": {
+            "name": "00002-add-feature",
+            "path": "dev/local/prds/wip/00002-add-feature.md",
+            "filename": "00002-add-feature.md",
+        },
         "phase": "review",
         "phases_completed": ["catchup", "planning", "work"],
         "cycle": 1,
@@ -99,7 +138,6 @@ def autopilot_state_dict() -> dict:
                 "recurring_issues": [],
             },
         ],
-        "follow_up_tasks": [],
         "started_at": "2026-03-16T10:00:00Z",
         "updated_at": "2026-03-16T10:30:00Z",
     }

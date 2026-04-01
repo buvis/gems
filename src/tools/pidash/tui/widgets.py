@@ -14,7 +14,11 @@ class HeaderBar:
         if state is None:
             return "[dim]no active PRD cycle — watching...[/dim]"
         now = datetime.now().strftime("%H:%M:%S")
-        return f"[bold reverse] {state.prd.name} [/bold reverse]  cycle {state.cycle}  {now}"
+        batch = ""
+        if state.batch and state.batch.completed_prds:
+            n = len(state.batch.completed_prds)
+            batch = f"  [dim]{n} PRDs done[/dim]"
+        return f"[bold reverse] {state.prd.name} [/bold reverse]  cycle {state.cycle}  {now}{batch}"
 
 
 class PhasePipeline:
@@ -141,15 +145,13 @@ class DecisionPanel:
     }
 
     @staticmethod
-    def _classify(desc: str) -> tuple[str, str]:
-        lower = desc.lower()
-        for prefix in ("skip:", "skip ", "auto skip ", "auto skip:"):
-            if lower.startswith(prefix):
-                return "REJECTED", desc[len(prefix) :].lstrip(" :-")
-        for prefix in ("auto-fix:", "auto-fix ", "auto-fix:", "autofix:"):
-            if lower.startswith(prefix):
-                return "APPROVED", desc[len(prefix) :].lstrip(" :-")
-        return "APPROVED", desc
+    def _label_for_action(action: str) -> str:
+        normalized = action.lower().replace("-", " ").replace("_", " ").strip()
+        if normalized in ("auto fix", "autofix", "fix"):
+            return "AUTO-FIX"
+        if normalized in ("skip", "reject", "auto skip"):
+            return "SKIP"
+        return action.upper().replace("-", " ")
 
     def render_state(self, state: PrdState | None) -> str:
         if state is None:
@@ -157,11 +159,17 @@ class DecisionPanel:
         lines: list[str] = []
         for d in state.autonomous_decisions:
             color = self._severity_colors.get(d.severity, "dim")
-            label, text = self._classify(d.description)
-            lines.append(f"[{color}]AUTO-{label}: {text}[/{color}]")
+            label = self._label_for_action(d.action)
+            line = f"[{color}]{label}: {d.issue}[/{color}]"
+            if d.reason:
+                line += f" [dim]{d.reason}[/dim]"
+            lines.append(line)
         for d in state.deferred_decisions:
             color = self._severity_colors.get(d.severity, "red")
-            lines.append(f"[bold {color}]⚠ PENDING: {d.description}[/bold {color}]")
+            line = f"[bold {color}]⚠ PENDING: {d.issue}[/bold {color}]"
+            if d.reason:
+                line += f" [dim]{d.reason}[/dim]"
+            lines.append(line)
         return "\n".join(lines)
 
 
@@ -182,6 +190,15 @@ class CyclePanel:
                 parts.append(f"[yellow]{c.medium} med[/yellow]")
             if c.low:
                 parts.append(f"[green]{c.low} low[/green]")
+            resolutions: list[str] = []
+            if c.auto_fixed:
+                resolutions.append(f"{c.auto_fixed} fix")
+            if c.escalated:
+                resolutions.append(f"{c.escalated} esc")
+            if c.deferred:
+                resolutions.append(f"{c.deferred} def")
+            if resolutions:
+                parts.append(f"[dim]({', '.join(resolutions)})[/dim]")
             lines.append("  ".join(parts))
         return "\n".join(lines)
 

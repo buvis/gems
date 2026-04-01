@@ -26,9 +26,14 @@ PHASE_ORDER: list[str] = ["CATCHUP", "PLANNING", "WORKING", "REVIEWING", "DOUBT"
 
 
 class Decision(BaseModel, frozen=True):
-    description: str
+    issue: str
     severity: str = "low"
-    resolution: str = "pending"
+    cycle: int = 0
+    consensus: str = ""
+    action: str = ""
+    reason: str = ""
+    status: str = ""
+    research: dict[str, Any] | None = None
 
 
 class Doubt(BaseModel, frozen=True):
@@ -43,12 +48,30 @@ class CycleResult(BaseModel, frozen=True):
     high: int = 0
     medium: int = 0
     low: int = 0
+    issue_count: int = 0
+    auto_fixed: int = 0
+    escalated: int = 0
+    deferred: int = 0
+    recurring_issues: list[str] = []
 
 
 class PrdInfo(BaseModel, frozen=True):
     name: str
     path: str = ""
     filename: str = ""
+
+
+class BatchPrdInfo(BaseModel, frozen=True):
+    filename: str
+    cycles: int = 0
+    autonomous_decisions: int = 0
+    escalated_decisions: int = 0
+
+
+class BatchInfo(BaseModel, frozen=True):
+    id: str = ""
+    mode: str = "autopilot"
+    completed_prds: list[BatchPrdInfo] = []
 
 
 class TaskInfo(BaseModel, frozen=True):
@@ -72,58 +95,21 @@ class PrdState(BaseModel):
     deferred_decisions: list[Decision] = []
     doubts: list[Doubt] = []
     review_cycles: list[CycleResult] = []
-    done_prds: list[str] = []
+    batch: BatchInfo | None = None
+    started_at: str = ""
+    updated_at: str = ""
 
     @property
     def display_phase(self) -> str:
         return DISPLAY_PHASES.get(self.phase, self.phase.upper())
 
 
-def _normalize_decisions(data: dict[str, Any]) -> None:
-    for key in ("autonomous_decisions", "deferred_decisions"):
-        normalized = []
-        for d in data.get(key, []):
-            if isinstance(d, str):
-                normalized.append({"description": d})
-            elif isinstance(d, dict):
-                if "issue" in d and "description" not in d:
-                    d["description"] = d.pop("issue")
-                normalized.append(d)
-        if key in data:
-            data[key] = normalized
-
-
-def _normalize_list(data: dict[str, Any], key: str, name_field: str) -> None:
-    """Normalize a list field: strings become dicts, 'issue' renamed to 'description'."""
-    normalized = []
-    for item in data.get(key, []):
-        if isinstance(item, str):
-            normalized.append({name_field: item})
-        elif isinstance(item, dict):
-            if "issue" in item and "description" not in item:
-                item["description"] = item.pop("issue")
-            normalized.append(item)
-    if key in data:
-        data[key] = normalized
-
-
-def _normalize_data(data: dict[str, Any]) -> dict[str, Any]:
-    """Normalize autopilot JSON variants to PrdState schema."""
-    prd = data.get("prd")
-    if isinstance(prd, str):
-        data["prd"] = {"name": prd, "path": data.pop("prd_path", "")}
-
-    _normalize_decisions(data)
-    _normalize_list(data, "doubts", "description")
-    _normalize_list(data, "tasks", "name")
-
+def _flatten_review_cycle_severity(data: dict[str, Any]) -> None:
     for rc in data.get("review_cycles", []):
         sev = rc.pop("severity", None)
         if isinstance(sev, dict):
             for k, v in sev.items():
                 rc.setdefault(k, v)
-
-    return data
 
 
 def parse_state(raw: str) -> PrdState | None:
@@ -131,7 +117,7 @@ def parse_state(raw: str) -> PrdState | None:
         return None
     try:
         data = json.loads(raw)
-        _normalize_data(data)
+        _flatten_review_cycle_severity(data)
         return PrdState.model_validate(data)
     except (json.JSONDecodeError, ValidationError):
         logger.debug("Failed to parse state.json", exc_info=True)

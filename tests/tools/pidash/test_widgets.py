@@ -25,10 +25,10 @@ def _make_state(phase: str = "work", **overrides) -> PrdState:
         "tasks_completed": 3,
         "tasks_total": 5,
         "autonomous_decisions": [
-            {"description": "skip lint", "severity": "low", "resolution": "auto"},
+            {"issue": "skip lint", "severity": "low", "action": "skip", "reason": "non-blocking"},
         ],
         "deferred_decisions": [
-            {"description": "change API?", "severity": "high", "resolution": "pending"},
+            {"issue": "change API?", "severity": "high", "status": "pending", "reason": "touches public API"},
         ],
         "review_cycles": [
             {"cycle": 1, "critical": 1, "high": 2, "low": 0},
@@ -69,6 +69,24 @@ class TestHeaderBar:
         state = _make_state()
         result = HeaderBar().render_state(state)
         assert "00010-test-prd" in result
+
+    def test_batch_progress_shown(self) -> None:
+        state = _make_state(
+            batch={
+                "id": "202604011000",
+                "completed_prds": [
+                    {"filename": "00001-a.md", "cycles": 1},
+                    {"filename": "00002-b.md", "cycles": 2},
+                ],
+            },
+        )
+        result = HeaderBar().render_state(state)
+        assert "2 PRDs done" in result
+
+    def test_no_batch_no_extra(self) -> None:
+        state = _make_state()
+        result = HeaderBar().render_state(state)
+        assert "PRDs done" not in result
 
 
 class TestPhasePipeline:
@@ -311,10 +329,24 @@ class TestDecisionPanel:
     def test_none_state_returns_empty(self) -> None:
         assert DecisionPanel().render_state(None) == ""
 
-    def test_auto_decision_prefix(self) -> None:
+    def test_action_field_used(self) -> None:
+        state = _make_state(
+            autonomous_decisions=[
+                {"issue": "add dep", "severity": "medium", "action": "auto-fix", "reason": "safe"},
+            ],
+        )
+        result = DecisionPanel().render_state(state)
+        assert "AUTO-FIX: add dep" in result
+
+    def test_skip_action(self) -> None:
         state = _make_state()
         result = DecisionPanel().render_state(state)
-        assert "AUTO-APPROVED" in result or "AUTO-REJECTED" in result
+        assert "SKIP: skip lint" in result
+
+    def test_reason_shown(self) -> None:
+        state = _make_state()
+        result = DecisionPanel().render_state(state)
+        assert "non-blocking" in result
 
     def test_auto_decision_colored_by_severity(self) -> None:
         state = _make_state()
@@ -325,6 +357,11 @@ class TestDecisionPanel:
         state = _make_state()
         result = DecisionPanel().render_state(state)
         assert "⚠ PENDING: change API?" in result
+
+    def test_pending_decision_reason_shown(self) -> None:
+        state = _make_state()
+        result = DecisionPanel().render_state(state)
+        assert "touches public API" in result
 
     def test_pending_decision_bold(self) -> None:
         state = _make_state()
@@ -366,6 +403,26 @@ class TestCyclePanel:
         result = CyclePanel().render_state(state)
         assert "[red]" in result  # critical
         assert "[orange1]" in result  # high
+
+    def test_resolution_counts_shown(self) -> None:
+        state = _make_state(
+            review_cycles=[
+                {"cycle": 1, "critical": 1, "high": 2, "auto_fixed": 3, "escalated": 1, "deferred": 1},
+            ],
+        )
+        result = CyclePanel().render_state(state)
+        assert "3 fix" in result
+        assert "1 esc" in result
+        assert "1 def" in result
+
+    def test_no_resolution_counts_when_zero(self) -> None:
+        state = _make_state(
+            review_cycles=[{"cycle": 1, "critical": 1, "high": 0}],
+        )
+        result = CyclePanel().render_state(state)
+        assert "fix" not in result
+        assert "esc" not in result
+        assert "def" not in result
 
     def test_multiple_cycles(self) -> None:
         state = _make_state(

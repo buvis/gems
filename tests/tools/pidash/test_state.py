@@ -19,6 +19,42 @@ class TestParseState:
         assert len(state.deferred_decisions) == 1
         assert len(state.review_cycles) == 1
 
+    def test_full_state_decision_fields(self, full_state_dict: dict) -> None:
+        state = parse_state(json.dumps(full_state_dict))
+        assert state is not None
+        d = state.autonomous_decisions[1]
+        assert d.action == "auto-fix"
+        assert d.reason == "mechanical fix"
+        assert d.cycle == 1
+        dd = state.deferred_decisions[0]
+        assert dd.consensus == "3/3"
+        assert dd.reason == "touches public API"
+        assert dd.status == "pending"
+
+    def test_full_state_cycle_resolution_fields(self, full_state_dict: dict) -> None:
+        state = parse_state(json.dumps(full_state_dict))
+        assert state is not None
+        rc = state.review_cycles[0]
+        assert rc.issue_count == 3
+        assert rc.auto_fixed == 2
+        assert rc.escalated == 1
+        assert rc.deferred == 0
+
+    def test_full_state_batch(self, full_state_dict: dict) -> None:
+        state = parse_state(json.dumps(full_state_dict))
+        assert state is not None
+        assert state.batch is not None
+        assert state.batch.id == "202604011000"
+        assert len(state.batch.completed_prds) == 1
+        assert state.batch.completed_prds[0].filename == "00009-auth.md"
+        assert state.batch.completed_prds[0].cycles == 2
+
+    def test_full_state_timestamps(self, full_state_dict: dict) -> None:
+        state = parse_state(json.dumps(full_state_dict))
+        assert state is not None
+        assert state.started_at == "2026-04-01T10:00:00Z"
+        assert state.updated_at == "2026-04-01T10:30:00Z"
+
     def test_minimal_state(self, minimal_state_dict: dict) -> None:
         state = parse_state(json.dumps(minimal_state_dict))
         assert state is not None
@@ -47,19 +83,7 @@ class TestParseState:
 
 
 class TestAutopilotFormat:
-    """Parse the actual autopilot JSON format (string prd, issue field, nested severity)."""
-
-    def test_string_prd_normalized(self, autopilot_state_dict: dict) -> None:
-        state = parse_state(json.dumps(autopilot_state_dict))
-        assert state is not None
-        assert state.prd.name == "00002-add-feature"
-        assert state.prd.path == ".local/prds/wip/00002-add-feature.md"
-
-    def test_issue_mapped_to_description(self, autopilot_state_dict: dict) -> None:
-        state = parse_state(json.dumps(autopilot_state_dict))
-        assert state is not None
-        assert state.autonomous_decisions[0].description == "Null check missing"
-        assert state.deferred_decisions[0].description == "Change API contract?"
+    """Parse autopilot JSON with nested severity dict in review_cycles."""
 
     def test_nested_severity_flattened(self, autopilot_state_dict: dict) -> None:
         state = parse_state(json.dumps(autopilot_state_dict))
@@ -70,19 +94,63 @@ class TestAutopilotFormat:
         assert rc.medium == 1
         assert rc.low == 1
 
-    def test_extra_autopilot_fields_ignored(self, autopilot_state_dict: dict) -> None:
+    def test_autopilot_decision_action_preserved(self, autopilot_state_dict: dict) -> None:
         state = parse_state(json.dumps(autopilot_state_dict))
         assert state is not None
-        assert state.phase == "review"
-        assert state.cycle == 1
+        d = state.autonomous_decisions[0]
+        assert d.action == "auto-fix"
+        assert d.reason == "additive only"
+        assert d.consensus == "2/3"
+        assert d.cycle == 1
 
-    def test_minimal_string_prd(self) -> None:
-        raw = json.dumps({"prd": "my-prd", "phase": "catchup"})
+    def test_autopilot_deferred_status_preserved(self, autopilot_state_dict: dict) -> None:
+        state = parse_state(json.dumps(autopilot_state_dict))
+        assert state is not None
+        d = state.deferred_decisions[0]
+        assert d.status == "pending"
+        assert d.reason == "touches public API"
+
+    def test_autopilot_cycle_resolution_fields(self, autopilot_state_dict: dict) -> None:
+        state = parse_state(json.dumps(autopilot_state_dict))
+        assert state is not None
+        rc = state.review_cycles[0]
+        assert rc.issue_count == 5
+        assert rc.auto_fixed == 3
+        assert rc.escalated == 1
+        assert rc.deferred == 1
+        assert rc.recurring_issues == []
+
+    def test_autopilot_timestamps(self, autopilot_state_dict: dict) -> None:
+        state = parse_state(json.dumps(autopilot_state_dict))
+        assert state is not None
+        assert state.started_at == "2026-03-16T10:00:00Z"
+        assert state.updated_at == "2026-03-16T10:30:00Z"
+
+    def test_autopilot_research_on_decision(self) -> None:
+        raw = json.dumps({
+            "prd": {"name": "test"},
+            "phase": "review",
+            "autonomous_decisions": [
+                {
+                    "issue": "New dep: zod",
+                    "severity": "high",
+                    "action": "auto-fix",
+                    "reason": "research-passed",
+                    "research": {
+                        "category": "new-dependency",
+                        "verdict": "proceed",
+                        "checks": [{"check": "license", "result": "MIT", "pass": True}],
+                        "evidence_summary": "zod: MIT, active",
+                    },
+                }
+            ],
+        })
         state = parse_state(raw)
         assert state is not None
-        assert state.prd.name == "my-prd"
-        assert state.prd.path == ""
-
+        d = state.autonomous_decisions[0]
+        assert d.research is not None
+        assert d.research["verdict"] == "proceed"
+        assert d.research["category"] == "new-dependency"
 
 class TestDisplayPhaseMapping:
     @pytest.mark.parametrize(
