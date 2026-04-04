@@ -67,8 +67,8 @@ class MainScreen(Screen[None]):
     #main { height: 1fr; }
     #left { width: 40%; }
     #right { width: 60%; }
-    #unstaged { height: 1fr; border: solid $surface-lighten-2; padding: 1; }
-    #staged { height: 1fr; border: solid $surface-lighten-2; padding: 1; }
+    #unstaged { height: 1fr; border: solid $surface-lighten-2; padding: 1; overflow-y: auto; }
+    #staged { height: 1fr; border: solid $surface-lighten-2; padding: 1; overflow-y: auto; }
     #diff { height: 1fr; border: solid $surface-lighten-2; padding: 1; overflow-y: auto; }
     #unstaged:focus { border: solid $accent; }
     #staged:focus { border: solid $accent; }
