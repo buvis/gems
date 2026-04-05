@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from rich.text import Text
+from textual.geometry import Region
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -56,6 +57,8 @@ class FileListWidget(Widget, can_focus=True):
         """Post FileSelected when cursor changes and files exist."""
         if self._files:
             self.post_message(self.FileSelected(self._files[value], self._staged))
+            # Title is line 0, files start at line 1
+            self.scroll_to_region(Region(0, value + 1, 1, 1), animate=False)
 
     def render(self) -> Text:
         output = Text()

@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-04-04
+
+### Fixed
+
+- **dot**: scroll file list panes to keep selected file visible when list overflows
+
 ## [0.5.1] - 2026-04-01
+
+### Changed
+
+- **pidash**: redesign state schema - rename description to issue, add cycle/consensus/action/reason/status/research fields, replace done_prds with BatchInfo, show resolution counts and batch progress
+
+### Fixed
+
+- **dot**: remove console import from commands layer (commands return CommandResult, CLI handles output)
 
 ## [0.5.0] - 2026-04-01
 
@@ -168,7 +182,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.5.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.5.2...HEAD
+[0.5.2]: https://github.com/buvis/gems/compare/gems-v0.5.1...gems-v0.5.2
 [0.5.1]: https://github.com/buvis/gems/compare/gems-v0.5.0...gems-v0.5.1
 [0.5.0]: https://github.com/buvis/gems/compare/gems-v0.4.0...gems-v0.5.0
 [0.4.0]: https://github.com/buvis/gems/compare/gems-v0.3.2...gems-v0.4.0
