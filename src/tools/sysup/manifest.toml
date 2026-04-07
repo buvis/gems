@@ -13,6 +13,7 @@ web = false
 
 [tool.commands]
 mac = "Run macOS system and tooling updates"
+nvim = "Update neovim plugins and tools"
 pip = "Upgrade pip and outdated Python packages"
 wsl = "Run WSL/Linux package updates"
 

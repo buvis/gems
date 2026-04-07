@@ -18,6 +18,9 @@ class TestSysupCli:
     def test_pip_command_exists(self) -> None:
         assert "pip" in cli.commands
 
+    def test_nvim_command_exists(self) -> None:
+        assert "nvim" in cli.commands
+
     def test_wsl_command_exists(self) -> None:
         assert "wsl" in cli.commands
 
@@ -38,6 +41,10 @@ class TestSysupCliHelp:
         result = runner.invoke(cli, ["pip", "--help"])
         assert result.exit_code == 0
 
+    def test_nvim_help(self, runner) -> None:
+        result = runner.invoke(cli, ["nvim", "--help"])
+        assert result.exit_code == 0
+
     def test_wsl_help(self, runner) -> None:
         result = runner.invoke(cli, ["wsl", "--help"])
         assert result.exit_code == 0
@@ -53,6 +60,26 @@ class TestSysupMacCommand:
         ]
         result = runner.invoke(cli, ["mac"])
         assert result.exit_code == 0
+
+
+class TestSysupNvimCommand:
+    @patch("sysup.commands.nvim.nvim.CommandNvim")
+    def test_nvim_success(self, mock_cmd_cls: MagicMock, runner) -> None:
+        mock_cmd_cls.return_value.execute.return_value = [
+            StepResult("lazy", True),
+            StepResult("mason", True),
+            StepResult("treesitter", True),
+        ]
+        result = runner.invoke(cli, ["nvim"])
+        assert result.exit_code == 0
+
+    @patch("sysup.commands.nvim.nvim.CommandNvim")
+    def test_nvim_fatal_error(self, mock_cmd_cls: MagicMock, runner) -> None:
+        from buvis.pybase.result import FatalError
+
+        mock_cmd_cls.return_value.execute.side_effect = FatalError("nvim not found")
+        result = runner.invoke(cli, ["nvim"])
+        assert "nvim not found" in result.output
 
 
 class TestSysupPipCommand:

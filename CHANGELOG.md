@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **sysup**: `nvim` command to update neovim plugins, mason tools, and treesitter parsers headlessly
+
 ## [0.5.2] - 2026-04-04
 
 ### Fixed

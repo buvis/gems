@@ -53,6 +53,19 @@ def pip() -> None:
     _report_steps(CommandPip().execute())
 
 
+@cli.command("nvim", help="Update neovim plugins and tools")
+def nvim() -> None:
+    from sysup.commands.nvim.nvim import CommandNvim
+
+    try:
+        steps = CommandNvim().execute()
+    except FatalError as e:
+        console.panic(str(e))
+        return
+
+    _report_steps(steps)
+
+
 @cli.command("wsl", help="Run WSL/Linux package updates")
 def wsl() -> None:
     if sys.platform != "linux":
