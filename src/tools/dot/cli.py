@@ -98,6 +98,10 @@ def pull() -> None:
     from dot.commands.pull.pull import CommandPull
 
     shell = ShellAdapter(suppress_logging=True)
+
+    if shell.is_command_available("git-secret"):
+        console.info("GPG passphrase required to decrypt secret files")
+
     console.report_result(CommandPull(shell=shell).execute())
 
 
