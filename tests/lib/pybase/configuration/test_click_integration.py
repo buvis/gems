@@ -615,7 +615,7 @@ class TestFeedbackOption:
         def cmd() -> None:
             pass
 
-        runner.invoke(cmd, ["--feedback"])
+        result = runner.invoke(cmd, ["--feedback"])
 
         url = mock_open.call_args[0][0]  # type: ignore[union-attr]
         parsed = urlparse(url)
@@ -625,6 +625,7 @@ class TestFeedbackOption:
         assert "version" in params
         assert "os" in params
         assert "python" in params
+        assert result.exit_code == 0
 
     @patch("buvis.pybase.configuration.click_integration.webbrowser.open", return_value=True)
     def test_feedback_command_not_executed(self, mock_open: object, runner: CliRunner) -> None:
