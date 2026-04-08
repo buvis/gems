@@ -102,7 +102,7 @@ def foo(path: Path | None = None) -> list[str]: ...
 
 **Docstrings**: Google format
 
-**CLI pattern**: Click-based:
+**CLI pattern**: Click-based. `buvis_options` adds `--version`, `--config`, `--log-level`, and `--debug` to every tool automatically:
 
 ```python
 @click.command()
