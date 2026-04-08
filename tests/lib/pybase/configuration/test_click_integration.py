@@ -599,11 +599,12 @@ class TestFeedbackOption:
         def cmd() -> None:
             pass
 
-        runner.invoke(cmd, ["--feedback"])
+        result = runner.invoke(cmd, ["--feedback"])
 
         mock_open.assert_called_once()  # type: ignore[union-attr]
         url = mock_open.call_args[0][0]  # type: ignore[union-attr]
         assert "feedback.buvis.net" in url
+        assert result.exit_code == 0
 
     @patch("buvis.pybase.configuration.click_integration.webbrowser.open", return_value=True)
     def test_feedback_url_contains_params(self, mock_open: object, runner: CliRunner) -> None:
@@ -635,9 +636,10 @@ class TestFeedbackOption:
         def cmd() -> None:
             executed.append(True)
 
-        runner.invoke(cmd, ["--feedback"])
+        result = runner.invoke(cmd, ["--feedback"])
 
         assert len(executed) == 0
+        assert result.exit_code == 0
 
     @patch("buvis.pybase.configuration.click_integration.webbrowser.open", return_value=False)
     def test_feedback_fallback_on_browser_failure(self, mock_open: object, runner: CliRunner) -> None:
@@ -650,4 +652,5 @@ class TestFeedbackOption:
 
         result = runner.invoke(cmd, ["--feedback"])
 
+        assert "Open this URL to submit feedback" in result.output
         assert "feedback.buvis.net" in result.output
