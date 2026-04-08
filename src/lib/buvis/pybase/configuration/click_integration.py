@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import functools
+import platform
 import types
+import webbrowser
 from collections.abc import Callable
 from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Any, Literal, TypeVar, Union, cast, get_args, get_origin, overload
+from urllib.parse import urlencode
 
 import click
 from pydantic import BaseModel
@@ -62,6 +65,30 @@ def get_settings(ctx: click.Context, settings_class: type[T] | None = None) -> T
     return cast(T, obj[settings_class])
 
 
+def _feedback_callback(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
+    """Open feedback form in browser when --feedback is passed."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    params = urlencode(
+        {
+            "project": "buvis-gems",
+            "tool": ctx.info_name or "unknown",
+            "version": pkg_version("buvis-gems"),
+            "os": platform.system(),
+            "python": platform.python_version(),
+        }
+    )
+    url = f"https://feedback.buvis.net/?{params}"
+
+    if webbrowser.open(url):
+        click.echo(f"Opened feedback form: {url}")
+    else:
+        click.echo(f"Open this URL to submit feedback: {url}")
+
+    ctx.exit(0)
+
+
 def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
     """Build a decorator that injects settings into the Click context."""
 
@@ -69,6 +96,14 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
         @click.version_option(
             version=pkg_version("buvis-gems"),
             prog_name="buvis-gems",
+        )
+        @click.option(
+            "--feedback",
+            is_flag=True,
+            is_eager=True,
+            expose_value=False,
+            callback=_feedback_callback,
+            help="Open feedback form in browser.",
         )
         @click.option(
             "--config",
