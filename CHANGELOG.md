@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **sysup**: report nvim update progress per step instead of waiting until all steps finish
+- **sysup**: include captured output in mason timeout error message
+
 ## [0.6.0] - 2026-04-07
 
 ### Added

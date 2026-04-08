@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 import click
@@ -14,12 +15,16 @@ if TYPE_CHECKING:
 from sysup.settings import SysupSettings
 
 
-def _report_steps(steps: list[StepResult]) -> None:
+def _report_step(step: StepResult) -> None:
+    if step.success:
+        console.success(step.message or f"{step.label} updated")
+    else:
+        console.failure(step.message or f"{step.label} failed")
+
+
+def _report_steps(steps: Iterable[StepResult]) -> None:
     for step in steps:
-        if step.success:
-            console.success(step.message or f"{step.label} updated")
-        else:
-            console.failure(step.message or f"{step.label} failed")
+        _report_step(step)
 
 
 @click.group(help="System update tools")
@@ -58,12 +63,12 @@ def nvim() -> None:
     from sysup.commands.nvim.nvim import CommandNvim
 
     try:
-        steps = CommandNvim().execute()
+        for step in CommandNvim().execute(
+            on_step_start=lambda label: console.info(f"updating {label}..."),
+        ):
+            _report_step(step)
     except FatalError as e:
         console.panic(str(e))
-        return
-
-    _report_steps(steps)
 
 
 @cli.command("wsl", help="Run WSL/Linux package updates")
