@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 import click
@@ -591,7 +591,7 @@ class TestFeedbackOption:
         assert "--feedback" in result.output
 
     @patch("buvis.pybase.configuration.click_integration.webbrowser.open", return_value=True)
-    def test_feedback_opens_browser(self, mock_open: object, runner: CliRunner) -> None:
+    def test_feedback_opens_browser(self, mock_open: MagicMock, runner: CliRunner) -> None:
         """--feedback calls webbrowser.open with feedback URL."""
 
         @click.command()
@@ -601,13 +601,13 @@ class TestFeedbackOption:
 
         result = runner.invoke(cmd, ["--feedback"])
 
-        mock_open.assert_called_once()  # type: ignore[union-attr]
-        url = mock_open.call_args[0][0]  # type: ignore[union-attr]
+        mock_open.assert_called_once()
+        url = mock_open.call_args[0][0]
         assert "feedback.buvis.net" in url
         assert result.exit_code == 0
 
     @patch("buvis.pybase.configuration.click_integration.webbrowser.open", return_value=True)
-    def test_feedback_url_contains_params(self, mock_open: object, runner: CliRunner) -> None:
+    def test_feedback_url_contains_params(self, mock_open: MagicMock, runner: CliRunner) -> None:
         """Feedback URL contains project, tool, version, os, python params."""
 
         @click.command(name="mytool")
@@ -617,7 +617,7 @@ class TestFeedbackOption:
 
         result = runner.invoke(cmd, ["--feedback"])
 
-        url = mock_open.call_args[0][0]  # type: ignore[union-attr]
+        url = mock_open.call_args[0][0]
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
         assert params["project"] == ["buvis-gems"]
@@ -628,7 +628,7 @@ class TestFeedbackOption:
         assert result.exit_code == 0
 
     @patch("buvis.pybase.configuration.click_integration.webbrowser.open", return_value=True)
-    def test_feedback_command_not_executed(self, mock_open: object, runner: CliRunner) -> None:
+    def test_feedback_command_not_executed(self, mock_open: MagicMock, runner: CliRunner) -> None:
         """Command body does not run when --feedback is passed."""
         executed = []
 
@@ -643,7 +643,7 @@ class TestFeedbackOption:
         assert result.exit_code == 0
 
     @patch("buvis.pybase.configuration.click_integration.webbrowser.open", return_value=False)
-    def test_feedback_fallback_on_browser_failure(self, mock_open: object, runner: CliRunner) -> None:
+    def test_feedback_fallback_on_browser_failure(self, mock_open: MagicMock, runner: CliRunner) -> None:
         """URL is printed when browser fails to open."""
 
         @click.command()
@@ -655,3 +655,4 @@ class TestFeedbackOption:
 
         assert "Open this URL to submit feedback" in result.output
         assert "feedback.buvis.net" in result.output
+        assert result.exit_code == 0
