@@ -48,17 +48,25 @@ class FileListWidget(Widget, can_focus=True):
     def update_files(self, files: list[FileEntry]) -> None:
         """Replace the file list and reset cursor."""
         self._files = list(files)
+        old_cursor = self.cursor_index
         self.cursor_index = 0
         self.refresh()
-        if self._files:
+        # If cursor didn't change, watch_cursor_index didn't fire — post explicitly
+        if old_cursor == 0 and self._files and self.has_focus:
             self.post_message(self.FileSelected(self._files[0], self._staged))
 
     def watch_cursor_index(self, value: int) -> None:
-        """Post FileSelected when cursor changes and files exist."""
+        """Post FileSelected when cursor changes and widget is focused."""
         if self._files:
-            self.post_message(self.FileSelected(self._files[value], self._staged))
+            if self.has_focus:
+                self.post_message(self.FileSelected(self._files[value], self._staged))
             # Title is line 0, files start at line 1
             self.scroll_to_region(Region(0, value + 1, 1, 1), animate=False)
+
+    def on_focus(self) -> None:
+        """Refresh diff when this pane gains focus."""
+        if self._files:
+            self.post_message(self.FileSelected(self._files[self.cursor_index], self._staged))
 
     def render(self) -> Text:
         output = Text()
@@ -70,8 +78,9 @@ class FileListWidget(Widget, can_focus=True):
             return output
 
         for idx, entry in enumerate(self._files):
-            prefix = "▸ " if idx == self.cursor_index else "  "
-            style = "reverse" if idx == self.cursor_index else ""
+            is_selected = idx == self.cursor_index and self.has_focus
+            prefix = "▸ " if is_selected else "  "
+            style = "reverse" if is_selected else ""
 
             status_char = entry.status.strip() or "?"
             color = _STATUS_COLORS.get(status_char[0], "white")

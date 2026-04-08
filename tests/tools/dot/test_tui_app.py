@@ -395,10 +395,9 @@ class TestMainScreenHunkStaging:
                 await pilot.press("j")
                 await pilot.pause()
 
-                # Tab twice to reach diff pane
-                await pilot.press("tab")
-                await pilot.pause()
-                await pilot.press("tab")
+                # Focus diff directly to keep the unstaged diff visible
+                # (tabbing through staged would update diff to staged file)
+                app.screen.query_one("#diff").focus()
                 await pilot.pause()
 
                 assert app.screen.focused is not None

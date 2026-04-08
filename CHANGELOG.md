@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **dot**: only highlight selected file and update diff in the focused TUI pane
 - **dot**: show GPG passphrase prompt before pull decryption in CLI mode
 
 ## [0.6.1] - 2026-04-08
