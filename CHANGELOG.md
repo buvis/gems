@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **config**: `--feedback` flag on all CLI tools to open browser-based feedback form
+
 ### Fixed
 
 - **dot**: show GPG passphrase prompt before pull decryption in CLI mode
