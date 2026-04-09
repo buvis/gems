@@ -656,3 +656,28 @@ class TestFeedbackOption:
         assert "Open this URL to submit feedback" in result.output
         assert "feedback.buvis.net" in result.output
         assert result.exit_code == 0
+
+
+class TestAutoUpdateHook:
+    """Tests for auto-update check_and_update integration in buvis_options."""
+
+    @patch("buvis.pybase.updater.check_and_update", side_effect=RuntimeError("update failed"))
+    def test_update_error_does_not_crash_cli(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """CLI command executes normally even when check_and_update raises."""
+        executed = []
+        mock_stderr = MagicMock()
+        mock_stderr.isatty.return_value = True
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            executed.append(True)
+
+        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
+            mock_sys.stderr = mock_stderr
+            result = runner.invoke(cmd, [])
+
+        assert mock_update.called
+        assert len(executed) == 1
+        assert result.exit_code == 0

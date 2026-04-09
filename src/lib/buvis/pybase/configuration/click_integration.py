@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import platform
 import sys
@@ -171,10 +172,11 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             if settings_class is GlobalSettings:
                 ctx.obj["settings"] = settings
 
-            if sys.stderr.isatty() and isinstance(settings, GlobalSettings):
-                from buvis.pybase.updater import check_and_update
+            with contextlib.suppress(Exception):
+                if sys.stderr.isatty() and isinstance(settings, GlobalSettings):
+                    from buvis.pybase.updater import check_and_update
 
-                check_and_update(settings)
+                    check_and_update(settings)
 
             return ctx.invoke(f, *args, **kwargs)
 
