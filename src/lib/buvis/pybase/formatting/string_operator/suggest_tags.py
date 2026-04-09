@@ -33,14 +33,14 @@ def suggest_tags(text: str, model: str, url: str) -> list[str]:
         }
     ).encode()
 
-    req = urllib.request.Request(  # noqa: S310
+    req = urllib.request.Request(
         f"{url}/api/generate",
         data=payload,
         headers={"Content-Type": "application/json"},
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=60) as resp:
             body = json.loads(resp.read())
     except (urllib.error.URLError, OSError, TimeoutError):
         console.warning("Could not reach ollama — skipping tag suggestion")

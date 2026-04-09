@@ -16,4 +16,4 @@ def open_in_os(path: Path | str) -> None:
     else:
         import os
 
-        os.startfile(target)  # type: ignore[attr-defined]  # noqa: S606
+        os.startfile(target)  # type: ignore[attr-defined]
