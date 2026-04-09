@@ -79,7 +79,7 @@ class TestRunUpdateFailure:
 
             run_update("0.7.0", "0.8.0", installer)
 
-        mock_os.execv.assert_not_called()
+        mock_os.execvp.assert_not_called()
         echo_calls = [str(c) for c in mock_click.echo.call_args_list]
         assert any("failed" in c.lower() or "permission denied" in c.lower() for c in echo_calls)
 
@@ -93,12 +93,11 @@ class TestRunUpdateFailure:
             patch("buvis.pybase.updater.executor.click"),
         ):
             mock_sub.run.side_effect = subprocess.TimeoutExpired(cmd="uv", timeout=120)
-            mock_sub.TimeoutExpired = subprocess.TimeoutExpired
             mock_sys.argv = ["bim"]
 
             run_update("0.7.0", "0.8.0", installer)
 
-        mock_os.execv.assert_not_called()
+        mock_os.execvp.assert_not_called()
 
     def test_warns_on_file_not_found(self) -> None:
         installer = InstallerInfo(method="uv-tool", upgrade_command=("uv", "tool", "upgrade", "buvis-gems"))
@@ -114,7 +113,7 @@ class TestRunUpdateFailure:
 
             run_update("0.7.0", "0.8.0", installer)
 
-        mock_os.execv.assert_not_called()
+        mock_os.execvp.assert_not_called()
 
 
 class TestRunUpdateUnknownInstaller:
