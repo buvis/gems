@@ -141,9 +141,13 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "S", "ANN", "ARG", "SLF", "PLR", "UP", "RUF"]
-ignore = ["ANN401", "S105", "S106", "S108", "S310", "S603", "S606", "S607", "PLR2004", "RUF012", "UP046", "UP047"]
+ignore = ["ANN401", "S105", "S106", "S108", "S603", "S607", "PLR2004", "RUF012", "UP046", "UP047"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "S104", "ANN", "ARG", "SLF001", "PLR0913", "PLR2004", "RUF043", "RUF059", "UP007"]
 "src/tools/*/cli.py" = ["PLR0913"]
 "src/tools/bim/commands/serve/_*.py" = ["ARG001"]
+"src/lib/buvis/pybase/updater/checker.py" = ["S310"]
+"src/lib/buvis/pybase/formatting/string_operator/suggest_tags.py" = ["S310"]
+"src/lib/buvis/pybase/updater/executor.py" = ["S606"]
+"src/tools/bim/commands/shared/os_open.py" = ["S606"]

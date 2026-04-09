@@ -33,8 +33,9 @@ def _read_cache(cache_dir: Path) -> tuple[datetime | None, str | None]:
 
 def _write_cache(cache_dir: Path, latest_version: str) -> None:
     """Write check timestamp and version to cache. Silently ignores errors."""
-    cache_path = cache_dir / _CACHE_FILE
     try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / _CACHE_FILE
         cache_path.write_text(
             json.dumps(
                 {

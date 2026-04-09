@@ -138,6 +138,23 @@ class TestCacheMissingOrCorrupt:
 
         assert result == "0.8.0"
 
+    def test_creates_cache_dir_if_missing(self, tmp_path: Path) -> None:
+        nonexistent = tmp_path / "new" / "nested" / "dir"
+
+        response = MagicMock()
+        response.read.return_value = json.dumps({"info": {"version": "0.8.0"}}).encode()
+        response.__enter__ = lambda s: s
+        response.__exit__ = MagicMock(return_value=False)
+
+        with (
+            patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+        ):
+            result = check_for_update(cache_dir=nonexistent)
+
+        assert result == "0.8.0"
+        assert (nonexistent / ".update_cache.json").exists()
+
 
 class TestNetworkErrors:
     def test_returns_none_on_timeout(self, cache_dir: Path) -> None:
@@ -211,11 +228,19 @@ class TestPreReleaseFiltering:
 
 
 class TestCustomInterval:
-    def test_respects_custom_interval(self, cache_dir: Path) -> None:
+    def test_interval_zero_always_queries_pypi(self, cache_dir: Path) -> None:
         _write_cache(cache_dir, datetime.now(tz=timezone.utc), "0.7.0")
-        with patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"):
+
+        response = MagicMock()
+        response.read.return_value = json.dumps({"info": {"version": "0.7.0"}}).encode()
+        response.__enter__ = lambda s: s
+        response.__exit__ = MagicMock(return_value=False)
+
+        with (
+            patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=response) as mock_urlopen,
+        ):
             result = check_for_update(cache_dir=cache_dir, interval_hours=0)
 
-        # interval_hours=0 means always stale, but since current == cached, no network needed
-        # Actually 0 means always check - but with same version it should still be None
+        mock_urlopen.assert_called_once()
         assert result is None
