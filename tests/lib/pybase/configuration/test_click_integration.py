@@ -681,3 +681,53 @@ class TestAutoUpdateHook:
         assert mock_update.called
         assert len(executed) == 1
         assert result.exit_code == 0
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_calls_check_and_update_when_tty(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update is called when stderr is a TTY and settings is GlobalSettings."""
+        mock_stderr = MagicMock()
+        mock_stderr.isatty.return_value = True
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
+            mock_sys.stderr = mock_stderr
+            runner.invoke(cmd, [])
+
+        mock_update.assert_called_once()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_skips_check_and_update_when_not_tty(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update is NOT called when stderr is not a TTY."""
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        runner.invoke(cmd, [])
+
+        mock_update.assert_not_called()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_skips_check_and_update_for_non_global_settings(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update is NOT called when settings is not a GlobalSettings instance."""
+        mock_stderr = MagicMock()
+        mock_stderr.isatty.return_value = True
+
+        @click.command()
+        @buvis_options(settings_class=BaseModel)
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
+            mock_sys.stderr = mock_stderr
+            runner.invoke(cmd, [])
+
+        mock_update.assert_not_called()
