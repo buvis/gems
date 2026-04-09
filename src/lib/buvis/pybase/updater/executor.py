@@ -52,4 +52,7 @@ def run_update(current: str, latest: str, installer: InstallerInfo) -> None:
         return
 
     click.echo(f"Updated to {latest}, restarting...", err=True)
-    os.execvp(sys.argv[0], sys.argv)
+    try:
+        os.execvp(sys.argv[0], sys.argv)
+    except OSError as exc:
+        click.echo(f"Restart failed: {exc}. Please re-run manually.", err=True)
