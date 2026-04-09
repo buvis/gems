@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-04-09
+
 ### Fixed
 
 - **updater**: detect mise-managed pipx installations for auto-update
@@ -217,7 +219,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.1...HEAD
+[0.8.1]: https://github.com/buvis/gems/compare/gems-v0.8.0...gems-v0.8.1
 [0.8.0]: https://github.com/buvis/gems/compare/gems-v0.7.0...gems-v0.8.0
 [0.7.0]: https://github.com/buvis/gems/compare/gems-v0.6.1...gems-v0.7.0
 [0.6.1]: https://github.com/buvis/gems/compare/gems-v0.6.0...gems-v0.6.1
