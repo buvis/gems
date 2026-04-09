@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from typing import TYPE_CHECKING
 
@@ -38,6 +39,10 @@ def check_and_update(settings: GlobalSettings) -> None:
     if latest is None:
         return
 
-    current = pkg_version(_PACKAGE)
+    try:
+        current = pkg_version(_PACKAGE)
+    except PackageNotFoundError:
+        return
+
     installer = detect_installer(override=settings.installer)
     run_update(current, latest, installer)

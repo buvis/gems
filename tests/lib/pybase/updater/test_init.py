@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
 from unittest.mock import MagicMock, patch
 
 from buvis.pybase.updater import check_and_update
@@ -92,3 +93,19 @@ class TestUpdateAvailable:
             check_and_update(settings)
 
         mock_detect.assert_called_once_with(override=None)
+
+
+class TestPackageNotFound:
+    def test_returns_early_when_package_not_found(self) -> None:
+        """check_and_update returns without error when pkg_version raises."""
+        settings = _make_settings()
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("buvis.pybase.updater.check_for_update", return_value="0.8.0"),
+            patch("buvis.pybase.updater.detect_installer") as mock_detect,
+            patch("buvis.pybase.updater.pkg_version", side_effect=PackageNotFoundError("buvis-gems")),
+        ):
+            check_and_update(settings)
+
+        mock_detect.assert_not_called()
