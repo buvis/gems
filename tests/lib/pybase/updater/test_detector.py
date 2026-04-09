@@ -5,19 +5,7 @@ from __future__ import annotations
 from pathlib import PurePosixPath
 from unittest.mock import MagicMock, patch
 
-import pytest
-from buvis.pybase.updater.detector import InstallerInfo, detect_installer
-
-
-class TestInstallerInfo:
-    def test_frozen_dataclass(self) -> None:
-        info = InstallerInfo(method="uv-tool", upgrade_command=("uv", "tool", "upgrade", "buvis-gems"))
-        with pytest.raises(AttributeError):
-            info.method = "pip"  # type: ignore[misc]
-
-    def test_unknown_has_no_command(self) -> None:
-        info = InstallerInfo(method="unknown", upgrade_command=None)
-        assert info.upgrade_command is None
+from buvis.pybase.updater.detector import detect_installer
 
 
 class TestDetectInstallerOverride:

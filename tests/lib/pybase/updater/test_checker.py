@@ -16,6 +16,14 @@ def cache_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def _mock_pypi_response(version: str) -> MagicMock:
+    response = MagicMock()
+    response.read.return_value = json.dumps({"info": {"version": version}}).encode()
+    response.__enter__ = lambda s: s
+    response.__exit__ = MagicMock(return_value=False)
+    return response
+
+
 def _write_cache(cache_dir: Path, last_check: datetime, latest_version: str) -> None:
     cache_file = cache_dir / ".update_cache.json"
     cache_file.write_text(
@@ -56,14 +64,9 @@ class TestCacheStale:
         stale_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
         _write_cache(cache_dir, stale_time, "0.6.0")
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.8.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.8.0")),
         ):
             result = check_for_update(cache_dir=cache_dir)
 
@@ -73,14 +76,9 @@ class TestCacheStale:
         stale_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
         _write_cache(cache_dir, stale_time, "0.6.0")
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.8.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.8.0")),
         ):
             check_for_update(cache_dir=cache_dir)
 
@@ -93,14 +91,9 @@ class TestCacheStale:
         stale_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
         _write_cache(cache_dir, stale_time, "0.6.0")
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.7.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.7.0")),
         ):
             result = check_for_update(cache_dir=cache_dir)
 
@@ -109,14 +102,9 @@ class TestCacheStale:
 
 class TestCacheMissingOrCorrupt:
     def test_queries_pypi_when_no_cache(self, cache_dir: Path) -> None:
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.8.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.8.0")),
         ):
             result = check_for_update(cache_dir=cache_dir)
 
@@ -125,14 +113,9 @@ class TestCacheMissingOrCorrupt:
     def test_queries_pypi_when_corrupt_cache(self, cache_dir: Path) -> None:
         (cache_dir / ".update_cache.json").write_text("not json{{{")
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.8.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.8.0")),
         ):
             result = check_for_update(cache_dir=cache_dir)
 
@@ -141,14 +124,9 @@ class TestCacheMissingOrCorrupt:
     def test_creates_cache_dir_if_missing(self, tmp_path: Path) -> None:
         nonexistent = tmp_path / "new" / "nested" / "dir"
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.8.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.8.0")),
         ):
             result = check_for_update(cache_dir=nonexistent)
 
@@ -195,14 +173,9 @@ class TestPreReleaseFiltering:
         stale_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
         _write_cache(cache_dir, stale_time, "0.6.0")
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.7.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.8.0rc1"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.7.0")),
         ):
             result = check_for_update(cache_dir=cache_dir)
 
@@ -213,14 +186,9 @@ class TestPreReleaseFiltering:
         stale_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
         _write_cache(cache_dir, stale_time, "0.6.0")
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.9.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.8.0rc1"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response),
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.9.0")),
         ):
             result = check_for_update(cache_dir=cache_dir)
 
@@ -231,14 +199,9 @@ class TestCustomInterval:
     def test_interval_zero_always_queries_pypi(self, cache_dir: Path) -> None:
         _write_cache(cache_dir, datetime.now(tz=timezone.utc), "0.7.0")
 
-        response = MagicMock()
-        response.read.return_value = json.dumps({"info": {"version": "0.7.0"}}).encode()
-        response.__enter__ = lambda s: s
-        response.__exit__ = MagicMock(return_value=False)
-
         with (
             patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
-            patch("buvis.pybase.updater.checker.urlopen", return_value=response) as mock_urlopen,
+            patch("buvis.pybase.updater.checker.urlopen", return_value=_mock_pypi_response("0.7.0")) as mock_urlopen,
         ):
             result = check_for_update(cache_dir=cache_dir, interval_hours=0)
 

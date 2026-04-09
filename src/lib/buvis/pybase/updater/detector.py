@@ -10,11 +10,18 @@ __all__ = ["InstallerInfo", "detect_installer"]
 
 _PACKAGE = "buvis-gems"
 
-_OVERRIDE_MAP: dict[str, tuple[str, tuple[str, ...]]] = {
-    "uv-tool": ("uv-tool", ("uv", "tool", "upgrade", _PACKAGE)),
-    "pipx": ("pipx", ("pipx", "upgrade", _PACKAGE)),
-    "pip": ("pip-venv", ("pip", "install", "--upgrade", _PACKAGE)),
-    "uv": ("uv-venv", ("uv", "pip", "install", "--upgrade", _PACKAGE)),
+_UPGRADE_COMMANDS: dict[str, tuple[str, ...]] = {
+    "uv-tool": ("uv", "tool", "upgrade", _PACKAGE),
+    "pipx": ("pipx", "upgrade", _PACKAGE),
+    "pip-venv": ("pip", "install", "--upgrade", _PACKAGE),
+    "uv-venv": ("uv", "pip", "install", "--upgrade", _PACKAGE),
+}
+
+_OVERRIDE_TO_METHOD: dict[str, str] = {
+    "uv-tool": "uv-tool",
+    "pipx": "pipx",
+    "pip": "pip-venv",
+    "uv": "uv-venv",
 }
 
 
@@ -30,12 +37,6 @@ def _unknown() -> InstallerInfo:
     return InstallerInfo(method="unknown", upgrade_command=None)
 
 
-_VENV_COMMANDS: dict[str, tuple[str, ...]] = {
-    "uv-venv": ("uv", "pip", "install", "--upgrade", _PACKAGE),
-    "pip-venv": ("pip", "install", "--upgrade", _PACKAGE),
-}
-
-
 def detect_installer(override: str | None) -> InstallerInfo:
     """Detect the installation method for buvis-gems.
 
@@ -46,8 +47,8 @@ def detect_installer(override: str | None) -> InstallerInfo:
         InstallerInfo with method name and upgrade command tuple.
     """
     if override is not None:
-        pair = _OVERRIDE_MAP.get(override)
-        return InstallerInfo(method=pair[0], upgrade_command=pair[1]) if pair else _unknown()
+        method = _OVERRIDE_TO_METHOD.get(override)
+        return InstallerInfo(method=method, upgrade_command=_UPGRADE_COMMANDS[method]) if method else _unknown()
 
     try:
         dist = distribution(_PACKAGE)
@@ -59,13 +60,13 @@ def detect_installer(override: str | None) -> InstallerInfo:
     installer_name = installer_text.strip() if installer_text else ""
 
     if "/uv/tools/" in dist_path:
-        return InstallerInfo(method="uv-tool", upgrade_command=("uv", "tool", "upgrade", _PACKAGE))
+        return InstallerInfo(method="uv-tool", upgrade_command=_UPGRADE_COMMANDS["uv-tool"])
 
     if "/pipx/venvs/" in dist_path:
-        return InstallerInfo(method="pipx", upgrade_command=("pipx", "upgrade", _PACKAGE))
+        return InstallerInfo(method="pipx", upgrade_command=_UPGRADE_COMMANDS["pipx"])
 
     if sys.prefix != sys.base_prefix:
         method = "uv-venv" if installer_name == "uv" else "pip-venv"
-        return InstallerInfo(method=method, upgrade_command=_VENV_COMMANDS[method])
+        return InstallerInfo(method=method, upgrade_command=_UPGRADE_COMMANDS[method])
 
     return _unknown()
