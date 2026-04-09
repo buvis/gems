@@ -703,6 +703,8 @@ class TestAutoUpdateHook:
     @patch("buvis.pybase.updater.check_and_update")
     def test_skips_check_and_update_when_not_tty(self, mock_update: MagicMock, runner: CliRunner) -> None:
         """check_and_update is NOT called when stderr is not a TTY."""
+        mock_stderr = MagicMock()
+        mock_stderr.isatty.return_value = False
 
         @click.command()
         @buvis_options
@@ -710,7 +712,9 @@ class TestAutoUpdateHook:
         def cmd(ctx: click.Context) -> None:
             pass
 
-        runner.invoke(cmd, [])
+        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
+            mock_sys.stderr = mock_stderr
+            runner.invoke(cmd, [])
 
         mock_update.assert_not_called()
 
