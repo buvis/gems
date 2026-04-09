@@ -13,6 +13,7 @@ _PACKAGE = "buvis-gems"
 _UPGRADE_COMMANDS: dict[str, tuple[str, ...]] = {
     "uv-tool": ("uv", "tool", "upgrade", _PACKAGE),
     "pipx": ("pipx", "upgrade", _PACKAGE),
+    "mise-pipx": ("mise", "upgrade", f"pipx:{_PACKAGE}"),
     "pip-venv": ("pip", "install", "--upgrade", _PACKAGE),
     "uv-venv": ("uv", "pip", "install", "--upgrade", _PACKAGE),
 }
@@ -20,6 +21,7 @@ _UPGRADE_COMMANDS: dict[str, tuple[str, ...]] = {
 _OVERRIDE_TO_METHOD: dict[str, str] = {
     "uv-tool": "uv-tool",
     "pipx": "pipx",
+    "mise-pipx": "mise-pipx",
     "pip": "pip-venv",
     "uv": "uv-venv",
 }
@@ -59,11 +61,15 @@ def detect_installer(override: str | None) -> InstallerInfo:
     installer_text = dist.read_text("INSTALLER")
     installer_name = installer_text.strip() if installer_text else ""
 
-    if "/uv/tools/" in dist_path:
-        return InstallerInfo(method="uv-tool", upgrade_command=_UPGRADE_COMMANDS["uv-tool"])
+    _PATH_MARKERS: tuple[tuple[str, str], ...] = (
+        ("/uv/tools/", "uv-tool"),
+        ("/mise/installs/pipx-", "mise-pipx"),
+        ("/pipx/venvs/", "pipx"),
+    )
 
-    if "/pipx/venvs/" in dist_path:
-        return InstallerInfo(method="pipx", upgrade_command=_UPGRADE_COMMANDS["pipx"])
+    for marker, method in _PATH_MARKERS:
+        if marker in dist_path:
+            return InstallerInfo(method=method, upgrade_command=_UPGRADE_COMMANDS[method])
 
     if sys.prefix != sys.base_prefix:
         method = "uv-venv" if installer_name == "uv" else "pip-venv"

@@ -124,7 +124,7 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
         )
         @click.option(
             "--log-level",
-            type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
+            type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False),
             default=None,
             help="Logging level.",
         )

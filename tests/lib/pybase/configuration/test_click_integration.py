@@ -162,6 +162,21 @@ class TestBuvisOptionsCLIOverrides:
 
         assert captured_settings[0].log_level == "DEBUG"
 
+    def test_log_level_critical(self, runner: CliRunner) -> None:
+        """--log-level CRITICAL is accepted."""
+        captured_settings = []
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            captured_settings.append(ctx.obj["settings"])
+
+        result = runner.invoke(cmd, ["--log-level", "CRITICAL"])
+
+        assert result.exit_code == 0
+        assert captured_settings[0].log_level == "CRITICAL"
+
 
 class TestBuvisOptionsParameterized:
     """Tests for decorator invocation styles and custom settings."""

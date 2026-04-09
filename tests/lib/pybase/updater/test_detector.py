@@ -50,6 +50,26 @@ class TestDetectInstallerUvTool:
         assert result.upgrade_command == ("uv", "tool", "upgrade", "buvis-gems")
 
 
+class TestDetectInstallerMisePipx:
+    def test_mise_pipx_detected_from_path(self) -> None:
+        dist = MagicMock()
+        dist.read_text.return_value = "uv\n"
+        dist._path = PurePosixPath(
+            "/home/user/.local/share/mise/installs/pipx-buvis-gems/0.8.0/buvis-gems/lib/python3.12/site-packages/buvis_gems-0.8.0.dist-info"
+        )
+
+        with patch("buvis.pybase.updater.detector.distribution", return_value=dist):
+            result = detect_installer(override=None)
+
+        assert result.method == "mise-pipx"
+        assert result.upgrade_command == ("mise", "upgrade", "pipx:buvis-gems")
+
+    def test_override_mise_pipx(self) -> None:
+        result = detect_installer(override="mise-pipx")
+        assert result.method == "mise-pipx"
+        assert result.upgrade_command == ("mise", "upgrade", "pipx:buvis-gems")
+
+
 class TestDetectInstallerPipx:
     def test_pipx_detected_from_path(self) -> None:
         dist = MagicMock()
