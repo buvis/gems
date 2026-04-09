@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **gems**: auto-update check on CLI startup with installer detection and re-exec
+
 ## [0.7.0] - 2026-04-08
 
 ### Added

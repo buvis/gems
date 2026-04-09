@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import platform
+import sys
 import types
 import webbrowser
 from collections.abc import Callable
@@ -169,6 +170,11 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             ctx.obj[settings_class] = settings
             if settings_class is GlobalSettings:
                 ctx.obj["settings"] = settings
+
+            if sys.stderr.isatty() and isinstance(settings, GlobalSettings):
+                from buvis.pybase.updater import check_and_update
+
+                check_and_update(settings)
 
             return ctx.invoke(f, *args, **kwargs)
 
