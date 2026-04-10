@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **updater**: resolve the new binary path via `mise where pipx:buvis-gems` before re-exec, so upgrades on mise-managed installs no longer fail with `ENOENT`
+- **updater**: exit cleanly instead of continuing after a successful upgrade when re-exec fails, avoiding cascading import errors from a partially-replaced venv
+
 ## [0.8.2] - 2026-04-10
 
 ### Changed
