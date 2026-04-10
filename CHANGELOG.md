@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **sysup**: `sysup nvim` no longer hangs until the mason step timeout when `mason-tool-installer.nvim` is lazy-loaded. Force-loads mason plugins via `Lazy load` and uses the synchronous `MasonToolsUpdateSync` command so the subprocess exits as soon as the update completes
+
+### Changed
+
+- **sysup**: raise `sysup nvim` mason step timeout from 300s to 600s to accommodate slow package mirrors and cold proxy caches
+
 ## [0.8.3] - 2026-04-10
 
 ### Fixed

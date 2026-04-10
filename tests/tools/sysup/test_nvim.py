@@ -146,6 +146,20 @@ class TestCommandNvim:
 
         assert "unknown error" in steps[2].message
 
+    def test_mason_invocation_force_loads_plugins_and_uses_sync(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run", return_value=self._result())
+
+        list(CommandNvim().execute())
+
+        mason_args = mock_run.call_args_list[1].args[0]
+        assert "Lazy load mason.nvim mason-tool-installer.nvim" in mason_args
+        assert "MasonToolsUpdateSync" in mason_args
+        assert "+qa" in mason_args
+        assert not any("MasonToolsUpdateCompleted" in a for a in mason_args)
+        assert mock_run.call_args_list[1].kwargs["timeout"] == CommandNvim.MASON_TIMEOUT
+        assert CommandNvim.MASON_TIMEOUT == 600
+
     def test_on_step_start_callback(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mocker.patch("sysup.commands.nvim.nvim.subprocess.run", return_value=self._result())

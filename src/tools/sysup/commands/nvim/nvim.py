@@ -10,7 +10,7 @@ from sysup.commands.step_result import StepResult
 
 
 class CommandNvim:
-    MASON_TIMEOUT: int = 300
+    MASON_TIMEOUT: int = 600
 
     def execute(
         self: CommandNvim,
@@ -51,9 +51,10 @@ class CommandNvim:
                     nvim_path,
                     "--headless",
                     "-c",
-                    "autocmd User MasonToolsUpdateCompleted quitall",
+                    "Lazy load mason.nvim mason-tool-installer.nvim",
                     "-c",
-                    "MasonToolsUpdate",
+                    "MasonToolsUpdateSync",
+                    "+qa",
                 ],
                 capture_output=True,
                 text=True,
