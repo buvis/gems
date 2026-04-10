@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
-from importlib.metadata import distribution
+from importlib.metadata import PackageNotFoundError, distribution
 
 __all__ = ["InstallerInfo", "detect_installer"]
 
 _PACKAGE = "buvis-gems"
 
-_UPGRADE_COMMANDS: dict[str, tuple[str, ...]] = {
+_STATIC_UPGRADE_COMMANDS: dict[str, tuple[str, ...]] = {
     "uv-tool": ("uv", "tool", "upgrade", _PACKAGE),
     "pipx": ("pipx", "upgrade", _PACKAGE),
     "mise-pipx": ("mise", "upgrade", f"pipx:{_PACKAGE}"),
-    "pip-venv": ("pip", "install", "--upgrade", _PACKAGE),
-    "uv-venv": ("uv", "pip", "install", "--upgrade", _PACKAGE),
 }
 
 _OVERRIDE_TO_METHOD: dict[str, str] = {
@@ -25,6 +24,9 @@ _OVERRIDE_TO_METHOD: dict[str, str] = {
     "pip": "pip-venv",
     "uv": "uv-venv",
 }
+
+_EXTRA_MARKER = re.compile(r"""extra\s*==\s*['"]([^'"]+)['"]""")
+_PKG_NAME = re.compile(r"[A-Za-z0-9_.\-]+")
 
 
 @dataclass(frozen=True)
@@ -50,7 +52,10 @@ def detect_installer(override: str | None) -> InstallerInfo:
     """
     if override is not None:
         method = _OVERRIDE_TO_METHOD.get(override)
-        return InstallerInfo(method=method, upgrade_command=_UPGRADE_COMMANDS[method]) if method else _unknown()
+        if method is None:
+            return _unknown()
+        command = _build_upgrade_command(method, _installed_extras(_PACKAGE))
+        return InstallerInfo(method=method, upgrade_command=command)
 
     try:
         dist = distribution(_PACKAGE)
@@ -67,12 +72,80 @@ def detect_installer(override: str | None) -> InstallerInfo:
         ("/pipx/venvs/", "pipx"),
     )
 
+    extras = _installed_extras(_PACKAGE)
+
     for marker, method in _PATH_MARKERS:
         if marker in dist_path:
-            return InstallerInfo(method=method, upgrade_command=_UPGRADE_COMMANDS[method])
+            return InstallerInfo(method=method, upgrade_command=_build_upgrade_command(method, extras))
 
     if sys.prefix != sys.base_prefix:
         method = "uv-venv" if installer_name == "uv" else "pip-venv"
-        return InstallerInfo(method=method, upgrade_command=_UPGRADE_COMMANDS[method])
+        return InstallerInfo(method=method, upgrade_command=_build_upgrade_command(method, extras))
 
     return _unknown()
+
+
+def _build_upgrade_command(method: str, extras: tuple[str, ...]) -> tuple[str, ...] | None:
+    """Return the upgrade command for ``method``, injecting ``extras`` where needed.
+
+    ``uv-tool``, ``pipx``, and ``mise-pipx`` track the original extras in their
+    own receipt, metadata, or config and re-apply them on upgrade, so no extras
+    are injected here. The plain ``pip`` and ``uv pip`` upgrade flows have no
+    such tracking: upgrading without an explicit ``package[extras]`` spec drops
+    any previously installed extras. To keep those installs consistent, pass
+    the detected extras through the command.
+    """
+    static = _STATIC_UPGRADE_COMMANDS.get(method)
+    if static is not None:
+        return static
+
+    extras_spec = f"[{','.join(extras)}]" if extras else ""
+    pkg = f"{_PACKAGE}{extras_spec}"
+    if method == "pip-venv":
+        return ("pip", "install", "--upgrade", pkg)
+    if method == "uv-venv":
+        return ("uv", "pip", "install", "--upgrade", pkg)
+    return None
+
+
+def _installed_extras(package: str) -> tuple[str, ...]:
+    """Return the declared extras of ``package`` whose dependencies are installed.
+
+    For each name in the distribution's ``Provides-Extra`` metadata, collect the
+    requirements tagged with that extra marker and check whether every one of
+    them resolves in the current environment. Extras with no tagged
+    requirements are skipped because we cannot tell whether they were opted
+    into. Returned in declaration order.
+    """
+    try:
+        dist = distribution(package)
+    except PackageNotFoundError:
+        return ()
+
+    declared = tuple(dist.metadata.get_all("Provides-Extra") or ())
+    if not declared:
+        return ()
+
+    deps_by_extra: dict[str, list[str]] = {name: [] for name in declared}
+    for req in dist.requires or []:
+        marker_match = _EXTRA_MARKER.search(req)
+        if marker_match is None:
+            continue
+        extra_name = marker_match.group(1)
+        if extra_name not in deps_by_extra:
+            continue
+        dep_match = _PKG_NAME.match(req)
+        if dep_match is not None:
+            deps_by_extra[extra_name].append(dep_match.group(0))
+
+    return tuple(
+        extra for extra in declared if deps_by_extra[extra] and all(_is_installed(dep) for dep in deps_by_extra[extra])
+    )
+
+
+def _is_installed(pkg_name: str) -> bool:
+    try:
+        distribution(pkg_name)
+    except PackageNotFoundError:
+        return False
+    return True
