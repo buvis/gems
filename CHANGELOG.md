@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **updater**: run auto-update check on every invocation (including `--version`, `--help`, and other eager callbacks) via a `click.Command.parse_args` patch scoped to `buvis_options` commands
+- **updater**: silent operation — all update events now land in `~/.config/buvis/updater.json` (cache + rolling 100-entry log) instead of stderr, so tool output is never disturbed
+
 ## [0.8.1] - 2026-04-09
 
 ### Fixed

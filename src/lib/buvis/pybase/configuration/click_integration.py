@@ -5,8 +5,8 @@ from __future__ import annotations
 import contextlib
 import functools
 import platform
-import sys
 import types
+import weakref
 import webbrowser
 from collections.abc import Callable
 from importlib.metadata import version as pkg_version
@@ -65,6 +65,57 @@ def get_settings(ctx: click.Context, settings_class: type[T] | None = None) -> T
             f"Did you use @buvis_options(settings_class={settings_class.__name__})?"
         )
     return cast(T, obj[settings_class])
+
+
+_BUVIS_META_CHECKED_KEY = "buvis_update_checked"
+_buvis_callbacks: weakref.WeakSet[Callable[..., Any]] = weakref.WeakSet()
+_parse_args_patch_installed = False
+
+
+def _run_update_check_once(ctx: click.Context) -> None:
+    """Run the auto-update check at most once per root invocation."""
+    root = ctx.find_root()
+    if root.meta.get(_BUVIS_META_CHECKED_KEY):
+        return
+    root.meta[_BUVIS_META_CHECKED_KEY] = True
+
+    with contextlib.suppress(Exception):
+        from buvis.pybase.updater import check_and_update
+
+        check_and_update(GlobalSettings())
+
+
+def _install_parse_args_patch() -> None:
+    """Patch ``click.Command.parse_args`` and ``click.Group.parse_args`` to run the update
+    check before any eager callbacks (``--version``, ``--help``, ``--feedback``, etc.) fire.
+
+    The patch is scoped to commands whose callback was registered via ``buvis_options``, so
+    it is a no-op for third-party Click commands in the same process. Idempotent: re-importing
+    this module does not stack patches.
+    """
+    global _parse_args_patch_installed
+    if _parse_args_patch_installed:
+        return
+    _parse_args_patch_installed = True
+
+    original_command_parse_args = click.Command.parse_args
+    original_group_parse_args = click.Group.parse_args
+
+    def patched_command_parse_args(self: click.Command, ctx: click.Context, args: list[str]) -> list[str]:
+        if self.callback in _buvis_callbacks:
+            _run_update_check_once(ctx)
+        return original_command_parse_args(self, ctx, args)
+
+    def patched_group_parse_args(self: click.Group, ctx: click.Context, args: list[str]) -> list[str]:
+        if self.callback in _buvis_callbacks:
+            _run_update_check_once(ctx)
+        return original_group_parse_args(self, ctx, args)
+
+    click.Command.parse_args = patched_command_parse_args  # type: ignore[method-assign]
+    click.Group.parse_args = patched_group_parse_args  # type: ignore[method-assign]
+
+
+_install_parse_args_patch()
 
 
 def _feedback_callback(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
@@ -172,14 +223,9 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             if settings_class is GlobalSettings:
                 ctx.obj["settings"] = settings
 
-            with contextlib.suppress(Exception):
-                if sys.stderr.isatty() and isinstance(settings, GlobalSettings):
-                    from buvis.pybase.updater import check_and_update
-
-                    check_and_update(settings)
-
             return ctx.invoke(f, *args, **kwargs)
 
+        _buvis_callbacks.add(wrapper)
         return wrapper  # type: ignore[return-value]
 
     return decorator

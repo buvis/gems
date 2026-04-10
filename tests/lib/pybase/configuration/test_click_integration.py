@@ -674,14 +674,12 @@ class TestFeedbackOption:
 
 
 class TestAutoUpdateHook:
-    """Tests for auto-update check_and_update integration in buvis_options."""
+    """Tests for the parse_args-level auto-update hook installed by buvis_options."""
 
     @patch("buvis.pybase.updater.check_and_update", side_effect=RuntimeError("update failed"))
     def test_update_error_does_not_crash_cli(self, mock_update: MagicMock, runner: CliRunner) -> None:
         """CLI command executes normally even when check_and_update raises."""
         executed = []
-        mock_stderr = MagicMock()
-        mock_stderr.isatty.return_value = True
 
         @click.command()
         @buvis_options
@@ -689,19 +687,15 @@ class TestAutoUpdateHook:
         def cmd(ctx: click.Context) -> None:
             executed.append(True)
 
-        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
-            mock_sys.stderr = mock_stderr
-            result = runner.invoke(cmd, [])
+        result = runner.invoke(cmd, [])
 
         assert mock_update.called
         assert len(executed) == 1
         assert result.exit_code == 0
 
     @patch("buvis.pybase.updater.check_and_update")
-    def test_calls_check_and_update_when_tty(self, mock_update: MagicMock, runner: CliRunner) -> None:
-        """check_and_update is called when stderr is a TTY and settings is GlobalSettings."""
-        mock_stderr = MagicMock()
-        mock_stderr.isatty.return_value = True
+    def test_check_runs_for_plain_invocation(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update fires for a normal command invocation."""
 
         @click.command()
         @buvis_options
@@ -709,44 +703,87 @@ class TestAutoUpdateHook:
         def cmd(ctx: click.Context) -> None:
             pass
 
-        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
-            mock_sys.stderr = mock_stderr
-            runner.invoke(cmd, [])
+        runner.invoke(cmd, [])
 
         mock_update.assert_called_once()
 
     @patch("buvis.pybase.updater.check_and_update")
-    def test_skips_check_and_update_when_not_tty(self, mock_update: MagicMock, runner: CliRunner) -> None:
-        """check_and_update is NOT called when stderr is not a TTY."""
-        mock_stderr = MagicMock()
-        mock_stderr.isatty.return_value = False
+    def test_check_runs_for_version_flag(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update fires before the --version eager callback exits."""
+        executed = []
 
         @click.command()
         @buvis_options
-        @click.pass_context
-        def cmd(ctx: click.Context) -> None:
-            pass
+        def cmd() -> None:
+            executed.append(True)
 
-        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
-            mock_sys.stderr = mock_stderr
-            runner.invoke(cmd, [])
+        result = runner.invoke(cmd, ["--version"])
 
-        mock_update.assert_not_called()
+        mock_update.assert_called_once()
+        assert "buvis-gems, version" in result.output
+        assert len(executed) == 0
+        assert result.exit_code == 0
 
     @patch("buvis.pybase.updater.check_and_update")
-    def test_skips_check_and_update_for_non_global_settings(self, mock_update: MagicMock, runner: CliRunner) -> None:
-        """check_and_update is NOT called when settings is not a GlobalSettings instance."""
-        mock_stderr = MagicMock()
-        mock_stderr.isatty.return_value = True
+    def test_check_runs_for_help_flag(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update fires before the --help eager callback exits."""
+        executed = []
 
         @click.command()
-        @buvis_options(settings_class=BaseModel)
-        @click.pass_context
-        def cmd(ctx: click.Context) -> None:
+        @buvis_options
+        def cmd() -> None:
+            executed.append(True)
+
+        result = runner.invoke(cmd, ["--help"])
+
+        mock_update.assert_called_once()
+        assert "Usage:" in result.output
+        assert len(executed) == 0
+        assert result.exit_code == 0
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_check_runs_for_group_no_args(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update fires when a group is invoked without a subcommand (help fallback)."""
+
+        @click.group()
+        @buvis_options
+        def cli() -> None:
             pass
 
-        with patch("buvis.pybase.configuration.click_integration.sys") as mock_sys:
-            mock_sys.stderr = mock_stderr
-            runner.invoke(cmd, [])
+        @cli.command()
+        def sub() -> None:
+            pass
+
+        runner.invoke(cli, [])
+
+        mock_update.assert_called_once()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_check_runs_once_for_group_and_subcommand(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """check_and_update fires exactly once when a subcommand is invoked on a buvis group."""
+
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        def sub() -> None:
+            pass
+
+        result = runner.invoke(cli, ["sub"])
+
+        assert result.exit_code == 0
+        mock_update.assert_called_once()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_check_skipped_for_non_buvis_command(self, mock_update: MagicMock, runner: CliRunner) -> None:
+        """Third-party commands without buvis_options are not affected by the patch."""
+
+        @click.command()
+        def cmd() -> None:
+            pass
+
+        runner.invoke(cmd, [])
 
         mock_update.assert_not_called()
