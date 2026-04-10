@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-04-10
+
 ### Fixed
 
 - **updater**: preserve installed extras when auto-updating in `pip` or `uv pip` venvs. Previously the upgrade command ran `pip install --upgrade buvis-gems` without extras, which silently removed previously installed extras (e.g. `dot`) on every upgrade and left tools like `dot` erroring with `dot TUI requires the 'dot' extra`
@@ -247,7 +249,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.4...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.5...HEAD
+[0.8.5]: https://github.com/buvis/gems/compare/gems-v0.8.4...gems-v0.8.5
 [0.8.4]: https://github.com/buvis/gems/compare/gems-v0.8.3...gems-v0.8.4
 [0.8.3]: https://github.com/buvis/gems/compare/gems-v0.8.2...gems-v0.8.3
 [0.8.2]: https://github.com/buvis/gems/compare/gems-v0.8.1...gems-v0.8.2
