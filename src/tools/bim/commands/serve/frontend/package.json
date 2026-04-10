@@ -11,7 +11,7 @@
   "dependencies": {
     "@milkdown/kit": "^7.0.0",
     "@milkdown/theme-nord": "^7.0.0",
-    "marked": "^17.0.0"
+    "marked": "^18.0.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "3.0.10",
