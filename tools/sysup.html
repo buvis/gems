@@ -139,6 +139,21 @@
 </pre></div>
 </div>
 </section>
+<section id="sysup-nvim">
+<h3>sysup nvim<a class="headerlink" href="#sysup-nvim" title="Link to this heading"></a></h3>
+<p>Update Neovim plugins, mason tools, and treesitter parsers headlessly.</p>
+<p>Runs three steps in order:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Lazy!</span> <span class="pre">sync</span></code> to update lazy.nvim plugins.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MasonToolsUpdateSync</span></code> to install and update mason packages (blocking).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TSUpdateSync</span></code> to update nvim-treesitter parsers.</p></li>
+</ol>
+<p>Requires a Neovim config using lazy.nvim, mason.nvim, mason-tool-installer.nvim,
+and nvim-treesitter. Safe to run during dotfiles bootstrap.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>nvim
+</pre></div>
+</div>
+</section>
 </section>
 </section>
 
