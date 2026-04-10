@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-04-10
+
 ### Fixed
 
 - **sysup**: `sysup nvim` no longer hangs until the mason step timeout when `mason-tool-installer.nvim` is lazy-loaded. Force-loads mason plugins via `Lazy load` and uses the synchronous `MasonToolsUpdateSync` command so the subprocess exits as soon as the update completes
@@ -241,7 +243,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.3...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.4...HEAD
+[0.8.4]: https://github.com/buvis/gems/compare/gems-v0.8.3...gems-v0.8.4
 [0.8.3]: https://github.com/buvis/gems/compare/gems-v0.8.2...gems-v0.8.3
 [0.8.2]: https://github.com/buvis/gems/compare/gems-v0.8.1...gems-v0.8.2
 [0.8.1]: https://github.com/buvis/gems/compare/gems-v0.8.0...gems-v0.8.1
