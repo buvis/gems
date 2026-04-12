@@ -48,7 +48,6 @@ def snap_compare(snapshot):
             terminal_size=terminal_size,
             run_before=run_before,
         )
-        # Normalize non-deterministic content before comparison
         normalized_screenshot = _TERMINAL_ID_RE.sub("terminal-0", actual_screenshot)
         normalized_screenshot = _TIMESTAMP_RE.sub("00:00:00", normalized_screenshot)
         return normalized == normalized_screenshot
