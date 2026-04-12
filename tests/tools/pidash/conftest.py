@@ -1,6 +1,58 @@
 from __future__ import annotations
 
+import re
+
 import pytest
+from syrupy.extensions.single_file import SingleFileSnapshotExtension, WriteMode
+
+_TERMINAL_ID_RE = re.compile(r"terminal-\d+")
+# Matches HH:MM:SS timestamps rendered by PhasePipeline
+_TIMESTAMP_RE = re.compile(r"\d{2}:\d{2}:\d{2}")
+
+
+class NormalizedSVGExtension(SingleFileSnapshotExtension):
+    """SVG snapshot extension that normalizes non-deterministic terminal IDs."""
+
+    _file_extension = "svg"
+    _write_mode = WriteMode.TEXT
+
+    def serialize(self, data, **kwargs):
+        if isinstance(data, str):
+            data = _TERMINAL_ID_RE.sub("terminal-0", data)
+            data = _TIMESTAMP_RE.sub("00:00:00", data)
+        return data
+
+
+@pytest.fixture
+def snap_compare(snapshot):
+    """Override snap_compare to normalize non-deterministic terminal IDs in SVGs."""
+    from collections.abc import Callable, Iterable
+    from pathlib import PurePath
+
+    from textual.app import App
+
+    normalized = snapshot.use_extension(NormalizedSVGExtension)
+
+    def compare(
+        app: str | PurePath | App,
+        press: Iterable[str] = (),
+        terminal_size: tuple[int, int] = (80, 24),
+        run_before: Callable | None = None,
+    ) -> bool:
+        from textual._doc import take_svg_screenshot
+
+        actual_screenshot = take_svg_screenshot(
+            app=app,
+            press=press,
+            terminal_size=terminal_size,
+            run_before=run_before,
+        )
+        # Normalize non-deterministic content before comparison
+        normalized_screenshot = _TERMINAL_ID_RE.sub("terminal-0", actual_screenshot)
+        normalized_screenshot = _TIMESTAMP_RE.sub("00:00:00", normalized_screenshot)
+        return normalized == normalized_screenshot
+
+    return compare
 
 
 @pytest.fixture
