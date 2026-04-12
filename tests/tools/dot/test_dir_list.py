@@ -223,6 +223,29 @@ class TestDirListWidget:
             assert widget.selected_entry is None
 
     @pytest.mark.anyio
+    async def test_scroll_to_region_called_on_cursor_change(self) -> None:
+        entries = _entries(
+            ("a", False, TrackingStatus.TRACKED),
+            ("b", False, TrackingStatus.TRACKED),
+            ("c", False, TrackingStatus.TRACKED),
+        )
+        app = DirListHost(entries)
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+            widget = app.query_one(DirListWidget)
+            calls: list[object] = []
+            original = widget.scroll_to_region
+
+            def _capture(*args: object, **kwargs: object) -> None:
+                calls.append((args, kwargs))
+                original(*args, **kwargs)
+
+            widget.scroll_to_region = _capture  # type: ignore[assignment]
+            await pilot.press("j")
+            await pilot.pause()
+            assert len(calls) >= 1
+
+    @pytest.mark.anyio
     async def test_parent_dir_entry_renders(self) -> None:
         parent = DirEntry(name="..", path="/home/user", is_dir=True, status=TrackingStatus.TRACKED)
         entries = [parent, _entry(".bashrc")]

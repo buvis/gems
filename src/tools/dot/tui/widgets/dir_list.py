@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from rich.text import Text
+from textual.geometry import Region
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -48,6 +49,7 @@ class DirListWidget(Widget, can_focus=True):
         """Post DirEntrySelected when cursor changes and entries exist."""
         if self._entries:
             self.post_message(self.DirEntrySelected(self._entries[value]))
+            self.scroll_to_region(Region(0, value, 1, 1), animate=False)
 
     def render(self) -> Text:
         output = Text()
