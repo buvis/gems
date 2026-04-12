@@ -116,6 +116,10 @@ class _SecretListWidget(Widget, can_focus=True):
 class SecretsScreen(Screen[None]):
     """Screen for managing git-secret entries."""
 
+    CSS = """
+    #secret-list { height: 1fr; overflow-y: auto; }
+    """
+
     BINDINGS = [
         Binding("escape", "dismiss_screen", "Back"),
         Binding("r", "reveal", "Reveal all"),
