@@ -73,9 +73,11 @@ class DiffView(Widget, can_focus=True):
             return
         if state.focused_hunk < len(self._hunks):
             self._focused_hunk = state.focused_hunk
-            self._line_select_mode = state.line_select_mode
-            self._line_cursor = state.line_cursor
-            self._selected_lines = set(state.selected_lines)
+            hunk = self._hunks[self._focused_hunk]
+            max_line = len(hunk.lines) - 1 if hunk.lines else 0
+            self._line_cursor = min(state.line_cursor, max_line)
+            self._selected_lines = {i for i in state.selected_lines if i <= max_line}
+            self._line_select_mode = state.line_select_mode and bool(hunk.lines)
 
     def update_diff(self, diff_text: str, *, staged: bool = False, path: str = "") -> None:
         """Replace the current diff content."""

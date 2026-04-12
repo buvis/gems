@@ -446,6 +446,29 @@ class TestDiffViewScroll:
         assert widget.in_line_select_mode is True
         assert widget.line_cursor == cursor_before
 
+    def test_restore_clamps_stale_line_indices(self) -> None:
+        # Simulate: file A has a long hunk, user selects lines, switches away,
+        # file A's hunk shrinks externally, user switches back
+        long_diff = "--- a/f.py\n+++ b/f.py\n@@ -1,6 +1,6 @@\n c1\n-a\n-b\n-c\n+x\n+y\n+z\n c2"
+        short_diff = "--- a/f.py\n+++ b/f.py\n@@ -1,2 +1,2 @@\n c1\n-a\n+x\n c2"
+        widget = DiffView(id="diff")
+        widget.update_diff(long_diff, path="f.py")
+        widget.action_enter_line_select()
+        # Move cursor to a high index
+        for _ in range(5):
+            widget.action_line_down()
+        high_cursor = widget.line_cursor
+        assert high_cursor > 2
+        # Switch away then back with shorter diff
+        widget.update_diff(short_diff, path="other.py")
+        widget.update_diff(short_diff, path="f.py")
+        # Line cursor should be clamped, not exceed hunk length
+        hunk_len = len(widget.focused_hunk.lines)
+        assert widget.line_cursor < hunk_len
+        # Selected lines should all be valid
+        for idx in widget.selected_line_indices:
+            assert idx < hunk_len
+
     def test_hunk_offset_correct_for_headerless_diff(self) -> None:
         widget = DiffView(id="diff")
         widget.update_diff(HEADERLESS_HUNK)
