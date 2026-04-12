@@ -282,7 +282,8 @@ class DiffView(Widget, can_focus=True):
             is_focused = hunk_idx == self._focused_hunk
             prefix = "> " if is_focused else "  "
 
-            output.append("\n")
+            if output.plain:
+                output.append("\n")
             output.append(prefix)
             output.append(hunk.header, style="bold dim" if is_focused else "dim")
 

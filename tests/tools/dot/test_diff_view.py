@@ -103,6 +103,8 @@ MULTI_HUNK = """\
  line11
  line12"""
 
+HEADERLESS_HUNK = "@@ -1,2 +1,3 @@\n line1\n+added\n line2"
+
 SINGLE_HUNK = """\
 --- a/file.py
 +++ b/file.py
@@ -443,6 +445,12 @@ class TestDiffViewScroll:
         widget.update_diff(LINE_SELECT_DIFF, path="file_a.py")
         assert widget.in_line_select_mode is True
         assert widget.line_cursor == cursor_before
+
+    def test_hunk_offset_correct_for_headerless_diff(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(HEADERLESS_HUNK)
+        assert widget._hunk_line_offset(0) == 0
+        assert widget.hunk_count == 1
 
     def test_no_scroll_on_single_hunk_at_boundary(self) -> None:
         widget = DiffView(id="diff")
