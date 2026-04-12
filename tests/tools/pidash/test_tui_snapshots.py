@@ -27,8 +27,10 @@ def _rich_state_dict() -> dict:
         tasks.append({"id": str(i + 1), "name": f"Implement feature module {i + 1:02d}", "status": status})
 
     return {
-        "prd": "00021-textual-screenshot-testing",
-        "prd_file": "dev/local/prds/wip/00021-textual-screenshot-testing.md",
+        "prd": {
+            "name": "00021-textual-screenshot-testing",
+            "path": "dev/local/prds/wip/00021-textual-screenshot-testing.md",
+        },
         "phase": "work",
         "phases_completed": ["catchup", "planning"],
         "cycle": 2,

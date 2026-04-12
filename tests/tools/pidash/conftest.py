@@ -6,12 +6,13 @@ import pytest
 from syrupy.extensions.single_file import SingleFileSnapshotExtension, WriteMode
 
 _TERMINAL_ID_RE = re.compile(r"terminal-\d+")
-# Matches HH:MM:SS timestamps rendered by PhasePipeline
-_TIMESTAMP_RE = re.compile(r"\d{2}:\d{2}:\d{2}")
+# Matches HH:MM:SS timestamps rendered by PhasePipeline in SVG text content.
+# Anchored: preceded by ; or > (SVG markup), followed by < or & (SVG markup).
+_TIMESTAMP_RE = re.compile(r"(?<=[;>])\d{2}:\d{2}:\d{2}(?=[<&])")
 
 
 class NormalizedSVGExtension(SingleFileSnapshotExtension):
-    """SVG snapshot extension that normalizes non-deterministic terminal IDs."""
+    """SVG snapshot extension that normalizes non-deterministic terminal IDs and timestamps."""
 
     _file_extension = "svg"
     _write_mode = WriteMode.TEXT

@@ -1,3 +1,6 @@
+# dot TUI uses the default snap_compare fixture from pytest-textual-snapshot.
+# Unlike pidash, dot has no real-time clock display or animated spinners that
+# cause non-deterministic SVG output, so no normalization is needed.
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
