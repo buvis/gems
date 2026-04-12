@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **dot**: persist diff pane scroll position when switching between files
+
+### Fixed
+
+- **dot**: scroll TUI panes to keep selected item visible during navigation
+- **pidash**: scroll TUI panels and sidebar when content overflows viewport
+
 ## [0.8.5] - 2026-04-10
 
 ### Fixed
