@@ -61,7 +61,7 @@ Documentation = "https://buvis.github.io/gems/"
 
 [dependency-groups]
 dev = ["maturin>=1.7,<2", "pip-audit>=2.7.3,<3", "pre-commit>=4.5.1,<5", "ruff>=0.6,<1"]
-test = ["pytest>=9.0.2,<10", "pytest-mock>=3.15.1,<4", "pytest-cov>=7,<8", "mypy>=1.15,<2", "types-PyYAML>=6,<7", "types-requests>=2,<3", "types-fpdf2>=2,<3"]
+test = ["pytest>=9.0.2,<10", "pytest-mock>=3.15.1,<4", "pytest-cov>=7,<8", "pytest-textual-snapshot>=1,<2", "mypy>=1.15,<2", "types-PyYAML>=6,<7", "types-requests>=2,<3", "types-fpdf2>=2,<3"]
 docs = ["sphinx>=8,<10", "sphinx-rtd-theme>=3.0.2,<4"]
 
 [tool.hatch.build.targets.wheel]
@@ -111,6 +111,7 @@ markers = [
     "vuc: vuc tests",
     "zseq: zseq tests",
     "pidash: pidash tests",
+    "snapshot: snapshot tests",
 ]
 
 [tool.coverage.run]
