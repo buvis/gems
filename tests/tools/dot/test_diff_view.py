@@ -330,3 +330,80 @@ class TestDiffViewLineSelect:
         assert widget.in_line_select_mode is True
         widget.update_diff(LINE_SELECT_DIFF)
         assert widget.in_line_select_mode is False
+
+
+class TestDiffViewScroll:
+    def test_scroll_to_region_called_on_next_hunk(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        calls: list[object] = []
+        original = widget.scroll_to_region
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            calls.append((args, kwargs))
+            original(*args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.action_next_hunk()
+        assert len(calls) >= 1
+
+    def test_scroll_to_region_called_on_prev_hunk(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        widget.action_next_hunk()
+        calls: list[object] = []
+        original = widget.scroll_to_region
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            calls.append((args, kwargs))
+            original(*args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.action_prev_hunk()
+        assert len(calls) >= 1
+
+    def test_scroll_to_region_called_on_line_down(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        calls: list[object] = []
+        original = widget.scroll_to_region
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            calls.append((args, kwargs))
+            original(*args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.action_line_down()
+        assert len(calls) >= 1
+
+    def test_scroll_to_region_called_on_line_up(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF)
+        widget.action_enter_line_select()
+        widget.action_line_down()
+        widget.action_line_down()
+        calls: list[object] = []
+        original = widget.scroll_to_region
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            calls.append((args, kwargs))
+            original(*args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.action_line_up()
+        assert len(calls) >= 1
+
+    def test_no_scroll_on_single_hunk_at_boundary(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(SINGLE_HUNK)
+        calls: list[object] = []
+        original = widget.scroll_to_region
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            calls.append((args, kwargs))
+            original(*args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.action_next_hunk()
+        assert len(calls) == 0  # already at last hunk, no movement

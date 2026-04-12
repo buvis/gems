@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from rich.text import Text
 from textual.binding import Binding
+from textual.geometry import Region
 from textual.widget import Widget
 
 from dot.tui.patch import Hunk, parse_diff
@@ -89,6 +90,37 @@ class DiffView(Widget, can_focus=True):
         """Current line cursor position (index into hunk.lines)."""
         return self._line_cursor
 
+    def _file_header_line_count(self) -> int:
+        """Count rendered lines before the first hunk header."""
+        count = 0
+        for line in self._diff_text.split("\n"):
+            if line.startswith("@@"):
+                break
+            count += 1
+        return count
+
+    def _hunk_line_offset(self, hunk_idx: int) -> int:
+        """Compute the rendered line offset of the given hunk header."""
+        offset = self._file_header_line_count()
+        for i in range(hunk_idx):
+            offset += 1 + 1 + len(self._hunks[i].lines)  # separator + header + lines
+        offset += 1  # separator line before this hunk's header
+        return offset
+
+    def _scroll_to_hunk(self) -> None:
+        """Scroll to keep the focused hunk header visible."""
+        if not self._hunks:
+            return
+        line = self._hunk_line_offset(self._focused_hunk)
+        self.scroll_to_region(Region(0, line, 1, 1), animate=False)
+
+    def _scroll_to_line(self) -> None:
+        """Scroll to keep the current line cursor visible."""
+        if not self._hunks:
+            return
+        line = self._hunk_line_offset(self._focused_hunk) + 1 + self._line_cursor
+        self.scroll_to_region(Region(0, line, 1, 1), animate=False)
+
     def _changed_line_indices(self) -> list[int]:
         """Return indices of changed lines (+/-) in the focused hunk."""
         hunk = self.focused_hunk
@@ -103,6 +135,7 @@ class DiffView(Widget, can_focus=True):
             return
         if self._hunks and self._focused_hunk < len(self._hunks) - 1:
             self._focused_hunk += 1
+            self._scroll_to_hunk()
             self.refresh()
 
     def action_prev_hunk(self) -> None:
@@ -112,6 +145,7 @@ class DiffView(Widget, can_focus=True):
             return
         if self._focused_hunk > 0:
             self._focused_hunk -= 1
+            self._scroll_to_hunk()
             self.refresh()
 
     def action_enter_line_select(self) -> None:
@@ -139,6 +173,7 @@ class DiffView(Widget, can_focus=True):
         for idx in changed:
             if idx > self._line_cursor:
                 self._line_cursor = idx
+                self._scroll_to_line()
                 self.refresh()
                 return
 
@@ -150,6 +185,7 @@ class DiffView(Widget, can_focus=True):
         for idx in reversed(changed):
             if idx < self._line_cursor:
                 self._line_cursor = idx
+                self._scroll_to_line()
                 self.refresh()
                 return
 
