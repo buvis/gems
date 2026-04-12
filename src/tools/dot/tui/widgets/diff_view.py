@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from rich.text import Text
 from textual.binding import Binding
 from textual.geometry import Region
@@ -8,6 +10,14 @@ from textual.widget import Widget
 from dot.tui.patch import Hunk, parse_diff
 
 __all__ = ["DiffView"]
+
+
+@dataclass(frozen=True)
+class _DiffScrollState:
+    focused_hunk: int
+    line_select_mode: bool
+    line_cursor: int
+    selected_lines: frozenset[int]
 
 
 class DiffView(Widget, can_focus=True):
@@ -37,6 +47,8 @@ class DiffView(Widget, can_focus=True):
         self._line_select_mode: bool = False
         self._line_cursor: int = 0
         self._selected_lines: set[int] = set()
+        self._current_path: str = ""
+        self._scroll_state: dict[str, _DiffScrollState] = {}
 
     def _exit_line_select(self) -> None:
         """Internal helper to exit line-select mode."""
@@ -44,14 +56,45 @@ class DiffView(Widget, can_focus=True):
         self._selected_lines = set()
         self._line_cursor = 0
 
-    def update_diff(self, diff_text: str, *, staged: bool = False) -> None:
+    def _save_scroll_state(self) -> None:
+        """Save current scroll state for the current path."""
+        if self._current_path and self._hunks:
+            self._scroll_state[self._current_path] = _DiffScrollState(
+                focused_hunk=self._focused_hunk,
+                line_select_mode=self._line_select_mode,
+                line_cursor=self._line_cursor,
+                selected_lines=frozenset(self._selected_lines),
+            )
+
+    def _restore_scroll_state(self, path: str) -> None:
+        """Restore saved scroll state for a path if available."""
+        state = self._scroll_state.get(path)
+        if state is None:
+            return
+        if state.focused_hunk < len(self._hunks):
+            self._focused_hunk = state.focused_hunk
+            self._line_select_mode = state.line_select_mode
+            self._line_cursor = state.line_cursor
+            self._selected_lines = set(state.selected_lines)
+
+    def update_diff(self, diff_text: str, *, staged: bool = False, path: str = "") -> None:
         """Replace the current diff content."""
+        self._save_scroll_state()
         self._diff_text = diff_text
         self._staged = staged
         self._hunks = parse_diff(diff_text)
         self._focused_hunk = 0
         self._exit_line_select()
+        self._current_path = path
+        if path:
+            self._restore_scroll_state(path)
         self.refresh()
+
+    def clear_scroll_state(self, path: str) -> None:
+        """Remove saved scroll state for a path (e.g. after staging invalidates hunks)."""
+        self._scroll_state.pop(path, None)
+        if self._current_path == path:
+            self._current_path = ""
 
     @property
     def focused_hunk(self) -> Hunk | None:

@@ -394,6 +394,46 @@ class TestDiffViewScroll:
         widget.action_line_up()
         assert len(calls) >= 1
 
+    def test_scroll_state_saved_on_file_switch(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK, path="file_a.py")
+        widget.action_next_hunk()
+        assert widget.focused_hunk_index == 1
+        widget.update_diff(SINGLE_HUNK, path="file_b.py")
+        assert widget.focused_hunk_index == 0
+        widget.update_diff(MULTI_HUNK, path="file_a.py")
+        assert widget.focused_hunk_index == 1
+
+    def test_scroll_state_not_restored_without_path(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK, path="file_a.py")
+        widget.action_next_hunk()
+        widget.update_diff(MULTI_HUNK)
+        assert widget.focused_hunk_index == 0
+
+    def test_clear_scroll_state_removes_saved(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK, path="file_a.py")
+        widget.action_next_hunk()
+        assert widget.focused_hunk_index == 1
+        # Simulate staging: clear state then reload same file with new diff
+        widget.clear_scroll_state("file_a.py")
+        widget.update_diff(MULTI_HUNK, path="file_a.py")
+        assert widget.focused_hunk_index == 0
+
+    def test_scroll_state_preserves_line_select(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(LINE_SELECT_DIFF, path="file_a.py")
+        widget.action_enter_line_select()
+        widget.action_line_down()
+        assert widget.in_line_select_mode is True
+        cursor_before = widget.line_cursor
+        widget.update_diff(SINGLE_HUNK, path="file_b.py")
+        assert widget.in_line_select_mode is False
+        widget.update_diff(LINE_SELECT_DIFF, path="file_a.py")
+        assert widget.in_line_select_mode is True
+        assert widget.line_cursor == cursor_before
+
     def test_no_scroll_on_single_hunk_at_boundary(self) -> None:
         widget = DiffView(id="diff")
         widget.update_diff(SINGLE_HUNK)
