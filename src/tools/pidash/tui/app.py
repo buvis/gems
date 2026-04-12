@@ -210,13 +210,13 @@ class _FooterWidget(Static):
 class PidashApp(App[None]):
     TITLE = "pidash"
     CSS = """
-#pipeline { dock: top; height: auto; padding: 0 1; }
+#pipeline { dock: top; height: auto; padding: 0 1; overflow-y: auto; }
 #attention { dock: top; height: 5; content-align: center middle; padding: 1; }
 #main-container { height: 1fr; }
-#sidebar { width: 25; padding: 1; border-right: solid $surface-lighten-2; }
+#sidebar { width: 25; padding: 1; border-right: solid $surface-lighten-2; overflow-y: auto; }
 #detail { width: 1fr; }
 #panels { height: 1fr; }
-#panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; }
+#panels > Static { width: 1fr; padding: 1; border: solid $surface-lighten-2; overflow-y: auto; }
 #footer { dock: bottom; height: 1; background: $surface; color: $text-muted; padding: 0 1; }
 .attention-mode { background: #3a1a1a; }
 .attention-mode #panels > Static { border: solid red; }
