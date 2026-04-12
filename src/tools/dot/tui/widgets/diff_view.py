@@ -94,7 +94,11 @@ class DiffView(Widget, can_focus=True):
         self.refresh()
 
     def clear_scroll_state(self, path: str) -> None:
-        """Remove saved scroll state for a path (e.g. after staging invalidates hunks)."""
+        """Remove saved scroll state for a path (e.g. after staging invalidates hunks).
+
+        Also resets _current_path if it matches, so the next update_diff
+        call won't re-save the stale state via _save_scroll_state.
+        """
         self._scroll_state.pop(path, None)
         if self._current_path == path:
             self._current_path = ""
