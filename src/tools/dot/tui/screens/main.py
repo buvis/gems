@@ -117,7 +117,7 @@ class MainScreen(Screen[None]):
         self._current_diff_path = message.entry.path
         self._current_diff_staged = message.staged
         diff_text = self._git_ops.diff(message.entry.path, staged=message.staged)
-        self.query_one("#diff", DiffView).update_diff(diff_text or "", staged=message.staged)
+        self.query_one("#diff", DiffView).update_diff(diff_text or "", staged=message.staged, path=message.entry.path)
 
     def _show_message(self, msg: str) -> None:
         self.query_one("#diff", DiffView).update_diff(msg)
@@ -318,5 +318,6 @@ class MainScreen(Screen[None]):
             self._show_message(f"Error applying patch: {result.error}")
             return
         self.refresh_status()
+        diff_view.clear_scroll_state(self._current_diff_path)
         diff_text = self._git_ops.diff(self._current_diff_path, staged=self._current_diff_staged)
-        diff_view.update_diff(diff_text or "", staged=self._current_diff_staged)
+        diff_view.update_diff(diff_text or "", staged=self._current_diff_staged, path=self._current_diff_path)
