@@ -3,6 +3,7 @@ from __future__ import annotations
 from dot.tui.patch import Hunk
 from dot.tui.widgets.diff_view import DiffView
 from rich.text import Text
+from textual.geometry import Region
 
 
 def _render(diff_text: str) -> Text:
@@ -336,31 +337,40 @@ class TestDiffViewScroll:
     def test_scroll_to_region_called_on_next_hunk(self) -> None:
         widget = DiffView(id="diff")
         widget.update_diff(MULTI_HUNK)
-        calls: list[object] = []
+        calls: list[tuple[object, ...]] = []
         original = widget.scroll_to_region
 
         def _capture(*args: object, **kwargs: object) -> None:
-            calls.append((args, kwargs))
+            calls.append(args)
             original(*args, **kwargs)
 
         widget.scroll_to_region = _capture  # type: ignore[assignment]
         widget.action_next_hunk()
         assert len(calls) >= 1
+        # MULTI_HUNK: 2 file header lines, hunk 0 has 4 content lines
+        # hunk 1 offset = 2 + (1 header + 4 lines) = 7
+        region = calls[-1][0]
+        assert isinstance(region, Region)
+        assert region.y == 7
 
     def test_scroll_to_region_called_on_prev_hunk(self) -> None:
         widget = DiffView(id="diff")
         widget.update_diff(MULTI_HUNK)
         widget.action_next_hunk()
-        calls: list[object] = []
+        calls: list[tuple[object, ...]] = []
         original = widget.scroll_to_region
 
         def _capture(*args: object, **kwargs: object) -> None:
-            calls.append((args, kwargs))
+            calls.append(args)
             original(*args, **kwargs)
 
         widget.scroll_to_region = _capture  # type: ignore[assignment]
         widget.action_prev_hunk()
         assert len(calls) >= 1
+        # hunk 0 offset = 2 (file header lines, no preceding hunks)
+        region = calls[-1][0]
+        assert isinstance(region, Region)
+        assert region.y == 2
 
     def test_scroll_to_region_called_on_line_down(self) -> None:
         widget = DiffView(id="diff")
