@@ -47,7 +47,7 @@ def _patch_secrets(monkeypatch, *, secrets=None, reveal_ok=True, hide_ok=True, u
     )
     monkeypatch.setattr(
         "dot.tui.screens.secrets.reveal_all",
-        lambda _ops: CommandResult(success=reveal_ok),
+        lambda _ops, passphrase=None: CommandResult(success=reveal_ok),
     )
     monkeypatch.setattr(
         "dot.tui.screens.secrets.hide_all",
