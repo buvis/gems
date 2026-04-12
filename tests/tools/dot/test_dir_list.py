@@ -5,6 +5,7 @@ from dot.tui.commands.browse import DirEntry, TrackingStatus
 from dot.tui.widgets.dir_list import DirListWidget
 from rich.text import Text
 from textual.app import App, ComposeResult
+from textual.geometry import Region
 
 
 def _entry(
@@ -233,17 +234,20 @@ class TestDirListWidget:
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
             widget = app.query_one(DirListWidget)
-            calls: list[object] = []
+            calls: list[tuple[object, ...]] = []
             original = widget.scroll_to_region
 
             def _capture(*args: object, **kwargs: object) -> None:
-                calls.append((args, kwargs))
+                calls.append(args)
                 original(*args, **kwargs)
 
             widget.scroll_to_region = _capture  # type: ignore[assignment]
             await pilot.press("j")
             await pilot.pause()
             assert len(calls) >= 1
+            region = calls[-1][0]
+            assert isinstance(region, Region)
+            assert region.y == 1  # cursor moved from 0 to 1
 
     @pytest.mark.anyio
     async def test_parent_dir_entry_renders(self) -> None:

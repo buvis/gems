@@ -378,16 +378,22 @@ class TestDiffViewScroll:
         widget = DiffView(id="diff")
         widget.update_diff(LINE_SELECT_DIFF)
         widget.action_enter_line_select()
-        calls: list[object] = []
+        calls: list[tuple[object, ...]] = []
         original = widget.scroll_to_region
 
         def _capture(*args: object, **kwargs: object) -> None:
-            calls.append((args, kwargs))
+            calls.append(args)
             original(*args, **kwargs)
 
         widget.scroll_to_region = _capture  # type: ignore[assignment]
         widget.action_line_down()
         assert len(calls) >= 1
+        # LINE_SELECT_DIFF: 2 file header lines, hunk 0 at offset 2
+        # enter_line_select sets cursor=1, line_down advances to cursor=2
+        # scroll target = offset(2) + 1 (hunk header) + cursor(2) = 5
+        region = calls[-1][0]
+        assert isinstance(region, Region)
+        assert region.y == 5
 
     def test_scroll_to_region_called_on_line_up(self) -> None:
         widget = DiffView(id="diff")
@@ -395,16 +401,22 @@ class TestDiffViewScroll:
         widget.action_enter_line_select()
         widget.action_line_down()
         widget.action_line_down()
-        calls: list[object] = []
+        calls: list[tuple[object, ...]] = []
         original = widget.scroll_to_region
 
         def _capture(*args: object, **kwargs: object) -> None:
-            calls.append((args, kwargs))
+            calls.append(args)
             original(*args, **kwargs)
 
         widget.scroll_to_region = _capture  # type: ignore[assignment]
         widget.action_line_up()
         assert len(calls) >= 1
+        # cursor was at 3 (after two line_downs from 1→2→3)
+        # line_up moves back to 2
+        # scroll target = offset(2) + 1 + cursor(2) = 5
+        region = calls[-1][0]
+        assert isinstance(region, Region)
+        assert region.y == 5
 
     def test_scroll_state_saved_on_file_switch(self) -> None:
         widget = DiffView(id="diff")

@@ -6,6 +6,7 @@ import pytest
 from buvis.pybase.result import CommandResult
 from dot.tui.commands.secrets import SecretEntry
 from textual.app import App, ComposeResult
+from textual.geometry import Region
 from textual.widgets import Static
 
 _SAMPLE_SECRETS = [
@@ -315,11 +316,11 @@ class TestSecretsScreenNavigation:
             from dot.tui.screens.secrets import _SecretListWidget
 
             widget = app.screen.query_one("#secret-list", _SecretListWidget)
-            calls: list[object] = []
+            calls: list[tuple[object, ...]] = []
             original = widget.scroll_to_region
 
             def _capture(*args: object, **kwargs: object) -> None:
-                calls.append((args, kwargs))
+                calls.append(args)
                 original(*args, **kwargs)
 
             widget.scroll_to_region = _capture  # type: ignore[assignment]
@@ -327,3 +328,6 @@ class TestSecretsScreenNavigation:
             await pilot.press("j")
             await pilot.pause()
             assert len(calls) >= 1
+            region = calls[-1][0]
+            assert isinstance(region, Region)
+            assert region.y == 1  # cursor moved from 0 to 1
