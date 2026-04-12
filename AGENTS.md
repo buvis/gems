@@ -8,6 +8,8 @@ BUVIS gems monorepo. Python toolkit (buvis-pybase + zettel) and CLI tools, shipp
 uv sync --all-groups --all-extras            # install deps
 pre-commit install                          # setup hooks
 uv run pytest                               # run tests
+uv run pytest -m snapshot                   # run snapshot tests only
+uv run pytest --snapshot-update             # regenerate snapshot baselines
 uv run mypy src/lib/ src/tools/              # type check
 uv run sphinx-build -b html docs/source docs/build/html  # build docs
 ```
