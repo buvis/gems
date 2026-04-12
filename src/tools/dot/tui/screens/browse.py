@@ -22,6 +22,10 @@ __all__ = ["BrowseScreen"]
 class BrowseScreen(Screen[None]):
     """Browse dotfiles directory tree with tracking status."""
 
+    CSS = """
+    #dir-list { height: 1fr; overflow-y: auto; }
+    """
+
     BINDINGS = [
         Binding("escape", "dismiss_screen", "Back"),
         Binding("a", "stage_entry", "Stage"),
