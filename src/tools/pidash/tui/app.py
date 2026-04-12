@@ -8,6 +8,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
+from textual.geometry import Region
 from textual.widgets import Static
 
 from pidash.tui.state import PrdState, SessionState, parse_session_file, parse_state
@@ -162,6 +163,11 @@ class _SidebarWidget(Static):
                 line = f"[dim]{line}[/dim]"
             lines.append(line)
         self.update("\n".join(lines))
+        active_index = next(
+            (i for i, s in enumerate(sorted_sessions) if s.session_id == active_id),
+            0,
+        )
+        self.scroll_to_region(Region(0, active_index, 1, 1), animate=False)
 
 
 def _sort_sessions(sessions: dict[str, SessionState]) -> list[SessionState]:
