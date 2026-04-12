@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from buvis.pybase.result import CommandResult
+from dot.tui.commands.browse import DirEntry, TrackingStatus
 from dot.tui.models import BranchInfo, FileEntry
 
 TERMINAL_SIZES = [
@@ -65,6 +66,24 @@ def _mock_git_ops_with_content() -> MagicMock:
     return ops
 
 
+def _many_dir_entries(count: int) -> list[DirEntry]:
+    """Build 30+ DirEntry items with mixed types and tracking states."""
+    entries: list[DirEntry] = [DirEntry(name="..", path="/dotfiles", is_dir=True, status=TrackingStatus.TRACKED)]
+    statuses = [TrackingStatus.TRACKED, TrackingStatus.UNTRACKED, TrackingStatus.IGNORED]
+    for i in range(count):
+        is_dir = i % 5 == 0
+        name = f".config_{i:02d}" if is_dir else f".file_{i:02d}.conf"
+        entries.append(
+            DirEntry(
+                name=name,
+                path=f"/dotfiles/{name}",
+                is_dir=is_dir,
+                status=statuses[i % 3],
+            )
+        )
+    return entries
+
+
 class TestMainScreenSnapshots:
     @pytest.mark.snapshot
     @pytest.mark.dot
@@ -78,3 +97,29 @@ class TestMainScreenSnapshots:
             cls.return_value = mock_ops
             app = DotApp(dotfiles_root="/tmp/test")
             assert snap_compare(app, terminal_size=terminal_size)
+
+
+class TestBrowseScreenSnapshots:
+    @pytest.mark.snapshot
+    @pytest.mark.dot
+    @pytest.mark.parametrize("terminal_size", TERMINAL_SIZES)
+    def test_browse_screen_with_many_entries(self, snap_compare, terminal_size):
+        from dot.tui.app import DotApp
+
+        mock_ops = _mock_git_ops_with_content()
+        entries = _many_dir_entries(35)
+
+        with (
+            patch("dot.tui.app.ShellAdapter"),
+            patch("dot.tui.app.GitOps") as cls,
+            patch("dot.tui.screens.browse.list_directory", return_value=entries),
+        ):
+            cls.return_value = mock_ops
+            app = DotApp(dotfiles_root="/tmp/test")
+
+            async def push_browse(pilot):
+                await pilot.pause()
+                await pilot.press("b")
+                await pilot.pause()
+
+            assert snap_compare(app, terminal_size=terminal_size, run_before=push_browse)
