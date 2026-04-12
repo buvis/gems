@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from buvis.pybase.result import CommandResult
 from dot.tui.commands.browse import DirEntry, TrackingStatus
+from dot.tui.commands.secrets import SecretEntry
 from dot.tui.models import BranchInfo, FileEntry
 
 TERMINAL_SIZES = [
@@ -123,3 +124,41 @@ class TestBrowseScreenSnapshots:
                 await pilot.pause()
 
             assert snap_compare(app, terminal_size=terminal_size, run_before=push_browse)
+
+
+def _many_secret_entries(count: int) -> list[SecretEntry]:
+    """Build 20+ SecretEntry items with mixed revealed/hidden states."""
+    return [
+        SecretEntry(
+            path=f".secrets/key_{i:02d}.gpg",
+            status="revealed" if i % 3 == 0 else "hidden",
+        )
+        for i in range(count)
+    ]
+
+
+class TestSecretsScreenSnapshots:
+    @pytest.mark.snapshot
+    @pytest.mark.dot
+    @pytest.mark.parametrize("terminal_size", TERMINAL_SIZES)
+    def test_secrets_screen_with_many_secrets(self, snap_compare, terminal_size):
+        from dot.tui.app import DotApp
+
+        mock_ops = _mock_git_ops_with_content()
+        mock_ops.shell.is_command_available.return_value = True
+        secrets = _many_secret_entries(25)
+
+        with (
+            patch("dot.tui.app.ShellAdapter"),
+            patch("dot.tui.app.GitOps") as cls,
+            patch("dot.tui.screens.secrets.list_secrets", return_value=secrets),
+        ):
+            cls.return_value = mock_ops
+            app = DotApp(dotfiles_root="/tmp/test")
+
+            async def push_secrets(pilot):
+                await pilot.pause()
+                await pilot.press("S")
+                await pilot.pause()
+
+            assert snap_compare(app, terminal_size=terminal_size, run_before=push_secrets)
