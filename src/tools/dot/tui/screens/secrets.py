@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from rich.text import Text
 from textual.binding import Binding
 from textual.containers import Vertical
+from textual.geometry import Region
 from textual.screen import ModalScreen, Screen
 from textual.widget import Widget
 from textual.widgets import Footer, Label
@@ -91,12 +92,14 @@ class _SecretListWidget(Widget, can_focus=True):
         if not self._entries:
             return
         self._cursor = (self._cursor + 1) % len(self._entries)
+        self.scroll_to_region(Region(0, self._cursor, 1, 1), animate=False)
         self.refresh()
 
     def move_up(self) -> None:
         if not self._entries:
             return
         self._cursor = (self._cursor - 1) % len(self._entries)
+        self.scroll_to_region(Region(0, self._cursor, 1, 1), animate=False)
         self.refresh()
 
     def render(self) -> Text:

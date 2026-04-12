@@ -303,3 +303,27 @@ class TestSecretsScreenNavigation:
             from dot.tui.screens.secrets import SecretsScreen
 
             assert isinstance(app.screen, SecretsScreen)
+
+    @pytest.mark.anyio
+    async def test_scroll_to_region_called_on_navigation(self, git_ops, monkeypatch):
+        _patch_secrets(monkeypatch)
+
+        app = SecretsHost(git_ops)
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            from dot.tui.screens.secrets import _SecretListWidget
+
+            widget = app.screen.query_one("#secret-list", _SecretListWidget)
+            calls: list[object] = []
+            original = widget.scroll_to_region
+
+            def _capture(*args: object, **kwargs: object) -> None:
+                calls.append((args, kwargs))
+                original(*args, **kwargs)
+
+            widget.scroll_to_region = _capture  # type: ignore[assignment]
+
+            await pilot.press("j")
+            await pilot.pause()
+            assert len(calls) >= 1
