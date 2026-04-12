@@ -88,6 +88,7 @@ class DiffView(Widget, can_focus=True):
         self._current_path = path
         if path:
             self._restore_scroll_state(path)
+            self._scroll_to_hunk()
         self.refresh()
 
     def clear_scroll_state(self, path: str) -> None:
@@ -146,8 +147,7 @@ class DiffView(Widget, can_focus=True):
         """Compute the rendered line offset of the given hunk header."""
         offset = self._file_header_line_count()
         for i in range(hunk_idx):
-            offset += 1 + 1 + len(self._hunks[i].lines)  # separator + header + lines
-        offset += 1  # separator line before this hunk's header
+            offset += 1 + len(self._hunks[i].lines)  # header + content lines
         return offset
 
     def _scroll_to_hunk(self) -> None:
