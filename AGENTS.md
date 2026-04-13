@@ -8,8 +8,8 @@ BUVIS gems monorepo. Python toolkit (buvis-pybase + zettel) and CLI tools, shipp
 uv sync --all-groups --all-extras            # install deps
 pre-commit install                          # setup hooks
 uv run pytest                               # run tests
-uv run pytest -m snapshot                   # run snapshot tests only
-uv run pytest --snapshot-update             # regenerate snapshot baselines
+uv run pytest -m snapshot                   # run snapshot tests only (skipped off canonical env)
+uv run pytest --snapshot-update             # regenerate snapshot baselines (local use only)
 uv run mypy src/lib/ src/tools/              # type check
 uv run sphinx-build -b html docs/source docs/build/html  # build docs
 ```
@@ -154,6 +154,7 @@ def create(ctx):
 - Class-based test organization
 - **No unused imports/variables**
 - **Markers**: `pytest -m <tool>` runs one tool, `pytest -m lib` runs library tests, `pytest -m "not bim"` excludes a tool. Auto-applied by path in `tests/conftest.py` — no decorators needed. Scaffold registers markers for new tools.
+- **Snapshot tests** (`@pytest.mark.snapshot`) only run on the canonical env (Linux + Python 3.12) — SVG output from Rich/Textual differs across OS/Python so baselines must come from one place. Anywhere else they are auto-skipped. To regenerate baselines run the `update-snapshots` GitHub workflow (`gh workflow run update-snapshots.yml`); it runs `pytest --snapshot-update` on the canonical env and commits the result. Force locally with `BUVIS_SNAPSHOT_CANONICAL=1` only if you know what you're doing.
 
 ## Installation
 
