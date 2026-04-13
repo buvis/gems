@@ -45,7 +45,7 @@ class _PipelineWidget(Static):
 
     def on_mount(self) -> None:
         self.refresh_state(None)
-        self.set_interval(0.15, self._tick)
+        self._spinner_timer = self.set_interval(0.15, self._tick)
 
     def _tick(self) -> None:
         if self._state is not None and self._state.phase != "done":
@@ -108,7 +108,7 @@ class _TaskPanelWidget(_PanelWidget):
 
     def on_mount(self) -> None:
         super().on_mount()
-        self.set_interval(0.15, self._tick)
+        self._spinner_timer = self.set_interval(0.15, self._tick)
 
     def _tick(self) -> None:
         if self._state is None:

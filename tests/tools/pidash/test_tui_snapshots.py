@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
 
 import pytest
 from pidash.tui.app import PidashApp
@@ -137,11 +136,11 @@ def _session_json(
 
 
 def _kill_timers(app: PidashApp) -> None:
-    """Disable spinner timers on pipeline and task widgets for deterministic output."""
+    """Stop spinner timers on pipeline and task widgets for deterministic output."""
     pipeline = app.query_one("#pipeline")
-    pipeline._tick = MagicMock()
+    pipeline._spinner_timer.stop()
     tasks = app.query_one("#tasks")
-    tasks._tick = MagicMock()
+    tasks._spinner_timer.stop()
 
 
 class TestPidashSingleProjectSnapshots:
