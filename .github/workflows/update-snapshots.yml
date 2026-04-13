@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update:
@@ -38,14 +39,23 @@ jobs:
       - name: Verify snapshots now pass
         run: uv run pytest -m "${{ inputs.marker }}"
 
-      - name: Commit and push updated baselines
+      - name: Open pull request with updated baselines
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [ -z "$(git status --porcelain tests/)" ]; then
+            echo "No snapshot changes to commit."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -n "$(git status --porcelain tests/)" ]; then
-            git add tests/
-            git commit -m "test: regenerate snapshot baselines in canonical env"
-            git push
-          else
-            echo "No snapshot changes to commit."
-          fi
+          BRANCH="update-snapshots/${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add tests/
+          git commit -m "test: regenerate snapshot baselines in canonical env"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "test: regenerate snapshot baselines" \
+            --body "Automated regeneration via update-snapshots workflow on the canonical env (Linux + Python 3.12)." \
+            --base master \
+            --head "$BRANCH"
