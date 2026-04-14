@@ -167,6 +167,7 @@ class TestCommandNvim:
         assert "mason FAIL" in probe
         assert "mason OK" in probe
         assert "ensure_installed" in probe
+        assert "lazy.core.config" in probe
 
     def test_mason_all_tools_installed_succeeds_silently(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
@@ -204,14 +205,28 @@ class TestCommandNvim:
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="mason INCONCLUSIVE mason-tool-installer config unavailable\n"),
+            self._result(stdout="mason INCONCLUSIVE lazy.core.config unavailable\n"),
             self._result(),
         ]
 
         steps = list(CommandNvim().execute())
 
         assert steps[1].success
-        assert "INCONCLUSIVE" in steps[1].message
+        assert "lazy.core.config unavailable" in steps[1].message
+
+    def test_mason_inconclusive_when_ensure_installed_missing(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stdout="mason INCONCLUSIVE mason-tool-installer ensure_installed unavailable\n"),
+            self._result(),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert steps[1].success
+        assert steps[1].message == "mason INCONCLUSIVE mason-tool-installer ensure_installed unavailable"
 
     def test_mason_no_probe_output_is_inconclusive(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
