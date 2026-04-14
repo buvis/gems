@@ -115,6 +115,25 @@ SINGLE_HUNK = """\
  line2
  line3"""
 
+THREE_HUNKS = """\
+--- a/file.py
++++ b/file.py
+@@ -1,3 +1,4 @@
+ line1
++added1
+ line2
+ line3
+@@ -10,3 +11,4 @@
+ line10
++added2
+ line11
+ line12
+@@ -20,3 +21,4 @@
+ line20
++added3
+ line21
+ line22"""
+
 BINARY_DIFF = "Binary files a/img.png and b/img.png differ"
 
 
@@ -340,29 +359,8 @@ class TestDiffViewScroll:
     def test_scroll_to_region_called_on_next_hunk(self) -> None:
         # Use a 3-hunk diff so navigating to hunk 1 lands on a non-last hunk
         # (header offset target, not bottom-of-hunk).
-        three_hunks = "\n".join(
-            [
-                "--- a/file.py",
-                "+++ b/file.py",
-                "@@ -1,3 +1,4 @@",
-                " line1",
-                "+added1",
-                " line2",
-                " line3",
-                "@@ -10,3 +11,4 @@",
-                " line10",
-                "+added2",
-                " line11",
-                " line12",
-                "@@ -20,3 +21,4 @@",
-                " line20",
-                "+added3",
-                " line21",
-                " line22",
-            ]
-        )
         widget = DiffView(id="diff")
-        widget.update_diff(three_hunks)
+        widget.update_diff(THREE_HUNKS)
         calls: list[tuple[object, ...]] = []
         original = widget.scroll_to_region
 
@@ -562,30 +560,8 @@ class TestDiffViewScroll:
         assert calls[-1].y == 2
 
     def test_scroll_to_non_last_hunk_targets_header(self) -> None:
-        # Build 3-hunk diff so middle hunk navigation can be tested.
-        three_hunks = "\n".join(
-            [
-                "--- a/file.py",
-                "+++ b/file.py",
-                "@@ -1,3 +1,4 @@",
-                " line1",
-                "+added1",
-                " line2",
-                " line3",
-                "@@ -10,3 +11,4 @@",
-                " line10",
-                "+added2",
-                " line11",
-                " line12",
-                "@@ -20,3 +21,4 @@",
-                " line20",
-                "+added3",
-                " line21",
-                " line22",
-            ]
-        )
         widget = DiffView(id="diff")
-        widget.update_diff(three_hunks)
+        widget.update_diff(THREE_HUNKS)
         calls: list[Region] = []
         original = widget.scroll_to_region
 
@@ -675,9 +651,6 @@ class TestDiffViewPageScroll:
         strict=True,
     )
     def test_virtual_size_matches_rendered_line_count(self) -> None:
-        """PRD 00023 §3 acceptance: DiffView must report a virtual size that
-        exceeds the viewport when content overflows, so trackpad scroll and
-        keyboard scroll-to-end can actually reach the bottom of long diffs."""
         import asyncio
 
         from textual.app import App, ComposeResult

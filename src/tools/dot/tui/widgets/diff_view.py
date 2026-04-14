@@ -163,16 +163,11 @@ class DiffView(Widget, can_focus=True):
         return offset
 
     def _scroll_to_hunk(self) -> None:
-        """Scroll to keep the focused hunk visible.
-
-        For the last hunk in a multi-hunk diff, target the bottom of its
-        content so long final hunks are reachable by keyboard alone.
-        Single-hunk diffs always target the header so opening a file
-        lands at the top of its diff, not the bottom.
-        """
+        """Scroll to keep the focused hunk visible."""
         if not self._hunks:
             return
         line = self._hunk_line_offset(self._focused_hunk)
+        # Last hunk targets bottom so long diffs are reachable; initial load (hunk 0) targets header.
         if self._focused_hunk > 0 and self._focused_hunk == len(self._hunks) - 1:
             line += len(self._hunks[self._focused_hunk].lines)
         self.scroll_to_region(Region(0, line, 1, 1), animate=False)
