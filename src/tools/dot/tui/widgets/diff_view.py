@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from rich.text import Text
 from textual.binding import Binding
 from textual.geometry import Region
+from textual.message import Message
 from textual.widget import Widget
 
 from dot.tui.patch import Hunk, parse_diff
@@ -36,7 +37,23 @@ class DiffView(Widget, can_focus=True):
         Binding("pageup", "page_up", "Page up", show=False),
         Binding("g", "scroll_top", "Top", show=False),
         Binding("G", "scroll_bottom", "Bottom", show=False),
+        Binding("r", "revert", "Revert", show=True),
     ]
+
+    class RevertRequested(Message):
+        """Posted when the user asks to revert the focused hunk or selected lines."""
+
+        def __init__(
+            self,
+            *,
+            hunk: Hunk,
+            line_select_mode: bool,
+            selected_line_indices: frozenset[int],
+        ) -> None:
+            super().__init__()
+            self.hunk = hunk
+            self.line_select_mode = line_select_mode
+            self.selected_line_indices = selected_line_indices
 
     def __init__(
         self,
@@ -264,6 +281,19 @@ class DiffView(Widget, can_focus=True):
     def action_scroll_bottom(self) -> None:
         """Scroll to the bottom of the diff."""
         self.scroll_end(animate=False)
+
+    def action_revert(self) -> None:
+        """Ask the host screen to revert the focused hunk or selected lines."""
+        hunk = self.focused_hunk
+        if hunk is None:
+            return
+        self.post_message(
+            self.RevertRequested(
+                hunk=hunk,
+                line_select_mode=self._line_select_mode,
+                selected_line_indices=frozenset(self._selected_lines),
+            )
+        )
 
     def action_toggle_line(self) -> None:
         """Toggle selection on the current line."""
