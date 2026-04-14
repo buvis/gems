@@ -6,6 +6,7 @@ from dot.tui.widgets.dir_list import DirListWidget
 from dot.tui.widgets.file_list import FileListWidget
 from dot.tui.widgets.gitignore_modal import GitignoreModal
 from dot.tui.widgets.passphrase_modal import PassphraseModal
+from dot.tui.widgets.revert_confirm_modal import RevertConfirmModal
 from dot.tui.widgets.status_bar import StatusBar
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "FileListWidget",
     "GitignoreModal",
     "PassphraseModal",
+    "RevertConfirmModal",
     "StatusBar",
 ]
