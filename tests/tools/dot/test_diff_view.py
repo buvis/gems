@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from dot.tui.patch import Hunk
 from dot.tui.widgets.diff_view import DiffView
 from rich.text import Text
@@ -659,6 +660,54 @@ class TestDiffViewPageScroll:
         widget.scroll_end = _capture  # type: ignore[assignment]
         widget.action_scroll_bottom()
         assert called["end"] is True
+
+    @pytest.mark.xfail(
+        reason=(
+            "DiffView inherits Widget (not ScrollView) and returns a multi-line "
+            "Text from render(). Textual does not extend virtual_size to cover "
+            "the rendered content for plain Widgets, so max_scroll_y stays small "
+            "and scroll_end / scroll_to_region cannot reach content past the "
+            "visible area. Fix requires DiffView to inherit ScrollView (like "
+            "RichLog) and implement _render_line, OR to restructure as an "
+            "auto-height widget inside a ScrollableContainer. Tracked separately "
+            "from PRD 00023 since it requires a substantive refactor."
+        ),
+        strict=True,
+    )
+    def test_virtual_size_matches_rendered_line_count(self) -> None:
+        """PRD 00023 §3 acceptance: DiffView must report a virtual size that
+        exceeds the viewport when content overflows, so trackpad scroll and
+        keyboard scroll-to-end can actually reach the bottom of long diffs."""
+        import asyncio
+
+        from textual.app import App, ComposeResult
+
+        lines = ["--- a/f.py", "+++ b/f.py", "@@ -1,40 +1,40 @@"]
+        for i in range(40):
+            lines.append(f" line{i}")
+        long_diff = "\n".join(lines)
+        rendered_line_count = long_diff.count("\n") + 1
+
+        class _Harness(App):
+            CSS = "#diff { height: 1fr; overflow-y: auto; }"
+
+            def compose(self) -> ComposeResult:
+                yield DiffView(id="diff")
+
+        async def _run() -> tuple[int, int]:
+            app = _Harness()
+            async with app.run_test(size=(80, 20)) as pilot:
+                widget = app.query_one("#diff", DiffView)
+                widget.update_diff(long_diff)
+                await pilot.pause()
+                return widget.virtual_size.height, widget.size.height
+
+        virtual_h, size_h = asyncio.run(_run())
+        assert virtual_h >= rendered_line_count, (
+            f"virtual_size.height={virtual_h} must be >= rendered_line_count="
+            f"{rendered_line_count}; otherwise trackpad scroll cannot reach bottom"
+        )
+        assert virtual_h > size_h, "virtual size must exceed viewport for scroll to apply"
 
     def test_page_scroll_bindings_present(self) -> None:
         keys = {b.key for b in DiffView.BINDINGS}
