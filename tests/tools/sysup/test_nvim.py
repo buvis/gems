@@ -254,7 +254,6 @@ class TestCommandNvim:
         assert "tail text" in steps[1].message
 
     def test_read_mason_log_tail_missing_file(self, mocker, tmp_path: Path) -> None:
-        mocker.patch("sysup.commands.nvim.nvim.os.environ", {"HOME": str(tmp_path)})
         mocker.patch.dict(
             "sysup.commands.nvim.nvim.os.environ",
             {"HOME": str(tmp_path), "XDG_STATE_HOME": str(tmp_path / "missing")},
