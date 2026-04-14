@@ -253,6 +253,20 @@ class TestCommandNvim:
         assert not steps[1].success
         assert "bar" in steps[1].message
 
+    def test_mason_all_ok_on_stderr_succeeds_silently(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stdout="", stderr="mason OK foo\nmason OK bar\n"),
+            self._result(),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert steps[1].success
+        assert steps[1].message == ""
+
     def test_mason_inconclusive_from_stderr(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
