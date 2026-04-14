@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **sysup**: `sysup nvim` mason step now fails when individual mason tools fail to install, reporting the missing tool names and a tail of `mason.log` instead of silently returning success
+
 ## [0.8.6] - 2026-04-12
 
 ### Added

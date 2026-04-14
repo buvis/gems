@@ -52,3 +52,11 @@ and nvim-treesitter. Safe to run during dotfiles bootstrap.
 .. code-block:: bash
 
     sysup nvim
+
+The mason step reports per-tool status. After ``MasonToolsUpdateSync`` finishes,
+it checks every name in ``mason-tool-installer``'s ``ensure_installed`` list
+against ``mason-registry``. If any expected tool is not installed, the step
+fails with the tool names and a tail of ``mason.log`` (last ~200 lines, capped
+at 8 KiB) so the underlying install error is visible. If ``mason-registry`` or
+``mason-tool-installer`` cannot be loaded, the step succeeds with an
+``INCONCLUSIVE`` note rather than failing.
