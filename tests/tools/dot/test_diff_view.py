@@ -541,6 +541,25 @@ class TestDiffViewScroll:
         # last hunk has 4 content lines -> bottom target = 7 + 4 = 11
         assert calls[-1].y == 11
 
+    def test_initial_load_single_hunk_targets_header_not_bottom(self) -> None:
+        # Regression: opening a single-hunk file should land at the hunk header,
+        # not at the bottom of the hunk (focused_hunk index 0 is also the last
+        # but is the initial state, not a navigation result).
+        widget = DiffView(id="diff")
+        calls: list[Region] = []
+        original = widget.scroll_to_region
+
+        def _capture(region: Region, *args: object, **kwargs: object) -> None:
+            calls.append(region)
+            original(region, *args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.update_diff(SINGLE_HUNK, path="single.py")
+        # SINGLE_HUNK has 2 file header lines -> hunk header at y=2.
+        # Bottom of single hunk would be 2 + 4 = 6. Must NOT be that.
+        if calls:
+            assert calls[-1].y == 2
+
     def test_scroll_to_non_last_hunk_targets_header(self) -> None:
         # Build 3-hunk diff so middle hunk navigation can be tested.
         three_hunks = "\n".join(
