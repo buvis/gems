@@ -223,6 +223,50 @@ class TestCommandNvim:
         assert steps[1].success
         assert "INCONCLUSIVE" in steps[1].message
 
+    def test_mason_reads_probe_output_from_stderr(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mocker.patch.object(CommandNvim, "_read_mason_log_tail", return_value="")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stdout="", stderr="mason OK foo\nmason FAIL bar\n"),
+            self._result(),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert not steps[1].success
+        assert "bar" in steps[1].message
+
+    def test_mason_combines_stdout_and_stderr(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mocker.patch.object(CommandNvim, "_read_mason_log_tail", return_value="")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stdout="mason OK foo\n", stderr="mason FAIL bar\n"),
+            self._result(),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert not steps[1].success
+        assert "bar" in steps[1].message
+
+    def test_mason_inconclusive_from_stderr(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stdout="", stderr="mason INCONCLUSIVE mason-registry unavailable\n"),
+            self._result(),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert steps[1].success
+        assert "INCONCLUSIVE" in steps[1].message
+
     def test_mason_nonzero_returncode_includes_stdout_and_stderr(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
