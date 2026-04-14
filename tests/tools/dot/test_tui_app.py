@@ -504,3 +504,146 @@ class TestMainScreenHunkStaging:
                 await pilot.pause()
 
                 ops.apply_patch_reverse.assert_called_once()
+
+
+class TestMainScreenRevert:
+    @pytest.mark.anyio
+    async def test_r_on_unstaged_hunk_shows_modal_and_applies_on_confirm(self) -> None:
+        from dot.tui.app import DotApp
+        from dot.tui.widgets import RevertConfirmModal
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_HUNK_ENTRIES)
+            ops.diff.return_value = _HUNK_DIFF
+            ops.apply_reverse_to_worktree.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                app.screen.query_one("#diff").focus()
+                await pilot.pause()
+
+                await pilot.press("r")
+                await pilot.pause()
+
+                assert isinstance(app.screen, RevertConfirmModal)
+                ops.apply_reverse_to_worktree.assert_not_called()
+
+                await pilot.press("y")
+                await pilot.pause()
+
+                ops.apply_reverse_to_worktree.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_r_on_unstaged_hunk_cancels_on_n(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_HUNK_ENTRIES)
+            ops.diff.return_value = _HUNK_DIFF
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                app.screen.query_one("#diff").focus()
+                await pilot.pause()
+
+                await pilot.press("r")
+                await pilot.pause()
+                await pilot.press("n")
+                await pilot.pause()
+
+                ops.apply_reverse_to_worktree.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_r_in_line_select_mode_uses_partial_patch(self) -> None:
+        from dot.tui.app import DotApp
+        from dot.tui.patch import Hunk, build_partial_revert_patch
+        from dot.tui.widgets.diff_view import DiffView
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_HUNK_ENTRIES)
+            ops.diff.return_value = _HUNK_DIFF
+            ops.apply_reverse_to_worktree.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                app.screen.query_one("#diff").focus()
+                await pilot.pause()
+
+                # Enter line-select mode, toggle the one `+` line
+                await pilot.press("v")
+                await pilot.pause()
+                diff_view = app.screen.query_one("#diff", DiffView)
+                diff_view.action_toggle_line()
+                await pilot.pause()
+
+                await pilot.press("r")
+                await pilot.pause()
+                await pilot.press("y")
+                await pilot.pause()
+
+                assert ops.apply_reverse_to_worktree.called
+                sent_patch = ops.apply_reverse_to_worktree.call_args[0][0]
+
+                # Reconstruct the expected patch from the focused hunk.
+                hunk = Hunk(
+                    header="@@ -1,3 +1,4 @@",
+                    lines=(" line1", "+added", " line2", " line3"),
+                    start_old=1,
+                    count_old=3,
+                    start_new=1,
+                    count_new=4,
+                )
+                expected = build_partial_revert_patch("a.txt", hunk, {1})
+                assert sent_patch == expected
+
+    @pytest.mark.anyio
+    async def test_r_on_staged_view_is_noop_and_shows_message(self) -> None:
+        from dot.tui.app import DotApp
+
+        staged_entries = [FileEntry(path="s.txt", status="M ")]
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(staged_entries)
+            ops.diff.return_value = _HUNK_DIFF
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                # Focus staged pane so FileSelected fires for staged file
+                await pilot.press("tab")
+                await pilot.pause()
+                app.screen.query_one("#diff").focus()
+                await pilot.pause()
+
+                await pilot.press("r")
+                await pilot.pause()
+
+                ops.apply_reverse_to_worktree.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_confirm_revert_false_skips_modal(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_HUNK_ENTRIES)
+            ops.diff.return_value = _HUNK_DIFF
+            ops.apply_reverse_to_worktree.return_value = CommandResult(success=True)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test", confirm_revert=False)
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                app.screen.query_one("#diff").focus()
+                await pilot.pause()
+
+                await pilot.press("r")
+                await pilot.pause()
+
+                ops.apply_reverse_to_worktree.assert_called_once()
