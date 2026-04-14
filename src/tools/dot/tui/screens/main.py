@@ -7,8 +7,16 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Footer
 
-from dot.tui.patch import build_hunk_patch, build_line_patch
-from dot.tui.widgets import CommitModal, DiffView, FileListWidget, GitignoreModal, PassphraseModal, StatusBar
+from dot.tui.patch import build_hunk_patch, build_line_patch, build_partial_revert_patch
+from dot.tui.widgets import (
+    CommitModal,
+    DiffView,
+    FileListWidget,
+    GitignoreModal,
+    PassphraseModal,
+    RevertConfirmModal,
+    StatusBar,
+)
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -94,11 +102,12 @@ class MainScreen(Screen[None]):
 
     _FOCUS_ORDER = ["unstaged", "staged", "diff"]
 
-    def __init__(self, git_ops: GitOps) -> None:
+    def __init__(self, git_ops: GitOps, *, confirm_revert: bool = True) -> None:
         super().__init__()
         self._git_ops = git_ops
         self._current_diff_path: str = ""
         self._current_diff_staged: bool = False
+        self._confirm_revert = confirm_revert
 
     def compose(self) -> ComposeResult:
         yield StatusBar(id="status-bar")
@@ -321,3 +330,54 @@ class MainScreen(Screen[None]):
         diff_view.clear_scroll_state(self._current_diff_path)
         diff_text = self._git_ops.diff(self._current_diff_path, staged=self._current_diff_staged)
         diff_view.update_diff(diff_text or "", staged=self._current_diff_staged, path=self._current_diff_path)
+
+    def on_diff_view_revert_requested(self, message: DiffView.RevertRequested) -> None:
+        diff_view = self.query_one("#diff", DiffView)
+        if diff_view.is_staged:
+            self._show_message("cannot revert from staged view")
+            return
+        if not self._current_diff_path:
+            return
+
+        hunk = message.hunk
+        if message.line_select_mode and message.selected_line_indices:
+            patch = build_partial_revert_patch(self._current_diff_path, hunk, set(message.selected_line_indices))
+            if patch is None:
+                self._show_message("nothing selected to revert")
+                return
+            plus = sum(1 for i in message.selected_line_indices if hunk.lines[i].startswith("+"))
+            minus = sum(1 for i in message.selected_line_indices if hunk.lines[i].startswith("-"))
+        else:
+            patch = build_hunk_patch(self._current_diff_path, hunk)
+            plus = sum(1 for ln in hunk.lines if ln.startswith("+"))
+            minus = sum(1 for ln in hunk.lines if ln.startswith("-"))
+
+        path = self._current_diff_path
+
+        def _do_revert() -> None:
+            result = self._git_ops.apply_reverse_to_worktree(patch)
+            if not result.success:
+                self._show_message(f"revert failed: {result.error}")
+                return
+            self.refresh_status()
+            diff_view.clear_scroll_state(path)
+            diff_text = self._git_ops.diff(path, staged=False)
+            diff_view.update_diff(diff_text or "", staged=False, path=path)
+
+        if not self._confirm_revert:
+            _do_revert()
+            return
+
+        def _on_confirm(confirmed: bool | None) -> None:
+            if confirmed:
+                _do_revert()
+
+        self.app.push_screen(
+            RevertConfirmModal(
+                path=path,
+                hunk_header=hunk.header,
+                plus_count=plus,
+                minus_count=minus,
+            ),
+            callback=_on_confirm,
+        )

@@ -10,7 +10,7 @@ from buvis.pybase.configuration import buvis_options, get_settings
 from dot.settings import DotSettings
 
 
-def _launch_tui(theme: str = "textual-dark") -> None:
+def _launch_tui(theme: str = "textual-dark", *, confirm_revert: bool = True) -> None:
     try:
         from dot.tui.app import DotApp
     except ImportError:
@@ -18,7 +18,7 @@ def _launch_tui(theme: str = "textual-dark") -> None:
         raise SystemExit(1)
 
     dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    DotApp(dotfiles_root=dotfiles_root, theme=theme).run()
+    DotApp(dotfiles_root=dotfiles_root, theme=theme, confirm_revert=confirm_revert).run()
 
 
 @click.group(invoke_without_command=True, help="CLI for bare repo dotfiles")
@@ -27,7 +27,7 @@ def _launch_tui(theme: str = "textual-dark") -> None:
 def cli(ctx: click.Context) -> None:
     if ctx.invoked_subcommand is None:
         settings = get_settings(ctx, DotSettings)
-        _launch_tui(theme=settings.theme)
+        _launch_tui(theme=settings.theme, confirm_revert=settings.confirm_revert)
 
 
 @cli.command("tui", help="Launch dotfiles TUI")

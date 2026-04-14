@@ -64,14 +64,21 @@ class DotApp(App[None]):
         Binding("q", "quit", "Quit"),
     ]
 
-    def __init__(self, dotfiles_root: str, theme: str = "textual-dark") -> None:
+    def __init__(
+        self,
+        dotfiles_root: str,
+        theme: str = "textual-dark",
+        *,
+        confirm_revert: bool = True,
+    ) -> None:
         super().__init__()
         shell = ShellAdapter(suppress_logging=True)
         self._git_ops = GitOps(shell, dotfiles_root)
         self.theme = theme
+        self._confirm_revert = confirm_revert
 
     def on_mount(self) -> None:
-        self.push_screen(MainScreen(self._git_ops))
+        self.push_screen(MainScreen(self._git_ops, confirm_revert=self._confirm_revert))
 
     async def action_quit(self) -> None:
         uncommitted = self._git_ops.has_uncommitted_changes()
