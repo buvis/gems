@@ -787,3 +787,104 @@ class TestAutoUpdateHook:
         runner.invoke(cmd, [])
 
         mock_update.assert_not_called()
+
+
+class TestUpdateFlag:
+    """Tests for the user-initiated --update flag."""
+
+    def test_update_option_in_help(self, runner: CliRunner) -> None:
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--help"])
+
+        assert "--update" in result.output
+
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_flag_triggers_force_update(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        executed: list[bool] = []
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            executed.append(True)
+
+        result = runner.invoke(cmd, ["--update"])
+
+        mock_force.assert_called_once()
+        assert isinstance(mock_force.call_args.args[0], GlobalSettings)
+        assert result.exit_code == 0
+        assert executed == []  # command body short-circuited
+
+    @patch("buvis.pybase.updater.force_update", return_value=1)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_flag_propagates_nonzero_exit_code(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--update"])
+
+        mock_force.assert_called_once()
+        assert result.exit_code == 1
+
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_flag_skips_passive_check(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        """When --update is in argv, the passive auto-update check must not fire."""
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        runner.invoke(cmd, ["--update"])
+
+        mock_force.assert_called_once()
+        mock_passive.assert_not_called()
+
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_flag_skips_passive_check_on_group(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        def sub() -> None:
+            pass
+
+        runner.invoke(cli, ["--update", "sub"])
+
+        mock_force.assert_called_once()
+        mock_passive.assert_not_called()
+
+    @patch("buvis.pybase.updater.force_update")
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_no_update_flag_still_runs_passive_check(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        """Baseline: without --update, the passive check still fires and force_update does not."""
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        runner.invoke(cmd, [])
+
+        mock_force.assert_not_called()
+        mock_passive.assert_called_once()

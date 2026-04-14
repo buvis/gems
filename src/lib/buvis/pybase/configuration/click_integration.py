@@ -102,12 +102,12 @@ def _install_parse_args_patch() -> None:
     original_group_parse_args = click.Group.parse_args
 
     def patched_command_parse_args(self: click.Command, ctx: click.Context, args: list[str]) -> list[str]:
-        if self.callback in _buvis_callbacks:
+        if self.callback in _buvis_callbacks and "--update" not in args:
             _run_update_check_once(ctx)
         return original_command_parse_args(self, ctx, args)
 
     def patched_group_parse_args(self: click.Group, ctx: click.Context, args: list[str]) -> list[str]:
-        if self.callback in _buvis_callbacks:
+        if self.callback in _buvis_callbacks and "--update" not in args:
             _run_update_check_once(ctx)
         return original_group_parse_args(self, ctx, args)
 
@@ -116,6 +116,17 @@ def _install_parse_args_patch() -> None:
 
 
 _install_parse_args_patch()
+
+
+def _update_callback(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
+    """Force-check PyPI and upgrade if newer version is available, then exit."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    from buvis.pybase.updater import force_update
+
+    exit_code = force_update(GlobalSettings())
+    ctx.exit(exit_code)
 
 
 def _feedback_callback(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
@@ -157,6 +168,14 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             expose_value=False,
             callback=_feedback_callback,
             help="Open feedback form in browser.",
+        )
+        @click.option(
+            "--update",
+            is_flag=True,
+            is_eager=True,
+            expose_value=False,
+            callback=_update_callback,
+            help="Force-check for updates and upgrade if newer version is available.",
         )
         @click.option(
             "--config",
