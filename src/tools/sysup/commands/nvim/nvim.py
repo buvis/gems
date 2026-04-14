@@ -103,7 +103,8 @@ class CommandNvim:
 
         stdout = result.stdout or ""
         stderr = result.stderr or ""
-        lines = stdout.splitlines()
+        combined = (stdout + ("\n" if stdout and stderr else "") + stderr).strip()
+        lines = combined.splitlines()
         failed = [line[len("mason FAIL ") :].strip() for line in lines if line.startswith("mason FAIL ")]
         inconclusive = [line for line in lines if line.startswith("mason INCONCLUSIVE")]
         probe_ran = any(line.startswith(("mason OK ", "mason FAIL ", "mason INCONCLUSIVE")) for line in lines)
