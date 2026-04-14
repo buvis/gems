@@ -534,6 +534,19 @@ class TestMainScreenRevert:
                 await pilot.pause()
 
                 ops.apply_reverse_to_worktree.assert_called_once()
+                from dot.tui.patch import Hunk, build_hunk_patch
+
+                expected_hunk = Hunk(
+                    header="@@ -1,3 +1,4 @@",
+                    lines=(" line1", "+added", " line2", " line3"),
+                    start_old=1,
+                    count_old=3,
+                    start_new=1,
+                    count_new=4,
+                )
+                expected_patch = build_hunk_patch("a.txt", expected_hunk)
+                sent_patch = ops.apply_reverse_to_worktree.call_args[0][0]
+                assert sent_patch == expected_patch
 
     @pytest.mark.anyio
     async def test_r_on_unstaged_hunk_cancels_on_n(self) -> None:

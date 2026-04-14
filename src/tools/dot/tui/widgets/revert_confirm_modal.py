@@ -28,6 +28,7 @@ class RevertConfirmModal(ModalScreen[bool]):
 
     BINDINGS = [
         Binding("y", "confirm", "Yes"),
+        Binding("enter", "confirm", "Yes"),
         Binding("n", "cancel", "No"),
         Binding("escape", "cancel", "Cancel"),
     ]
@@ -44,7 +45,7 @@ class RevertConfirmModal(ModalScreen[bool]):
             yield Label(f"Revert changes in {self._path}?")
             yield Label(self._hunk_header, classes="dim")
             yield Label(f"+{self._plus_count} -{self._minus_count} will be reverted from the working tree")
-            yield Label("y = yes, n/Esc = cancel", classes="dim")
+            yield Label("y/Enter = yes, n/Esc = cancel", classes="dim")
 
     def action_confirm(self) -> None:
         self.dismiss(True)
