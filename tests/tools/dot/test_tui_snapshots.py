@@ -103,6 +103,51 @@ class TestMainScreenSnapshots:
             assert snap_compare(app, terminal_size=terminal_size)
 
 
+def _very_long_single_hunk_diff() -> str:
+    """Build a diff with one hunk taller than any typical viewport."""
+    lines = [
+        "diff --git a/long.txt b/long.txt",
+        "index 1a2b3c4..5d6e7f8 100644",
+        "--- a/long.txt",
+        "+++ b/long.txt",
+        "@@ -1,80 +1,80 @@",
+    ]
+    for i in range(1, 81):
+        if i % 10 == 0:
+            lines.append(f"-old_line_{i:03d}='before'")
+            lines.append(f"+new_line_{i:03d}='after'")
+        else:
+            lines.append(f" context_line_{i:03d}='same'")
+    return "\n".join(lines)
+
+
+class TestDiffViewBottomScrollSnapshot:
+    @pytest.mark.snapshot
+    @pytest.mark.dot
+    def test_diff_pane_shows_bottom_after_shift_g(self, snap_compare):
+        from dot.tui.app import DotApp
+
+        mock_ops = _mock_git_ops_with_content()
+        mock_ops.diff.return_value = _very_long_single_hunk_diff()
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as cls:
+            cls.return_value = mock_ops
+            app = DotApp(dotfiles_root="/tmp/test")
+
+            async def scroll_to_bottom(pilot):
+                await pilot.pause()
+                # Tab through panes until DiffView has focus, then press G.
+                for _ in range(3):
+                    if pilot.app.focused is not None and pilot.app.focused.id == "diff":
+                        break
+                    await pilot.press("tab")
+                    await pilot.pause()
+                await pilot.press("G")
+                await pilot.pause()
+
+            assert snap_compare(app, terminal_size=(120, 40), run_before=scroll_to_bottom)
+
+
 class TestBrowseScreenSnapshots:
     @pytest.mark.snapshot
     @pytest.mark.dot
