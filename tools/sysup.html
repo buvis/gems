@@ -153,6 +153,13 @@ and nvim-treesitter. Safe to run during dotfiles bootstrap.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>nvim
 </pre></div>
 </div>
+<p>The mason step reports per-tool status. After <code class="docutils literal notranslate"><span class="pre">MasonToolsUpdateSync</span></code> finishes,
+it checks every name in <code class="docutils literal notranslate"><span class="pre">mason-tool-installer</span></code>’s <code class="docutils literal notranslate"><span class="pre">ensure_installed</span></code> list
+against <code class="docutils literal notranslate"><span class="pre">mason-registry</span></code>. If any expected tool is not installed, the step
+fails with the tool names and a tail of <code class="docutils literal notranslate"><span class="pre">mason.log</span></code> (last ~200 lines, capped
+at 8 KiB) so the underlying install error is visible. If <code class="docutils literal notranslate"><span class="pre">mason-registry</span></code> or
+<code class="docutils literal notranslate"><span class="pre">mason-tool-installer</span></code> cannot be loaded, the step succeeds with an
+<code class="docutils literal notranslate"><span class="pre">INCONCLUSIVE</span></code> note rather than failing.</p>
 </section>
 </section>
 </section>
