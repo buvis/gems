@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **dot**: scroll diff pane to reveal content past the last hunk; add `ctrl+d`/`ctrl+u` half-page, `pagedown`/`pageup`, `g` (top), `G` (bottom) bindings (#77)
+
 ## [0.8.7] - 2026-04-14
 
 ### Changed
