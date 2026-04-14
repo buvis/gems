@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **dot**: scroll diff pane to reveal content past the last hunk; add `ctrl+d`/`ctrl+u` half-page, `pagedown`/`pageup`, `g` (top), `G` (bottom) bindings (#77)
 - **sysup**: capture mason probe output from stderr so per-tool OK/FAIL/INCONCLUSIVE states are reported again (#86)
+- **sysup**: read mason ensure_installed from lazy.nvim plugin spec so per-tool install failures are detected (#87)
 
 ## [0.8.7] - 2026-04-14
 
