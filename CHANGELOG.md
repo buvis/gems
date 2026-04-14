@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.7] - 2026-04-14
+
 ### Changed
 
 - **sysup**: `sysup nvim` mason step now fails when individual mason tools fail to install, reporting the missing tool names and a tail of `mason.log` instead of silently returning success
@@ -264,7 +266,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.6...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.8.7...HEAD
+[0.8.7]: https://github.com/buvis/gems/compare/gems-v0.8.6...gems-v0.8.7
 [0.8.6]: https://github.com/buvis/gems/compare/gems-v0.8.5...gems-v0.8.6
 [0.8.5]: https://github.com/buvis/gems/compare/gems-v0.8.4...gems-v0.8.5
 [0.8.4]: https://github.com/buvis/gems/compare/gems-v0.8.3...gems-v0.8.4
