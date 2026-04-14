@@ -340,7 +340,10 @@ class MainScreen(Screen[None]):
             return
 
         hunk = message.hunk
-        if message.line_select_mode and message.selected_line_indices:
+        if message.line_select_mode:
+            if not message.selected_line_indices:
+                self._show_message("nothing selected to revert")
+                return
             patch = build_partial_revert_patch(self._current_diff_path, hunk, set(message.selected_line_indices))
             if patch is None:
                 self._show_message("nothing selected to revert")

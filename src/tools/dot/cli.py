@@ -34,7 +34,7 @@ def cli(ctx: click.Context) -> None:
 @click.pass_context
 def tui(ctx: click.Context) -> None:
     settings = get_settings(ctx, DotSettings)
-    _launch_tui(theme=settings.theme)
+    _launch_tui(theme=settings.theme, confirm_revert=settings.confirm_revert)
 
 
 @cli.command("status", help="Report status")

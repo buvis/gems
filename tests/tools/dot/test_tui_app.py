@@ -628,6 +628,31 @@ class TestMainScreenRevert:
                 ops.apply_reverse_to_worktree.assert_not_called()
 
     @pytest.mark.anyio
+    async def test_r_in_line_select_mode_with_empty_selection_is_noop(self) -> None:
+        from dot.tui.app import DotApp
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_HUNK_ENTRIES)
+            ops.diff.return_value = _HUNK_DIFF
+            mock_cls.return_value = ops
+
+            # confirm_revert=False so a bug would hit git directly without a modal
+            app = DotApp(dotfiles_root="/tmp/test", confirm_revert=False)
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                app.screen.query_one("#diff").focus()
+                await pilot.pause()
+
+                # Enter line-select mode but do NOT toggle any line
+                await pilot.press("v")
+                await pilot.pause()
+
+                await pilot.press("r")
+                await pilot.pause()
+
+                ops.apply_reverse_to_worktree.assert_not_called()
+
+    @pytest.mark.anyio
     async def test_confirm_revert_false_skips_modal(self) -> None:
         from dot.tui.app import DotApp
 
