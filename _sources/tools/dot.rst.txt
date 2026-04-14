@@ -19,6 +19,9 @@ Configuration
    * - ``add_file_path``
      - *none*
      - Default file to stage in ``add``
+   * - ``confirm_revert``
+     - ``true``
+     - Show confirmation modal before reverting a hunk or selected lines (``r``). Set to ``false`` to skip the prompt.
 
 Commands
 --------
@@ -45,6 +48,7 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 - ``j``/``k`` - navigate changed lines (in line-select mode)
 - ``Space`` - toggle line selection (in line-select mode)
 - ``Enter`` - stage selected lines (in line-select mode)
+- ``r`` - revert focused hunk (in diff pane, unstaged view) or selected lines (in line-select mode); confirm by default. No-op on the staged view.
 - ``Escape`` - exit line-select mode
 - ``c`` - commit staged files (opens message input)
 - ``d`` - delete tracked file (with confirmation)
@@ -54,7 +58,7 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 - ``b`` - open file browser (browse untracked files, add to tracking)
 - ``S`` (shift+s) - open secrets panel (manage git-secret files)
 - ``e`` - quick encrypt (register focused file with git-secret)
-- ``r`` - refresh all panes
+- ``r`` (in file panes) - refresh all panes
 - ``q`` - quit
 
 **Browse view** (``b``):

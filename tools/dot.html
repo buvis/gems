@@ -137,6 +137,10 @@
 <td><p><em>none</em></p></td>
 <td><p>Default file to stage in <code class="docutils literal notranslate"><span class="pre">add</span></code></p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">confirm_revert</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td><p>Show confirmation modal before reverting a hunk or selected lines (<code class="docutils literal notranslate"><span class="pre">r</span></code>). Set to <code class="docutils literal notranslate"><span class="pre">false</span></code> to skip the prompt.</p></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -161,6 +165,7 @@ dot<span class="w"> </span>tui<span class="w">                     </span><span 
 <li><p><code class="docutils literal notranslate"><span class="pre">j</span></code>/<code class="docutils literal notranslate"><span class="pre">k</span></code> - navigate changed lines (in line-select mode)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Space</span></code> - toggle line selection (in line-select mode)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Enter</span></code> - stage selected lines (in line-select mode)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> - revert focused hunk (in diff pane, unstaged view) or selected lines (in line-select mode); confirm by default. No-op on the staged view.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Escape</span></code> - exit line-select mode</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">c</span></code> - commit staged files (opens message input)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">d</span></code> - delete tracked file (with confirmation)</p></li>
@@ -170,7 +175,7 @@ dot<span class="w"> </span>tui<span class="w">                     </span><span 
 <li><p><code class="docutils literal notranslate"><span class="pre">b</span></code> - open file browser (browse untracked files, add to tracking)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">S</span></code> (shift+s) - open secrets panel (manage git-secret files)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">e</span></code> - quick encrypt (register focused file with git-secret)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> - refresh all panes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> (in file panes) - refresh all panes</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">q</span></code> - quit</p></li>
 </ul>
 <p><strong>Browse view</strong> (<code class="docutils literal notranslate"><span class="pre">b</span></code>):</p>
