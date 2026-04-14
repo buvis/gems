@@ -100,8 +100,10 @@ class TestCreateNoteApp:
             await pilot.pause()
             title_input = app.query_one("#title-input", Input)
             title_input.value = "My Note"
+            await pilot.pause()
             tags_input = app.query_one("#tags-input", Input)
             tags_input.value = "tag1, tag2"
+            await pilot.pause()
             answers = app._gather_answers()
             assert answers["title"] == "My Note"
             assert answers["tags"] == "tag1, tag2"
