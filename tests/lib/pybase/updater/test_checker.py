@@ -283,7 +283,6 @@ class TestFetchLatestVersion:
             result = fetch_latest_version()
 
         assert result == "0.9.0"
-        assert mock_write.called
         from buvis.pybase.updater.state import DEFAULT_STATE_DIR
 
         assert mock_write.call_args.args[0] == DEFAULT_STATE_DIR

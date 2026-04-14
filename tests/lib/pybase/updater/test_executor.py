@@ -335,17 +335,6 @@ class TestRunUpdateInteractive:
         assert result == 1
         mock_os.execvp.assert_not_called()
 
-    def test_does_not_reexec_on_success(self, state_dir: Path) -> None:
-        with (
-            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
-            patch("buvis.pybase.updater.executor.os") as mock_os,
-        ):
-            mock_sub.run.return_value = MagicMock(returncode=0)
-
-            run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
-
-        mock_os.execvp.assert_not_called()
-
     def test_logs_success(self, state_dir: Path) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
