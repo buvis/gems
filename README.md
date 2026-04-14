@@ -39,6 +39,16 @@ Then run `mise install`.
 
 ## Update
 
+Any tool accepts `--update` to force-check PyPI and upgrade if a newer release is available:
+
+```bash
+dot --update
+```
+
+This prints `buvis-gems X.Y.Z is up to date.` or streams the installer upgrade output.
+
+You can also upgrade manually with your package manager:
+
 ### uv
 
 ```bash

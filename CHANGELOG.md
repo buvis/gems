@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **all tools**: `--update` flag force-checks PyPI and upgrades if a newer buvis-gems release is available; prints status or "already up to date"
+
 ## [0.9.0] - 2026-04-14
 
 ### Added
