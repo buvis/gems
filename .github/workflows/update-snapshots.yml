@@ -28,15 +28,19 @@ jobs:
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: "3.14"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: uv sync --all-extras --group test --group dev
 
       - name: Regenerate snapshot baselines
+        env:
+          BUVIS_SNAPSHOT_CANONICAL: "1"
         run: uv run pytest -m "${{ inputs.marker }}" --snapshot-update
 
       - name: Verify snapshots now pass
+        env:
+          BUVIS_SNAPSHOT_CANONICAL: "1"
         run: uv run pytest -m "${{ inputs.marker }}"
 
       - name: Open pull request with updated baselines
