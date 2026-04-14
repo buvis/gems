@@ -545,3 +545,45 @@ class TestGitOpsApplyPatchReverse:
 
         assert result.success is False
         assert result.error is not None
+
+
+class TestGitOpsApplyReverseToWorktree:
+    def test_success(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_ops.apply_reverse_to_worktree("diff --git a/.bashrc\n-old\n+new")
+
+        assert result.success is True
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg apply --reverse" in cmd
+        assert "--cached" not in cmd
+
+    def test_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("error: patch does not apply", "")
+
+        result = git_ops.apply_reverse_to_worktree("bad patch")
+
+        assert result.success is False
+        assert result.error == "error: patch does not apply"
+
+    def test_temp_file_cleaned_up_on_success(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        git_ops.apply_reverse_to_worktree("diff content")
+
+        cmd = shell.exe.call_args[0][0]
+        parts = cmd.split("cfg apply --reverse ")
+        assert len(parts) == 2
+        tmpfile = parts[1].strip()
+        assert not Path(tmpfile).exists()
+
+    def test_temp_file_cleaned_up_on_failure(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.exe.return_value = ("apply failed", "")
+
+        git_ops.apply_reverse_to_worktree("bad patch")
+
+        cmd = shell.exe.call_args[0][0]
+        parts = cmd.split("cfg apply --reverse ")
+        assert len(parts) == 2
+        tmpfile = parts[1].strip()
+        assert not Path(tmpfile).exists()
