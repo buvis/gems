@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from buvis.pybase.updater.detector import InstallerInfo
-from buvis.pybase.updater.executor import run_update
+from buvis.pybase.updater.executor import run_update, run_update_interactive
 
 
 @pytest.fixture()
@@ -275,6 +275,97 @@ class TestRunUpdateExecvpFailure:
 
             with pytest.raises(SystemExit):
                 run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+
+class TestRunUpdateInteractive:
+    def test_success_returns_zero(self, state_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+        ):
+            mock_sub.run.return_value = MagicMock(returncode=0)
+
+            result = run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        assert result == 0
+        mock_os.execvp.assert_not_called()
+        call = mock_sub.run.call_args_list[0]
+        assert call.args[0] == ("uv", "tool", "upgrade", "buvis-gems")
+        assert call.kwargs.get("capture_output") is False
+        out = capsys.readouterr().out
+        assert "0.7.0" in out and "0.8.0" in out
+
+    def test_subprocess_nonzero_returns_one(self, state_dir: Path) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+            patch("buvis.pybase.updater.executor.append_log") as mock_log,
+        ):
+            mock_sub.run.return_value = MagicMock(returncode=2)
+
+            result = run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        assert result == 1
+        mock_os.execvp.assert_not_called()
+        assert any(level == "error" for _, level, _ in (c.args for c in mock_log.call_args_list))
+
+    def test_timeout_returns_one(self, state_dir: Path) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+        ):
+            mock_sub.run.side_effect = subprocess.TimeoutExpired(cmd="uv", timeout=120)
+            mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+
+            result = run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        assert result == 1
+        mock_os.execvp.assert_not_called()
+
+    def test_file_not_found_returns_one(self, state_dir: Path) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+        ):
+            mock_sub.run.side_effect = FileNotFoundError("uv not found")
+            mock_sub.TimeoutExpired = subprocess.TimeoutExpired
+
+            result = run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        assert result == 1
+        mock_os.execvp.assert_not_called()
+
+    def test_does_not_reexec_on_success(self, state_dir: Path) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+        ):
+            mock_sub.run.return_value = MagicMock(returncode=0)
+
+            run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        mock_os.execvp.assert_not_called()
+
+    def test_logs_success(self, state_dir: Path) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.append_log") as mock_log,
+        ):
+            mock_sub.run.return_value = MagicMock(returncode=0)
+
+            run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        assert any(level == "info" for _, level, _ in (c.args for c in mock_log.call_args_list))
+
+    def test_none_upgrade_command_returns_one(self, state_dir: Path) -> None:
+        """Defensive: if caller passes unknown installer, return 1 without invoking subprocess."""
+        installer = InstallerInfo(method="unknown", upgrade_command=None)
+
+        with patch("buvis.pybase.updater.executor.subprocess") as mock_sub:
+            result = run_update_interactive("0.7.0", "0.8.0", installer, state_dir=state_dir)
+
+        assert result == 1
+        mock_sub.run.assert_not_called()
 
 
 class TestRunUpdateUnknownInstaller:

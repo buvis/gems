@@ -11,7 +11,7 @@ from subprocess import TimeoutExpired
 from .detector import InstallerInfo
 from .state import DEFAULT_STATE_DIR, append_log
 
-__all__ = ["run_update"]
+__all__ = ["run_update", "run_update_interactive"]
 
 _UPGRADE_TIMEOUT = 120
 _MISE_WHERE_TIMEOUT = 10
@@ -70,6 +70,56 @@ def run_update(
 
     append_log(state_dir, "info", f"Updated to {latest}, restarting")
     _reexec_or_exit(installer, state_dir)
+
+
+def run_update_interactive(
+    current: str,
+    latest: str,
+    installer: InstallerInfo,
+    state_dir: Path | None = None,
+) -> int:
+    """Run the upgrade command with live output and return an exit code.
+
+    Unlike ``run_update``, this does not re-exec: it is invoked from the
+    ``--update`` flag's eager callback, which exits Click with the returned
+    code immediately after.
+
+    Returns 0 on success, 1 on any failure (subprocess error, nonzero exit,
+    timeout, or an unknown installer passed by a defensive caller).
+    """
+    if state_dir is None:
+        state_dir = DEFAULT_STATE_DIR
+
+    if installer.upgrade_command is None:
+        append_log(
+            state_dir,
+            "error",
+            f"Cannot upgrade to {latest}: installer unknown.",
+        )
+        return 1
+
+    print(f"Upgrading buvis-gems {current} -> {latest} via {installer.method}...")
+    append_log(state_dir, "info", f"Updating buvis-gems {current} -> {latest} via {installer.method}")
+
+    try:
+        result = subprocess.run(
+            installer.upgrade_command,
+            capture_output=False,
+            timeout=_UPGRADE_TIMEOUT,
+        )
+    except (TimeoutExpired, FileNotFoundError, OSError) as exc:
+        print(f"Update failed: {exc}")
+        append_log(state_dir, "error", f"Update failed: {exc}")
+        return 1
+
+    if result.returncode != 0:
+        print(f"Update failed: installer exited with code {result.returncode}")
+        append_log(state_dir, "error", f"Update failed: exit code {result.returncode}")
+        return 1
+
+    print("Upgraded.")
+    append_log(state_dir, "info", f"Upgraded buvis-gems to {latest}")
+    return 0
 
 
 def _reexec_or_exit(installer: InstallerInfo, state_dir: Path) -> None:
