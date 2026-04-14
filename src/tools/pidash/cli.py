@@ -4,9 +4,11 @@ import time
 from pathlib import Path
 
 import click
+from buvis.pybase.configuration import buvis_options
 
 
 @click.command(help="Read-only TUI dashboard for autopilot PRD cycle progress")
+@buvis_options
 @click.argument(
     "project_path",
     default=None,
