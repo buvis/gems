@@ -558,8 +558,8 @@ class TestDiffViewScroll:
         widget.update_diff(SINGLE_HUNK, path="single.py")
         # SINGLE_HUNK has 2 file header lines -> hunk header at y=2.
         # Bottom of single hunk would be 2 + 4 = 6. Must NOT be that.
-        if calls:
-            assert calls[-1].y == 2
+        assert calls, "_scroll_to_hunk must fire for single-hunk diff with path"
+        assert calls[-1].y == 2
 
     def test_scroll_to_non_last_hunk_targets_header(self) -> None:
         # Build 3-hunk diff so middle hunk navigation can be tested.
