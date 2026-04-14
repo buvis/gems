@@ -213,6 +213,16 @@ class TestCommandNvim:
         assert steps[1].success
         assert "INCONCLUSIVE" in steps[1].message
 
+    def test_mason_no_probe_output_is_inconclusive(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [self._result(), self._result(stdout=""), self._result()]
+
+        steps = list(CommandNvim().execute())
+
+        assert steps[1].success
+        assert "INCONCLUSIVE" in steps[1].message
+
     def test_mason_nonzero_returncode_includes_stdout_and_stderr(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")

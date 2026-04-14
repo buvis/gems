@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+from collections import deque
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -15,17 +16,23 @@ _MASON_LOG_TAIL_BYTES = 8192
 
 _MASON_PROBE_LUA = (
     "lua "
+    "local ok, err = pcall(function() "
     "local ok_reg, r = pcall(require, 'mason-registry') "
     "if not ok_reg then print('mason INCONCLUSIVE mason-registry unavailable') return end "
     "local ok_ti, ti = pcall(require, 'mason-tool-installer') "
     "if not ok_ti or type(ti) ~= 'table' or type(ti.config) ~= 'table' "
     "or type(ti.config.ensure_installed) ~= 'table' then "
     "print('mason INCONCLUSIVE mason-tool-installer config unavailable') return end "
-    "for _, name in ipairs(r.get_installed_package_names()) do print('mason OK ' .. name) end "
+    "local ok_names, names = pcall(r.get_installed_package_names) "
+    "if not ok_names or type(names) ~= 'table' then "
+    "print('mason INCONCLUSIVE mason-registry get_installed_package_names failed') return end "
+    "for _, name in ipairs(names) do print('mason OK ' .. name) end "
     "for _, entry in ipairs(ti.config.ensure_installed) do "
     "local name = type(entry) == 'table' and entry[1] or entry "
-    "if type(name) == 'string' and not r.is_installed(name) then "
-    "print('mason FAIL ' .. name) end end"
+    "if type(name) == 'string' then "
+    "local ok_is, installed = pcall(r.is_installed, name) "
+    "if ok_is and not installed then print('mason FAIL ' .. name) end end end end) "
+    "if not ok then print('mason INCONCLUSIVE probe error: ' .. tostring(err)) end"
 )
 
 
@@ -96,8 +103,10 @@ class CommandNvim:
 
         stdout = result.stdout or ""
         stderr = result.stderr or ""
-        failed = [line[len("mason FAIL ") :].strip() for line in stdout.splitlines() if line.startswith("mason FAIL ")]
-        inconclusive = [line for line in stdout.splitlines() if line.startswith("mason INCONCLUSIVE")]
+        lines = stdout.splitlines()
+        failed = [line[len("mason FAIL ") :].strip() for line in lines if line.startswith("mason FAIL ")]
+        inconclusive = [line for line in lines if line.startswith("mason INCONCLUSIVE")]
+        probe_ran = any(line.startswith(("mason OK ", "mason FAIL ", "mason INCONCLUSIVE")) for line in lines)
 
         if result.returncode != 0:
             message = "\n".join(p for p in (stderr.strip(), stdout.strip()) if p) or "unknown error"
@@ -112,6 +121,13 @@ class CommandNvim:
 
         if inconclusive:
             return StepResult("mason", success=True, message=inconclusive[0])
+
+        if not probe_ran:
+            return StepResult(
+                "mason",
+                success=True,
+                message="mason INCONCLUSIVE probe produced no output",
+            )
 
         return StepResult("mason", success=True)
 
@@ -139,10 +155,10 @@ class CommandNvim:
         for path in candidates:
             try:
                 with path.open("r", encoding="utf-8", errors="replace") as fh:
-                    lines = fh.readlines()
+                    last_lines = deque(fh, maxlen=_MASON_LOG_TAIL_LINES)
             except OSError:
                 continue
-            tail = "".join(lines[-_MASON_LOG_TAIL_LINES:])
+            tail = "".join(last_lines)
             encoded = tail.encode()
             if len(encoded) > _MASON_LOG_TAIL_BYTES:
                 tail = encoded[-_MASON_LOG_TAIL_BYTES:].decode(errors="replace")
