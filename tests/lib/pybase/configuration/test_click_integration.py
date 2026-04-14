@@ -872,6 +872,49 @@ class TestUpdateFlag:
         mock_force.assert_called_once()
         mock_passive.assert_not_called()
 
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_flag_works_after_subcommand(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        """PRD: `dot status --update` must trigger update and not execute status."""
+        executed: list[str] = []
+
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        def sub() -> None:
+            executed.append("ran")
+
+        result = runner.invoke(cli, ["sub", "--update"])
+
+        mock_force.assert_called_once()
+        mock_passive.assert_not_called()
+        assert executed == []
+        assert result.exit_code == 0
+
+    @patch("buvis.pybase.updater.force_update", return_value=1)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_flag_after_subcommand_propagates_exit_code(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        def sub() -> None:
+            pass
+
+        result = runner.invoke(cli, ["sub", "--update"])
+
+        mock_force.assert_called_once()
+        assert result.exit_code == 1
+
     @patch("buvis.pybase.updater.force_update")
     @patch("buvis.pybase.updater.check_and_update")
     def test_no_update_flag_still_runs_passive_check(

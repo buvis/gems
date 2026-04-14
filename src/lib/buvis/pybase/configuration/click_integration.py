@@ -72,6 +72,20 @@ _buvis_callbacks: weakref.WeakSet[Callable[..., Any]] = weakref.WeakSet()
 _parse_args_patch_installed = False
 
 
+def _run_force_update_and_exit(ctx: click.Context) -> None:
+    """Run a user-initiated update and exit Click with its return code.
+
+    Called from the patched ``Group.parse_args`` when ``--update`` appears in
+    argv anywhere (including after a subcommand name). The root-level eager
+    option handles plain ``tool --update``; this handles ``tool sub --update``
+    where the subcommand would otherwise reject the unknown option.
+    """
+    from buvis.pybase.updater import force_update
+
+    exit_code = force_update(GlobalSettings())
+    ctx.exit(exit_code)
+
+
 def _run_update_check_once(ctx: click.Context) -> None:
     """Run the auto-update check at most once per root invocation."""
     root = ctx.find_root()
@@ -107,8 +121,13 @@ def _install_parse_args_patch() -> None:
         return original_command_parse_args(self, ctx, args)
 
     def patched_group_parse_args(self: click.Group, ctx: click.Context, args: list[str]) -> list[str]:
-        if self.callback in _buvis_callbacks and "--update" not in args:
-            _run_update_check_once(ctx)
+        if self.callback in _buvis_callbacks:
+            if "--update" in args:
+                # Intercept --update anywhere in argv so `tool sub --update` works
+                # even though --update is only declared on the root group.
+                _run_force_update_and_exit(ctx)
+            else:
+                _run_update_check_once(ctx)
         return original_group_parse_args(self, ctx, args)
 
     click.Command.parse_args = patched_command_parse_args  # type: ignore[method-assign]
