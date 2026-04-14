@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import re
 
-from dot.tui.patch import Hunk, build_hunk_patch, build_line_patch, parse_diff, reverse_patch
+from dot.tui.patch import (
+    Hunk,
+    build_hunk_patch,
+    build_line_patch,
+    build_partial_revert_patch,
+    parse_diff,
+    reverse_patch,
+)
 
 SINGLE_HUNK_DIFF = """\
 --- a/hello.py
@@ -409,6 +416,102 @@ class TestBuildLinePatch:
         assert patch.startswith("diff --git a/some/path.py b/some/path.py\n")
         assert "\n--- a/some/path.py\n" in patch
         assert "\n+++ b/some/path.py\n" in patch
+
+
+class TestBuildPartialRevertPatch:
+    def test_all_selected_equals_build_hunk_patch(self) -> None:
+        hunk = _make_hunk()
+        # All +/- indices: 1,2 deletions; 3,4 additions
+        patch = build_partial_revert_patch("f.py", hunk, {1, 2, 3, 4})
+        assert patch == build_hunk_patch("f.py", hunk)
+
+    def test_none_selected_returns_none(self) -> None:
+        hunk = _make_hunk()
+        assert build_partial_revert_patch("f.py", hunk, set()) is None
+
+    def test_selecting_only_context_indices_returns_none(self) -> None:
+        hunk = _make_hunk()
+        # indices 0 and 5 are context lines
+        assert build_partial_revert_patch("f.py", hunk, {0, 5}) is None
+
+    def test_mixed_plus_only(self) -> None:
+        hunk = Hunk(
+            header="@@ -1,1 +1,3 @@",
+            lines=(" ctx", "+a", "+b"),
+            start_old=1,
+            count_old=1,
+            start_new=1,
+            count_new=3,
+        )
+        # Select only +a (index 1)
+        patch = build_partial_revert_patch("f.py", hunk, {1})
+        assert patch is not None
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # Body: " ctx", "+a", " b"  (non-selected +b becomes context)
+        assert old_count == 2  # ctx + b(as ctx)
+        assert new_count == 3  # ctx + a + b(as ctx)
+        assert " ctx" in patch
+        assert "+a" in patch
+        assert " b" in patch
+        assert "+b" not in patch
+
+    def test_mixed_minus_only(self) -> None:
+        hunk = Hunk(
+            header="@@ -1,3 +1,1 @@",
+            lines=(" ctx", "-x", "-y"),
+            start_old=1,
+            count_old=3,
+            start_new=1,
+            count_new=1,
+        )
+        # Select only -x (index 1)
+        patch = build_partial_revert_patch("f.py", hunk, {1})
+        assert patch is not None
+        _, old_count, _, new_count = _parse_hunk_header(patch)
+        # Body: " ctx", "-x"  (non-selected -y dropped: not in working tree)
+        assert old_count == 2  # ctx + x
+        assert new_count == 1  # ctx
+        assert " ctx" in patch
+        assert "-x" in patch
+        assert "-y" not in patch
+        assert " y" not in patch  # dropped, not turned into context
+
+    def test_mixed_plus_and_minus(self) -> None:
+        hunk = Hunk(
+            header="@@ -1,3 +1,3 @@",
+            lines=(" ctx", "-old", "+new", " tail"),
+            start_old=1,
+            count_old=3,
+            start_new=1,
+            count_new=3,
+        )
+        # Select both changed lines (1 and 2)
+        patch = build_partial_revert_patch("f.py", hunk, {1, 2})
+        assert patch == build_hunk_patch("f.py", hunk)
+
+    def test_header_preserves_start_positions(self) -> None:
+        hunk = Hunk(
+            header="@@ -10,4 +12,4 @@",
+            lines=(" ctx", "-a", "-b", "+c", "+d", " tail"),
+            start_old=10,
+            count_old=4,
+            start_new=12,
+            count_new=4,
+        )
+        patch = build_partial_revert_patch("f.py", hunk, {1, 3})  # -a and +c
+        assert patch is not None
+        start_old, _, start_new, _ = _parse_hunk_header(patch)
+        assert start_old == 10
+        assert start_new == 12
+
+    def test_patch_has_valid_headers_and_trailing_newline(self) -> None:
+        hunk = _make_hunk()
+        patch = build_partial_revert_patch("some/path.py", hunk, {1, 3})
+        assert patch is not None
+        assert patch.startswith("diff --git a/some/path.py b/some/path.py\n")
+        assert "\n--- a/some/path.py\n" in patch
+        assert "\n+++ b/some/path.py\n" in patch
+        assert patch.endswith("\n")
 
 
 class TestReversePatch:

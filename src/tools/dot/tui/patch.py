@@ -3,7 +3,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-__all__ = ["Hunk", "build_hunk_patch", "build_line_patch", "parse_diff"]
+__all__ = [
+    "Hunk",
+    "build_hunk_patch",
+    "build_line_patch",
+    "build_partial_revert_patch",
+    "parse_diff",
+    "reverse_patch",
+]
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -122,6 +129,58 @@ def build_line_patch(path: str, hunk: Hunk, selected_indices: set[int]) -> str:
         else:
             # context lines always included
             out_lines.append(line)
+
+    old_count = sum(1 for ln in out_lines if ln.startswith(" ") or ln.startswith("-"))
+    new_count = sum(1 for ln in out_lines if ln.startswith(" ") or ln.startswith("+"))
+    header = f"@@ -{hunk.start_old},{old_count} +{hunk.start_new},{new_count} @@"
+
+    parts = [
+        f"diff --git a/{path} b/{path}",
+        f"--- a/{path}",
+        f"+++ b/{path}",
+        header,
+        *out_lines,
+        "",
+    ]
+    return "\n".join(parts)
+
+
+def build_partial_revert_patch(path: str, hunk: Hunk, selected_indices: set[int]) -> str | None:
+    """Build a patch that reverts only selected lines when applied with ``git apply --reverse``.
+
+    The working tree already contains the hunk's ``+`` lines and lacks the ``-`` lines, so
+    non-selected ``+`` lines must appear as context (they stay in the working tree) and
+    non-selected ``-`` lines must be dropped (they are not present, cannot be context).
+
+    Args:
+        path: File path relative to repo root.
+        hunk: Source hunk from the unstaged diff.
+        selected_indices: 0-based indices into ``hunk.lines`` marking which ``+``/``-`` lines
+            to revert.
+
+    Returns:
+        Patch string suitable for ``git apply --reverse``, or ``None`` when no ``+``/``-``
+        line is selected (no-op).
+    """
+    out_lines: list[str] = []
+    kept_change = False
+    for i, line in enumerate(hunk.lines):
+        if line.startswith("+"):
+            if i in selected_indices:
+                out_lines.append(line)
+                kept_change = True
+            else:
+                out_lines.append(" " + line[1:])
+        elif line.startswith("-"):
+            if i in selected_indices:
+                out_lines.append(line)
+                kept_change = True
+            # else: drop — not present in working tree
+        else:
+            out_lines.append(line)
+
+    if not kept_change:
+        return None
 
     old_count = sum(1 for ln in out_lines if ln.startswith(" ") or ln.startswith("-"))
     new_count = sum(1 for ln in out_lines if ln.startswith(" ") or ln.startswith("+"))
