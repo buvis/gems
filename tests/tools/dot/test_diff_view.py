@@ -500,3 +500,128 @@ class TestDiffViewScroll:
         widget.scroll_to_region = _capture  # type: ignore[assignment]
         widget.action_next_hunk()
         assert len(calls) == 0  # already at last hunk, no movement
+
+    def test_scroll_to_last_hunk_targets_bottom(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        calls: list[Region] = []
+        original = widget.scroll_to_region
+
+        def _capture(region: Region, *args: object, **kwargs: object) -> None:
+            calls.append(region)
+            original(region, *args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.action_next_hunk()
+        assert widget.focused_hunk_index == 1
+        # MULTI_HUNK: 2 file header lines, hunk 0 has 4 content lines.
+        # last hunk offset header = 2 + (1 + 4) = 7
+        # last hunk has 4 content lines -> bottom target = 7 + 4 = 11
+        assert calls[-1].y == 11
+
+    def test_scroll_to_non_last_hunk_targets_header(self) -> None:
+        # Build 3-hunk diff so middle hunk navigation can be tested.
+        three_hunks = "\n".join(
+            [
+                "--- a/file.py",
+                "+++ b/file.py",
+                "@@ -1,3 +1,4 @@",
+                " line1",
+                "+added1",
+                " line2",
+                " line3",
+                "@@ -10,3 +11,4 @@",
+                " line10",
+                "+added2",
+                " line11",
+                " line12",
+                "@@ -20,3 +21,4 @@",
+                " line20",
+                "+added3",
+                " line21",
+                " line22",
+            ]
+        )
+        widget = DiffView(id="diff")
+        widget.update_diff(three_hunks)
+        calls: list[Region] = []
+        original = widget.scroll_to_region
+
+        def _capture(region: Region, *args: object, **kwargs: object) -> None:
+            calls.append(region)
+            original(region, *args, **kwargs)
+
+        widget.scroll_to_region = _capture  # type: ignore[assignment]
+        widget.action_next_hunk()  # focus middle (idx 1, not last)
+        # middle hunk header offset = 2 + (1 + 4) = 7 (header only, not bottom)
+        assert widget.focused_hunk_index == 1
+        assert calls[-1].y == 7
+
+
+class TestDiffViewPageScroll:
+    def test_action_page_down_scrolls_half_viewport(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        # Stub size to a known viewport height.
+        from textual.geometry import Size
+
+        widget._size = Size(80, 20)  # type: ignore[attr-defined]
+        calls: list[dict[str, object]] = []
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            calls.append(dict(kwargs))
+
+        widget.scroll_relative = _capture  # type: ignore[assignment]
+        widget.action_page_down()
+        assert len(calls) == 1
+        assert calls[0].get("y") == 10  # half of 20
+
+    def test_action_page_up_scrolls_half_viewport_up(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        from textual.geometry import Size
+
+        widget._size = Size(80, 20)  # type: ignore[attr-defined]
+        calls: list[dict[str, object]] = []
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            calls.append(dict(kwargs))
+
+        widget.scroll_relative = _capture  # type: ignore[assignment]
+        widget.action_page_up()
+        assert len(calls) == 1
+        assert calls[0].get("y") == -10
+
+    def test_action_scroll_top_calls_scroll_home(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        called = {"home": False}
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            called["home"] = True
+
+        widget.scroll_home = _capture  # type: ignore[assignment]
+        widget.action_scroll_top()
+        assert called["home"] is True
+
+    def test_action_scroll_bottom_calls_scroll_end(self) -> None:
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
+        called = {"end": False}
+
+        def _capture(*args: object, **kwargs: object) -> None:
+            called["end"] = True
+
+        widget.scroll_end = _capture  # type: ignore[assignment]
+        widget.action_scroll_bottom()
+        assert called["end"] is True
+
+    def test_page_scroll_bindings_present(self) -> None:
+        keys = {b.key for b in DiffView.BINDINGS}
+        assert "ctrl+d" in keys
+        assert "pagedown" in keys
+        assert "ctrl+u" in keys
+        assert "pageup" in keys
+        # 'g' (single press) routes to scroll_top; 'G' (shift+g) to scroll_bottom.
+        assert "g" in keys or "g,g" in keys
+        assert "G" in keys or "shift+g" in keys
