@@ -12,7 +12,7 @@ from packaging.version import Version
 
 from .state import DEFAULT_STATE_DIR, read_cache, write_cache
 
-__all__ = ["check_for_update"]
+__all__ = ["check_for_update", "fetch_latest_version"]
 
 _PACKAGE = "buvis-gems"
 _PYPI_URL = f"https://pypi.org/pypi/{_PACKAGE}/json"
@@ -76,3 +76,26 @@ def check_for_update(
 
     write_cache(state_dir, pypi_version)
     return _newer_or_none(pypi_version, current)
+
+
+def fetch_latest_version(state_dir: Path | None = None) -> str | None:
+    """Query PyPI unconditionally for the latest stable version.
+
+    Bypasses cache freshness (used by the user-initiated `--update` flow).
+    Writes through to the cache on success so subsequent passive checks benefit.
+
+    Args:
+        state_dir: Directory for the updater state file. Defaults to ~/.config/buvis.
+
+    Returns:
+        The latest version string from PyPI, or None on any network/parse error.
+    """
+    if state_dir is None:
+        state_dir = DEFAULT_STATE_DIR
+
+    pypi_version = _query_pypi()
+    if pypi_version is None:
+        return None
+
+    write_cache(state_dir, pypi_version)
+    return pypi_version

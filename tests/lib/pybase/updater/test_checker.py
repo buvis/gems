@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from buvis.pybase.updater.checker import check_for_update
+from buvis.pybase.updater.checker import check_for_update, fetch_latest_version
 
 
 @pytest.fixture()
@@ -221,6 +221,72 @@ class TestPreReleaseFiltering:
             result = check_for_update(state_dir=state_dir)
 
         assert result == "0.9.0"
+
+
+class TestFetchLatestVersion:
+    def test_ignores_fresh_cache(self, state_dir: Path) -> None:
+        """Fresh cache must not short-circuit: PyPI is always queried."""
+        _write_state(state_dir, datetime.now(tz=timezone.utc), "0.7.0")
+
+        with patch(
+            "buvis.pybase.updater.checker.urlopen",
+            return_value=_mock_pypi_response("0.9.0"),
+        ) as mock_urlopen:
+            result = fetch_latest_version(state_dir=state_dir)
+
+        mock_urlopen.assert_called_once()
+        assert result == "0.9.0"
+
+    def test_writes_cache_on_success(self, state_dir: Path) -> None:
+        with patch(
+            "buvis.pybase.updater.checker.urlopen",
+            return_value=_mock_pypi_response("0.9.0"),
+        ):
+            fetch_latest_version(state_dir=state_dir)
+
+        state = json.loads((state_dir / "updater.json").read_text())
+        assert state["latest_version"] == "0.9.0"
+        cached_time = datetime.fromisoformat(state["last_check"])
+        assert (datetime.now(tz=timezone.utc) - cached_time).total_seconds() < 5
+
+    def test_returns_none_on_network_error(self, state_dir: Path) -> None:
+        from urllib.error import URLError
+
+        with patch(
+            "buvis.pybase.updater.checker.urlopen",
+            side_effect=URLError("no network"),
+        ):
+            result = fetch_latest_version(state_dir=state_dir)
+
+        assert result is None
+
+    def test_returns_none_on_invalid_json(self, state_dir: Path) -> None:
+        response = MagicMock()
+        response.read.return_value = b"not json"
+        response.__enter__ = lambda s: s
+        response.__exit__ = MagicMock(return_value=False)
+
+        with patch("buvis.pybase.updater.checker.urlopen", return_value=response):
+            result = fetch_latest_version(state_dir=state_dir)
+
+        assert result is None
+
+    def test_defaults_state_dir(self) -> None:
+        """Called without state_dir, uses DEFAULT_STATE_DIR."""
+        with (
+            patch(
+                "buvis.pybase.updater.checker.urlopen",
+                return_value=_mock_pypi_response("0.9.0"),
+            ),
+            patch("buvis.pybase.updater.checker.write_cache") as mock_write,
+        ):
+            result = fetch_latest_version()
+
+        assert result == "0.9.0"
+        assert mock_write.called
+        from buvis.pybase.updater.state import DEFAULT_STATE_DIR
+
+        assert mock_write.call_args.args[0] == DEFAULT_STATE_DIR
 
 
 class TestCustomInterval:
