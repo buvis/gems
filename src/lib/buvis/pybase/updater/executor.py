@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from subprocess import TimeoutExpired
 
+import click
+
 from .detector import InstallerInfo
 from .state import DEFAULT_STATE_DIR, append_log
 
@@ -98,7 +100,7 @@ def run_update_interactive(
         )
         return 1
 
-    print(f"Upgrading buvis-gems {current} → {latest} via {installer.method}...")
+    click.echo(f"Upgrading buvis-gems {current} → {latest} via {installer.method}...")
     append_log(
         state_dir,
         "info",
@@ -112,16 +114,16 @@ def run_update_interactive(
             timeout=_UPGRADE_TIMEOUT,
         )
     except (TimeoutExpired, FileNotFoundError, OSError) as exc:
-        print(f"Update failed: {exc}")
+        click.echo(f"Update failed: {exc}", err=True)
         append_log(state_dir, "error", f"Update failed: {exc}")
         return 1
 
     if result.returncode != 0:
-        print(f"Update failed: installer exited with code {result.returncode}")
+        click.echo(f"Update failed: installer exited with code {result.returncode}", err=True)
         append_log(state_dir, "error", f"Update failed: exit code {result.returncode}")
         return 1
 
-    print("Upgraded.")
+    click.echo("Upgraded.")
     append_log(state_dir, "info", f"Upgraded buvis-gems to {latest}")
     return 0
 

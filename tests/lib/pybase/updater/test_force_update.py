@@ -33,8 +33,8 @@ class TestPackageNotFound:
             result = force_update(_make_settings())
 
         assert result == 1
-        out = capsys.readouterr().out
-        assert "buvis-gems" in out.lower() and "not installed" in out.lower()
+        err = capsys.readouterr().err
+        assert "buvis-gems" in err.lower() and "not installed" in err.lower()
 
     def test_logs_error_event(self) -> None:
         with (
@@ -58,8 +58,8 @@ class TestPypiUnreachable:
             result = force_update(_make_settings())
 
         assert result == 1
-        out = capsys.readouterr().out
-        assert "pypi" in out.lower() or "reach" in out.lower() or "unreachable" in out.lower()
+        err = capsys.readouterr().err
+        assert "pypi" in err.lower() or "reach" in err.lower() or "unreachable" in err.lower()
 
     def test_logs_error_event(self) -> None:
         with (
@@ -123,10 +123,10 @@ class TestUnknownInstaller:
             result = force_update(_make_settings())
 
         assert result == 1
-        out = capsys.readouterr().out
-        assert "uv tool upgrade buvis-gems" in out
-        assert "pipx upgrade buvis-gems" in out
-        assert "mise upgrade pipx:buvis-gems" in out
+        err = capsys.readouterr().err
+        assert "uv tool upgrade buvis-gems" in err
+        assert "pipx upgrade buvis-gems" in err
+        assert "mise upgrade pipx:buvis-gems" in err
         mock_run.assert_not_called()
 
     def test_logs_error_event(self) -> None:

@@ -69,17 +69,49 @@ def get_settings(ctx: click.Context, settings_class: type[T] | None = None) -> T
 
 _BUVIS_META_CHECKED_KEY = "buvis_update_checked"
 _buvis_callbacks: weakref.WeakSet[Callable[..., Any]] = weakref.WeakSet()
+_buvis_callback_settings: weakref.WeakKeyDictionary[Callable[..., Any], type[GlobalSettings]] = (
+    weakref.WeakKeyDictionary()
+)
 _parse_args_patch_installed = False
+
+_UPDATE_PRECEDING_FLAGS = frozenset({"--help", "--version", "-h"})
 
 
 def _contains_update_option(args: list[str]) -> bool:
-    """Return True if ``--update`` appears before any ``--`` end-of-options sentinel."""
+    """Return True if ``--update`` should be intercepted.
+
+    Honors the ``--`` end-of-options sentinel. ``--help`` and ``--version`` take
+    precedence when they appear before ``--update`` in argv so that Click's
+    standard eager behavior for those flags is preserved.
+    """
     for arg in args:
         if arg == "--":
+            return False
+        if arg in _UPDATE_PRECEDING_FLAGS:
             return False
         if arg == "--update":
             return True
     return False
+
+
+def _resolve_settings_class(ctx: click.Context) -> type[GlobalSettings]:
+    """Return the settings class registered for the root buvis command."""
+    root = ctx.find_root()
+    callback = root.command.callback if root.command is not None else None
+    if callback is None:
+        return GlobalSettings
+    return _buvis_callback_settings.get(callback, GlobalSettings)
+
+
+def _instantiate_settings_or_exit(ctx: click.Context) -> GlobalSettings:
+    """Build the settings instance or exit cleanly on configuration errors."""
+    settings_class = _resolve_settings_class(ctx)
+    try:
+        return settings_class()
+    except Exception as exc:
+        click.echo(f"Configuration error: {exc}", err=True)
+        ctx.exit(1)
+        raise  # unreachable: ctx.exit raises, but satisfies type checkers
 
 
 def _run_force_update_and_exit(ctx: click.Context) -> None:
@@ -92,8 +124,8 @@ def _run_force_update_and_exit(ctx: click.Context) -> None:
     """
     from buvis.pybase.updater import force_update
 
-    exit_code = force_update(GlobalSettings())
-    ctx.exit(exit_code)
+    settings = _instantiate_settings_or_exit(ctx)
+    ctx.exit(force_update(settings))
 
 
 def _run_update_check_once(ctx: click.Context) -> None:
@@ -154,8 +186,8 @@ def _update_callback(ctx: click.Context, _param: click.Parameter, value: bool) -
 
     from buvis.pybase.updater import force_update
 
-    exit_code = force_update(GlobalSettings())
-    ctx.exit(exit_code)
+    settings = _instantiate_settings_or_exit(ctx)
+    ctx.exit(force_update(settings))
 
 
 def _feedback_callback(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
@@ -274,6 +306,8 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             return ctx.invoke(f, *args, **kwargs)
 
         _buvis_callbacks.add(wrapper)
+        if issubclass(settings_class, GlobalSettings):
+            _buvis_callback_settings[wrapper] = settings_class
         return wrapper  # type: ignore[return-value]
 
     return decorator

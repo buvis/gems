@@ -958,6 +958,94 @@ class TestUpdateFlag:
         mock_force.assert_not_called()
         mock_passive.assert_not_called()
 
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_help_takes_precedence_over_update(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        """`tool --help --update` shows help; update does not fire."""
+
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        def sub() -> None:
+            pass
+
+        result = runner.invoke(cli, ["--help", "--update"])
+
+        mock_force.assert_not_called()
+        assert "Usage:" in result.output
+        assert result.exit_code == 0
+
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_version_takes_precedence_over_update(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        """`tool --version --update` shows version; update does not fire."""
+
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        def sub() -> None:
+            pass
+
+        result = runner.invoke(cli, ["--version", "--update"])
+
+        mock_force.assert_not_called()
+        assert "buvis-gems, version" in result.output
+        assert result.exit_code == 0
+
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_uses_custom_settings_class(
+        self,
+        mock_passive: MagicMock,
+        mock_force: MagicMock,
+        runner: CliRunner,
+        custom_settings_cls: type[GlobalSettings],
+    ) -> None:
+        """`buvis_options(settings_class=CustomSettings)` routes --update through the custom class."""
+
+        @click.command()
+        @buvis_options(settings_class=custom_settings_cls)
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--update"])
+
+        mock_force.assert_called_once()
+        assert isinstance(mock_force.call_args.args[0], custom_settings_cls)
+        assert result.exit_code == 0
+
+    @patch("buvis.pybase.updater.force_update", return_value=0)
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_update_with_malformed_settings_exits_cleanly(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        """If settings instantiation raises, user sees a clean error; force_update not invoked."""
+
+        class BrokenSettings(GlobalSettings):
+            def __init__(self, **kw: object) -> None:
+                raise ValueError("broken config")
+
+        @click.command()
+        @buvis_options(settings_class=BrokenSettings)
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--update"])
+
+        mock_force.assert_not_called()
+        assert "Configuration error" in result.output or "Configuration error" in (result.stderr or "")
+        assert result.exit_code == 1
+
     @patch("buvis.pybase.updater.force_update")
     @patch("buvis.pybase.updater.check_and_update")
     def test_no_update_flag_still_runs_passive_check(
