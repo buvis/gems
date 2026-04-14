@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **dot**: revert hunk or selected lines from diff pane with `r` (#78)
+
 ### Fixed
 
 - **dot**: scroll diff pane to reveal content past the last hunk; add `ctrl+d`/`ctrl+u` half-page, `pagedown`/`pageup`, `g` (top), `G` (bottom) bindings (#77)
