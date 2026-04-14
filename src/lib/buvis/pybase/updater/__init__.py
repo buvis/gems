@@ -12,6 +12,7 @@ from packaging.version import Version
 from .checker import check_for_update, fetch_latest_version
 from .detector import detect_installer
 from .executor import run_update, run_update_interactive
+from .state import DEFAULT_STATE_DIR, append_log
 
 if TYPE_CHECKING:
     from buvis.pybase.configuration.settings import GlobalSettings
@@ -71,15 +72,18 @@ def force_update(settings: GlobalSettings) -> int:
         current = pkg_version(_PACKAGE)
     except PackageNotFoundError:
         print("buvis-gems is not installed in this environment.")
+        append_log(DEFAULT_STATE_DIR, "error", "Force update aborted: buvis-gems not installed")
         return 1
 
     latest = fetch_latest_version()
     if latest is None:
         print("Could not reach PyPI to check for updates.")
+        append_log(DEFAULT_STATE_DIR, "error", "Force update aborted: PyPI unreachable")
         return 1
 
     if Version(latest) <= Version(current):
         print(f"buvis-gems {current} is up to date.")
+        append_log(DEFAULT_STATE_DIR, "info", f"Force update: buvis-gems {current} is up to date")
         return 0
 
     installer = detect_installer(override=settings.installer)
@@ -91,6 +95,11 @@ def force_update(settings: GlobalSettings) -> int:
         )
         for cmd in _MANUAL_UPGRADE_COMMANDS:
             print(f"  {cmd}")
+        append_log(
+            DEFAULT_STATE_DIR,
+            "error",
+            f"Force update aborted: installer unknown (current {current}, available {latest})",
+        )
         return 1
 
     return run_update_interactive(current, latest, installer)

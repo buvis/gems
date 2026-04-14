@@ -288,7 +288,7 @@ def buvis_options(  # type: ignore[misc]
 ) -> Callable[[F], F] | F:
     """Add standard BUVIS options to a Click command.
 
-    Adds ``--version``, ``--feedback``, ``--debug/--no-debug``,
+    Adds ``--version``, ``--feedback``, ``--update``, ``--debug/--no-debug``,
     ``--log-level``, ``--config-dir``, ``--config``, and
     ``--config-create`` options. Resolves settings using ConfigResolver
     and injects into Click context.

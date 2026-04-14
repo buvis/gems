@@ -36,6 +36,18 @@ class TestPackageNotFound:
         out = capsys.readouterr().out
         assert "buvis-gems" in out.lower() and "not installed" in out.lower()
 
+    def test_logs_error_event(self) -> None:
+        with (
+            patch(
+                "buvis.pybase.updater.pkg_version",
+                side_effect=PackageNotFoundError("buvis-gems"),
+            ),
+            patch("buvis.pybase.updater.append_log") as mock_log,
+        ):
+            force_update(_make_settings())
+
+        assert any(call.args[1] == "error" for call in mock_log.call_args_list)
+
 
 class TestPypiUnreachable:
     def test_returns_one_and_prints(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -49,6 +61,16 @@ class TestPypiUnreachable:
         out = capsys.readouterr().out
         assert "pypi" in out.lower() or "reach" in out.lower() or "unreachable" in out.lower()
 
+    def test_logs_error_event(self) -> None:
+        with (
+            patch("buvis.pybase.updater.pkg_version", return_value="0.7.0"),
+            patch("buvis.pybase.updater.fetch_latest_version", return_value=None),
+            patch("buvis.pybase.updater.append_log") as mock_log,
+        ):
+            force_update(_make_settings())
+
+        assert any(call.args[1] == "error" for call in mock_log.call_args_list)
+
 
 class TestAlreadyUpToDate:
     def test_returns_zero_and_prints_message(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -61,10 +83,21 @@ class TestAlreadyUpToDate:
             result = force_update(_make_settings())
 
         assert result == 0
-        assert "0.8.0" in capsys.readouterr().out
-        assert "up to date" in capsys.readouterr().out.lower() or True  # captured above
+        out = capsys.readouterr().out
+        assert "0.8.0" in out
+        assert "up to date" in out.lower()
         mock_detect.assert_not_called()
         mock_run.assert_not_called()
+
+    def test_logs_info_event(self) -> None:
+        with (
+            patch("buvis.pybase.updater.pkg_version", return_value="0.8.0"),
+            patch("buvis.pybase.updater.fetch_latest_version", return_value="0.8.0"),
+            patch("buvis.pybase.updater.append_log") as mock_log,
+        ):
+            force_update(_make_settings())
+
+        assert any(call.args[1] == "info" for call in mock_log.call_args_list)
 
     def test_current_newer_than_pypi_is_up_to_date(self) -> None:
         """Installed pre-release newer than stable PyPI: treat as up to date."""
@@ -95,6 +128,17 @@ class TestUnknownInstaller:
         assert "pipx upgrade buvis-gems" in out
         assert "mise upgrade pipx:buvis-gems" in out
         mock_run.assert_not_called()
+
+    def test_logs_error_event(self) -> None:
+        with (
+            patch("buvis.pybase.updater.pkg_version", return_value="0.7.0"),
+            patch("buvis.pybase.updater.fetch_latest_version", return_value="0.8.0"),
+            patch("buvis.pybase.updater.detect_installer", return_value=_unknown_installer()),
+            patch("buvis.pybase.updater.append_log") as mock_log,
+        ):
+            force_update(_make_settings())
+
+        assert any(call.args[1] == "error" for call in mock_log.call_args_list)
 
 
 class TestUpgradePath:
