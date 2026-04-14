@@ -7,16 +7,24 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from typing import TYPE_CHECKING
 
-from .checker import check_for_update
+from packaging.version import Version
+
+from .checker import check_for_update, fetch_latest_version
 from .detector import detect_installer
-from .executor import run_update
+from .executor import run_update, run_update_interactive
 
 if TYPE_CHECKING:
     from buvis.pybase.configuration.settings import GlobalSettings
 
-__all__ = ["check_and_update"]
+__all__ = ["check_and_update", "force_update"]
 
 _PACKAGE = "buvis-gems"
+
+_MANUAL_UPGRADE_COMMANDS = (
+    "uv tool upgrade buvis-gems",
+    "pipx upgrade buvis-gems",
+    "mise upgrade pipx:buvis-gems",
+)
 
 
 def check_and_update(settings: GlobalSettings) -> None:
@@ -46,3 +54,43 @@ def check_and_update(settings: GlobalSettings) -> None:
 
     installer = detect_installer(override=settings.installer)
     run_update(current, latest, installer)
+
+
+def force_update(settings: GlobalSettings) -> int:
+    """Run a user-initiated update check and upgrade, bypassing all guards.
+
+    Invoked by the eager ``--update`` CLI flag. Ignores ``settings.auto_update``
+    and ``BUVIS_DEV_MODE`` because the user has explicitly asked for an update.
+
+    Returns:
+        0 when the tool is up to date or the upgrade succeeds.
+        1 on any failure: package not installed, PyPI unreachable, unknown
+        installer, or subprocess failure.
+    """
+    try:
+        current = pkg_version(_PACKAGE)
+    except PackageNotFoundError:
+        print("buvis-gems is not installed in this environment.")
+        return 1
+
+    latest = fetch_latest_version()
+    if latest is None:
+        print("Could not reach PyPI to check for updates.")
+        return 1
+
+    if Version(latest) <= Version(current):
+        print(f"buvis-gems {current} is up to date.")
+        return 0
+
+    installer = detect_installer(override=settings.installer)
+    if installer.upgrade_command is None:
+        print(
+            f"buvis-gems {latest} is available (current: {current}), "
+            "but the installer could not be detected automatically.\n"
+            "Upgrade manually with one of:"
+        )
+        for cmd in _MANUAL_UPGRADE_COMMANDS:
+            print(f"  {cmd}")
+        return 1
+
+    return run_update_interactive(current, latest, installer)
