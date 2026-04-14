@@ -917,6 +917,49 @@ class TestUpdateFlag:
 
     @patch("buvis.pybase.updater.force_update")
     @patch("buvis.pybase.updater.check_and_update")
+    def test_double_dash_treats_update_as_positional(
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+    ) -> None:
+        """`tool sub -- --update` passes `--update` as positional; no update flow."""
+
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        @click.argument("args", nargs=-1)
+        def sub(args: tuple[str, ...]) -> None:
+            click.echo("|".join(args))
+
+        result = runner.invoke(cli, ["sub", "--", "--update"])
+
+        mock_force.assert_not_called()
+        assert result.exit_code == 0
+        assert "--update" in result.output
+
+    @patch("buvis.pybase.updater.force_update")
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_resilient_parsing_does_not_trigger_update(self, mock_passive: MagicMock, mock_force: MagicMock) -> None:
+        """During resilient parsing (e.g. shell completion) no update side effects run."""
+
+        @click.group()
+        @buvis_options
+        def cli() -> None:
+            pass
+
+        @cli.command()
+        def sub() -> None:
+            pass
+
+        ctx = click.Context(cli, resilient_parsing=True)
+        cli.parse_args(ctx, ["--update"])
+
+        mock_force.assert_not_called()
+        mock_passive.assert_not_called()
+
+    @patch("buvis.pybase.updater.force_update")
+    @patch("buvis.pybase.updater.check_and_update")
     def test_no_update_flag_still_runs_passive_check(
         self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
     ) -> None:

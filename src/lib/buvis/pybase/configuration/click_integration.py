@@ -72,6 +72,16 @@ _buvis_callbacks: weakref.WeakSet[Callable[..., Any]] = weakref.WeakSet()
 _parse_args_patch_installed = False
 
 
+def _contains_update_option(args: list[str]) -> bool:
+    """Return True if ``--update`` appears before any ``--`` end-of-options sentinel."""
+    for arg in args:
+        if arg == "--":
+            return False
+        if arg == "--update":
+            return True
+    return False
+
+
 def _run_force_update_and_exit(ctx: click.Context) -> None:
     """Run a user-initiated update and exit Click with its return code.
 
@@ -116,13 +126,13 @@ def _install_parse_args_patch() -> None:
     original_group_parse_args = click.Group.parse_args
 
     def patched_command_parse_args(self: click.Command, ctx: click.Context, args: list[str]) -> list[str]:
-        if self.callback in _buvis_callbacks and "--update" not in args:
+        if self.callback in _buvis_callbacks and not ctx.resilient_parsing and not _contains_update_option(args):
             _run_update_check_once(ctx)
         return original_command_parse_args(self, ctx, args)
 
     def patched_group_parse_args(self: click.Group, ctx: click.Context, args: list[str]) -> list[str]:
-        if self.callback in _buvis_callbacks:
-            if "--update" in args:
+        if self.callback in _buvis_callbacks and not ctx.resilient_parsing:
+            if _contains_update_option(args):
                 # Intercept --update anywhere in argv so `tool sub --update` works
                 # even though --update is only declared on the root group.
                 _run_force_update_and_exit(ctx)
