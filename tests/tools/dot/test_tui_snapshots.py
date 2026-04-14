@@ -136,12 +136,17 @@ class TestDiffViewBottomScrollSnapshot:
 
             async def scroll_to_bottom(pilot):
                 await pilot.pause()
-                # Tab through panes until DiffView has focus, then press G.
-                for _ in range(3):
+                # Tab through every pane until DiffView gains focus, then press G.
+                # Try up to 6 tabs (twice the focus chain length) to be defensive
+                # against future focus-order changes.
+                focused_diff = False
+                for _ in range(6):
                     if pilot.app.focused is not None and pilot.app.focused.id == "diff":
+                        focused_diff = True
                         break
                     await pilot.press("tab")
                     await pilot.pause()
+                assert focused_diff, "DiffView never gained focus after 6 tabs; snapshot would test the wrong widget"
                 await pilot.press("G")
                 await pilot.pause()
 
