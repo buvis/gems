@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-14
+
 ### Added
 
 - **all tools**: `--update` flag force-checks PyPI and upgrades if a newer buvis-gems release is available; prints status or "already up to date"
@@ -282,7 +284,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.9.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.10.0...HEAD
+[0.10.0]: https://github.com/buvis/gems/compare/gems-v0.9.0...gems-v0.10.0
 [0.9.0]: https://github.com/buvis/gems/compare/gems-v0.8.7...gems-v0.9.0
 [0.8.7]: https://github.com/buvis/gems/compare/gems-v0.8.6...gems-v0.8.7
 [0.8.6]: https://github.com/buvis/gems/compare/gems-v0.8.5...gems-v0.8.6
