@@ -337,8 +337,31 @@ class TestDiffViewLineSelect:
 
 class TestDiffViewScroll:
     def test_scroll_to_region_called_on_next_hunk(self) -> None:
+        # Use a 3-hunk diff so navigating to hunk 1 lands on a non-last hunk
+        # (header offset target, not bottom-of-hunk).
+        three_hunks = "\n".join(
+            [
+                "--- a/file.py",
+                "+++ b/file.py",
+                "@@ -1,3 +1,4 @@",
+                " line1",
+                "+added1",
+                " line2",
+                " line3",
+                "@@ -10,3 +11,4 @@",
+                " line10",
+                "+added2",
+                " line11",
+                " line12",
+                "@@ -20,3 +21,4 @@",
+                " line20",
+                "+added3",
+                " line21",
+                " line22",
+            ]
+        )
         widget = DiffView(id="diff")
-        widget.update_diff(MULTI_HUNK)
+        widget.update_diff(three_hunks)
         calls: list[tuple[object, ...]] = []
         original = widget.scroll_to_region
 
@@ -349,8 +372,7 @@ class TestDiffViewScroll:
         widget.scroll_to_region = _capture  # type: ignore[assignment]
         widget.action_next_hunk()
         assert len(calls) >= 1
-        # MULTI_HUNK: 2 file header lines, hunk 0 has 4 content lines
-        # hunk 1 offset = 2 + (1 header + 4 lines) = 7
+        # 2 file header lines, hunk 0 has 4 content lines -> hunk 1 header at y=7
         region = calls[-1][0]
         assert isinstance(region, Region)
         assert region.y == 7
@@ -560,35 +582,38 @@ class TestDiffViewScroll:
 
 class TestDiffViewPageScroll:
     def test_action_page_down_scrolls_half_viewport(self) -> None:
-        widget = DiffView(id="diff")
-        widget.update_diff(MULTI_HUNK)
-        # Stub size to a known viewport height.
+        from unittest.mock import PropertyMock, patch
+
         from textual.geometry import Size
 
-        widget._size = Size(80, 20)  # type: ignore[attr-defined]
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
         calls: list[dict[str, object]] = []
 
         def _capture(*args: object, **kwargs: object) -> None:
             calls.append(dict(kwargs))
 
         widget.scroll_relative = _capture  # type: ignore[assignment]
-        widget.action_page_down()
+        with patch.object(type(widget), "size", new_callable=PropertyMock, return_value=Size(80, 20)):
+            widget.action_page_down()
         assert len(calls) == 1
         assert calls[0].get("y") == 10  # half of 20
 
     def test_action_page_up_scrolls_half_viewport_up(self) -> None:
-        widget = DiffView(id="diff")
-        widget.update_diff(MULTI_HUNK)
+        from unittest.mock import PropertyMock, patch
+
         from textual.geometry import Size
 
-        widget._size = Size(80, 20)  # type: ignore[attr-defined]
+        widget = DiffView(id="diff")
+        widget.update_diff(MULTI_HUNK)
         calls: list[dict[str, object]] = []
 
         def _capture(*args: object, **kwargs: object) -> None:
             calls.append(dict(kwargs))
 
         widget.scroll_relative = _capture  # type: ignore[assignment]
-        widget.action_page_up()
+        with patch.object(type(widget), "size", new_callable=PropertyMock, return_value=Size(80, 20)):
+            widget.action_page_up()
         assert len(calls) == 1
         assert calls[0].get("y") == -10
 

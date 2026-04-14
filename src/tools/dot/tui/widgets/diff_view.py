@@ -30,6 +30,12 @@ class DiffView(Widget, can_focus=True):
         Binding("up", "prev_hunk", "Prev hunk", show=False),
         Binding("v", "enter_line_select", "Line select", show=False),
         Binding("escape", "exit_line_select", "Exit select", show=False),
+        Binding("ctrl+d", "page_down", "Half page down", show=False),
+        Binding("pagedown", "page_down", "Page down", show=False),
+        Binding("ctrl+u", "page_up", "Half page up", show=False),
+        Binding("pageup", "page_up", "Page up", show=False),
+        Binding("g", "scroll_top", "Top", show=False),
+        Binding("G", "scroll_bottom", "Bottom", show=False),
     ]
 
     def __init__(
@@ -157,10 +163,16 @@ class DiffView(Widget, can_focus=True):
         return offset
 
     def _scroll_to_hunk(self) -> None:
-        """Scroll to keep the focused hunk header visible."""
+        """Scroll to keep the focused hunk visible.
+
+        For the last hunk, target the bottom of its content so long final
+        hunks can be read in full via keyboard navigation alone.
+        """
         if not self._hunks:
             return
         line = self._hunk_line_offset(self._focused_hunk)
+        if self._focused_hunk == len(self._hunks) - 1:
+            line += len(self._hunks[self._focused_hunk].lines)
         self.scroll_to_region(Region(0, line, 1, 1), animate=False)
 
     def _scroll_to_line(self) -> None:
@@ -237,6 +249,24 @@ class DiffView(Widget, can_focus=True):
                 self._scroll_to_line()
                 self.refresh()
                 return
+
+    def action_page_down(self) -> None:
+        """Scroll down by half the viewport height regardless of focus."""
+        delta = max(1, self.size.height // 2)
+        self.scroll_relative(y=delta, animate=False)
+
+    def action_page_up(self) -> None:
+        """Scroll up by half the viewport height regardless of focus."""
+        delta = max(1, self.size.height // 2)
+        self.scroll_relative(y=-delta, animate=False)
+
+    def action_scroll_top(self) -> None:
+        """Scroll to the top of the diff."""
+        self.scroll_home(animate=False)
+
+    def action_scroll_bottom(self) -> None:
+        """Scroll to the bottom of the diff."""
+        self.scroll_end(animate=False)
 
     def action_toggle_line(self) -> None:
         """Toggle selection on the current line."""
