@@ -38,6 +38,7 @@ src/
     ├── muc/                    # music collection tools
     ├── netscan/                # network scanning tools
     ├── outlookctl/             # Outlook CLI
+    ├── pidash/                 # autopilot progress dashboard (TUI)
     ├── pinger/                 # ICMP ping utilities
     ├── puc/                    # photo utility collection
     ├── readerctl/              # Readwise Reader CLI

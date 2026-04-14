@@ -98,11 +98,11 @@ def run_update_interactive(
         )
         return 1
 
-    print(f"Upgrading buvis-gems {current} \u2192 {latest} via {installer.method}...")
+    print(f"Upgrading buvis-gems {current} → {latest} via {installer.method}...")
     append_log(
         state_dir,
         "info",
-        f"Updating buvis-gems {current} \u2192 {latest} via {installer.method}",
+        f"Updating buvis-gems {current} → {latest} via {installer.method}",
     )
 
     try:
