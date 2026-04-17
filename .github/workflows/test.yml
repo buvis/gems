@@ -8,6 +8,9 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  BUVIS_SKIP_FRONTEND: "1"
+
 jobs:
   detect:
     runs-on: ubuntu-latest

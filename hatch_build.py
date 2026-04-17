@@ -7,6 +7,7 @@ Optionally builds the SvelteKit frontend for bim serve.
 
 from __future__ import annotations
 
+import os
 import platform
 import shutil
 import subprocess
@@ -71,6 +72,9 @@ class RustBuildHook(BuildHookInterface):
                         break
 
     def _build_frontend(self) -> None:
+        if os.environ.get("BUVIS_SKIP_FRONTEND"):
+            return
+
         root = Path(self.root)
         frontend_dir = root / "src" / "tools" / "bim" / "commands" / "serve" / "frontend"
         static_dir = root / "src" / "tools" / "bim" / "commands" / "serve" / "static"

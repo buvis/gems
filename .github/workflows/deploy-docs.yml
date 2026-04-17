@@ -8,6 +8,9 @@ on:
       - "src/**"
       - "pyproject.toml"
 
+env:
+  BUVIS_SKIP_FRONTEND: "1"
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
