@@ -103,6 +103,24 @@ class TestBuildCanonicalFilename:
                 doc_type="bogus",
             )
 
+    def test_empty_title_rejected(self) -> None:
+        with pytest.raises(ValueError, match="title_or_number must be non-empty"):
+            build_canonical_filename(
+                zk_timestamp="20210311083422",
+                issuer_slug="cez-as",
+                title_or_number="",
+                doc_type="invoice",
+            )
+
+    def test_whitespace_only_title_rejected(self) -> None:
+        with pytest.raises(ValueError, match="title_or_number must be non-empty"):
+            build_canonical_filename(
+                zk_timestamp="20210311083422",
+                issuer_slug="cez-as",
+                title_or_number="   ",
+                doc_type="invoice",
+            )
+
 
 class TestCanonicalRegex:
     def test_matches_example(self) -> None:

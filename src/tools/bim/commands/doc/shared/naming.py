@@ -71,6 +71,8 @@ def build_canonical_filename(
         raise ValueError(f"doc_type must be one of {DOC_TYPES}, got {doc_type!r}")
     if not SLUG_REGEX.match(ext):
         raise ValueError(f"ext must be lowercase alphanumeric, got {ext!r}")
+    if not title_or_number or not title_or_number.strip():
+        raise ValueError(f"title_or_number must be non-empty, got {title_or_number!r}")
 
     title_slug = slugify(title_or_number)
     result = f"{zk_timestamp}-{issuer_slug}-{title_slug}.{doc_type}.{ext}"
