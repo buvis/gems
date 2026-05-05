@@ -159,6 +159,47 @@ class TestClaim:
             assert db.claim("e" * 64) is False
 
 
+class TestReleaseClaim:
+    def test_release_then_reclaim(self, db_path: Path) -> None:
+        sha = "f" * 64
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            assert db.release_claim(sha) is True
+            assert db.claim(sha) is True
+
+    def test_release_nonexistent_returns_false(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            assert db.release_claim("g" * 64) is False
+
+    def test_release_after_record_processed_returns_false(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            row = _sample_processed(sha="h" * 64)
+            db.record_processed(row)
+            # No claim was ever inserted, so release_claim has nothing to remove
+            assert db.release_claim(row.sha256) is False
+
+    def test_release_persists(self, db_path: Path) -> None:
+        sha = "i" * 64
+        with open_state_db(db_path) as db:
+            db.claim(sha)
+            db.release_claim(sha)
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+
+
+class TestMigrationIdempotency:
+    def test_reopen_idempotent(self, db_path: Path) -> None:
+        # First open creates schema_version row at v2.
+        with open_state_db(db_path):
+            pass
+        # Second open should NOT raise IntegrityError despite the row existing.
+        with open_state_db(db_path) as db:
+            cursor = db.connection.execute("SELECT COUNT(*) FROM schema_version WHERE version = 2")
+            count = cursor.fetchone()[0]
+            # INSERT OR IGNORE means at most one v2 row; could be 1 here.
+            assert count == 1
+
+
 class TestSchemaV2:
     def test_schema_version_is_two(self, db_path: Path) -> None:
         with open_state_db(db_path) as db:

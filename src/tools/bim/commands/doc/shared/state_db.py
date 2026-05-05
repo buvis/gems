@@ -110,8 +110,10 @@ class StateDB:
         cursor = conn.execute("SELECT MAX(version) FROM schema_version")
         current = cursor.fetchone()[0]
         if current is None or current < _SCHEMA_VERSION:
+            # OR IGNORE prevents IntegrityError if two processes race to
+            # bump the schema version on a fresh DB.
             conn.execute(
-                "INSERT INTO schema_version (version) VALUES (?)",
+                "INSERT OR IGNORE INTO schema_version (version) VALUES (?)",
                 (_SCHEMA_VERSION,),
             )
 
@@ -123,24 +125,35 @@ class StateDB:
         already claimed or processed this sha256.
 
         The pipeline pattern is:
-            1. dedup(sha) - skip if already in processed
-            2. claim(sha) - skip if already claimed by another worker
-            3. process the document
-            4. record_processed(row) - finalize
+            1. claim(sha) - skip if already processed or claimed
+            2. process the document
+            3. record_processed(row) - finalize
+            4. release_claim(sha) on error paths
 
         Spec section 6 step 1: "Record the hash now to prevent concurrent
-        re-processing."
+        re-processing." Single-statement INSERT with WHERE NOT EXISTS keeps
+        the check-and-claim atomic under SQLite WAL+autocommit.
         """
-        # Check processed first - already-finalized documents are not claimable.
-        existing = self._conn.execute("SELECT 1 FROM processed WHERE sha256 = ? LIMIT 1", (sha256,)).fetchone()
-        if existing is not None:
-            return False
-
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = self._conn.execute(
-            "INSERT OR IGNORE INTO claims (sha256, claimed_at) VALUES (?, ?)",
-            (sha256, now_iso),
+            """
+            INSERT OR IGNORE INTO claims (sha256, claimed_at)
+            SELECT ?, ?
+            WHERE NOT EXISTS (SELECT 1 FROM processed WHERE sha256 = ?)
+            """,
+            (sha256, now_iso, sha256),
         )
+        return cursor.rowcount == 1
+
+    def release_claim(self, sha256: str) -> bool:
+        """Release a prior claim so the sha can be re-attempted.
+
+        Returns True if a claim row was actually removed; False if there was
+        no claim to release (already processed, never claimed, or already
+        released). Used by error paths in the ingest pipeline so a crashed
+        run doesn't permanently park a sha256.
+        """
+        cursor = self._conn.execute("DELETE FROM claims WHERE sha256 = ?", (sha256,))
         return cursor.rowcount == 1
 
     def dedup(self, sha256: str) -> DedupResult:
