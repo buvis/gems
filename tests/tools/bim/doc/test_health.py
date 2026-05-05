@@ -94,6 +94,27 @@ class TestCheckHealth:
         with pytest.raises(MissingDependency, match="qwen2.5:7b-instruct"):
             check_health(settings)
 
+    def test_ollama_non_json_response_wrapped(self, settings: DocSettings, mocker: MockerFixture) -> None:
+        mocker.patch(
+            "bim.commands.doc.shared.health.subprocess.run",
+            return_value=_ok_proc(),
+        )
+
+        class _BadJsonResponse:
+            status_code = 200
+
+            def json(self) -> dict[str, object]:
+                raise ValueError("not json")
+
+            def raise_for_status(self) -> None:
+                return None
+
+        fake_requests = mocker.MagicMock()
+        fake_requests.get.return_value = _BadJsonResponse()
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+        with pytest.raises(MissingDependency, match="Ollama"):
+            check_health(settings)
+
 
 class TestLazyImport:
     def test_module_imports_without_requests_at_module_load(self, mocker: MockerFixture) -> None:

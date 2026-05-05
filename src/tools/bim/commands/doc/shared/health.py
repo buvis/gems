@@ -38,10 +38,10 @@ def _check_ollama(endpoint: str, primary_model: str) -> None:
     try:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
+        payload = response.json()
     except Exception as exc:
         raise MissingDependency(f"Ollama daemon not reachable at {endpoint}: {exc}") from exc
 
-    payload = response.json()
     models = payload.get("models") or []
     available = {m.get("name") for m in models if isinstance(m, dict)}
     if primary_model not in available:
