@@ -29,8 +29,8 @@ class DocPaths(BaseModel):
     state_dir: Path | None = None
     inbox_scans: Path | None = None
     inbox_email: Path | None = None
-    inbox_downloads: Path = Path("~/Downloads/kartoteka-inbox").expanduser()
-    issuers_file: Path = Path("~/.dotfiles/bim/issuers.yml").expanduser()
+    inbox_downloads: Path | None = None
+    issuers_file: Path | None = None
     originals_dir: Path | None = None
     originals_retention_days: int = 30
 
@@ -44,6 +44,18 @@ class DocPaths(BaseModel):
             object.__setattr__(self, "inbox_email", state_dir / "inbox" / "email")
         if self.originals_dir is None:
             object.__setattr__(self, "originals_dir", state_dir / "originals")
+        if self.inbox_downloads is None:
+            object.__setattr__(
+                self,
+                "inbox_downloads",
+                Path("~/Downloads/kartoteka-inbox").expanduser(),
+            )
+        if self.issuers_file is None:
+            object.__setattr__(
+                self,
+                "issuers_file",
+                Path("~/.dotfiles/bim/issuers.yml").expanduser(),
+            )
         return self
 
 
