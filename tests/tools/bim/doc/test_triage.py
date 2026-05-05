@@ -154,3 +154,41 @@ class TestValidateForPromote:
         registry = _registry_with("other-issuer")
         errors = validate_for_promote(proposal, registry)
         assert errors == []
+
+    def test_empty_issuer_slug_fails(self) -> None:
+        bad_issuer = _full_proposal().issuer.model_copy(update={"slug": ""})
+        proposal = _full_proposal().model_copy(update={"approved": True, "register_issuer": True, "issuer": bad_issuer})
+        registry = _registry_with("cez-as")
+        errors = validate_for_promote(proposal, registry)
+        assert any("slug is empty" in e for e in errors)
+
+    def test_short_zettel_id_fails(self) -> None:
+        bad_preview = _full_proposal().zettel_preview.model_copy(update={"id": "12345"})
+        proposal = _full_proposal().model_copy(update={"approved": True, "zettel_preview": bad_preview})
+        registry = _registry_with("cez-as")
+        errors = validate_for_promote(proposal, registry)
+        assert any("14-digit" in e for e in errors)
+
+    def test_non_digit_zettel_id_fails(self) -> None:
+        bad_preview = _full_proposal().zettel_preview.model_copy(update={"id": "2026050409abcd"})
+        proposal = _full_proposal().model_copy(update={"approved": True, "zettel_preview": bad_preview})
+        registry = _registry_with("cez-as")
+        errors = validate_for_promote(proposal, registry)
+        assert any("14-digit" in e for e in errors)
+
+    def test_doc_type_in_registry_but_not_naming_fails(self) -> None:
+        # Registry YAML may list a type that's not in naming.DOC_TYPES.
+        # Triage validation must catch this so the pipeline doesn't crash later
+        # in build_canonical_filename.
+        registry = IssuerRegistry(
+            version=1,
+            doc_types=["invoice", "memo"],
+            reserved_slugs=[],
+            issuers={
+                "cez-as": IssuerEntry(slug="cez-as", display_name="CEZ"),
+            },
+        )
+        bad_doc = _full_proposal().document.model_copy(update={"type": "memo"})
+        proposal = _full_proposal().model_copy(update={"approved": True, "document": bad_doc})
+        errors = validate_for_promote(proposal, registry)
+        assert any("DOC_TYPES" in e or "doc_type" in e for e in errors)

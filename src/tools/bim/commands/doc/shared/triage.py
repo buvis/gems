@@ -17,6 +17,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 from bim.commands.doc.shared.issuers import IssuerRegistry
+from bim.commands.doc.shared.naming import DOC_TYPES
 
 __all__ = [
     "DocumentProposal",
@@ -133,8 +134,11 @@ def validate_for_promote(proposal: TriageProposal, registry: IssuerRegistry) -> 
     if proposal.issuer.slug not in registry.issuers and not proposal.register_issuer:
         errors.append(f"issuer {proposal.issuer.slug!r} not in registry and register_issuer is false")
 
-    if proposal.document.type not in registry.doc_types:
-        errors.append(f"doc_type {proposal.document.type!r} not in registry doc_types")
+    # naming.DOC_TYPES is the authoritative closed list; registry.doc_types
+    # is a human-readable mirror that may drift. Using DOC_TYPES here keeps
+    # triage validation aligned with build_canonical_filename downstream.
+    if proposal.document.type not in DOC_TYPES:
+        errors.append(f"doc_type {proposal.document.type!r} not in canonical DOC_TYPES")
 
     if not proposal.issuer.slug:
         errors.append("issuer slug is empty")
