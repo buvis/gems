@@ -1,0 +1,28 @@
+version: 1
+
+doc_types:
+  - invoice
+  - receipt
+  - statement
+  - contract
+  - certificate
+  - reminder
+  - correspondence
+  - other
+
+reserved_slugs:
+  - unknown
+  - _triage
+  - _config
+
+issuers:
+  cez-as:
+    display_name: CEZ a.s.
+    aliases:
+      - CEZ
+      - cez.cz
+
+  plzensky-prazdroj:
+    display_name: Plzensky Prazdroj a.s.
+    aliases:
+      - prazdroj.cz

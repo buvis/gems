@@ -1,0 +1,26 @@
+version: 1
+
+doc_types:
+  - invoice
+  - receipt
+  - statement
+  - contract
+  - certificate
+  - reminder
+  - correspondence
+  - other
+
+reserved_slugs:
+  - unknown
+  - _triage
+  - _config
+
+issuers:
+  cez-as:
+    display_name: ČEZ a.s.
+    aliases:
+      - ČEZ
+      - ČEZ Prodej
+      - ČEZ Distribuce
+      - cez.cz
+      - skupinacez.cz
