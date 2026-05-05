@@ -73,6 +73,7 @@ All 16 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `
 |-------|-----|------|
 | `bim` | jira, textual, fpdf2 | bim |
 | `bim-web` | fastapi, uvicorn, watchfiles | bim (web UI) |
+| `doc` | ocrmypdf, pdfminer.six, requests, Unidecode | bim (doc subsystem) |
 | `dot` | textual | dot (TUI) |
 | `fren` | python-slugify, Unidecode | fren |
 | `hello-world` | pyfiglet | hello-world |
