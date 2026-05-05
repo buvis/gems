@@ -205,3 +205,87 @@ class TestSchemaV2:
         with open_state_db(db_path) as db:
             cursor = db.connection.execute("SELECT MAX(version) FROM schema_version")
             assert cursor.fetchone()[0] == 2
+
+
+class TestSchemaMigrationV1ToV2:
+    def _build_v1_db(self, path: Path) -> None:
+        """Construct a v1-shaped database manually (no claims table, version=1)."""
+        import sqlite3
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(path), isolation_level=None)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            """
+            CREATE TABLE schema_version (
+                version INTEGER PRIMARY KEY
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE processed (
+                sha256 TEXT PRIMARY KEY,
+                canonical_filename TEXT NOT NULL,
+                issuer_slug TEXT NOT NULL,
+                doc_type TEXT NOT NULL,
+                processed_at TEXT NOT NULL,
+                extraction_method TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE originals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                original_sha256 TEXT NOT NULL,
+                path TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+        conn.execute(
+            """
+            INSERT INTO processed
+                (sha256, canonical_filename, issuer_slug, doc_type,
+                 processed_at, extraction_method)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "j" * 64,
+                "20210311083422-cez-as-7102105594.invoice.pdf",
+                "cez-as",
+                "invoice",
+                datetime.now(timezone.utc).isoformat(),
+                "rule:cez-invoice-2024:v1",
+            ),
+        )
+        conn.close()
+
+    def test_v1_to_v2_migration_adds_claims_table(self, db_path: Path) -> None:
+        import sqlite3
+
+        self._build_v1_db(db_path)
+
+        check = sqlite3.connect(str(db_path))
+        pre = check.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='claims'").fetchone()
+        check.close()
+        assert pre is None, "v1 fixture should not have claims table"
+
+        with open_state_db(db_path) as db:
+            assert (
+                db.connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='claims'").fetchone()
+                is not None
+            )
+
+            assert db.connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 2
+
+            result = db.dedup("j" * 64)
+            assert result.is_duplicate is True
+            assert result.existing_row is not None
+            assert result.existing_row.issuer_slug == "cez-as"
+
+            assert db.claim("k" * 64) is True
+            assert db.release_claim("k" * 64) is True
