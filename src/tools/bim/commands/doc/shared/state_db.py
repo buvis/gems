@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import TracebackType
 
@@ -44,7 +44,9 @@ class DedupResult(BaseModel):
     existing_row: ProcessedRow | None
 
 
-_SCHEMA_V1 = (
+_SCHEMA_VERSION = 2
+
+_SCHEMA_DDL = (
     """
     CREATE TABLE IF NOT EXISTS schema_version (
         version INTEGER PRIMARY KEY
@@ -67,6 +69,12 @@ _SCHEMA_V1 = (
         path TEXT NOT NULL,
         operation TEXT NOT NULL,
         created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS claims (
+        sha256 TEXT PRIMARY KEY,
+        claimed_at TEXT NOT NULL
     )
     """,
 )
@@ -97,12 +105,43 @@ class StateDB:
 
     @staticmethod
     def _migrate(conn: sqlite3.Connection) -> None:
-        for ddl in _SCHEMA_V1:
+        for ddl in _SCHEMA_DDL:
             conn.execute(ddl)
         cursor = conn.execute("SELECT MAX(version) FROM schema_version")
         current = cursor.fetchone()[0]
-        if current is None:
-            conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+        if current is None or current < _SCHEMA_VERSION:
+            conn.execute(
+                "INSERT INTO schema_version (version) VALUES (?)",
+                (_SCHEMA_VERSION,),
+            )
+
+    def claim(self, sha256: str) -> bool:
+        """Atomically claim ownership of processing this sha256.
+
+        Returns True if this caller successfully claimed (no prior claim or
+        completed processing existed). Returns False if another worker has
+        already claimed or processed this sha256.
+
+        The pipeline pattern is:
+            1. dedup(sha) - skip if already in processed
+            2. claim(sha) - skip if already claimed by another worker
+            3. process the document
+            4. record_processed(row) - finalize
+
+        Spec section 6 step 1: "Record the hash now to prevent concurrent
+        re-processing."
+        """
+        # Check processed first - already-finalized documents are not claimable.
+        existing = self._conn.execute("SELECT 1 FROM processed WHERE sha256 = ? LIMIT 1", (sha256,)).fetchone()
+        if existing is not None:
+            return False
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        cursor = self._conn.execute(
+            "INSERT OR IGNORE INTO claims (sha256, claimed_at) VALUES (?, ?)",
+            (sha256, now_iso),
+        )
+        return cursor.rowcount == 1
 
     def dedup(self, sha256: str) -> DedupResult:
         cursor = self._conn.execute(

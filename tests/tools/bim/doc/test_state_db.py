@@ -42,11 +42,11 @@ class TestSchemaCreation:
         with open_state_db(db_path):
             assert db_path.parent.exists()
 
-    def test_schema_version_is_one(self, db_path: Path) -> None:
+    def test_schema_version_present(self, db_path: Path) -> None:
         with open_state_db(db_path) as db:
-            cursor = db.connection.execute("SELECT version FROM schema_version")
+            cursor = db.connection.execute("SELECT MAX(version) FROM schema_version")
             row = cursor.fetchone()
-            assert row[0] == 1
+            assert row[0] is not None and row[0] >= 1
 
     def test_processed_table_exists(self, db_path: Path) -> None:
         with open_state_db(db_path) as db:
@@ -124,3 +124,43 @@ class TestPersistence:
         with open_state_db(db_path) as db:
             result = db.dedup(row.sha256)
             assert result.is_duplicate is True
+
+
+class TestClaim:
+    def test_claims_table_exists(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            cursor = db.connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='claims'")
+            assert cursor.fetchone() is not None
+
+    def test_first_claim_succeeds(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            assert db.claim("a" * 64) is True
+
+    def test_second_claim_on_same_sha_fails(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            assert db.claim("a" * 64) is True
+            assert db.claim("a" * 64) is False
+
+    def test_claim_after_record_processed_fails(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            row = _sample_processed(sha="b" * 64)
+            db.record_processed(row)
+            assert db.claim(row.sha256) is False
+
+    def test_independent_shas_can_both_claim(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            assert db.claim("c" * 64) is True
+            assert db.claim("d" * 64) is True
+
+    def test_claim_persists_across_reopen(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            assert db.claim("e" * 64) is True
+        with open_state_db(db_path) as db:
+            assert db.claim("e" * 64) is False
+
+
+class TestSchemaV2:
+    def test_schema_version_is_two(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            cursor = db.connection.execute("SELECT MAX(version) FROM schema_version")
+            assert cursor.fetchone()[0] == 2
