@@ -15,9 +15,9 @@ import tempfile
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from bim.commands.doc.shared.naming import slugify
+from bim.commands.doc.shared.naming import SLUG_REGEX, slugify
 
 __all__ = [
     "IssuerEntry",
@@ -43,6 +43,13 @@ class IssuerEntry(BaseModel):
     aliases: list[str] = []
     notes: str | None = None
 
+    @field_validator("slug")
+    @classmethod
+    def _slug_is_canonical(cls, v: str) -> str:
+        if not SLUG_REGEX.match(v):
+            raise ValueError(f"slug {v!r} must be lowercase kebab-case ASCII (matching {SLUG_REGEX.pattern})")
+        return v
+
 
 class IssuerRegistry(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -57,6 +64,9 @@ class IssuerRegistry(BaseModel):
         for key, entry in self.issuers.items():
             if entry.slug != key:
                 raise ValueError(f"Issuer slug {entry.slug!r} does not match dict key {key!r}")
+        overlap = set(self.reserved_slugs) & set(self.issuers.keys())
+        if overlap:
+            raise ValueError(f"reserved_slugs and issuers keys must be disjoint, conflict: {sorted(overlap)}")
         return self
 
 

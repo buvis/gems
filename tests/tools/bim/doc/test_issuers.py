@@ -10,6 +10,7 @@ from bim.commands.doc.shared.issuers import (
     register_issuer,
     resolve_alias,
 )
+from pydantic import ValidationError
 
 FIXTURES = Path(__file__).parent / "fixtures" / "issuers"
 
@@ -121,6 +122,61 @@ class TestRegisterIssuer:
         assert "t-mobile-cz" in reloaded.issuers
         assert "cez-as" in reloaded.issuers
         assert "plzensky-prazdroj" in reloaded.issuers
+
+    def test_invalid_slug_with_spaces_rejected(self, valid_registry_path: Path, lock_path: Path) -> None:
+        with pytest.raises(ValidationError, match="kebab-case"):
+            register_issuer(
+                valid_registry_path,
+                lock_path,
+                slug="bad slug with spaces",
+                display_name="Bad",
+            )
+
+    def test_invalid_slug_with_diacritics_rejected(self, valid_registry_path: Path, lock_path: Path) -> None:
+        with pytest.raises(ValidationError, match="kebab-case"):
+            register_issuer(
+                valid_registry_path,
+                lock_path,
+                slug="ČEZ",
+                display_name="ČEZ",
+            )
+
+    def test_invalid_slug_uppercase_rejected(self, valid_registry_path: Path, lock_path: Path) -> None:
+        with pytest.raises(ValidationError, match="kebab-case"):
+            register_issuer(
+                valid_registry_path,
+                lock_path,
+                slug="CEZ-AS",
+                display_name="CEZ",
+            )
+
+
+class TestRegistryValidation:
+    def test_reserved_and_issuers_disjoint_violation_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="disjoint"):
+            IssuerRegistry.model_validate(
+                {
+                    "version": 1,
+                    "doc_types": ["invoice"],
+                    "reserved_slugs": ["unknown"],
+                    "issuers": {
+                        "unknown": {"slug": "unknown", "display_name": "Bad"},
+                    },
+                }
+            )
+
+    def test_invalid_issuer_slug_in_yaml_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="kebab-case"):
+            IssuerRegistry.model_validate(
+                {
+                    "version": 1,
+                    "doc_types": ["invoice"],
+                    "reserved_slugs": [],
+                    "issuers": {
+                        "Bad Slug": {"slug": "Bad Slug", "display_name": "Bad"},
+                    },
+                }
+            )
 
 
 class TestCiphertextDetection:

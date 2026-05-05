@@ -8,6 +8,7 @@ from unidecode import unidecode
 __all__ = [
     "CANONICAL_REGEX",
     "DOC_TYPES",
+    "SLUG_REGEX",
     "build_canonical_filename",
     "slugify",
 ]
@@ -33,7 +34,7 @@ CANONICAL_REGEX = re.compile(
 )
 
 _ZK_REGEX = re.compile(r"^\d{14}$")
-_SLUG_REGEX = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SLUG_REGEX = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 
@@ -64,11 +65,11 @@ def build_canonical_filename(
     """Compose a canonical filename per the spec grammar."""
     if not _ZK_REGEX.match(zk_timestamp):
         raise ValueError(f"zk_timestamp must be 14 digits, got {zk_timestamp!r}")
-    if not _SLUG_REGEX.match(issuer_slug):
+    if not SLUG_REGEX.match(issuer_slug):
         raise ValueError(f"issuer_slug must be lowercase kebab-case ASCII, got {issuer_slug!r}")
     if doc_type not in DOC_TYPES:
         raise ValueError(f"doc_type must be one of {DOC_TYPES}, got {doc_type!r}")
-    if not _SLUG_REGEX.match(ext):
+    if not SLUG_REGEX.match(ext):
         raise ValueError(f"ext must be lowercase alphanumeric, got {ext!r}")
 
     title_slug = slugify(title_or_number)
