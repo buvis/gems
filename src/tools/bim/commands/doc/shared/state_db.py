@@ -157,6 +157,15 @@ class StateDB:
         return cursor.rowcount == 1
 
     def dedup(self, sha256: str) -> DedupResult:
+        """Look up sha256 in the processed table.
+
+        This is a read-only check intended for fast-path skip decisions
+        (e.g., audit walks or read-only inspection). Pipeline workers MUST
+        use ``claim()`` instead - ``dedup()`` does not prevent two concurrent
+        workers from both observing a miss and both processing the same
+        document. ``claim()`` atomically checks both the ``processed`` and
+        ``claims`` tables and reserves the sha for the calling worker.
+        """
         cursor = self._conn.execute(
             """
             SELECT sha256, canonical_filename, issuer_slug, doc_type,
