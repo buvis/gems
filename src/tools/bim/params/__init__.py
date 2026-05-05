@@ -3,6 +3,8 @@ from __future__ import annotations
 from bim.params.archive_note import ArchiveNoteParams
 from bim.params.create_note import CreateNoteParams
 from bim.params.delete_note import DeleteNoteParams
+from bim.params.doc_ingest import IngestParams
+from bim.params.doc_promote import PromoteParams
 from bim.params.edit_note import EditNoteParams
 from bim.params.format_note import FormatNoteParams
 from bim.params.import_note import ImportNoteParams
@@ -19,7 +21,9 @@ __all__ = [
     "EditNoteParams",
     "FormatNoteParams",
     "ImportNoteParams",
+    "IngestParams",
     "PathParams",
+    "PromoteParams",
     "QueryParams",
     "ServeParams",
     "ShowNoteParams",
