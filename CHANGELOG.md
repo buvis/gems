@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **bim**: doc subsystem v1 — ingest pipeline, triage workflow, issuer registry, OCR + LLM via Ollama/qwen2.5
+- **bim**: `bim doc ingest --strict` / `bim doc promote --strict` exits 1 on pipeline failure for scripting; default still exits 0
+
+### Changed
+
+- **bim**: `bim doc ingest` and `bim doc promote` retry transient classifier/extractor failures up to `classifier.max_retries` times against `classifier.primary_model`, then fall back once to `classifier.fallback_model`. Semantic failures and timeouts continue to short-circuit to triage immediately.
 
 ## [0.10.0] - 2026-04-14
 
