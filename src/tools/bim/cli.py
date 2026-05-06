@@ -11,6 +11,7 @@ from buvis.pybase.configuration import (
     buvis_options,
     get_settings,
 )
+from buvis.pybase.result import CommandResult
 
 from bim.params.archive_note import ArchiveNoteParams
 from bim.params.delete_note import DeleteNoteParams
@@ -653,9 +654,9 @@ def doc_promote(ctx: click.Context, yml_path: Path) -> None:
     _report_doc_result(result, default_failure="promote failed")
 
 
-def _report_doc_result(result: Any, *, default_failure: str) -> None:
+def _report_doc_result(result: CommandResult, *, default_failure: str) -> None:
     """Map a doc-subsystem ``CommandResult`` to console output."""
-    for w in getattr(result, "warnings", []):
+    for w in result.warnings:
         console.warning(w)
     if not result.success:
         console.failure(result.error or default_failure)
