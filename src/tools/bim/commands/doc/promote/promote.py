@@ -24,6 +24,7 @@ from bim.commands.doc.shared.issuers import load_registry, register_issuer
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import read_proposal, validate_for_promote
+from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, to_tilde_path
 from bim.commands.doc.shared.zettel_writer import (
     DocumentZettelFrontmatter,
     IngestSource,
@@ -150,7 +151,12 @@ class CommandPromote:
     # --------- stage 2: register new issuer if requested ---------
 
     def _maybe_register_issuer(self, proposal: TriageProposal) -> IssuerRegistry | CommandResult | None:
-        """Return the post-register registry, or None if no register requested."""
+        """Return the post-register registry, or None if no register requested.
+
+        Also creates ``<business_root>/<slug>/inbox/`` per spec §3 - every
+        registered issuer is expected to have an inbox/ subfolder for manual
+        document filing.
+        """
         if not proposal.register_issuer:
             return None
         try:
@@ -163,6 +169,8 @@ class CommandPromote:
             )
         except ValueError as exc:
             return CommandResult(success=False, error=f"register_issuer failed: {exc}")
+        inbox_dir = self._settings.paths.business_root / proposal.issuer.slug / "inbox"
+        inbox_dir.mkdir(parents=True, exist_ok=True)
         return load_registry(self._services.registry_path)
 
     # --------- stage 3: re-derive OCR ---------
@@ -207,7 +215,15 @@ class CommandPromote:
     # --------- stage 5: write zettel, move pdf, record processed, delete proposal ---------
 
     def _finalize(self, ctx: _PromoteContext, ocr_result: OCRResult, plan: _NamePlan) -> CommandResult:
-        sha = hashlib.sha256(ctx.sibling_pdf.read_bytes()).hexdigest()
+        # Use the OCR'd PDF (which carries the freshly-derived text layer) as
+        # the source of truth for both the recorded sha and the file we move.
+        # When OCR ran in skip/redo mode in place, ocr_result.pdf_path equals
+        # ctx.sibling_pdf and this is a no-op. When the full-OCR branch fired,
+        # ocr_result.pdf_path is a new temp file with the embedded text layer
+        # and we file that instead, otherwise the zettel body would describe
+        # OCR text that the filed PDF does not contain.
+        source_pdf = ocr_result.pdf_path
+        sha = hashlib.sha256(source_pdf.read_bytes()).hexdigest()
         ingest_today = date.today()
 
         frontmatter_or_err = self._build_frontmatter(ctx, ocr_result, plan, sha, ingest_today)
@@ -222,9 +238,17 @@ class CommandPromote:
             return CommandResult(success=False, error=f"zettel write failed: {exc}")
 
         try:
-            ctx.sibling_pdf.replace(plan.target_pdf)
+            source_pdf.replace(plan.target_pdf)
         except OSError as exc:
             return CommandResult(success=False, error=f"pdf move failed: {exc}")
+        # If full-OCR produced a new path, the original triage PDF is now
+        # orphaned. Clean it up so _triage/ doesn't accumulate stale copies.
+        if source_pdf != ctx.sibling_pdf:
+            try:
+                ctx.sibling_pdf.unlink()
+            except OSError:
+                # Non-fatal: orphaned triage PDF is a small leak, not data loss.
+                pass
 
         try:
             self._services.state_db.record_processed(
@@ -278,12 +302,14 @@ class CommandPromote:
                 doc_language=ctx.proposal.document.language,
                 ingest_date=ingest_today,
                 ingest_source=cast(IngestSource, ctx.proposal.source.kind),
-                file_path=self._to_tilde(plan.target_pdf),
+                file_path=to_tilde_path(plan.target_pdf),
                 file_sha256=sha,
                 ocr_engine=self._settings.ocr.engine,
                 ocr_mean_confidence=ocr_result.mean_confidence,
                 extraction_method="manual",
-                tags=self._build_tags(ctx.proposal.document.type, ctx.proposal.issuer.slug, ctx.proposal.document.date),
+                tags=build_zettel_tags(
+                    ctx.proposal.document.type, ctx.proposal.issuer.slug, ctx.proposal.document.date
+                ),
             )
         except Exception as exc:
             return CommandResult(success=False, error=f"frontmatter validation failed: {exc}")
@@ -301,19 +327,3 @@ class CommandPromote:
     @staticmethod
     def _zk_timestamp(when: date) -> str:
         return when.strftime("%Y%m%d") + "000000"
-
-    @staticmethod
-    def _build_tags(doc_type: str, issuer_slug: str, doc_date: date | None) -> list[str]:
-        tags = [f"document/{doc_type}", f"issuer/{issuer_slug}"]
-        if doc_date is not None:
-            tags.append(f"year/{doc_date.year}")
-        return tags
-
-    @staticmethod
-    def _to_tilde(path: Path) -> str:
-        home = Path.home()
-        try:
-            rel = path.relative_to(home)
-            return f"~/{rel}"
-        except ValueError:
-            return f"~{path}"

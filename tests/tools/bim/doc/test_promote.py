@@ -286,6 +286,10 @@ class TestCommandPromote:
         assert target_pdf.parent == settings.paths.business_root / "new-vendor"
         assert target_pdf.exists()
 
+        # Spec §3 mandates inbox/ for every registered issuer.
+        inbox_dir = settings.paths.business_root / "new-vendor" / "inbox"
+        assert inbox_dir.is_dir()
+
     def test_unapproved_proposal_returns_failure(
         self,
         settings: DocSettings,
@@ -352,6 +356,76 @@ class TestCommandPromote:
         assert result.success is False
         assert pdf.exists()
         assert yml.exists()
+
+    def test_promote_files_ocr_result_pdf_when_full_ocr_branch_ran(
+        self,
+        settings: DocSettings,
+        registry_path: Path,
+        lock_path: Path,
+        state_db: StateDB,
+        mocker: MockerFixture,
+    ) -> None:
+        """Regression: promote must file the OCR'd PDF, not the original sibling, when full OCR fired."""
+        from bim.commands.doc.shared.ocr import OCRRunner
+
+        triage_dir = settings.paths.business_root / "_triage"
+        sibling_pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
+        sibling_bytes = b"%PDF-1.4\nold sibling without ocr layer\n"
+        sibling_pdf.write_bytes(sibling_bytes)
+        # Full-OCR branch produces a separate file with embedded text layer.
+        ocr_pdf = triage_dir / "ocr-output.pdf"
+        ocr_bytes = b"%PDF-1.4\nfreshly ocr'd content\n"
+        ocr_pdf.write_bytes(ocr_bytes)
+
+        sha_of_sibling = hashlib.sha256(sibling_bytes).hexdigest()
+        sha_of_ocr = hashlib.sha256(ocr_bytes).hexdigest()
+        assert sha_of_sibling != sha_of_ocr  # sanity: bytes truly differ
+
+        write_proposal(yml, _build_proposal(sha256=sha_of_sibling, triage_pdf=sibling_pdf))
+
+        registry = load_registry(registry_path)
+        ocr_runner = OCRRunner(settings=settings, state_dir=settings.paths.state_dir)
+        mocker.patch.object(
+            ocr_runner,
+            "run",
+            return_value=OCRResult(
+                ocr_text="fresh ocr text",
+                pdf_path=ocr_pdf,
+                was_redone=False,
+                original_backup_path=None,
+                mean_confidence=0.91,
+                pages=2,
+            ),
+        )
+        zettel_writer = ZettelWriter(
+            repo=None,
+            vault_root=settings.paths.vault_root,
+            vault_documents_subdir=settings.paths.vault_documents_subdir,
+        )
+        services = PromoteServices(
+            registry=registry,
+            registry_path=registry_path,
+            lock_path=lock_path,
+            state_db=state_db,
+            ocr_runner=ocr_runner,
+            zettel_writer=zettel_writer,
+        )
+        cmd = CommandPromote(
+            params=PromoteParams(proposed_yml_path=yml),
+            settings=settings,
+            services=services,
+        )
+        result = cmd.execute()
+
+        assert result.success is True
+        target_pdf = Path(result.metadata["pdf_path"])
+        # Filed PDF must be the OCR'd bytes, not the original sibling bytes.
+        assert target_pdf.read_bytes() == ocr_bytes
+        # state_db sha must match the OCR'd bytes.
+        assert state_db.dedup(sha_of_ocr).is_duplicate is True
+        # Original sibling and OCR temp paths are both gone.
+        assert not sibling_pdf.exists()
+        assert not ocr_pdf.exists()
 
     def test_missing_sibling_pdf_returns_failure(
         self,

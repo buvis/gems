@@ -38,6 +38,7 @@ from bim.commands.doc.shared.triage import (
     ZettelPreview,
     write_proposal,
 )
+from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, to_tilde_path
 from bim.commands.doc.shared.zettel_writer import (
     DocumentZettelFrontmatter,
     build_zettel_body,
@@ -169,10 +170,17 @@ class Pipeline:
 
         try:
             return self._run_after_claim(params, sha)
-        except Exception:
+        except Exception as exc:
             # Release the claim so a retry can re-attempt rather than parking forever.
+            # Map any escaping exception to a structured CommandResult per AGENTS.md
+            # "never let raw exceptions reach the user" - the CLI handler turns
+            # success=False into console.failure rather than a stack trace.
             self._state_db.release_claim(sha)
-            raise
+            return CommandResult(
+                success=False,
+                error=f"pipeline failed: {exc}",
+                metadata={"sha256": sha, "stage": "post-claim"},
+            )
 
     # --------- internals ---------
 
@@ -299,12 +307,12 @@ class Pipeline:
             doc_language=classify_result.language,
             ingest_date=ingest_today,
             ingest_source=params.source,
-            file_path=self._to_tilde(target_pdf),
+            file_path=to_tilde_path(target_pdf),
             file_sha256=sha,
             ocr_engine=self._settings.ocr.engine,
             ocr_mean_confidence=ocr_result.mean_confidence,
             extraction_method=f"llm:{self._settings.classifier.primary_model}",
-            tags=self._build_tags(classify_result.doc_type, issuer_slug, extract_result.date),
+            tags=build_zettel_tags(classify_result.doc_type, issuer_slug, extract_result.date),
         )
         body = build_zettel_body(frontmatter, ocr_result.ocr_text, self._settings.zettel)
         zettel_path = self._zettel_writer.write(frontmatter, body)
@@ -439,7 +447,7 @@ class Pipeline:
             zettel_preview=ZettelPreview(
                 id=zk_timestamp,
                 ingest_date=date.today(),
-                tags=self._build_tags(
+                tags=build_zettel_tags(
                     doc_type_for_filename,
                     ctx.issuer_slug or "unknown",
                     ctx.extract_result.date if ctx.extract_result is not None else None,
@@ -491,39 +499,13 @@ class Pipeline:
         return meta
 
     @staticmethod
-    def _build_tags(doc_type: str, issuer_slug: str, doc_date: date | None) -> list[str]:
-        tags = [f"document/{doc_type}"]
-        if issuer_slug:
-            tags.append(f"issuer/{issuer_slug}")
-        if doc_date is not None:
-            tags.append(f"year/{doc_date.year}")
-        return tags
-
-    @staticmethod
     def _zk_timestamp(doc_date: date | None) -> str:
         """14-digit ``YYYYMMDDhhmmss`` timestamp.
 
-        For ingestion-now, uses wall-clock to the second. For backfill with a
+        For ingestion-now, uses wall-clock to the second in UTC (matches the
+        timezone used by ``state_db.record_processed``). For backfill with a
         known doc_date, uses that date with ``000000`` time per spec §5.
         """
         if doc_date is None:
-            return datetime.now().strftime("%Y%m%d%H%M%S")
+            return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         return doc_date.strftime("%Y%m%d") + "000000"
-
-    @staticmethod
-    def _to_tilde(path: Path) -> str:
-        """Return ``path`` as a ``~/``-prefixed string for portability.
-
-        For paths under ``Path.home()``, returns ``~/<relative>``. For paths
-        outside home (notably test ``tmp_path`` on macOS), prepends ``~`` to
-        the absolute path to satisfy the frontmatter validator. The resulting
-        ``~/...`` form is stored in the zettel for Obsidian's Open-PDF link;
-        ``str(target_pdf)`` is what the pipeline returns to callers for
-        filesystem assertions.
-        """
-        home = Path.home()
-        try:
-            rel = path.relative_to(home)
-            return f"~/{rel}"
-        except ValueError:
-            return f"~{path}"

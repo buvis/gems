@@ -660,7 +660,7 @@ def _report_doc_result(result: Any, *, default_failure: str) -> None:
     if not result.success:
         console.failure(result.error or default_failure)
         return
-    metadata = result.metadata if isinstance(result.metadata, dict) else {}
+    metadata = result.metadata
     outcome = metadata.get("outcome")
     if outcome == "filed":
         pdf_path = metadata.get("pdf_path")
@@ -676,7 +676,7 @@ def _report_doc_result(result: Any, *, default_failure: str) -> None:
         existing = metadata.get("existing_canonical_filename")
         console.warning(f"duplicate of {existing}" if existing else "duplicate")
     else:
-        # promote success: no outcome key, but pdf/zettel are present
+        # promote success: no outcome key, but pdf/zettel are present.
         pdf_path = metadata.get("pdf_path")
         zettel_path = metadata.get("zettel_path")
         if pdf_path and zettel_path:
