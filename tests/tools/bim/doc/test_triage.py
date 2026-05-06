@@ -192,3 +192,45 @@ class TestValidateForPromote:
         proposal = _full_proposal().model_copy(update={"approved": True, "document": bad_doc})
         errors = validate_for_promote(proposal, registry)
         assert any("DOC_TYPES" in e or "doc_type" in e for e in errors)
+
+
+class TestSourceProposalValidation:
+    """sha256 on SourceProposal must be 64 lowercase hex chars."""
+
+    def _kwargs(self) -> dict[str, object]:
+        return {
+            "kind": "email",
+            "staging_path": Path("/tmp/staging/abc.pdf"),
+            "email_msgid": None,
+            "email_from": None,
+            "email_subject": None,
+            "original_filename": None,
+        }
+
+    def test_valid_hex64_sha_accepted(self) -> None:
+        sp = SourceProposal(sha256="abcd1234" * 8, **self._kwargs())
+        assert sp.sha256 == "abcd1234" * 8
+
+    def test_uppercase_sha_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            SourceProposal(sha256="A" * 64, **self._kwargs())
+
+    def test_too_short_sha_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            SourceProposal(sha256="a" * 63, **self._kwargs())
+
+    def test_non_hex_chars_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            SourceProposal(sha256="z" * 64, **self._kwargs())
+
+    def test_empty_sha_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            SourceProposal(sha256="", **self._kwargs())
