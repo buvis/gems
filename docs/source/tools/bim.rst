@@ -289,8 +289,24 @@ from the staged PDF and ignores user-edited OCR text in the proposal.
 Arguments: ``YML_PATH`` — path to a ``<basename>.pdf.proposed.yml`` file
 whose sibling ``<basename>.pdf`` exists.
 
+Options:
+
+- ``--strict`` — exit 1 on promote failure (for scripting). Default exit
+  code is 0 on failure to match the rest of the bim CLI.
+
 The proposal must have ``approved: true`` and a slug present in the issuer
 registry (or ``register_issuer: true`` to add a new issuer entry under flock).
+
+Retry behaviour
+~~~~~~~~~~~~~~~
+
+The classifier and extractor stages retry transient HTTP failures up to
+``classifier.max_retries`` (default 2) times against ``classifier.primary_model``,
+then fall back once to ``classifier.fallback_model``. Semantic failures
+(missing required fields, uncoercible values, unparseable model output) and
+``requests.exceptions.Timeout`` short-circuit to triage immediately without
+retry or fallback - retrying with the same input won't help on a model-output
+problem.
 
 Issuer registry
 ~~~~~~~~~~~~~~~
