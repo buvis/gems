@@ -134,3 +134,29 @@ class TestCanonicalRegex:
 
     def test_rejects_unknown_doc_type(self) -> None:
         assert not CANONICAL_REGEX.match("20210311083422-cez-as-7102105594.bogus.pdf")
+
+
+class TestLazyUnidecodeImport:
+    """naming.py must be loadable without the unidecode package installed
+    (so consumers outside the [doc] extra don't blow up on import)."""
+
+    def test_module_imports_without_unidecode_at_module_load(self, mocker) -> None:  # type: ignore[no-untyped-def]
+        import builtins
+        import importlib
+        import sys
+
+        original = sys.modules.get("bim.commands.doc.shared.naming")
+        try:
+            sys.modules.pop("bim.commands.doc.shared.naming", None)
+            real_import = builtins.__import__
+
+            def fake_import(name, globals_=None, locals_=None, fromlist=(), level=0):  # type: ignore[no-untyped-def]
+                if name == "unidecode":
+                    raise ModuleNotFoundError("unidecode pretend-missing")
+                return real_import(name, globals_, locals_, fromlist, level)
+
+            mocker.patch("builtins.__import__", side_effect=fake_import)
+            importlib.import_module("bim.commands.doc.shared.naming")
+        finally:
+            if original is not None:
+                sys.modules["bim.commands.doc.shared.naming"] = original
