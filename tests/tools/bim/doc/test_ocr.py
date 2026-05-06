@@ -537,6 +537,39 @@ class TestOCRRunner:
         assert len(sidecar_paths) == 1
         assert not sidecar_paths[0].exists()
 
+    def test_full_ocr_cleans_up_output_pdf_on_failure(
+        self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
+    ) -> None:
+        pdf = tmp_path / "scan.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+
+        mocker.patch("bim.commands.doc.shared.ocr.extract_text", return_value="")
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.PDFPage.get_pages",
+            return_value=_pages_iter(1),
+        )
+        # Capture the output_pdf path from argv and assert it does not exist
+        # after the failed run.
+        captured: dict[str, Path] = {}
+
+        def _capture_fail(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            argv = args[0] if args else kwargs.get("args")
+            assert argv is not None
+            tokens = [str(t) for t in argv]
+            # Last positional arg is the output PDF path.
+            captured["output_pdf"] = Path(tokens[-1])
+            return subprocess.CompletedProcess(args=[], returncode=3, stdout=b"", stderr=b"boom")
+
+        mocker.patch("bim.commands.doc.shared.ocr.subprocess.run", side_effect=_capture_fail)
+
+        settings = _make_settings(tmp_path)
+        runner = OCRRunner(settings=settings, state_dir=state_dir)
+        with pytest.raises(OCRError):
+            runner.run(pdf)
+
+        assert "output_pdf" in captured
+        assert not captured["output_pdf"].exists(), "output_pdf tempfile must be cleaned up on _invoke failure"
+
     def test_subprocess_stderr_decoded_with_replace_for_invalid_utf8(
         self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
     ) -> None:

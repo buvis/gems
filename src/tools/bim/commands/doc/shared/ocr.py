@@ -175,12 +175,17 @@ class OCRRunner:
         argv.append(str(pdf_path))
         argv.append(str(output_pdf))
 
+        success = False
         try:
             self._invoke(argv)
             ocr_text = sidecar_path.read_text(encoding="utf-8")
+            success = True
         finally:
             if sidecar_path.exists():
                 sidecar_path.unlink()
+            if not success and output_pdf.exists():
+                # On error, output_pdf is incomplete or empty; reclaim it.
+                output_pdf.unlink()
 
         return OCRResult(
             ocr_text=ocr_text,
