@@ -89,6 +89,8 @@ Add subdirs only when needed:
 
 > `bim/commands/serve/frontend/` contains the WebUI SvelteKit app — the only tool with a frontend subtree.
 
+> `bim/commands/doc/` follows the existing `commands/serve/`-style group pattern with a `shared/` subdir holding cross-command utilities (pipeline, OCR/classifier/extractor adapters, state DB, issuer registry, zettel writer).
+
 ## Code Conventions
 
 **Type hints** — modern style, no `Optional`:

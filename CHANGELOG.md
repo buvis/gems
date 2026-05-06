@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **bim**: doc subsystem v1 — ingest pipeline, triage workflow, issuer registry, OCR + LLM via Ollama/qwen2.5
+
 ## [0.10.0] - 2026-04-14
 
 ### Added
