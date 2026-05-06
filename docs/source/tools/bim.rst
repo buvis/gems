@@ -265,6 +265,10 @@ Options:
   ``scan``, ``download``, ``issuer-inbox``, ``backfill-canonical``,
   ``backfill-noncanonical``. Default: ``download``.
 - ``--issuer`` — pre-pin an issuer slug. Honoured when ``--source issuer-inbox``.
+- ``--strict`` — exit 1 on pipeline failure (for scripting). Default exit
+  code is 0 even on ``success=False``, matching the rest of the bim CLI.
+  Triaged and duplicate outcomes are not failures and remain exit 0
+  regardless of this flag.
 
 Outcomes (printed to console and recorded in ``state.db``):
 
