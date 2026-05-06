@@ -157,23 +157,27 @@ class Extractor:
     def extract(self, ocr_text: str, doc_type: str) -> ExtractResult:
         """Extract structured fields for ``doc_type`` from OCR text via Ollama.
 
-        Args:
-            ocr_text: OCR text extracted from the source document.
-            doc_type: Canonical document type (one of :data:`DOC_TYPES`) used
-                to pick the required-field set and shape the system prompt.
-
-        Returns:
-            A populated :class:`ExtractResult` with all required fields for
-            ``doc_type`` and any optional fields the model returned.
+        Thin shim that forwards to :meth:`extract_with_model` using the
+        configured primary model. Kept for callers that don't need to
+        substitute the model.
 
         Raises:
             ValueError: ``doc_type`` is not one of the canonical types.
-            IncompleteExtraction: HTTP transport failed, the response was not
-                parseable JSON, the response was not a JSON object, a value
-                could not be coerced (e.g. non-ISO date, non-numeric amount),
-                or one or more required fields were missing.
+            IncompleteExtraction: HTTP transport failed (``transient=True``),
+                the response was not parseable JSON, the response was not a
+                JSON object, a value could not be coerced (e.g. non-ISO date,
+                non-numeric amount), or one or more required fields were
+                missing (``transient=False`` for these semantic failures).
             requests.exceptions.Timeout: Re-raised unwrapped so callers can
                 distinguish slow-LLM scenarios from other failures.
+        """
+        return self.extract_with_model(ocr_text, doc_type, model=self._settings.primary_model)
+
+    def extract_with_model(self, ocr_text: str, doc_type: str, *, model: str) -> ExtractResult:
+        """Like :meth:`extract` but the caller picks the Ollama model name.
+
+        Used by the pipeline's retry helper to substitute ``fallback_model``
+        for ``primary_model`` after exhausted retries.
         """
         if doc_type not in DOC_TYPES:
             raise ValueError(f"doc_type must be one of {DOC_TYPES}, got {doc_type!r}")
@@ -183,7 +187,7 @@ class Extractor:
 
         url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
         body = {
-            "model": self._settings.primary_model,
+            "model": model,
             "messages": [
                 {"role": "system", "content": _system_prompt(doc_type)},
                 {"role": "user", "content": _user_prompt(ocr_text)},

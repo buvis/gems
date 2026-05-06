@@ -142,10 +142,12 @@ def _build_pipeline(
         classify_mock = mocker.patch.object(classifier, "classify_with_model", side_effect=classify_side_effect)
     else:
         classify_mock = mocker.patch.object(classifier, "classify_with_model", return_value=classify_result)
+    # Pipeline now calls extract_with_model via the retry helper. Mock the
+    # model-substituting variant; the legacy ``extract`` shim forwards to it.
     if extract_side_effect is not None:
-        extract_mock = mocker.patch.object(extractor, "extract", side_effect=extract_side_effect)
+        extract_mock = mocker.patch.object(extractor, "extract_with_model", side_effect=extract_side_effect)
     else:
-        extract_mock = mocker.patch.object(extractor, "extract", return_value=extract_result)
+        extract_mock = mocker.patch.object(extractor, "extract_with_model", return_value=extract_result)
 
     services = PipelineServices(
         state_db=state_db,

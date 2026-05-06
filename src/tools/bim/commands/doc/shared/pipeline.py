@@ -271,9 +271,18 @@ class Pipeline:
                 )
             )
 
-        # Step 4: extract
+        # Step 4: extract (with retry+fallback for transient HTTP failures only)
+        def _extract_call(model: str) -> ExtractResult:
+            return self._extractor.extract_with_model(ocr_result.ocr_text, classify_result.doc_type, model=model)
+
         try:
-            extract_result = self._extractor.extract(ocr_result.ocr_text, classify_result.doc_type)
+            extract_result = _retry_llm_call(
+                func=_extract_call,
+                primary_model=self._settings.classifier.primary_model,
+                fallback_model=self._settings.classifier.fallback_model,
+                max_retries=self._settings.classifier.max_retries,
+                is_transient=lambda exc: isinstance(exc, IncompleteExtraction) and exc.transient,
+            )
         except IncompleteExtraction as exc:
             return self._triage(
                 _TriageContext(
