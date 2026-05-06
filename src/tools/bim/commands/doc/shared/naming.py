@@ -3,8 +3,6 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from unidecode import unidecode
-
 __all__ = [
     "CANONICAL_REGEX",
     "DOC_TYPES",
@@ -45,6 +43,9 @@ def slugify(text: str) -> str:
     collapse non-[a-z0-9] runs to single hyphen -> strip outer hyphens.
     Raises ValueError if the resulting slug is empty.
     """
+    # Lazy import keeps the module loadable without the [doc] extra installed.
+    from unidecode import unidecode
+
     normalized = unicodedata.normalize("NFKD", text)
     ascii_text = unidecode(normalized).lower()
     hyphenated = _NON_ALNUM.sub("-", ascii_text)
