@@ -142,3 +142,79 @@ class TestLazyImport:
         mocker.patch("builtins.__import__", side_effect=fake_import)
         # Module-level import must succeed without requests installed
         importlib.import_module("bim.commands.doc.shared.health")
+
+
+class TestCheckBinaryFlagFallback:
+    """_check_binary tries --version, then -V, then 'version'."""
+
+    def test_dash_version_succeeds_first(self, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.health import _check_binary
+
+        seen_flags: list[str] = []
+
+        def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            seen_flags.append(argv[1])
+            return _ok_proc()
+
+        mocker.patch(
+            "bim.commands.doc.shared.health.subprocess.run",
+            side_effect=fake_run,
+        )
+        _check_binary("foo")
+        assert seen_flags == ["--version"]
+
+    def test_falls_back_to_dash_v(self, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.health import _check_binary
+
+        seen: list[str] = []
+
+        def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            seen.append(argv[1])
+            if argv[1] == "--version":
+                return subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"unknown")
+            return _ok_proc()
+
+        mocker.patch(
+            "bim.commands.doc.shared.health.subprocess.run",
+            side_effect=fake_run,
+        )
+        _check_binary("foo")
+        assert seen == ["--version", "-V"]
+
+    def test_falls_back_to_bare_version(self, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.health import _check_binary
+
+        seen: list[str] = []
+
+        def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            seen.append(argv[1])
+            if argv[1] in ("--version", "-V"):
+                return subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"unknown")
+            return _ok_proc()
+
+        mocker.patch(
+            "bim.commands.doc.shared.health.subprocess.run",
+            side_effect=fake_run,
+        )
+        _check_binary("foo")
+        assert seen == ["--version", "-V", "version"]
+
+    def test_all_flags_fail_raises_missing(self, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.health import _check_binary
+
+        mocker.patch(
+            "bim.commands.doc.shared.health.subprocess.run",
+            return_value=subprocess.CompletedProcess(args=[], returncode=2, stdout=b"", stderr=b"nope"),
+        )
+        with pytest.raises(MissingDependency, match="foo"):
+            _check_binary("foo")
+
+    def test_file_not_found_raises_missing(self, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.health import _check_binary
+
+        mocker.patch(
+            "bim.commands.doc.shared.health.subprocess.run",
+            side_effect=FileNotFoundError("foo"),
+        )
+        with pytest.raises(MissingDependency, match="not found"):
+            _check_binary("foo")
