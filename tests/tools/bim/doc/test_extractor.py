@@ -414,25 +414,34 @@ class TestExtractorErrors:
         import importlib
         import sys
 
-        for mod in list(sys.modules):
-            if mod == "bim.commands.doc.shared.extractor":
-                del sys.modules[mod]
+        # Save original so we can restore it after; otherwise the reloaded
+        # module's Extractor class diverges from the one imported at the top
+        # of test_dependencies.py, breaking isinstance() checks later.
+        original_module = sys.modules.get("bim.commands.doc.shared.extractor")
 
-        real_import = builtins.__import__
+        try:
+            for mod in list(sys.modules):
+                if mod == "bim.commands.doc.shared.extractor":
+                    del sys.modules[mod]
 
-        def fake_import(
-            name: str,
-            globals_: object = None,
-            locals_: object = None,
-            fromlist: tuple[str, ...] = (),
-            level: int = 0,
-        ) -> object:
-            if name == "requests":
-                raise ModuleNotFoundError("requests pretend-missing")
-            return real_import(name, globals_, locals_, fromlist, level)
+            real_import = builtins.__import__
 
-        mocker.patch("builtins.__import__", side_effect=fake_import)
-        importlib.import_module("bim.commands.doc.shared.extractor")
+            def fake_import(
+                name: str,
+                globals_: object = None,
+                locals_: object = None,
+                fromlist: tuple[str, ...] = (),
+                level: int = 0,
+            ) -> object:
+                if name == "requests":
+                    raise ModuleNotFoundError("requests pretend-missing")
+                return real_import(name, globals_, locals_, fromlist, level)
+
+            mocker.patch("builtins.__import__", side_effect=fake_import)
+            importlib.import_module("bim.commands.doc.shared.extractor")
+        finally:
+            if original_module is not None:
+                sys.modules["bim.commands.doc.shared.extractor"] = original_module
 
     def test_timeout_propagates_unwrapped(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
         from bim.commands.doc.shared.extractor import Extractor
