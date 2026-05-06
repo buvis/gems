@@ -17,9 +17,11 @@ _VERSION_FLAGS: tuple[str, ...] = ("--version", "-V", "version")
 
 
 def _check_binary(binary: str) -> None:
-    # _VERSION_FLAGS is a non-empty constant, so the loop always assigns to
-    # ``last_result`` before exiting (the only early-exit paths return on
-    # success or raise on FileNotFoundError).
+    # ``last_stderr`` is initialised so the final ``raise`` cannot reference
+    # an unbound name even if ``_VERSION_FLAGS`` is ever made empty by a
+    # future refactor; type checkers stop warning about possibly-unbound
+    # access too.
+    last_stderr = ""
     for flag in _VERSION_FLAGS:
         try:
             result = subprocess.run(
@@ -33,12 +35,9 @@ def _check_binary(binary: str) -> None:
 
         if result.returncode == 0:
             return
-        last_result = result
+        last_stderr = result.stderr.decode(errors="replace").strip()
 
-    raise MissingDependency(
-        f"{binary} version probe failed (tried {list(_VERSION_FLAGS)}): "
-        f"{last_result.stderr.decode(errors='replace').strip()}"
-    )
+    raise MissingDependency(f"{binary} version probe failed (tried {list(_VERSION_FLAGS)}): {last_stderr}")
 
 
 def _check_ollama(endpoint: str, primary_model: str) -> None:
