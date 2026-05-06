@@ -434,6 +434,16 @@ class TestExtractorErrors:
         mocker.patch("builtins.__import__", side_effect=fake_import)
         importlib.import_module("bim.commands.doc.shared.extractor")
 
+    def test_timeout_propagates_unwrapped(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = fake_requests.exceptions.Timeout("read timeout")
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(fake_requests.exceptions.Timeout):
+            Extractor(settings).extract("text", "invoice")
+
 
 class TestExtractorPromptShape:
     def test_invoice_prompt_mentions_invoice_required_fields(
