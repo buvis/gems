@@ -32,7 +32,11 @@ __all__ = [
 
 _ID_REGEX = re.compile(r"^\d{14}$")
 _SHA256_REGEX = re.compile(r"^[0-9a-f]{64}$")
-_EXTRACTION_METHOD_REGEX = re.compile(r"^(manual|filename|llm:[^:]+|rule:[^:]+:v\d+|rule\+llm:[^:]+:v\d+)$")
+# llm:<model-name> permits colons in the tail because Ollama's canonical
+# model identifier uses ``name:tag`` form (e.g. qwen2.5:7b-instruct). rule and
+# rule+llm forms keep the strict three-segment grammar so audit queries like
+# "rules:cez-as:v3" remain unambiguous.
+_EXTRACTION_METHOD_REGEX = re.compile(r"^(manual|filename|llm:.+|rule:[^:]+:v\d+|rule\+llm:[^:]+:v\d+)$")
 
 IngestSource = Literal[
     "email",

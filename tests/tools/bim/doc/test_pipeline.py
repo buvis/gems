@@ -10,7 +10,7 @@ from bim.commands.doc.shared.classifier import ClassifyResult
 from bim.commands.doc.shared.extractor import ExtractResult, IncompleteExtraction
 from bim.commands.doc.shared.issuers import IssuerRegistry, load_registry
 from bim.commands.doc.shared.ocr import OCRResult
-from bim.commands.doc.shared.pipeline import IngestOutcome, Pipeline
+from bim.commands.doc.shared.pipeline import IngestOutcome, Pipeline, PipelineServices
 from bim.commands.doc.shared.settings_models import (
     ClassifierSettings,
     DocPaths,
@@ -145,8 +145,7 @@ def _build_pipeline(
     else:
         extract_mock = mocker.patch.object(extractor, "extract", return_value=extract_result)
 
-    pipeline = Pipeline(
-        settings=settings,
+    services = PipelineServices(
         state_db=state_db,
         ocr_runner=ocr_runner,
         classifier=classifier,
@@ -154,6 +153,7 @@ def _build_pipeline(
         registry=registry,
         zettel_writer=zettel_writer,
     )
+    pipeline = Pipeline(settings, services)
     return pipeline, {"ocr": ocr_mock, "classify": classify_mock, "extract": extract_mock}
 
 
@@ -551,10 +551,11 @@ class TestPipeline:
             classify_result=_make_classify_result(confidence=0.30),
             extract_result=_make_extract_result(),
         )
+        # Compute sha before run() because triage moves the staging PDF away.
+        sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
         params = IngestParams(source="email", staging_path=staging_pdf)
         result = pipeline.run(params)
         assert result.metadata["outcome"] == "triaged"
 
         # The first claim should have been released so a re-run could re-attempt.
-        sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
         assert state_db.claim(sha) is True

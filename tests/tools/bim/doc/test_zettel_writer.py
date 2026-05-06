@@ -103,6 +103,9 @@ class TestDocumentZettelFrontmatter:
             "manual",
             "filename",
             "llm:qwen2.5",
+            # Ollama canonical model id is name:tag — must round-trip through validation.
+            "llm:qwen2.5:7b-instruct",
+            "llm:llama2:13b",
             "rule:foo:v1",
             "rule+llm:foo:v1",
         ):
