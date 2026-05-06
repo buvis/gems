@@ -36,6 +36,25 @@ class DocPaths(BaseModel):
     originals_retention_days: int = 30
 
     @model_validator(mode="after")
+    def _business_root_under_home(self) -> DocPaths:
+        # ``to_tilde_path`` (in ``zettel_helpers``) only produces a valid
+        # tilde-encoded path when the source path is under ``Path.home()``;
+        # outside home it falls back to a synthetic ``~<absolute>`` string
+        # that satisfies the surface-level ``startswith("~/")`` validator on
+        # ``DocumentZettelFrontmatter.file_path`` but is not a real tilde
+        # path. Guarding ``business_root`` here catches the misconfiguration
+        # at settings load (loud, early) instead of letting malformed
+        # frontmatter hit disk later.
+        resolved = self.business_root.expanduser().resolve()
+        home = Path.home().expanduser().resolve()
+        if not resolved.is_relative_to(home):
+            raise ValueError(
+                f"DocPaths.business_root must be under {home} (the user's home directory); "
+                f"got {self.business_root!r} which resolves to {resolved}"
+            )
+        return self
+
+    @model_validator(mode="after")
     def _resolve_state_paths(self) -> DocPaths:
         state_dir = self.state_dir if self.state_dir is not None else _default_state_dir()
         object.__setattr__(self, "state_dir", state_dir)

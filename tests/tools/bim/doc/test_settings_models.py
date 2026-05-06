@@ -146,3 +146,44 @@ class TestDocSettings:
         paths = DocPaths.model_validate(required_paths_data)
         with pytest.raises(ValidationError):
             DocSettings.model_validate({"paths": paths.model_dump(mode="json"), "unknown_key": 1})
+
+
+class TestBusinessRootUnderHomeValidator:
+    """Pin the cycle-3 doubt-fix validator: ``DocPaths.business_root`` must
+    resolve to a path under ``Path.home()``. Without this guard, the synthetic
+    ``~<absolute>`` fallback in ``to_tilde_path`` would silently persist
+    malformed file paths into zettel frontmatter.
+    """
+
+    def test_business_root_under_home_accepted(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # The conftest autouse fixture already redirects Path.home → tmp_path,
+        # so a path under tmp_path is "under home" for this test.
+        DocPaths.model_validate(
+            {
+                "business_root": str(tmp_path / "Business"),
+                "vault_root": str(tmp_path / "Vault"),
+            }
+        )
+
+    def test_business_root_outside_home_rejected(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # Override the conftest autouse fixture so home and business_root
+        # diverge, exercising the validator's failure path.
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "fake-home"))
+        with pytest.raises(ValidationError, match="must be under"):
+            DocPaths.model_validate(
+                {
+                    "business_root": str(tmp_path / "elsewhere"),
+                    "vault_root": str(tmp_path / "Vault"),
+                }
+            )
+
+    def test_validator_resolves_tilde_in_business_root(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        # Production users typically configure business_root with ``~/...``;
+        # the validator must expanduser before checking, otherwise the literal
+        # ``~`` would never be relative to Path.home().
+        DocPaths.model_validate(
+            {
+                "business_root": "~/Business",
+                "vault_root": "~/Vault",
+            }
+        )

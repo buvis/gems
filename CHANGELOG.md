@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **bim**: `bim doc ingest --strict` / `bim doc promote --strict` exits 1 on pipeline failure for scripting; default still exits 0
 - **bim**: `bim doc ingest` and `bim doc promote` retry transient classifier/extractor failures up to `classifier.max_retries` times against `classifier.primary_model`, then fall back once to `classifier.fallback_model`. Semantic failures and timeouts continue to short-circuit to triage immediately.
+- **bim**: `DocPaths.business_root` must be under `Path.home()`; misconfigured paths now fail loudly at settings load instead of silently writing malformed `~<absolute>` strings into zettel frontmatter
 
 ## [0.10.0] - 2026-04-14
 
