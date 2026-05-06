@@ -336,3 +336,58 @@ class TestSchemaMigrationV1ToV2:
 
             assert db.claim("e" * 64) is True
             assert db.release_claim("e" * 64) is True
+
+
+class TestMigrationTransaction:
+    """_migrate must wrap DDL in BEGIN/COMMIT so a mid-migration crash leaves no partial state."""
+
+    def test_failure_during_migration_rolls_back_all_ddl(self, db_path: Path, mocker: object) -> None:
+        import sqlite3
+
+        from bim.commands.doc.shared import state_db as state_db_mod
+
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        real_connect = sqlite3.connect
+
+        class FlakyConnection:
+            """Wrap a real connection but fail on the Nth execute() call."""
+
+            def __init__(self, real_conn: sqlite3.Connection, fail_after: int) -> None:
+                self._real = real_conn
+                self._call = 0
+                self._fail_after = fail_after
+
+            def execute(self, sql: str, *args: object, **kwargs: object) -> object:
+                self._call += 1
+                if self._call > self._fail_after:
+                    raise sqlite3.OperationalError("simulated mid-migration failure")
+                return self._real.execute(sql, *args, **kwargs)
+
+            def __getattr__(self, name: str) -> object:
+                return getattr(self._real, name)
+
+        real_conn = real_connect(str(db_path), isolation_level=None)
+        # Allow first 5 executes (2 PRAGMAs + BEGIN + first 2 DDLs), fail on the 3rd DDL.
+        # With a transaction wrapping the DDL block, ROLLBACK must undo the partially-
+        # created schema_version and processed tables.
+        fake_conn = FlakyConnection(real_conn, fail_after=5)
+        mocker.patch.object(  # type: ignore[attr-defined]
+            sqlite3,
+            "connect",
+            return_value=fake_conn,
+        )
+
+        with pytest.raises(sqlite3.OperationalError, match="simulated"):
+            state_db_mod.StateDB.open(db_path)
+
+        # After rollback, none of the DDL tables should exist.
+        check = real_connect(str(db_path), isolation_level=None)
+        try:
+            for table in ("schema_version", "processed", "originals", "claims"):
+                row = check.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table,),
+                ).fetchone()
+                assert row is None, f"{table} table should not exist after rolled-back migration"
+        finally:
+            check.close()
