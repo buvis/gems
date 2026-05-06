@@ -13,21 +13,35 @@ class MissingDependency(Exception):
     """Raised when a required external dependency is missing or unreachable."""
 
 
-def _check_binary(binary: str) -> None:
-    try:
-        result = subprocess.run(
-            [binary, "--version"],
-            capture_output=True,
-            check=False,
-            timeout=5,
-        )
-    except FileNotFoundError as exc:
-        raise MissingDependency(f"{binary} not found on PATH") from exc
+_VERSION_FLAGS: tuple[str, ...] = ("--version", "-V", "version")
 
-    if result.returncode != 0:
-        raise MissingDependency(
-            f"{binary} --version exited {result.returncode}: {result.stderr.decode(errors='replace').strip()}"
-        )
+
+def _check_binary(binary: str) -> None:
+    last_result: subprocess.CompletedProcess[bytes] | None = None
+    for flag in _VERSION_FLAGS:
+        try:
+            result = subprocess.run(
+                [binary, flag],
+                capture_output=True,
+                check=False,
+                timeout=5,
+            )
+        except FileNotFoundError as exc:
+            raise MissingDependency(f"{binary} not found on PATH") from exc
+
+        if result.returncode == 0:
+            return
+        last_result = result
+
+    # last_result is guaranteed non-None because _VERSION_FLAGS is non-empty
+    # and every iteration assigns to it (the only return paths above are
+    # success or FileNotFoundError, both before the loop exit).
+    if last_result is None:  # pragma: no cover - defensive
+        raise MissingDependency(f"{binary} version probe yielded no result")
+    raise MissingDependency(
+        f"{binary} version probe failed (tried {list(_VERSION_FLAGS)}): "
+        f"{last_result.stderr.decode(errors='replace').strip()}"
+    )
 
 
 def _check_ollama(endpoint: str, primary_model: str) -> None:

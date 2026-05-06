@@ -122,26 +122,36 @@ class TestLazyImport:
         import importlib
         import sys
 
-        for mod in list(sys.modules):
-            if mod == "bim.commands.doc.shared.health":
-                del sys.modules[mod]
+        # Save original so we can restore it after; otherwise the reloaded
+        # module's MissingDependency class diverges from the one imported at
+        # the top of this file, breaking pytest.raises(MissingDependency, ...)
+        # in subsequent tests.
+        original_module = sys.modules.get("bim.commands.doc.shared.health")
 
-        real_import = builtins.__import__
+        try:
+            for mod in list(sys.modules):
+                if mod == "bim.commands.doc.shared.health":
+                    del sys.modules[mod]
 
-        def fake_import(
-            name: str,
-            globals_: object = None,
-            locals_: object = None,
-            fromlist: tuple[str, ...] = (),
-            level: int = 0,
-        ) -> object:
-            if name == "requests":
-                raise ModuleNotFoundError("requests pretend-missing")
-            return real_import(name, globals_, locals_, fromlist, level)
+            real_import = builtins.__import__
 
-        mocker.patch("builtins.__import__", side_effect=fake_import)
-        # Module-level import must succeed without requests installed
-        importlib.import_module("bim.commands.doc.shared.health")
+            def fake_import(
+                name: str,
+                globals_: object = None,
+                locals_: object = None,
+                fromlist: tuple[str, ...] = (),
+                level: int = 0,
+            ) -> object:
+                if name == "requests":
+                    raise ModuleNotFoundError("requests pretend-missing")
+                return real_import(name, globals_, locals_, fromlist, level)
+
+            mocker.patch("builtins.__import__", side_effect=fake_import)
+            # Module-level import must succeed without requests installed
+            importlib.import_module("bim.commands.doc.shared.health")
+        finally:
+            if original_module is not None:
+                sys.modules["bim.commands.doc.shared.health"] = original_module
 
 
 class TestCheckBinaryFlagFallback:
