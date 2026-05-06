@@ -143,6 +143,40 @@ def _doc_type_title(doc_type: str) -> str:
     return doc_type[0].upper() + doc_type[1:]
 
 
+_NBSP = "\xa0"
+
+
+def _format_amount(amount: float) -> str:
+    """Render a monetary amount with Czech-locale thousands separator (NBSP).
+
+    Drops trailing ``.0`` for whole-number amounts; renders fractional amounts
+    with exactly two decimal places. Thousands grouped from the right with
+    U+00A0 (no-break space) per Czech typographic convention.
+    """
+    is_whole = amount == int(amount)
+    if is_whole:
+        integer_str = str(int(amount))
+        decimal_str = ""
+    else:
+        integer_str, _, frac = f"{amount:.2f}".partition(".")
+        decimal_str = f".{frac}"
+
+    sign = ""
+    if integer_str.startswith("-"):
+        sign = "-"
+        integer_str = integer_str[1:]
+
+    # Group from the right in threes, joined by NBSP.
+    grouped: list[str] = []
+    while len(integer_str) > 3:
+        grouped.append(integer_str[-3:])
+        integer_str = integer_str[:-3]
+    grouped.append(integer_str)
+    formatted_int = _NBSP.join(reversed(grouped))
+
+    return f"{sign}{formatted_int}{decimal_str}"
+
+
 def build_zettel_body(
     frontmatter: DocumentZettelFrontmatter,
     ocr_text: str,
@@ -172,7 +206,8 @@ def build_zettel_body(
 
     if frontmatter.doc_amount is not None:
         currency = frontmatter.doc_currency or ""
-        lines.append(f"**Amount:** {frontmatter.doc_amount} {currency}".rstrip())
+        formatted = _format_amount(frontmatter.doc_amount)
+        lines.append(f"**Amount:** {formatted} {currency}".rstrip())
 
     lines.extend(
         [
