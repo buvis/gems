@@ -199,8 +199,11 @@ class OCRRunner:
     def _backup_original(self, original_bytes: bytes, sha256: str) -> Path:
         originals_dir = self._state_dir / "originals"
         originals_dir.mkdir(parents=True, exist_ok=True)
+        # ISO 8601 basic compact form (Zulu). Spec §9 mandates the full sha256
+        # in the backup filename so the pre-OCR hash remains the canonical
+        # identifier (no risk of [:8] prefix collision across many backups).
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        backup_path = originals_dir / f"{timestamp}-{sha256[:8]}.pdf"
+        backup_path = originals_dir / f"{timestamp}-{sha256}.pdf"
         atomic_write_bytes(backup_path, original_bytes)
         return backup_path
 

@@ -163,6 +163,11 @@ class TestOCRRunner:
         assert backup.exists(), "backup file must be written to disk before OCR runs"
         assert backup.parent == state_dir / "originals"
         assert backup.suffix == ".pdf"
+        # Spec §9: backup filename embeds the full sha256, not a truncated prefix.
+        import hashlib
+
+        full_sha = hashlib.sha256(b"%PDF-1.4\nbinary-bytes-for-hashing").hexdigest()
+        assert full_sha in backup.name, f"expected full sha256 in {backup.name}"
         # Backup must be the original bytes, not the (possibly overwritten) input.
         assert backup.read_bytes() == b"%PDF-1.4\nbinary-bytes-for-hashing"
         assert result.ocr_text == "redone ocr text"
