@@ -296,6 +296,54 @@ class TestClassifier:
         with pytest.raises(fake_requests.exceptions.Timeout):
             Classifier(settings).classify("text", {}, registry)
 
+    def test_classifier_missing_doc_type_raises_classifier_error(
+        self,
+        settings: ClassifierSettings,
+        registry: IssuerRegistry,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import Classifier, ClassifierError
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {
+                    "issuer_slug": "cez",
+                    "language": "cs",
+                    "confidence": 0.9,
+                }
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(ClassifierError) as exc_info:
+            Classifier(settings).classify("text", {}, registry)
+        assert "doc_type" in str(exc_info.value)
+
+    def test_classifier_missing_confidence_raises_classifier_error(
+        self,
+        settings: ClassifierSettings,
+        registry: IssuerRegistry,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import Classifier, ClassifierError
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {
+                    "issuer_slug": "cez",
+                    "doc_type": "invoice",
+                    "language": "cs",
+                }
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(ClassifierError) as exc_info:
+            Classifier(settings).classify("text", {}, registry)
+        assert "confidence" in str(exc_info.value)
+
     def test_alias_list_included_in_system_prompt_for_full_classify(
         self,
         settings: ClassifierSettings,

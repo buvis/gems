@@ -55,11 +55,30 @@ class IncompleteExtraction(Exception):
     """Raised when the extractor cannot produce a complete, usable result."""
 
     def __init__(self, reasons: list[str]) -> None:
+        """Initialise with one or more reasons describing why extraction failed.
+
+        Args:
+            reasons: Human-readable failure reasons. Joined with ``"; "`` to
+                form the exception message and exposed as ``self.reasons`` for
+                callers that want to inspect them individually.
+        """
         super().__init__("; ".join(reasons))
         self.reasons = reasons
 
 
 class ExtractResult(BaseModel):
+    """Structured extractor output.
+
+    All fields except ``doc_type`` are optional and populated only when the
+    underlying model returned a coercible value. Required fields are enforced
+    per ``doc_type`` via ``_REQUIRED_FIELDS`` and an
+    :class:`IncompleteExtraction` is raised when any are missing.
+
+    Dates are stored as :class:`datetime.date`; numeric fields (``amount``,
+    ``balance``) are coerced to :class:`float`. The model is frozen and
+    forbids extras to keep the on-disk frontmatter shape stable.
+    """
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     doc_type: str
@@ -91,7 +110,7 @@ def _system_prompt(doc_type: str) -> str:
         f"Return STRICT JSON. For doc_type {doc_type}, required fields are: {required}.\n"
         "Use ISO 8601 dates (YYYY-MM-DD). Use numeric values (no currency symbols) for "
         "amount and balance. If a field is unknown, omit it or set it to null.\n"
-    ).lower()
+    )
 
 
 def _user_prompt(ocr_text: str) -> str:
@@ -123,6 +142,26 @@ class Extractor:
         self._settings = settings
 
     def extract(self, ocr_text: str, doc_type: str) -> ExtractResult:
+        """Extract structured fields for ``doc_type`` from OCR text via Ollama.
+
+        Args:
+            ocr_text: OCR text extracted from the source document.
+            doc_type: Canonical document type (one of :data:`DOC_TYPES`) used
+                to pick the required-field set and shape the system prompt.
+
+        Returns:
+            A populated :class:`ExtractResult` with all required fields for
+            ``doc_type`` and any optional fields the model returned.
+
+        Raises:
+            ValueError: ``doc_type`` is not one of the canonical types.
+            IncompleteExtraction: HTTP transport failed, the response was not
+                parseable JSON, the response was not a JSON object, a value
+                could not be coerced (e.g. non-ISO date, non-numeric amount),
+                or one or more required fields were missing.
+            requests.exceptions.Timeout: Re-raised unwrapped so callers can
+                distinguish slow-LLM scenarios from other failures.
+        """
         if doc_type not in DOC_TYPES:
             raise ValueError(f"doc_type must be one of {DOC_TYPES}, got {doc_type!r}")
 

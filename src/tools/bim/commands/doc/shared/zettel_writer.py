@@ -52,7 +52,11 @@ def _double_quoted_representer(dumper: yaml.SafeDumper, data: _DoubleQuotedStr) 
     return dumper.represent_scalar("tag:yaml.org,2002:str", str(data), style='"')
 
 
-yaml.SafeDumper.add_representer(_DoubleQuotedStr, _double_quoted_representer)
+class _DocYamlDumper(yaml.SafeDumper):
+    """Local SafeDumper subclass so the double-quoted str representer is scoped to this writer."""
+
+
+_DocYamlDumper.add_representer(_DoubleQuotedStr, _double_quoted_representer)
 
 
 class DocumentZettelFrontmatter(BaseModel):
@@ -240,8 +244,9 @@ class ZettelWriter:
             "extraction_method": fm.extraction_method,
             "tags": list(fm.tags),
         }
-        return yaml.safe_dump(
+        return yaml.dump(
             payload,
+            Dumper=_DocYamlDumper,
             default_flow_style=False,
             sort_keys=False,
             allow_unicode=True,

@@ -29,6 +29,20 @@ class ClassifierError(Exception):
 
 
 class ClassifyResult(BaseModel):
+    """Structured classifier output.
+
+    Attributes:
+        issuer_slug: Canonical issuer slug from the registry, or ``None`` when
+            the model returned an unrecognised slug or the call ran in
+            doc-type-only mode.
+        issuer_display: Human-readable issuer name from the registry, paired
+            with ``issuer_slug``.
+        doc_type: One of the canonical document types (invoice, receipt,
+            statement, contract, certificate, reminder, correspondence, other).
+        language: ISO 639-1 language code reported by the model (e.g. ``cs``).
+        confidence: Model self-reported confidence in [0.0, 1.0].
+    """
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     issuer_slug: str | None
@@ -94,6 +108,29 @@ class Classifier:
         *,
         doc_type_only: bool = False,
     ) -> ClassifyResult:
+        """Classify a document from OCR text via the configured Ollama endpoint.
+
+        Args:
+            ocr_text: OCR text extracted from the source document.
+            source_metadata: Free-form metadata (e.g. ingest source, filename
+                hints) embedded in the user prompt to help the model.
+            registry: Issuer registry used to resolve aliases to canonical
+                slugs and to build the alias block in the system prompt.
+            doc_type_only: When True, omit the issuer alias block from the
+                system prompt and skip issuer resolution. Used as a fallback
+                when the full prompt fails to produce structured output.
+
+        Returns:
+            A :class:`ClassifyResult` with canonical issuer slug/display
+            (``None`` if unknown or ``doc_type_only=True``), doc type,
+            language, and confidence.
+
+        Raises:
+            ClassifierError: HTTP transport failed, response was not parseable
+                JSON, or required fields were missing/uncoercible.
+            requests.exceptions.Timeout: Re-raised unwrapped so callers can
+                distinguish slow-LLM scenarios from other failures.
+        """
         # Lazy import keeps the module loadable without the [doc] extra installed.
         import requests
 
@@ -134,10 +171,19 @@ class Classifier:
                     issuer_slug = canonical
                     issuer_display = registry.issuers[canonical].display_name
 
+        try:
+            doc_type = parsed["doc_type"]
+            language = parsed["language"]
+            confidence = float(parsed["confidence"])
+        except KeyError as exc:
+            raise ClassifierError(f"missing field {exc.args[0]!r} in model response") from exc
+        except (TypeError, ValueError) as exc:
+            raise ClassifierError(f"could not parse classifier field: {exc}") from exc
+
         return ClassifyResult(
             issuer_slug=issuer_slug,
             issuer_display=issuer_display,
-            doc_type=parsed["doc_type"],
-            language=parsed["language"],
-            confidence=float(parsed["confidence"]),
+            doc_type=doc_type,
+            language=language,
+            confidence=confidence,
         )

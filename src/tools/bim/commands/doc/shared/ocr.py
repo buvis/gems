@@ -2,6 +2,11 @@
 
 Wraps ``ocrmypdf`` and pdfminer to extract page text, choosing among three
 branches per the architecture spec: skip, redo, or full OCR.
+
+pdfminer is imported eagerly here because this module is only loaded by the
+doc pipeline, which always has the ``[doc]`` extra installed. Compare with
+``health.py``, which is loaded by every bim invocation and therefore lazy
+imports ``requests`` to keep startup cost off the hot path.
 """
 
 from __future__ import annotations
@@ -16,6 +21,8 @@ from typing import TYPE_CHECKING
 
 from pdfminer.high_level import extract_text
 from pdfminer.pdfpage import PDFPage
+
+from bim.commands.doc.shared.atomic_write import atomic_write_bytes
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.settings_models import DocSettings
@@ -52,15 +59,24 @@ class OCRResult:
     pages: int
 
 
-def _estimate_text_confidence(text: str) -> float:
-    """Heuristically score the confidence of an existing text layer.
+def _estimate_text_confidence(text: str, pages: int = 1) -> float:
+    """Heuristic confidence proxy for an existing PDF text layer.
 
-    Returns 0.0 when the text is empty or whitespace-only, otherwise 1.0.
-    Real text-layer quality is hard to assess without per-character signals,
-    so we trust any extractable text by default; callers can patch this
-    function to plug in a smarter heuristic.
+    pdfminer's extract_text gives us no quality signal, so we approximate
+    "is this OCR text usable?" via character density per page. Below ~200
+    chars/page typically indicates scrambled or near-empty OCR output.
+
+    Returns 0.0 for empty/whitespace text. Otherwise scales density linearly
+    against a 200 chars/page target, capped at 1.0. Callers can patch this
+    function in tests or override via a higher-level orchestrator that
+    computes confidence from a richer signal.
     """
-    return 0.0 if not text.strip() else 1.0
+    stripped = text.strip()
+    if not stripped:
+        return 0.0
+    pages_clamped = max(pages, 1)
+    density = len(stripped) / pages_clamped
+    return min(1.0, density / 200.0)
 
 
 class OCRRunner:
@@ -79,7 +95,7 @@ class OCRRunner:
         with open(pdf_path, "rb") as handle:
             pages = len(list(PDFPage.get_pages(handle)))
 
-        confidence = _estimate_text_confidence(existing_text)
+        confidence = _estimate_text_confidence(existing_text, pages)
         has_text = bool(existing_text.strip())
 
         ocr = self._settings.ocr
@@ -120,8 +136,12 @@ class OCRRunner:
             str(pdf_path),
             str(pdf_path),
         ]
-        self._invoke(argv)
-        ocr_text = sidecar_path.read_text(encoding="utf-8")
+        try:
+            self._invoke(argv)
+            ocr_text = sidecar_path.read_text(encoding="utf-8")
+        finally:
+            if sidecar_path.exists():
+                sidecar_path.unlink()
 
         return OCRResult(
             ocr_text=ocr_text,
@@ -155,8 +175,12 @@ class OCRRunner:
         argv.append(str(pdf_path))
         argv.append(str(output_pdf))
 
-        self._invoke(argv)
-        ocr_text = sidecar_path.read_text(encoding="utf-8")
+        try:
+            self._invoke(argv)
+            ocr_text = sidecar_path.read_text(encoding="utf-8")
+        finally:
+            if sidecar_path.exists():
+                sidecar_path.unlink()
 
         return OCRResult(
             ocr_text=ocr_text,
@@ -172,7 +196,7 @@ class OCRRunner:
         originals_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         backup_path = originals_dir / f"{timestamp}-{sha256[:8]}.pdf"
-        backup_path.write_bytes(original_bytes)
+        atomic_write_bytes(backup_path, original_bytes)
         return backup_path
 
     def _make_sidecar(self) -> Path:

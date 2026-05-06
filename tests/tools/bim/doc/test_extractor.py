@@ -351,6 +351,64 @@ class TestExtractorErrors:
         assert result.amount == 1218.0
         assert isinstance(result.amount, float)
 
+    def test_invoice_amount_bool_value_raises_incomplete(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {
+                    "number": "1",
+                    "date": "2024-04-15",
+                    "amount": True,
+                    "currency": "CZK",
+                }
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(IncompleteExtraction) as exc_info:
+            Extractor(settings).extract("text", "invoice")
+        assert any("amount" in r for r in exc_info.value.reasons)
+
+    def test_invoice_amount_unconvertible_string_raises_incomplete(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {
+                    "number": "1",
+                    "date": "2024-04-15",
+                    "amount": "abc",
+                    "currency": "CZK",
+                }
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(IncompleteExtraction) as exc_info:
+            Extractor(settings).extract("text", "invoice")
+        assert any("amount" in r for r in exc_info.value.reasons)
+
+    def test_non_dict_json_response_raises_incomplete(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _raw_content_response("[1, 2, 3]"),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(IncompleteExtraction):
+            Extractor(settings).extract("text", "invoice")
+
     def test_lazy_import_no_requests_at_module_load(self, mocker: MockerFixture) -> None:
         import builtins
         import importlib

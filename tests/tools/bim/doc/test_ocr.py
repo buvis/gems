@@ -126,9 +126,12 @@ class TestOCRRunner:
         pdf.write_bytes(b"%PDF-1.4\n")
 
         run_mock = mocker.patch("bim.commands.doc.shared.ocr.subprocess.run")
+        # Long enough that the density-based confidence stays above the
+        # default 0.70 threshold (~1350 chars / 2 pages ≫ 200 chars/page target).
+        existing_text = "existing text layer content " * 50
         mocker.patch(
             "bim.commands.doc.shared.ocr.extract_text",
-            return_value="existing text layer content",
+            return_value=existing_text,
         )
         mocker.patch(
             "bim.commands.doc.shared.ocr.PDFPage.get_pages",
@@ -142,7 +145,7 @@ class TestOCRRunner:
         run_mock.assert_not_called()
         assert result.was_redone is False
         assert result.original_backup_path is None
-        assert result.ocr_text == "existing text layer content"
+        assert result.ocr_text == existing_text
         assert result.pdf_path == pdf
         assert result.pages == 2
 
@@ -430,6 +433,109 @@ class TestOCRRunner:
         assert "--redo-ocr" not in argv
         assert result.was_redone is False
         assert result.original_backup_path is None
+
+    def test_redo_branch_fires_for_low_density_text_unmocked(
+        self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
+    ) -> None:
+        """End-to-end: the production density heuristic fires the redo branch."""
+        pdf = tmp_path / "input.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+
+        # 30 chars over 1 page → density 30 → confidence 0.15 (well below 0.70).
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.extract_text",
+            return_value="x" * 30,
+        )
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.PDFPage.get_pages",
+            return_value=_pages_iter(1),
+        )
+        run_mock = mocker.patch(
+            "bim.commands.doc.shared.ocr.subprocess.run",
+            side_effect=_sidecar_writing_run("redone"),
+        )
+
+        settings = _make_settings(
+            tmp_path,
+            skip_text=False,
+            redo_on_low_confidence=True,
+            low_confidence_threshold=0.70,
+        )
+        runner = OCRRunner(settings=settings, state_dir=state_dir)
+        result = runner.run(pdf)
+
+        argv = _argv_from_call(run_mock.call_args)
+        assert "--redo-ocr" in argv
+        assert result.was_redone is True
+
+    def test_full_ocr_cleans_up_sidecar_on_success(
+        self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
+    ) -> None:
+        pdf = tmp_path / "scan.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+
+        mocker.patch("bim.commands.doc.shared.ocr.extract_text", return_value="")
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.PDFPage.get_pages",
+            return_value=_pages_iter(1),
+        )
+        sidecar_paths: list[Path] = []
+
+        def _capture(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            argv = args[0] if args else kwargs.get("args")
+            assert argv is not None
+            for token in argv:
+                token_s = str(token)
+                if token_s.startswith("--sidecar="):
+                    p = Path(token_s.split("=", 1)[1])
+                    p.write_text("done", encoding="utf-8")
+                    sidecar_paths.append(p)
+                    break
+            return _ok_proc()
+
+        mocker.patch("bim.commands.doc.shared.ocr.subprocess.run", side_effect=_capture)
+
+        settings = _make_settings(tmp_path)
+        runner = OCRRunner(settings=settings, state_dir=state_dir)
+        runner.run(pdf)
+
+        assert len(sidecar_paths) == 1
+        assert not sidecar_paths[0].exists()
+
+    def test_full_ocr_cleans_up_sidecar_on_failure(
+        self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
+    ) -> None:
+        pdf = tmp_path / "scan.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+
+        mocker.patch("bim.commands.doc.shared.ocr.extract_text", return_value="")
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.PDFPage.get_pages",
+            return_value=_pages_iter(1),
+        )
+        sidecar_paths: list[Path] = []
+
+        def _capture_fail(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            argv = args[0] if args else kwargs.get("args")
+            assert argv is not None
+            for token in argv:
+                token_s = str(token)
+                if token_s.startswith("--sidecar="):
+                    p = Path(token_s.split("=", 1)[1])
+                    p.write_text("partial", encoding="utf-8")
+                    sidecar_paths.append(p)
+                    break
+            return subprocess.CompletedProcess(args=[], returncode=2, stdout=b"", stderr=b"boom")
+
+        mocker.patch("bim.commands.doc.shared.ocr.subprocess.run", side_effect=_capture_fail)
+
+        settings = _make_settings(tmp_path)
+        runner = OCRRunner(settings=settings, state_dir=state_dir)
+        with pytest.raises(OCRError):
+            runner.run(pdf)
+
+        assert len(sidecar_paths) == 1
+        assert not sidecar_paths[0].exists()
 
     def test_subprocess_stderr_decoded_with_replace_for_invalid_utf8(
         self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
