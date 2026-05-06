@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 import yaml
-from bim.commands.doc.promote.promote import CommandPromote
+from bim.commands.doc.promote.promote import CommandPromote, PromoteServices
 from bim.commands.doc.shared.issuers import load_registry
 from bim.commands.doc.shared.ocr import OCRResult
 from bim.commands.doc.shared.settings_models import (
@@ -174,15 +174,18 @@ def _build_command(
         vault_root=settings.paths.vault_root,
         vault_documents_subdir=settings.paths.vault_documents_subdir,
     )
-    cmd = CommandPromote(
-        params=PromoteParams(proposed_yml_path=proposal_yml),
-        settings=settings,
+    services = PromoteServices(
         registry=registry,
         registry_path=registry_path,
         lock_path=lock_path,
         state_db=state_db,
         ocr_runner=ocr_runner,
         zettel_writer=zettel_writer,
+    )
+    cmd = CommandPromote(
+        params=PromoteParams(proposed_yml_path=proposal_yml),
+        settings=settings,
+        services=services,
     )
     return cmd, {"ocr": ocr_mock}
 
