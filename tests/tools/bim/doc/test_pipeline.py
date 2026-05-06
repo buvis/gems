@@ -871,6 +871,42 @@ class TestClassifierRetry:
         reasons = result.metadata["triage_reasons"]
         assert any("classifier error" in r for r in reasons)
 
+    def test_non_transient_classifier_error_short_circuits(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """A semantic ClassifierError (parse / missing-field) must NOT consume
+        the retry budget — the pipeline routes straight to triage on the first
+        attempt. Without this short-circuit, un-fixable model output would
+        burn 1 + max_retries primary attempts plus the fallback attempt.
+        """
+        from bim.commands.doc.shared.classifier import ClassifierError
+
+        # One single-element list: if the predicate were wrong (transient=True
+        # treated as retryable), a second attempt would raise StopIteration.
+        side_effects = [ClassifierError("missing field 'doc_type'", transient=False)]
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_side_effect=side_effects,
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+        # Exactly one classifier call — no retry, no fallback.
+        assert mocks["classify"].call_count == 1
+        reasons = result.metadata["triage_reasons"]
+        assert any("classifier error" in r for r in reasons)
+
 
 class TestExtractorRetry:
     """Integration tests for extractor retry semantics through the pipeline."""

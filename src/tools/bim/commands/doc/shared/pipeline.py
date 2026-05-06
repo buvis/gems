@@ -432,7 +432,7 @@ class Pipeline:
                 primary_model=self._settings.classifier.primary_model,
                 fallback_model=self._settings.classifier.fallback_model,
                 max_retries=self._settings.classifier.max_retries,
-                is_transient=lambda exc: isinstance(exc, ClassifierError),
+                is_transient=lambda exc: isinstance(exc, ClassifierError) and exc.transient,
             )
         except Exception as exc:
             return None, f"classifier error: {exc}"

@@ -25,7 +25,19 @@ _REQUEST_TIMEOUT_SECONDS = 60
 
 
 class ClassifierError(Exception):
-    """Raised when the classifier cannot produce a usable result."""
+    """Raised when the classifier cannot produce a usable result.
+
+    ``transient`` flags whether retrying the call against the same model is
+    likely to help. HTTP-transport failures are transient; JSON parse errors
+    and missing-field errors come from the model itself and won't recover
+    on retry. The pipeline's retry helper checks this flag to short-circuit
+    semantic failures straight to triage instead of burning the full retry
+    budget plus the fallback attempt on un-fixable model output.
+    """
+
+    def __init__(self, message: str, *, transient: bool = True) -> None:
+        super().__init__(message)
+        self.transient = transient
 
 
 class ClassifyResult(BaseModel):
@@ -164,13 +176,16 @@ class Classifier:
         except requests.exceptions.Timeout:
             raise
         except Exception as exc:
-            raise ClassifierError(f"HTTP error calling {url}: {exc}") from exc
+            # HTTP / network failure — retrying may succeed.
+            raise ClassifierError(f"HTTP error calling {url}: {exc}", transient=True) from exc
 
         try:
             raw_content = payload["message"]["content"]
             parsed = json.loads(raw_content)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            raise ClassifierError(f"Could not parse classifier JSON response: {exc}") from exc
+            # Model produced unparseable output; another attempt against the
+            # same model is unlikely to help.
+            raise ClassifierError(f"Could not parse classifier JSON response: {exc}", transient=False) from exc
 
         issuer_slug: str | None = None
         issuer_display: str | None = None
@@ -187,9 +202,9 @@ class Classifier:
             language = parsed["language"]
             confidence = float(parsed["confidence"])
         except KeyError as exc:
-            raise ClassifierError(f"missing field {exc.args[0]!r} in model response") from exc
+            raise ClassifierError(f"missing field {exc.args[0]!r} in model response", transient=False) from exc
         except (TypeError, ValueError) as exc:
-            raise ClassifierError(f"could not parse classifier field: {exc}") from exc
+            raise ClassifierError(f"could not parse classifier field: {exc}", transient=False) from exc
 
         return ClassifyResult(
             issuer_slug=issuer_slug,
