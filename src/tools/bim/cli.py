@@ -564,12 +564,20 @@ def doc(ctx: click.Context) -> None:
     show_default=True,
     help="Where the document entered the system",
 )
+@click.option(
+    "--strict",
+    "strict",
+    is_flag=True,
+    default=False,
+    help="Exit non-zero on pipeline failure (for scripting). Default exits 0 on failure.",
+)
 @click.pass_context
 def doc_ingest(
     ctx: click.Context,
     pdf_path: Path,
     issuer: str | None,
     source: str,
+    strict: bool,
 ) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
@@ -599,7 +607,7 @@ def doc_ingest(
     pipeline = get_pipeline(settings.doc, get_repo())
     cmd = CommandIngest(params=params, pipeline=pipeline)
     result = cmd.execute()
-    _report_doc_result(result, default_failure="ingest failed")
+    _report_doc_result(result, default_failure="ingest failed", strict=strict)
 
 
 @doc.command("promote", help="Promote an approved triage proposal into a filed document")
@@ -607,8 +615,15 @@ def doc_ingest(
     "yml_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path),
 )
+@click.option(
+    "--strict",
+    "strict",
+    is_flag=True,
+    default=False,
+    help="Exit non-zero on promote failure (for scripting). Default exits 0 on failure.",
+)
 @click.pass_context
-def doc_promote(ctx: click.Context, yml_path: Path) -> None:
+def doc_promote(ctx: click.Context, yml_path: Path, strict: bool) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
         console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
@@ -651,15 +666,24 @@ def doc_promote(ctx: click.Context, yml_path: Path) -> None:
         services=services,
     )
     result = cmd.execute()
-    _report_doc_result(result, default_failure="promote failed")
+    _report_doc_result(result, default_failure="promote failed", strict=strict)
 
 
-def _report_doc_result(result: CommandResult, *, default_failure: str) -> None:
-    """Map a doc-subsystem ``CommandResult`` to console output."""
+def _report_doc_result(result: CommandResult, *, default_failure: str, strict: bool = False) -> None:
+    """Map a doc-subsystem ``CommandResult`` to console output.
+
+    The ``strict`` flag is opt-in: when True, pipeline failures
+    (``success=False``) panic (exit 1) instead of failing softly
+    (exit 0). Triaged/duplicate outcomes (``success=True``) are NOT
+    treated as failures and remain unaffected by ``strict``.
+    """
     for w in result.warnings:
         console.warning(w)
     if not result.success:
-        console.failure(result.error or default_failure)
+        if strict:
+            console.panic(result.error or default_failure)
+        else:
+            console.failure(result.error or default_failure)
         return
     metadata = result.metadata
     outcome = metadata.get("outcome")
