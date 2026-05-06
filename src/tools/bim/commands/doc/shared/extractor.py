@@ -52,18 +52,31 @@ _NUMERIC_FIELDS: frozenset[str] = frozenset({"amount", "balance"})
 
 
 class IncompleteExtraction(Exception):
-    """Raised when the extractor cannot produce a complete, usable result."""
+    """Raised when the extractor cannot produce a complete, usable result.
 
-    def __init__(self, reasons: list[str]) -> None:
+    The ``transient`` flag distinguishes HTTP/transport failures (retryable)
+    from semantic failures like missing fields or uncoercible values
+    (not retryable - the model's output is fundamentally unusable for this
+    document, retrying with the same input won't help).
+    """
+
+    def __init__(self, reasons: list[str], *, transient: bool = False) -> None:
         """Initialise with one or more reasons describing why extraction failed.
 
         Args:
             reasons: Human-readable failure reasons. Joined with ``"; "`` to
                 form the exception message and exposed as ``self.reasons`` for
                 callers that want to inspect them individually.
+            transient: True when the failure is HTTP/transport-related (the
+                model server was unreachable or returned an HTTP error) and a
+                retry might succeed. False (default) when the failure is
+                semantic - missing required fields, uncoercible values, or
+                unparseable model output. Only transient failures should be
+                retried.
         """
         super().__init__("; ".join(reasons))
         self.reasons = reasons
+        self.transient = transient
 
 
 class ExtractResult(BaseModel):
@@ -186,7 +199,8 @@ class Extractor:
         except requests.exceptions.Timeout:
             raise
         except Exception as exc:
-            raise IncompleteExtraction([f"HTTP error: {exc}"]) from exc
+            # Transport-layer failure - retry against primary or fall back.
+            raise IncompleteExtraction([f"HTTP error: {exc}"], transient=True) from exc
 
         try:
             raw_content = payload["message"]["content"]

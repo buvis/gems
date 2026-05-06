@@ -471,3 +471,69 @@ class TestExtractorPromptShape:
         assert "number" in system_joined
         assert "date" in system_joined
         assert "amount" in system_joined
+
+
+class TestIncompleteExtractionTransient:
+    """IncompleteExtraction surfaces transient flag for HTTP failures only."""
+
+    def test_default_transient_false(self) -> None:
+        from bim.commands.doc.shared.extractor import IncompleteExtraction
+
+        exc = IncompleteExtraction(["missing field date"])
+        assert exc.transient is False
+
+    def test_explicit_transient_true(self) -> None:
+        from bim.commands.doc.shared.extractor import IncompleteExtraction
+
+        exc = IncompleteExtraction(["HTTP error: refused"], transient=True)
+        assert exc.transient is True
+
+    def test_http_failure_marks_transient(self, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
+        from bim.commands.doc.shared.settings_models import ClassifierSettings
+
+        # Build a fake requests module with a real Timeout exception class so
+        # ``except requests.exceptions.Timeout`` doesn't raise TypeError.
+        class _FakeTimeout(Exception):
+            pass
+
+        fake_exceptions = mocker.MagicMock()
+        fake_exceptions.Timeout = _FakeTimeout
+        fake_requests = mocker.MagicMock()
+        fake_requests.exceptions = fake_exceptions
+        fake_requests.post.side_effect = ConnectionError("refused")
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        ext = Extractor(ClassifierSettings())
+        with pytest.raises(IncompleteExtraction) as exc_info:
+            ext.extract("ocr text", "invoice")
+        assert exc_info.value.transient is True
+
+    def test_missing_field_failure_is_not_transient(self, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
+        from bim.commands.doc.shared.settings_models import ClassifierSettings
+
+        class _Resp:
+            status_code = 200
+
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict[str, object]:
+                # All required invoice fields missing.
+                return {"message": {"content": json.dumps({})}}
+
+        class _FakeTimeout(Exception):
+            pass
+
+        fake_exceptions = mocker.MagicMock()
+        fake_exceptions.Timeout = _FakeTimeout
+        fake_requests = mocker.MagicMock()
+        fake_requests.exceptions = fake_exceptions
+        fake_requests.post.return_value = _Resp()
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        ext = Extractor(ClassifierSettings())
+        with pytest.raises(IncompleteExtraction) as exc_info:
+            ext.extract("ocr text", "invoice")
+        assert exc_info.value.transient is False
