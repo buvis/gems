@@ -11,6 +11,7 @@ imports ``requests`` to keep startup cost off the hot path.
 
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -22,7 +23,6 @@ from pdfminer.high_level import extract_text
 from pdfminer.pdfpage import PDFPage
 
 from bim.commands.doc.shared.atomic_write import atomic_write_bytes
-from bim.commands.doc.shared.hashing import sha256_file
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.settings_models import DocSettings
@@ -118,12 +118,15 @@ class OCRRunner:
         pdf_path: Path,
         pages: int,
     ) -> OCRResult:
-        # Hash via streaming reader so we don't hold the full PDF in memory
-        # just for the digest. The bytes are still loaded once below for the
-        # atomic backup write; that's acceptable because backup writes only
-        # happen on the redo branch, which is rare.
-        sha256 = sha256_file(pdf_path)
-        backup_path = self._backup_original(pdf_path, sha256)
+        # Read the input PDF once and reuse the bytes for both the digest
+        # and the backup write. A streaming hash followed by a separate
+        # read_bytes() would open a TOCTOU window where the sha256 in the
+        # backup filename could disagree with the bytes actually written.
+        # The redo branch is rare, so loading the full PDF in memory once
+        # is acceptable.
+        original_bytes = pdf_path.read_bytes()
+        sha256 = hashlib.sha256(original_bytes).hexdigest()
+        backup_path = self._backup_original(original_bytes, sha256)
         sidecar_path = self._make_sidecar()
 
         languages = "+".join(self._settings.ocr.languages)
@@ -196,7 +199,7 @@ class OCRRunner:
             pages=pages,
         )
 
-    def _backup_original(self, pdf_path: Path, sha256: str) -> Path:
+    def _backup_original(self, backup_bytes: bytes, sha256: str) -> Path:
         originals_dir = self._state_dir / "originals"
         originals_dir.mkdir(parents=True, exist_ok=True)
         # ISO 8601 basic compact form (Zulu). Spec §9 mandates the full sha256
@@ -204,7 +207,7 @@ class OCRRunner:
         # identifier (no risk of [:8] prefix collision across many backups).
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         backup_path = originals_dir / f"{timestamp}-{sha256}.pdf"
-        atomic_write_bytes(backup_path, pdf_path.read_bytes())
+        atomic_write_bytes(backup_path, backup_bytes)
         return backup_path
 
     def _make_sidecar(self) -> Path:
