@@ -559,3 +559,31 @@ class TestPipeline:
 
         # The first claim should have been released so a re-run could re-attempt.
         assert state_db.claim(sha) is True
+
+    def test_claim_released_on_filed_path(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """Successful filing must remove the claim row to avoid unbounded growth."""
+        sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+        assert result.metadata["outcome"] == "filed"
+
+        # No claim row should remain - the processed row prevents re-ingestion;
+        # the claim row was just an in-flight reservation. release_claim returns
+        # False if there was no claim row to remove.
+        assert state_db.release_claim(sha) is False

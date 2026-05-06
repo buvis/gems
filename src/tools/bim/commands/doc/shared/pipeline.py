@@ -329,6 +329,11 @@ class Pipeline:
                 extraction_method=f"llm:{self._settings.classifier.primary_model}",
             )
         )
+        # Release the claim once filing has finalised so the claims table
+        # doesn't accumulate one orphan row per successfully-filed document.
+        # On the happy path the processed row already prevents re-ingestion;
+        # the claim row was the in-flight reservation.
+        self._state_db.release_claim(sha)
 
         return CommandResult(
             success=True,
