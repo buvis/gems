@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -11,6 +12,15 @@ if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
     from buvis.pybase.zettel.domain.templates import HookRunner, ZettelTemplate
     from buvis.pybase.zettel.domain.value_objects.query_spec import QuerySpec
+
+    from bim.commands.doc.shared.classifier import Classifier
+    from bim.commands.doc.shared.extractor import Extractor
+    from bim.commands.doc.shared.issuers import IssuerRegistry
+    from bim.commands.doc.shared.ocr import OCRRunner
+    from bim.commands.doc.shared.pipeline import Pipeline
+    from bim.commands.doc.shared.settings_models import DocSettings
+    from bim.commands.doc.shared.state_db import StateDB
+    from bim.commands.doc.shared.zettel_writer import ZettelWriter
 
 
 def get_repo(*, extensions: list[str] | None = None) -> ZettelRepository:
@@ -109,3 +119,86 @@ def format_query_pdf(rows: list[dict[str, Any]], columns: list[str]) -> bytes:
 
 def format_query_table(rows: list[dict[str, Any]], columns: list[str]) -> None:
     output_formatter.format_table(rows, columns)
+
+
+# --------- doc subsystem factories ---------
+#
+# These factories wire the bim doc subsystem. Imports are deferred to keep the
+# module loadable without the optional [doc] extra installed; bim show / bim
+# query continue to work without ocrmypdf, requests, or pdfminer present.
+
+
+def get_state_db(settings: DocSettings) -> StateDB:
+    from bim.commands.doc.shared.state_db import StateDB as _StateDB
+
+    state_dir = settings.paths.state_dir
+    if state_dir is None:
+        raise ValueError("DocSettings.paths.state_dir is not set")
+    return _StateDB.open(state_dir / "state.db")
+
+
+def get_issuer_registry(settings: DocSettings) -> tuple[IssuerRegistry, Path, Path]:
+    """Load the issuer registry and return ``(registry, registry_path, lock_path)``."""
+    from bim.commands.doc.shared.issuers import load_registry
+
+    issuers_file = settings.paths.issuers_file
+    state_dir = settings.paths.state_dir
+    if issuers_file is None or state_dir is None:
+        raise ValueError("DocSettings.paths.{issuers_file,state_dir} is not set")
+    registry = load_registry(issuers_file)
+    lock_path = state_dir / "issuers.lock"
+    return registry, issuers_file, lock_path
+
+
+def get_ocr_runner(settings: DocSettings) -> OCRRunner:
+    from bim.commands.doc.shared.ocr import OCRRunner as _OCRRunner
+
+    state_dir = settings.paths.state_dir
+    if state_dir is None:
+        raise ValueError("DocSettings.paths.state_dir is not set")
+    return _OCRRunner(settings=settings, state_dir=state_dir)
+
+
+def get_classifier(settings: DocSettings) -> Classifier:
+    from bim.commands.doc.shared.classifier import Classifier as _Classifier
+
+    return _Classifier(settings.classifier)
+
+
+def get_extractor(settings: DocSettings) -> Extractor:
+    from bim.commands.doc.shared.extractor import Extractor as _Extractor
+
+    return _Extractor(settings.classifier)
+
+
+def get_zettel_writer(settings: DocSettings, repo: ZettelRepository) -> ZettelWriter:
+    from bim.commands.doc.shared.zettel_writer import ZettelWriter as _ZettelWriter
+
+    return _ZettelWriter(
+        repo=repo,
+        vault_root=settings.paths.vault_root,
+        vault_documents_subdir=settings.paths.vault_documents_subdir,
+    )
+
+
+def get_health_checker() -> Callable[[DocSettings], None]:
+    from bim.commands.doc.shared.health import check_health
+
+    return check_health
+
+
+def get_pipeline(settings: DocSettings, repo: ZettelRepository) -> Pipeline:
+    """Wire all doc subsystem services and return a ready-to-run Pipeline."""
+    from bim.commands.doc.shared.pipeline import Pipeline as _Pipeline
+    from bim.commands.doc.shared.pipeline import PipelineServices
+
+    registry, _registry_path, _lock_path = get_issuer_registry(settings)
+    services = PipelineServices(
+        state_db=get_state_db(settings),
+        ocr_runner=get_ocr_runner(settings),
+        classifier=get_classifier(settings),
+        extractor=get_extractor(settings),
+        registry=registry,
+        zettel_writer=get_zettel_writer(settings, repo),
+    )
+    return _Pipeline(settings, services)
