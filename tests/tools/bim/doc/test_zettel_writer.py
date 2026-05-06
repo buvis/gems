@@ -130,7 +130,8 @@ class TestBuildZettelBody:
         assert f"[Open PDF]({SAMPLE_FILE_PATH})" in body
         assert "> [!quote]- Full text" in body
         assert "**Date:** 2021-03-11" in body
-        assert "**Amount:** 4218.0 CZK" in body or "**Amount:** 4218 CZK" in body
+        # Czech-locale: thousands separated by NBSP, trailing .0 dropped
+        assert "**Amount:** 4\xa0218 CZK" in body
 
         # OCR text lines should be `> `-prefixed inside the callout
         for ocr_line in SAMPLE_OCR_TEXT.splitlines():
@@ -284,3 +285,32 @@ class TestZettelWriter:
         # Either field is omitted or serialized as null — both acceptable
         if "doc_number:" in text:
             assert "doc_number: null" in text or "doc_number: ~" in text
+
+
+class TestAmountFormatting:
+    """doc_amount renders with Czech-locale thousands separator (NBSP)."""
+
+    def test_integer_amount_drops_trailing_zero(self, frontmatter: DocumentZettelFrontmatter) -> None:
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=4218.0, doc_currency="CZK"))
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        assert "**Amount:** 4\xa0218 CZK" in body
+
+    def test_two_decimal_amount_kept(self, frontmatter: DocumentZettelFrontmatter) -> None:
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=1234.56, doc_currency="EUR"))
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        assert "**Amount:** 1\xa0234.56 EUR" in body
+
+    def test_one_decimal_amount_padded_to_two(self, frontmatter: DocumentZettelFrontmatter) -> None:
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=1234.5, doc_currency="EUR"))
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        assert "**Amount:** 1\xa0234.50 EUR" in body
+
+    def test_small_amount_no_separator(self, frontmatter: DocumentZettelFrontmatter) -> None:
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=5.0, doc_currency="CZK"))
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        assert "**Amount:** 5 CZK" in body
+
+    def test_large_amount_multiple_separators(self, frontmatter: DocumentZettelFrontmatter) -> None:
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=1234567.0, doc_currency="CZK"))
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        assert "**Amount:** 1\xa0234\xa0567 CZK" in body
