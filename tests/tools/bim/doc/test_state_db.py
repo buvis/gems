@@ -173,7 +173,7 @@ class TestReleaseClaim:
 
     def test_release_after_record_processed_returns_false(self, db_path: Path) -> None:
         with open_state_db(db_path) as db:
-            row = _sample_processed(sha="h" * 64)
+            row = _sample_processed(sha="aa" * 32)
             db.record_processed(row)
             # No claim was ever inserted, so release_claim has nothing to remove
             assert db.release_claim(row.sha256) is False
