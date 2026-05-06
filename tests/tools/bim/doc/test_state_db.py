@@ -200,6 +200,53 @@ class TestMigrationIdempotency:
             assert count == 1
 
 
+class TestProcessedRowValidation:
+    """sha256 on ProcessedRow must be 64 lowercase hex chars."""
+
+    def _kwargs(self) -> dict[str, object]:
+        return {
+            "canonical_filename": "20210311083422-cez-as-x.invoice.pdf",
+            "issuer_slug": "cez-as",
+            "doc_type": "invoice",
+            "processed_at": datetime.now(timezone.utc),
+            "extraction_method": "manual",
+        }
+
+    def test_valid_hex64_sha_accepted(self) -> None:
+        row = ProcessedRow(sha256="abcd1234" * 8, **self._kwargs())
+        assert row.sha256 == "abcd1234" * 8
+
+    def test_uppercase_sha_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ProcessedRow(sha256="A" * 64, **self._kwargs())
+
+    def test_too_short_sha_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ProcessedRow(sha256="a" * 63, **self._kwargs())
+
+    def test_too_long_sha_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ProcessedRow(sha256="a" * 65, **self._kwargs())
+
+    def test_non_hex_chars_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ProcessedRow(sha256="z" * 64, **self._kwargs())
+
+    def test_empty_sha_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ProcessedRow(sha256="", **self._kwargs())
+
+
 class TestSchemaV2:
     def test_schema_version_is_two(self, db_path: Path) -> None:
         with open_state_db(db_path) as db:
@@ -254,7 +301,7 @@ class TestSchemaMigrationV1ToV2:
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
-                "j" * 64,
+                "f" * 64,
                 "20210311083422-cez-as-7102105594.invoice.pdf",
                 "cez-as",
                 "invoice",
@@ -282,10 +329,10 @@ class TestSchemaMigrationV1ToV2:
 
             assert db.connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 2
 
-            result = db.dedup("j" * 64)
+            result = db.dedup("f" * 64)
             assert result.is_duplicate is True
             assert result.existing_row is not None
             assert result.existing_row.issuer_slug == "cez-as"
 
-            assert db.claim("k" * 64) is True
-            assert db.release_claim("k" * 64) is True
+            assert db.claim("e" * 64) is True
+            assert db.release_claim("e" * 64) is True
