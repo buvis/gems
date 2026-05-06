@@ -144,3 +144,19 @@ class TestBimDocPromoteStrictFlag:
         cmd_result = CommandResult(success=False, error="promote failed: oops")
         result = self._run(runner, tmp_path, cmd_result, "--strict")
         assert result.exit_code == 1
+
+    def test_strict_exits_zero_on_success(self, runner: CliRunner, tmp_path: Path) -> None:
+        # Symmetry with TestBimDocIngestStrictFlag: --strict only flips the
+        # exit code on failure; success must still exit 0 even with the flag.
+        target_pdf = tmp_path / "Business" / "cez-as" / "x.invoice.pdf"
+        zettel_path = tmp_path / "Vault" / "Zettelkasten" / "documents" / "x.invoice.md"
+        cmd_result = CommandResult(
+            success=True,
+            metadata={
+                "pdf_path": str(target_pdf),
+                "zettel_path": str(zettel_path),
+                "canonical_filename": "x.invoice.pdf",
+            },
+        )
+        result = self._run(runner, tmp_path, cmd_result, "--strict")
+        assert result.exit_code == 0

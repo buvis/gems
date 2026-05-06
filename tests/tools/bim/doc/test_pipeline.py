@@ -992,3 +992,72 @@ class TestExtractorRetry:
         assert result.metadata["outcome"] == "triaged"
         # Exactly one extract call (no retry).
         assert mocks["extract"].call_count == 1
+
+
+class TestPipelineTimeoutShortCircuit:
+    """``requests.exceptions.Timeout`` must short-circuit to triage without retry.
+
+    Spec §11 explicitly excludes Timeout from the transient class - the
+    classifier/extractor wrappers re-raise it unwrapped, ``_retry_llm_call``
+    sees a non-transient exception (``is_transient`` returns False) and
+    propagates it on the first attempt. The orchestrator catches it and
+    triages the document.
+    """
+
+    def test_classifier_timeout_short_circuits_without_retry(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        from requests.exceptions import Timeout
+
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        # Inject Timeout on the very first classify call. If the helper
+        # mistakenly treated it as transient, the side_effect list would
+        # need additional entries; a single entry proves the call is one-shot.
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_side_effect=[Timeout("upstream timed out")],
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+        assert mocks["classify"].call_count == 1
+        reasons = result.metadata["triage_reasons"]
+        assert any("classifier error" in r for r in reasons)
+
+    def test_extractor_timeout_short_circuits_without_retry(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        from requests.exceptions import Timeout
+
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_result=_make_classify_result(),
+            extract_side_effect=[Timeout("upstream timed out")],
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+        assert mocks["extract"].call_count == 1
+        reasons = result.metadata["triage_reasons"]
+        assert any("extractor error" in r for r in reasons)

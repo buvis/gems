@@ -314,3 +314,17 @@ class TestAmountFormatting:
         fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=1234567.0, doc_currency="CZK"))
         body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
         assert "**Amount:** 1\xa0234\xa0567 CZK" in body
+
+    def test_negative_integer_amount_keeps_minus_sign(self, frontmatter: DocumentZettelFrontmatter) -> None:
+        # Credit notes / corrective invoices carry a negative ``doc_amount``;
+        # the formatter strips the minus before grouping, then re-prepends it
+        # so the NBSP separators land between digits, not between the sign
+        # and the leading digit.
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=-4218.0, doc_currency="CZK"))
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        assert "**Amount:** -4\xa0218 CZK" in body
+
+    def test_negative_fractional_amount_keeps_minus_and_decimals(self, frontmatter: DocumentZettelFrontmatter) -> None:
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(doc_amount=-1234.5, doc_currency="EUR"))
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        assert "**Amount:** -1\xa0234.50 EUR" in body
