@@ -471,3 +471,27 @@ class TestPromoteValidatesYAMLSchema:
         assert loaded["approved"] is True
         assert loaded["issuer"]["slug"] == "cez-as"
         assert loaded["document"]["type"] == "invoice"
+
+
+class TestValidIngestSourcesDerivation:
+    """Pin the derivation contract between the IngestSource Literal and
+    the runtime ``_VALID_INGEST_SOURCES`` guard. If someone hand-edits the
+    tuple instead of letting ``get_args(IngestSource)`` populate it, this
+    test fails immediately so the guard cannot silently lag the type.
+    """
+
+    def test_runtime_tuple_mirrors_literal(self) -> None:
+        from typing import get_args
+
+        from bim.commands.doc.promote.promote import _VALID_INGEST_SOURCES
+        from bim.commands.doc.shared.zettel_writer import IngestSource
+
+        assert _VALID_INGEST_SOURCES == get_args(IngestSource)
+
+    def test_runtime_tuple_includes_documented_kinds(self) -> None:
+        # Documented kinds that downstream code (and the spec) rely on.
+        from bim.commands.doc.promote.promote import _VALID_INGEST_SOURCES
+
+        assert "email" in _VALID_INGEST_SOURCES
+        assert "scan" in _VALID_INGEST_SOURCES
+        assert "issuer-inbox" in _VALID_INGEST_SOURCES
