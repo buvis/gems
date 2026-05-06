@@ -395,15 +395,35 @@ class Pipeline:
         )
 
     def _classify(self, params: IngestParams, ocr_result: OCRResult) -> tuple[ClassifyResult | None, str | None]:
-        """Run classifier, returning ``(result, error_message)`` - one of which is None."""
+        """Run classifier with retry+fallback, returning ``(result, error_message)``.
+
+        Spec §11 retry semantics: HTTP transport failures (``ClassifierError``)
+        retry up to ``classifier.max_retries`` times against ``primary_model``,
+        then fall back once to ``fallback_model``. ``requests.exceptions.Timeout``
+        is treated as a non-transient (re-raised unwrapped by the boundary)
+        and short-circuits to triage without retry/fallback.
+        """
+        from bim.commands.doc.shared.classifier import ClassifierError
+
         doc_type_only = params.source == "issuer-inbox"
         source_metadata = self._build_source_metadata(params, doc_type_only=doc_type_only)
-        try:
-            result = self._classifier.classify(
+
+        def _call(model: str) -> ClassifyResult:
+            return self._classifier.classify_with_model(
                 ocr_result.ocr_text,
                 source_metadata,
                 self._registry,
+                model=model,
                 doc_type_only=doc_type_only,
+            )
+
+        try:
+            result = _retry_llm_call(
+                func=_call,
+                primary_model=self._settings.classifier.primary_model,
+                fallback_model=self._settings.classifier.fallback_model,
+                max_retries=self._settings.classifier.max_retries,
+                is_transient=lambda exc: isinstance(exc, ClassifierError),
             )
         except Exception as exc:
             return None, f"classifier error: {exc}"

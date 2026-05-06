@@ -110,20 +110,31 @@ class Classifier:
     ) -> ClassifyResult:
         """Classify a document from OCR text via the configured Ollama endpoint.
 
-        Args:
-            ocr_text: OCR text extracted from the source document.
-            source_metadata: Free-form metadata (e.g. ingest source, filename
-                hints) embedded in the user prompt to help the model.
-            registry: Issuer registry used to resolve aliases to canonical
-                slugs and to build the alias block in the system prompt.
-            doc_type_only: When True, omit the issuer alias block from the
-                system prompt and skip issuer resolution. Used as a fallback
-                when the full prompt fails to produce structured output.
+        Thin shim that forwards to :meth:`classify_with_model` using the
+        configured primary model. Kept for callers that don't need to
+        substitute the model (e.g. ad-hoc usage outside the retry pipeline).
+        """
+        return self.classify_with_model(
+            ocr_text,
+            source_metadata,
+            registry,
+            model=self._settings.primary_model,
+            doc_type_only=doc_type_only,
+        )
 
-        Returns:
-            A :class:`ClassifyResult` with canonical issuer slug/display
-            (``None`` if unknown or ``doc_type_only=True``), doc type,
-            language, and confidence.
+    def classify_with_model(
+        self,
+        ocr_text: str,
+        source_metadata: dict[str, object],
+        registry: IssuerRegistry,
+        *,
+        model: str,
+        doc_type_only: bool = False,
+    ) -> ClassifyResult:
+        """Like :meth:`classify` but the caller picks the Ollama model name.
+
+        Used by the pipeline's retry helper to substitute ``fallback_model``
+        for ``primary_model`` after exhausted retries.
 
         Raises:
             ClassifierError: HTTP transport failed, response was not parseable
@@ -137,7 +148,7 @@ class Classifier:
         url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
         system_prompt = _doc_type_only_system_prompt() if doc_type_only else _full_system_prompt(registry)
         body = {
-            "model": self._settings.primary_model,
+            "model": model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": _user_prompt(ocr_text, source_metadata)},

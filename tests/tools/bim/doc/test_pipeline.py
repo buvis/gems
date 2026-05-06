@@ -136,10 +136,12 @@ def _build_pipeline(
     )
 
     ocr_mock = mocker.patch.object(ocr_runner, "run", return_value=ocr_result)
+    # Pipeline now calls classify_with_model via the retry helper. Mock the
+    # model-substituting variant; the legacy ``classify`` shim forwards to it.
     if classify_side_effect is not None:
-        classify_mock = mocker.patch.object(classifier, "classify", side_effect=classify_side_effect)
+        classify_mock = mocker.patch.object(classifier, "classify_with_model", side_effect=classify_side_effect)
     else:
-        classify_mock = mocker.patch.object(classifier, "classify", return_value=classify_result)
+        classify_mock = mocker.patch.object(classifier, "classify_with_model", return_value=classify_result)
     if extract_side_effect is not None:
         extract_mock = mocker.patch.object(extractor, "extract", side_effect=extract_side_effect)
     else:
