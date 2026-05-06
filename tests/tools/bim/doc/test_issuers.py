@@ -229,3 +229,66 @@ class TestRegisterIssuerEmptyDisplayName:
     def test_whitespace_only_display_name_rejected(self, valid_registry_path: Path, lock_path: Path) -> None:
         with pytest.raises(ValueError, match="display_name"):
             register_issuer(valid_registry_path, lock_path, slug="newco", display_name="   ")
+
+
+class TestRegisterIssuerConcurrency:
+    """Verify ``register_issuer`` actually serializes concurrent registrations.
+
+    Worker functions live in ``_concurrency_workers.py`` (non-test module) so
+    pytest's spawn-method workers do not re-trigger collection on import and
+    deadlock against the very flock we're testing.
+    """
+
+    def test_only_one_winner_when_workers_race_for_same_slug(
+        self, valid_registry_path: Path, lock_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import multiprocessing as mp
+        import os
+        import sys
+
+        # Make ``_concurrency_workers`` importable as a top-level module both
+        # in this process and in the spawned children (children inherit env,
+        # so PYTHONPATH is the portable way to seed their sys.path).
+        worker_dir = str(Path(__file__).parent)
+        if worker_dir not in sys.path:
+            sys.path.insert(0, worker_dir)
+        monkeypatch.setenv(
+            "PYTHONPATH",
+            worker_dir + os.pathsep + os.environ.get("PYTHONPATH", ""),
+        )
+        import _concurrency_workers
+
+        worker_count = 5
+        ctx = mp.get_context("spawn")
+        out_queue: mp.queues.Queue[str] = ctx.Queue()
+        barrier = ctx.Barrier(worker_count)
+        processes = [
+            ctx.Process(
+                target=_concurrency_workers.register_issuer_worker,
+                args=(
+                    str(valid_registry_path),
+                    str(lock_path),
+                    "raceco",
+                    "Race Co",
+                    out_queue,
+                    barrier,
+                ),
+            )
+            for _ in range(worker_count)
+        ]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join(timeout=20)
+            assert not p.is_alive(), "worker still running after timeout — flock deadlock"
+            assert p.exitcode == 0, f"worker exited with {p.exitcode}"
+
+        results = sorted(out_queue.get_nowait() for _ in range(worker_count))
+        assert results.count("ok") == 1, f"expected exactly 1 winner, got results: {results}"
+        assert results.count("already_registered") == worker_count - 1, (
+            f"expected {worker_count - 1} losers via duplicate-slug guard, got: {results}"
+        )
+
+        reloaded = load_registry(valid_registry_path)
+        assert "raceco" in reloaded.issuers
+        assert reloaded.issuers["raceco"].display_name == "Race Co"

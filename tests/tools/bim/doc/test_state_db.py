@@ -391,3 +391,65 @@ class TestMigrationTransaction:
                 assert row is None, f"{table} table should not exist after rolled-back migration"
         finally:
             check.close()
+
+
+class TestClaimConcurrency:
+    """Verify the SQLite ``INSERT ... WHERE NOT EXISTS`` keeps ``claim()``
+    atomic when multiple workers race for the same sha256.
+
+    Worker function lives in ``_concurrency_workers.py`` (non-test module) so
+    pytest's spawn-method workers do not re-trigger collection on import and
+    deadlock against the SQLite WAL we're testing.
+    """
+
+    def test_only_one_winner_when_workers_race_for_same_sha(
+        self, db_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import multiprocessing as mp
+        import os
+        import sys
+
+        from bim.commands.doc.shared.state_db import StateDB
+
+        # See TestRegisterIssuerConcurrency for the PYTHONPATH rationale.
+        worker_dir = str(Path(__file__).parent)
+        if worker_dir not in sys.path:
+            sys.path.insert(0, worker_dir)
+        monkeypatch.setenv(
+            "PYTHONPATH",
+            worker_dir + os.pathsep + os.environ.get("PYTHONPATH", ""),
+        )
+        import _concurrency_workers
+
+        # Initialize the DB schema once in the parent so workers don't race
+        # the migration itself (a separate concern, covered by the migration
+        # tests above). Each worker re-opens its own connection.
+        StateDB.open(db_path).connection.close()
+
+        worker_count = 5
+        sha = "c0ffee" * 10 + "abcd"  # 64 hex chars
+        ctx = mp.get_context("spawn")
+        out_queue: mp.queues.Queue[str] = ctx.Queue()
+        barrier = ctx.Barrier(worker_count)
+        processes = [
+            ctx.Process(
+                target=_concurrency_workers.claim_worker,
+                args=(str(db_path), sha, out_queue, barrier),
+            )
+            for _ in range(worker_count)
+        ]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join(timeout=20)
+            assert not p.is_alive(), "worker still running after timeout — SQL deadlock"
+            assert p.exitcode == 0, f"worker exited with {p.exitcode}"
+
+        results = sorted(out_queue.get_nowait() for _ in range(worker_count))
+        assert results.count("true") == 1, f"expected exactly 1 winning claim, got: {results}"
+        assert results.count("false") == worker_count - 1, f"expected {worker_count - 1} losing claims, got: {results}"
+
+        # Verify exactly one row landed in the claims table.
+        with open_state_db(db_path) as db:
+            cursor = db.connection.execute("SELECT COUNT(*) FROM claims WHERE sha256 = ?", (sha,))
+            assert cursor.fetchone()[0] == 1
