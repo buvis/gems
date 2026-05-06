@@ -61,6 +61,7 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">bim</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#bim-doc">bim doc</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dot.html">dot</a></li>
@@ -318,6 +319,100 @@ bim<span class="w"> </span>serve<span class="w"> </span>--no-browser
 <li><p><code class="docutils literal notranslate"><span class="pre">-H,</span> <span class="pre">--host</span> <span class="pre">TEXT</span></code> — host (default: 127.0.0.1)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--no-browser</span></code> — don’t auto-open browser</p></li>
 </ul>
+</section>
+</section>
+<section id="bim-doc">
+<h2>bim doc<a class="headerlink" href="#bim-doc" title="Link to this heading"></a></h2>
+<p>Document ingestion + triage workflow. Files PDFs into a canonical filesystem
+layout and indexes each one with a Zettelkasten note, OCR’d and structured.</p>
+<p><strong>Extra:</strong> <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[doc]</span></code></p>
+<p>System dependencies (install separately):</p>
+<ul class="simple">
+<li><p><strong>Tesseract</strong> (with Czech language pack): <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">tesseract</span> <span class="pre">tesseract-lang</span></code></p></li>
+<li><p><strong>OCRmyPDF</strong>: <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">ocrmypdf</span></code></p></li>
+<li><p><strong>Ollama</strong>: <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">ollama</span></code>, then <code class="docutils literal notranslate"><span class="pre">ollama</span> <span class="pre">pull</span> <span class="pre">qwen2.5:7b-instruct</span></code></p></li>
+</ul>
+<p>Configuration lives under <code class="docutils literal notranslate"><span class="pre">[doc]</span></code> in the bim config (see <code class="docutils literal notranslate"><span class="pre">DocSettings</span></code>
+for the full schema): <code class="docutils literal notranslate"><span class="pre">paths.business_root</span></code>, <code class="docutils literal notranslate"><span class="pre">paths.vault_root</span></code>,
+<code class="docutils literal notranslate"><span class="pre">paths.state_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">paths.issuers_file</span></code>, plus <code class="docutils literal notranslate"><span class="pre">ocr</span></code>, <code class="docutils literal notranslate"><span class="pre">classifier</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">zettel</span></code> blocks.</p>
+<section id="bim-doc-ingest">
+<h3>bim doc ingest<a class="headerlink" href="#bim-doc-ingest" title="Link to this heading"></a></h3>
+<p>Run the ingest pipeline against a single staged PDF. The eight steps -
+dedup, OCR, classify, extract, name, write zettel, file, record - run with
+mocked-friendly boundaries so dry-run-like behaviour is easy to test.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>doc<span class="w"> </span>ingest<span class="w"> </span>~/Downloads/invoice.pdf
+bim<span class="w"> </span>doc<span class="w"> </span>ingest<span class="w"> </span>~/Downloads/invoice.pdf<span class="w"> </span>--source<span class="w"> </span>email
+bim<span class="w"> </span>doc<span class="w"> </span>ingest<span class="w"> </span>~/cez-as/inbox/x.pdf<span class="w"> </span>--source<span class="w"> </span>issuer-inbox<span class="w"> </span>--issuer<span class="w"> </span>cez-as
+</pre></div>
+</div>
+<p>Arguments: <code class="docutils literal notranslate"><span class="pre">PDF_PATH</span></code> (must exist).</p>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--source</span></code> — where the document entered the system. One of <code class="docutils literal notranslate"><span class="pre">email</span></code>,
+<code class="docutils literal notranslate"><span class="pre">scan</span></code>, <code class="docutils literal notranslate"><span class="pre">download</span></code>, <code class="docutils literal notranslate"><span class="pre">issuer-inbox</span></code>, <code class="docutils literal notranslate"><span class="pre">backfill-canonical</span></code>,
+<code class="docutils literal notranslate"><span class="pre">backfill-noncanonical</span></code>. Default: <code class="docutils literal notranslate"><span class="pre">download</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--issuer</span></code> — pre-pin an issuer slug. Honoured when <code class="docutils literal notranslate"><span class="pre">--source</span> <span class="pre">issuer-inbox</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--strict</span></code> — exit 1 on pipeline failure (for scripting). Default exit
+code is 0 even on <code class="docutils literal notranslate"><span class="pre">success=False</span></code>, matching the rest of the bim CLI.
+Triaged and duplicate outcomes are not failures and remain exit 0
+regardless of this flag.</p></li>
+</ul>
+<p>Outcomes (printed to console and recorded in <code class="docutils literal notranslate"><span class="pre">state.db</span></code>):</p>
+<ul class="simple">
+<li><p><strong>filed</strong> — PDF moved to <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/&lt;issuer-slug&gt;/&lt;canonical&gt;.pdf</span></code>
+and zettel written to <code class="docutils literal notranslate"><span class="pre">&lt;vault_root&gt;/Zettelkasten/documents/&lt;canonical&gt;.md</span></code>.</p></li>
+<li><p><strong>triaged</strong> — confidence too low or required field missing. The PDF lands
+in <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code> with a <code class="docutils literal notranslate"><span class="pre">.proposed.yml</span></code> sidecar awaiting
+human review.</p></li>
+<li><p><strong>duplicate</strong> — sha256 already mapped to a filed document. A
+<code class="docutils literal notranslate"><span class="pre">.duplicate.yml</span></code> sidecar is written next to the staged input.</p></li>
+</ul>
+</section>
+<section id="bim-doc-promote">
+<h3>bim doc promote<a class="headerlink" href="#bim-doc-promote" title="Link to this heading"></a></h3>
+<p>Promote an approved triage proposal into a filed document. Re-derives OCR
+from the staged PDF and ignores user-edited OCR text in the proposal.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>doc<span class="w"> </span>promote<span class="w"> </span>~/Business/_triage/x.invoice.pdf.proposed.yml
+</pre></div>
+</div>
+<p>Arguments: <code class="docutils literal notranslate"><span class="pre">YML_PATH</span></code> — path to a <code class="docutils literal notranslate"><span class="pre">&lt;basename&gt;.pdf.proposed.yml</span></code> file
+whose sibling <code class="docutils literal notranslate"><span class="pre">&lt;basename&gt;.pdf</span></code> exists.</p>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--strict</span></code> — exit 1 on promote failure (for scripting). Default exit
+code is 0 on failure to match the rest of the bim CLI.</p></li>
+</ul>
+<p>The proposal must have <code class="docutils literal notranslate"><span class="pre">approved:</span> <span class="pre">true</span></code> and a slug present in the issuer
+registry (or <code class="docutils literal notranslate"><span class="pre">register_issuer:</span> <span class="pre">true</span></code> to add a new issuer entry under flock).</p>
+</section>
+<section id="retry-behaviour">
+<h3>Retry behaviour<a class="headerlink" href="#retry-behaviour" title="Link to this heading"></a></h3>
+<p>The classifier and extractor stages retry transient HTTP failures up to
+<code class="docutils literal notranslate"><span class="pre">classifier.max_retries</span></code> (default 2) times against <code class="docutils literal notranslate"><span class="pre">classifier.primary_model</span></code>,
+then fall back once to <code class="docutils literal notranslate"><span class="pre">classifier.fallback_model</span></code>. Semantic failures
+(missing required fields, uncoercible values, unparseable model output) and
+<code class="docutils literal notranslate"><span class="pre">requests.exceptions.Timeout</span></code> short-circuit to triage immediately without
+retry or fallback - retrying with the same input won’t help on a model-output
+problem.</p>
+</section>
+<section id="issuer-registry">
+<h3>Issuer registry<a class="headerlink" href="#issuer-registry" title="Link to this heading"></a></h3>
+<p>The registry lives at <code class="docutils literal notranslate"><span class="pre">~/.dotfiles/bim/issuers.yml</span></code> (configurable via
+<code class="docutils literal notranslate"><span class="pre">paths.issuers_file</span></code>). Top-level keys: <code class="docutils literal notranslate"><span class="pre">version</span></code>, <code class="docutils literal notranslate"><span class="pre">doc_types</span></code>,
+<code class="docutils literal notranslate"><span class="pre">reserved_slugs</span></code>, <code class="docutils literal notranslate"><span class="pre">issuers</span></code>. Each issuer maps a canonical kebab-case
+slug to <code class="docutils literal notranslate"><span class="pre">display_name</span></code> and a list of <code class="docutils literal notranslate"><span class="pre">aliases</span></code> the classifier uses to
+canonicalise vendor names from OCR text.</p>
+<p>The file is treated as plaintext by all bim processes; encryption (e.g. via
+git-secret) happens at the dotfiles management layer.</p>
+</section>
+<section id="originals-retention">
+<h3>Originals retention<a class="headerlink" href="#originals-retention" title="Link to this heading"></a></h3>
+<p>Re-OCR keeps the pre-modification copy under
+<code class="docutils literal notranslate"><span class="pre">&lt;state_dir&gt;/originals/&lt;timestamp&gt;-&lt;sha256&gt;.pdf</span></code> for
+<code class="docutils literal notranslate"><span class="pre">originals_retention_days</span></code> (default 30). A garbage-collection command
+(<code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">gc-originals</span></code>) is out of scope for v1; clean these manually
+if needed.</p>
 </section>
 </section>
 </section>

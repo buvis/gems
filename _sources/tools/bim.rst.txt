@@ -224,3 +224,111 @@ Options:
 - ``-p, --port INTEGER`` — port (default: 8000)
 - ``-H, --host TEXT`` — host (default: 127.0.0.1)
 - ``--no-browser`` — don't auto-open browser
+
+bim doc
+-------
+
+Document ingestion + triage workflow. Files PDFs into a canonical filesystem
+layout and indexes each one with a Zettelkasten note, OCR'd and structured.
+
+**Extra:** ``uv tool install buvis-gems[doc]``
+
+System dependencies (install separately):
+
+- **Tesseract** (with Czech language pack): ``brew install tesseract tesseract-lang``
+- **OCRmyPDF**: ``brew install ocrmypdf``
+- **Ollama**: ``brew install ollama``, then ``ollama pull qwen2.5:7b-instruct``
+
+Configuration lives under ``[doc]`` in the bim config (see ``DocSettings``
+for the full schema): ``paths.business_root``, ``paths.vault_root``,
+``paths.state_dir``, ``paths.issuers_file``, plus ``ocr``, ``classifier``,
+and ``zettel`` blocks.
+
+bim doc ingest
+~~~~~~~~~~~~~~
+
+Run the ingest pipeline against a single staged PDF. The eight steps -
+dedup, OCR, classify, extract, name, write zettel, file, record - run with
+mocked-friendly boundaries so dry-run-like behaviour is easy to test.
+
+.. code-block:: bash
+
+    bim doc ingest ~/Downloads/invoice.pdf
+    bim doc ingest ~/Downloads/invoice.pdf --source email
+    bim doc ingest ~/cez-as/inbox/x.pdf --source issuer-inbox --issuer cez-as
+
+Arguments: ``PDF_PATH`` (must exist).
+
+Options:
+
+- ``--source`` — where the document entered the system. One of ``email``,
+  ``scan``, ``download``, ``issuer-inbox``, ``backfill-canonical``,
+  ``backfill-noncanonical``. Default: ``download``.
+- ``--issuer`` — pre-pin an issuer slug. Honoured when ``--source issuer-inbox``.
+- ``--strict`` — exit 1 on pipeline failure (for scripting). Default exit
+  code is 0 even on ``success=False``, matching the rest of the bim CLI.
+  Triaged and duplicate outcomes are not failures and remain exit 0
+  regardless of this flag.
+
+Outcomes (printed to console and recorded in ``state.db``):
+
+- **filed** — PDF moved to ``<business_root>/<issuer-slug>/<canonical>.pdf``
+  and zettel written to ``<vault_root>/Zettelkasten/documents/<canonical>.md``.
+- **triaged** — confidence too low or required field missing. The PDF lands
+  in ``<business_root>/_triage/`` with a ``.proposed.yml`` sidecar awaiting
+  human review.
+- **duplicate** — sha256 already mapped to a filed document. A
+  ``.duplicate.yml`` sidecar is written next to the staged input.
+
+bim doc promote
+~~~~~~~~~~~~~~~
+
+Promote an approved triage proposal into a filed document. Re-derives OCR
+from the staged PDF and ignores user-edited OCR text in the proposal.
+
+.. code-block:: bash
+
+    bim doc promote ~/Business/_triage/x.invoice.pdf.proposed.yml
+
+Arguments: ``YML_PATH`` — path to a ``<basename>.pdf.proposed.yml`` file
+whose sibling ``<basename>.pdf`` exists.
+
+Options:
+
+- ``--strict`` — exit 1 on promote failure (for scripting). Default exit
+  code is 0 on failure to match the rest of the bim CLI.
+
+The proposal must have ``approved: true`` and a slug present in the issuer
+registry (or ``register_issuer: true`` to add a new issuer entry under flock).
+
+Retry behaviour
+~~~~~~~~~~~~~~~
+
+The classifier and extractor stages retry transient HTTP failures up to
+``classifier.max_retries`` (default 2) times against ``classifier.primary_model``,
+then fall back once to ``classifier.fallback_model``. Semantic failures
+(missing required fields, uncoercible values, unparseable model output) and
+``requests.exceptions.Timeout`` short-circuit to triage immediately without
+retry or fallback - retrying with the same input won't help on a model-output
+problem.
+
+Issuer registry
+~~~~~~~~~~~~~~~
+
+The registry lives at ``~/.dotfiles/bim/issuers.yml`` (configurable via
+``paths.issuers_file``). Top-level keys: ``version``, ``doc_types``,
+``reserved_slugs``, ``issuers``. Each issuer maps a canonical kebab-case
+slug to ``display_name`` and a list of ``aliases`` the classifier uses to
+canonicalise vendor names from OCR text.
+
+The file is treated as plaintext by all bim processes; encryption (e.g. via
+git-secret) happens at the dotfiles management layer.
+
+Originals retention
+~~~~~~~~~~~~~~~~~~~
+
+Re-OCR keeps the pre-modification copy under
+``<state_dir>/originals/<timestamp>-<sha256>.pdf`` for
+``originals_retention_days`` (default 30). A garbage-collection command
+(``bim doc gc-originals``) is out of scope for v1; clean these manually
+if needed.
