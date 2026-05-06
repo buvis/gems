@@ -560,6 +560,45 @@ class TestPipeline:
         # The first claim should have been released so a re-run could re-attempt.
         assert state_db.claim(sha) is True
 
+    def test_filename_collision_increments_timestamp(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """Spec §11 row 11: pre-move check must avoid silently overwriting an existing file."""
+        # Pre-create a colliding canonical PDF in business_root so the pipeline
+        # has to walk forward in seconds to find a free slot.
+        existing_canonical = settings.paths.business_root / "cez-as" / "20210311000000-cez-as-7102105594.invoice.pdf"
+        existing_canonical.parent.mkdir(parents=True, exist_ok=True)
+        existing_bytes = b"%PDF-1.4\nfirst-arrival\n"
+        existing_canonical.write_bytes(existing_bytes)
+
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="email", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.success is True
+        assert result.metadata["outcome"] == "filed"
+
+        filed_pdf = Path(result.metadata["pdf_path"])
+        # The new file MUST NOT have overwritten the pre-existing one.
+        assert filed_pdf != existing_canonical
+        assert existing_canonical.exists()
+        assert existing_canonical.read_bytes() == existing_bytes
+        # The new filename should differ in the seconds portion of the timestamp.
+        assert filed_pdf.name.startswith("20210311000001-cez-as-7102105594.invoice")
+
     def test_claim_released_on_filed_path(
         self,
         settings: DocSettings,
