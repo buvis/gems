@@ -765,3 +765,230 @@ class TestRetryLLMCall:
                 is_transient=lambda exc: False,
             )
         assert calls == ["primary"]
+
+
+class TestClassifierRetry:
+    """Integration tests for classifier retry semantics through the pipeline."""
+
+    def test_retry_then_succeed(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import ClassifierError
+
+        # First call raises ClassifierError (transient HTTP), second succeeds.
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        side_effects = [ClassifierError("transient"), _make_classify_result()]
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_side_effect=side_effects,
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "filed"
+        # Both calls used the primary model.
+        models = [call.kwargs.get("model") for call in mocks["classify"].call_args_list]
+        assert models == ["qwen2.5:7b-instruct", "qwen2.5:7b-instruct"]
+
+    def test_exhaust_primary_then_fallback_succeeds(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import ClassifierError
+
+        # max_retries=2 means 1 + 2 = 3 primary attempts, then 1 fallback attempt.
+        side_effects = [
+            ClassifierError("t1"),
+            ClassifierError("t2"),
+            ClassifierError("t3"),
+            _make_classify_result(),
+        ]
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_side_effect=side_effects,
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "filed"
+        models = [call.kwargs.get("model") for call in mocks["classify"].call_args_list]
+        assert models == [
+            "qwen2.5:7b-instruct",
+            "qwen2.5:7b-instruct",
+            "qwen2.5:7b-instruct",
+            "qwen2.5:14b-instruct",
+        ]
+
+    def test_exhaust_primary_and_fallback_triages(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import ClassifierError
+
+        side_effects = [
+            ClassifierError("t1"),
+            ClassifierError("t2"),
+            ClassifierError("t3"),
+            ClassifierError("fallback fails"),
+        ]
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_side_effect=side_effects,
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+        reasons = result.metadata["triage_reasons"]
+        assert any("classifier error" in r for r in reasons)
+
+
+class TestExtractorRetry:
+    """Integration tests for extractor retry semantics through the pipeline."""
+
+    def test_transient_retry_then_succeed(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        side_effects = [
+            IncompleteExtraction(["HTTP error: refused"], transient=True),
+            _make_extract_result(),
+        ]
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_result=_make_classify_result(),
+            extract_side_effect=side_effects,
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "filed"
+        models = [call.kwargs.get("model") for call in mocks["extract"].call_args_list]
+        assert models == ["qwen2.5:7b-instruct", "qwen2.5:7b-instruct"]
+
+    def test_transient_exhaust_then_fallback_succeeds(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        side_effects = [
+            IncompleteExtraction(["HTTP error: t1"], transient=True),
+            IncompleteExtraction(["HTTP error: t2"], transient=True),
+            IncompleteExtraction(["HTTP error: t3"], transient=True),
+            _make_extract_result(),
+        ]
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_result=_make_classify_result(),
+            extract_side_effect=side_effects,
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "filed"
+        models = [call.kwargs.get("model") for call in mocks["extract"].call_args_list]
+        assert models[-1] == "qwen2.5:14b-instruct"
+
+    def test_transient_exhaust_and_fallback_triages(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        side_effects = [
+            IncompleteExtraction(["HTTP error: t1"], transient=True),
+            IncompleteExtraction(["HTTP error: t2"], transient=True),
+            IncompleteExtraction(["HTTP error: t3"], transient=True),
+            IncompleteExtraction(["HTTP error: fallback"], transient=True),
+        ]
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_result=_make_classify_result(),
+            extract_side_effect=side_effects,
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+
+    def test_semantic_failure_does_not_retry(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        ocr_result = _make_ocr_result(pdf_path=staging_pdf)
+        # Single semantic failure - must NOT trigger retries.
+        side_effects = [
+            IncompleteExtraction(["missing field date"], transient=False),
+        ]
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=ocr_result,
+            classify_result=_make_classify_result(),
+            extract_side_effect=side_effects,
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+        # Exactly one extract call (no retry).
+        assert mocks["extract"].call_count == 1
