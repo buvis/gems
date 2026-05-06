@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-05-06
+
 ### Added
 
 - **bim**: doc subsystem v1 — ingest pipeline, triage workflow, issuer registry, OCR + LLM via Ollama/qwen2.5
@@ -294,7 +296,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.10.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.11.0...HEAD
+[0.11.0]: https://github.com/buvis/gems/compare/gems-v0.10.0...gems-v0.11.0
 [0.10.0]: https://github.com/buvis/gems/compare/gems-v0.9.0...gems-v0.10.0
 [0.9.0]: https://github.com/buvis/gems/compare/gems-v0.8.7...gems-v0.9.0
 [0.8.7]: https://github.com/buvis/gems/compare/gems-v0.8.6...gems-v0.8.7
