@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,7 +8,7 @@ from types import TracebackType
 from pydantic import BaseModel, ConfigDict, field_validator
 from typing_extensions import Self
 
-_SHA256_REGEX = re.compile(r"^[0-9a-f]{64}$")
+from bim.commands.doc.shared.validators import validate_sha256_hex64
 
 __all__ = [
     "DedupResult",
@@ -33,9 +32,7 @@ class ProcessedRow(BaseModel):
     @field_validator("sha256")
     @classmethod
     def _sha256_is_hex64(cls, v: str) -> str:
-        if not _SHA256_REGEX.match(v):
-            raise ValueError(f"sha256 must be 64 lowercase hex chars, got {v!r}")
-        return v
+        return validate_sha256_hex64("sha256", v)
 
 
 class OriginalRow(BaseModel):

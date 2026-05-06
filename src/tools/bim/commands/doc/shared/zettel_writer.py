@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.naming import DOC_TYPES, SLUG_REGEX
+from bim.commands.doc.shared.validators import validate_sha256_hex64
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.settings_models import ZettelSettings
@@ -31,7 +32,6 @@ __all__ = [
 
 
 _ID_REGEX = re.compile(r"^\d{14}$")
-_SHA256_REGEX = re.compile(r"^[0-9a-f]{64}$")
 # llm:<model-name> permits colons in the tail because Ollama's canonical
 # model identifier uses ``name:tag`` form (e.g. qwen2.5:7b-instruct). rule and
 # rule+llm forms keep the strict three-segment grammar so audit queries like
@@ -124,9 +124,7 @@ class DocumentZettelFrontmatter(BaseModel):
     @field_validator("file_sha256")
     @classmethod
     def _file_sha256_is_hex64(cls, v: str) -> str:
-        if not _SHA256_REGEX.match(v):
-            raise ValueError(f"file_sha256 must be 64 lowercase hex chars, got {v!r}")
-        return v
+        return validate_sha256_hex64("file_sha256", v)
 
     @field_validator("extraction_method")
     @classmethod
