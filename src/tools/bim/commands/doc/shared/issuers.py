@@ -50,6 +50,21 @@ class IssuerEntry(BaseModel):
             raise ValueError(f"slug {v!r} must be lowercase kebab-case ASCII (matching {SLUG_REGEX.pattern})")
         return v
 
+    @field_validator("display_name")
+    @classmethod
+    def _display_name_non_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("display_name must be non-empty")
+        return v
+
+    @field_validator("aliases")
+    @classmethod
+    def _aliases_non_empty(cls, v: list[str]) -> list[str]:
+        for alias in v:
+            if not alias.strip():
+                raise ValueError(f"aliases must contain only non-empty strings, got {v!r}")
+        return v
+
 
 class IssuerRegistry(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -137,8 +152,10 @@ def register_issuer(
 ) -> IssuerRegistry:
     """Register a new issuer under exclusive flock, atomically rewriting the file.
 
-    Raises ValueError if the slug is reserved or already present.
+    Raises ValueError if the slug is reserved, already present, or the display_name is empty.
     """
+    if not display_name.strip():
+        raise ValueError("display_name must be non-empty")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
     try:
