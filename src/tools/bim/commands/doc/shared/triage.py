@@ -8,11 +8,12 @@ true``, and the watcher (or a manual ``bim doc promote``) consumes it.
 from __future__ import annotations
 
 import datetime as _dt
+import re
 from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -29,6 +30,8 @@ __all__ = [
     "validate_for_promote",
     "write_proposal",
 ]
+
+_SHA256_REGEX = re.compile(r"^[0-9a-f]{64}$")
 
 
 class IssuerProposal(BaseModel):
@@ -62,6 +65,13 @@ class SourceProposal(BaseModel):
     email_subject: str | None = None
     original_filename: str | None = None
     sha256: str
+
+    @field_validator("sha256")
+    @classmethod
+    def _sha256_is_hex64(cls, v: str) -> str:
+        if not _SHA256_REGEX.match(v):
+            raise ValueError(f"sha256 must be 64 lowercase hex chars, got {v!r}")
+        return v
 
 
 class OCRProposal(BaseModel):
