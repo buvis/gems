@@ -175,11 +175,18 @@ class Pipeline:
             # Map any escaping exception to a structured CommandResult per AGENTS.md
             # "never let raw exceptions reach the user" - the CLI handler turns
             # success=False into console.failure rather than a stack trace.
+            # Capture exception_type/repr alongside stage so log analysis can
+            # distinguish failure modes without violating the no-stack-trace rule.
             self._state_db.release_claim(sha)
             return CommandResult(
                 success=False,
                 error=f"pipeline failed: {exc}",
-                metadata={"sha256": sha, "stage": "post-claim"},
+                metadata={
+                    "sha256": sha,
+                    "stage": "post-claim",
+                    "exception_type": type(exc).__name__,
+                    "exception_repr": repr(exc),
+                },
             )
 
     # --------- internals ---------

@@ -626,3 +626,39 @@ class TestPipeline:
         # the claim row was just an in-flight reservation. release_claim returns
         # False if there was no claim row to remove.
         assert state_db.release_claim(sha) is False
+
+
+class TestExceptionContextPreserved:
+    """Pipeline.run outer except records exception type+repr in metadata."""
+
+    def test_unhandled_exception_records_structured_context(
+        self,
+        settings: DocSettings,
+        state_db: StateDB,
+        staging_pdf: Path,
+        registry: IssuerRegistry,
+        mocker: MockerFixture,
+    ) -> None:
+        # OCR runner raises an unexpected error after claim succeeds; the
+        # outer except in Pipeline.run must surface exception type/repr.
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=None,
+        )
+        # Patch the OCR runner to raise instead of returning.
+        mocker.patch.object(
+            pipeline._services.ocr_runner,
+            "run",
+            side_effect=RuntimeError("boom from ocr"),
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.success is False
+        assert "pipeline failed" in (result.error or "")
+        assert result.metadata.get("stage") == "post-claim"
+        assert result.metadata.get("exception_type") == "RuntimeError"
+        assert "boom from ocr" in (result.metadata.get("exception_repr") or "")
