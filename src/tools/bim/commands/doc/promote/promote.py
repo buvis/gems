@@ -8,6 +8,13 @@ proposal values), then writes the zettel and atomically moves the PDF into
 On any failure during the file-move + record stages, the command returns a
 ``CommandResult(success=False, ...)`` without rollback - the spec accepts a
 mid-flight crash leaving partial state in exchange for a simpler design.
+
+**Same-volume invariant.** When the OCR runner's full-OCR branch fires at
+promote time it returns a temp-file ``pdf_path``; ``_finalize`` moves that
+into ``<business_root>/<issuer-slug>/`` via ``Path.replace``. The move is
+atomic only when the system tempdir and the business root share a
+filesystem. The pipeline already documents this for ingest; the same
+invariant applies to promote when full OCR fires.
 """
 
 from __future__ import annotations
@@ -20,7 +27,7 @@ from typing import TYPE_CHECKING, cast, get_args
 
 from buvis.pybase.result import CommandResult
 
-from bim.commands.doc.shared.issuers import load_registry, register_issuer
+from bim.commands.doc.shared.issuers import register_issuer
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import read_proposal, validate_for_promote
@@ -160,7 +167,7 @@ class CommandPromote:
         if not proposal.register_issuer:
             return None
         try:
-            register_issuer(
+            new_registry = register_issuer(
                 self._services.registry_path,
                 self._services.lock_path,
                 slug=proposal.issuer.slug,
@@ -171,7 +178,7 @@ class CommandPromote:
             return CommandResult(success=False, error=f"register_issuer failed: {exc}")
         inbox_dir = self._settings.paths.business_root / proposal.issuer.slug / "inbox"
         inbox_dir.mkdir(parents=True, exist_ok=True)
-        return load_registry(self._services.registry_path)
+        return new_registry
 
     # --------- stage 3: re-derive OCR ---------
 
@@ -243,12 +250,10 @@ class CommandPromote:
             return CommandResult(success=False, error=f"pdf move failed: {exc}")
         # If full-OCR produced a new path, the original triage PDF is now
         # orphaned. Clean it up so _triage/ doesn't accumulate stale copies.
+        # Use missing_ok so this never fails when the original was already
+        # removed by a concurrent promote (rare but possible).
         if source_pdf != ctx.sibling_pdf:
-            try:
-                ctx.sibling_pdf.unlink()
-            except OSError:
-                # Non-fatal: orphaned triage PDF is a small leak, not data loss.
-                pass
+            ctx.sibling_pdf.unlink(missing_ok=True)
 
         try:
             self._services.state_db.record_processed(
