@@ -19,7 +19,6 @@ invariant applies to promote when full OCR fires.
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -27,6 +26,7 @@ from typing import TYPE_CHECKING, cast, get_args
 
 from buvis.pybase.result import CommandResult
 
+from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.issuers import register_issuer
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
 from bim.commands.doc.shared.state_db import ProcessedRow
@@ -230,7 +230,7 @@ class CommandPromote:
         # and we file that instead, otherwise the zettel body would describe
         # OCR text that the filed PDF does not contain.
         source_pdf = ocr_result.pdf_path
-        sha = hashlib.sha256(source_pdf.read_bytes()).hexdigest()
+        sha = sha256_file(source_pdf)
         ingest_today = date.today()
 
         frontmatter_or_err = self._build_frontmatter(ctx, ocr_result, plan, sha, ingest_today)

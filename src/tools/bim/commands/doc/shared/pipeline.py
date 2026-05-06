@@ -15,7 +15,6 @@ silently breaks this invariant.
 
 from __future__ import annotations
 
-import hashlib
 import os
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -27,6 +26,7 @@ from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.extractor import IncompleteExtraction
+from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import (
@@ -145,7 +145,7 @@ class Pipeline:
 
     def run(self, params: IngestParams) -> CommandResult:
         """Run the 8-step pipeline against a single staged document."""
-        sha = hashlib.sha256(params.staging_path.read_bytes()).hexdigest()
+        sha = sha256_file(params.staging_path)
 
         # Step 1: dedup (read-only fast path)
         dedup = self._state_db.dedup(sha)
