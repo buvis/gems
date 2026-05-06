@@ -178,3 +178,46 @@ class TestLazyImportInvariant:
         )
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
         assert result.returncode == 0, result.stderr.decode(errors="replace")
+
+
+class TestBimDocIngestStrictFlag:
+    """`--strict` maps success=False to exit 1 instead of exit 0."""
+
+    def _run(self, runner: CliRunner, tmp_path: Path, cmd_result: CommandResult, *args: str) -> object:
+        pdf = _staged_pdf(tmp_path)
+        settings = _bim_settings_with_doc(tmp_path)
+        pipeline_mock = MagicMock()
+        pipeline_mock.run.return_value = cmd_result
+        with (
+            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
+            patch("bim.dependencies.get_pipeline", return_value=pipeline_mock),
+            patch("bim.dependencies.get_repo", return_value=MagicMock()),
+        ):
+            return runner.invoke(cli, ["doc", "ingest", str(pdf), *args])
+
+    def test_default_exits_zero_on_failure(self, runner: CliRunner, tmp_path: Path) -> None:
+        cmd_result = CommandResult(success=False, error="pipeline failed: oops")
+        result = self._run(runner, tmp_path, cmd_result)
+        assert result.exit_code == 0
+
+    def test_strict_exits_one_on_failure(self, runner: CliRunner, tmp_path: Path) -> None:
+        cmd_result = CommandResult(success=False, error="pipeline failed: oops")
+        result = self._run(runner, tmp_path, cmd_result, "--strict")
+        assert result.exit_code == 1
+
+    def test_strict_exits_zero_on_triaged(self, runner: CliRunner, tmp_path: Path) -> None:
+        cmd_result = CommandResult(
+            success=True,
+            metadata={"outcome": "triaged", "proposal_path": "/tmp/x.proposed.yml"},
+        )
+        result = self._run(runner, tmp_path, cmd_result, "--strict")
+        assert result.exit_code == 0
+
+    def test_strict_exits_zero_on_duplicate(self, runner: CliRunner, tmp_path: Path) -> None:
+        cmd_result = CommandResult(
+            success=True,
+            metadata={"outcome": "duplicate", "existing_canonical_filename": "x.pdf"},
+        )
+        result = self._run(runner, tmp_path, cmd_result, "--strict")
+        assert result.exit_code == 0

@@ -109,3 +109,38 @@ class TestBimDocPromote:
             result = runner.invoke(cli, ["doc", "promote", str(yml)], catch_exceptions=True)
 
         assert result.exit_code != 0 or "ollama" in result.output
+
+
+class TestBimDocPromoteStrictFlag:
+    """`--strict` maps success=False to exit 1 instead of exit 0."""
+
+    def _run(self, runner: CliRunner, tmp_path: Path, cmd_result: CommandResult, *args: str) -> object:
+        proposal = tmp_path / "x.proposed.yml"
+        proposal.write_text("approved: true\n")
+        settings = _bim_settings_with_doc(tmp_path)
+        cmd_mock = MagicMock()
+        cmd_mock.execute.return_value = cmd_result
+        with (
+            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
+            patch(
+                "bim.dependencies.get_issuer_registry",
+                return_value=(MagicMock(), tmp_path / "issuers.yml", tmp_path / "issuers.lock"),
+            ),
+            patch("bim.dependencies.get_state_db", return_value=MagicMock()),
+            patch("bim.dependencies.get_ocr_runner", return_value=MagicMock()),
+            patch("bim.dependencies.get_repo", return_value=MagicMock()),
+            patch("bim.dependencies.get_zettel_writer", return_value=MagicMock()),
+            patch("bim.commands.doc.promote.promote.CommandPromote", return_value=cmd_mock),
+        ):
+            return runner.invoke(cli, ["doc", "promote", str(proposal), *args])
+
+    def test_default_exits_zero_on_failure(self, runner: CliRunner, tmp_path: Path) -> None:
+        cmd_result = CommandResult(success=False, error="promote failed: oops")
+        result = self._run(runner, tmp_path, cmd_result)
+        assert result.exit_code == 0
+
+    def test_strict_exits_one_on_failure(self, runner: CliRunner, tmp_path: Path) -> None:
+        cmd_result = CommandResult(success=False, error="promote failed: oops")
+        result = self._run(runner, tmp_path, cmd_result, "--strict")
+        assert result.exit_code == 1
