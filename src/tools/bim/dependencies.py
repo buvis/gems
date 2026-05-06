@@ -137,17 +137,16 @@ def get_state_db(settings: DocSettings) -> StateDB:
     return _StateDB.open(state_dir / "state.db")
 
 
-def _load_issuer_registry(settings: DocSettings) -> IssuerRegistry:
-    """Load just the issuer registry from settings, no path tuple needed.
+def _load_issuer_registry(issuers_file: Path) -> IssuerRegistry:
+    """Load the issuer registry from the resolved ``issuers_file``.
 
-    Used by callers (notably ``get_pipeline``) that don't need the registry
-    path or lock path - keeps the call sites free of throwaway tuple unpacking.
+    The path is taken as a direct argument so callers (notably
+    ``get_pipeline`` and ``get_issuer_registry``) that have already resolved
+    and validated ``settings.paths.issuers_file`` don't have to repeat the
+    ``None`` guard.
     """
     from bim.commands.doc.shared.issuers import load_registry
 
-    issuers_file = settings.paths.issuers_file
-    if issuers_file is None:
-        raise ValueError("DocSettings.paths.issuers_file is not set")
     return load_registry(issuers_file)
 
 
@@ -161,7 +160,7 @@ def get_issuer_registry(settings: DocSettings) -> tuple[IssuerRegistry, Path, Pa
     state_dir = settings.paths.state_dir
     if issuers_file is None or state_dir is None:
         raise ValueError("DocSettings.paths.{issuers_file,state_dir} is not set")
-    registry = _load_issuer_registry(settings)
+    registry = _load_issuer_registry(issuers_file)
     lock_path = state_dir / "issuers.lock"
     return registry, issuers_file, lock_path
 
@@ -208,12 +207,15 @@ def get_pipeline(settings: DocSettings, repo: ZettelRepository) -> Pipeline:
     from bim.commands.doc.shared.pipeline import Pipeline as _Pipeline
     from bim.commands.doc.shared.pipeline import PipelineServices
 
+    issuers_file = settings.paths.issuers_file
+    if issuers_file is None:
+        raise ValueError("DocSettings.paths.issuers_file is not set")
     services = PipelineServices(
         state_db=get_state_db(settings),
         ocr_runner=get_ocr_runner(settings),
         classifier=get_classifier(settings),
         extractor=get_extractor(settings),
-        registry=_load_issuer_registry(settings),
+        registry=_load_issuer_registry(issuers_file),
         zettel_writer=get_zettel_writer(settings, repo),
     )
     return _Pipeline(settings, services)

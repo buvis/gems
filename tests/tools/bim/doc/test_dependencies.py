@@ -38,7 +38,9 @@ def doc_settings(tmp_path: Path) -> DocSettings:
 
 class TestLoadIssuerRegistry:
     def test_returns_registry_only(self, doc_settings: DocSettings) -> None:
-        result = _load_issuer_registry(doc_settings)
+        issuers_file = doc_settings.paths.issuers_file
+        assert issuers_file is not None
+        result = _load_issuer_registry(issuers_file)
         assert isinstance(result, IssuerRegistry)
         assert result.version == 1
 
