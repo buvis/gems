@@ -11,12 +11,12 @@ from __future__ import annotations
 
 import fcntl
 import os
-import tempfile
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.naming import SLUG_REGEX, slugify
 
 __all__ = [
@@ -127,21 +127,6 @@ def _serialize(registry: IssuerRegistry) -> str:
     return yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
 
 
-def _atomic_write(path: Path, content: str) -> None:
-    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
-    tmp_path = Path(tmp_name)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp_path, path)
-    except Exception:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
-
-
 def register_issuer(
     registry_path: Path,
     lock_path: Path,
@@ -179,7 +164,7 @@ def register_issuer(
             reserved_slugs=current.reserved_slugs,
             issuers=new_issuers,
         )
-        _atomic_write(registry_path, _serialize(new_registry))
+        atomic_write_text(registry_path, _serialize(new_registry))
         return new_registry
     finally:
         try:

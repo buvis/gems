@@ -8,14 +8,13 @@ true``, and the watcher (or a manual ``bim doc promote``) consumes it.
 from __future__ import annotations
 
 import datetime as _dt
-import os
-import tempfile
 from pathlib import Path
 from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict
 
+from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.issuers import IssuerRegistry
 from bim.commands.doc.shared.naming import DOC_TYPES
 
@@ -103,18 +102,7 @@ def write_proposal(path: Path, proposal: TriageProposal) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = proposal.model_dump(mode="json")
     serialized = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
-    tmp_path = Path(tmp_name)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(serialized)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp_path, path)
-    except Exception:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
+    atomic_write_text(path, serialized)
 
 
 def read_proposal(path: Path) -> TriageProposal:
