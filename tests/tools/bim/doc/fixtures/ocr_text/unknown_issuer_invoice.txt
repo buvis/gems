@@ -1,0 +1,27 @@
+Acme Žralok s.r.o.
+Neznámá 42
+602 00 Brno
+
+IČ: 11111111
+DIČ: CZ11111111
+
+Faktura č. 2024-000123
+
+Datum vystavení: 01.05.2024
+Datum splatnosti: 15.05.2024
+
+Odběratel:
+Petr Svoboda
+Imaginární 7
+600 00 Brno
+
+Položka: Konzultační služby
+Množství: 8 hodin
+Cena za hodinu: 1 500,00 Kč
+
+Celkem bez DPH: 12 000,00 Kč
+DPH 21%:        2 520,00 Kč
+Celkem k úhradě: 14 520,00 Kč
+
+Bankovní spojení: 1234567890/0100
+www.acme-zralok.cz

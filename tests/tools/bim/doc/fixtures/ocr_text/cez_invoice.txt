@@ -1,0 +1,26 @@
+ČEZ a.s.
+Duhová 1444/2
+140 53 Praha 4 - Michle
+
+IČ: 99999999
+DIČ: CZ99999999
+
+Faktura č. 9999999999
+
+Datum vystavení: 15.04.2024
+Datum splatnosti: 30.04.2024
+Variabilní symbol: 9999999999
+Konstantní symbol: 0308
+
+Odběratel:
+Jan Novák
+Testovací 123
+100 00 Praha 10
+
+Spotřeba: 250 kWh
+Cena za kWh: 4,87 Kč
+
+Celkem k úhradě: 1 218,00 Kč
+
+Děkujeme, že odebíráte energii od ČEZ Prodej.
+www.cez.cz
