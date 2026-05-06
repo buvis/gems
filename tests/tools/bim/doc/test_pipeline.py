@@ -662,3 +662,102 @@ class TestExceptionContextPreserved:
         assert result.metadata.get("stage") == "post-claim"
         assert result.metadata.get("exception_type") == "RuntimeError"
         assert "boom from ocr" in (result.metadata.get("exception_repr") or "")
+
+
+class TestRetryLLMCall:
+    """Standalone tests for the _retry_llm_call helper used by classifier/extractor wiring."""
+
+    def _make_func_from_seq(self, side_effects: list[object]) -> tuple[object, list[str]]:
+        """Returns (func, calls_log) where func pops the next side effect on each call.
+
+        Each item is either a return value (returned) or an Exception instance (raised).
+        ``calls_log`` records the model name passed to each invocation.
+        """
+        calls: list[str] = []
+        seq = list(side_effects)
+
+        def func(model: str) -> object:
+            calls.append(model)
+            item = seq.pop(0)
+            if isinstance(item, Exception):
+                raise item
+            return item
+
+        return func, calls
+
+    def test_succeeds_first_try(self) -> None:
+        from bim.commands.doc.shared.pipeline import _retry_llm_call
+
+        func, calls = self._make_func_from_seq(["ok"])
+        result = _retry_llm_call(
+            func=func,
+            primary_model="primary",
+            fallback_model="fallback",
+            max_retries=2,
+            is_transient=lambda exc: True,
+        )
+        assert result == "ok"
+        assert calls == ["primary"]
+
+    def test_retries_then_succeeds(self) -> None:
+        from bim.commands.doc.shared.pipeline import _retry_llm_call
+
+        func, calls = self._make_func_from_seq([RuntimeError("transient"), "ok"])
+        result = _retry_llm_call(
+            func=func,
+            primary_model="primary",
+            fallback_model="fallback",
+            max_retries=2,
+            is_transient=lambda exc: True,
+        )
+        assert result == "ok"
+        assert calls == ["primary", "primary"]
+
+    def test_exhausts_primary_then_fallback_succeeds(self) -> None:
+        from bim.commands.doc.shared.pipeline import _retry_llm_call
+
+        func, calls = self._make_func_from_seq([RuntimeError("t1"), RuntimeError("t2"), RuntimeError("t3"), "ok"])
+        result = _retry_llm_call(
+            func=func,
+            primary_model="primary",
+            fallback_model="fallback",
+            max_retries=2,
+            is_transient=lambda exc: True,
+        )
+        assert result == "ok"
+        assert calls == ["primary", "primary", "primary", "fallback"]
+
+    def test_exhausts_primary_and_fallback_fails(self) -> None:
+        from bim.commands.doc.shared.pipeline import _retry_llm_call
+
+        func, calls = self._make_func_from_seq(
+            [
+                RuntimeError("t1"),
+                RuntimeError("t2"),
+                RuntimeError("t3"),
+                RuntimeError("fallback failure"),
+            ]
+        )
+        with pytest.raises(RuntimeError, match="fallback failure"):
+            _retry_llm_call(
+                func=func,
+                primary_model="primary",
+                fallback_model="fallback",
+                max_retries=2,
+                is_transient=lambda exc: True,
+            )
+        assert calls == ["primary", "primary", "primary", "fallback"]
+
+    def test_non_transient_raises_without_retry(self) -> None:
+        from bim.commands.doc.shared.pipeline import _retry_llm_call
+
+        func, calls = self._make_func_from_seq([ValueError("semantic failure"), "should-not-reach"])
+        with pytest.raises(ValueError, match="semantic"):
+            _retry_llm_call(
+                func=func,
+                primary_model="primary",
+                fallback_model="fallback",
+                max_retries=2,
+                is_transient=lambda exc: False,
+            )
+        assert calls == ["primary"]

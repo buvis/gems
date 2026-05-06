@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from buvis.pybase.result import CommandResult
 
@@ -45,6 +45,8 @@ from bim.commands.doc.shared.zettel_writer import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from bim.commands.doc.shared.classifier import Classifier, ClassifyResult
     from bim.commands.doc.shared.extractor import Extractor, ExtractResult
     from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -55,6 +57,49 @@ if TYPE_CHECKING:
     from bim.params.doc_ingest import IngestParams
 
 __all__ = ["IngestOutcome", "Pipeline", "PipelineServices"]
+
+
+T = TypeVar("T")
+
+
+def _retry_llm_call(
+    *,
+    func: Callable[[str], T],
+    primary_model: str,
+    fallback_model: str,
+    max_retries: int,
+    is_transient: Callable[[Exception], bool],
+) -> T:
+    """Run ``func(model)`` with primary→retries→fallback semantics.
+
+    The pipeline calls into the classifier and extractor through this helper
+    so spec §11 retry semantics land in one place:
+
+    - Try ``func(primary_model)`` once.
+    - On a transient exception (per ``is_transient``), retry up to
+      ``max_retries`` more times against ``primary_model``.
+    - On a non-transient exception, re-raise immediately - retries on a
+      semantic failure (e.g. unparseable model output) will not help.
+    - If all primary attempts raise transient errors, try ``func(fallback_model)``
+      once. If the fallback raises (transient or otherwise), re-raise that
+      exception unchanged.
+    - ``requests.exceptions.Timeout`` is non-retryable by definition (the
+      underlying boundary services re-raise it unwrapped); the helper sees it
+      as a non-transient via ``is_transient`` returning False, so it bubbles
+      out without retry or fallback.
+    """
+    attempts = 0
+    while attempts < 1 + max_retries:
+        try:
+            return func(primary_model)
+        except Exception as exc:
+            if not is_transient(exc):
+                raise
+            attempts += 1
+
+    # All primary attempts exhausted with transient errors. Try fallback once;
+    # any exception from it is the final word.
+    return func(fallback_model)
 
 
 class IngestOutcome(str, Enum):
