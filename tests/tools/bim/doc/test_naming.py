@@ -6,6 +6,7 @@ from bim.commands.doc.shared.naming import (
     build_canonical_filename,
     slugify,
 )
+from pytest_mock import MockerFixture
 
 
 class TestSlugify:
@@ -140,7 +141,7 @@ class TestLazyUnidecodeImport:
     """naming.py must be loadable without the unidecode package installed
     (so consumers outside the [doc] extra don't blow up on import)."""
 
-    def test_module_imports_without_unidecode_at_module_load(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_module_imports_without_unidecode_at_module_load(self, mocker: MockerFixture) -> None:
         import builtins
         import importlib
         import sys
@@ -150,7 +151,13 @@ class TestLazyUnidecodeImport:
             sys.modules.pop("bim.commands.doc.shared.naming", None)
             real_import = builtins.__import__
 
-            def fake_import(name, globals_=None, locals_=None, fromlist=(), level=0):  # type: ignore[no-untyped-def]
+            def fake_import(
+                name: str,
+                globals_: object = None,
+                locals_: object = None,
+                fromlist: tuple[str, ...] = (),
+                level: int = 0,
+            ) -> object:
                 if name == "unidecode":
                     raise ModuleNotFoundError("unidecode pretend-missing")
                 return real_import(name, globals_, locals_, fromlist, level)

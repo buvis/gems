@@ -17,7 +17,9 @@ _VERSION_FLAGS: tuple[str, ...] = ("--version", "-V", "version")
 
 
 def _check_binary(binary: str) -> None:
-    last_result: subprocess.CompletedProcess[bytes] | None = None
+    # _VERSION_FLAGS is a non-empty constant, so the loop always assigns to
+    # ``last_result`` before exiting (the only early-exit paths return on
+    # success or raise on FileNotFoundError).
     for flag in _VERSION_FLAGS:
         try:
             result = subprocess.run(
@@ -33,11 +35,6 @@ def _check_binary(binary: str) -> None:
             return
         last_result = result
 
-    # last_result is guaranteed non-None because _VERSION_FLAGS is non-empty
-    # and every iteration assigns to it (the only return paths above are
-    # success or FileNotFoundError, both before the loop exit).
-    if last_result is None:  # pragma: no cover - defensive
-        raise MissingDependency(f"{binary} version probe yielded no result")
     raise MissingDependency(
         f"{binary} version probe failed (tried {list(_VERSION_FLAGS)}): "
         f"{last_result.stderr.decode(errors='replace').strip()}"
