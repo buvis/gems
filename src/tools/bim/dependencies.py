@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -150,19 +151,36 @@ def _load_issuer_registry(issuers_file: Path) -> IssuerRegistry:
     return load_registry(issuers_file)
 
 
-def get_issuer_registry(settings: DocSettings) -> tuple[IssuerRegistry, Path, Path]:
-    """Load the issuer registry and return ``(registry, registry_path, lock_path)``.
+@dataclass(frozen=True)
+class ServicesBundle:
+    """Issuer-registry trio returned by ``get_issuer_registry``.
 
-    Used by ``CommandPromote`` which needs all three to register new issuers
-    under flock and atomically rewrite the registry file.
+    ``CommandPromote`` needs the loaded registry, the resolved YAML path, and
+    the flock path together to register new issuers atomically. Bundling the
+    triple in a named dataclass keeps the call site self-documenting and lets
+    future fields be added without breaking positional unpacking.
+    """
+
+    registry: IssuerRegistry
+    registry_path: Path
+    lock_path: Path
+
+
+def get_issuer_registry(settings: DocSettings) -> ServicesBundle:
+    """Load the issuer registry into a :class:`ServicesBundle`.
+
+    Used by ``CommandPromote`` which needs all three fields to register new
+    issuers under flock and atomically rewrite the registry file.
     """
     issuers_file = settings.paths.issuers_file
     state_dir = settings.paths.state_dir
     if issuers_file is None or state_dir is None:
         raise ValueError("DocSettings.paths.{issuers_file,state_dir} is not set")
-    registry = _load_issuer_registry(issuers_file)
-    lock_path = state_dir / "issuers.lock"
-    return registry, issuers_file, lock_path
+    return ServicesBundle(
+        registry=_load_issuer_registry(issuers_file),
+        registry_path=issuers_file,
+        lock_path=state_dir / "issuers.lock",
+    )
 
 
 def get_ocr_runner(settings: DocSettings) -> OCRRunner:

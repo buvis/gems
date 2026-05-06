@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from bim.cli import cli
 from bim.commands.doc.shared.health import MissingDependency
 from bim.commands.doc.shared.settings_models import DocPaths, DocSettings
+from bim.dependencies import ServicesBundle
 from bim.settings import BimSettings
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
@@ -45,7 +46,11 @@ def _patches_for_promote(settings: BimSettings) -> list:
         patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
         patch(
             "bim.dependencies.get_issuer_registry",
-            return_value=(MagicMock(), Path("/tmp/i.yml"), Path("/tmp/i.lock")),
+            return_value=ServicesBundle(
+                registry=MagicMock(),
+                registry_path=Path("/tmp/i.yml"),
+                lock_path=Path("/tmp/i.lock"),
+            ),
         ),
         patch("bim.dependencies.get_state_db", return_value=MagicMock()),
         patch("bim.dependencies.get_ocr_runner", return_value=MagicMock()),
@@ -125,7 +130,11 @@ class TestBimDocPromoteStrictFlag:
             patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
             patch(
                 "bim.dependencies.get_issuer_registry",
-                return_value=(MagicMock(), tmp_path / "issuers.yml", tmp_path / "issuers.lock"),
+                return_value=ServicesBundle(
+                    registry=MagicMock(),
+                    registry_path=tmp_path / "issuers.yml",
+                    lock_path=tmp_path / "issuers.lock",
+                ),
             ),
             patch("bim.dependencies.get_state_db", return_value=MagicMock()),
             patch("bim.dependencies.get_ocr_runner", return_value=MagicMock()),

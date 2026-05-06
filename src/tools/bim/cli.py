@@ -651,11 +651,11 @@ def doc_promote(ctx: click.Context, yml_path: Path, strict: bool) -> None:
         console.panic(str(exc))
         return
 
-    registry, registry_path, lock_path = get_issuer_registry(settings.doc)
+    bundle = get_issuer_registry(settings.doc)
     services = PromoteServices(
-        registry=registry,
-        registry_path=registry_path,
-        lock_path=lock_path,
+        registry=bundle.registry,
+        registry_path=bundle.registry_path,
+        lock_path=bundle.lock_path,
         state_db=get_state_db(settings.doc),
         ocr_runner=get_ocr_runner(settings.doc),
         zettel_writer=get_zettel_writer(settings.doc, get_repo()),
