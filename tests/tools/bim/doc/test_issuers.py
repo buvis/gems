@@ -185,3 +185,47 @@ class TestCiphertextDetection:
         shutil.copy(FIXTURES / "ciphertext.yml", encrypted)
         with pytest.raises(RuntimeError, match="git filter"):
             load_registry(encrypted)
+
+
+class TestIssuerEntryValidation:
+    """IssuerEntry tightens aliases and display_name."""
+
+    def test_empty_alias_rejected(self) -> None:
+        from bim.commands.doc.shared.issuers import IssuerEntry
+
+        with pytest.raises(ValidationError):
+            IssuerEntry(slug="x", display_name="X", aliases=["valid", ""])
+
+    def test_whitespace_only_alias_rejected(self) -> None:
+        from bim.commands.doc.shared.issuers import IssuerEntry
+
+        with pytest.raises(ValidationError):
+            IssuerEntry(slug="x", display_name="X", aliases=["   "])
+
+    def test_empty_display_name_rejected(self) -> None:
+        from bim.commands.doc.shared.issuers import IssuerEntry
+
+        with pytest.raises(ValidationError):
+            IssuerEntry(slug="x", display_name="", aliases=[])
+
+    def test_whitespace_only_display_name_rejected(self) -> None:
+        from bim.commands.doc.shared.issuers import IssuerEntry
+
+        with pytest.raises(ValidationError):
+            IssuerEntry(slug="x", display_name="   ", aliases=[])
+
+    def test_valid_aliases_accepted(self) -> None:
+        from bim.commands.doc.shared.issuers import IssuerEntry
+
+        entry = IssuerEntry(slug="x", display_name="X", aliases=["a", "b"])
+        assert entry.aliases == ["a", "b"]
+
+
+class TestRegisterIssuerEmptyDisplayName:
+    def test_empty_display_name_rejected(self, valid_registry_path: Path, lock_path: Path) -> None:
+        with pytest.raises(ValueError, match="display_name"):
+            register_issuer(valid_registry_path, lock_path, slug="newco", display_name="")
+
+    def test_whitespace_only_display_name_rejected(self, valid_registry_path: Path, lock_path: Path) -> None:
+        with pytest.raises(ValueError, match="display_name"):
+            register_issuer(valid_registry_path, lock_path, slug="newco", display_name="   ")
