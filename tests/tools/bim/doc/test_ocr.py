@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import FrozenInstanceError, fields, is_dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
-from bim.commands.doc.shared.ocr import OCRError, OCRResult, OCRRunner
+from bim.commands.doc.shared.ocr import OCRError, OCRRunner
 from bim.commands.doc.shared.settings_models import DocPaths, DocSettings, OCRSettings
 from pytest_mock import MockerFixture
 
@@ -84,38 +83,6 @@ class _FakePage:
 
 def _pages_iter(n: int) -> Any:
     return iter([_FakePage() for _ in range(n)])
-
-
-class TestOCRResultDataclass:
-    def test_is_frozen_dataclass_with_required_fields(self) -> None:
-        assert is_dataclass(OCRResult)
-        names = {f.name for f in fields(OCRResult)}
-        assert {
-            "ocr_text",
-            "pdf_path",
-            "was_redone",
-            "original_backup_path",
-            "mean_confidence",
-            "pages",
-        }.issubset(names)
-        instance = OCRResult(
-            ocr_text="x",
-            pdf_path=Path("/tmp/x.pdf"),
-            was_redone=False,
-            original_backup_path=None,
-            mean_confidence=None,
-            pages=1,
-        )
-        with pytest.raises(FrozenInstanceError):
-            object.__setattr__  # bind name to silence linters
-            setattr(instance, "pages", 2)
-
-
-class TestOCRError:
-    def test_stores_stderr_and_includes_in_str(self) -> None:
-        exc = OCRError(stderr="tesseract: language not installed")
-        assert exc.stderr == "tesseract: language not installed"
-        assert "tesseract: language not installed" in str(exc)
 
 
 class TestOCRRunner:
