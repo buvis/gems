@@ -9,6 +9,7 @@ __all__ = [
     "ClassifierSettings",
     "DocPaths",
     "DocSettings",
+    "LLMSettings",
     "OCRSettings",
     "ZettelSettings",
 ]
@@ -81,6 +82,13 @@ class ClassifierSettings(BaseModel):
     fallback_model: str = "qwen2.5:14b-instruct"
     triage_threshold: float = 0.85
     max_retries: int = 2
+
+
+# LLMSettings is the same shape as ClassifierSettings — both classifier and
+# extractor share the endpoint, primary/fallback models, and retry budget.
+# Exposed as an alias so the extractor's signature reads as
+# "Extractor(settings: LLMSettings)" without duplicating fields.
+LLMSettings = ClassifierSettings
 
 
 class ZettelSettings(BaseModel):

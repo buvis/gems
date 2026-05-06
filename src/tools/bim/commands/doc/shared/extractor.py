@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict
 from bim.commands.doc.shared.naming import DOC_TYPES
 
 if TYPE_CHECKING:
-    from bim.commands.doc.shared.settings_models import ClassifierSettings
+    from bim.commands.doc.shared.settings_models import LLMSettings
 
 __all__ = ["ExtractResult", "Extractor", "IncompleteExtraction"]
 
@@ -138,7 +138,7 @@ def _coerce_number(name: str, value: object) -> float:
 class Extractor:
     """Extract structured fields from OCR text via an Ollama /api/chat endpoint."""
 
-    def __init__(self, settings: ClassifierSettings) -> None:
+    def __init__(self, settings: LLMSettings) -> None:
         self._settings = settings
 
     def extract(self, ocr_text: str, doc_type: str) -> ExtractResult:
