@@ -115,17 +115,28 @@ class StateDB:
 
     @staticmethod
     def _migrate(conn: sqlite3.Connection) -> None:
-        for ddl in _SCHEMA_DDL:
-            conn.execute(ddl)
-        cursor = conn.execute("SELECT MAX(version) FROM schema_version")
-        current = cursor.fetchone()[0]
-        if current is None or current < _SCHEMA_VERSION:
-            # OR IGNORE prevents IntegrityError if two processes race to
-            # bump the schema version on a fresh DB.
-            conn.execute(
-                "INSERT OR IGNORE INTO schema_version (version) VALUES (?)",
-                (_SCHEMA_VERSION,),
-            )
+        # Wrap DDL + version-row insert in an explicit transaction so a crash
+        # mid-migration leaves the file unchanged. SQLite supports CREATE TABLE
+        # IF NOT EXISTS inside transactions and ROLLBACK reverts the schema
+        # changes atomically. Connection runs in autocommit (isolation_level=None)
+        # so BEGIN/COMMIT must be explicit.
+        conn.execute("BEGIN")
+        try:
+            for ddl in _SCHEMA_DDL:
+                conn.execute(ddl)
+            cursor = conn.execute("SELECT MAX(version) FROM schema_version")
+            current = cursor.fetchone()[0]
+            if current is None or current < _SCHEMA_VERSION:
+                # OR IGNORE prevents IntegrityError if two processes race to
+                # bump the schema version on a fresh DB.
+                conn.execute(
+                    "INSERT OR IGNORE INTO schema_version (version) VALUES (?)",
+                    (_SCHEMA_VERSION,),
+                )
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
 
     def claim(self, sha256: str) -> bool:
         """Atomically claim ownership of processing this sha256.
