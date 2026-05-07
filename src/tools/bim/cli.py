@@ -553,7 +553,7 @@ def doc(ctx: click.Context) -> None:
 @doc.command("ingest", help="Ingest a PDF through the OCR + classify + extract pipeline")
 @click.argument(
     "pdf_path",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path),
+    type=click.Path(file_okay=True, dir_okay=False, resolve_path=True, path_type=Path),
 )
 @click.option("--issuer", "issuer", default=None, help="Pre-pin the issuer slug (used with issuer-inbox source)")
 @click.option(
@@ -579,6 +579,10 @@ def doc_ingest(
     source: str,
     strict: bool,
 ) -> None:
+    if not pdf_path.is_file():
+        console.panic(f"file not found: {pdf_path}")
+        return
+
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
         console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
@@ -613,7 +617,7 @@ def doc_ingest(
 @doc.command("promote", help="Promote an approved triage proposal into a filed document")
 @click.argument(
     "yml_path",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True, path_type=Path),
+    type=click.Path(file_okay=True, dir_okay=False, resolve_path=True, path_type=Path),
 )
 @click.option(
     "--strict",
@@ -624,6 +628,10 @@ def doc_ingest(
 )
 @click.pass_context
 def doc_promote(ctx: click.Context, yml_path: Path, strict: bool) -> None:
+    if not yml_path.is_file():
+        console.panic(f"file not found: {yml_path}")
+        return
+
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
         console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")

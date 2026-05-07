@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options
@@ -16,8 +18,12 @@ def cli(ctx: click.Context) -> None:
 
 
 @cli.command("html2md", help="Convert HTML files to Markdown")
-@click.argument("directory", type=click.Path(exists=True))
+@click.argument("directory", type=click.Path())
 def html2md(directory: str) -> None:
+    if not Path(directory).is_dir():
+        console.panic(f"directory not found: {directory}")
+        return
+
     try:
         from morph.commands.html2md.html2md import CommandHtml2Md
     except ImportError:
@@ -28,8 +34,13 @@ def html2md(directory: str) -> None:
 
 
 @cli.command("deblank", help="Remove blank pages from PDFs")
-@click.argument("files", nargs=-1, required=True, type=click.Path(exists=True))
+@click.argument("files", nargs=-1, required=True, type=click.Path())
 def deblank(files: tuple[str, ...]) -> None:
+    for f in files:
+        if not Path(f).is_file():
+            console.panic(f"file not found: {f}")
+            return
+
     from morph.commands.deblank.deblank import CommandDeblank
 
     try:

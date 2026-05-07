@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **bim**: `doc ingest` and `doc promote` route missing-file errors through buvis console instead of Click's default `Usage: ... Error: ...` formatting
+- **morph**: `html2md` and `deblank` route missing-path errors through buvis console
+- **puc**: `strip` routes missing-file errors through buvis console
+
 ## [0.11.0] - 2026-05-06
 
 ### Added

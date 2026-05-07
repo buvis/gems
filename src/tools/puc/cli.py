@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
@@ -16,10 +18,15 @@ def cli(ctx: click.Context) -> None:
 
 
 @cli.command("strip", help="Strip EXIF metadata from photos, keeping copyright and dates")
-@click.argument("files", nargs=-1, required=True, type=click.Path(exists=True))
+@click.argument("files", nargs=-1, required=True, type=click.Path())
 @click.pass_context
 def strip(ctx: click.Context, files: tuple[str, ...]) -> None:
     settings = get_settings(ctx, PucSettings)
+
+    for f in files:
+        if not Path(f).is_file():
+            console.panic(f"file not found: {f}")
+            return
 
     from puc.commands.strip.strip import CommandStrip
 
