@@ -142,12 +142,17 @@ def create(ctx):
 - Catch `ImportError` for optional deps, call `console.require_import()`
 - Catch `FatalError` for unrecoverable infrastructure failures
 
+**Click argument validation**:
+- Avoid parse-time validators that short-circuit before the callback (`click.Path(exists=True)`, `IntRange`, custom `ParamType.convert` that raises). They emit Click's default `Usage: ... Error: ...` formatting and bypass the buvis console.
+- Validate inside the callback instead: `if not path.is_file(): console.panic(f"file not found: {path}"); return`.
+- `click.Choice` is the exception — its parse-time error lists the valid values, which is more useful than a rewritten message.
+
 **Console methods**:
 - Fatal (exit): `console.panic(msg)` — prints + exits with code 1
 - Recoverable: `console.failure(msg)` — prints, continues
 - Status: `console.success()`, `console.warning()`, `console.info()`
-- Never let raw exceptions (stack traces) reach the user
-- Do NOT use Python logging module in CLI tools; use `buvis.pybase.adapters.console`
+- All user-facing output must route through `console`. No `print()`, `sys.stdout.write()`, `sys.stderr.write()`, `click.echo()`, `click.secho()`, or the Python logging module. Plain writes bypass the buvis prefix markers (`✘`, `✓`, etc.) and become indistinguishable from stray output, which is what makes a missed `console.panic` look like a print statement to the user.
+- Never let raw exceptions (stack traces) reach the user.
 
 ## Testing
 
