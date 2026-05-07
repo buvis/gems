@@ -121,6 +121,11 @@ class OCRSettings(BaseModel):
     redo_on_low_confidence: bool = True
     low_confidence_threshold: float = 0.70
     skip_text: bool = True
+    # Pass-through escape hatch for any ocrmypdf flag not modelled above
+    # (e.g. ``--clean``, ``--remove-background``, ``--tesseract-pagesegmode 6``).
+    # Inserted verbatim into the argv before the input/output positional args
+    # in both the redo and full-OCR branches; the user owns correctness.
+    extra_args: list[str] = []
 
 
 class ClassifierSettings(BaseModel):

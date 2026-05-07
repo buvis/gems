@@ -481,6 +481,120 @@ class TestExtractorPromptShape:
         assert "date" in system_joined
         assert "amount" in system_joined
 
+    def test_system_prompt_includes_format_rules(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        # Extraction quality depends heavily on directives the model can
+        # follow without examples: ISO date reordering, decimal-point
+        # amounts, ISO 4217 currency codes, and an OCR-noise reconstruction
+        # rule. These pin the directives so a future "tidying" of the
+        # prompt doesn't silently regress accuracy.
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {"number": "1", "date": "2024-04-15", "amount": 1.0, "currency": "CZK"},
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        Extractor(settings).extract("text", "invoice")
+
+        _, kwargs = fake_requests.post.call_args
+        system = "\n".join(_system_messages(kwargs))
+        # Date format rule with example formats the model is likely to see.
+        assert "YYYY-MM-DD" in system
+        assert "15.11.2024" in system
+        # Amount format rule names European separators explicitly.
+        assert "1234.56" in system
+        assert "thousands separators" in system.lower()
+        # Currency rule names ISO 4217 and at least one symbol mapping.
+        assert "ISO 4217" in system
+        assert "Kč" in system
+        # OCR-noise reconstruction rule.
+        assert "OCR" in system and "noise" in system.lower()
+        # Hints-section advisory.
+        assert "Hints" in system
+
+    def test_user_prompt_omits_hints_block_when_no_hints(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {"number": "1", "date": "2024-04-15", "amount": 1.0, "currency": "CZK"},
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        Extractor(settings).extract("OCR text body", "invoice")
+
+        _, kwargs = fake_requests.post.call_args
+        body = kwargs["json"]
+        user_message = next(m for m in body["messages"] if m["role"] == "user")
+        assert "Hints" not in user_message["content"]
+
+    def test_user_prompt_includes_hints_block_when_hints_provided(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        # Threading the original filename + email subject lets the model
+        # ground numbers it can't read off a noisy scan. Verifies the
+        # "Hints:" block is present, well-formed, and not echoing OCR text.
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {"number": "1059707807", "date": "2024-04-15", "amount": 1.0, "currency": "CZK"},
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        Extractor(settings).extract(
+            "OCR text body",
+            "invoice",
+            hints={
+                "original_filename": "1059707807.pdf",
+                "email_subject": "Invoice 1059707807",
+            },
+        )
+
+        _, kwargs = fake_requests.post.call_args
+        body = kwargs["json"]
+        user_message = next(m for m in body["messages"] if m["role"] == "user")
+        content = user_message["content"]
+        assert "OCR text:\nOCR text body" in content
+        assert "Hints:" in content
+        assert "- original_filename: 1059707807.pdf" in content
+        assert "- email_subject: Invoice 1059707807" in content
+
+    def test_user_prompt_skips_empty_hint_values(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        # IngestParams sometimes carries falsy strings; the user prompt must
+        # not echo them as "- key: " orphan lines.
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {"number": "1", "date": "2024-04-15", "amount": 1.0, "currency": "CZK"},
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        Extractor(settings).extract(
+            "OCR text body",
+            "invoice",
+            hints={"original_filename": "x.pdf", "email_subject": ""},
+        )
+
+        _, kwargs = fake_requests.post.call_args
+        body = kwargs["json"]
+        user_message = next(m for m in body["messages"] if m["role"] == "user")
+        content = user_message["content"]
+        assert "- original_filename: x.pdf" in content
+        assert "email_subject" not in content
+
 
 class TestIncompleteExtractionPartial:
     """IncompleteExtraction must carry whatever fields the model got right

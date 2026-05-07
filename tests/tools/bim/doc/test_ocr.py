@@ -27,6 +27,7 @@ def _make_settings(
     oversample: int = 400,
     deskew: bool = True,
     rotate_pages: bool = True,
+    extra_args: list[str] | None = None,
 ) -> DocSettings:
     paths = DocPaths.model_validate(
         {
@@ -43,6 +44,7 @@ def _make_settings(
         redo_on_low_confidence=redo_on_low_confidence,
         low_confidence_threshold=low_confidence_threshold,
         skip_text=skip_text,
+        extra_args=extra_args if extra_args is not None else [],
     )
     return DocSettings(paths=paths, ocr=ocr)
 
@@ -231,6 +233,82 @@ class TestOCRRunner:
         assert argv[os_idx + 1] == "600"
         assert "--deskew" in argv
         assert "--rotate-pages" in argv
+
+    def test_full_ocr_argv_appends_extra_args_before_paths(
+        self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
+    ) -> None:
+        # The escape hatch lets users pin tesseract knobs (--tesseract-pagesegmode,
+        # --oem) or ocrmypdf preprocessing flags (--clean, --remove-background)
+        # for noisy scans without growing the schema. Verify they land in
+        # argv before the input/output positional args - ocrmypdf rejects
+        # flags that follow the positional paths.
+        pdf = tmp_path / "scan.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+
+        mocker.patch("bim.commands.doc.shared.ocr.extract_text", return_value="")
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.PDFPage.get_pages",
+            return_value=_pages_iter(1),
+        )
+        run_mock = mocker.patch(
+            "bim.commands.doc.shared.ocr.subprocess.run",
+            side_effect=_sidecar_writing_run("text"),
+        )
+
+        settings = _make_settings(
+            tmp_path,
+            extra_args=["--clean", "--tesseract-pagesegmode", "6"],
+        )
+        runner = OCRRunner(settings=settings, state_dir=state_dir)
+        runner.run(pdf)
+
+        argv = _argv_from_call(run_mock.call_args)
+        assert "--clean" in argv
+        psm_idx = argv.index("--tesseract-pagesegmode")
+        assert argv[psm_idx + 1] == "6"
+        # Positional input/output are the last two argv entries; the extras
+        # must appear before them or ocrmypdf treats them as flags on the
+        # output PDF.
+        assert argv.index("--clean") < len(argv) - 2
+        assert psm_idx < len(argv) - 2
+
+    def test_redo_ocr_argv_appends_extra_args_before_paths(
+        self, tmp_path: Path, state_dir: Path, mocker: MockerFixture
+    ) -> None:
+        pdf = tmp_path / "input.pdf"
+        pdf.write_bytes(b"%PDF-1.4\nbinary-bytes")
+
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.extract_text",
+            return_value="garbled low-confidence text",
+        )
+        mocker.patch(
+            "bim.commands.doc.shared.ocr.PDFPage.get_pages",
+            return_value=_pages_iter(1),
+        )
+        mocker.patch(
+            "bim.commands.doc.shared.ocr._estimate_text_confidence",
+            return_value=0.30,
+            create=True,
+        )
+        run_mock = mocker.patch(
+            "bim.commands.doc.shared.ocr.subprocess.run",
+            side_effect=_sidecar_writing_run("redone"),
+        )
+
+        settings = _make_settings(
+            tmp_path,
+            skip_text=False,
+            extra_args=["--clean"],
+        )
+        runner = OCRRunner(settings=settings, state_dir=state_dir)
+        runner.run(pdf)
+
+        argv = _argv_from_call(run_mock.call_args)
+        assert "--clean" in argv
+        # Redo branch passes the same path twice for input/output; --clean
+        # must appear before that pair.
+        assert argv.index("--clean") < len(argv) - 2
 
     def test_full_ocr_argv_omits_deskew_and_rotate_when_disabled(
         self, tmp_path: Path, state_dir: Path, mocker: MockerFixture

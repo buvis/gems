@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **bim**: `bim doc ingest` shows a Rich spinner with per-stage labels (running OCR → classifying document → extracting fields) when stdout is a TTY; stays silent in batch/piped runs
+- **bim**: `bim doc ingest` extractor now receives a `Hints:` block containing the original filename and email subject when known; the LLM uses these to ground field values when OCR text is noisy or numbers span line breaks (downloaded invoices often carry the invoice number as the filename)
+- **bim**: `doc.ocr.extra_args` config field passes any extra `ocrmypdf` flags verbatim into both the redo and full-OCR branches (e.g. `--clean`, `--remove-background`, `--tesseract-pagesegmode 6`); the user owns flag correctness, the pipeline schema stays small
+
+### Changed
+
+- **bim**: `bim doc ingest` extractor system prompt now spells out date/amount/currency formatting rules with examples (15.11.2024 → 2024-11-15, "1 234,56" → 1234.56, Kč → CZK), names the OCR-noise reconstruction expectation, and distinguishes invoice issue date from payment due date
 
 ### Fixed
 

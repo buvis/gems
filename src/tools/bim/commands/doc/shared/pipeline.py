@@ -294,8 +294,15 @@ class Pipeline:
         # Step 4: extract (with retry+fallback for transient HTTP failures only)
         reporter.stage("extracting fields")
 
+        hints = self._build_extractor_hints(params)
+
         def _extract_call(model: str) -> ExtractResult:
-            return self._extractor.extract_with_model(ocr_result.ocr_text, classify_result.doc_type, model=model)
+            return self._extractor.extract_with_model(
+                ocr_result.ocr_text,
+                classify_result.doc_type,
+                model=model,
+                hints=hints,
+            )
 
         extract_result: ExtractResult | None = None
         try:
@@ -604,6 +611,25 @@ class Pipeline:
         if params.email_subject:
             meta["email_subject"] = params.email_subject
         return meta
+
+    def _build_extractor_hints(self, params: IngestParams) -> dict[str, str] | None:
+        """Compose the hints dict passed to ``Extractor.extract_with_model``.
+
+        The extractor sees only OCR text by default, which loses signals the
+        pipeline already has. The original filename of a downloaded invoice
+        is often the invoice number itself; the email subject often names
+        the document. Surfacing them as hints lets the model fall back on
+        them when OCR is noisy or numbers span line breaks.
+
+        Returns ``None`` when there's nothing to surface so the user prompt
+        stays clean (no empty 'Hints:' block).
+        """
+        hints: dict[str, str] = {}
+        if params.original_filename:
+            hints["original_filename"] = params.original_filename
+        if params.email_subject:
+            hints["email_subject"] = params.email_subject
+        return hints or None
 
     def _resolve_collision(
         self,

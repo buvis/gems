@@ -466,6 +466,71 @@ class TestPipeline:
         assert "missing field date" in proposal_text
         assert "missing field amount" in proposal_text
 
+    def test_pipeline_passes_original_filename_to_extractor(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        # The original filename signal often is the invoice number itself
+        # for downloaded PDFs (e.g. 1059707807.pdf). The pipeline must thread
+        # it into the extractor as a hint so the model can ground numbers
+        # it can't recover from noisy OCR.
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(
+            source="download",
+            staging_path=staging_pdf,
+            original_filename="1059707807.pdf",
+            email_subject="Your invoice is ready",
+        )
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "filed"
+        assert mocks["extract"].call_count == 1
+        call_kwargs = mocks["extract"].call_args.kwargs
+        hints = call_kwargs.get("hints")
+        assert hints == {
+            "original_filename": "1059707807.pdf",
+            "email_subject": "Your invoice is ready",
+        }
+
+    def test_pipeline_extractor_hints_omitted_when_no_signals(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        # When IngestParams has neither original_filename nor email_subject,
+        # the pipeline must pass hints=None (rather than an empty dict) so
+        # the extractor's user prompt stays clean.
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "filed"
+        call_kwargs = mocks["extract"].call_args.kwargs
+        assert call_kwargs.get("hints") is None
+
     def test_triage_surfaces_partial_extracted_fields(
         self,
         settings: DocSettings,

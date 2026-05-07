@@ -129,13 +129,15 @@ class OCRRunner:
         backup_path = self._backup_original(original_bytes, sha256)
         sidecar_path = self._make_sidecar()
 
-        languages = "+".join(self._settings.ocr.languages)
+        ocr = self._settings.ocr
+        languages = "+".join(ocr.languages)
         argv = [
             "ocrmypdf",
             "--redo-ocr",
             "-l",
             languages,
             f"--sidecar={sidecar_path}",
+            *ocr.extra_args,
             str(pdf_path),
             str(pdf_path),
         ]
@@ -175,6 +177,7 @@ class OCRRunner:
         if ocr.rotate_pages:
             argv.append("--rotate-pages")
         argv.append(f"--sidecar={sidecar_path}")
+        argv.extend(ocr.extra_args)
         argv.append(str(pdf_path))
         argv.append(str(output_pdf))
 

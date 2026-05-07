@@ -135,16 +135,36 @@ class ExtractResult(BaseModel):
 def _system_prompt(doc_type: str) -> str:
     required = ", ".join(_REQUIRED_FIELDS[doc_type])
     return (
-        "You extract structured fields from scanned business documents from OCR text.\n"
+        "You extract structured fields from scanned business documents.\n"
         f"The document type is: {doc_type}.\n"
-        f"Return STRICT JSON. For doc_type {doc_type}, required fields are: {required}.\n"
-        "Use ISO 8601 dates (YYYY-MM-DD). Use numeric values (no currency symbols) for "
-        "amount and balance. If a field is unknown, omit it or set it to null.\n"
+        f"Required fields: {required}.\n"
+        "Return STRICT JSON keyed by these field names. Omit unknown fields or set them to null.\n"
+        "\n"
+        "Rules:\n"
+        "- Dates: ISO 8601 (YYYY-MM-DD). Reorder digits from formats like 15.11.2024, "
+        "15/11/2024, or 2024-11-15 to YYYY-MM-DD before returning.\n"
+        "- Amounts and balances: numeric only, no currency symbols, no thousands separators. "
+        "Convert European-style 1 234,56 or 1.234,56 to 1234.56.\n"
+        "- Currency: ISO 4217 code (CZK, EUR, USD, ...). Map symbols where present "
+        "(Kč → CZK, € → EUR, $ → USD).\n"
+        "- The OCR text may contain noise: line breaks splitting numbers, hyphenation across "
+        "lines, accented characters mis-recognised. Reconstruct the most plausible value.\n"
+        "- For invoices, the issue date (e.g. 'datum vystavení', 'date of issue') goes into "
+        "the 'date' field; the payment due date (e.g. 'datum splatnosti', 'due date') goes "
+        "into 'payment_due_date'.\n"
+        "- The user message may include a 'Hints' section with the original filename or email "
+        "subject. When the OCR text is ambiguous, treat hints as supporting evidence; for "
+        "invoices the original filename is often the invoice number itself.\n"
     )
 
 
-def _user_prompt(ocr_text: str) -> str:
-    return f"OCR text:\n{ocr_text}\n"
+def _user_prompt(ocr_text: str, hints: dict[str, str] | None = None) -> str:
+    parts = [f"OCR text:\n{ocr_text}"]
+    if hints:
+        hint_lines = [f"- {key}: {value}" for key, value in hints.items() if value]
+        if hint_lines:
+            parts.append("Hints:\n" + "\n".join(hint_lines))
+    return "\n\n".join(parts) + "\n"
 
 
 def _coerce_date(name: str, value: object) -> datetime.date:
@@ -212,12 +232,25 @@ class Extractor:
     def __init__(self, settings: LLMSettings) -> None:
         self._settings = settings
 
-    def extract(self, ocr_text: str, doc_type: str) -> ExtractResult:
+    def extract(
+        self,
+        ocr_text: str,
+        doc_type: str,
+        *,
+        hints: dict[str, str] | None = None,
+    ) -> ExtractResult:
         """Extract structured fields for ``doc_type`` from OCR text via Ollama.
 
         Thin shim that forwards to :meth:`extract_with_model` using the
         configured primary model. Kept for callers that don't need to
         substitute the model.
+
+        Args:
+            ocr_text: Page text from OCR / pdfminer.
+            doc_type: One of the canonical types in ``DOC_TYPES``.
+            hints: Optional supporting signals (original filename, email
+                subject) appended to the user prompt as a 'Hints' block.
+                The model treats them as evidence, not authoritative facts.
 
         Raises:
             ValueError: ``doc_type`` is not one of the canonical types.
@@ -229,9 +262,21 @@ class Extractor:
             requests.exceptions.Timeout: Re-raised unwrapped so callers can
                 distinguish slow-LLM scenarios from other failures.
         """
-        return self.extract_with_model(ocr_text, doc_type, model=self._settings.primary_model)
+        return self.extract_with_model(
+            ocr_text,
+            doc_type,
+            model=self._settings.primary_model,
+            hints=hints,
+        )
 
-    def extract_with_model(self, ocr_text: str, doc_type: str, *, model: str) -> ExtractResult:
+    def extract_with_model(
+        self,
+        ocr_text: str,
+        doc_type: str,
+        *,
+        model: str,
+        hints: dict[str, str] | None = None,
+    ) -> ExtractResult:
         """Like :meth:`extract` but the caller picks the Ollama model name.
 
         Used by the pipeline's retry helper to substitute ``fallback_model``
@@ -248,7 +293,7 @@ class Extractor:
             "model": model,
             "messages": [
                 {"role": "system", "content": _system_prompt(doc_type)},
-                {"role": "user", "content": _user_prompt(ocr_text)},
+                {"role": "user", "content": _user_prompt(ocr_text, hints)},
             ],
             "format": "json",
             "stream": False,
