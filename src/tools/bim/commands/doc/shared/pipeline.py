@@ -28,6 +28,7 @@ from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.extractor import IncompleteExtraction
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
+from bim.commands.doc.shared.progress import NoOpProgressReporter
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import (
     DocumentProposal,
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
     from bim.commands.doc.shared.extractor import Extractor, ExtractResult
     from bim.commands.doc.shared.issuers import IssuerRegistry
     from bim.commands.doc.shared.ocr import OCRResult, OCRRunner
+    from bim.commands.doc.shared.progress import ProgressReporter
     from bim.commands.doc.shared.settings_models import DocSettings
     from bim.commands.doc.shared.state_db import StateDB
     from bim.commands.doc.shared.zettel_writer import ZettelWriter
@@ -188,8 +190,15 @@ class Pipeline:
 
     # --------- public entrypoint ---------
 
-    def run(self, params: IngestParams) -> CommandResult:
-        """Run the 8-step pipeline against a single staged document."""
+    def run(self, params: IngestParams, *, reporter: ProgressReporter | None = None) -> CommandResult:
+        """Run the 8-step pipeline against a single staged document.
+
+        The optional ``reporter`` is notified before each slow boundary call
+        (OCR, classifier, extractor). Defaults to a no-op so batch callers
+        and tests can ignore it. The reporter is the caller's responsibility
+        to enter/exit; ``run`` only calls ``.stage()``.
+        """
+        active_reporter: ProgressReporter = reporter if reporter is not None else NoOpProgressReporter()
         sha = sha256_file(params.staging_path)
 
         # Step 1: dedup (read-only fast path)
@@ -214,7 +223,7 @@ class Pipeline:
             )
 
         try:
-            return self._run_after_claim(params, sha)
+            return self._run_after_claim(params, sha, active_reporter)
         except Exception as exc:
             # Release the claim so a retry can re-attempt rather than parking forever.
             # Map any escaping exception to a structured CommandResult per AGENTS.md
@@ -236,11 +245,13 @@ class Pipeline:
 
     # --------- internals ---------
 
-    def _run_after_claim(self, params: IngestParams, sha: str) -> CommandResult:
+    def _run_after_claim(self, params: IngestParams, sha: str, reporter: ProgressReporter) -> CommandResult:
         # Step 2: OCR
+        reporter.stage("running OCR")
         ocr_result = self._ocr_runner.run(params.staging_path)
 
         # Step 3: classify
+        reporter.stage("classifying document")
         classify_result, classify_error = self._classify(params, ocr_result)
 
         triage_reasons: list[str] = []
@@ -272,6 +283,8 @@ class Pipeline:
             )
 
         # Step 4: extract (with retry+fallback for transient HTTP failures only)
+        reporter.stage("extracting fields")
+
         def _extract_call(model: str) -> ExtractResult:
             return self._extractor.extract_with_model(ocr_result.ocr_text, classify_result.doc_type, model=model)
 

@@ -632,6 +632,106 @@ class TestPipeline:
         assert state_db.release_claim(sha) is False
 
 
+class _RecordingProgressReporter:
+    """Test double that records ``stage()`` call order without UI side effects."""
+
+    def __init__(self) -> None:
+        self.stages: list[str] = []
+
+    def stage(self, message: str) -> None:
+        self.stages.append(message)
+
+    def __enter__(self) -> _RecordingProgressReporter:
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        return None
+
+
+class TestPipelineProgressReporting:
+    """Pipeline.run calls reporter.stage() before each slow boundary call.
+
+    The CLI's ``SpinnerProgressReporter`` updates a Rich spinner label from
+    these stage messages; the pipeline only owns the order and labels.
+    """
+
+    def test_filed_path_reports_ocr_then_classify_then_extract(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        reporter = _RecordingProgressReporter()
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params, reporter=reporter)
+
+        assert result.metadata["outcome"] == "filed"
+        # Order matters - the spinner label progresses with the slow call in flight.
+        assert reporter.stages == ["running OCR", "classifying document", "extracting fields"]
+
+    def test_triage_path_stops_reporting_at_classify_when_extract_skipped(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        # Low-confidence classify result short-circuits to triage before extract.
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(confidence=0.10),
+        )
+        reporter = _RecordingProgressReporter()
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params, reporter=reporter)
+
+        assert result.metadata["outcome"] == "triaged"
+        # Pipeline reports OCR + classify before deciding to triage; extract
+        # never runs, so it must not appear in the recorded stages.
+        assert reporter.stages == ["running OCR", "classifying document"]
+
+    def test_default_reporter_is_silent_no_op(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        # Existing call sites (and every other pipeline test in this file)
+        # invoke ``pipeline.run(params)`` with no reporter. That path must
+        # keep working - the default no-op reporter must not raise.
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="download", staging_path=staging_pdf)
+        result = pipeline.run(params)
+        assert result.success is True
+        assert result.metadata["outcome"] == "filed"
+
+
 class TestExceptionContextPreserved:
     """Pipeline.run outer except records exception type+repr in metadata."""
 

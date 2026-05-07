@@ -17,6 +17,7 @@ from bim.commands.doc.shared.health import MissingDependency
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.pipeline import Pipeline
+    from bim.commands.doc.shared.progress import ProgressReporter
     from bim.params.doc_ingest import IngestParams
 
 __all__ = ["CommandIngest"]
@@ -29,9 +30,9 @@ class CommandIngest:
         self._params = params
         self._pipeline = pipeline
 
-    def execute(self) -> CommandResult:
+    def execute(self, *, reporter: ProgressReporter | None = None) -> CommandResult:
         try:
-            return self._pipeline.run(self._params)
+            return self._pipeline.run(self._params, reporter=reporter)
         except MissingDependency as exc:
             return CommandResult(
                 success=False,

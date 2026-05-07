@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **bim**: `bim doc ingest` shows a Rich spinner with per-stage labels (running OCR → classifying document → extracting fields) when stdout is a TTY; stays silent in batch/piped runs
+
 ### Fixed
 
 - **bim**: expand `~` on every user-provided path in `doc.paths` (state_dir, vault_root, business_root, inbox_*, issuers_file, originals_dir) so `bim doc ingest` and `bim doc promote` no longer fail with `FileNotFoundError: '~/...'` when the config uses tilde paths

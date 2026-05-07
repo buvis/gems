@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -591,6 +592,7 @@ def doc_ingest(
     try:
         from bim.commands.doc.ingest.ingest import CommandIngest
         from bim.commands.doc.shared.health import MissingDependency
+        from bim.commands.doc.shared.progress import NoOpProgressReporter, SpinnerProgressReporter
         from bim.dependencies import get_health_checker, get_pipeline, get_repo
         from bim.params.doc_ingest import IngestParams
     except ImportError:
@@ -610,7 +612,12 @@ def doc_ingest(
     )
     pipeline = get_pipeline(settings.doc, get_repo())
     cmd = CommandIngest(params=params, pipeline=pipeline)
-    result = cmd.execute()
+    # Show a Rich spinner with per-stage labels in interactive runs; stay
+    # silent when stdout is piped/redirected so batch consumers see only the
+    # final result line.
+    reporter = SpinnerProgressReporter(console) if sys.stdout.isatty() else NoOpProgressReporter()
+    with reporter:
+        result = cmd.execute(reporter=reporter)
     _report_doc_result(result, default_failure="ingest failed", strict=strict)
 
 

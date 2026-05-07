@@ -27,7 +27,10 @@ class TestCommandIngest:
         result = CommandIngest(params=params, pipeline=pipeline).execute()
 
         assert result is expected
-        pipeline.run.assert_called_once_with(params)
+        # ``execute()`` forwards ``reporter`` to ``pipeline.run`` even when
+        # the caller doesn't supply one - the kwarg lets the pipeline build
+        # its own no-op reporter rather than coupling Pipeline to the CLI.
+        pipeline.run.assert_called_once_with(params, reporter=None)
 
     def test_missing_dependency_returns_failure_result(self, staging_pdf: Path) -> None:
         pipeline = MagicMock()
