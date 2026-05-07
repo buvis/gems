@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: expand `~` on every user-provided path in `doc.paths` (state_dir, vault_root, business_root, inbox_*, issuers_file, originals_dir) so `bim doc ingest` and `bim doc promote` no longer fail with `FileNotFoundError: '~/...'` when the config uses tilde paths
 - **bim**: `doc ingest` and `doc promote` route missing-file errors through buvis console instead of Click's default `Usage: ... Error: ...` formatting
 - **morph**: `html2md` and `deblank` route missing-path errors through buvis console
 - **puc**: `strip` routes missing-file errors through buvis console

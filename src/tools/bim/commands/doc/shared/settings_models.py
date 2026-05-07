@@ -36,6 +36,37 @@ class DocPaths(BaseModel):
     originals_retention_days: int = 30
 
     @model_validator(mode="after")
+    def _expand_user_paths(self) -> DocPaths:
+        """Expand ``~`` on every user-provided path field.
+
+        Pydantic types path fields as :class:`Path` and stores ``~/foo``
+        verbatim. Filesystem consumers then either fail loudly
+        (``read_bytes`` -> ``FileNotFoundError``) or, worse, silently
+        succeed (``mkdir(parents=True)`` creates a literal ``~``
+        directory in the cwd). Expand once at settings load so every
+        downstream consumer sees an absolute path.
+
+        Declared first so it runs before ``_business_root_under_home``
+        (which compares against ``Path.home()``) and
+        ``_resolve_state_paths`` (which fills lazy defaults that already
+        call ``.expanduser()`` themselves).
+        """
+        for field in (
+            "business_root",
+            "vault_root",
+            "state_dir",
+            "inbox_scans",
+            "inbox_email",
+            "inbox_downloads",
+            "issuers_file",
+            "originals_dir",
+        ):
+            value: Path | None = getattr(self, field)
+            if value is not None:
+                object.__setattr__(self, field, value.expanduser())
+        return self
+
+    @model_validator(mode="after")
     def _business_root_under_home(self) -> DocPaths:
         # ``to_tilde_path`` (in ``zettel_helpers``) only produces a valid
         # tilde-encoded path when the source path is under ``Path.home()``;

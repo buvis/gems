@@ -89,6 +89,46 @@ class TestDocPaths:
         assert paths.issuers_file is not None
         assert paths.issuers_file.is_relative_to(fake_home)
 
+    def test_user_provided_paths_expand_tilde(self, tmp_path: Path) -> None:
+        """Pydantic stores ``Path("~/foo")`` verbatim; consumers calling
+        ``read_bytes`` then hit ``FileNotFoundError`` and ``mkdir(parents=True)``
+        silently creates a literal ``~`` directory in cwd. Every user-provided
+        path field must be expanded once at validation."""
+        paths = DocPaths.model_validate(
+            {
+                "business_root": "~/biz",
+                "vault_root": "~/vault",
+                "state_dir": "~/state",
+                "inbox_scans": "~/inbox/scans",
+                "inbox_email": "~/inbox/email",
+                "inbox_downloads": "~/dl",
+                "issuers_file": "~/issuers.yml",
+                "originals_dir": "~/originals",
+            }
+        )
+        # The conftest autouse fixture redirects Path.home() to tmp_path.
+        assert paths.business_root == tmp_path / "biz"
+        assert paths.vault_root == tmp_path / "vault"
+        assert paths.state_dir == tmp_path / "state"
+        assert paths.inbox_scans == tmp_path / "inbox" / "scans"
+        assert paths.inbox_email == tmp_path / "inbox" / "email"
+        assert paths.inbox_downloads == tmp_path / "dl"
+        assert paths.issuers_file == tmp_path / "issuers.yml"
+        assert paths.originals_dir == tmp_path / "originals"
+        # No literal "~" component should survive on any path.
+        for field in (
+            paths.business_root,
+            paths.vault_root,
+            paths.state_dir,
+            paths.inbox_scans,
+            paths.inbox_email,
+            paths.inbox_downloads,
+            paths.issuers_file,
+            paths.originals_dir,
+        ):
+            assert field is not None
+            assert "~" not in field.parts
+
 
 class TestOCRSettings:
     def test_defaults_match_spec(self) -> None:
