@@ -58,9 +58,20 @@ class IncompleteExtraction(Exception):
     from semantic failures like missing fields or uncoercible values
     (not retryable - the model's output is fundamentally unusable for this
     document, retrying with the same input won't help).
+
+    The ``partial`` field carries whatever fields the extractor was able to
+    coerce before giving up. The pipeline surfaces these in triage proposals
+    so a human reviewer sees what the model did find, not just a wall of
+    nulls.
     """
 
-    def __init__(self, reasons: list[str], *, transient: bool = False) -> None:
+    def __init__(
+        self,
+        reasons: list[str],
+        *,
+        transient: bool = False,
+        partial: ExtractResult | None = None,
+    ) -> None:
         """Initialise with one or more reasons describing why extraction failed.
 
         Args:
@@ -73,10 +84,16 @@ class IncompleteExtraction(Exception):
                 semantic - missing required fields, uncoercible values, or
                 unparseable model output. Only transient failures should be
                 retried.
+            partial: An ``ExtractResult`` populated with the fields the
+                extractor successfully coerced before failing, or ``None``
+                when no useful fields were obtained (e.g. JSON parse failure
+                or HTTP transport error). The triage path surfaces these in
+                the proposal even when extraction was "incomplete".
         """
         super().__init__("; ".join(reasons))
         self.reasons = reasons
         self.transient = transient
+        self.partial = partial
 
 
 class ExtractResult(BaseModel):
@@ -148,6 +165,47 @@ def _coerce_number(name: str, value: object) -> float:
         raise IncompleteExtraction([f"could not coerce number '{value}' for field {name}: {exc}"]) from exc
 
 
+def _coerce_one_field(name: str, value: object) -> object:
+    """Apply per-field coercion (dates / numerics / passthrough)."""
+    if name in _DATE_FIELDS:
+        return _coerce_date(name, value)
+    if name in _NUMERIC_FIELDS:
+        return _coerce_number(name, value)
+    return value
+
+
+def _coerce_parsed(parsed: dict[str, object]) -> tuple[dict[str, object], list[str], set[str]]:
+    """Coerce every recognised field, accumulating errors instead of bailing.
+
+    Returns a triple of:
+
+    - ``coerced``: name → coerced value for fields that came through cleanly.
+    - ``coerce_errors``: human-readable reasons for fields whose value couldn't
+      be coerced (e.g. non-ISO date string, non-numeric amount).
+    - ``errored_fields``: field names that contributed a ``coerce_errors``
+      entry; the caller uses this to suppress redundant ``missing field …``
+      reasons for the same field.
+
+    Coercion errors are deliberately collected rather than raised so the
+    caller can still build a partial ``ExtractResult`` from the fields that
+    *did* coerce - the triage proposal then surfaces the model's correct
+    fields alongside reasons for the bad ones.
+    """
+    allowed_fields = set(ExtractResult.model_fields.keys()) - {"doc_type"}
+    coerced: dict[str, object] = {}
+    coerce_errors: list[str] = []
+    errored_fields: set[str] = set()
+    for name, value in parsed.items():
+        if name not in allowed_fields or value is None:
+            continue
+        try:
+            coerced[name] = _coerce_one_field(name, value)
+        except IncompleteExtraction as exc:
+            coerce_errors.extend(exc.reasons)
+            errored_fields.add(name)
+    return coerced, coerce_errors, errored_fields
+
+
 class Extractor:
     """Extract structured fields from OCR text via an Ollama /api/chat endpoint."""
 
@@ -215,20 +273,18 @@ class Extractor:
         if not isinstance(parsed, dict):
             raise IncompleteExtraction(["could not parse model response as JSON: not an object"])
 
-        allowed_fields = set(ExtractResult.model_fields.keys()) - {"doc_type"}
-        coerced: dict[str, object] = {}
-        for name, value in parsed.items():
-            if name not in allowed_fields or value is None:
-                continue
-            if name in _DATE_FIELDS:
-                coerced[name] = _coerce_date(name, value)
-            elif name in _NUMERIC_FIELDS:
-                coerced[name] = _coerce_number(name, value)
-            else:
-                coerced[name] = value
+        coerced, coerce_errors, errored_fields = _coerce_parsed(parsed)
 
-        missing = [f"missing field {name}" for name in _REQUIRED_FIELDS[doc_type] if coerced.get(name) is None]
-        if missing:
-            raise IncompleteExtraction(missing)
+        # Skip the missing-field reason for fields that already failed
+        # coercion - the coerce error names them more precisely.
+        missing = [
+            f"missing field {name}"
+            for name in _REQUIRED_FIELDS[doc_type]
+            if coerced.get(name) is None and name not in errored_fields
+        ]
+
+        if coerce_errors or missing:
+            partial = ExtractResult(doc_type=doc_type, **coerced)
+            raise IncompleteExtraction(coerce_errors + missing, partial=partial)
 
         return ExtractResult(doc_type=doc_type, **coerced)

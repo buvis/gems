@@ -388,8 +388,10 @@ class TestPipeline:
         staging_pdf: Path,
         mocker: MockerFixture,
     ) -> None:
+        import yaml
+
         sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
-        pipeline, _ = _build_pipeline(
+        pipeline, mocks = _build_pipeline(
             settings,
             registry,
             state_db,
@@ -413,6 +415,15 @@ class TestPipeline:
         assert "approved: false" in proposal_text
         # Triage reasons should mention the confidence threshold breach.
         assert "confidence" in proposal_text.lower()
+
+        # Extraction must run even when confidence is below threshold so the
+        # human reviewer sees the model's best guess at the document fields,
+        # not a wall of nulls.
+        assert mocks["extract"].call_count == 1
+        proposal_data = yaml.safe_load(proposal_text)
+        assert proposal_data["document"]["number"] == "7102105594"
+        assert proposal_data["document"]["amount"] == 4218.0
+        assert proposal_data["document"]["currency"] == "CZK"
 
         # PDF must be in business_root/_triage/.
         triage_dir = settings.paths.business_root / "_triage"
@@ -455,6 +466,54 @@ class TestPipeline:
         assert "missing field date" in proposal_text
         assert "missing field amount" in proposal_text
 
+    def test_triage_surfaces_partial_extracted_fields(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        # When the extractor finds some fields but misses required ones, the
+        # IncompleteExtraction it raises now carries a partial ExtractResult.
+        # The pipeline must surface those partial fields in the proposal -
+        # otherwise the human reviewer ends up filling in fields the model
+        # did successfully read off the page.
+        import yaml
+
+        partial_result = ExtractResult(
+            doc_type="invoice",
+            number="INV-2026-0042",
+            currency="CZK",
+        )
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_side_effect=IncompleteExtraction(
+                ["missing field date", "missing field amount"],
+                partial=partial_result,
+            ),
+        )
+        params = IngestParams(source="email", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+        proposal_path = Path(result.metadata["proposal_path"])
+        proposal_data = yaml.safe_load(proposal_path.read_text(encoding="utf-8"))
+
+        # Partial fields populate the proposal so the reviewer doesn't lose them.
+        assert proposal_data["document"]["number"] == "INV-2026-0042"
+        assert proposal_data["document"]["currency"] == "CZK"
+        # Missing required fields stay null and the reasons name them.
+        assert proposal_data["document"]["date"] is None
+        assert proposal_data["document"]["amount"] is None
+        assert any("date" in r for r in proposal_data["triage_reasons"])
+        assert any("amount" in r for r in proposal_data["triage_reasons"])
+
     # --- 7. triage on unknown issuer (classifier returned slug not in registry) ---
 
     def test_triage_on_unknown_issuer(
@@ -465,8 +524,10 @@ class TestPipeline:
         staging_pdf: Path,
         mocker: MockerFixture,
     ) -> None:
+        import yaml
+
         # Classifier returns issuer_slug=None (resolve_alias upstream miss).
-        pipeline, _ = _build_pipeline(
+        pipeline, mocks = _build_pipeline(
             settings,
             registry,
             state_db,
@@ -487,11 +548,23 @@ class TestPipeline:
 
         proposal_path = Path(result.metadata["proposal_path"])
         assert proposal_path.exists()
-        proposal_text = proposal_path.read_text(encoding="utf-8").lower()
+        proposal_text = proposal_path.read_text(encoding="utf-8")
         # Should include a triage reason mentioning the issuer not being known.
-        assert any(
-            token in proposal_text for token in ("unknown issuer", "unrecognized issuer", "issuer not in registry")
-        )
+        lower = proposal_text.lower()
+        assert any(token in lower for token in ("unknown issuer", "unrecognized issuer", "issuer not in registry"))
+
+        # Extraction must run even when the issuer is unknown so the human
+        # reviewer sees the model's best guess at the document fields, not a
+        # wall of nulls. This is what `bim doc ingest` users hit when a vendor
+        # is brand new but qwen recognised it as an invoice with date/number.
+        assert mocks["extract"].call_count == 1
+        proposal_data = yaml.safe_load(proposal_text)
+        assert proposal_data["document"]["number"] == "7102105594"
+        # write_proposal serialises dates as ISO strings via YAML's default
+        # representer; safe_load parses them back as plain strings.
+        assert proposal_data["document"]["date"] == "2021-03-11"
+        assert proposal_data["document"]["amount"] == 4218.0
+        assert proposal_data["document"]["currency"] == "CZK"
 
     def test_unknown_issuer_guess_prefilled_in_proposal(
         self,
@@ -508,7 +581,7 @@ class TestPipeline:
         # registration behind explicit human confirmation.
         import yaml
 
-        pipeline, _ = _build_pipeline(
+        pipeline, mocks = _build_pipeline(
             settings,
             registry,
             state_db,
@@ -539,6 +612,14 @@ class TestPipeline:
         assert "totally-unknown-llc" in proposal_path.name
         # Reason names the guess so the user understands what the model proposed.
         assert any("totally-unknown-llc" in r for r in proposal_data["triage_reasons"])
+
+        # Extraction still runs - both unknown issuer and low confidence are
+        # triage triggers, but neither suppresses the extractor. The proposal
+        # carries the model's field-level output so the human reviewer can
+        # confirm or correct it.
+        assert mocks["extract"].call_count == 1
+        assert proposal_data["document"]["number"] == "7102105594"
+        assert proposal_data["document"]["amount"] == 4218.0
 
     # --- 8. issuer-inbox source uses doc_type_only classifier path ---
 
@@ -729,7 +810,7 @@ class TestPipelineProgressReporting:
         # Order matters - the spinner label progresses with the slow call in flight.
         assert reporter.stages == ["running OCR", "classifying document", "extracting fields"]
 
-    def test_triage_path_stops_reporting_at_classify_when_extract_skipped(
+    def test_triage_path_stops_reporting_at_classify_when_classifier_fails(
         self,
         settings: DocSettings,
         registry: IssuerRegistry,
@@ -737,22 +818,28 @@ class TestPipelineProgressReporting:
         staging_pdf: Path,
         mocker: MockerFixture,
     ) -> None:
-        # Low-confidence classify result short-circuits to triage before extract.
+        # A hard classifier failure (no doc_type produced) short-circuits to
+        # triage before extract - there's nothing to extract against. Soft
+        # triage triggers (low confidence, unknown issuer) DO run extract so
+        # the proposal carries field guesses for the human reviewer; that
+        # behaviour is covered by the dedicated triage tests above.
+        from bim.commands.doc.shared.classifier import ClassifierError
+
         pipeline, _ = _build_pipeline(
             settings,
             registry,
             state_db,
             mocker,
             ocr_result=_make_ocr_result(pdf_path=staging_pdf),
-            classify_result=_make_classify_result(confidence=0.10),
+            classify_side_effect=ClassifierError("could not parse JSON", transient=False),
         )
         reporter = _RecordingProgressReporter()
         params = IngestParams(source="download", staging_path=staging_pdf)
         result = pipeline.run(params, reporter=reporter)
 
         assert result.metadata["outcome"] == "triaged"
-        # Pipeline reports OCR + classify before deciding to triage; extract
-        # never runs, so it must not appear in the recorded stages.
+        # Pipeline reports OCR + classify; extract never runs because there's
+        # no doc_type to extract against, so it must not appear in stages.
         assert reporter.stages == ["running OCR", "classifying document"]
 
     def test_default_reporter_is_silent_no_op(

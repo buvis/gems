@@ -272,13 +272,18 @@ class Pipeline:
                 f"({classify_result.confidence:.2f} < {self._settings.classifier.triage_threshold:.2f})"
             )
 
-        if triage_reasons or classify_result is None:
+        # Without a classify_result there's no doc_type to extract against, so
+        # triage immediately. The other triage triggers (unknown issuer, low
+        # confidence) still leave us with a usable doc_type, so extraction
+        # runs and its output (full or partial) populates the proposal -
+        # the human reviewer benefits from seeing what the model did find.
+        if classify_result is None:
             return self._triage(
                 _TriageContext(
                     params=params,
                     sha=sha,
                     ocr_result=ocr_result,
-                    classify_result=classify_result,
+                    classify_result=None,
                     extract_result=None,
                     reasons=triage_reasons,
                     issuer_slug=issuer_slug,
@@ -292,6 +297,7 @@ class Pipeline:
         def _extract_call(model: str) -> ExtractResult:
             return self._extractor.extract_with_model(ocr_result.ocr_text, classify_result.doc_type, model=model)
 
+        extract_result: ExtractResult | None = None
         try:
             extract_result = _retry_llm_call(
                 func=_extract_call,
@@ -301,28 +307,24 @@ class Pipeline:
                 is_transient=lambda exc: isinstance(exc, IncompleteExtraction) and exc.transient,
             )
         except IncompleteExtraction as exc:
-            return self._triage(
-                _TriageContext(
-                    params=params,
-                    sha=sha,
-                    ocr_result=ocr_result,
-                    classify_result=classify_result,
-                    extract_result=None,
-                    reasons=list(exc.reasons),
-                    issuer_slug=issuer_slug,
-                    issuer_display=issuer_display,
-                )
-            )
+            # Surface the partial ExtractResult (when present) so the triage
+            # proposal shows fields the model did find. exc.partial may be
+            # None when no fields could be coerced (e.g. JSON parse error).
+            extract_result = exc.partial
+            triage_reasons.extend(exc.reasons)
         except Exception as exc:
             # Includes requests.exceptions.Timeout (re-raised unwrapped per Extractor docs).
+            triage_reasons.append(f"extractor error: {exc}")
+
+        if triage_reasons or extract_result is None:
             return self._triage(
                 _TriageContext(
                     params=params,
                     sha=sha,
                     ocr_result=ocr_result,
                     classify_result=classify_result,
-                    extract_result=None,
-                    reasons=[f"extractor error: {exc}"],
+                    extract_result=extract_result,
+                    reasons=triage_reasons,
                     issuer_slug=issuer_slug,
                     issuer_display=issuer_display,
                 )

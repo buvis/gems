@@ -482,6 +482,78 @@ class TestExtractorPromptShape:
         assert "amount" in system_joined
 
 
+class TestIncompleteExtractionPartial:
+    """IncompleteExtraction must carry whatever fields the model got right
+    so the pipeline can surface them in triage proposals."""
+
+    def test_missing_required_field_attaches_partial_with_coerced_fields(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        # Invoice with date, amount, currency but no number - the existing
+        # behaviour raises IncompleteExtraction for the missing number, but
+        # the previously-coerced fields must travel along on exc.partial so
+        # the human reviewer doesn't lose them.
+        from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {
+                    "date": "2024-04-15",
+                    "amount": 1218.0,
+                    "currency": "CZK",
+                }
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(IncompleteExtraction) as exc_info:
+            Extractor(settings).extract("invoice text", "invoice")
+
+        partial = exc_info.value.partial
+        assert partial is not None
+        assert partial.doc_type == "invoice"
+        assert partial.date == datetime.date(2024, 4, 15)
+        assert partial.amount == 1218.0
+        assert partial.currency == "CZK"
+        # The missing required field (number) stays None on the partial.
+        assert partial.number is None
+
+    def test_bad_date_accumulates_with_other_coerced_fields(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        # A single bad field must not discard the others - the human reviewer
+        # benefits from seeing every successfully-coerced field, plus a clear
+        # reason naming the one that failed.
+        from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(
+                {
+                    "number": "INV-1",
+                    "date": "15.11.2024",  # non-ISO, will not coerce
+                    "amount": 1218.0,
+                    "currency": "CZK",
+                }
+            ),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(IncompleteExtraction) as exc_info:
+            Extractor(settings).extract("invoice text", "invoice")
+
+        partial = exc_info.value.partial
+        assert partial is not None
+        assert partial.number == "INV-1"
+        assert partial.amount == 1218.0
+        assert partial.currency == "CZK"
+        assert partial.date is None
+        # Reasons name the bad date.
+        reasons = exc_info.value.reasons
+        assert any("date" in r for r in reasons)
+
+
 class TestIncompleteExtractionTransient:
     """IncompleteExtraction surfaces transient flag for HTTP failures only."""
 
