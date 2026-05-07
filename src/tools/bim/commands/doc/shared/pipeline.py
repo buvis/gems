@@ -260,7 +260,11 @@ class Pipeline:
 
         issuer_slug, issuer_display = self._resolve_issuer(params, classify_result)
         if not issuer_slug:
-            triage_reasons.append("unknown issuer (classifier returned no recognised slug)")
+            guess = classify_result.issuer_guess if classify_result is not None else None
+            if guess:
+                triage_reasons.append(f"unknown issuer (classifier guessed {guess!r}, not in registry)")
+            else:
+                triage_reasons.append("unknown issuer (classifier returned no slug)")
 
         if classify_result is not None and classify_result.confidence < self._settings.classifier.triage_threshold:
             triage_reasons.append(
@@ -485,7 +489,13 @@ class Pipeline:
         except ValueError:
             title_slug = "unknown"
 
-        slug_for_filename = ctx.issuer_slug or "unknown"
+        # Fall back to the classifier's slugified guess (when present) so the
+        # triage filename, proposal, and zettel preview surface something the
+        # human can react to instead of the literal string "unknown".
+        # Registration still requires the user to flip register_issuer=true.
+        guess_slug = ctx.classify_result.issuer_guess if ctx.classify_result is not None else None
+        slug_for_filename = ctx.issuer_slug or guess_slug or "unknown"
+        proposal_slug = ctx.issuer_slug or guess_slug or ""
         doc_type_for_filename = ctx.classify_result.doc_type if ctx.classify_result is not None else "other"
         try:
             basename = build_canonical_filename(
@@ -509,7 +519,7 @@ class Pipeline:
             approved=False,
             register_issuer=False,
             issuer=IssuerProposal(
-                slug=ctx.issuer_slug,
+                slug=proposal_slug,
                 display_name=ctx.issuer_display or "",
                 confidence=ctx.classify_result.confidence if ctx.classify_result is not None else 0.0,
                 alternatives=[],
@@ -544,7 +554,7 @@ class Pipeline:
                 ingest_date=date.today(),
                 tags=build_zettel_tags(
                     doc_type_for_filename,
-                    ctx.issuer_slug or "unknown",
+                    slug_for_filename,
                     ctx.extract_result.date if ctx.extract_result is not None else None,
                 ),
             ),

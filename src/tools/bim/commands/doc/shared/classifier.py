@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict
 
 from bim.commands.doc.shared.issuers import resolve_alias
+from bim.commands.doc.shared.naming import slugify
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -49,6 +50,10 @@ class ClassifyResult(BaseModel):
             doc-type-only mode.
         issuer_display: Human-readable issuer name from the registry, paired
             with ``issuer_slug``.
+        issuer_guess: Slugified form of the model's raw issuer suggestion when
+            it did NOT resolve to a registry entry, otherwise ``None``. Used by
+            the pipeline to pre-fill the triage proposal so a human can review
+            the guess and decide whether to register it as a new issuer.
         doc_type: One of the canonical document types (invoice, receipt,
             statement, contract, certificate, reminder, correspondence, other).
         language: ISO 639-1 language code reported by the model (e.g. ``cs``).
@@ -62,6 +67,7 @@ class ClassifyResult(BaseModel):
     doc_type: str
     language: str
     confidence: float
+    issuer_guess: str | None = None
 
 
 def _build_alias_block(registry: IssuerRegistry) -> str:
@@ -189,6 +195,7 @@ class Classifier:
 
         issuer_slug: str | None = None
         issuer_display: str | None = None
+        issuer_guess: str | None = None
         if not doc_type_only:
             candidate = parsed.get("issuer_slug")
             if isinstance(candidate, str) and candidate:
@@ -196,6 +203,15 @@ class Classifier:
                 if canonical is not None:
                     issuer_slug = canonical
                     issuer_display = registry.issuers[canonical].display_name
+                else:
+                    # Preserve the model's raw suggestion so the pipeline can
+                    # pre-fill the triage proposal. Slugify enforces the same
+                    # kebab-case shape as registry slugs; if normalisation
+                    # collapses to empty, fall through with issuer_guess=None.
+                    try:
+                        issuer_guess = slugify(candidate)
+                    except ValueError:
+                        issuer_guess = None
 
         try:
             doc_type = parsed["doc_type"]
@@ -212,4 +228,5 @@ class Classifier:
             doc_type=doc_type,
             language=language,
             confidence=confidence,
+            issuer_guess=issuer_guess,
         )

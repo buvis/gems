@@ -82,6 +82,7 @@ def _make_classify_result(
     issuer_display: str | None = "ČEZ a.s.",
     doc_type: str = "invoice",
     confidence: float = 0.95,
+    issuer_guess: str | None = None,
 ) -> ClassifyResult:
     return ClassifyResult(
         issuer_slug=issuer_slug,
@@ -89,6 +90,7 @@ def _make_classify_result(
         doc_type=doc_type,
         language="cs",
         confidence=confidence,
+        issuer_guess=issuer_guess,
     )
 
 
@@ -490,6 +492,53 @@ class TestPipeline:
         assert any(
             token in proposal_text for token in ("unknown issuer", "unrecognized issuer", "issuer not in registry")
         )
+
+    def test_unknown_issuer_guess_prefilled_in_proposal(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        # Classifier returns no canonical match but a slugified guess. The
+        # proposal should pre-fill the issuer slug from that guess so the
+        # human reviewer has something to react to instead of a blank field;
+        # display_name and register_issuer stay empty/false, gating actual
+        # registration behind explicit human confirmation.
+        import yaml
+
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(
+                issuer_slug=None,
+                issuer_display=None,
+                issuer_guess="totally-unknown-llc",
+                confidence=0.55,
+            ),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="email", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.success is True
+        assert result.metadata["outcome"] == "triaged"
+
+        proposal_path = Path(result.metadata["proposal_path"])
+        proposal_data = yaml.safe_load(proposal_path.read_text(encoding="utf-8"))
+
+        assert proposal_data["approved"] is False
+        assert proposal_data["register_issuer"] is False
+        assert proposal_data["issuer"]["slug"] == "totally-unknown-llc"
+        assert proposal_data["issuer"]["display_name"] == ""
+        # Triage filename also uses the guess so it's recognisable on disk.
+        assert "totally-unknown-llc" in proposal_path.name
+        # Reason names the guess so the user understands what the model proposed.
+        assert any("totally-unknown-llc" in r for r in proposal_data["triage_reasons"])
 
     # --- 8. issuer-inbox source uses doc_type_only classifier path ---
 

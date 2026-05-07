@@ -117,7 +117,7 @@ class TestClassifier:
         assert result.language == "cs"
         assert result.confidence == 0.94
 
-    def test_unknown_issuer_returns_none_slug_and_display(
+    def test_unknown_issuer_preserves_guess_with_none_canonical(
         self,
         settings: ClassifierSettings,
         registry: IssuerRegistry,
@@ -130,7 +130,7 @@ class TestClassifier:
             mocker,
             _content_response(
                 {
-                    "issuer_slug": "totally-unknown-llc",
+                    "issuer_slug": "Totally Unknown LLC",
                     "doc_type": "invoice",
                     "language": "cs",
                     "confidence": 0.55,
@@ -141,8 +141,12 @@ class TestClassifier:
 
         result = Classifier(settings).classify(ocr_text, {}, registry)
 
+        # Canonical fields stay None so the pipeline still triages.
         assert result.issuer_slug is None
         assert result.issuer_display is None
+        # ...but the model's raw suggestion is preserved as a slugified guess
+        # so triage can pre-fill the proposal instead of leaving it blank.
+        assert result.issuer_guess == "totally-unknown-llc"
         assert result.doc_type == "invoice"
 
     def test_doc_type_only_omits_issuer_from_prompt(
