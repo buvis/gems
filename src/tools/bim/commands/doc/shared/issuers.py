@@ -120,8 +120,12 @@ def _parse_registry(raw: bytes) -> IssuerRegistry:
     parsed = yaml.safe_load(raw)
     if parsed is None:
         raise ValueError("issuers.yml is empty or YAML parse returned None")
+    if not isinstance(parsed, dict):
+        raise ValueError(f"issuers.yml root must be a YAML mapping, got {type(parsed).__name__}")
 
     raw_issuers = parsed.get("issuers") or {}
+    if not isinstance(raw_issuers, dict):
+        raise ValueError(f"issuers.yml 'issuers' value must be a YAML mapping, got {type(raw_issuers).__name__}")
     normalized_issuers: dict[str, dict[str, object]] = {}
     for slug, body in raw_issuers.items():
         merged = dict(body or {})

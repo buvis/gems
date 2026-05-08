@@ -212,3 +212,49 @@ issuers:
         # The error string must hint at YAML parsing rather than crash
         # surfacing through the CLI as a raw exception.
         assert "yaml" in message or "parse" in message or "expected" in message or "line" in message
+
+    def test_non_mapping_yaml_root_returns_command_result(self, issuers_path: Path) -> None:
+        """A syntactically valid YAML whose root is not a mapping (e.g. a list)
+        must surface as ``CommandResult(success=False)`` instead of crashing
+        with an uncaught ``AttributeError`` when ``_parse_registry`` calls
+        ``.get()`` on the parsed list.
+        """
+        from bim.commands.doc.rules.validate import CommandRulesValidate
+
+        # Top-level YAML list - valid YAML, invalid issuers.yml shape.
+        _write(
+            issuers_path,
+            """\
+- one
+- two
+- three
+""",
+        )
+        result = CommandRulesValidate().run(issuers_path)
+        assert result.success is False
+        message = (result.error or "").lower()
+        # The error must explain the structural problem, not propagate as a
+        # bare AttributeError or stack trace.
+        assert "mapping" in message or "dict" in message or "structure" in message or "list" in message
+
+    def test_non_mapping_issuers_value_returns_command_result(self, issuers_path: Path) -> None:
+        """``issuers:`` whose value is a list (not a mapping) must surface as
+        a friendly ``CommandResult`` error rather than crash on ``.items()``.
+        """
+        from bim.commands.doc.rules.validate import CommandRulesValidate
+
+        _write(
+            issuers_path,
+            """\
+version: 1
+doc_types: [invoice]
+reserved_slugs: [unknown]
+issuers:
+  - cez-as
+  - plzensky-prazdroj
+""",
+        )
+        result = CommandRulesValidate().run(issuers_path)
+        assert result.success is False
+        message = (result.error or "").lower()
+        assert "issuers" in message and ("mapping" in message or "dict" in message)
