@@ -42,9 +42,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-# Modules under test (will fail to import until the engine lands).
 from bim.commands.doc.shared.issuers import IssuerRegistry
 from bim.commands.doc.shared.rules.engine import RuleEngine
 from bim.commands.doc.shared.rules.models import RuleResult, SourceMetadata
@@ -957,10 +954,6 @@ class TestExtractFailureSkipsRule:
 
 
 class TestEngineStateless:
-    def test_constructor_takes_no_args(self) -> None:
-        engine = RuleEngine()
-        assert engine is not None
-
     def test_same_engine_handles_back_to_back_calls(self) -> None:
         """Stateless engine must produce correct results across repeated, varied calls."""
         engine = RuleEngine()
@@ -985,18 +978,3 @@ class TestEngineStateless:
         assert second.kind == "none"
         assert third.kind == "full"
         assert first.rule_id == third.rule_id == "cez-invoice-2024-template"
-
-
-# ---------------------------------------------------------------------------
-# Smoke check on imports — surfaces the expected ImportError early.
-# ---------------------------------------------------------------------------
-
-
-def test_module_imports() -> None:
-    # Touching the imported names guarantees the import was real.
-    assert RuleEngine is not None
-    assert RuleResult is not None
-    assert SourceMetadata is not None
-    assert IssuerRegistry is not None
-    # Reference pytest to avoid an unused-import lint hit.
-    assert pytest is not None
