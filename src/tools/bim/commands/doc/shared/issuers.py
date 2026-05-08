@@ -123,7 +123,14 @@ def _parse_registry(raw: bytes) -> IssuerRegistry:
     if not isinstance(parsed, dict):
         raise ValueError(f"issuers.yml root must be a YAML mapping, got {type(parsed).__name__}")
 
-    raw_issuers = parsed.get("issuers") or {}
+    # Use a default ``{}`` (instead of ``or {}``) so falsy non-mapping values
+    # like ``issuers: []`` survive the lookup and trip the isinstance guard
+    # below, rather than collapsing to ``{}`` and silently parsing as no
+    # issuers. ``yaml.safe_load`` returns ``None`` for the bare ``issuers:``
+    # key, which we still want to treat as "no issuers".
+    raw_issuers = parsed.get("issuers", {})
+    if raw_issuers is None:
+        raw_issuers = {}
     if not isinstance(raw_issuers, dict):
         raise ValueError(f"issuers.yml 'issuers' value must be a YAML mapping, got {type(raw_issuers).__name__}")
     normalized_issuers: dict[str, dict[str, object]] = {}

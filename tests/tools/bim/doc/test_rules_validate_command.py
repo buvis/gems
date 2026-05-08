@@ -258,3 +258,25 @@ issuers:
         assert result.success is False
         message = (result.error or "").lower()
         assert "issuers" in message and ("mapping" in message or "dict" in message)
+
+    def test_empty_list_issuers_value_returns_command_result(self, issuers_path: Path) -> None:
+        """``issuers: []`` is a falsy non-mapping value. The non-mapping guard
+        in ``_parse_registry`` must NOT be defeated by a ``... or {}``
+        normalization that collapses falsy values to an empty dict before the
+        ``isinstance`` check runs.
+        """
+        from bim.commands.doc.rules.validate import CommandRulesValidate
+
+        _write(
+            issuers_path,
+            """\
+version: 1
+doc_types: [invoice]
+reserved_slugs: [unknown]
+issuers: []
+""",
+        )
+        result = CommandRulesValidate().run(issuers_path)
+        assert result.success is False
+        message = (result.error or "").lower()
+        assert "issuers" in message and ("mapping" in message or "dict" in message)

@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: `bim doc rules validate` now rejects `issuers: []` (and other falsy non-mapping shapes such as `issuers: ""` or `issuers: 0`) with a friendly `CommandResult` error, instead of silently collapsing them to "no issuers" via a `... or {}` short-circuit before the type guard ran
 - **bim**: `doc ingest` now runs the LLM extractor whenever the classifier produced a `doc_type`, even when the issuer is unknown or classifier confidence is below `triage_threshold`. Triage proposals previously emitted nulls for `number`, `date`, `amount`, `currency`, and `title` because extraction was short-circuited; now the human reviewer sees the model's field-level output (full or partial) instead of a wall of nulls
 - **bim**: `doc ingest` extractor now returns whatever fields it successfully coerced when raising `IncompleteExtraction` for missing/unparseable required fields; the pipeline surfaces this partial result in the triage proposal so coerced fields aren't discarded just because one required field is missing
 - **bim**: `doc ingest` triage proposals now pre-fill the issuer slug with the classifier's slugified guess (when the LLM returned a slug not in the registry) so the human reviewer has a starting point instead of a blank field; `register_issuer` still defaults to `false` so registration requires explicit confirmation
