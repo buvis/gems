@@ -179,6 +179,14 @@ class TestSerializeOmitsEmptyRules:
     The serializer must not emit a ``rules: []`` line for issuers that had no
     ``rules:`` block in the source — the wire format for legacy entries must
     stay unchanged.
+
+    PRD success metric: existing issuers.yml files (no ``rules:`` blocks)
+    continue to load **unchanged**. ``_serialize`` runs through ``yaml.safe_dump``,
+    which normalizes whitespace (blank lines, key style) — so true byte equality
+    against the source fixture is not achievable. The strongest realistic
+    invariant is **semantic equivalence under YAML round-trip**: the serialized
+    bytes parse to a dict equal to the source's parsed dict, and serializing
+    again is a fixed point. These tests check that.
     """
 
     def test_legacy_issuer_round_trip_has_no_rules_key(self, valid_registry_path: Path) -> None:
@@ -217,3 +225,53 @@ class TestSerializeOmitsEmptyRules:
         assert "rules:" in serialized
         # ...but it must appear exactly once (under cez-as), not twice.
         assert serialized.count("rules:") == 1
+
+    def test_legacy_yaml_round_trip_is_semantically_identical(self, valid_registry_path: Path) -> None:
+        """Parse original fixture, serialize it, parse the serialized output,
+        and assert the two parsed dicts are identical. This is the strongest
+        achievable check that ``_serialize`` does not drift from the source's
+        semantic content for legacy registries — because ``yaml.safe_dump``
+        normalizes whitespace, byte-equality is not the right invariant; dict
+        equality after parsing is.
+        """
+        import yaml
+        from bim.commands.doc.shared.issuers import _serialize
+
+        original_bytes = valid_registry_path.read_bytes()
+        original_parsed = yaml.safe_load(original_bytes)
+
+        registry = load_registry(valid_registry_path)
+        serialized = _serialize(registry)
+        serialized_parsed = yaml.safe_load(serialized)
+
+        assert serialized_parsed == original_parsed
+
+    def test_legacy_yaml_round_trip_is_a_fixed_point(self, valid_registry_path: Path) -> None:
+        """Loading + serializing twice must produce the same bytes the second
+        time. This guards against any non-determinism in the serializer or any
+        slow drift across repeated round-trips.
+        """
+        from bim.commands.doc.shared.issuers import _serialize
+
+        registry_once = load_registry(valid_registry_path)
+        serialized_once = _serialize(registry_once)
+
+        # Round-trip the serialized output back to a registry, then serialize
+        # again. The bytes must match.
+        scratch_path = valid_registry_path.parent / "scratch.yml"
+        scratch_path.write_bytes(serialized_once.encode("utf-8"))
+        registry_twice = load_registry(scratch_path)
+        serialized_twice = _serialize(registry_twice)
+
+        assert serialized_once == serialized_twice
+
+    def test_aliases_yaml_round_trip_is_semantically_identical(self, aliases_registry_path: Path) -> None:
+        """Same semantic-equivalence guarantee for the with_aliases fixture."""
+        import yaml
+        from bim.commands.doc.shared.issuers import _serialize
+
+        original_parsed = yaml.safe_load(aliases_registry_path.read_bytes())
+        registry = load_registry(aliases_registry_path)
+        serialized_parsed = yaml.safe_load(_serialize(registry))
+
+        assert serialized_parsed == original_parsed
