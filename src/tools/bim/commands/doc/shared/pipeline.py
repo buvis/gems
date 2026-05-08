@@ -29,6 +29,8 @@ from bim.commands.doc.shared.extractor import IncompleteExtraction
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
 from bim.commands.doc.shared.progress import NoOpProgressReporter
+from bim.commands.doc.shared.rules.engine import RuleEngine
+from bim.commands.doc.shared.rules.models import RuleResult, SourceMetadata
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import (
     DocumentProposal,
@@ -37,6 +39,7 @@ from bim.commands.doc.shared.triage import (
     SourceProposal,
     TriageProposal,
     ZettelPreview,
+    format_rule_conflict_reason,
     write_proposal,
 )
 from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, to_tilde_path
@@ -149,6 +152,24 @@ class _TriageContext:
     issuer_display: str
 
 
+@dataclass(frozen=True)
+class _FilingContext:
+    """Bundle of inputs threaded into ``_finalize_filing``.
+
+    Keeps the helper signature narrow so ruff PLR0913 stays satisfied while
+    the orchestrator delegates the post-extract zettel-build path.
+    """
+
+    params: IngestParams
+    sha: str
+    ocr_result: OCRResult
+    classify_result: ClassifyResult
+    extract_result: ExtractResult
+    issuer_slug: str
+    issuer_display: str
+    extraction_method: str
+
+
 class Pipeline:
     """Coordinates the eight pipeline steps for a single ingest invocation.
 
@@ -250,27 +271,40 @@ class Pipeline:
         reporter.stage("running OCR")
         ocr_result = self._ocr_runner.run(params.staging_path)
 
+        source_metadata = self._build_rule_source_metadata(params)
+        rule_result = self._run_rules(ocr_result.ocr_text, source_metadata, params)
+        if rule_result.kind == "conflict":
+            return self._triage(
+                _TriageContext(
+                    params=params,
+                    sha=sha,
+                    ocr_result=ocr_result,
+                    classify_result=None,
+                    extract_result=None,
+                    reasons=[format_rule_conflict_reason(rule_result.conflicting_rules)],
+                    issuer_slug="",
+                    issuer_display="",
+                )
+            )
+
+        extraction_method = f"llm:{self._settings.classifier.primary_model}"
+        use_pinned = rule_result.kind in {"full", "partial"}
+        if use_pinned:
+            extraction_method = self._rule_extraction_method(rule_result)
+
         # Step 3: classify
         reporter.stage("classifying document")
-        classify_result, classify_error = self._classify(params, ocr_result)
-
-        triage_reasons: list[str] = []
-        if classify_error is not None:
-            triage_reasons.append(classify_error)
+        if use_pinned:
+            classify_result, classify_error = self._classify_with_pinned(params, ocr_result, rule_result.pinned)
+        else:
+            classify_result, classify_error = self._classify(params, ocr_result)
 
         issuer_slug, issuer_display = self._resolve_issuer(params, classify_result)
-        if not issuer_slug:
-            guess = classify_result.issuer_guess if classify_result is not None else None
-            if guess:
-                triage_reasons.append(f"unknown issuer (classifier guessed {guess!r}, not in registry)")
-            else:
-                triage_reasons.append("unknown issuer (classifier returned no slug)")
-
-        if classify_result is not None and classify_result.confidence < self._settings.classifier.triage_threshold:
-            triage_reasons.append(
-                f"classifier confidence below threshold "
-                f"({classify_result.confidence:.2f} < {self._settings.classifier.triage_threshold:.2f})"
-            )
+        triage_reasons = self._collect_classify_triage_reasons(
+            classify_error=classify_error,
+            classify_result=classify_result,
+            issuer_slug=issuer_slug,
+        )
 
         # Without a classify_result there's no doc_type to extract against, so
         # triage immediately. The other triage triggers (unknown issuer, low
@@ -297,6 +331,14 @@ class Pipeline:
         hints = self._build_extractor_hints(params)
 
         def _extract_call(model: str) -> ExtractResult:
+            if use_pinned:
+                return self._extractor.extract_with_pinned(
+                    ocr_result.ocr_text,
+                    classify_result.doc_type,
+                    rule_result.pinned,
+                    model=model,
+                    hints=hints,
+                )
             return self._extractor.extract_with_model(
                 ocr_result.ocr_text,
                 classify_result.doc_type,
@@ -337,19 +379,38 @@ class Pipeline:
                 )
             )
 
-        # Step 5: build canonical filename
-        title_or_number = extract_result.number or extract_result.title
+        return self._finalize_filing(
+            _FilingContext(
+                params=params,
+                sha=sha,
+                ocr_result=ocr_result,
+                classify_result=classify_result,
+                extract_result=extract_result,
+                issuer_slug=issuer_slug,
+                issuer_display=issuer_display,
+                extraction_method=extraction_method,
+            )
+        )
+
+    def _finalize_filing(self, ctx: _FilingContext) -> CommandResult:
+        """Build the canonical filename, write the zettel, and file the PDF.
+
+        Extracted from ``_run_after_claim`` to keep that orchestrator under
+        ruff complexity limits. Triages on slug/filename failures and returns
+        the ``CommandResult`` describing the terminal outcome.
+        """
+        title_or_number = ctx.extract_result.number or ctx.extract_result.title
         if not title_or_number:
             return self._triage(
                 _TriageContext(
-                    params=params,
-                    sha=sha,
-                    ocr_result=ocr_result,
-                    classify_result=classify_result,
-                    extract_result=extract_result,
+                    params=ctx.params,
+                    sha=ctx.sha,
+                    ocr_result=ctx.ocr_result,
+                    classify_result=ctx.classify_result,
+                    extract_result=ctx.extract_result,
                     reasons=["missing title and number for canonical filename"],
-                    issuer_slug=issuer_slug,
-                    issuer_display=issuer_display,
+                    issuer_slug=ctx.issuer_slug,
+                    issuer_display=ctx.issuer_display,
                 )
             )
 
@@ -358,65 +419,65 @@ class Pipeline:
         except ValueError:
             return self._triage(
                 _TriageContext(
-                    params=params,
-                    sha=sha,
-                    ocr_result=ocr_result,
-                    classify_result=classify_result,
-                    extract_result=extract_result,
+                    params=ctx.params,
+                    sha=ctx.sha,
+                    ocr_result=ctx.ocr_result,
+                    classify_result=ctx.classify_result,
+                    extract_result=ctx.extract_result,
                     reasons=["title_or_number slugifies to empty"],
-                    issuer_slug=issuer_slug,
-                    issuer_display=issuer_display,
+                    issuer_slug=ctx.issuer_slug,
+                    issuer_display=ctx.issuer_display,
                 )
             )
 
-        zk_timestamp = self._zk_timestamp(extract_result.date)
+        zk_timestamp = self._zk_timestamp(ctx.extract_result.date)
         canonical_filename, zk_timestamp, target_pdf = self._resolve_collision(
             zk_timestamp=zk_timestamp,
-            issuer_slug=issuer_slug,
+            issuer_slug=ctx.issuer_slug,
             title_or_number=slug_title,
-            doc_type=classify_result.doc_type,
+            doc_type=ctx.classify_result.doc_type,
         )
 
         ingest_today = date.today()
         frontmatter = DocumentZettelFrontmatter(
             id=zk_timestamp,
-            doc_type=classify_result.doc_type,
-            issuer_slug=issuer_slug,
-            issuer_display=issuer_display,
-            doc_number=extract_result.number,
-            doc_date=extract_result.date or ingest_today,
-            doc_amount=extract_result.amount,
-            doc_currency=extract_result.currency,
-            doc_language=classify_result.language,
+            doc_type=ctx.classify_result.doc_type,
+            issuer_slug=ctx.issuer_slug,
+            issuer_display=ctx.issuer_display,
+            doc_number=ctx.extract_result.number,
+            doc_date=ctx.extract_result.date or ingest_today,
+            doc_amount=ctx.extract_result.amount,
+            doc_currency=ctx.extract_result.currency,
+            doc_language=ctx.classify_result.language,
             ingest_date=ingest_today,
-            ingest_source=params.source,
+            ingest_source=ctx.params.source,
             file_path=to_tilde_path(target_pdf),
-            file_sha256=sha,
+            file_sha256=ctx.sha,
             ocr_engine=self._settings.ocr.engine,
-            ocr_mean_confidence=ocr_result.mean_confidence,
-            extraction_method=f"llm:{self._settings.classifier.primary_model}",
-            tags=build_zettel_tags(classify_result.doc_type, issuer_slug, extract_result.date),
+            ocr_mean_confidence=ctx.ocr_result.mean_confidence,
+            extraction_method=ctx.extraction_method,
+            tags=build_zettel_tags(ctx.classify_result.doc_type, ctx.issuer_slug, ctx.extract_result.date),
         )
-        body = build_zettel_body(frontmatter, ocr_result.ocr_text, self._settings.zettel)
+        body = build_zettel_body(frontmatter, ctx.ocr_result.ocr_text, self._settings.zettel)
         zettel_path = self._zettel_writer.write(frontmatter, body)
 
-        os.replace(ocr_result.pdf_path, target_pdf)
+        os.replace(ctx.ocr_result.pdf_path, target_pdf)
 
         self._state_db.record_processed(
             ProcessedRow(
-                sha256=sha,
+                sha256=ctx.sha,
                 canonical_filename=canonical_filename,
-                issuer_slug=issuer_slug,
-                doc_type=classify_result.doc_type,
+                issuer_slug=ctx.issuer_slug,
+                doc_type=ctx.classify_result.doc_type,
                 processed_at=datetime.now(timezone.utc),
-                extraction_method=f"llm:{self._settings.classifier.primary_model}",
+                extraction_method=ctx.extraction_method,
             )
         )
         # Release the claim once filing has finalised so the claims table
         # doesn't accumulate one orphan row per successfully-filed document.
         # On the happy path the processed row already prevents re-ingestion;
         # the claim row was the in-flight reservation.
-        self._state_db.release_claim(sha)
+        self._state_db.release_claim(ctx.sha)
 
         return CommandResult(
             success=True,
@@ -425,9 +486,39 @@ class Pipeline:
                 "zettel_path": str(zettel_path),
                 "pdf_path": str(target_pdf),
                 "canonical_filename": canonical_filename,
-                "sha256": sha,
+                "sha256": ctx.sha,
             },
         )
+
+    def _collect_classify_triage_reasons(
+        self,
+        *,
+        classify_error: str | None,
+        classify_result: ClassifyResult | None,
+        issuer_slug: str,
+    ) -> list[str]:
+        """Bundle the classify-stage triage-reason logic into one helper.
+
+        Extracted from ``_run_after_claim`` to keep that orchestrator under
+        the ruff PLR0912 branch limit. Behaviour byte-identical to the inline
+        version it replaced: order is preserved (classify_error → issuer →
+        confidence) so existing snapshot tests still match.
+        """
+        reasons: list[str] = []
+        if classify_error is not None:
+            reasons.append(classify_error)
+        if not issuer_slug:
+            guess = classify_result.issuer_guess if classify_result is not None else None
+            if guess:
+                reasons.append(f"unknown issuer (classifier guessed {guess!r}, not in registry)")
+            else:
+                reasons.append("unknown issuer (classifier returned no slug)")
+        if classify_result is not None and classify_result.confidence < self._settings.classifier.triage_threshold:
+            reasons.append(
+                f"classifier confidence below threshold "
+                f"({classify_result.confidence:.2f} < {self._settings.classifier.triage_threshold:.2f})"
+            )
+        return reasons
 
     def _classify(self, params: IngestParams, ocr_result: OCRResult) -> tuple[ClassifyResult | None, str | None]:
         """Run classifier with retry+fallback, returning ``(result, error_message)``.
@@ -450,6 +541,36 @@ class Pipeline:
                 self._registry,
                 model=model,
                 doc_type_only=doc_type_only,
+            )
+
+        try:
+            result = _retry_llm_call(
+                func=_call,
+                primary_model=self._settings.classifier.primary_model,
+                fallback_model=self._settings.classifier.fallback_model,
+                max_retries=self._settings.classifier.max_retries,
+                is_transient=lambda exc: isinstance(exc, ClassifierError) and exc.transient,
+            )
+        except Exception as exc:
+            return None, f"classifier error: {exc}"
+        return result, None
+
+    def _classify_with_pinned(
+        self, params: IngestParams, ocr_result: OCRResult, pinned: dict[str, object]
+    ) -> tuple[ClassifyResult | None, str | None]:
+        """Run pinned classifier path with the same retry semantics as classification."""
+        from bim.commands.doc.shared.classifier import ClassifierError
+
+        doc_type_only = params.source == "issuer-inbox"
+        source_metadata = self._build_source_metadata(params, doc_type_only=doc_type_only)
+
+        def _call(model: str) -> ClassifyResult:
+            return self._classifier.classify_with_pinned(
+                ocr_result.ocr_text,
+                source_metadata,
+                self._registry,
+                pinned,
+                model=model,
             )
 
         try:
@@ -611,6 +732,59 @@ class Pipeline:
         if params.email_subject:
             meta["email_subject"] = params.email_subject
         return meta
+
+    def _run_rules(self, ocr_text: str, source_metadata: SourceMetadata, params: IngestParams) -> RuleResult:
+        scope = params.issuer_slug_hint if params.source == "issuer-inbox" else None
+        engine = RuleEngine()
+        return engine.evaluate(
+            ocr_text,
+            source_metadata,
+            self._registry,
+            scoped_issuer_slug=scope,
+        )
+
+    def _build_rule_source_metadata(self, params: IngestParams) -> SourceMetadata:
+        email_meta = self._load_email_sidecar(params.staging_path)
+        return SourceMetadata(
+            source_kind=params.source,
+            original_filename=params.original_filename or params.staging_path.name,
+            email_from=params.email_from or email_meta["email_from"],
+            email_subject=params.email_subject or email_meta["email_subject"],
+            email_date=email_meta["email_date"],
+        )
+
+    @staticmethod
+    def _load_email_sidecar(staging_path: Path) -> dict[str, str | None]:
+        sidecar = staging_path.with_suffix(".email.yml")
+        empty: dict[str, str | None] = {"email_from": None, "email_subject": None, "email_date": None}
+        if not sidecar.exists():
+            return empty
+
+        import yaml
+
+        data = yaml.safe_load(sidecar.read_text(encoding="utf-8")) or {}
+        if not isinstance(data, dict):
+            return empty
+        return {
+            "email_from": Pipeline._string_or_none(data.get("from")),
+            "email_subject": Pipeline._string_or_none(data.get("subject")),
+            "email_date": Pipeline._string_or_none(data.get("date")),
+        }
+
+    @staticmethod
+    def _string_or_none(value: object) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(value)
+
+    @staticmethod
+    def _rule_extraction_method(rule_result: RuleResult) -> str:
+        if rule_result.rule_id is None or rule_result.rule_version is None:
+            raise ValueError("matching rule result must include rule id and version")
+        prefix = "rule" if rule_result.kind == "full" else "rule+llm"
+        return f"{prefix}:{rule_result.rule_id}:v{rule_result.rule_version}"
 
     def _build_extractor_hints(self, params: IngestParams) -> dict[str, str] | None:
         """Compose the hints dict passed to ``Extractor.extract_with_model``.
