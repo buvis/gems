@@ -172,3 +172,48 @@ class TestCiphertextRegression:
         shutil.copy(FIXTURES / "ciphertext.yml", encrypted)
         with pytest.raises(RuntimeError, match="git filter"):
             load_registry(encrypted)
+
+
+class TestSerializeOmitsEmptyRules:
+    """The new ``rules: list[Rule]`` field on ``IssuerEntry`` defaults to ``[]``.
+    The serializer must not emit a ``rules: []`` line for issuers that had no
+    ``rules:`` block in the source — the wire format for legacy entries must
+    stay unchanged.
+    """
+
+    def test_legacy_issuer_round_trip_has_no_rules_key(self, valid_registry_path: Path) -> None:
+        from bim.commands.doc.shared.issuers import _serialize
+
+        registry = load_registry(valid_registry_path)
+        serialized = _serialize(registry)
+        # Neither legacy issuer in valid.yml had a rules: block; the
+        # serializer must not introduce one.
+        assert "rules:" not in serialized
+
+    def test_with_aliases_round_trip_has_no_rules_key(self, aliases_registry_path: Path) -> None:
+        from bim.commands.doc.shared.issuers import _serialize
+
+        registry = load_registry(aliases_registry_path)
+        serialized = _serialize(registry)
+        assert "rules:" not in serialized
+
+    def test_legacy_issuer_round_trip_preserves_other_fields(self, valid_registry_path: Path) -> None:
+        from bim.commands.doc.shared.issuers import _serialize
+
+        registry = load_registry(valid_registry_path)
+        serialized = _serialize(registry)
+        # Sanity: the fields that WERE in the source still come through.
+        assert "cez-as:" in serialized
+        assert "display_name: CEZ a.s." in serialized
+        assert "plzensky-prazdroj:" in serialized
+
+    def test_mixed_registry_only_emits_rules_for_issuers_that_have_them(self, with_rules_path: Path) -> None:
+        from bim.commands.doc.shared.issuers import _serialize
+
+        # with_rules.yml: cez-as HAS rules, plzensky-prazdroj does NOT.
+        registry = load_registry(with_rules_path)
+        serialized = _serialize(registry)
+        # cez-as's rules must round-trip.
+        assert "rules:" in serialized
+        # ...but it must appear exactly once (under cez-as), not twice.
+        assert serialized.count("rules:") == 1
