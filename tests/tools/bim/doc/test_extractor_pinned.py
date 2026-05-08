@@ -168,6 +168,43 @@ class TestExtractorPinnedFullSkip:
         assert result.amount == 4218.0
         assert result.currency == "CZK"
 
+    def test_invoice_full_pin_decimal_amount_skips_llm(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        # The rule engine's ``strip_whitespace_to_decimal`` transform returns a
+        # ``Decimal``. ``extract_with_pinned`` must coerce it to ``float`` like
+        # the LLM-path does for numeric strings, not reject it as a non-coercible
+        # type. The PRD's ``cez-invoice-2024-template`` example pins
+        # ``doc_amount`` exactly this way.
+        from decimal import Decimal
+
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "extract_with_pinned must skip HTTP when all required fields for doc_type are pinned"
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract_with_pinned(
+            "ocr text",
+            "invoice",
+            {
+                "doc_number": "INV-1",
+                "doc_date": datetime.date(2024, 11, 15),
+                "doc_amount": Decimal("4218.50"),
+                "doc_currency": "CZK",
+            },
+            model=settings.primary_model,
+        )
+
+        assert result.doc_type == "invoice"
+        assert result.number == "INV-1"
+        assert result.date == datetime.date(2024, 11, 15)
+        assert result.amount == 4218.5
+        assert isinstance(result.amount, float)
+        assert result.currency == "CZK"
+
     def test_non_extractor_pinned_keys_are_ignored(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
         # ``issuer_slug``, ``issuer_display`` and ``doc_language`` belong to
         # the classifier / writer, not the extractor. They must not satisfy

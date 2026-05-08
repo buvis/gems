@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime
 import json
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
@@ -200,7 +201,10 @@ def _coerce_date(name: str, value: object) -> datetime.date:
 
 
 def _coerce_number(name: str, value: object) -> float:
-    if isinstance(value, bool) or not isinstance(value, int | float | str):
+    # ``Decimal`` is accepted because the rule engine's
+    # ``strip_whitespace_to_decimal`` transform returns one for pinned amounts;
+    # ``float(Decimal(...))`` is well-defined.
+    if isinstance(value, bool) or not isinstance(value, int | float | str | Decimal):
         raise IncompleteExtraction([f"could not coerce number '{value}' for field {name}"])
     try:
         return float(value)
