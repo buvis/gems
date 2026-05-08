@@ -106,10 +106,150 @@ def _doc_type_only_system_prompt() -> str:
     )
 
 
+def _reduced_system_prompt(registry: IssuerRegistry, *, omit: set[str]) -> str:
+    fields = [field for field in ("issuer_slug", "doc_type", "language", "confidence") if field not in omit]
+    lines = [
+        "You classify scanned business documents from OCR text.",
+        f"Return STRICT JSON with keys: {', '.join(fields)}.",
+    ]
+    if "doc_type" in fields:
+        lines.append(
+            "Pick doc_type from: invoice, receipt, statement, contract, certificate, reminder, correspondence, other."
+        )
+    if "issuer_slug" in fields:
+        alias_block = _build_alias_block(registry)
+        lines.extend(
+            [
+                "Use the canonical issuer slug from the list below if you recognize the issuer; "
+                "otherwise return your best guess as a short slug.",
+                "",
+                "Known issuers (canonical slug, display name, aliases):",
+                alias_block,
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _user_prompt(ocr_text: str, source_metadata: dict[str, object]) -> str:
     return (
         f"OCR text:\n{ocr_text}\n\nSource metadata: {json.dumps(source_metadata, ensure_ascii=False, sort_keys=True)}\n"
     )
+
+
+def _pinned_language(pinned: dict[str, object]) -> object:
+    return pinned.get("language") if pinned.get("language") is not None else pinned.get("doc_language")
+
+
+def _omit_set(pinned_slug: object, pinned_type: object, pinned_lang: object) -> set[str]:
+    omit: set[str] = set()
+    if pinned_slug is not None:
+        omit.add("issuer_slug")
+    if pinned_type is not None:
+        omit.add("doc_type")
+    if pinned_lang is not None:
+        omit.add("language")
+    return omit
+
+
+def _pinned_display(pinned: dict[str, object], slug: str, registry: IssuerRegistry) -> str | None:
+    pinned_display = pinned.get("issuer_display")
+    if pinned_display:
+        return str(pinned_display)
+    if slug in registry.issuers:
+        return registry.issuers[slug].display_name
+    return None
+
+
+def _full_skip_result(
+    pinned: dict[str, object],
+    pinned_slug: object,
+    pinned_type: object,
+    pinned_lang: object,
+    registry: IssuerRegistry,
+) -> ClassifyResult:
+    slug = str(pinned_slug)
+    return ClassifyResult(
+        issuer_slug=slug,
+        issuer_display=_pinned_display(pinned, slug, registry),
+        doc_type=str(pinned_type),
+        language=str(pinned_lang),
+        confidence=1.0,
+        issuer_guess=None,
+    )
+
+
+def _resolve_pinned_issuer(
+    pinned_slug: object, pinned_display: object, registry: IssuerRegistry
+) -> tuple[str, str | None, None]:
+    slug = str(pinned_slug)
+    if pinned_display:
+        display: str | None = str(pinned_display)
+    elif slug in registry.issuers:
+        display = registry.issuers[slug].display_name
+    else:
+        display = None
+    return slug, display, None
+
+
+def _resolve_model_issuer(
+    parsed: dict[str, object], registry: IssuerRegistry
+) -> tuple[str | None, str | None, str | None]:
+    candidate = parsed.get("issuer_slug")
+    if not isinstance(candidate, str) or not candidate:
+        return None, None, None
+    canonical = resolve_alias(registry, candidate)
+    if canonical is not None:
+        return canonical, registry.issuers[canonical].display_name, None
+    try:
+        return None, None, slugify(candidate)
+    except ValueError:
+        return None, None, None
+
+
+def _resolve_classified_issuer(
+    pinned_slug: object,
+    pinned_display: object,
+    parsed: dict[str, object],
+    registry: IssuerRegistry,
+) -> tuple[str | None, str | None, str | None]:
+    if pinned_slug is not None:
+        return _resolve_pinned_issuer(pinned_slug, pinned_display, registry)
+    return _resolve_model_issuer(parsed, registry)
+
+
+def _coerce_confidence(raw: object) -> float:
+    if isinstance(raw, bool) or not isinstance(raw, int | float | str):
+        raise ClassifierError(
+            f"could not parse classifier field: confidence has unexpected type {type(raw).__name__}",
+            transient=False,
+        )
+    try:
+        return float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ClassifierError(f"could not parse classifier field: {exc}", transient=False) from exc
+
+
+def _resolve_classified_payload(
+    parsed: dict[str, object], *, pinned_type: object, pinned_lang: object
+) -> tuple[str, str, float]:
+    if pinned_type is not None:
+        doc_type: object = pinned_type
+    elif "doc_type" in parsed:
+        doc_type = parsed["doc_type"]
+    else:
+        raise ClassifierError("missing field 'doc_type' in model response", transient=False)
+
+    if pinned_lang is not None:
+        language: object = pinned_lang
+    elif "language" in parsed:
+        language = parsed["language"]
+    else:
+        raise ClassifierError("missing field 'language' in model response", transient=False)
+
+    if "confidence" not in parsed:
+        raise ClassifierError("missing field 'confidence' in model response", transient=False)
+    confidence = _coerce_confidence(parsed["confidence"])
+    return str(doc_type), str(language), confidence
 
 
 class Classifier:
@@ -230,3 +370,84 @@ class Classifier:
             confidence=confidence,
             issuer_guess=issuer_guess,
         )
+
+    def classify_with_pinned(
+        self,
+        ocr_text: str,
+        source_metadata: dict[str, object],
+        registry: IssuerRegistry,
+        pinned: dict[str, object],
+        *,
+        model: str,
+    ) -> ClassifyResult:
+        """Classify with some classifier fields pre-pinned by the rule engine.
+
+        Skips the LLM entirely if ``pinned`` covers all of ``issuer_slug``,
+        ``doc_type``, and ``language``. Otherwise asks the model only for the
+        missing fields, then lets pinned values override model output.
+        """
+        pinned_slug = pinned.get("issuer_slug")
+        pinned_type = pinned.get("doc_type")
+        pinned_lang = _pinned_language(pinned)
+
+        if pinned_slug is not None and pinned_type is not None and pinned_lang is not None:
+            return _full_skip_result(pinned, pinned_slug, pinned_type, pinned_lang, registry)
+
+        omit = _omit_set(pinned_slug, pinned_type, pinned_lang)
+        parsed = self._call_chat(ocr_text, source_metadata, registry, model=model, omit=omit)
+
+        issuer_slug, issuer_display, issuer_guess = _resolve_classified_issuer(
+            pinned_slug, pinned.get("issuer_display"), parsed, registry
+        )
+        doc_type, language, confidence = _resolve_classified_payload(
+            parsed, pinned_type=pinned_type, pinned_lang=pinned_lang
+        )
+        return ClassifyResult(
+            issuer_slug=issuer_slug,
+            issuer_display=issuer_display,
+            doc_type=doc_type,
+            language=language,
+            confidence=confidence,
+            issuer_guess=issuer_guess,
+        )
+
+    def _call_chat(
+        self,
+        ocr_text: str,
+        source_metadata: dict[str, object],
+        registry: IssuerRegistry,
+        *,
+        model: str,
+        omit: set[str],
+    ) -> dict[str, object]:
+        """Send the reduced-prompt request and parse the JSON content."""
+        # Lazy import keeps the module loadable without the [doc] extra installed.
+        import requests
+
+        url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
+        body = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": _reduced_system_prompt(registry, omit=omit)},
+                {"role": "user", "content": _user_prompt(ocr_text, source_metadata)},
+            ],
+            "format": "json",
+            "stream": False,
+        }
+        try:
+            response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
+            response.raise_for_status()
+            payload = response.json()
+        except requests.exceptions.Timeout:
+            raise
+        except Exception as exc:
+            raise ClassifierError(f"HTTP error calling {url}: {exc}", transient=True) from exc
+
+        try:
+            raw_content = payload["message"]["content"]
+            parsed = json.loads(raw_content)
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise ClassifierError(f"Could not parse classifier JSON response: {exc}", transient=False) from exc
+        if not isinstance(parsed, dict):
+            raise ClassifierError("classifier response is not a JSON object", transient=False)
+        return parsed
