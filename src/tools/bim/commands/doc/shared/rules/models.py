@@ -178,9 +178,17 @@ class Rule(BaseModel):
 
     @field_validator("id")
     @classmethod
-    def _id_non_empty(cls, v: str) -> str:
+    def _id_well_formed(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("id must be non-empty")
+        # The pipeline composes ``extraction_method`` as
+        # ``rule:<id>:v<n>`` / ``rule+llm:<id>:v<n>`` and the writer
+        # validates against ``_EXTRACTION_METHOD_REGEX`` which uses
+        # ``:`` as a delimiter (``rule:[^:]+:v\d+``). An id containing
+        # ``:`` would slip past load time and fail at zettel-write time
+        # with an opaque regex mismatch, so reject early.
+        if ":" in v:
+            raise ValueError(f"rule id {v!r} must not contain ':' (reserved as extraction_method delimiter)")
         return v
 
     @field_validator("version")

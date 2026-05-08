@@ -409,6 +409,15 @@ class TestRuleIdAndVersion:
         with pytest.raises(ValidationError):
             Rule.model_validate(_minimal_rule_data(id=""))
 
+    def test_id_with_colon_rejected(self) -> None:
+        # The extraction_method regex uses ":" as a delimiter
+        # (rule:<id>:v<n>); ids must not introduce extra colons.
+        with pytest.raises(ValidationError) as exc_info:
+            Rule.model_validate(_minimal_rule_data(id="my:rule"))
+        msg = str(exc_info.value)
+        assert "my:rule" in msg
+        assert ":" in msg
+
     def test_version_below_one_rejected(self) -> None:
         with pytest.raises(ValidationError):
             Rule.model_validate(_minimal_rule_data(version=0))
