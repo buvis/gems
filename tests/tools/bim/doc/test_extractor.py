@@ -732,3 +732,143 @@ class TestIncompleteExtractionTransient:
         with pytest.raises(IncompleteExtraction) as exc_info:
             ext.extract("ocr text", "invoice")
         assert exc_info.value.transient is False
+
+
+class TestExtractorSummary:
+    """The ``summary`` field is plumbed end-to-end without becoming a triage signal."""
+
+    @staticmethod
+    def _invoice_payload(extra: dict[str, object] | None = None) -> dict[str, object]:
+        base: dict[str, object] = {
+            "number": "9999999999",
+            "date": "2024-04-15",
+            "amount": 1218.0,
+            "currency": "CZK",
+        }
+        if extra:
+            base.update(extra)
+        return base
+
+    def test_summary_passes_through_when_present(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response(self._invoice_payload({"summary": "Monthly electricity invoice for April 2024."})),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary == "Monthly electricity invoice for April 2024."
+
+    def test_summary_omitted_when_model_omits_it(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload()))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is None
+
+    def test_summary_null_treated_as_none(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload({"summary": None})))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is None
+
+    def test_summary_empty_string_treated_as_none(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload({"summary": ""})))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is None
+
+    def test_summary_whitespace_only_treated_as_none(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload({"summary": "   \n\t  "})))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is None
+
+    def test_summary_non_string_treated_as_none(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload({"summary": 0})))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is None
+
+    def test_summary_collapses_internal_whitespace(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        raw = "Monthly\n  electricity\tinvoice\n\nfor April."
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload({"summary": raw})))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary == "Monthly electricity invoice for April."
+
+    def test_summary_trimmed_at_sentence_boundary_when_too_long(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        # Build a >600-char summary with sentence boundaries.
+        sentence = "This is one sentence about a document. "  # 39 chars including trailing space
+        raw = sentence * 20  # 780 chars; many ". " boundaries
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload({"summary": raw})))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is not None
+        assert len(result.summary) <= 600
+        # Cut at a sentence boundary -> ends with a period (no half-sentence).
+        assert result.summary.endswith(".")
+
+    def test_summary_hard_cut_when_no_sentence_boundary(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        raw = "x" * 700  # no sentence boundaries
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload({"summary": raw})))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is not None
+        assert len(result.summary) == 600
+
+    def test_missing_summary_is_not_a_triage_condition(
+        self, settings: ClassifierSettings, mocker: MockerFixture
+    ) -> None:
+        # All required invoice fields present, summary absent.
+        # Extraction must succeed (not raise IncompleteExtraction).
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload()))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Extractor(settings).extract("ocr", "invoice")
+        assert result.summary is None
+        assert result.number == "9999999999"
+
+    def test_system_prompt_mentions_summary(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
+        from bim.commands.doc.shared.extractor import Extractor
+
+        fake_requests = _build_fake_requests(mocker, _content_response(self._invoice_payload()))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        Extractor(settings).extract("ocr text", "invoice")
+        call_kwargs = fake_requests.post.call_args.kwargs
+        prompts = _system_messages(call_kwargs)
+        assert prompts, "expected a system message in the request body"
+        joined = "\n".join(prompts).lower()
+        assert "summary" in joined
