@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
 from buvis.pybase.result import CommandResult
 
-from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, to_tilde_path
+from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, compose_zettel_title
 from bim.commands.doc.shared.zettel_writer import DocumentZettelFrontmatter
 
 if TYPE_CHECKING:
@@ -105,22 +105,28 @@ def build_filing_frontmatter(
     *,
     zk_timestamp: str,
     target_pdf: Path,
-    ingest_today: date,
+    ingested_at: datetime,
     ocr_engine: str,
 ) -> DocumentZettelFrontmatter:
-    return DocumentZettelFrontmatter(
-        id=zk_timestamp,
+    title = compose_zettel_title(
+        issuer=ctx.issuer_display,
         doc_type=ctx.classify_result.doc_type,
-        issuer_slug=ctx.issuer_slug,
-        issuer_display=ctx.issuer_display,
         doc_number=ctx.extract_result.number,
-        doc_date=ctx.extract_result.date or ingest_today,
+        doc_title=ctx.extract_result.title,
+    )
+    return DocumentZettelFrontmatter(
+        id=int(zk_timestamp),
+        title=title,
+        doc_type=ctx.classify_result.doc_type,
+        issuer=ctx.issuer_display,
+        doc_number=ctx.extract_result.number,
+        doc_date=ctx.extract_result.date or ingested_at.date(),
         doc_amount=ctx.extract_result.amount,
         doc_currency=ctx.extract_result.currency,
         doc_language=ctx.classify_result.language,
-        ingest_date=ingest_today,
+        ingested_at=ingested_at,
         ingest_source=ctx.params.source,
-        file_path=to_tilde_path(target_pdf),
+        file_path=str(target_pdf.expanduser().resolve()),
         file_sha256=ctx.sha,
         ocr_engine=ocr_engine,
         ocr_mean_confidence=ctx.ocr_result.mean_confidence,

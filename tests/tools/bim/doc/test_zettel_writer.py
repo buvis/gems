@@ -112,11 +112,12 @@ class TestDocumentZettelFrontmatter:
         with pytest.raises(ValidationError):
             DocumentZettelFrontmatter(**_frontmatter_kwargs(file_path="~/Library/Foo/x.pdf"))
 
-    def test_file_path_with_embedded_tilde_raises(self) -> None:
-        # ``~`` anywhere in the path is rejected (not just leading) — it leaks
-        # the legacy shape even when buried mid-path.
+    def test_file_path_with_bare_tilde_segment_raises(self) -> None:
+        # A bare ``~`` segment buried in an absolute path (defensive) is rejected.
+        # Legitimate tildes inside directory names (e.g. ``com~apple~CloudDocs``)
+        # are NOT rejected — that's an iCloud-resolved path component.
         with pytest.raises(ValidationError):
-            DocumentZettelFrontmatter(**_frontmatter_kwargs(file_path="/Users/bob/~tmp/x.pdf"))
+            DocumentZettelFrontmatter(**_frontmatter_kwargs(file_path="/Users/bob/~/x.pdf"))
 
     def test_invalid_file_sha256_length_raises(self) -> None:
         with pytest.raises(ValidationError):
@@ -293,9 +294,9 @@ class TestZettelWriter:
         assert meta["doc-type"] == "invoice"
         assert meta["doc-number"] == 7102105594  # round-trip-safe int
         assert str(meta["doc-date"]).startswith("2021-03-11")
-        # Absolute path with no `~`.
+        # Absolute path; legitimate iCloud tildes inside path components are fine.
         assert str(meta["file-path"]).startswith("/")
-        assert "~" not in str(meta["file-path"])
+        assert not str(meta["file-path"]).startswith("~")
         assert meta["extraction-method"] == "rule:cez-invoice-2024-template:v1"
         assert isinstance(meta["tags"], list)
         assert "document/invoice" in meta["tags"]
@@ -413,9 +414,7 @@ class TestZettelWriter:
         assert "issuer: ČEZ a.s." in text
         assert "\\u010c" not in text.lower()
 
-    def test_yaml_writes_file_path_as_absolute_with_no_tilde(
-        self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter
-    ) -> None:
+    def test_yaml_writes_file_path_as_absolute(self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter) -> None:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
@@ -425,7 +424,12 @@ class TestZettelWriter:
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
         block = _frontmatter_block(target.read_text(encoding="utf-8"))
         assert "file-path:" in block
-        assert "~" not in block.split("file-path:", 1)[1].split("\n", 1)[0]
+        # The value starts with ``/`` (absolute), NOT ``~/`` (legacy form).
+        # Embedded tildes inside path components (e.g. iCloud's
+        # ``com~apple~CloudDocs``) are legitimate and not rejected.
+        value_line = block.split("file-path:", 1)[1].split("\n", 1)[0].strip()
+        assert value_line.startswith("/"), value_line
+        assert not value_line.startswith("~"), value_line
         assert SAMPLE_FILE_PATH in block
 
     def test_yaml_emits_ingested_at_with_offset(self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter) -> None:

@@ -31,7 +31,7 @@ from bim.commands.doc.shared.issuers import register_issuer
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import read_proposal, validate_for_promote
-from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, to_tilde_path
+from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, compose_zettel_title
 from bim.commands.doc.shared.zettel_writer import (
     DocumentZettelFrontmatter,
     IngestSource,
@@ -199,7 +199,11 @@ class CommandPromote:
         except ValueError as exc:
             return CommandResult(success=False, error=f"slugify failed: {exc}")
 
-        zk_timestamp = self._zk_timestamp(proposal.document.date or proposal.zettel_preview.ingest_date)
+        # zk_timestamp picks the document's own date when known, otherwise
+        # the proposal preview's ingestion timestamp (now a ``datetime``;
+        # take its date component to keep the existing ``YYYYMMDD000000``
+        # encoding from ``_zk_timestamp``).
+        zk_timestamp = self._zk_timestamp(proposal.document.date or proposal.zettel_preview.ingested_at.date())
 
         try:
             canonical_filename = build_canonical_filename(
@@ -238,9 +242,13 @@ class CommandPromote:
             return frontmatter_or_err
         frontmatter = frontmatter_or_err
 
-        body = build_zettel_body(frontmatter, ocr_result.ocr_text, self._settings.zettel)
+        body = build_zettel_body(
+            frontmatter,
+            ocr_result.ocr_text,
+            settings=self._settings.zettel,
+        )
         try:
-            zettel_path = self._services.zettel_writer.write(frontmatter, body)
+            zettel_path = self._services.zettel_writer.write(frontmatter, body, issuer_slug=ctx.proposal.issuer.slug)
         except Exception as exc:
             return CommandResult(success=False, error=f"zettel write failed: {exc}")
 
@@ -292,22 +300,35 @@ class CommandPromote:
         sha: str,
         ingest_today: date,
     ) -> DocumentZettelFrontmatter | CommandResult:
+        issuer_display = ctx.proposal.issuer.display_name or ctx.registry.issuers[ctx.proposal.issuer.slug].display_name
+        # Trust the human-approved preview's title when present; otherwise
+        # fall back to ``compose_zettel_title`` so promote stays consistent
+        # with ingest's auto-composition rule.
+        title = ctx.proposal.zettel_preview.title
+        if not title:
+            try:
+                title = compose_zettel_title(
+                    issuer=issuer_display,
+                    doc_type=ctx.proposal.document.type,
+                    doc_number=ctx.proposal.document.number,
+                    doc_title=ctx.proposal.document.title,
+                )
+            except ValueError as exc:
+                return CommandResult(success=False, error=f"compose title failed: {exc}")
         try:
             return DocumentZettelFrontmatter(
-                id=plan.zk_timestamp,
+                id=int(plan.zk_timestamp),
+                title=title,
                 doc_type=ctx.proposal.document.type,
-                issuer_slug=ctx.proposal.issuer.slug,
-                issuer_display=(
-                    ctx.proposal.issuer.display_name or ctx.registry.issuers[ctx.proposal.issuer.slug].display_name
-                ),
+                issuer=issuer_display,
                 doc_number=ctx.proposal.document.number,
                 doc_date=ctx.proposal.document.date or ingest_today,
                 doc_amount=ctx.proposal.document.amount,
                 doc_currency=ctx.proposal.document.currency,
                 doc_language=ctx.proposal.document.language,
-                ingest_date=ingest_today,
+                ingested_at=datetime.now().astimezone(),
                 ingest_source=cast(IngestSource, ctx.proposal.source.kind),
-                file_path=to_tilde_path(plan.target_pdf),
+                file_path=str(plan.target_pdf.expanduser().resolve()),
                 file_sha256=sha,
                 ocr_engine=self._settings.ocr.engine,
                 ocr_mean_confidence=ocr_result.mean_confidence,

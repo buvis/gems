@@ -100,8 +100,16 @@ class ZettelPreview(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     id: str
-    ingest_date: _dt.date
+    title: str
+    ingested_at: _dt.datetime
     tags: list[str]
+
+    @field_validator("title")
+    @classmethod
+    def _title_non_empty(cls, v: str) -> str:
+        if not v:
+            raise ValueError("title must be non-empty")
+        return v
 
 
 class TriageProposal(BaseModel):

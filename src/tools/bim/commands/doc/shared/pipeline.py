@@ -54,7 +54,7 @@ from bim.commands.doc.shared.triage import (
     format_rule_conflict_reason,
     write_proposal,
 )
-from bim.commands.doc.shared.zettel_helpers import build_zettel_tags
+from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, compose_zettel_title
 from bim.commands.doc.shared.zettel_writer import build_zettel_body
 
 if TYPE_CHECKING:
@@ -381,15 +381,20 @@ class Pipeline:
     def _file_document(
         self, ctx: _FilingContext, canonical_filename: str, zk_timestamp: str, target_pdf: Path
     ) -> CommandResult:
+        ingested_at = datetime.now().astimezone()
         frontmatter = build_filing_frontmatter(
             ctx,
             zk_timestamp=zk_timestamp,
             target_pdf=target_pdf,
-            ingest_today=date.today(),
+            ingested_at=ingested_at,
             ocr_engine=self._settings.ocr.engine,
         )
-        body = build_zettel_body(frontmatter, ctx.ocr_result.ocr_text, self._settings.zettel)
-        zettel_path = self._zettel_writer.write(frontmatter, body)
+        body = build_zettel_body(
+            frontmatter,
+            ctx.ocr_result.ocr_text,
+            settings=self._settings.zettel,
+        )
+        zettel_path = self._zettel_writer.write(frontmatter, body, issuer_slug=ctx.issuer_slug)
 
         os.replace(ctx.ocr_result.pdf_path, target_pdf)
 
@@ -608,7 +613,8 @@ class Pipeline:
             triage_reasons=list(ctx.reasons),
             zettel_preview=ZettelPreview(
                 id=zk_timestamp,
-                ingest_date=date.today(),
+                title=self._compose_triage_title(ctx, doc_type_for_filename),
+                ingested_at=datetime.now().astimezone(),
                 tags=build_zettel_tags(
                     doc_type_for_filename,
                     slug_for_filename,
@@ -705,6 +711,28 @@ class Pipeline:
         if isinstance(value, str):
             return value
         return str(value)
+
+    @staticmethod
+    def _compose_triage_title(ctx: _TriageContext, doc_type_for_filename: str) -> str:
+        """Best-effort title for the triage proposal preview.
+
+        Falls back through the same compose helper used by the filing path,
+        but tolerates missing classify/extract results (the human will edit
+        the proposal anyway). Always returns a non-empty string so the
+        ``ZettelPreview.title`` validator accepts it.
+        """
+        issuer = ctx.issuer_display or "(unknown issuer)"
+        doc_number = ctx.extract_result.number if ctx.extract_result is not None else None
+        doc_title = ctx.extract_result.title if ctx.extract_result is not None else None
+        try:
+            return compose_zettel_title(
+                issuer=issuer,
+                doc_type=doc_type_for_filename,
+                doc_number=doc_number,
+                doc_title=doc_title,
+            )
+        except ValueError:
+            return f"{issuer} {doc_type_for_filename} (untitled)"
 
     @staticmethod
     def _rule_extraction_method(rule_result: RuleResult) -> str:

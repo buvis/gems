@@ -1,21 +1,28 @@
-"""Document zettel frontmatter model, body builder, and writer.
+"""Document zettel frontmatter model, body builder, and writer (v1 shape).
 
 The writer composes a Markdown zettel with YAML frontmatter and writes it
-atomically to ``<vault_root>/<vault_documents_subdir>/<basename>.md``.
+atomically to ``<vault_root>/<vault_documents_subdir>/<issuer-slug>/<basename>.md``
+(per-issuer subfolder, mirroring the business-folder layout).
 
 The basename is derived from the canonical PDF filename in
 ``frontmatter.file_path`` by replacing the ``.pdf`` suffix with ``.md``.
+
+v1 frontmatter uses kebab-case keys (``doc-type``, ``ingested-at``,
+``file-path``, ...) emitted via Pydantic field aliases. ``id`` is a bare int.
+``ingested-at`` is a tz-aware datetime serialised as ISO 8601 with offset.
+``file-path`` is an absolute filesystem path with no ``~`` segment.
 """
 
 from __future__ import annotations
 
 import re
-from datetime import date
+import urllib.parse
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.naming import DOC_TYPES, SLUG_REGEX
@@ -31,7 +38,8 @@ __all__ = [
 ]
 
 
-_ID_REGEX = re.compile(r"^\d{14}$")
+_ID_MIN = 10**13
+_ID_MAX = 10**14 - 1
 # llm:<model-name> permits colons in the tail because Ollama's canonical
 # model identifier uses ``name:tag`` form (e.g. qwen2.5:7b-instruct). rule and
 # rule+llm forms keep the strict three-segment grammar so audit queries like
@@ -48,54 +56,51 @@ IngestSource = Literal[
 ]
 
 
-class _DoubleQuotedStr(str):
-    """Marker subclass so YAML emits the value with double quotes."""
-
-
-def _double_quoted_representer(dumper: yaml.SafeDumper, data: _DoubleQuotedStr) -> yaml.ScalarNode:
-    return dumper.represent_scalar("tag:yaml.org,2002:str", str(data), style='"')
-
-
-class _DocYamlDumper(yaml.SafeDumper):
-    """Local SafeDumper subclass so the double-quoted str representer is scoped to this writer."""
-
-
-_DocYamlDumper.add_representer(_DoubleQuotedStr, _double_quoted_representer)
-
-
 class DocumentZettelFrontmatter(BaseModel):
-    """Validated frontmatter for a document zettel.
+    """Validated v1 frontmatter for a document zettel.
 
-    Field order here matches the YAML output order (Python dicts preserve
-    insertion order; we serialize with ``sort_keys=False``).
+    Python attribute names stay snake_case so callers keep working;
+    ``model_dump(by_alias=True)`` and YAML serialisation use the kebab-case
+    aliases (``doc-type``, ``ingested-at``, ``file-path``, ...). Field order
+    here matches the YAML output order (Python dicts preserve insertion
+    order; we serialise with ``sort_keys=False``).
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
-    id: str
+    id: int
     type: Literal["document"] = "document"
-    doc_type: str
-    issuer_slug: str
-    issuer_display: str
-    doc_number: str | None
-    doc_date: date
-    doc_amount: float | None
-    doc_currency: str | None
-    doc_language: str | None
-    ingest_date: date
-    ingest_source: IngestSource
-    file_path: str
-    file_sha256: str
-    ocr_engine: str | None
-    ocr_mean_confidence: float | None
-    extraction_method: str
+    title: str
+    doc_type: str = Field(alias="doc-type")
+    issuer: str
+    doc_number: str | None = Field(alias="doc-number")
+    doc_date: date = Field(alias="doc-date")
+    doc_amount: float | None = Field(alias="doc-amount")
+    doc_currency: str | None = Field(alias="doc-currency")
+    doc_language: str | None = Field(alias="doc-language")
+    ingested_at: datetime = Field(alias="ingested-at")
+    ingest_source: IngestSource = Field(alias="ingest-source")
+    file_path: str = Field(alias="file-path")
+    file_sha256: str = Field(alias="file-sha256")
+    ocr_engine: str | None = Field(alias="ocr-engine")
+    ocr_mean_confidence: float | None = Field(alias="ocr-mean-confidence")
+    extraction_method: str = Field(alias="extraction-method")
     tags: list[str]
 
     @field_validator("id")
     @classmethod
-    def _id_is_14_digits(cls, v: str) -> str:
-        if not _ID_REGEX.match(v):
-            raise ValueError(f"id must be 14 digits, got {v!r}")
+    def _id_is_14_digits(cls, v: int) -> int:
+        if not isinstance(v, int) or isinstance(v, bool) or v < _ID_MIN or v > _ID_MAX:
+            raise ValueError(f"id must be a 14-digit integer in [{_ID_MIN}, {_ID_MAX}], got {v!r}")
+        return v
+
+    @field_validator("title")
+    @classmethod
+    def _title_non_empty(cls, v: str) -> str:
+        if not v:
+            raise ValueError("title must be non-empty")
+        if v.strip() != v:
+            raise ValueError(f"title must not have leading/trailing whitespace, got {v!r}")
         return v
 
     @field_validator("doc_type")
@@ -105,26 +110,32 @@ class DocumentZettelFrontmatter(BaseModel):
             raise ValueError(f"doc_type must be one of {DOC_TYPES}, got {v!r}")
         return v
 
-    @field_validator("issuer_slug")
-    @classmethod
-    def _issuer_slug_is_canonical(cls, v: str) -> str:
-        if not SLUG_REGEX.match(v):
-            raise ValueError(
-                f"issuer_slug must be lowercase kebab-case ASCII (matching {SLUG_REGEX.pattern}), got {v!r}"
-            )
-        return v
-
     @field_validator("file_path")
     @classmethod
-    def _file_path_uses_tilde(cls, v: str) -> str:
-        if not v.startswith("~/"):
-            raise ValueError(f"file_path must start with '~/', got {v!r}")
+    def _file_path_is_absolute_no_tilde(cls, v: str) -> str:
+        # Reject the legacy ``~/...`` shape: not absolute (so caught by the
+        # is_absolute check) AND any path *component* equal to a bare ``~``
+        # (defensive — catches malformed absolute paths like ``/foo/~/bar``).
+        # Tildes embedded within directory names (e.g. iCloud's
+        # ``com~apple~CloudDocs``) are legitimate filesystem segments and
+        # not rejected.
+        if not Path(v).is_absolute():
+            raise ValueError(f"file_path must be absolute, got {v!r}")
+        if any(part == "~" for part in Path(v).parts):
+            raise ValueError(f"file_path must not contain a bare '~' segment, got {v!r}")
         return v
 
     @field_validator("file_sha256")
     @classmethod
     def _file_sha256_is_hex64(cls, v: str) -> str:
         return validate_sha256_hex64("file_sha256", v)
+
+    @field_validator("ingested_at")
+    @classmethod
+    def _ingested_at_is_tz_aware(cls, v: datetime) -> datetime:
+        if v.tzinfo is None or v.utcoffset() is None:
+            raise ValueError(f"ingested_at must be timezone-aware, got naive {v!r}")
+        return v
 
     @field_validator("extraction_method")
     @classmethod
@@ -134,82 +145,75 @@ class DocumentZettelFrontmatter(BaseModel):
         return v
 
 
-def _doc_type_title(doc_type: str) -> str:
-    """Title-case a doc_type without lowercasing the rest (matches project convention)."""
-    if not doc_type:
-        return doc_type
-    return doc_type[0].upper() + doc_type[1:]
+class _ZettelYamlDumper(yaml.SafeDumper):
+    """Local SafeDumper subclass scoped to ``ZettelWriter._serialize_frontmatter``.
 
-
-_NBSP = "\xa0"
-
-
-def _format_amount(amount: float) -> str:
-    """Render a monetary amount with Czech-locale thousands separator (NBSP).
-
-    Drops trailing ``.0`` for whole-number amounts; renders fractional amounts
-    with exactly two decimal places. Thousands grouped from the right with
-    U+00A0 (no-break space) per Czech typographic convention.
+    The only customisation is the datetime representer: PyYAML's default
+    emits ``2026-05-04 14:30:22+02:00`` (space separator), which Python
+    3.10's ``datetime.fromisoformat`` cannot parse (3.11+ accepts both
+    forms). The PRD's success metric requires ``fromisoformat`` parses
+    ``ingested-at`` on every supported Python version, so we emit the
+    ``T`` form via ``datetime.isoformat()``. Scoped to a subclass to
+    avoid mutating the global ``yaml.SafeDumper`` registry.
     """
-    is_whole = amount == int(amount)
-    if is_whole:
-        integer_str = str(int(amount))
-        decimal_str = ""
-    else:
-        integer_str, _, frac = f"{amount:.2f}".partition(".")
-        decimal_str = f".{frac}"
 
-    sign = ""
-    if integer_str.startswith("-"):
-        sign = "-"
-        integer_str = integer_str[1:]
 
-    # Group from the right in threes, joined by NBSP.
-    grouped: list[str] = []
-    while len(integer_str) > 3:
-        grouped.append(integer_str[-3:])
-        integer_str = integer_str[:-3]
-    grouped.append(integer_str)
-    formatted_int = _NBSP.join(reversed(grouped))
+def _datetime_representer(dumper: yaml.SafeDumper, data: datetime) -> yaml.ScalarNode:
+    return dumper.represent_scalar("tag:yaml.org,2002:timestamp", data.isoformat())
 
-    return f"{sign}{formatted_int}{decimal_str}"
+
+_ZettelYamlDumper.add_representer(datetime, _datetime_representer)
+
+
+def _coerce_doc_number(value: str | None) -> int | str | None:
+    """Render doc_number as bare int when the string round-trips, else as string.
+
+    ``"7102105594"`` -> ``7102105594`` (int): ``str(7102105594) == "7102105594"``.
+    ``"007"`` -> ``"007"`` (string): ``str(7) == "7"`` ≠ ``"007"``, so leading
+    zeroes block the int form. PyYAML auto-quotes leading-zero strings that
+    would re-parse as numbers.
+    """
+    if value is None:
+        return None
+    try:
+        as_int = int(value)
+    except (TypeError, ValueError):
+        return value
+    if str(as_int) == value:
+        return as_int
+    return value
 
 
 def build_zettel_body(
     frontmatter: DocumentZettelFrontmatter,
     ocr_text: str,
+    summary: str | None = None,
     settings: ZettelSettings | None = None,
 ) -> str:
     """Compose the Markdown body (everything after the YAML frontmatter).
 
-    The body contains a header, a link to the canonical PDF, key metadata
-    lines, and an Obsidian-style collapsible callout containing the OCR text
-    with each line prefixed by ``> ``. When ``settings.ocr_text_max_chars`` is
-    positive and the OCR text exceeds it, the text is truncated and a Unicode
-    ellipsis is appended before the callout is composed.
+    v1 layout: ``# {title}``, blank, ``[Open PDF](file://...)``, blank,
+    optional summary paragraph + blank, ``## OCR text``, blank, the existing
+    Obsidian ``> [!quote]- Full text`` callout with each OCR line prefixed
+    by ``> ``. When ``settings.ocr_text_max_chars`` is positive and the OCR
+    text exceeds it, the text is truncated with a Unicode ellipsis appended
+    before the callout is composed.
     """
-    title = _doc_type_title(frontmatter.doc_type)
-    if frontmatter.doc_number is None:
-        header = f"# {title} — {frontmatter.issuer_display}"
-    else:
-        header = f"# {title} {frontmatter.doc_number} — {frontmatter.issuer_display}"
+    file_url = "file://" + urllib.parse.quote(frontmatter.file_path, safe="/~")
 
     lines: list[str] = [
-        header,
+        f"# {frontmatter.title}",
         "",
-        f"[Open PDF]({frontmatter.file_path})",
+        f"[Open PDF]({file_url})",
         "",
-        f"**Date:** {frontmatter.doc_date.isoformat()}",
     ]
 
-    if frontmatter.doc_amount is not None:
-        currency = frontmatter.doc_currency or ""
-        formatted = _format_amount(frontmatter.doc_amount)
-        lines.append(f"**Amount:** {formatted} {currency}".rstrip())
+    if summary:
+        lines.append(summary)
+        lines.append("")
 
     lines.extend(
         [
-            "",
             "## OCR text",
             "",
             "> [!quote]- Full text",
@@ -238,13 +242,20 @@ class ZettelWriter:
         self.vault_root = vault_root
         self.vault_documents_subdir = vault_documents_subdir
 
-    def write(self, frontmatter: DocumentZettelFrontmatter, body: str) -> Path:
-        """Serialize frontmatter to YAML, prepend it to ``body``, write atomically.
+    def write(self, frontmatter: DocumentZettelFrontmatter, body: str, issuer_slug: str) -> Path:
+        """Serialise frontmatter to YAML, prepend it to ``body``, write atomically.
 
-        Returns the absolute path of the written ``.md`` file.
+        The zettel is placed under ``<vault_root>/<vault_documents_subdir>/<issuer_slug>/``
+        (per-issuer subfolder, created on demand). Returns the absolute path
+        of the written ``.md`` file.
         """
+        if not SLUG_REGEX.match(issuer_slug):
+            raise ValueError(
+                f"issuer_slug must be lowercase kebab-case ASCII (matching {SLUG_REGEX.pattern}), got {issuer_slug!r}"
+            )
+
         basename = self._derive_basename(frontmatter.file_path)
-        target_path = self.vault_root / self.vault_documents_subdir / basename
+        target_path = self.vault_root / self.vault_documents_subdir / issuer_slug / basename
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         yaml_text = self._serialize_frontmatter(frontmatter)
@@ -261,29 +272,15 @@ class ZettelWriter:
 
     @staticmethod
     def _serialize_frontmatter(fm: DocumentZettelFrontmatter) -> str:
-        payload: dict[str, object] = {
-            "id": _DoubleQuotedStr(fm.id),
-            "type": fm.type,
-            "doc_type": fm.doc_type,
-            "issuer_slug": fm.issuer_slug,
-            "issuer_display": fm.issuer_display,
-            "doc_number": _DoubleQuotedStr(fm.doc_number) if fm.doc_number is not None else None,
-            "doc_date": fm.doc_date,
-            "doc_amount": fm.doc_amount,
-            "doc_currency": fm.doc_currency,
-            "doc_language": fm.doc_language,
-            "ingest_date": fm.ingest_date,
-            "ingest_source": fm.ingest_source,
-            "file_path": fm.file_path,
-            "file_sha256": fm.file_sha256,
-            "ocr_engine": fm.ocr_engine,
-            "ocr_mean_confidence": fm.ocr_mean_confidence,
-            "extraction_method": fm.extraction_method,
-            "tags": list(fm.tags),
-        }
+        payload = fm.model_dump(by_alias=True, mode="python")
+        # Re-coerce doc-number from the string-or-None we store internally to
+        # ``int`` when round-trippable, leaving leading-zero strings as YAML
+        # strings (which PyYAML auto-quotes when ambiguous with numbers).
+        if "doc-number" in payload:
+            payload["doc-number"] = _coerce_doc_number(payload["doc-number"])
         return yaml.dump(
             payload,
-            Dumper=_DocYamlDumper,
+            Dumper=_ZettelYamlDumper,
             default_flow_style=False,
             sort_keys=False,
             allow_unicode=True,
