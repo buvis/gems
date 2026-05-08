@@ -1,15 +1,15 @@
 """Shared fixtures for ``tests/tools/bim/doc/``.
 
-The cycle-3 doubt-fix added a Pydantic validator on ``DocPaths.business_root``
-requiring it to live under ``Path.home()`` (so the synthetic ``~<absolute>``
-fallback in ``to_tilde_path`` cannot reach zettel frontmatter in production).
-Tests in this directory pass ``tmp_path / "Business"`` as ``business_root``,
-which on macOS resolves to ``/private/var/folders/...`` — outside ``~``.
+A Pydantic validator on ``DocPaths.business_root`` requires it to live
+under ``Path.home()`` (the iCloud-synced vault and business folders are
+expected to be under ``~/Library/...``). Tests in this directory pass
+``tmp_path / "Business"`` as ``business_root``, which on macOS resolves
+to ``/private/var/folders/...`` — outside ``~``.
 
-This conftest auto-redirects ``Path.home()`` to ``tmp_path`` for every test
-that takes the ``tmp_path`` fixture, so existing tests keep working without
-each one having to opt into the patch. Tests that don't use ``tmp_path`` are
-unaffected.
+This conftest auto-redirects ``Path.home()`` to ``tmp_path`` for every
+test that takes the ``tmp_path`` fixture, so existing tests keep working
+without each one having to opt into the patch. Tests that don't use
+``tmp_path`` are unaffected.
 """
 
 from __future__ import annotations

@@ -189,10 +189,10 @@ class TestDocSettings:
 
 
 class TestBusinessRootUnderHomeValidator:
-    """Pin the cycle-3 doubt-fix validator: ``DocPaths.business_root`` must
-    resolve to a path under ``Path.home()``. Without this guard, the synthetic
-    ``~<absolute>`` fallback in ``to_tilde_path`` would silently persist
-    malformed file paths into zettel frontmatter.
+    """Pin the validator: ``DocPaths.business_root`` must resolve to a path
+    under ``Path.home()``. The vault and business folders are expected to
+    be iCloud-synced under ``~/Library/...``; a non-home path indicates a
+    misconfiguration and should fail at settings load.
     """
 
     def test_business_root_under_home_accepted(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
