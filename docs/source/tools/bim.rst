@@ -332,3 +332,132 @@ Re-OCR keeps the pre-modification copy under
 ``originals_retention_days`` (default 30). A garbage-collection command
 (``bim doc gc-originals``) is out of scope for v1; clean these manually
 if needed.
+
+Rule engine
+~~~~~~~~~~~
+
+The pipeline runs a deterministic, declarative rule engine **before** the
+LLM classifier and extractor. For documents whose templates are stable
+(recurring vendor invoices, statements with fixed layouts), rules eliminate
+LLM calls entirely, making extraction reproducible and auditable.
+
+When no rule matches, behavior is unchanged from LLM-only ingestion.
+
+**Why rules exist:**
+
+* **Determinism.** A rule for CEZ invoices either matches or doesn't.
+  No probabilistic drift across model versions or sampling.
+* **Auditability.** A zettel's ``extraction-method: rule:cez-invoice-2024-template:v1``
+  records exactly which rule produced its metadata.
+* **Cost.** No round-trip to Ollama for documents a regex can pin.
+
+**Rule schema (under each issuer in ``issuers.yml``):**
+
+.. code-block:: yaml
+
+    issuers:
+      cez-as:
+        display_name: ČEZ a.s.
+        aliases: [ČEZ, cez.cz]
+
+        rules:
+          - id: cez-invoice-2024-template
+            version: 1
+            priority: 100
+            partial: false
+            match:
+              ocr_contains: ["IČ: 45274649", "Faktura"]
+              ocr_matches: ["Faktura č\\.\\s*(\\d{10})"]
+            extract:
+              doc_type: invoice
+              doc_number:
+                from: ocr_match
+                pattern: "Faktura č\\.\\s*(\\d{10})"
+                group: 1
+              doc_date:
+                from: ocr_match
+                pattern: "Datum vystavení:\\s*(\\d{2}\\.\\d{2}\\.\\d{4})"
+                group: 1
+                format: "%d.%m.%Y"
+                transform: parse_date
+              doc_amount:
+                from: ocr_match
+                pattern: "Celkem k úhradě:\\s*([\\d\\s]+),\\d{2}\\s*Kč"
+                group: 1
+                transform: strip_whitespace_to_int
+              doc_currency: CZK
+              doc_language: cs
+
+          - id: cez-fingerprint
+            partial: true
+            match:
+              ocr_contains: ["IČ: 45274649"]
+            extract:
+              issuer_slug: cez-as
+              issuer_display: ČEZ a.s.
+              doc_language: cs
+
+A rule with ``partial: true`` pins some fields and lets the LLM fill the
+rest (typical use: fingerprint by IČO, let the LLM resolve the doc_type and
+specific fields).
+
+**Match clauses (v1 set):**
+
+.. list-table::
+   :header-rows: 1
+
+   * - Clause
+     - Behavior
+   * - ``ocr_contains``
+     - Substring(s) appear in OCR text. Case-folded + ASCII-folded.
+   * - ``ocr_matches``
+     - Regex(es) match OCR text via ``re.search``.
+   * - ``email_from_domain``
+     - Sender domain matches ``.email.yml`` sidecar's ``from``.
+   * - ``email_subject_contains``
+     - Substring(s) appear in email subject.
+   * - ``email_subject_matches``
+     - Regex match against email subject.
+   * - ``original_filename_matches``
+     - Regex match against the source file's original name.
+
+All clauses within a rule are ANDed. Source-irrelevant clauses
+(e.g. ``email_*`` on a scan) are silently false.
+
+**Transforms (v1 set):**
+
+``strip_whitespace_to_int``, ``strip_whitespace_to_decimal``, ``parse_date``
+(uses ``format``), ``lowercase``, ``uppercase``, ``strip``, ``slugify``.
+
+**Precedence:**
+
+1. Full rules (``partial: false``) beat partial rules.
+2. Among same partial-ness, higher ``priority`` wins.
+3. Ties broken by definition order in ``issuers.yml``.
+
+**Conflict** (two rules of same partial-ness disagreeing on ``issuer_slug``)
+sends the document to triage with a ``rule_conflict: <id1> vs <id2>`` reason.
+
+**bim doc rules subcommands:**
+
+``bim doc rules list``
+    Print all rules with id, issuer, version, partial, priority, enabled.
+
+``bim doc rules validate``
+    Static validation of ``issuers.yml`` rule blocks. Catches duplicate
+    rule ids, uncompilable regexes, unknown transforms, reserved-field
+    assignments. Run this after editing rules.
+
+``bim doc rules test <rule-id> --pdf <path>``
+    Run one rule against one PDF. Prints clause-by-clause pass/fail and
+    extracted fields. Read-only — no zettel, no file move.
+
+``bim doc rules backtest [--rule ID] [--issuer SLUG]``
+    Walk ``business_root`` and report per-rule match counts grouped by
+    issuer folder. Read-only. Slow on large archives (OCRs on demand).
+    Run this **before deploying any new rule** — false positives that
+    file documents under the wrong issuer with confident metadata are the
+    most dangerous failure mode.
+
+**Authoring workflow:** write rule → ``rules validate`` → ``rules test``
+on a sample → ``rules backtest`` to verify no cross-folder hits → deploy.
