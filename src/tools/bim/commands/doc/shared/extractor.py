@@ -50,6 +50,13 @@ _DATE_FIELDS: frozenset[str] = frozenset(
 
 _NUMERIC_FIELDS: frozenset[str] = frozenset({"amount", "balance"})
 
+_PINNED_FIELD_ALIASES: dict[str, str] = {
+    "doc_number": "number",
+    "doc_date": "date",
+    "doc_amount": "amount",
+    "doc_currency": "currency",
+}
+
 
 class IncompleteExtraction(Exception):
     """Raised when the extractor cannot produce a complete, usable result.
@@ -133,7 +140,11 @@ class ExtractResult(BaseModel):
 
 
 def _system_prompt(doc_type: str) -> str:
-    required = ", ".join(_REQUIRED_FIELDS[doc_type])
+    return _reduced_system_prompt(doc_type, omit_fields=set())
+
+
+def _reduced_system_prompt(doc_type: str, *, omit_fields: set[str]) -> str:
+    required = ", ".join(name for name in _REQUIRED_FIELDS[doc_type] if name not in omit_fields)
     return (
         "You extract structured fields from scanned business documents.\n"
         f"The document type is: {doc_type}.\n"
@@ -167,7 +178,19 @@ def _user_prompt(ocr_text: str, hints: dict[str, str] | None = None) -> str:
     return "\n\n".join(parts) + "\n"
 
 
+def _normalize_pinned_fields(pinned: dict[str, object]) -> dict[str, object]:
+    allowed_fields = set(ExtractResult.model_fields.keys()) - {"doc_type"}
+    normalized: dict[str, object] = {}
+    for key, value in pinned.items():
+        field_name = _PINNED_FIELD_ALIASES.get(key, key)
+        if field_name in allowed_fields:
+            normalized[field_name] = value
+    return normalized
+
+
 def _coerce_date(name: str, value: object) -> datetime.date:
+    if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
+        return value
     if not isinstance(value, str) or not value:
         raise IncompleteExtraction([f"could not coerce date '{value}' for field {name}"])
     try:
@@ -322,6 +345,79 @@ class Extractor:
 
         # Skip the missing-field reason for fields that already failed
         # coercion - the coerce error names them more precisely.
+        missing = [
+            f"missing field {name}"
+            for name in _REQUIRED_FIELDS[doc_type]
+            if coerced.get(name) is None and name not in errored_fields
+        ]
+
+        if coerce_errors or missing:
+            partial = ExtractResult(doc_type=doc_type, **coerced)
+            raise IncompleteExtraction(coerce_errors + missing, partial=partial)
+
+        return ExtractResult(doc_type=doc_type, **coerced)
+
+    def extract_with_pinned(
+        self,
+        ocr_text: str,
+        doc_type: str,
+        pinned: dict[str, object],
+        *,
+        model: str,
+        hints: dict[str, str] | None = None,
+    ) -> ExtractResult:
+        """Extract with some fields pre-pinned by the rule engine.
+
+        Skips the LLM entirely if ``pinned`` covers all required fields for
+        ``doc_type``. Otherwise asks the LLM only for un-pinned required fields
+        and merges pinned values verbatim, with pinned values taking precedence.
+        """
+        if doc_type not in DOC_TYPES:
+            raise ValueError(f"doc_type must be one of {DOC_TYPES}, got {doc_type!r}")
+
+        normalized = _normalize_pinned_fields(pinned)
+        normalized_coerced = {name: _coerce_one_field(name, value) for name, value in normalized.items()}
+        required = set(_REQUIRED_FIELDS[doc_type]) - set(normalized_coerced.keys())
+        if not required:
+            return ExtractResult(doc_type=doc_type, **normalized_coerced)
+
+        # Lazy import keeps the module loadable without the [doc] extra installed.
+        import requests
+
+        url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
+        body = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": _reduced_system_prompt(doc_type, omit_fields=set(normalized_coerced))},
+                {"role": "user", "content": _user_prompt(ocr_text, hints)},
+            ],
+            "format": "json",
+            "stream": False,
+        }
+
+        try:
+            response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
+            response.raise_for_status()
+            payload = response.json()
+        except requests.exceptions.Timeout:
+            raise
+        except Exception as exc:
+            # Transport-layer failure - retry against primary or fall back.
+            raise IncompleteExtraction([f"HTTP error: {exc}"], transient=True) from exc
+
+        try:
+            raw_content = payload["message"]["content"]
+            parsed = json.loads(raw_content)
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise IncompleteExtraction([f"could not parse model response as JSON: {exc}"]) from exc
+
+        if not isinstance(parsed, dict):
+            raise IncompleteExtraction(["could not parse model response as JSON: not an object"])
+
+        parsed_unpinned = {name: value for name, value in parsed.items() if name not in normalized_coerced}
+        coerced, coerce_errors, errored_fields = _coerce_parsed(parsed_unpinned)
+        coerced.update(normalized_coerced)
+
         missing = [
             f"missing field {name}"
             for name in _REQUIRED_FIELDS[doc_type]
