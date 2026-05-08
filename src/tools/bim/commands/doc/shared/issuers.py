@@ -84,14 +84,25 @@ class IssuerRegistry(BaseModel):
         overlap = set(self.reserved_slugs) & set(self.issuers.keys())
         if overlap:
             raise ValueError(f"reserved_slugs and issuers keys must be disjoint, conflict: {sorted(overlap)}")
-        owners_by_rule_id: dict[str, set[str]] = {}
+        # Track every (rule_id, issuer_slug) occurrence so we catch both
+        # cross-issuer duplicates (same id under different slugs) and
+        # within-issuer duplicates (same id twice under one slug). The PRD's
+        # "Rule.id unique across all issuers" wording covers both.
+        occurrences_by_rule_id: dict[str, list[str]] = {}
         for issuer_slug, entry in self.issuers.items():
             for rule in entry.rules:
-                owners_by_rule_id.setdefault(rule.id, set()).add(issuer_slug)
-        for rule_id, issuer_slugs in owners_by_rule_id.items():
-            if len(issuer_slugs) > 1:
-                first, second = sorted(issuer_slugs)[:2]
+                occurrences_by_rule_id.setdefault(rule.id, []).append(issuer_slug)
+        for rule_id, issuer_slugs in occurrences_by_rule_id.items():
+            if len(issuer_slugs) <= 1:
+                continue
+            unique = sorted(set(issuer_slugs))
+            if len(unique) > 1:
+                first, second = unique[:2]
                 raise ValueError(f"duplicate rule id {rule_id!r} defined in issuers {first!r} and {second!r}")
+            only_slug = unique[0]
+            raise ValueError(
+                f"duplicate rule id {rule_id!r} defined {len(issuer_slugs)} times under issuer {only_slug!r}"
+            )
         return self
 
 

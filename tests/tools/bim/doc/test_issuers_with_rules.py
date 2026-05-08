@@ -162,6 +162,58 @@ class TestCrossIssuerRuleIdUniqueness:
         assert "cez-fingerprint" in str(exc_info.value)
 
 
+class TestWithinIssuerRuleIdUniqueness:
+    """A single issuer must not declare two rules with the same id. The
+    cross-issuer check is necessary but not sufficient — same-issuer dups
+    silently make ``bim doc rules test/backtest --rule <id>`` ambiguous.
+    """
+
+    @pytest.fixture
+    def within_issuer_duplicate_path(self, tmp_path: Path) -> Path:
+        path = tmp_path / "issuers.yml"
+        path.write_text(
+            """\
+version: 1
+doc_types: [invoice]
+reserved_slugs: [unknown]
+issuers:
+  cez-as:
+    display_name: CEZ a.s.
+    rules:
+      - id: cez-fingerprint
+        partial: true
+        match:
+          ocr_contains: ["IC: 45274649"]
+        extract:
+          issuer_slug: cez-as
+          issuer_display: CEZ a.s.
+      - id: cez-fingerprint
+        partial: true
+        match:
+          ocr_contains: ["DIC: CZ45274649"]
+        extract:
+          issuer_slug: cez-as
+          issuer_display: CEZ a.s.
+""",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_within_issuer_duplicate_rule_id_rejected(self, within_issuer_duplicate_path: Path) -> None:
+        with pytest.raises((RuntimeError, ValueError, ValidationError)):
+            load_registry(within_issuer_duplicate_path)
+
+    def test_within_issuer_duplicate_error_mentions_rule_id(self, within_issuer_duplicate_path: Path) -> None:
+        with pytest.raises((RuntimeError, ValueError, ValidationError)) as exc_info:
+            load_registry(within_issuer_duplicate_path)
+        assert "cez-fingerprint" in str(exc_info.value)
+
+    def test_within_issuer_duplicate_error_mentions_issuer_slug(self, within_issuer_duplicate_path: Path) -> None:
+        with pytest.raises((RuntimeError, ValueError, ValidationError)) as exc_info:
+            load_registry(within_issuer_duplicate_path)
+        assert "cez-as" in str(exc_info.value)
+
+
 class TestCiphertextRegression:
     """Adding the rules field must not break the existing PGP-encrypted
     file detection.
