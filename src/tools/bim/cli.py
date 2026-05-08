@@ -720,12 +720,19 @@ def doc_rules_validate(ctx: click.Context) -> None:
         return
     try:
         from bim.commands.doc.rules.validate import CommandRulesValidate
-        from bim.dependencies import get_issuer_registry
     except ImportError:
         console.require_import("doc")
         return
-    bundle = get_issuer_registry(settings.doc)
-    result = CommandRulesValidate().run(bundle.registry_path)
+    # Validate is the command users run *to diagnose* a malformed
+    # issuers.yml. Loading via ``get_issuer_registry`` here would raise on
+    # the exact failure modes we want to report (uncompilable regex,
+    # unknown transform, reserved-field, duplicate id). Pass the path
+    # directly; the command class catches loader errors itself.
+    issuers_file = settings.doc.paths.issuers_file
+    if issuers_file is None:
+        console.panic("[doc] paths.issuers_file is not set")
+        return
+    result = CommandRulesValidate().run(issuers_file)
     if not result.success:
         console.panic(result.error or "validate failed")
         return
@@ -759,7 +766,11 @@ def doc_rules_test(ctx: click.Context, rule_id: str, pdf_path: Path) -> None:
     bundle = get_issuer_registry(settings.doc)
     result = CommandRulesTest(ocr_runner=get_ocr_runner(settings.doc)).run(bundle.registry, rule_id, pdf_path)
     if not result.success:
-        console.failure(result.error or "rule test failed")
+        # PRD acceptance: "Exit 0 on match, non-zero on no-match." console.panic
+        # prints the failure body (clause-by-clause result, "Result: NO MATCH")
+        # and exits 1 — same styling as console.failure plus the required
+        # non-zero exit code.
+        console.panic(result.error or "rule test failed")
         return
     console.info(result.output or "")
     console.success("MATCH")

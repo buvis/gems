@@ -119,6 +119,9 @@ issuers:
         )
         result = CommandRulesValidate().run(issuers_path)
         assert result.success is False
+        # Error message must name the offending rule by id (PRD acceptance:
+        # "per-error details with rule id and field name").
+        assert "bad-regex" in (result.error or "")
 
     def test_unknown_transform(self, issuers_path: Path) -> None:
         from bim.commands.doc.rules.validate import CommandRulesValidate
