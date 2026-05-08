@@ -20,16 +20,33 @@ from bim.commands.doc.shared.naming import DOC_TYPES
 from bim.commands.doc.shared.validators import validate_sha256_hex64
 
 __all__ = [
+    "RULE_CONFLICT_REASON_PREFIX",
     "DocumentProposal",
     "IssuerProposal",
     "OCRProposal",
     "SourceProposal",
     "TriageProposal",
     "ZettelPreview",
+    "format_rule_conflict_reason",
     "read_proposal",
     "validate_for_promote",
     "write_proposal",
 ]
+
+
+RULE_CONFLICT_REASON_PREFIX = "rule_conflict"
+
+
+def format_rule_conflict_reason(rule_ids: list[str]) -> str:
+    """Build a typed triage reason string for a rule-engine conflict.
+
+    Two or more rule ids that disagree on extraction (typically on
+    ``issuer_slug``) are joined alphabetically with ``" vs "`` and
+    prefixed with :data:`RULE_CONFLICT_REASON_PREFIX`.
+    """
+    if len(rule_ids) < 2:
+        raise ValueError("rule_conflict requires at least two rule ids")
+    return f"{RULE_CONFLICT_REASON_PREFIX}: {' vs '.join(sorted(rule_ids))}"
 
 
 class IssuerProposal(BaseModel):
