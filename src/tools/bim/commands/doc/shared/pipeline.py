@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 from buvis.pybase.result import CommandResult
 
@@ -28,6 +28,18 @@ from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.extractor import IncompleteExtraction
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
+from bim.commands.doc.shared.pipeline_helpers import (
+    _ClassifyStage,
+    _ExtractStage,
+    _FilingContext,
+    _RuleStage,
+    _TriageContext,
+    build_filing_frontmatter,
+    build_filing_result,
+)
+from bim.commands.doc.shared.pipeline_helpers import (
+    retry_llm_call as _retry_llm_call,
+)
 from bim.commands.doc.shared.progress import NoOpProgressReporter
 from bim.commands.doc.shared.rules.engine import RuleEngine
 from bim.commands.doc.shared.rules.models import RuleResult, SourceMetadata
@@ -42,15 +54,10 @@ from bim.commands.doc.shared.triage import (
     format_rule_conflict_reason,
     write_proposal,
 )
-from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, to_tilde_path
-from bim.commands.doc.shared.zettel_writer import (
-    DocumentZettelFrontmatter,
-    build_zettel_body,
-)
+from bim.commands.doc.shared.zettel_helpers import build_zettel_tags
+from bim.commands.doc.shared.zettel_writer import build_zettel_body
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from bim.commands.doc.shared.classifier import Classifier, ClassifyResult
     from bim.commands.doc.shared.extractor import Extractor, ExtractResult
     from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -62,49 +69,6 @@ if TYPE_CHECKING:
     from bim.params.doc_ingest import IngestParams
 
 __all__ = ["IngestOutcome", "Pipeline", "PipelineServices"]
-
-
-T = TypeVar("T")
-
-
-def _retry_llm_call(
-    *,
-    func: Callable[[str], T],
-    primary_model: str,
-    fallback_model: str,
-    max_retries: int,
-    is_transient: Callable[[Exception], bool],
-) -> T:
-    """Run ``func(model)`` with primary→retries→fallback semantics.
-
-    The pipeline calls into the classifier and extractor through this helper
-    so spec §11 retry semantics land in one place:
-
-    - Try ``func(primary_model)`` once.
-    - On a transient exception (per ``is_transient``), retry up to
-      ``max_retries`` more times against ``primary_model``.
-    - On a non-transient exception, re-raise immediately - retries on a
-      semantic failure (e.g. unparseable model output) will not help.
-    - If all primary attempts raise transient errors, try ``func(fallback_model)``
-      once. If the fallback raises (transient or otherwise), re-raise that
-      exception unchanged.
-    - ``requests.exceptions.Timeout`` is non-retryable by definition (the
-      underlying boundary services re-raise it unwrapped); the helper sees it
-      as a non-transient via ``is_transient`` returning False, so it bubbles
-      out without retry or fallback.
-    """
-    attempts = 0
-    while attempts < 1 + max_retries:
-        try:
-            return func(primary_model)
-        except Exception as exc:
-            if not is_transient(exc):
-                raise
-            attempts += 1
-
-    # All primary attempts exhausted with transient errors. Try fallback once;
-    # any exception from it is the final word.
-    return func(fallback_model)
 
 
 class IngestOutcome(str, Enum):
@@ -132,42 +96,6 @@ class PipelineServices:
     extractor: Extractor
     registry: IssuerRegistry
     zettel_writer: ZettelWriter
-
-
-@dataclass(frozen=True)
-class _TriageContext:
-    """Snapshot of pipeline state at the moment a triage decision was made.
-
-    Internal helper - not part of the public API. Bundles the inputs needed
-    to compose a triage proposal so ``_triage`` keeps a single-arg signature.
-    """
-
-    params: IngestParams
-    sha: str
-    ocr_result: OCRResult
-    classify_result: ClassifyResult | None
-    extract_result: ExtractResult | None
-    reasons: list[str]
-    issuer_slug: str
-    issuer_display: str
-
-
-@dataclass(frozen=True)
-class _FilingContext:
-    """Bundle of inputs threaded into ``_finalize_filing``.
-
-    Keeps the helper signature narrow so ruff PLR0913 stays satisfied while
-    the orchestrator delegates the post-extract zettel-build path.
-    """
-
-    params: IngestParams
-    sha: str
-    ocr_result: OCRResult
-    classify_result: ClassifyResult
-    extract_result: ExtractResult
-    issuer_slug: str
-    issuer_display: str
-    extraction_method: str
 
 
 class Pipeline:
@@ -267,7 +195,57 @@ class Pipeline:
     # --------- internals ---------
 
     def _run_after_claim(self, params: IngestParams, sha: str, reporter: ProgressReporter) -> CommandResult:
-        # Step 2: OCR
+        rule_stage = self._run_ocr_and_rules(params, sha, reporter)
+        if isinstance(rule_stage, CommandResult):
+            return rule_stage
+
+        classify_stage = self._classify_after_rules(params, rule_stage, reporter)
+        classify_result = classify_stage.classify_result
+        if classify_result is None:
+            return self._triage(
+                _TriageContext(
+                    params=params,
+                    sha=sha,
+                    ocr_result=rule_stage.ocr_result,
+                    classify_result=None,
+                    extract_result=None,
+                    reasons=classify_stage.triage_reasons,
+                    issuer_slug=classify_stage.issuer_slug,
+                    issuer_display=classify_stage.issuer_display,
+                )
+            )
+
+        extract_stage = self._extract_after_classify(params, rule_stage, classify_result, reporter)
+        triage_reasons = classify_stage.triage_reasons + extract_stage.triage_reasons
+        if triage_reasons or extract_stage.extract_result is None:
+            return self._triage(
+                _TriageContext(
+                    params=params,
+                    sha=sha,
+                    ocr_result=rule_stage.ocr_result,
+                    classify_result=classify_result,
+                    extract_result=extract_stage.extract_result,
+                    reasons=triage_reasons,
+                    issuer_slug=classify_stage.issuer_slug,
+                    issuer_display=classify_stage.issuer_display,
+                )
+            )
+        return self._finalize_filing(
+            _FilingContext(
+                params=params,
+                sha=sha,
+                ocr_result=rule_stage.ocr_result,
+                classify_result=classify_result,
+                extract_result=extract_stage.extract_result,
+                issuer_slug=classify_stage.issuer_slug,
+                issuer_display=classify_stage.issuer_display,
+                extraction_method=rule_stage.extraction_method,
+            )
+        )
+
+    def _run_ocr_and_rules(
+        self, params: IngestParams, sha: str, reporter: ProgressReporter
+    ) -> _RuleStage | CommandResult:
         reporter.stage("running OCR")
         ocr_result = self._ocr_runner.run(params.staging_path)
 
@@ -291,13 +269,18 @@ class Pipeline:
         use_pinned = rule_result.kind in {"full", "partial"}
         if use_pinned:
             extraction_method = self._rule_extraction_method(rule_result)
+        return _RuleStage(ocr_result, rule_result, extraction_method, use_pinned)
 
-        # Step 3: classify
+    def _classify_after_rules(
+        self, params: IngestParams, rule_stage: _RuleStage, reporter: ProgressReporter
+    ) -> _ClassifyStage:
         reporter.stage("classifying document")
-        if use_pinned:
-            classify_result, classify_error = self._classify_with_pinned(params, ocr_result, rule_result.pinned)
+        if rule_stage.use_pinned:
+            classify_result, classify_error = self._classify_with_pinned(
+                params, rule_stage.ocr_result, rule_stage.rule_result.pinned
+            )
         else:
-            classify_result, classify_error = self._classify(params, ocr_result)
+            classify_result, classify_error = self._classify(params, rule_stage.ocr_result)
 
         issuer_slug, issuer_display = self._resolve_issuer(params, classify_result)
         triage_reasons = self._collect_classify_triage_reasons(
@@ -305,47 +288,35 @@ class Pipeline:
             classify_result=classify_result,
             issuer_slug=issuer_slug,
         )
+        return _ClassifyStage(classify_result, issuer_slug, issuer_display, triage_reasons)
 
-        # Without a classify_result there's no doc_type to extract against, so
-        # triage immediately. The other triage triggers (unknown issuer, low
-        # confidence) still leave us with a usable doc_type, so extraction
-        # runs and its output (full or partial) populates the proposal -
-        # the human reviewer benefits from seeing what the model did find.
-        if classify_result is None:
-            return self._triage(
-                _TriageContext(
-                    params=params,
-                    sha=sha,
-                    ocr_result=ocr_result,
-                    classify_result=None,
-                    extract_result=None,
-                    reasons=triage_reasons,
-                    issuer_slug=issuer_slug,
-                    issuer_display=issuer_display,
-                )
-            )
-
-        # Step 4: extract (with retry+fallback for transient HTTP failures only)
+    def _extract_after_classify(
+        self,
+        params: IngestParams,
+        rule_stage: _RuleStage,
+        classify_result: ClassifyResult,
+        reporter: ProgressReporter,
+    ) -> _ExtractStage:
         reporter.stage("extracting fields")
-
         hints = self._build_extractor_hints(params)
 
         def _extract_call(model: str) -> ExtractResult:
-            if use_pinned:
+            if rule_stage.use_pinned:
                 return self._extractor.extract_with_pinned(
-                    ocr_result.ocr_text,
+                    rule_stage.ocr_result.ocr_text,
                     classify_result.doc_type,
-                    rule_result.pinned,
+                    rule_stage.rule_result.pinned,
                     model=model,
                     hints=hints,
                 )
             return self._extractor.extract_with_model(
-                ocr_result.ocr_text,
+                rule_stage.ocr_result.ocr_text,
                 classify_result.doc_type,
                 model=model,
                 hints=hints,
             )
 
+        triage_reasons: list[str] = []
         extract_result: ExtractResult | None = None
         try:
             extract_result = _retry_llm_call(
@@ -356,49 +327,27 @@ class Pipeline:
                 is_transient=lambda exc: isinstance(exc, IncompleteExtraction) and exc.transient,
             )
         except IncompleteExtraction as exc:
-            # Surface the partial ExtractResult (when present) so the triage
-            # proposal shows fields the model did find. exc.partial may be
-            # None when no fields could be coerced (e.g. JSON parse error).
             extract_result = exc.partial
             triage_reasons.extend(exc.reasons)
         except Exception as exc:
-            # Includes requests.exceptions.Timeout (re-raised unwrapped per Extractor docs).
             triage_reasons.append(f"extractor error: {exc}")
-
-        if triage_reasons or extract_result is None:
-            return self._triage(
-                _TriageContext(
-                    params=params,
-                    sha=sha,
-                    ocr_result=ocr_result,
-                    classify_result=classify_result,
-                    extract_result=extract_result,
-                    reasons=triage_reasons,
-                    issuer_slug=issuer_slug,
-                    issuer_display=issuer_display,
-                )
-            )
-
-        return self._finalize_filing(
-            _FilingContext(
-                params=params,
-                sha=sha,
-                ocr_result=ocr_result,
-                classify_result=classify_result,
-                extract_result=extract_result,
-                issuer_slug=issuer_slug,
-                issuer_display=issuer_display,
-                extraction_method=extraction_method,
-            )
-        )
+        return _ExtractStage(extract_result, triage_reasons)
 
     def _finalize_filing(self, ctx: _FilingContext) -> CommandResult:
-        """Build the canonical filename, write the zettel, and file the PDF.
+        slug_title = self._slug_title_or_triage(ctx)
+        if isinstance(slug_title, CommandResult):
+            return slug_title
 
-        Extracted from ``_run_after_claim`` to keep that orchestrator under
-        ruff complexity limits. Triages on slug/filename failures and returns
-        the ``CommandResult`` describing the terminal outcome.
-        """
+        zk_timestamp = self._zk_timestamp(ctx.extract_result.date)
+        canonical_filename, zk_timestamp, target_pdf = self._resolve_collision(
+            zk_timestamp=zk_timestamp,
+            issuer_slug=ctx.issuer_slug,
+            title_or_number=slug_title,
+            doc_type=ctx.classify_result.doc_type,
+        )
+        return self._file_document(ctx, canonical_filename, zk_timestamp, target_pdf)
+
+    def _slug_title_or_triage(self, ctx: _FilingContext) -> str | CommandResult:
         title_or_number = ctx.extract_result.number or ctx.extract_result.title
         if not title_or_number:
             return self._triage(
@@ -413,9 +362,8 @@ class Pipeline:
                     issuer_display=ctx.issuer_display,
                 )
             )
-
         try:
-            slug_title = slugify(title_or_number)
+            return slugify(title_or_number)
         except ValueError:
             return self._triage(
                 _TriageContext(
@@ -430,33 +378,15 @@ class Pipeline:
                 )
             )
 
-        zk_timestamp = self._zk_timestamp(ctx.extract_result.date)
-        canonical_filename, zk_timestamp, target_pdf = self._resolve_collision(
+    def _file_document(
+        self, ctx: _FilingContext, canonical_filename: str, zk_timestamp: str, target_pdf: Path
+    ) -> CommandResult:
+        frontmatter = build_filing_frontmatter(
+            ctx,
             zk_timestamp=zk_timestamp,
-            issuer_slug=ctx.issuer_slug,
-            title_or_number=slug_title,
-            doc_type=ctx.classify_result.doc_type,
-        )
-
-        ingest_today = date.today()
-        frontmatter = DocumentZettelFrontmatter(
-            id=zk_timestamp,
-            doc_type=ctx.classify_result.doc_type,
-            issuer_slug=ctx.issuer_slug,
-            issuer_display=ctx.issuer_display,
-            doc_number=ctx.extract_result.number,
-            doc_date=ctx.extract_result.date or ingest_today,
-            doc_amount=ctx.extract_result.amount,
-            doc_currency=ctx.extract_result.currency,
-            doc_language=ctx.classify_result.language,
-            ingest_date=ingest_today,
-            ingest_source=ctx.params.source,
-            file_path=to_tilde_path(target_pdf),
-            file_sha256=ctx.sha,
+            target_pdf=target_pdf,
+            ingest_today=date.today(),
             ocr_engine=self._settings.ocr.engine,
-            ocr_mean_confidence=ctx.ocr_result.mean_confidence,
-            extraction_method=ctx.extraction_method,
-            tags=build_zettel_tags(ctx.classify_result.doc_type, ctx.issuer_slug, ctx.extract_result.date),
         )
         body = build_zettel_body(frontmatter, ctx.ocr_result.ocr_text, self._settings.zettel)
         zettel_path = self._zettel_writer.write(frontmatter, body)
@@ -479,15 +409,12 @@ class Pipeline:
         # the claim row was the in-flight reservation.
         self._state_db.release_claim(ctx.sha)
 
-        return CommandResult(
-            success=True,
-            metadata={
-                "outcome": IngestOutcome.FILED.value,
-                "zettel_path": str(zettel_path),
-                "pdf_path": str(target_pdf),
-                "canonical_filename": canonical_filename,
-                "sha256": ctx.sha,
-            },
+        return build_filing_result(
+            outcome=IngestOutcome.FILED.value,
+            zettel_path=zettel_path,
+            target_pdf=target_pdf,
+            canonical_filename=canonical_filename,
+            sha=ctx.sha,
         )
 
     def _collect_classify_triage_reasons(
