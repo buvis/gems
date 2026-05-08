@@ -81,6 +81,12 @@ class CommandRulesValidate:
             registry = load_registry(issuers_path)
         except ValidationError as exc:
             return CommandResult(success=False, error=_format_validation_error(exc, raw))
+        except yaml.YAMLError as exc:
+            # Malformed YAML (unclosed flow seq, bad indent, etc.) escapes
+            # ``yaml.safe_load`` as YAMLError. Surface it as a CommandResult
+            # so the CLI handler routes it through the buvis console rather
+            # than crashing with a parser stack trace.
+            return CommandResult(success=False, error=f"yaml parse error: {exc}")
         except (RuntimeError, ValueError) as exc:
             return CommandResult(success=False, error=str(exc))
 

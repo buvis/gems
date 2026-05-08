@@ -183,3 +183,29 @@ issuers:
         assert result.success is False
         message = (result.error or "").lower()
         assert "not found" in message or "no such file" in message
+
+    def test_malformed_yaml_returns_command_result(self, issuers_path: Path) -> None:
+        """A syntactically broken issuers.yml must surface as a
+        ``CommandResult(success=False)`` so the CLI can route it through the
+        buvis console — not as an uncaught ``yaml.YAMLError`` stack trace.
+        """
+        from bim.commands.doc.rules.validate import CommandRulesValidate
+
+        # Unclosed flow sequence -> safe_load raises YAMLError.
+        _write(
+            issuers_path,
+            """
+version: 1
+doc_types: [invoice
+reserved_slugs: [unknown]
+issuers:
+  cez-as:
+    display_name: CEZ a.s.
+""",
+        )
+        result = CommandRulesValidate().run(issuers_path)
+        assert result.success is False
+        message = (result.error or "").lower()
+        # The error string must hint at YAML parsing rather than crash
+        # surfacing through the CLI as a raw exception.
+        assert "yaml" in message or "parse" in message or "expected" in message or "line" in message
