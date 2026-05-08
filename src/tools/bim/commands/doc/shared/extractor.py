@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import re
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -138,6 +139,7 @@ class ExtractResult(BaseModel):
     issued_date: datetime.date | None = None
     expires_date: datetime.date | None = None
     title: str | None = None
+    summary: str | None = None
 
 
 def _system_prompt(doc_type: str) -> str:
@@ -167,6 +169,9 @@ def _reduced_system_prompt(doc_type: str, *, omit_fields: set[str]) -> str:
         "- The user message may include a 'Hints' section with the original filename or email "
         "subject. When the OCR text is ambiguous, treat hints as supporting evidence; for "
         "invoices the original filename is often the invoice number itself.\n"
+        "- 'summary' (optional): a 1 to 3 sentence summary of what the document is about, "
+        "written in the same language as the OCR text (Czech or English). Omit or set to "
+        "null when not confident — summary is optional, not a required field.\n"
     )
 
 
@@ -219,6 +224,37 @@ def _coerce_one_field(name: str, value: object) -> object:
     if name in _NUMERIC_FIELDS:
         return _coerce_number(name, value)
     return value
+
+
+_SUMMARY_MAX_CHARS = 600
+_WHITESPACE_RUN = re.compile(r"\s+")
+
+
+def _normalize_summary(value: object) -> str | None:
+    """Coerce a model-supplied summary into the body-ready string or ``None``.
+
+    - Non-string, ``None``, or empty/whitespace-only -> ``None``.
+    - Collapse any whitespace run (newlines, tabs, runs of spaces) to a single
+      space, then strip leading/trailing whitespace.
+    - Trim to ``_SUMMARY_MAX_CHARS``: prefer to end on a sentence boundary
+      (last ``". "`` <= cap), else on a word boundary (last space <= cap),
+      else hard-cut. Never appends an ellipsis.
+    """
+    if not isinstance(value, str):
+        return None
+    cleaned = _WHITESPACE_RUN.sub(" ", value).strip()
+    if not cleaned:
+        return None
+    if len(cleaned) <= _SUMMARY_MAX_CHARS:
+        return cleaned
+    head = cleaned[: _SUMMARY_MAX_CHARS + 1]
+    sentence_break = head.rfind(". ")
+    if sentence_break > 0:
+        return cleaned[: sentence_break + 1]  # keep the period, drop the space
+    word_break = head.rfind(" ")
+    if word_break > 0:
+        return cleaned[:word_break]
+    return cleaned[:_SUMMARY_MAX_CHARS]
 
 
 def _coerce_parsed(parsed: dict[str, object]) -> tuple[dict[str, object], list[str], set[str]]:
@@ -345,7 +381,11 @@ class Extractor:
         if not isinstance(parsed, dict):
             raise IncompleteExtraction(["could not parse model response as JSON: not an object"])
 
-        coerced, coerce_errors, errored_fields = _coerce_parsed(parsed)
+        summary = _normalize_summary(parsed.get("summary"))
+        # Drop ``summary`` from the dict before coercion so it doesn't trigger
+        # an "unrecognised field" path or interfere with required-field checks.
+        parsed_for_coerce = {k: v for k, v in parsed.items() if k != "summary"}
+        coerced, coerce_errors, errored_fields = _coerce_parsed(parsed_for_coerce)
 
         # Skip the missing-field reason for fields that already failed
         # coercion - the coerce error names them more precisely.
@@ -356,10 +396,10 @@ class Extractor:
         ]
 
         if coerce_errors or missing:
-            partial = ExtractResult(doc_type=doc_type, **coerced)
+            partial = ExtractResult(doc_type=doc_type, summary=summary, **coerced)
             raise IncompleteExtraction(coerce_errors + missing, partial=partial)
 
-        return ExtractResult(doc_type=doc_type, **coerced)
+        return ExtractResult(doc_type=doc_type, summary=summary, **coerced)
 
     def extract_with_pinned(
         self,
@@ -418,7 +458,10 @@ class Extractor:
         if not isinstance(parsed, dict):
             raise IncompleteExtraction(["could not parse model response as JSON: not an object"])
 
-        parsed_unpinned = {name: value for name, value in parsed.items() if name not in normalized_coerced}
+        summary = _normalize_summary(parsed.get("summary"))
+        parsed_unpinned = {
+            name: value for name, value in parsed.items() if name not in normalized_coerced and name != "summary"
+        }
         coerced, coerce_errors, errored_fields = _coerce_parsed(parsed_unpinned)
         coerced.update(normalized_coerced)
 
@@ -429,7 +472,7 @@ class Extractor:
         ]
 
         if coerce_errors or missing:
-            partial = ExtractResult(doc_type=doc_type, **coerced)
+            partial = ExtractResult(doc_type=doc_type, summary=summary, **coerced)
             raise IncompleteExtraction(coerce_errors + missing, partial=partial)
 
-        return ExtractResult(doc_type=doc_type, **coerced)
+        return ExtractResult(doc_type=doc_type, summary=summary, **coerced)

@@ -392,6 +392,7 @@ class Pipeline:
         body = build_zettel_body(
             frontmatter,
             ctx.ocr_result.ocr_text,
+            summary=ctx.extract_result.summary,
             settings=self._settings.zettel,
         )
         zettel_path = self._zettel_writer.write(frontmatter, body, issuer_slug=ctx.issuer_slug)
