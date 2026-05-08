@@ -317,6 +317,31 @@ class TestFromEmailDate:
         result = apply_extract(rule, "", source, {})
         assert result is None
 
+    def test_email_date_with_parse_date_transform_is_applied(self) -> None:
+        # The transform: clause on an email_date source must be honoured;
+        # earlier versions short-circuited and returned the raw string.
+        from datetime import date
+
+        rule = _rule(
+            {
+                "doc_date": ExtractSpec(
+                    **{
+                        "from": "email_date",
+                        "transform": "parse_date",
+                        "format": "%Y-%m-%d",
+                    }
+                )
+            },
+            match={"email_from_domain": ["cez.cz"]},
+        )
+        source = _source(
+            source_kind="email",
+            email_from="noreply@cez.cz",
+            email_date="2024-11-15",
+        )
+        result = apply_extract(rule, "", source, {})
+        assert result == {"doc_date": date(2024, 11, 15)}
+
 
 # ---------------------------------------------------------------------------
 # Transforms (all 7) reachable through ExtractSpec

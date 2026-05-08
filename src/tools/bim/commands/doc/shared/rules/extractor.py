@@ -51,7 +51,9 @@ def _maybe_transform(spec: ExtractSpec, value: object) -> object | None:
 
 def _extract_spec_value(spec: ExtractSpec, ocr_text: str, source: SourceMetadata) -> object | None:
     if spec.from_ == "email_date":
-        return source.email_date
+        if source.email_date is None:
+            return None
+        return _maybe_transform(spec, source.email_date)
     if spec.from_ == "ocr_match":
         text: str | None = ocr_text
     elif spec.from_ == "filename_match":
