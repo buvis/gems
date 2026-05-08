@@ -782,17 +782,25 @@ def doc_rules_backtest(ctx: click.Context, rule_id: str | None, issuer_slug: str
         return
     try:
         from bim.commands.doc.rules.backtest import CommandRulesBacktest
+        from bim.commands.doc.shared.progress import NoOpProgressReporter, SpinnerProgressReporter
         from bim.dependencies import get_issuer_registry, get_ocr_runner
     except ImportError:
         console.require_import("doc")
         return
     bundle = get_issuer_registry(settings.doc)
-    result = CommandRulesBacktest(ocr_runner=get_ocr_runner(settings.doc)).run(
-        bundle.registry,
-        settings.doc.paths.business_root,
-        rule_id=rule_id,
-        issuer_slug=issuer_slug,
-    )
+    # Show a Rich spinner with per-PDF progress in interactive runs; the
+    # archive can hold 1k+ PDFs and OCR runs on demand, so silent walking
+    # looks hung. Stay silent when stdout is piped/redirected so scripts
+    # see only the final summary line.
+    reporter = SpinnerProgressReporter(console) if sys.stdout.isatty() else NoOpProgressReporter()
+    with reporter:
+        result = CommandRulesBacktest(ocr_runner=get_ocr_runner(settings.doc)).run(
+            bundle.registry,
+            settings.doc.paths.business_root,
+            rule_id=rule_id,
+            issuer_slug=issuer_slug,
+            progress=reporter,
+        )
     if not result.success:
         console.failure(result.error or "backtest failed")
         return

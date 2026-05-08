@@ -132,3 +132,46 @@ class TestBacktestCommandFilters:
         out = result.output or ""
         assert "cez-fingerprint" in out
         assert "eon-fingerprint" not in out
+
+
+class _RecordingProgress:
+    """Captures every ``stage()`` call so tests can assert per-PDF progress."""
+
+    def __init__(self) -> None:
+        self.stages: list[str] = []
+
+    def stage(self, message: str) -> None:
+        self.stages.append(message)
+
+    def __enter__(self) -> _RecordingProgress:
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        return None
+
+
+class TestBacktestCommandProgress:
+    def test_progress_stage_called_per_pdf(self, tmp_path: Path) -> None:
+        from bim.commands.doc.rules.backtest import CommandRulesBacktest
+
+        business = tmp_path / "Business"
+        _seed_archive(business, {"cez-as": ["one.pdf", "two.pdf"]})
+        ocr = _StubOCRRunner({"one.pdf": "x", "two.pdf": "y"})
+        progress = _RecordingProgress()
+        with progress:
+            CommandRulesBacktest(ocr_runner=ocr).run(_registry(), business, progress=progress)
+        assert len(progress.stages) == 2
+        # Each stage label must include the PDF's filename for visibility.
+        joined = "\n".join(progress.stages)
+        assert "one.pdf" in joined
+        assert "two.pdf" in joined
+
+    def test_progress_optional_default_none(self, tmp_path: Path) -> None:
+        # Backward compat: omitting ``progress`` must work.
+        from bim.commands.doc.rules.backtest import CommandRulesBacktest
+
+        business = tmp_path / "Business"
+        _seed_archive(business, {"cez-as": ["only.pdf"]})
+        ocr = _StubOCRRunner({"only.pdf": "x"})
+        result = CommandRulesBacktest(ocr_runner=ocr).run(_registry(), business)
+        assert result.success is True

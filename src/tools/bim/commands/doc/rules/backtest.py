@@ -17,6 +17,7 @@ from bim.commands.doc.shared.rules.models import Rule, SourceMetadata
 if TYPE_CHECKING:
     from bim.commands.doc.shared.issuers import IssuerRegistry
     from bim.commands.doc.shared.ocr import OCRResult
+    from bim.commands.doc.shared.progress import ProgressReporter
 
 __all__ = ["CommandRulesBacktest"]
 
@@ -77,6 +78,7 @@ class CommandRulesBacktest:
         *,
         rule_id: str | None = None,
         issuer_slug: str | None = None,
+        progress: ProgressReporter | None = None,
     ) -> CommandResult:
         rules = _collect_rules(registry, rule_id=rule_id, issuer_slug=issuer_slug)
         if rules is None:
@@ -87,7 +89,10 @@ class CommandRulesBacktest:
         counts: dict[str, dict[str, int]] = {rule.id: {} for rule, _ in rules}
         owning: dict[str, str] = {rule.id: slug for rule, slug in rules}
 
-        for pdf_path, folder_slug in pdfs:
+        total = len(pdfs)
+        for index, (pdf_path, folder_slug) in enumerate(pdfs, start=1):
+            if progress is not None:
+                progress.stage(f"[{index}/{total}] {folder_slug}/{pdf_path.name}")
             ocr_result = self._ocr_runner.run(pdf_path)
             source = SourceMetadata(source_kind="scan", original_filename=pdf_path.name)
             for rule, _owner in rules:
