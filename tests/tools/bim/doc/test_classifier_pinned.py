@@ -98,6 +98,9 @@ class TestClassifyWithPinnedFullSkip:
         from bim.commands.doc.shared.classifier import Classifier
 
         fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "classify_with_pinned must skip HTTP when all required fields are pinned"
+        )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         result = Classifier(settings).classify_with_pinned(
@@ -108,7 +111,6 @@ class TestClassifyWithPinnedFullSkip:
             model=settings.primary_model,
         )
 
-        assert fake_requests.post.call_count == 0
         assert result.issuer_slug == "cez-as"
         assert result.issuer_display == "ČEZ a.s."
         assert result.doc_type == "invoice"
@@ -128,6 +130,9 @@ class TestClassifyWithPinnedFullSkip:
         from bim.commands.doc.shared.classifier import Classifier
 
         fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "classify_with_pinned must skip HTTP when all required fields are pinned"
+        )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         result = Classifier(settings).classify_with_pinned(
@@ -138,7 +143,6 @@ class TestClassifyWithPinnedFullSkip:
             model=settings.primary_model,
         )
 
-        assert fake_requests.post.call_count == 0
         assert result.issuer_slug == "cez-as"
         assert result.language == "cs"
         assert result.doc_type == "invoice"
@@ -154,6 +158,9 @@ class TestClassifyWithPinnedFullSkip:
         from bim.commands.doc.shared.classifier import Classifier
 
         fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "classify_with_pinned must skip HTTP when all required fields are pinned"
+        )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         result = Classifier(settings).classify_with_pinned(
@@ -169,7 +176,6 @@ class TestClassifyWithPinnedFullSkip:
             model=settings.primary_model,
         )
 
-        assert fake_requests.post.call_count == 0
         assert result.issuer_slug == "cez-as"
         assert result.issuer_display == "ČEZ a.s."
 
@@ -185,6 +191,9 @@ class TestClassifyWithPinnedFullSkip:
         from bim.commands.doc.shared.classifier import Classifier
 
         fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "classify_with_pinned must skip HTTP when all required fields are pinned"
+        )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         result = Classifier(settings).classify_with_pinned(
@@ -195,7 +204,6 @@ class TestClassifyWithPinnedFullSkip:
             model=settings.primary_model,
         )
 
-        assert fake_requests.post.call_count == 0
         assert result.issuer_slug == "unknown-issuer"
         # The implementation may return None or echo the slug back; both are
         # acceptable since no registry entry exists.

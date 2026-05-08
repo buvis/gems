@@ -78,6 +78,9 @@ class TestExtractorPinnedFullSkip:
         from bim.commands.doc.shared.extractor import Extractor
 
         fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "extract_with_pinned must skip HTTP when all required fields for doc_type are pinned"
+        )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         result = Extractor(settings).extract_with_pinned(
@@ -92,7 +95,6 @@ class TestExtractorPinnedFullSkip:
             model=settings.primary_model,
         )
 
-        assert fake_requests.post.call_count == 0
         assert result.doc_type == "invoice"
         assert result.number == "INV-1"
         assert result.date == datetime.date(2024, 11, 15)
@@ -110,6 +112,9 @@ class TestExtractorPinnedFullSkip:
         from bim.commands.doc.shared.extractor import Extractor
 
         fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "extract_with_pinned must skip HTTP when all required fields for doc_type are pinned"
+        )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         result = Extractor(settings).extract_with_pinned(
@@ -124,7 +129,6 @@ class TestExtractorPinnedFullSkip:
             model=settings.primary_model,
         )
 
-        assert fake_requests.post.call_count == 0
         assert result.doc_type == "invoice"
         assert result.number == "INV-1"
         assert result.date == datetime.date(2024, 11, 15)
@@ -141,6 +145,9 @@ class TestExtractorPinnedFullSkip:
         from bim.commands.doc.shared.extractor import Extractor
 
         fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = AssertionError(
+            "extract_with_pinned must skip HTTP when all required fields for doc_type are pinned"
+        )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         result = Extractor(settings).extract_with_pinned(
@@ -155,7 +162,6 @@ class TestExtractorPinnedFullSkip:
             model=settings.primary_model,
         )
 
-        assert fake_requests.post.call_count == 0
         assert result.doc_type == "invoice"
         assert result.number == "INV-1"
         assert result.date == datetime.date(2024, 11, 15)
