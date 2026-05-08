@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 __all__ = [
+    "RESERVED_EXTRACT_FIELDS",
     "ExtractSpec",
     "MatchClauses",
     "Rule",
@@ -24,14 +25,19 @@ _TRANSFORMS = {
     "slugify",
 }
 
-_RESERVED_EXTRACT_FIELDS = {
-    "extraction_method",
-    "id",
-    "ingest_date",
-    "ingest_source",
-    "file_path",
-    "file_sha256",
-}
+# Field names rule authors cannot set: the pipeline / writer owns these.
+# Enforced at load time by Rule._validate_extract_keys; re-checked at runtime
+# in apply_extract so model_construct() callers cannot bypass the guard.
+RESERVED_EXTRACT_FIELDS = frozenset(
+    {
+        "extraction_method",
+        "id",
+        "ingest_date",
+        "ingest_source",
+        "file_path",
+        "file_sha256",
+    }
+)
 
 _ALLOWED_EXTRACT_FIELDS = {
     "issuer_slug",
@@ -191,7 +197,7 @@ class Rule(BaseModel):
             return v
         rule_id = info.data.get("id", "<unknown>")
         for key in v:
-            if key in _RESERVED_EXTRACT_FIELDS:
+            if key in RESERVED_EXTRACT_FIELDS:
                 raise ValueError(f"extract field {key!r} is reserved in rule id {rule_id!r}")
         for key in v:
             if key not in _ALLOWED_EXTRACT_FIELDS:

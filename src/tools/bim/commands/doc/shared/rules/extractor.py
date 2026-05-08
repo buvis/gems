@@ -3,7 +3,12 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from bim.commands.doc.shared.rules.models import ExtractSpec, Rule, SourceMetadata
+from bim.commands.doc.shared.rules.models import (
+    RESERVED_EXTRACT_FIELDS,
+    ExtractSpec,
+    Rule,
+    SourceMetadata,
+)
 from bim.commands.doc.shared.rules.transforms import apply_transform
 
 __all__ = [
@@ -78,6 +83,12 @@ def apply_extract(
     pinned: dict[str, object] = {}
 
     for field_name, value in rule.extract.items():
+        # Defense in depth: load-time validation rejects reserved fields, but
+        # callers using ``Rule.model_construct(...)`` bypass that. Surface the
+        # programming error loudly here rather than silently writing into a
+        # pipeline-owned slot.
+        if field_name in RESERVED_EXTRACT_FIELDS:
+            raise ValueError(f"extract field {field_name!r} is reserved in rule id {rule.id!r}")
         if isinstance(value, ExtractSpec):
             extracted = _extract_spec_value(value, ocr_text, source)
             if extracted is None:

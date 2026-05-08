@@ -641,3 +641,50 @@ class TestFullCezRule:
         assert result is not None
         for key in ("doc_currency", "doc_language", "issuer_slug", "doc_number"):
             assert isinstance(result[key], str), f"{key} should be str, got {type(result[key]).__name__}"
+
+
+# ---------------------------------------------------------------------------
+# Reserved-field defense in depth
+# ---------------------------------------------------------------------------
+
+
+class TestReservedFieldRuntimeGuard:
+    """Load-time validation rejects reserved keys, but ``Rule.model_construct``
+    bypasses validation. ``apply_extract`` must re-check at runtime so a
+    rule that slipped past the loader cannot write into pipeline-owned
+    slots like ``extraction_method`` or ``file_path``."""
+
+    def test_model_construct_reserved_field_raises_at_runtime(self) -> None:
+        import pytest
+
+        rule = Rule.model_construct(
+            id="bad-rule",
+            version=1,
+            priority=50,
+            enabled=True,
+            partial=False,
+            match=MatchClauses(ocr_contains=["x"]),
+            extract={"extraction_method": "rule:bad:v1"},
+            confidence=1.0,
+            notes=None,
+        )
+        with pytest.raises(ValueError, match="reserved"):
+            apply_extract(rule, "x", _source(), {})
+
+    def test_model_construct_other_reserved_fields_also_raise(self) -> None:
+        import pytest
+
+        for reserved in ("id", "ingest_date", "ingest_source", "file_path", "file_sha256"):
+            rule = Rule.model_construct(
+                id="bad-rule",
+                version=1,
+                priority=50,
+                enabled=True,
+                partial=False,
+                match=MatchClauses(ocr_contains=["x"]),
+                extract={reserved: "anything"},
+                confidence=1.0,
+                notes=None,
+            )
+            with pytest.raises(ValueError, match="reserved"):
+                apply_extract(rule, "x", _source(), {})
