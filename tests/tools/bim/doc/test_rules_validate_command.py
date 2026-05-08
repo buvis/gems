@@ -151,6 +151,9 @@ issuers:
         assert result.success is False
         message = (result.error or "") + (result.output or "")
         assert "nonsense_transform" in message or "transform" in message.lower()
+        # PRD acceptance: per-error details with rule id and field name.
+        # Same invariant as test_uncompilable_regex above.
+        assert "bad-transform" in message
 
     def test_reserved_field_in_extract(self, issuers_path: Path) -> None:
         from bim.commands.doc.rules.validate import CommandRulesValidate
