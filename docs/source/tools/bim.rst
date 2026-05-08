@@ -347,7 +347,7 @@ When no rule matches, behavior is unchanged from LLM-only ingestion.
 
 * **Determinism.** A rule for CEZ invoices either matches or doesn't.
   No probabilistic drift across model versions or sampling.
-* **Auditability.** A zettel's ``extraction_method: rule:cez-invoice-2024-template:v1``
+* **Auditability.** A zettel's ``extraction-method: rule:cez-invoice-2024-template:v1``
   records exactly which rule produced its metadata.
 * **Cost.** No round-trip to Ollama for documents a regex can pin.
 
