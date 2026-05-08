@@ -1,0 +1,48 @@
+version: 1
+
+doc_types:
+  - invoice
+  - receipt
+  - statement
+  - contract
+  - certificate
+  - reminder
+  - correspondence
+  - other
+
+reserved_slugs:
+  - unknown
+  - _triage
+  - _config
+
+issuers:
+  cez-as:
+    display_name: CEZ a.s.
+    aliases:
+      - CEZ
+      - cez.cz
+    rules:
+      - id: cez-fingerprint
+        partial: true
+        match:
+          ocr_contains:
+            - "IC: 45274649"
+        extract:
+          issuer_slug: cez-as
+          issuer_display: CEZ a.s.
+          doc_language: cs
+
+  plzensky-prazdroj:
+    display_name: Plzensky Prazdroj a.s.
+    aliases:
+      - prazdroj.cz
+    rules:
+      - id: cez-fingerprint
+        partial: true
+        match:
+          ocr_contains:
+            - "Plzensky"
+        extract:
+          issuer_slug: plzensky-prazdroj
+          issuer_display: Plzensky Prazdroj a.s.
+          doc_language: cs

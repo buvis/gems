@@ -1,0 +1,56 @@
+version: 1
+
+doc_types:
+  - invoice
+  - receipt
+  - statement
+  - contract
+  - certificate
+  - reminder
+  - correspondence
+  - other
+
+reserved_slugs:
+  - unknown
+  - _triage
+  - _config
+
+issuers:
+  cez-as:
+    display_name: CEZ a.s.
+    aliases:
+      - CEZ
+      - cez.cz
+    rules:
+      - id: cez-invoice-2024-template
+        version: 1
+        priority: 100
+        match:
+          ocr_contains:
+            - "IC: 45274649"
+            - "Faktura"
+          ocr_matches:
+            - "Faktura č\\.\\s*(\\d{10})"
+        extract:
+          doc_type: invoice
+          doc_number:
+            from: ocr_match
+            pattern: "Faktura č\\.\\s*(\\d{10})"
+            group: 1
+          doc_currency: CZK
+          doc_language: cs
+
+      - id: cez-fingerprint
+        partial: true
+        match:
+          ocr_contains:
+            - "IC: 45274649"
+        extract:
+          issuer_slug: cez-as
+          issuer_display: CEZ a.s.
+          doc_language: cs
+
+  plzensky-prazdroj:
+    display_name: Plzensky Prazdroj a.s.
+    aliases:
+      - prazdroj.cz
