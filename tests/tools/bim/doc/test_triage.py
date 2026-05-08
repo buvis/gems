@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -16,6 +16,8 @@ from bim.commands.doc.shared.triage import (
     validate_for_promote,
     write_proposal,
 )
+
+_SAMPLE_INGESTED_AT = datetime(2026, 5, 4, 9, 34, 22, tzinfo=timezone(timedelta(hours=2)))
 
 
 def _full_proposal() -> TriageProposal:
@@ -55,7 +57,8 @@ def _full_proposal() -> TriageProposal:
         triage_reasons=["issuer confidence below threshold"],
         zettel_preview=ZettelPreview(
             id="20260504093422",
-            ingest_date=date(2026, 5, 4),
+            title="CEZ a.s. invoice 7102105594",
+            ingested_at=_SAMPLE_INGESTED_AT,
             tags=["document/invoice", "issuer/cez-as", "year/2021"],
         ),
     )

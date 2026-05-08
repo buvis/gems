@@ -230,7 +230,8 @@ class TestPipeline:
         zettel_path = Path(result.metadata["zettel_path"])
         assert zettel_path.exists()
         assert zettel_path.suffix == ".md"
-        assert zettel_path.parent == settings.paths.vault_root / "Zettelkasten" / "documents"
+        # v1: zettel lands under per-issuer subfolder.
+        assert zettel_path.parent == settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
 
         pdf_path = Path(result.metadata["pdf_path"])
         assert pdf_path.exists()

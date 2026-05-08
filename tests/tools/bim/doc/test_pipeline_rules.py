@@ -452,7 +452,7 @@ class TestNoRulesBaseline:
 
         zettel_path = Path(result.metadata["zettel_path"])
         frontmatter = _read_zettel_frontmatter(zettel_path)
-        assert frontmatter["extraction_method"] == f"llm:{settings.classifier.primary_model}"
+        assert frontmatter["extraction-method"] == f"llm:{settings.classifier.primary_model}"
 
         row = state_db.dedup(sha)
         assert row.is_duplicate is True
@@ -515,9 +515,10 @@ class TestFullRuleShortCircuit:
 
         zettel_path = Path(result.metadata["zettel_path"])
         frontmatter = _read_zettel_frontmatter(zettel_path)
-        assert frontmatter["extraction_method"] == "rule:cez-invoice-2024-template:v1"
-        assert frontmatter["issuer_slug"] == "cez-as"
-        assert frontmatter["doc_type"] == "invoice"
+        assert frontmatter["extraction-method"] == "rule:cez-invoice-2024-template:v1"
+        # v1: slug lives in tags, not as a top-level frontmatter field.
+        assert "issuer/cez-as" in frontmatter["tags"]
+        assert frontmatter["doc-type"] == "invoice"
 
         row = state_db.dedup(sha)
         assert row.existing_row is not None
@@ -579,9 +580,9 @@ class TestPartialRuleReducesScope:
 
         zettel_path = Path(result.metadata["zettel_path"])
         frontmatter = _read_zettel_frontmatter(zettel_path)
-        assert frontmatter["extraction_method"] == "rule+llm:cez-fingerprint:v1"
-        assert frontmatter["issuer_slug"] == "cez-as"
-        assert frontmatter["doc_language"] == "cs"
+        assert frontmatter["extraction-method"] == "rule+llm:cez-fingerprint:v1"
+        assert "issuer/cez-as" in frontmatter["tags"]
+        assert frontmatter["doc-language"] == "cs"
 
         row = state_db.dedup(sha)
         assert row.existing_row is not None
@@ -780,5 +781,5 @@ class TestIssuerInboxScoping:
 
         zettel_path = Path(result.metadata["zettel_path"])
         frontmatter = _read_zettel_frontmatter(zettel_path)
-        assert frontmatter["extraction_method"] == "rule+llm:rule-cez:v1"
-        assert frontmatter["issuer_slug"] == "cez-as"
+        assert frontmatter["extraction-method"] == "rule+llm:rule-cez:v1"
+        assert "issuer/cez-as" in frontmatter["tags"]

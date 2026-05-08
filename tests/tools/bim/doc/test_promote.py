@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -103,7 +103,8 @@ def _build_proposal(
         triage_reasons=["confidence below threshold"],
         zettel_preview=ZettelPreview(
             id="20260504093422",
-            ingest_date=date(2026, 5, 4),
+            title=f"{issuer_display} {doc_type} {doc_number}" if doc_number else f"{issuer_display} {doc_type}",
+            ingested_at=datetime(2026, 5, 4, 9, 34, 22, tzinfo=timezone(timedelta(hours=2))),
             tags=[f"document/{doc_type}", f"issuer/{issuer_slug}", "year/2021"],
         ),
     )
@@ -229,7 +230,8 @@ class TestCommandPromote:
 
         zettel_path = Path(result.metadata["zettel_path"])
         assert zettel_path.exists()
-        assert zettel_path.parent == settings.paths.vault_root / "Zettelkasten" / "documents"
+        # v1: zettel lands under per-issuer subfolder.
+        assert zettel_path.parent == settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
 
         # Proposal deleted after promote.
         assert not yml.exists()
