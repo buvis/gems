@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **bim**: doc rule engine v1 — deterministic per-issuer extraction before LLM fallback. New `bim doc rules` subcommand group (`list`, `validate`, `test`, `backtest`) for authoring and verifying rules. Existing `issuers.yml` files without `rules:` blocks load unchanged; full-rule matches set `extraction-method: rule:<id>:v<n>` and skip both Ollama calls, partial-rule matches set `extraction-method: rule+llm:<id>:v<n>` and reduce the prompt scope.
+- **bim**: doc rule engine v1 — deterministic per-issuer extraction before LLM fallback. New `bim doc rules` subcommand group (`list`, `validate`, `test`, `backtest`) for authoring and verifying rules. Existing `issuers.yml` files without `rules:` blocks load unchanged; full-rule matches set `extraction_method: rule:<id>:v<n>` and skip both Ollama calls, partial-rule matches set `extraction_method: rule+llm:<id>:v<n>` and reduce the prompt scope.
 - **bim**: `bim doc ingest` shows a Rich spinner with per-stage labels (running OCR → classifying document → extracting fields) when stdout is a TTY; stays silent in batch/piped runs
 - **bim**: `bim doc ingest` extractor now receives a `Hints:` block containing the original filename and email subject when known; the LLM uses these to ground field values when OCR text is noisy or numbers span line breaks (downloaded invoices often carry the invoice number as the filename)
 - **bim**: `doc.ocr.extra_args` config field passes any extra `ocrmypdf` flags verbatim into both the redo and full-OCR branches (e.g. `--clean`, `--remove-background`, `--tesseract-pagesegmode 6`); the user owns flag correctness, the pipeline schema stays small
