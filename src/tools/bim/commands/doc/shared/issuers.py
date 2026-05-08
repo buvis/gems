@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.naming import SLUG_REGEX, slugify
+from bim.commands.doc.shared.rules.models import Rule
 
 __all__ = [
     "IssuerEntry",
@@ -42,6 +43,7 @@ class IssuerEntry(BaseModel):
     display_name: str
     aliases: list[str] = []
     notes: str | None = None
+    rules: list[Rule] = []
 
     @field_validator("slug")
     @classmethod
@@ -82,6 +84,14 @@ class IssuerRegistry(BaseModel):
         overlap = set(self.reserved_slugs) & set(self.issuers.keys())
         if overlap:
             raise ValueError(f"reserved_slugs and issuers keys must be disjoint, conflict: {sorted(overlap)}")
+        owners_by_rule_id: dict[str, set[str]] = {}
+        for issuer_slug, entry in self.issuers.items():
+            for rule in entry.rules:
+                owners_by_rule_id.setdefault(rule.id, set()).add(issuer_slug)
+        for rule_id, issuer_slugs in owners_by_rule_id.items():
+            if len(issuer_slugs) > 1:
+                first, second = sorted(issuer_slugs)[:2]
+                raise ValueError(f"duplicate rule id {rule_id!r} defined in issuers {first!r} and {second!r}")
         return self
 
 
@@ -131,6 +141,10 @@ def _serialize(registry: IssuerRegistry) -> str:
             body["aliases"] = list(entry.aliases)
         if entry.notes is not None:
             body["notes"] = entry.notes
+        if entry.rules:
+            body["rules"] = [
+                rule.model_dump(mode="python", by_alias=True, exclude_defaults=True) for rule in entry.rules
+            ]
         issuers_out[slug] = body
 
     payload = {
