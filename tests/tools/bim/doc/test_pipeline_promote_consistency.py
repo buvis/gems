@@ -22,8 +22,8 @@ from bim.commands.doc.shared.classifier import ClassifyResult
 from bim.commands.doc.shared.extractor import ExtractResult
 from bim.commands.doc.shared.ocr import OCRResult
 from bim.commands.doc.shared.pipeline_helpers import (
-    _FilingContext,
-    _PromoteFrontmatterContext,
+    FilingContext,
+    PromoteFrontmatterContext,
     build_filing_frontmatter,
     build_promote_frontmatter,
 )
@@ -59,7 +59,7 @@ TARGET_PDF = Path("/Users/bob/Business/cez-as/20210311083422-cez-as-7102105594.i
 
 def _build_ingest_frontmatter(extraction_method: str, doc_date: date | None = DOC_DATE) -> DocumentZettelFrontmatter:
     """Construct frontmatter via the pipeline (ingest) code path."""
-    ctx = _FilingContext(
+    ctx = FilingContext(
         params=IngestParams(
             staging_path=Path("/tmp/staging/input.pdf"),
             source=INGEST_SOURCE,
@@ -141,7 +141,7 @@ def _build_promote_frontmatter(doc_date: date | None = DOC_DATE) -> DocumentZett
     promote path surfaces here.
     """
     proposal = _build_proposal(doc_date=doc_date)
-    ctx = _PromoteFrontmatterContext(
+    ctx = PromoteFrontmatterContext(
         proposal=proposal,
         issuer_display=ISSUER_DISPLAY,
         issuer_slug=ISSUER_SLUG,

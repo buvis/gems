@@ -609,6 +609,13 @@ class TestZettelWriterPerVariantFixtures:
             f"(regenerate with: uv run python dev/bin/gen_zettel_writer_fixtures.py)"
         )
 
+        # The remaining assertions are intentionally redundant with the
+        # byte-for-byte check above. They produce a clearer failure message
+        # naming which invariant broke (key order, quoted numbers,
+        # underscore keys, ingested-at parse, variant shape) and survive a
+        # well-meaning fixture regeneration that bakes in a regression. Keep
+        # them as defence-in-depth.
+
         # Criterion 1 (invariant): all 18 spec §5 keys present (None values
         # serialise as ``null``/``~`` but the key is still emitted).
         top_level_keys = [m.group(1) for m in re.finditer(r"^([a-z][a-z0-9\-]*):", block, re.MULTILINE)]

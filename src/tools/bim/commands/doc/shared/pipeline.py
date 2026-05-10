@@ -29,11 +29,11 @@ from bim.commands.doc.shared.extractor import IncompleteExtraction
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
 from bim.commands.doc.shared.pipeline_helpers import (
-    _ClassifyStage,
-    _ExtractStage,
-    _FilingContext,
-    _RuleStage,
-    _TriageContext,
+    ClassifyStage,
+    ExtractStage,
+    FilingContext,
+    RuleStage,
+    TriageContext,
     build_filing_frontmatter,
     build_filing_result,
 )
@@ -203,7 +203,7 @@ class Pipeline:
         classify_result = classify_stage.classify_result
         if classify_result is None:
             return self._triage(
-                _TriageContext(
+                TriageContext(
                     params=params,
                     sha=sha,
                     ocr_result=rule_stage.ocr_result,
@@ -219,7 +219,7 @@ class Pipeline:
         triage_reasons = classify_stage.triage_reasons + extract_stage.triage_reasons
         if triage_reasons or extract_stage.extract_result is None:
             return self._triage(
-                _TriageContext(
+                TriageContext(
                     params=params,
                     sha=sha,
                     ocr_result=rule_stage.ocr_result,
@@ -231,7 +231,7 @@ class Pipeline:
                 )
             )
         return self._finalize_filing(
-            _FilingContext(
+            FilingContext(
                 params=params,
                 sha=sha,
                 ocr_result=rule_stage.ocr_result,
@@ -245,7 +245,7 @@ class Pipeline:
 
     def _run_ocr_and_rules(
         self, params: IngestParams, sha: str, reporter: ProgressReporter
-    ) -> _RuleStage | CommandResult:
+    ) -> RuleStage | CommandResult:
         reporter.stage("running OCR")
         ocr_result = self._ocr_runner.run(params.staging_path)
 
@@ -253,7 +253,7 @@ class Pipeline:
         rule_result = self._run_rules(ocr_result.ocr_text, source_metadata, params)
         if rule_result.kind == "conflict":
             return self._triage(
-                _TriageContext(
+                TriageContext(
                     params=params,
                     sha=sha,
                     ocr_result=ocr_result,
@@ -269,11 +269,11 @@ class Pipeline:
         use_pinned = rule_result.kind in {"full", "partial"}
         if use_pinned:
             extraction_method = self._rule_extraction_method(rule_result)
-        return _RuleStage(ocr_result, rule_result, extraction_method, use_pinned)
+        return RuleStage(ocr_result, rule_result, extraction_method, use_pinned)
 
     def _classify_after_rules(
-        self, params: IngestParams, rule_stage: _RuleStage, reporter: ProgressReporter
-    ) -> _ClassifyStage:
+        self, params: IngestParams, rule_stage: RuleStage, reporter: ProgressReporter
+    ) -> ClassifyStage:
         reporter.stage("classifying document")
         if rule_stage.use_pinned:
             classify_result, classify_error = self._classify_with_pinned(
@@ -288,15 +288,15 @@ class Pipeline:
             classify_result=classify_result,
             issuer_slug=issuer_slug,
         )
-        return _ClassifyStage(classify_result, issuer_slug, issuer_display, triage_reasons)
+        return ClassifyStage(classify_result, issuer_slug, issuer_display, triage_reasons)
 
     def _extract_after_classify(
         self,
         params: IngestParams,
-        rule_stage: _RuleStage,
+        rule_stage: RuleStage,
         classify_result: ClassifyResult,
         reporter: ProgressReporter,
-    ) -> _ExtractStage:
+    ) -> ExtractStage:
         reporter.stage("extracting fields")
         hints = self._build_extractor_hints(params)
 
@@ -331,9 +331,9 @@ class Pipeline:
             triage_reasons.extend(exc.reasons)
         except Exception as exc:
             triage_reasons.append(f"extractor error: {exc}")
-        return _ExtractStage(extract_result, triage_reasons)
+        return ExtractStage(extract_result, triage_reasons)
 
-    def _finalize_filing(self, ctx: _FilingContext) -> CommandResult:
+    def _finalize_filing(self, ctx: FilingContext) -> CommandResult:
         slug_title = self._slug_title_or_triage(ctx)
         if isinstance(slug_title, CommandResult):
             return slug_title
@@ -347,11 +347,11 @@ class Pipeline:
         )
         return self._file_document(ctx, canonical_filename, zk_timestamp, target_pdf)
 
-    def _slug_title_or_triage(self, ctx: _FilingContext) -> str | CommandResult:
+    def _slug_title_or_triage(self, ctx: FilingContext) -> str | CommandResult:
         title_or_number = ctx.extract_result.number or ctx.extract_result.title
         if not title_or_number:
             return self._triage(
-                _TriageContext(
+                TriageContext(
                     params=ctx.params,
                     sha=ctx.sha,
                     ocr_result=ctx.ocr_result,
@@ -366,7 +366,7 @@ class Pipeline:
             return slugify(title_or_number)
         except ValueError:
             return self._triage(
-                _TriageContext(
+                TriageContext(
                     params=ctx.params,
                     sha=ctx.sha,
                     ocr_result=ctx.ocr_result,
@@ -379,7 +379,7 @@ class Pipeline:
             )
 
     def _file_document(
-        self, ctx: _FilingContext, canonical_filename: str, zk_timestamp: str, target_pdf: Path
+        self, ctx: FilingContext, canonical_filename: str, zk_timestamp: str, target_pdf: Path
     ) -> CommandResult:
         ingested_at = datetime.now().astimezone()
         frontmatter = build_filing_frontmatter(
@@ -540,7 +540,7 @@ class Pipeline:
 
         return "", ""
 
-    def _triage(self, ctx: _TriageContext) -> CommandResult:
+    def _triage(self, ctx: TriageContext) -> CommandResult:
         zk_timestamp = self._zk_timestamp(ctx.extract_result.date if ctx.extract_result is not None else None)
         title_or_number_raw = ""
         if ctx.extract_result is not None:
@@ -714,7 +714,7 @@ class Pipeline:
         return str(value)
 
     @staticmethod
-    def _compose_triage_title(ctx: _TriageContext, doc_type_for_filename: str) -> str:
+    def _compose_triage_title(ctx: TriageContext, doc_type_for_filename: str) -> str:
         """Best-effort title for the triage proposal preview.
 
         Falls back through the same compose helper used by the filing path,

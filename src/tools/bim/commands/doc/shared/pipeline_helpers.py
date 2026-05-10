@@ -22,12 +22,12 @@ if TYPE_CHECKING:
     from bim.params.doc_ingest import IngestParams
 
 __all__ = [
-    "_ClassifyStage",
-    "_ExtractStage",
-    "_FilingContext",
-    "_PromoteFrontmatterContext",
-    "_RuleStage",
-    "_TriageContext",
+    "ClassifyStage",
+    "ExtractStage",
+    "FilingContext",
+    "PromoteFrontmatterContext",
+    "RuleStage",
+    "TriageContext",
     "build_filing_frontmatter",
     "build_filing_result",
     "build_promote_frontmatter",
@@ -38,7 +38,7 @@ T = TypeVar("T")
 
 
 @dataclass(frozen=True)
-class _TriageContext:
+class TriageContext:
     params: IngestParams
     sha: str
     ocr_result: OCRResult
@@ -50,10 +50,10 @@ class _TriageContext:
 
 
 @dataclass(frozen=True)
-class _PromoteFrontmatterContext:
+class PromoteFrontmatterContext:
     """Resolved inputs for :func:`build_promote_frontmatter`.
 
-    Promote-side analog of :class:`_FilingContext`. Holds resolved values
+    Promote-side analog of :class:`FilingContext`. Holds resolved values
     (primitives plus the human-approved ``TriageProposal``) — no dependency
     on ``CommandPromote``-private types — so the helper can be called from
     both production code and the cross-path consistency test.
@@ -70,7 +70,7 @@ class _PromoteFrontmatterContext:
 
 
 @dataclass(frozen=True)
-class _FilingContext:
+class FilingContext:
     params: IngestParams
     sha: str
     ocr_result: OCRResult
@@ -82,7 +82,7 @@ class _FilingContext:
 
 
 @dataclass(frozen=True)
-class _RuleStage:
+class RuleStage:
     ocr_result: OCRResult
     rule_result: RuleResult
     extraction_method: str
@@ -90,7 +90,7 @@ class _RuleStage:
 
 
 @dataclass(frozen=True)
-class _ClassifyStage:
+class ClassifyStage:
     classify_result: ClassifyResult | None
     issuer_slug: str
     issuer_display: str
@@ -98,7 +98,7 @@ class _ClassifyStage:
 
 
 @dataclass(frozen=True)
-class _ExtractStage:
+class ExtractStage:
     extract_result: ExtractResult | None
     triage_reasons: list[str]
 
@@ -124,7 +124,7 @@ def retry_llm_call(
 
 
 def build_filing_frontmatter(
-    ctx: _FilingContext,
+    ctx: FilingContext,
     *,
     zk_timestamp: str,
     target_pdf: Path,
@@ -158,11 +158,11 @@ def build_filing_frontmatter(
     )
 
 
-def build_promote_frontmatter(ctx: _PromoteFrontmatterContext) -> DocumentZettelFrontmatter | CommandResult:
+def build_promote_frontmatter(ctx: PromoteFrontmatterContext) -> DocumentZettelFrontmatter | CommandResult:
     """Build a v1 frontmatter for a human-approved triage proposal.
 
     Mirror of :func:`build_filing_frontmatter` for the promote code path.
-    Inputs are bundled in :class:`_PromoteFrontmatterContext` (resolved
+    Inputs are bundled in :class:`PromoteFrontmatterContext` (resolved
     primitives only, no dependency on ``CommandPromote`` internals); both
     production ``CommandPromote._build_frontmatter`` and the cross-path
     consistency test call this function directly to pin PRD criterion 8

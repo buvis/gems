@@ -29,7 +29,7 @@ from buvis.pybase.result import CommandResult
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.issuers import register_issuer
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
-from bim.commands.doc.shared.pipeline_helpers import _PromoteFrontmatterContext, build_promote_frontmatter
+from bim.commands.doc.shared.pipeline_helpers import PromoteFrontmatterContext, build_promote_frontmatter
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import read_proposal, validate_for_promote
 from bim.commands.doc.shared.zettel_writer import (
@@ -304,7 +304,7 @@ class CommandPromote:
         # PRD criterion 8.
         issuer_display = ctx.proposal.issuer.display_name or ctx.registry.issuers[ctx.proposal.issuer.slug].display_name
         return build_promote_frontmatter(
-            _PromoteFrontmatterContext(
+            PromoteFrontmatterContext(
                 proposal=ctx.proposal,
                 issuer_display=issuer_display,
                 issuer_slug=ctx.proposal.issuer.slug,
