@@ -1,6 +1,6 @@
 ---
 id: 20210311083422
-title: ČEZ a.s. invoice 7102105594
+title: ČEZ a.s. invoice Annual Statement 2021
 type: document
 doc-type: invoice
 issuer: ČEZ a.s.
@@ -22,7 +22,7 @@ tags:
 - year/2021
 ---
 
-# ČEZ a.s. invoice 7102105594
+# ČEZ a.s. invoice Annual Statement 2021
 
 [Open PDF](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)
 

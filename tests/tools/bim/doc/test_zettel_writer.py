@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from bim.commands.doc.shared.settings_models import ZettelSettings
+from bim.commands.doc.shared.zettel_helpers import compose_zettel_title
 from bim.commands.doc.shared.zettel_writer import (
     DocumentZettelFrontmatter,
     ZettelWriter,
@@ -22,7 +23,17 @@ SAMPLE_FILE_PATH = (
     "/Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/"
     "20210311083422-cez-as-7102105594.invoice.pdf"
 )
-SAMPLE_TITLE = "ČEZ a.s. invoice 7102105594"
+SAMPLE_ISSUER = "ČEZ a.s."
+SAMPLE_DOC_TYPE = "invoice"
+SAMPLE_DOC_NUMBER = "7102105594"
+# Used by the ``num0_*`` variants in ``TestZettelWriterPerVariantFixtures`` so
+# the snapshot suite genuinely exercises the ``doc_title`` fallback branch of
+# ``compose_zettel_title`` (PRD 00035 success metric #7). Mirrors the constant
+# used in ``dev/bin/gen_zettel_writer_fixtures.py``.
+SAMPLE_DOC_TITLE = "Annual Statement 2021"
+SAMPLE_TITLE = compose_zettel_title(
+    issuer=SAMPLE_ISSUER, doc_type=SAMPLE_DOC_TYPE, doc_number=SAMPLE_DOC_NUMBER, doc_title=None
+)
 SAMPLE_INGESTED_AT = datetime(2026, 5, 4, 14, 30, 22, tzinfo=timezone(timedelta(hours=2)))
 SAMPLE_OCR_TEXT = (
     "ČEZ a.s.\nFaktura č. 7102105594\nDatum vystavení: 11.03.2021\nObdobí: 02/2021\nCelkem k úhradě: 4 218,00 Kč\n"
@@ -33,9 +44,9 @@ def _frontmatter_kwargs(**overrides: object) -> dict[str, object]:
     base: dict[str, object] = {
         "id": 20210311083422,
         "title": SAMPLE_TITLE,
-        "doc_type": "invoice",
-        "issuer": "ČEZ a.s.",
-        "doc_number": "7102105594",
+        "doc_type": SAMPLE_DOC_TYPE,
+        "issuer": SAMPLE_ISSUER,
+        "doc_number": SAMPLE_DOC_NUMBER,
         "doc_date": date(2021, 3, 11),
         "doc_amount": 4218.0,
         "doc_currency": "CZK",
@@ -561,6 +572,15 @@ class TestZettelWriterPerVariantFixtures:
         overrides: dict[str, object] = {}
         if not has_doc_number:
             overrides["doc_number"] = None
+            # Title comes from the ``doc_title`` fallback branch — mirrors
+            # what ``compose_zettel_title`` would produce in production when
+            # extraction yields a title but no number. PRD 00035 metric #7.
+            overrides["title"] = compose_zettel_title(
+                issuer=SAMPLE_ISSUER,
+                doc_type=SAMPLE_DOC_TYPE,
+                doc_number=None,
+                doc_title=SAMPLE_DOC_TITLE,
+            )
         if not has_doc_amount:
             overrides["doc_amount"] = None
             overrides["doc_currency"] = None  # currency without amount makes no sense

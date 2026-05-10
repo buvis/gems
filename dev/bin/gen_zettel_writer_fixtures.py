@@ -17,6 +17,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from bim.commands.doc.shared.zettel_helpers import compose_zettel_title
 from bim.commands.doc.shared.zettel_writer import (
     DocumentZettelFrontmatter,
     ZettelWriter,
@@ -28,7 +29,14 @@ SAMPLE_FILE_PATH = (
     "/Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/"
     "20210311083422-cez-as-7102105594.invoice.pdf"
 )
-SAMPLE_TITLE = "ČEZ a.s. invoice 7102105594"
+SAMPLE_ISSUER = "ČEZ a.s."
+SAMPLE_DOC_TYPE = "invoice"
+SAMPLE_DOC_NUMBER = "7102105594"
+# Used for the ``num0_*`` variants where ``doc_number`` is absent — exercises
+# the ``doc_title`` fallback branch of ``compose_zettel_title`` so PRD 00035
+# success metric #7 is genuinely covered by the snapshot suite (not only by
+# the unit test in ``test_zettel_helpers.py``).
+SAMPLE_DOC_TITLE = "Annual Statement 2021"
 SAMPLE_INGESTED_AT = datetime(2026, 5, 4, 14, 30, 22, tzinfo=timezone(timedelta(hours=2)))
 SAMPLE_OCR_TEXT = (
     "ČEZ a.s.\nFaktura č. 7102105594\nDatum vystavení: 11.03.2021\nObdobí: 02/2021\nCelkem k úhradě: 4 218,00 Kč\n"
@@ -38,10 +46,12 @@ SAMPLE_OCR_TEXT = (
 def _frontmatter_kwargs(**overrides: object) -> dict[str, object]:
     base: dict[str, object] = {
         "id": 20210311083422,
-        "title": SAMPLE_TITLE,
-        "doc_type": "invoice",
-        "issuer": "ČEZ a.s.",
-        "doc_number": "7102105594",
+        "title": compose_zettel_title(
+            issuer=SAMPLE_ISSUER, doc_type=SAMPLE_DOC_TYPE, doc_number=SAMPLE_DOC_NUMBER, doc_title=None
+        ),
+        "doc_type": SAMPLE_DOC_TYPE,
+        "issuer": SAMPLE_ISSUER,
+        "doc_number": SAMPLE_DOC_NUMBER,
         "doc_date": date(2021, 3, 11),
         "doc_amount": 4218.0,
         "doc_currency": "CZK",
@@ -67,6 +77,14 @@ def _write_one_fixture(out_dir: Path, has_number: bool, has_amount: bool, has_la
     overrides: dict[str, object] = {}
     if not has_number:
         overrides["doc_number"] = None
+        # Title now comes from the ``doc_title`` fallback branch — exercises
+        # PRD 00035 success metric #7 in the snapshot suite.
+        overrides["title"] = compose_zettel_title(
+            issuer=SAMPLE_ISSUER,
+            doc_type=SAMPLE_DOC_TYPE,
+            doc_number=None,
+            doc_title=SAMPLE_DOC_TITLE,
+        )
     if not has_amount:
         overrides["doc_amount"] = None
         overrides["doc_currency"] = None
