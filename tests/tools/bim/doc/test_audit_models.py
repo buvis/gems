@@ -132,8 +132,8 @@ class TestAuditReport:
 
     def test_post_init_rejects_partition_mismatch(self) -> None:
         # Spec invariant: clean + non_clean must equal walked. Catches the
-        # gap Diana spotted where a legacy-only PDF could fall outside both
-        # the findings list and the clean count.
+        # gap where a legacy-only PDF could fall outside both the findings
+        # list and the clean count.
         with pytest.raises(ValueError, match="clean_pdf_count \\+ non_clean_pdf_count"):
             _make_report(walked_pdf_count=10, clean_pdf_count=5, non_clean_pdf_count=4)
 

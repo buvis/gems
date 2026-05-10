@@ -325,9 +325,9 @@ class TestAuditE2EAgainstFullFixture:
 
         # ---- (10a) missing_state_db_entry ---------------------------------
         # Only the clean PDF has a recorded ProcessedRow; every other walked
-        # PDF must surface ``missing_state_db_entry``. This regression-tests
-        # the case Diana flagged where the integration test never exercised
-        # the ``check_state_db_entry`` failure path.
+        # PDF must surface ``missing_state_db_entry``. Regression test for
+        # the integration coverage gap where the ``check_state_db_entry``
+        # failure path was never exercised end-to-end.
         for pdf in (
             fx.legacy_pdf,
             fx.missing_zettel_pdf,

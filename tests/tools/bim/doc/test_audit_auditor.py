@@ -431,8 +431,8 @@ class TestPartitionInvariant:
     ) -> None:
         # Single PDF that contributes both a finding (missing state.db entry,
         # since we deliberately don't record_processed it) and a legacy zettel.
-        # Diana's hypothetical: ``len(pdf_findings) + len(legacy)`` = 2 but the
-        # PDF should only count once toward non_clean.
+        # ``len(pdf_findings) + len(legacy)`` = 2 but the PDF should only
+        # count once toward non_clean.
         pdf = factory.business / "cez-as" / CANONICAL_PDF
         _make_pdf(pdf)
         _make_zettel(_docs_dir(factory.vault) / CANONICAL_MD)  # legacy path
