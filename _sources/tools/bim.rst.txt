@@ -273,12 +273,71 @@ Options:
 Outcomes (printed to console and recorded in ``state.db``):
 
 - **filed** — PDF moved to ``<business_root>/<issuer-slug>/<canonical>.pdf``
-  and zettel written to ``<vault_root>/Zettelkasten/documents/<canonical>.md``.
+  and zettel written to ``<vault_root>/Zettelkasten/documents/<issuer-slug>/<canonical>.md``
+  (per-issuer subfolder; the vault layout mirrors the business root).
 - **triaged** — confidence too low or required field missing. The PDF lands
   in ``<business_root>/_triage/`` with a ``.proposed.yml`` sidecar awaiting
   human review.
 - **duplicate** — sha256 already mapped to a filed document. A
   ``.duplicate.yml`` sidecar is written next to the staged input.
+
+Zettel v1 shape
+~~~~~~~~~~~~~~~
+
+Both ``bim doc ingest`` and ``bim doc promote`` produce zettels in the v1
+shape: kebab-case keys throughout, single ``issuer`` field (the human
+display name), ISO-8601 ``ingested-at`` datetime with offset, absolute
+``file://`` link in the body, optional LLM-generated summary paragraph,
+and per-issuer vault subfolder.
+
+.. code-block:: markdown
+
+    ---
+    id: 20210311083422
+    title: ČEZ a.s. invoice 7102105594
+    type: document
+    doc-type: invoice
+    issuer: ČEZ a.s.
+    doc-number: 7102105594
+    doc-date: 2021-03-11
+    doc-amount: 4218.0
+    doc-currency: CZK
+    doc-language: cs
+    ingested-at: 2026-05-04T14:30:15+02:00
+    ingest-source: email
+    file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
+    file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
+    ocr-engine: tesseract
+    ocr-mean-confidence: 0.91
+    extraction-method: rule:cez-invoice-2024-template:v1
+    tags:
+      - document/invoice
+      - issuer/cez-as
+      - year/2021
+    ---
+
+    # ČEZ a.s. invoice 7102105594
+
+    [Open PDF](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)
+
+    Vyúčtování za elektřinu za období 1.1.2021 – 28.2.2021. Splatnost 25.3.2021. Variabilní symbol 7102105594.
+
+    ## OCR text
+
+    > [!quote]- Full text
+    > <full OCR text>
+
+Reserved frontmatter keys:
+
+- ``id`` — bare 14-digit integer (Zettelkasten timestamp); never quoted.
+- ``title`` — single-line human-readable label, equals the body H1.
+- ``type`` — always ``document`` for ingested zettels.
+- ``doc-number`` — emitted as a bare integer when the string round-trips
+  (``str(int(s)) == s``); otherwise quoted to preserve leading zeros.
+- ``ingested-at`` — tz-aware ISO 8601 with offset, parses with
+  ``datetime.fromisoformat`` on Python 3.10+.
+- ``file-path`` — absolute filesystem path, no ``~`` segment. The body
+  ``file://`` link URL-encodes spaces but preserves tildes literal.
 
 bim doc promote
 ~~~~~~~~~~~~~~~
@@ -332,3 +391,132 @@ Re-OCR keeps the pre-modification copy under
 ``originals_retention_days`` (default 30). A garbage-collection command
 (``bim doc gc-originals``) is out of scope for v1; clean these manually
 if needed.
+
+Rule engine
+~~~~~~~~~~~
+
+The pipeline runs a deterministic, declarative rule engine **before** the
+LLM classifier and extractor. For documents whose templates are stable
+(recurring vendor invoices, statements with fixed layouts), rules eliminate
+LLM calls entirely, making extraction reproducible and auditable.
+
+When no rule matches, behavior is unchanged from LLM-only ingestion.
+
+**Why rules exist:**
+
+* **Determinism.** A rule for CEZ invoices either matches or doesn't.
+  No probabilistic drift across model versions or sampling.
+* **Auditability.** A zettel's ``extraction-method: rule:cez-invoice-2024-template:v1``
+  records exactly which rule produced its metadata.
+* **Cost.** No round-trip to Ollama for documents a regex can pin.
+
+**Rule schema (under each issuer in ``issuers.yml``):**
+
+.. code-block:: yaml
+
+    issuers:
+      cez-as:
+        display_name: ČEZ a.s.
+        aliases: [ČEZ, cez.cz]
+
+        rules:
+          - id: cez-invoice-2024-template
+            version: 1
+            priority: 100
+            partial: false
+            match:
+              ocr_contains: ["IČ: 45274649", "Faktura"]
+              ocr_matches: ["Faktura č\\.\\s*(\\d{10})"]
+            extract:
+              doc_type: invoice
+              doc_number:
+                from: ocr_match
+                pattern: "Faktura č\\.\\s*(\\d{10})"
+                group: 1
+              doc_date:
+                from: ocr_match
+                pattern: "Datum vystavení:\\s*(\\d{2}\\.\\d{2}\\.\\d{4})"
+                group: 1
+                format: "%d.%m.%Y"
+                transform: parse_date
+              doc_amount:
+                from: ocr_match
+                pattern: "Celkem k úhradě:\\s*([\\d\\s]+),\\d{2}\\s*Kč"
+                group: 1
+                transform: strip_whitespace_to_int
+              doc_currency: CZK
+              doc_language: cs
+
+          - id: cez-fingerprint
+            partial: true
+            match:
+              ocr_contains: ["IČ: 45274649"]
+            extract:
+              issuer_slug: cez-as
+              issuer_display: ČEZ a.s.
+              doc_language: cs
+
+A rule with ``partial: true`` pins some fields and lets the LLM fill the
+rest (typical use: fingerprint by IČO, let the LLM resolve the doc_type and
+specific fields).
+
+**Match clauses (v1 set):**
+
+.. list-table::
+   :header-rows: 1
+
+   * - Clause
+     - Behavior
+   * - ``ocr_contains``
+     - Substring(s) appear in OCR text. Case-folded + ASCII-folded.
+   * - ``ocr_matches``
+     - Regex(es) match OCR text via ``re.search``.
+   * - ``email_from_domain``
+     - Sender domain matches ``.email.yml`` sidecar's ``from``.
+   * - ``email_subject_contains``
+     - Substring(s) appear in email subject.
+   * - ``email_subject_matches``
+     - Regex match against email subject.
+   * - ``original_filename_matches``
+     - Regex match against the source file's original name.
+
+All clauses within a rule are ANDed. Source-irrelevant clauses
+(e.g. ``email_*`` on a scan) are silently false.
+
+**Transforms (v1 set):**
+
+``strip_whitespace_to_int``, ``strip_whitespace_to_decimal``, ``parse_date``
+(uses ``format``), ``lowercase``, ``uppercase``, ``strip``, ``slugify``.
+
+**Precedence:**
+
+1. Full rules (``partial: false``) beat partial rules.
+2. Among same partial-ness, higher ``priority`` wins.
+3. Ties broken by definition order in ``issuers.yml``.
+
+**Conflict** (two rules of same partial-ness disagreeing on ``issuer_slug``)
+sends the document to triage with a ``rule_conflict: <id1> vs <id2>`` reason.
+
+**bim doc rules subcommands:**
+
+``bim doc rules list``
+    Print all rules with id, issuer, version, partial, priority, enabled.
+
+``bim doc rules validate``
+    Static validation of ``issuers.yml`` rule blocks. Catches duplicate
+    rule ids, uncompilable regexes, unknown transforms, reserved-field
+    assignments. Run this after editing rules.
+
+``bim doc rules test <rule-id> --pdf <path>``
+    Run one rule against one PDF. Prints clause-by-clause pass/fail and
+    extracted fields. Read-only — no zettel, no file move.
+
+``bim doc rules backtest [--rule ID] [--issuer SLUG]``
+    Walk ``business_root`` and report per-rule match counts grouped by
+    issuer folder. Read-only. Slow on large archives (OCRs on demand).
+    Run this **before deploying any new rule** — false positives that
+    file documents under the wrong issuer with confident metadata are the
+    most dangerous failure mode.
+
+**Authoring workflow:** write rule → ``rules validate`` → ``rules test``
+on a sample → ``rules backtest`` to verify no cross-folder hits → deploy.

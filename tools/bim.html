@@ -361,12 +361,69 @@ regardless of this flag.</p></li>
 <p>Outcomes (printed to console and recorded in <code class="docutils literal notranslate"><span class="pre">state.db</span></code>):</p>
 <ul class="simple">
 <li><p><strong>filed</strong> — PDF moved to <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/&lt;issuer-slug&gt;/&lt;canonical&gt;.pdf</span></code>
-and zettel written to <code class="docutils literal notranslate"><span class="pre">&lt;vault_root&gt;/Zettelkasten/documents/&lt;canonical&gt;.md</span></code>.</p></li>
+and zettel written to <code class="docutils literal notranslate"><span class="pre">&lt;vault_root&gt;/Zettelkasten/documents/&lt;issuer-slug&gt;/&lt;canonical&gt;.md</span></code>
+(per-issuer subfolder; the vault layout mirrors the business root).</p></li>
 <li><p><strong>triaged</strong> — confidence too low or required field missing. The PDF lands
 in <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code> with a <code class="docutils literal notranslate"><span class="pre">.proposed.yml</span></code> sidecar awaiting
 human review.</p></li>
 <li><p><strong>duplicate</strong> — sha256 already mapped to a filed document. A
 <code class="docutils literal notranslate"><span class="pre">.duplicate.yml</span></code> sidecar is written next to the staged input.</p></li>
+</ul>
+</section>
+<section id="zettel-v1-shape">
+<h3>Zettel v1 shape<a class="headerlink" href="#zettel-v1-shape" title="Link to this heading"></a></h3>
+<p>Both <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">ingest</span></code> and <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">promote</span></code> produce zettels in the v1
+shape: kebab-case keys throughout, single <code class="docutils literal notranslate"><span class="pre">issuer</span></code> field (the human
+display name), ISO-8601 <code class="docutils literal notranslate"><span class="pre">ingested-at</span></code> datetime with offset, absolute
+<code class="docutils literal notranslate"><span class="pre">file://</span></code> link in the body, optional LLM-generated summary paragraph,
+and per-issuer vault subfolder.</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>---
+id: 20210311083422
+title: ČEZ a.s. invoice 7102105594
+type: document
+doc-type: invoice
+issuer: ČEZ a.s.
+doc-number: 7102105594
+doc-date: 2021-03-11
+doc-amount: 4218.0
+doc-currency: CZK
+doc-language: cs
+ingested-at: 2026-05-04T14:30:15+02:00
+ingest-source: email
+file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
+file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
+ocr-engine: tesseract
+ocr-mean-confidence: 0.91
+extraction-method: rule:cez-invoice-2024-template:v1
+tags:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>document/invoice
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>issuer/cez-as
+<span class="gu">  - year/2021</span>
+<span class="gu">---</span>
+
+<span class="gh"># ČEZ a.s. invoice 7102105594</span>
+
+[<span class="nt">Open PDF</span>](<span class="na">file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf</span>)
+
+Vyúčtování za elektřinu za období 1.1.2021 – 28.2.2021. Splatnost 25.3.2021. Variabilní symbol 7102105594.
+
+<span class="gu">## OCR text</span>
+
+<span class="k">&gt; </span><span class="ge">[!quote]- Full text</span>
+<span class="k">&gt; </span><span class="ge">&lt;full OCR text&gt;</span>
+</pre></div>
+</div>
+<p>Reserved frontmatter keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">id</span></code> — bare 14-digit integer (Zettelkasten timestamp); never quoted.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">title</span></code> — single-line human-readable label, equals the body H1.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">type</span></code> — always <code class="docutils literal notranslate"><span class="pre">document</span></code> for ingested zettels.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">doc-number</span></code> — emitted as a bare integer when the string round-trips
+(<code class="docutils literal notranslate"><span class="pre">str(int(s))</span> <span class="pre">==</span> <span class="pre">s</span></code>); otherwise quoted to preserve leading zeros.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ingested-at</span></code> — tz-aware ISO 8601 with offset, parses with
+<code class="docutils literal notranslate"><span class="pre">datetime.fromisoformat</span></code> on Python 3.10+.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">file-path</span></code> — absolute filesystem path, no <code class="docutils literal notranslate"><span class="pre">~</span></code> segment. The body
+<code class="docutils literal notranslate"><span class="pre">file://</span></code> link URL-encodes spaces but preserves tildes literal.</p></li>
 </ul>
 </section>
 <section id="bim-doc-promote">
@@ -413,6 +470,130 @@ git-secret) happens at the dotfiles management layer.</p>
 <code class="docutils literal notranslate"><span class="pre">originals_retention_days</span></code> (default 30). A garbage-collection command
 (<code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">gc-originals</span></code>) is out of scope for v1; clean these manually
 if needed.</p>
+</section>
+<section id="rule-engine">
+<h3>Rule engine<a class="headerlink" href="#rule-engine" title="Link to this heading"></a></h3>
+<p>The pipeline runs a deterministic, declarative rule engine <strong>before</strong> the
+LLM classifier and extractor. For documents whose templates are stable
+(recurring vendor invoices, statements with fixed layouts), rules eliminate
+LLM calls entirely, making extraction reproducible and auditable.</p>
+<p>When no rule matches, behavior is unchanged from LLM-only ingestion.</p>
+<p><strong>Why rules exist:</strong></p>
+<ul class="simple">
+<li><p><strong>Determinism.</strong> A rule for CEZ invoices either matches or doesn’t.
+No probabilistic drift across model versions or sampling.</p></li>
+<li><p><strong>Auditability.</strong> A zettel’s <code class="docutils literal notranslate"><span class="pre">extraction-method:</span> <span class="pre">rule:cez-invoice-2024-template:v1</span></code>
+records exactly which rule produced its metadata.</p></li>
+<li><p><strong>Cost.</strong> No round-trip to Ollama for documents a regex can pin.</p></li>
+</ul>
+<p><strong>Rule schema (under each issuer in ``issuers.yml``):</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">issuers</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cez-as</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">display_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ČEZ a.s.</span>
+<span class="w">    </span><span class="nt">aliases</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ČEZ</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cez.cz</span><span class="p p-Indicator">]</span>
+
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cez-invoice-2024-template</span>
+<span class="w">        </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">        </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">        </span><span class="nt">partial</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">        </span><span class="nt">match</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">ocr_contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;IČ:</span><span class="nv"> </span><span class="s">45274649&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;Faktura&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">ocr_matches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;Faktura</span><span class="nv"> </span><span class="s">č\\.\\s*(\\d{10})&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">extract</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">doc_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">invoice</span>
+<span class="w">          </span><span class="nt">doc_number</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_match</span>
+<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Faktura</span><span class="nv"> </span><span class="s">č\\.\\s*(\\d{10})&quot;</span>
+<span class="w">            </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">          </span><span class="nt">doc_date</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_match</span>
+<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Datum</span><span class="nv"> </span><span class="s">vystavení:\\s*(\\d{2}\\.\\d{2}\\.\\d{4})&quot;</span>
+<span class="w">            </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">            </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;%d.%m.%Y&quot;</span>
+<span class="w">            </span><span class="nt">transform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parse_date</span>
+<span class="w">          </span><span class="nt">doc_amount</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_match</span>
+<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Celkem</span><span class="nv"> </span><span class="s">k</span><span class="nv"> </span><span class="s">úhradě:\\s*([\\d\\s]+),\\d{2}\\s*Kč&quot;</span>
+<span class="w">            </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">            </span><span class="nt">transform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">strip_whitespace_to_int</span>
+<span class="w">          </span><span class="nt">doc_currency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CZK</span>
+<span class="w">          </span><span class="nt">doc_language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cs</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cez-fingerprint</span>
+<span class="w">        </span><span class="nt">partial</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">match</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">ocr_contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;IČ:</span><span class="nv"> </span><span class="s">45274649&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">extract</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">issuer_slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cez-as</span>
+<span class="w">          </span><span class="nt">issuer_display</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ČEZ a.s.</span>
+<span class="w">          </span><span class="nt">doc_language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cs</span>
+</pre></div>
+</div>
+<p>A rule with <code class="docutils literal notranslate"><span class="pre">partial:</span> <span class="pre">true</span></code> pins some fields and lets the LLM fill the
+rest (typical use: fingerprint by IČO, let the LLM resolve the doc_type and
+specific fields).</p>
+<p><strong>Match clauses (v1 set):</strong></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Clause</p></th>
+<th class="head"><p>Behavior</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ocr_contains</span></code></p></td>
+<td><p>Substring(s) appear in OCR text. Case-folded + ASCII-folded.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ocr_matches</span></code></p></td>
+<td><p>Regex(es) match OCR text via <code class="docutils literal notranslate"><span class="pre">re.search</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">email_from_domain</span></code></p></td>
+<td><p>Sender domain matches <code class="docutils literal notranslate"><span class="pre">.email.yml</span></code> sidecar’s <code class="docutils literal notranslate"><span class="pre">from</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">email_subject_contains</span></code></p></td>
+<td><p>Substring(s) appear in email subject.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">email_subject_matches</span></code></p></td>
+<td><p>Regex match against email subject.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">original_filename_matches</span></code></p></td>
+<td><p>Regex match against the source file’s original name.</p></td>
+</tr>
+</tbody>
+</table>
+<p>All clauses within a rule are ANDed. Source-irrelevant clauses
+(e.g. <code class="docutils literal notranslate"><span class="pre">email_*</span></code> on a scan) are silently false.</p>
+<p><strong>Transforms (v1 set):</strong></p>
+<p><code class="docutils literal notranslate"><span class="pre">strip_whitespace_to_int</span></code>, <code class="docutils literal notranslate"><span class="pre">strip_whitespace_to_decimal</span></code>, <code class="docutils literal notranslate"><span class="pre">parse_date</span></code>
+(uses <code class="docutils literal notranslate"><span class="pre">format</span></code>), <code class="docutils literal notranslate"><span class="pre">lowercase</span></code>, <code class="docutils literal notranslate"><span class="pre">uppercase</span></code>, <code class="docutils literal notranslate"><span class="pre">strip</span></code>, <code class="docutils literal notranslate"><span class="pre">slugify</span></code>.</p>
+<p><strong>Precedence:</strong></p>
+<ol class="arabic simple">
+<li><p>Full rules (<code class="docutils literal notranslate"><span class="pre">partial:</span> <span class="pre">false</span></code>) beat partial rules.</p></li>
+<li><p>Among same partial-ness, higher <code class="docutils literal notranslate"><span class="pre">priority</span></code> wins.</p></li>
+<li><p>Ties broken by definition order in <code class="docutils literal notranslate"><span class="pre">issuers.yml</span></code>.</p></li>
+</ol>
+<p><strong>Conflict</strong> (two rules of same partial-ness disagreeing on <code class="docutils literal notranslate"><span class="pre">issuer_slug</span></code>)
+sends the document to triage with a <code class="docutils literal notranslate"><span class="pre">rule_conflict:</span> <span class="pre">&lt;id1&gt;</span> <span class="pre">vs</span> <span class="pre">&lt;id2&gt;</span></code> reason.</p>
+<p><strong>bim doc rules subcommands:</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">rules</span> <span class="pre">list</span></code></dt><dd><p>Print all rules with id, issuer, version, partial, priority, enabled.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">rules</span> <span class="pre">validate</span></code></dt><dd><p>Static validation of <code class="docutils literal notranslate"><span class="pre">issuers.yml</span></code> rule blocks. Catches duplicate
+rule ids, uncompilable regexes, unknown transforms, reserved-field
+assignments. Run this after editing rules.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">rules</span> <span class="pre">test</span> <span class="pre">&lt;rule-id&gt;</span> <span class="pre">--pdf</span> <span class="pre">&lt;path&gt;</span></code></dt><dd><p>Run one rule against one PDF. Prints clause-by-clause pass/fail and
+extracted fields. Read-only — no zettel, no file move.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">rules</span> <span class="pre">backtest</span> <span class="pre">[--rule</span> <span class="pre">ID]</span> <span class="pre">[--issuer</span> <span class="pre">SLUG]</span></code></dt><dd><p>Walk <code class="docutils literal notranslate"><span class="pre">business_root</span></code> and report per-rule match counts grouped by
+issuer folder. Read-only. Slow on large archives (OCRs on demand).
+Run this <strong>before deploying any new rule</strong> — false positives that
+file documents under the wrong issuer with confident metadata are the
+most dangerous failure mode.</p>
+</dd>
+</dl>
+<p><strong>Authoring workflow:</strong> write rule → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">validate</span></code> → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">test</span></code>
+on a sample → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">backtest</span></code> to verify no cross-folder hits → deploy.</p>
 </section>
 </section>
 </section>
