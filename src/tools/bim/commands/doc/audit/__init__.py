@@ -6,6 +6,7 @@ Re-exports the public domain models so callers can import directly from
 
 from __future__ import annotations
 
+from bim.commands.doc.audit.auditor import Auditor
 from bim.commands.doc.audit.models import (
     AuditReport,
     InboxSummary,
@@ -35,6 +36,7 @@ from bim.commands.doc.audit.walker import walk_business_root
 
 __all__ = [
     "AuditReport",
+    "Auditor",
     "InboxSummary",
     "OcrQualityReader",
     "PdfFinding",
