@@ -25,6 +25,11 @@ from bim.commands.doc.audit.pdf_checks import (
     derive_zettel_filename,
     resolve_zettel_paths,
 )
+from bim.commands.doc.audit.rules_checks import (
+    check_priority_conflicts,
+    check_registry_loadable,
+    check_rule_freshness,
+)
 from bim.commands.doc.audit.walker import walk_business_root
 
 __all__ = [
@@ -39,6 +44,9 @@ __all__ = [
     "check_filename_canonical",
     "check_issuer_registered",
     "check_ocr",
+    "check_priority_conflicts",
+    "check_registry_loadable",
+    "check_rule_freshness",
     "check_state_db_entry",
     "check_zettel_exists",
     "derive_zettel_filename",
