@@ -230,16 +230,37 @@ def _pair_overlap_finding(
 def _match_clauses_can_overlap(a: MatchClauses, b: MatchClauses) -> bool:
     """Return True if some document could satisfy both clause sets.
 
-    The only statically decidable disjointness is on ``email_from_domain``:
-    when both sides constrain the field with literal domain lists, the
-    lists must intersect for a shared document to exist. All other clause
-    types (regex, substring) are conservatively treated as overlapping.
-    An unconstrained side (None) imposes no restriction on that field.
+    The only statically decidable disjointness is on ``email_from_domain``.
+    The runtime matcher (``_eval_email_from_domain``) casefolds the sender
+    domain and uses ``str.endswith`` against each candidate, so two literal
+    lists are disjoint iff no candidate from one side is a (case-folded)
+    suffix of any candidate from the other side; otherwise some address
+    can satisfy both lists. All other clause types (regex, substring) are
+    conservatively treated as overlapping. An unconstrained side (None)
+    imposes no restriction on that field.
     """
     if a.email_from_domain is not None and b.email_from_domain is not None:
-        if not set(a.email_from_domain) & set(b.email_from_domain):
+        if not _email_domain_lists_can_overlap(a.email_from_domain, b.email_from_domain):
             return False
     return True
+
+
+def _email_domain_lists_can_overlap(a: list[str], b: list[str]) -> bool:
+    """Return True iff some address can satisfy both literal-domain lists.
+
+    Mirrors the runtime matcher's casefold + suffix semantics: a domain
+    ``d`` matches a candidate ``c`` when ``d.endswith(c)``. So lists ``A``
+    and ``B`` can overlap iff there exist ``ca`` in A and ``cb`` in B
+    such that one is a suffix of the other (case-folded). Equal candidates
+    are the trivial case (``ca == cb``).
+    """
+    folded_a = [candidate.casefold() for candidate in a]
+    folded_b = [candidate.casefold() for candidate in b]
+    for ca in folded_a:
+        for cb in folded_b:
+            if ca.endswith(cb) or cb.endswith(ca):
+                return True
+    return False
 
 
 def _disagreement_enrichment(

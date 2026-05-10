@@ -325,6 +325,81 @@ class TestCheckPriorityConflicts:
         assert len(findings) == 1
         assert "overlapping match clauses" in findings[0].detail
 
+    def test_case_insensitive_email_from_domain_overlaps(self) -> None:
+        # The matcher casefolds both sides at runtime, so literal lists with
+        # different casing match the same emails. The audit must treat them
+        # as overlapping.
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["Example.com"]),
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "b",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["example.COM"]),
+                    )
+                ],
+            }
+        )
+        findings = check_priority_conflicts(registry)
+        assert len(findings) == 1
+        assert "overlapping match clauses" in findings[0].detail
+
+    def test_suffix_email_from_domain_overlaps(self) -> None:
+        # Runtime matcher uses ``domain.endswith(candidate)``, so
+        # ``billing.example.com`` matches both ``example.com`` and
+        # ``billing.example.com``. Same-priority pair must be flagged.
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["example.com"]),
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "b",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["billing.example.com"]),
+                    )
+                ],
+            }
+        )
+        findings = check_priority_conflicts(registry)
+        assert len(findings) == 1
+        assert "overlapping match clauses" in findings[0].detail
+
+    def test_unrelated_subdomains_email_from_domain_disjoint(self) -> None:
+        # ``billing.example.com`` and ``mail.example.com`` are not suffixes
+        # of each other and no domain ends with both, so they remain disjoint.
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["billing.example.com"]),
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "b",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["mail.example.com"]),
+                    )
+                ],
+            }
+        )
+        assert check_priority_conflicts(registry) == []
+
     def test_one_side_unconstrained_email_domain_overlaps(self) -> None:
         registry = _make_registry(
             {
