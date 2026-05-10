@@ -109,3 +109,17 @@ All 16 CLIs (`bim`, `dot`, `fctracker`, `fren`, `hello-world`, `morph`, `muc`, `
 | vuc | Video utility collection |
 | zseq | Zettelsequence utilities |
 
+### bim doc subsystem
+
+`bim doc ingest` watches the staging inbox and either auto-files a PDF
+into `<business_root>/<issuer>/` (with a paired zettel under
+`<vault>/<doc-subdir>/<issuer>/`) or stages it under `_triage/` when a
+field is uncertain. `bim doc promote` finishes a triage proposal into a
+filed zettel. `bim doc audit` is read-only: it walks `<business_root>/`
+and writes a structured JSON report under `<state_dir>/audit/` covering
+missing or orphan zettels, sha-256 mismatches, OCR/hash adapter failures,
+rule-registry validity and freshness, plus a `legacy_layout_zettels`
+list (zettels still at the pre-v1 flat path, the input contract for the
+forthcoming migration command). See the [Sphinx docs](https://buvis.github.io/gems/)
+for the full JSON schema.
+
