@@ -70,6 +70,9 @@ def _render_issues_by_issuer(report: AuditReport, console: _ConsoleLike) -> None
     if not report.pdf_findings:
         return
     by_issuer: Counter[str | None] = Counter(f.issuer_slug for f in report.pdf_findings)
+    # Ordering convention: named issuers appear alphabetically; the "no
+    # issuer folder" bucket (top-level / unknown-folder PDFs) always comes
+    # last so the operator's eye lands on registered issuers first.
     named = sorted(slug for slug in by_issuer if slug is not None)
     has_none = None in by_issuer
 
