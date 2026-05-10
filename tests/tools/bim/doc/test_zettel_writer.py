@@ -126,7 +126,7 @@ class TestDocumentZettelFrontmatter:
     def test_file_path_with_bare_tilde_segment_raises(self) -> None:
         # A bare ``~`` segment buried in an absolute path (defensive) is rejected.
         # Legitimate tildes inside directory names (e.g. ``com~apple~CloudDocs``)
-        # are NOT rejected — that's an iCloud-resolved path component.
+        # are NOT rejected; that's an iCloud-resolved path component.
         with pytest.raises(ValidationError):
             DocumentZettelFrontmatter(**_frontmatter_kwargs(file_path="/Users/bob/~/x.pdf"))
 
@@ -175,7 +175,7 @@ class TestDocumentZettelFrontmatter:
             DocumentZettelFrontmatter(**_frontmatter_kwargs(title="\ttab"))
 
     def test_ingested_at_must_be_tz_aware(self) -> None:
-        # Naive datetimes are rejected — the spec mandates an offset.
+        # Naive datetimes are rejected; the spec mandates an offset.
         with pytest.raises(ValidationError):
             DocumentZettelFrontmatter(**_frontmatter_kwargs(ingested_at=datetime(2026, 5, 4, 14, 30, 22)))
 
@@ -443,7 +443,7 @@ class TestZettelWriter:
         body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
         target = writer.write(fm, body, issuer_slug="cez-as")
         block = _frontmatter_block(target.read_text(encoding="utf-8"))
-        # Either bare (PyYAML detects the hex letters) or quoted — both keep the value addressable
+        # Either bare (PyYAML detects the hex letters) or quoted; both keep the value addressable
         # as a string. The important assertion is that it round-trips intact.
         assert digit_sha in block
 

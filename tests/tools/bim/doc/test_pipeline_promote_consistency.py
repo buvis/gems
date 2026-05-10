@@ -2,7 +2,7 @@
 
 Drives the same logical document through the pipeline (ingest) and promote
 frontmatter builders and asserts the resulting v1 frontmatter is equivalent
-modulo ``extraction-method`` (which legitimately differs by design — ingest
+modulo ``extraction-method`` (which legitimately differs by design: ingest
 records the LLM/rule that produced the values; promote always records
 ``manual`` because a human approved the triage proposal).
 
