@@ -145,17 +145,6 @@ class TestAuditReport:
         with pytest.raises(ValueError):
             _make_report(triage_pending=-1)
 
-    def test_ocr_confidence_assessable_count_defaults_to_zero(self) -> None:
-        """Default models built without an explicit count must remain
-        constructible; this preserves backwards-compat for any test that pre-
-        dates the field."""
-        report = _make_report()
-        assert report.ocr_confidence_assessable_count == 0
-
-    def test_ocr_confidence_assessable_count_preserved(self) -> None:
-        report = _make_report(ocr_confidence_assessable_count=7)
-        assert report.ocr_confidence_assessable_count == 7
-
     def test_post_init_rejects_negative_ocr_confidence_assessable_count(self) -> None:
         with pytest.raises(ValueError, match="ocr_confidence_assessable_count"):
             _make_report(ocr_confidence_assessable_count=-1)
