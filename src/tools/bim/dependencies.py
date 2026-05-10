@@ -223,8 +223,7 @@ def get_health_checker() -> Callable[[DocSettings], None]:
 
 def get_pipeline(settings: DocSettings, repo: ZettelRepository) -> Pipeline:
     """Wire all doc subsystem services and return a ready-to-run Pipeline."""
-    from bim.commands.doc.shared.pipeline import Pipeline as _Pipeline
-    from bim.commands.doc.shared.pipeline import PipelineServices
+    from bim.commands.doc.shared.pipeline import Pipeline as _Pipeline, PipelineServices
 
     issuers_file = settings.paths.issuers_file
     if issuers_file is None:

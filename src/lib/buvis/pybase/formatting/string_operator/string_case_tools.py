@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from inflection import camelize as infl_camelize
-from inflection import humanize as infl_humanize
-from inflection import underscore as infl_underscore
+from inflection import camelize as infl_camelize, humanize as infl_humanize, underscore as infl_underscore
 
 
 class StringCaseTools:

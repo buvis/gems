@@ -35,21 +35,13 @@ from bim.commands.doc.shared.pipeline_helpers import (
     PipelineStages,
     RuleStage,
     TriageContext,
+    applied_rule_id as _applied_rule_id,
     build_filing_context_from_stages,
     build_filing_frontmatter,
     build_filing_result,
     build_triage_context,
-)
-from bim.commands.doc.shared.pipeline_helpers import (
-    applied_rule_id as _applied_rule_id,
-)
-from bim.commands.doc.shared.pipeline_helpers import (
     compose_triage_title as _compose_triage_title,
-)
-from bim.commands.doc.shared.pipeline_helpers import (
     retry_llm_call as _retry_llm_call,
-)
-from bim.commands.doc.shared.pipeline_helpers import (
     rule_extraction_method as _rule_extraction_method,
 )
 from bim.commands.doc.shared.progress import NoOpProgressReporter
