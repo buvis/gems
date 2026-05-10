@@ -600,6 +600,13 @@ stdout plus a structured JSON report at
   ``non_clean`` from ``len(pdf_findings) + len(legacy_layout_zettels)`` —
   one PDF can contribute multiple findings and a legacy entry, so that
   arithmetic double-counts.
+* ``ocr_confidence_assessable_count`` — PDFs for which the OCR-quality reader
+  actually returned a numeric mean confidence (``has_text`` and
+  ``confidence is not None``). Zero means the reader cannot assess
+  confidence at all for this run (the production pdfminer-based reader is
+  one such reader); the stdout reporter uses this signal to replace the
+  misleading ``0 low OCR confidence`` row with an explicit ``low OCR
+  confidence: not assessed`` notice.
 * ``pdf_findings`` — one entry **per finding** (not per PDF). A PDF with
   N findings produces N entries that share the same ``pdf_path``. Each
   entry carries ``code`` (one of the ``PdfFindingCode`` literals,
