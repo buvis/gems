@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 __all__ = [
+    "VALIDATION_ERROR_CODES",
     "AuditReport",
     "InboxSummary",
     "PdfFinding",
@@ -22,6 +23,16 @@ __all__ = [
     "RuleFinding",
     "RuleFindingCode",
 ]
+
+
+# Subset of RuleFindingCode values that represent registry validation
+# failures (vs. priority_conflict / stale_rule which are warnings). Both
+# CommandAudit (filters into result.metadata) and the stdout reporter
+# (gates the "Errors" block) read this set; keeping it here avoids two
+# parallel definitions drifting apart when a new error code is added.
+VALIDATION_ERROR_CODES: frozenset[str] = frozenset(
+    {"validation_error", "duplicate_id", "regex_compile_failure"},
+)
 
 
 PdfFindingCode = Literal[

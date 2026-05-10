@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.audit.auditor import Auditor, HashReader, NowProvider
+from bim.commands.doc.audit.models import VALIDATION_ERROR_CODES
 from bim.commands.doc.audit.pdf_checks import OcrQualityReader
 from bim.commands.doc.audit.reporter import write_json_report
 
@@ -23,11 +24,6 @@ if TYPE_CHECKING:
     from bim.commands.doc.shared.state_db import StateDB
 
 __all__ = ["AuditServices", "CommandAudit"]
-
-
-_VALIDATION_ERROR_CODES: frozenset[str] = frozenset(
-    {"validation_error", "duplicate_id", "regex_compile_failure"},
-)
 
 
 @dataclass(frozen=True)
@@ -79,7 +75,7 @@ class CommandAudit:
                 metadata={"report": report},
             )
 
-        validation_errors = [f for f in report.rule_findings if f.code in _VALIDATION_ERROR_CODES]
+        validation_errors = [f for f in report.rule_findings if f.code in VALIDATION_ERROR_CODES]
         return CommandResult(
             success=True,
             metadata={

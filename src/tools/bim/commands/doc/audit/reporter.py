@@ -11,7 +11,7 @@ import json
 from collections import Counter
 from typing import TYPE_CHECKING, Protocol
 
-from bim.commands.doc.audit.models import AuditReport
+from bim.commands.doc.audit.models import VALIDATION_ERROR_CODES, AuditReport
 from bim.commands.doc.shared.atomic_write import atomic_write_text
 
 if TYPE_CHECKING:
@@ -22,11 +22,6 @@ __all__ = ["render_stdout", "write_json_report"]
 
 class _ConsoleLike(Protocol):
     def print(self, msg: str, *, mode: str = ...) -> None: ...
-
-
-_VALIDATION_ERROR_CODES: frozenset[str] = frozenset(
-    {"validation_error", "duplicate_id", "regex_compile_failure"},
-)
 
 
 def _emit(console: _ConsoleLike, line: str) -> None:
@@ -88,7 +83,7 @@ def _render_triage(report: AuditReport, console: _ConsoleLike) -> None:
 
 
 def _render_rules(report: AuditReport, console: _ConsoleLike) -> None:
-    errors = [f for f in report.rule_findings if f.code in _VALIDATION_ERROR_CODES]
+    errors = [f for f in report.rule_findings if f.code in VALIDATION_ERROR_CODES]
     conflicts = [f for f in report.rule_findings if f.code == "priority_conflict"]
     stale = [f for f in report.rule_findings if f.code == "stale_rule"]
 
