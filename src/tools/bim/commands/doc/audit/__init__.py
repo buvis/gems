@@ -14,6 +14,7 @@ from bim.commands.doc.audit.models import (
     RuleFinding,
     RuleFindingCode,
 )
+from bim.commands.doc.audit.walker import walk_business_root
 
 __all__ = [
     "AuditReport",
@@ -22,4 +23,5 @@ __all__ = [
     "PdfFindingCode",
     "RuleFinding",
     "RuleFindingCode",
+    "walk_business_root",
 ]
