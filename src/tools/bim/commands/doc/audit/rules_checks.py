@@ -163,7 +163,10 @@ def check_priority_conflicts(registry: IssuerRegistry) -> list[RuleFinding]:
     Static-overlap heuristic. Two rules are reported as conflicting iff:
 
     * they are both enabled,
-    * they share the same priority, and
+    * they share the same priority,
+    * they share the same ``partial`` flag (``engine._select_winner``
+      gives full rules priority over partial rules at any shared priority,
+      so cross-flag pairs never collide at runtime), and
     * their ``match`` clauses are not statically provably disjoint.
 
     The only statically decidable disjointness we detect is on
@@ -212,6 +215,11 @@ def _pair_overlap_finding(
 ) -> RuleFinding | None:
     """Emit one ``priority_conflict`` finding if the pair's match clauses can overlap."""
     if rule_a.id == rule_b.id:
+        return None
+    # ``engine._select_winner`` partitions survivors by ``partial``: full
+    # rules pre-empt partial rules at any priority, so a same-priority
+    # full+partial pair never collides at runtime. Skip it here too.
+    if rule_a.partial != rule_b.partial:
         return None
     first_id, second_id = sorted((rule_a.id, rule_b.id))
     key = (first_id, second_id)

@@ -27,6 +27,7 @@ def _make_rule(
     *,
     priority: int = 50,
     enabled: bool = True,
+    partial: bool = False,
     extract: dict | None = None,
     match: MatchClauses | None = None,
 ) -> Rule:
@@ -34,6 +35,7 @@ def _make_rule(
         id=rule_id,
         priority=priority,
         enabled=enabled,
+        partial=partial,
         match=match or MatchClauses(ocr_contains=["foo"]),
         extract=extract if extract is not None else {"doc_type": "invoice"},
     )
@@ -399,6 +401,60 @@ class TestCheckPriorityConflicts:
             }
         )
         assert check_priority_conflicts(registry) == []
+
+    def test_full_and_partial_at_same_priority_no_conflict(self) -> None:
+        # ``engine._select_winner`` partitions full and partial rules: a
+        # partial only wins when no full survives. So a same-priority
+        # full+partial pair never collides at runtime; the audit must not
+        # flag it.
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "full-rule",
+                        priority=50,
+                        partial=False,
+                        extract={"doc_type": "invoice"},
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "partial-rule",
+                        priority=50,
+                        partial=True,
+                        extract={"doc_type": "statement"},
+                    )
+                ],
+            }
+        )
+        assert check_priority_conflicts(registry) == []
+
+    def test_two_partial_rules_at_same_priority_still_conflict(self) -> None:
+        # When both rules are partial, ``_select_winner`` evaluates them as
+        # a single pool, so the conflict-detection invariant still holds.
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "p1",
+                        priority=50,
+                        partial=True,
+                        extract={"doc_type": "invoice"},
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "p2",
+                        priority=50,
+                        partial=True,
+                        extract={"doc_type": "statement"},
+                    )
+                ],
+            }
+        )
+        findings = check_priority_conflicts(registry)
+        assert len(findings) == 1
+        assert findings[0].code == "priority_conflict"
 
     def test_one_side_unconstrained_email_domain_overlaps(self) -> None:
         registry = _make_registry(
