@@ -245,3 +245,32 @@ class TestRuleMatchRecording:
         # Conflict path returns a CommandResult (early-return triage).
         assert isinstance(outcome, CommandResult)
         assert state_db.get_rule_last_matches() == {}
+
+
+class TestAppliedRuleIdHelper:
+    """``Pipeline._applied_rule_id`` selects the rule_id that promote should
+    refresh ``state_db.rule_matches`` with, given the rule_result outcome.
+    """
+
+    def test_full_match_returns_rule_id(self) -> None:
+        result = RuleResult(kind="full", rule_id="r-full", rule_version=1, pinned={"doc_type": "invoice"})
+        assert Pipeline._applied_rule_id(result) == "r-full"
+
+    def test_partial_match_returns_rule_id(self) -> None:
+        result = RuleResult(kind="partial", rule_id="r-partial", rule_version=1)
+        assert Pipeline._applied_rule_id(result) == "r-partial"
+
+    def test_none_outcome_returns_none(self) -> None:
+        result = RuleResult(kind="none", rule_id=None, rule_version=None)
+        assert Pipeline._applied_rule_id(result) is None
+
+    def test_conflict_outcome_returns_none(self) -> None:
+        result = RuleResult(kind="conflict", rule_id=None, rule_version=None, conflicting_rules=["a", "b"])
+        assert Pipeline._applied_rule_id(result) is None
+
+    def test_full_match_without_rule_id_returns_none(self) -> None:
+        # Defensive: a full result must have a rule_id, but if one is somehow
+        # missing the helper returns None rather than emitting an empty string
+        # into the proposal.
+        result = RuleResult(kind="full", rule_id=None, rule_version=None)
+        assert Pipeline._applied_rule_id(result) is None

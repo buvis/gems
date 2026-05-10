@@ -47,6 +47,10 @@ class TriageContext:
     reasons: list[str]
     issuer_slug: str
     issuer_display: str
+    # Set when this triage routing came from a rule-engine ``full``/``partial``
+    # match with a known rule_id. The triage proposal carries the value so the
+    # promote write path can refresh ``state_db.rule_matches`` for it.
+    applied_rule_id: str | None = None
 
 
 @dataclass(frozen=True)

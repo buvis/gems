@@ -124,6 +124,12 @@ class TriageProposal(BaseModel):
     ocr: OCRProposal
     triage_reasons: list[str]
     zettel_preview: ZettelPreview
+    # Set by the pipeline when triage is the outcome of a rule-engine match
+    # (``full``/``partial`` rule_result with a known rule_id). Promoting such
+    # a proposal refreshes ``state_db.rule_matches[applied_rule_id]`` so the
+    # audit's freshness check sees the match. Pre-existing proposals without
+    # this field default to None and skip the refresh, matching old behaviour.
+    applied_rule_id: str | None = None
 
 
 _ZK_TIMESTAMP_LEN = 14

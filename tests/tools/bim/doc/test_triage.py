@@ -91,6 +91,32 @@ class TestRoundTrip:
         loaded = read_proposal(path)
         assert loaded == proposal
 
+    def test_applied_rule_id_round_trips(self, tmp_path: Path) -> None:
+        path = tmp_path / "proposal.proposed.yml"
+        proposal = _full_proposal().model_copy(update={"applied_rule_id": "cez-invoice-template-v1"})
+        write_proposal(path, proposal)
+        loaded = read_proposal(path)
+        assert loaded.applied_rule_id == "cez-invoice-template-v1"
+
+    def test_applied_rule_id_defaults_to_none_for_legacy_proposals(self, tmp_path: Path) -> None:
+        # A pre-existing proposal written before this field existed should still
+        # load (default None) -- the model has ``extra="forbid"`` only on
+        # unknown fields, not on missing optional ones with defaults.
+        import yaml
+
+        path = tmp_path / "proposal.proposed.yml"
+        proposal = _full_proposal()  # applied_rule_id defaults to None
+        write_proposal(path, proposal)
+
+        # Strip the applied_rule_id key from the on-disk YAML to mimic an
+        # older proposal that was written before the field existed.
+        raw = yaml.safe_load(path.read_text())
+        raw.pop("applied_rule_id", None)
+        path.write_text(yaml.safe_dump(raw, sort_keys=False))
+
+        loaded = read_proposal(path)
+        assert loaded.applied_rule_id is None
+
 
 class TestAtomicWrite:
     def test_replace_failure_leaves_target_untouched(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -199,6 +199,8 @@ class Pipeline:
         if isinstance(rule_stage, CommandResult):
             return rule_stage
 
+        applied_rule_id = self._applied_rule_id(rule_stage.rule_result)
+
         classify_stage = self._classify_after_rules(params, rule_stage, reporter)
         classify_result = classify_stage.classify_result
         if classify_result is None:
@@ -212,6 +214,7 @@ class Pipeline:
                     reasons=classify_stage.triage_reasons,
                     issuer_slug=classify_stage.issuer_slug,
                     issuer_display=classify_stage.issuer_display,
+                    applied_rule_id=applied_rule_id,
                 )
             )
 
@@ -228,6 +231,7 @@ class Pipeline:
                     reasons=triage_reasons,
                     issuer_slug=classify_stage.issuer_slug,
                     issuer_display=classify_stage.issuer_display,
+                    applied_rule_id=applied_rule_id,
                 )
             )
         return self._finalize_filing(
@@ -627,6 +631,7 @@ class Pipeline:
                 ),
                 summary=ctx.extract_result.summary if ctx.extract_result is not None else None,
             ),
+            applied_rule_id=ctx.applied_rule_id,
         )
         write_proposal(proposal_path, proposal)
 
@@ -728,6 +733,19 @@ class Pipeline:
             )
         except ValueError:
             return f"{issuer} {doc_type_for_filename} (untitled)"
+
+    @staticmethod
+    def _applied_rule_id(rule_result: RuleResult) -> str | None:
+        """Return the rule_id when this rule_result represents a winning match.
+
+        ``full``/``partial`` outcomes with a known ``rule_id`` are the only
+        cases where promote (or the immediate ingest write) should refresh
+        ``state.db rule_matches``. ``none`` and ``conflict`` mean no single
+        rule won, so there's nothing to record.
+        """
+        if rule_result.kind not in {"full", "partial"}:
+            return None
+        return rule_result.rule_id
 
     @staticmethod
     def _rule_extraction_method(rule_result: RuleResult) -> str:

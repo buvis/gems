@@ -617,3 +617,74 @@ class TestValidIngestSourcesDerivation:
         assert "email" in _VALID_INGEST_SOURCES
         assert "scan" in _VALID_INGEST_SOURCES
         assert "issuer-inbox" in _VALID_INGEST_SOURCES
+
+
+class TestCommandPromoteRuleMatchRecording:
+    """``CommandPromote`` refreshes ``state_db.rule_matches`` when the
+    proposal carries an ``applied_rule_id`` (set by the pipeline when triage
+    was the outcome of a rule-engine ``full``/``partial`` match).
+    Pre-existing proposals without the field skip the refresh entirely.
+    """
+
+    def test_records_rule_match_when_applied_rule_id_set(
+        self,
+        settings: DocSettings,
+        registry_path: Path,
+        lock_path: Path,
+        state_db: StateDB,
+        mocker: MockerFixture,
+    ) -> None:
+        triage_dir = settings.paths.business_root / "_triage"
+        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
+        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+        proposal = _build_proposal(sha256=sha, triage_pdf=pdf).model_copy(
+            update={"applied_rule_id": "cez-invoice-2021-template"}
+        )
+        write_proposal(yml, proposal)
+
+        before = datetime.now(timezone.utc)
+        cmd, _ = _build_command(
+            settings=settings,
+            registry_path=registry_path,
+            lock_path=lock_path,
+            state_db=state_db,
+            proposal_yml=yml,
+            mocker=mocker,
+            ocr_pdf=pdf,
+        )
+
+        result = cmd.execute()
+        assert result.success is True
+
+        recorded = state_db.get_rule_last_matches()
+        assert "cez-invoice-2021-template" in recorded
+        # Recorded timestamp is at-or-after the moment we captured before run.
+        assert recorded["cez-invoice-2021-template"] >= before
+
+    def test_no_rule_match_recorded_when_applied_rule_id_none(
+        self,
+        settings: DocSettings,
+        registry_path: Path,
+        lock_path: Path,
+        state_db: StateDB,
+        mocker: MockerFixture,
+    ) -> None:
+        triage_dir = settings.paths.business_root / "_triage"
+        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
+        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+        # Default ``_build_proposal`` leaves ``applied_rule_id=None``.
+        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf))
+
+        cmd, _ = _build_command(
+            settings=settings,
+            registry_path=registry_path,
+            lock_path=lock_path,
+            state_db=state_db,
+            proposal_yml=yml,
+            mocker=mocker,
+            ocr_pdf=pdf,
+        )
+
+        result = cmd.execute()
+        assert result.success is True
+        assert state_db.get_rule_last_matches() == {}

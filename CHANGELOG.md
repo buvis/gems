@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: `bim doc promote` now refreshes `state.db rule_matches` for triage proposals that originated from a rule-engine match. The pipeline records the winning rule_id on the `TriageProposal` (`applied_rule_id` field), and promote writes a fresh `last_matched_at` timestamp during the write path. Previously, only the auto-filing path refreshed rule freshness, so any rule whose matches consistently went to triage would falsely trigger the audit's 90-day staleness warning. Pre-existing proposals without `applied_rule_id` (default null) skip the refresh and behave as before.
 - **bim**: `bim doc promote` now uses the triage proposal's `ingested-at` date for the `doc-date` fallback when a document has no extracted date (previously used `date.today()`, which made the same logical document yield different `doc-date` values when promoted on a different day from when it was triaged). Pipeline+promote consistency now holds for date-less documents too.
 - **bim**: rule-engine conflict detection now flags two same-priority same-partial-ness rules pinning any shared field (was: only `issuer_slug`). Two rules pinning different `doc_type`, `doc_currency`, etc., are now correctly routed to triage with `rule_conflict: <id1> vs <id2>` instead of one silently winning.
 

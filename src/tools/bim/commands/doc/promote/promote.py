@@ -274,6 +274,14 @@ class CommandPromote:
                     extraction_method="manual",
                 )
             )
+            # Refresh rule freshness when this triage came from a rule-engine
+            # match (``applied_rule_id`` set by the pipeline). Pre-existing
+            # proposals without the field skip the refresh and behave as before.
+            if ctx.proposal.applied_rule_id is not None:
+                self._services.state_db.record_rule_match(
+                    ctx.proposal.applied_rule_id,
+                    datetime.now(timezone.utc),
+                )
         except Exception as exc:
             return CommandResult(success=False, error=f"state_db record failed: {exc}")
 
