@@ -25,12 +25,28 @@ def _is_contained(path: Path, root_resolved: Path) -> bool:
         return False
 
 
+def _safe_iterdir(directory: Path) -> list[Path]:
+    """Return ``directory.iterdir()`` sorted, or an empty list on ``OSError``.
+
+    Audit must be robust to one bad subtree: a misconfigured business_root
+    where the user lacks read access to a single folder must not abort the
+    entire walk. ``OSError`` (covering ``PermissionError`` and friends) is
+    treated as "directory is opaque", and we move on to siblings.
+    """
+    try:
+        return sorted(directory.iterdir(), key=lambda p: p.name)
+    except OSError:
+        return []
+
+
 def _walk_issuer(folder_slug: str, directory: Path, root_resolved: Path) -> Iterator[tuple[str, Path]]:
     """Recursively yield PDFs under an issuer folder, skipping hidden dirs.
 
     Symlinked entries whose target escapes ``root_resolved`` are skipped.
+    Directories that raise ``OSError`` on ``iterdir()`` (e.g. unreadable
+    permissions) are skipped.
     """
-    for child in sorted(directory.iterdir(), key=lambda p: p.name):
+    for child in _safe_iterdir(directory):
         if child.name.startswith("."):
             continue
         if not _is_contained(child, root_resolved):
@@ -47,7 +63,7 @@ def _walk_issuer_top_level(folder_slug: str, issuer_dir: Path, root_resolved: Pa
     Skips ``inbox/``, hidden entries, and symlinks escaping ``root_resolved``.
     Recurses into other subdirs via ``_walk_issuer``.
     """
-    for sub in sorted(issuer_dir.iterdir(), key=lambda p: p.name):
+    for sub in _safe_iterdir(issuer_dir):
         if sub.name == "inbox" and sub.is_dir():
             continue
         if sub.name.startswith("."):
@@ -80,7 +96,7 @@ def walk_business_root(business_root: Path) -> Iterator[tuple[str, Path]]:
     if not business_root.is_dir():
         return
     root_resolved = business_root.resolve()
-    for child in sorted(business_root.iterdir(), key=lambda p: p.name):
+    for child in _safe_iterdir(business_root):
         if child.name.startswith("."):
             continue
         if not _is_contained(child, root_resolved):
