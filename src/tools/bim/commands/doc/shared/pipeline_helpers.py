@@ -54,9 +54,9 @@ class PromoteFrontmatterContext:
     """Resolved inputs for :func:`build_promote_frontmatter`.
 
     Promote-side analog of :class:`FilingContext`. Holds resolved values
-    (primitives plus the human-approved ``TriageProposal``) — no dependency
-    on ``CommandPromote``-private types — so the helper can be called from
-    both production code and the cross-path consistency test.
+    (primitives plus the human-approved ``TriageProposal``) with no
+    dependency on ``CommandPromote``-private types, so the helper can be
+    called from both production code and the cross-path consistency test.
     """
 
     proposal: TriageProposal
@@ -163,10 +163,11 @@ def build_promote_frontmatter(ctx: PromoteFrontmatterContext) -> DocumentZettelF
 
     Mirror of :func:`build_filing_frontmatter` for the promote code path.
     Inputs are bundled in :class:`PromoteFrontmatterContext` (resolved
-    primitives only, no dependency on ``CommandPromote`` internals); both
-    production ``CommandPromote._build_frontmatter`` and the cross-path
-    consistency test call this function directly to pin PRD criterion 8
-    (same logical document → same frontmatter).
+    primitives plus the approved ``TriageProposal``, no dependency on
+    ``CommandPromote``-private types); both production
+    ``CommandPromote._build_frontmatter`` and the cross-path consistency
+    test call this function directly to pin PRD criterion 8 (same logical
+    document, same frontmatter).
     """
     proposal = ctx.proposal
     title = proposal.zettel_preview.title
