@@ -115,7 +115,7 @@ class DocumentZettelFrontmatter(BaseModel):
     def _file_path_is_absolute_no_tilde(cls, v: str) -> str:
         # Reject the legacy ``~/...`` shape: not absolute (so caught by the
         # is_absolute check) AND any path *component* equal to a bare ``~``
-        # (defensive — catches malformed absolute paths like ``/foo/~/bar``).
+        # (defensive: catches malformed absolute paths like ``/foo/~/bar``).
         # Tildes embedded within directory names (e.g. iCloud's
         # ``com~apple~CloudDocs``) are legitimate filesystem segments and
         # not rejected.

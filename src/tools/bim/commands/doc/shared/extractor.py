@@ -171,7 +171,7 @@ def _reduced_system_prompt(doc_type: str, *, omit_fields: set[str]) -> str:
         "invoices the original filename is often the invoice number itself.\n"
         "- 'summary' (optional): a 1 to 3 sentence summary of what the document is about, "
         "written in the same language as the OCR text (Czech or English). Omit or set to "
-        "null when not confident — summary is optional, not a required field.\n"
+        "null when not confident; summary is optional, not a required field.\n"
     )
 
 
