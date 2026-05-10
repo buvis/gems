@@ -233,32 +233,41 @@ class TestCheckZettelExists:
 class TestCheckOcr:
     def test_missing_text_emits_missing_ocr(self, tmp_path: Path) -> None:
         pdf = tmp_path / "scan.pdf"
-        findings = check_ocr(pdf, 0.7, lambda _p: (False, None), "cez-as")
+        findings, assessable = check_ocr(pdf, 0.7, lambda _p: (False, None), "cez-as")
         assert len(findings) == 1
         assert findings[0].code == "missing_ocr"
         assert findings[0].issuer_slug == "cez-as"
         assert findings[0].pdf_path == str(pdf)
+        # No text -> the confidence check did not run -> not assessable.
+        assert assessable is False
 
     def test_low_confidence_emits_finding_with_detail(self, tmp_path: Path) -> None:
         pdf = tmp_path / "scan.pdf"
-        findings = check_ocr(pdf, 0.7, lambda _p: (True, 0.5), "cez-as")
+        findings, assessable = check_ocr(pdf, 0.7, lambda _p: (True, 0.5), "cez-as")
         assert len(findings) == 1
         assert findings[0].code == "low_ocr_confidence"
         assert findings[0].detail is not None
         assert "0.50" in findings[0].detail
+        assert assessable is True
 
     def test_high_confidence_clean(self, tmp_path: Path) -> None:
         pdf = tmp_path / "scan.pdf"
-        assert check_ocr(pdf, 0.7, lambda _p: (True, 0.9), "cez-as") == []
+        findings, assessable = check_ocr(pdf, 0.7, lambda _p: (True, 0.9), "cez-as")
+        assert findings == []
+        assert assessable is True
 
     def test_none_confidence_with_text_clean(self, tmp_path: Path) -> None:
         pdf = tmp_path / "scan.pdf"
-        # Has text but confidence not computable: not a finding.
-        assert check_ocr(pdf, 0.7, lambda _p: (True, None), "cez-as") == []
+        # Has text but confidence not computable: not a finding, but also
+        # not assessable -- the reporter uses this to suppress the misleading
+        # "0 low OCR confidence" line.
+        findings, assessable = check_ocr(pdf, 0.7, lambda _p: (True, None), "cez-as")
+        assert findings == []
+        assert assessable is False
 
     def test_empty_folder_slug_coerced_to_none(self, tmp_path: Path) -> None:
         pdf = tmp_path / "scan.pdf"
-        findings = check_ocr(pdf, 0.7, lambda _p: (False, None), "")
+        findings, _ = check_ocr(pdf, 0.7, lambda _p: (False, None), "")
         assert len(findings) == 1
         assert findings[0].issuer_slug is None
 

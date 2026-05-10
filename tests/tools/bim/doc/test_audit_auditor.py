@@ -584,3 +584,75 @@ class TestReportShape:
         report = factory.build().run(issuers)
         assert isinstance(report, AuditReport)
         assert report.generated_at == FIXED_NOW
+
+
+class TestOcrConfidenceAssessableCount:
+    """Verify the auditor records when the OCR reader actually exposed a
+    confidence value (vs. ``None``). The reporter uses this signal to avoid
+    rendering a misleading "0 low OCR confidence" line for a reader that
+    cannot assess confidence at all (the production pdfminer-based reader
+    is one such reader)."""
+
+    def test_zero_when_reader_always_returns_none_confidence(
+        self, tmp_path: Path, factory: AuditorFactory, state_db: StateDB
+    ) -> None:
+        pdf = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(pdf)
+        _record_processed(state_db, sha256_file(pdf))
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+
+        report = factory.build(ocr_quality_reader=lambda _p: (True, None)).run(issuers)
+        assert report.ocr_confidence_assessable_count == 0
+
+    def test_counts_only_pdfs_where_confidence_is_not_none(
+        self, tmp_path: Path, factory: AuditorFactory, state_db: StateDB
+    ) -> None:
+        # Build 2 PDFs filed under the same issuer; the reader returns a
+        # confidence for one and None for the other.
+        first = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(first)
+        _record_processed(state_db, sha256_file(first))
+
+        second = factory.business / "cez-as" / "20260101000005-cez-as-y.invoice.pdf"
+        _make_pdf(second)
+        _record_processed(state_db, sha256_file(second))
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+
+        def reader(p: Path) -> tuple[bool, float | None]:
+            return (True, 0.95) if p.name == CANONICAL_PDF else (True, None)
+
+        report = factory.build(ocr_quality_reader=reader).run(issuers)
+        assert report.ocr_confidence_assessable_count == 1
+
+    def test_zero_when_no_text_at_all(self, tmp_path: Path, factory: AuditorFactory, state_db: StateDB) -> None:
+        # ``has_text=False`` short-circuits the confidence check -- not
+        # assessable.
+        pdf = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(pdf)
+        _record_processed(state_db, sha256_file(pdf))
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+
+        report = factory.build(ocr_quality_reader=lambda _p: (False, None)).run(issuers)
+        assert report.ocr_confidence_assessable_count == 0
+
+    def test_zero_when_ocr_adapter_raises(self, tmp_path: Path, factory: AuditorFactory, state_db: StateDB) -> None:
+        # Adapter exception is surfaced as ocr_check_failed; nothing is
+        # assessable in that path.
+        pdf = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(pdf)
+        _record_processed(state_db, sha256_file(pdf))
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+
+        def boom(_p: Path) -> tuple[bool, float | None]:
+            raise OSError("disk read failed")
+
+        report = factory.build(ocr_quality_reader=boom).run(issuers)
+        assert report.ocr_confidence_assessable_count == 0

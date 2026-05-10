@@ -264,6 +264,57 @@ class TestRenderStdout:
         assert "Watcher:" in joined
         assert "not configured" in joined
 
+    def test_low_ocr_confidence_line_replaced_when_no_pdf_was_assessable(self) -> None:
+        """When the OCR reader cannot expose per-PDF confidence (e.g. the
+        production pdfminer-based reader), the audit should not pretend it ran
+        the check and found zero. Emit a clarifying line instead.
+        """
+        report = _make_report(
+            walked_pdf_count=5,
+            clean_pdf_count=5,
+            ocr_confidence_assessable_count=0,
+        )
+        cons = _CapturingConsole()
+        render_stdout(report, cons)
+        joined = "\n".join(cons.lines)
+        assert "0 low OCR confidence" not in joined
+        assert "low OCR confidence: not assessed" in joined
+
+    def test_low_ocr_confidence_line_kept_when_at_least_one_pdf_was_assessable(self) -> None:
+        """When at least one PDF produced a real confidence value, the count is
+        meaningful -- emit the existing "{n} low OCR confidence" line."""
+        report = _make_report(
+            walked_pdf_count=5,
+            clean_pdf_count=5,
+            ocr_confidence_assessable_count=3,
+        )
+        cons = _CapturingConsole()
+        render_stdout(report, cons)
+        joined = "\n".join(cons.lines)
+        assert "0 low OCR confidence" in joined
+        assert "not assessed" not in joined
+
+    def test_low_ocr_confidence_line_kept_when_findings_present(self) -> None:
+        """When the audit emitted at least one low_ocr_confidence finding, the
+        check necessarily ran on something -- render the count as before."""
+        finding = PdfFinding(
+            pdf_path="/v/cez-as/inv.pdf",
+            issuer_slug="cez-as",
+            doc_type="invoice",
+            code="low_ocr_confidence",
+            detail="0.42",
+        )
+        report = _make_report(
+            walked_pdf_count=2,
+            clean_pdf_count=1,
+            pdf_findings=(finding,),
+            ocr_confidence_assessable_count=2,
+        )
+        cons = _CapturingConsole()
+        render_stdout(report, cons)
+        joined = "\n".join(cons.lines)
+        assert "1 low OCR confidence" in joined
+
 
 class TestWriteJsonReport:
     def test_creates_directory(self, tmp_path: Path) -> None:
