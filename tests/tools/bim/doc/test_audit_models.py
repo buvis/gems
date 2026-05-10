@@ -160,6 +160,13 @@ class TestAuditReport:
         with pytest.raises(ValueError, match="ocr_confidence_assessable_count"):
             _make_report(ocr_confidence_assessable_count=-1)
 
+    def test_to_json_dict_surfaces_ocr_confidence_assessable_count(self) -> None:
+        """The field is part of the public JSON contract documented in
+        Sphinx; pin it so future refactors don't silently drop it."""
+        report = _make_report(ocr_confidence_assessable_count=4)
+        out = report.to_json_dict()
+        assert out["ocr_confidence_assessable_count"] == 4
+
     def test_to_json_dict_round_trips_through_json(self) -> None:
         report = _make_report(
             pdf_findings=(
@@ -182,6 +189,8 @@ class TestAuditReport:
             "generated_at",
             "walked_pdf_count",
             "clean_pdf_count",
+            "non_clean_pdf_count",
+            "ocr_confidence_assessable_count",
             "n_issuers_walked",
             "triage_pending",
             "pdf_findings",
