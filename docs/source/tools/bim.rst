@@ -273,12 +273,71 @@ Options:
 Outcomes (printed to console and recorded in ``state.db``):
 
 - **filed** — PDF moved to ``<business_root>/<issuer-slug>/<canonical>.pdf``
-  and zettel written to ``<vault_root>/Zettelkasten/documents/<canonical>.md``.
+  and zettel written to ``<vault_root>/Zettelkasten/documents/<issuer-slug>/<canonical>.md``
+  (per-issuer subfolder; the vault layout mirrors the business root).
 - **triaged** — confidence too low or required field missing. The PDF lands
   in ``<business_root>/_triage/`` with a ``.proposed.yml`` sidecar awaiting
   human review.
 - **duplicate** — sha256 already mapped to a filed document. A
   ``.duplicate.yml`` sidecar is written next to the staged input.
+
+Zettel v1 shape
+~~~~~~~~~~~~~~~
+
+Both ``bim doc ingest`` and ``bim doc promote`` produce zettels in the v1
+shape: kebab-case keys throughout, single ``issuer`` field (the human
+display name), ISO-8601 ``ingested-at`` datetime with offset, absolute
+``file://`` link in the body, optional LLM-generated summary paragraph,
+and per-issuer vault subfolder.
+
+.. code-block:: yaml
+
+    ---
+    id: 20210311083422
+    title: ČEZ a.s. invoice 7102105594
+    type: document
+    doc-type: invoice
+    issuer: ČEZ a.s.
+    doc-number: 7102105594
+    doc-date: 2021-03-11
+    doc-amount: 4218
+    doc-currency: CZK
+    doc-language: cs
+    ingested-at: 2026-05-04T14:30:15+02:00
+    ingest-source: email
+    file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
+    file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
+    ocr-engine: tesseract
+    ocr-mean-confidence: 0.91
+    extraction-method: rule:cez-invoice-2024-template:v1
+    tags:
+      - document/invoice
+      - issuer/cez-as
+      - year/2021
+    ---
+
+    # ČEZ a.s. invoice 7102105594
+
+    [Open PDF](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)
+
+    Vyúčtování za elektřinu za období 1.1.2021 – 28.2.2021. Splatnost 25.3.2021. Variabilní symbol 7102105594.
+
+    ## OCR text
+
+    > [!quote]- Full text
+    > <full OCR text>
+
+Reserved frontmatter keys:
+
+- ``id`` — bare 14-digit integer (Zettelkasten timestamp); never quoted.
+- ``title`` — single-line human-readable label, equals the body H1.
+- ``type`` — always ``document`` for ingested zettels.
+- ``doc-number`` — emitted as a bare integer when the string round-trips
+  (``str(int(s)) == s``); otherwise quoted to preserve leading zeros.
+- ``ingested-at`` — tz-aware ISO 8601 with offset, parses with
+  ``datetime.fromisoformat`` on Python 3.10+.
+- ``file-path`` — absolute filesystem path, no ``~`` segment. The body
+  ``file://`` link URL-encodes spaces but preserves tildes literal.
 
 bim doc promote
 ~~~~~~~~~~~~~~~
