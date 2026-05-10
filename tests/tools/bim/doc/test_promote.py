@@ -66,6 +66,7 @@ def _build_proposal(
     doc_type: str = "invoice",
     doc_number: str | None = "7102105594",
     doc_date: date | None = date(2021, 3, 11),
+    summary: str | None = None,
 ) -> TriageProposal:
     return TriageProposal(
         approved=approved,
@@ -106,6 +107,7 @@ def _build_proposal(
             title=f"{issuer_display} {doc_type} {doc_number}" if doc_number else f"{issuer_display} {doc_type}",
             ingested_at=datetime(2026, 5, 4, 9, 34, 22, tzinfo=timezone(timedelta(hours=2))),
             tags=[f"document/{doc_type}", f"issuer/{issuer_slug}", "year/2021"],
+            summary=summary,
         ),
     )
 
@@ -500,6 +502,83 @@ class TestCommandPromote:
         zettel_ingested_at = frontmatter["ingested-at"]
         assert isinstance(zettel_ingested_at, datetime)
         assert zettel_ingested_at == proposal_ingested_at
+
+    def test_promote_carries_proposal_summary_into_zettel_body(
+        self,
+        settings: DocSettings,
+        registry_path: Path,
+        lock_path: Path,
+        state_db: StateDB,
+        mocker: MockerFixture,
+    ) -> None:
+        """Regression for blind I1: promote must thread the triage proposal's
+        summary into the zettel body so promoted-document bodies match the
+        ingest path's body shape (PRD 00035 + post-blind follow-up).
+        """
+        triage_dir = settings.paths.business_root / "_triage"
+        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
+        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+        summary_text = "Monthly electricity invoice for March 2021 from ČEZ a.s."
+        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf, summary=summary_text))
+
+        cmd, _ = _build_command(
+            settings=settings,
+            registry_path=registry_path,
+            lock_path=lock_path,
+            state_db=state_db,
+            proposal_yml=yml,
+            mocker=mocker,
+            ocr_pdf=pdf,
+        )
+        result = cmd.execute()
+        assert result.success is True
+
+        zettel_path = Path(result.metadata["zettel_path"])
+        text = zettel_path.read_text(encoding="utf-8")
+        # Body lives after the second `---` fence.
+        _, _, body = text.split("---", 2)
+        assert summary_text in body, "promoted zettel body must include the proposal summary"
+
+    def test_promote_omits_summary_paragraph_when_proposal_summary_is_none(
+        self,
+        settings: DocSettings,
+        registry_path: Path,
+        lock_path: Path,
+        state_db: StateDB,
+        mocker: MockerFixture,
+    ) -> None:
+        """When the proposal has no summary, the body must not insert filler.
+
+        Mirrors ``build_zettel_body``'s contract that the summary paragraph is
+        optional and entirely omitted when the source has no summary text.
+        """
+        triage_dir = settings.paths.business_root / "_triage"
+        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
+        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf, summary=None))
+
+        cmd, _ = _build_command(
+            settings=settings,
+            registry_path=registry_path,
+            lock_path=lock_path,
+            state_db=state_db,
+            proposal_yml=yml,
+            mocker=mocker,
+            ocr_pdf=pdf,
+        )
+        result = cmd.execute()
+        assert result.success is True
+
+        zettel_path = Path(result.metadata["zettel_path"])
+        text = zettel_path.read_text(encoding="utf-8")
+        _, _, body = text.split("---", 2)
+        # The PDF link is followed by exactly one blank line then the OCR section.
+        # No placeholder summary paragraph between them.
+        body_lines = body.split("\n")
+        # Find the [Open PDF] line and check the next non-blank line is `## OCR text`.
+        pdf_idx = next(i for i, line in enumerate(body_lines) if line.startswith("[Open PDF]"))
+        assert body_lines[pdf_idx + 1] == ""
+        assert body_lines[pdf_idx + 2] == "## OCR text"
 
 
 class TestPromoteValidatesYAMLSchema:

@@ -244,6 +244,7 @@ class CommandPromote:
         body = build_zettel_body(
             frontmatter,
             ocr_result.ocr_text,
+            summary=ctx.proposal.zettel_preview.summary,
             settings=self._settings.zettel,
         )
         try:

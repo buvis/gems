@@ -620,6 +620,7 @@ class Pipeline:
                     slug_for_filename,
                     ctx.extract_result.date if ctx.extract_result is not None else None,
                 ),
+                summary=ctx.extract_result.summary if ctx.extract_result is not None else None,
             ),
         )
         write_proposal(proposal_path, proposal)

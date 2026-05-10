@@ -103,6 +103,7 @@ class ZettelPreview(BaseModel):
     title: str
     ingested_at: _dt.datetime
     tags: list[str]
+    summary: str | None = None
 
     @field_validator("title")
     @classmethod
