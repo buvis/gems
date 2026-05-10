@@ -65,9 +65,13 @@ def _empty_report() -> AuditReport:
 
 
 def _legacy_report() -> AuditReport:
+    """One PDF walked, found at the v0 (legacy) flat path so it is reported
+    in ``legacy_layout_zettels`` and counts as non-clean (needs migration).
+    """
     return AuditReport(
         walked_pdf_count=1,
-        clean_pdf_count=1,
+        clean_pdf_count=0,
+        non_clean_pdf_count=1,
         pdf_findings=(),
         legacy_layout_zettels=("/Vault/legacy.md",),
         rule_findings=(),

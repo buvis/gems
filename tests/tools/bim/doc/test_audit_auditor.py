@@ -383,6 +383,73 @@ issuers:
         assert report.total_rules_in_registry == 3
 
 
+class TestPartitionInvariant:
+    """``walked_pdf_count == clean_pdf_count + non_clean_pdf_count`` across
+    every shape of audit run. The Auditor must keep the partition tight
+    even when a single PDF contributes both a finding and a legacy zettel.
+    """
+
+    def test_invariant_holds_with_mixed_findings_and_legacy(
+        self,
+        tmp_path: Path,
+        factory: AuditorFactory,
+        state_db: StateDB,
+    ) -> None:
+        # Three PDFs:
+        # 1. clean PDF (zettel at v1 path, processed row recorded)
+        # 2. non-clean PDF: missing zettel at v1 AND no legacy → 1 finding
+        # 3. non-clean PDF: zettel at v0 (legacy) path → reported in legacy
+        clean_pdf = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(clean_pdf)
+        _make_zettel(_docs_dir(factory.vault) / "cez-as" / CANONICAL_MD)
+        _record_processed(state_db, sha256_file(clean_pdf))
+
+        missing_pdf = factory.business / "cez-as" / "20260101000001-cez-as-bar.invoice.pdf"
+        _make_pdf(missing_pdf, body=b"%PDF-different")
+        _record_processed(state_db, sha256_file(missing_pdf))
+
+        legacy_pdf = factory.business / "cez-as" / "20260101000002-cez-as-baz.invoice.pdf"
+        _make_pdf(legacy_pdf, body=b"%PDF-legacy")
+        _make_zettel(_docs_dir(factory.vault) / "20260101000002-cez-as-baz.invoice.md")
+        _record_processed(state_db, sha256_file(legacy_pdf))
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+        report = factory.build().run(issuers)
+
+        assert report.walked_pdf_count == 3
+        assert report.clean_pdf_count == 1
+        assert report.non_clean_pdf_count == 2
+        # Invariant: partition is exact.
+        assert report.clean_pdf_count + report.non_clean_pdf_count == report.walked_pdf_count
+
+    def test_invariant_holds_for_pdf_with_finding_and_legacy(
+        self,
+        tmp_path: Path,
+        factory: AuditorFactory,
+        state_db: StateDB,
+    ) -> None:
+        # Single PDF that contributes both a finding (missing state.db entry,
+        # since we deliberately don't record_processed it) and a legacy zettel.
+        # Diana's hypothetical: ``len(pdf_findings) + len(legacy)`` = 2 but the
+        # PDF should only count once toward non_clean.
+        pdf = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(pdf)
+        _make_zettel(_docs_dir(factory.vault) / CANONICAL_MD)  # legacy path
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+        report = factory.build().run(issuers)
+
+        assert report.walked_pdf_count == 1
+        assert report.clean_pdf_count == 0
+        assert report.non_clean_pdf_count == 1
+        assert len(report.pdf_findings) >= 1
+        assert len(report.legacy_layout_zettels) == 1
+        # Crucially: ``non_clean_pdf_count`` is 1, not ``len(findings)+len(legacy)``.
+        assert report.clean_pdf_count + report.non_clean_pdf_count == report.walked_pdf_count
+
+
 class TestAdapterFailures:
     """When the OCR-quality reader or hash reader raises, the auditor must
     surface the failure as a finding rather than silently treating the PDF

@@ -590,14 +590,36 @@ stdout plus a structured JSON report at
 * Per-issuer ``inbox/`` directories with unprocessed PDFs.
 * ``_triage/`` directory awaiting review.
 
-**JSON report contract.** The report's top-level fields include
-``walked_pdf_count``, ``clean_pdf_count``, ``pdf_findings`` (one entry per
-non-clean PDF), ``legacy_layout_zettels`` (list of absolute paths), and
-``rule_findings``. The ``legacy_layout_zettels`` array is the input for a
-future legacy-zettel migration command — entries listed there are zettels
-filed at the v0 flat path ``<vault>/<doc-subdir>/<basename>.md`` rather than
-the v1 per-issuer path ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``.
+**JSON report contract.** Top-level fields:
+
+* ``walked_pdf_count`` — every PDF the walker yielded.
+* ``clean_pdf_count`` — PDFs with no findings and no legacy zettel.
+* ``non_clean_pdf_count`` — PDFs with one or more findings, a legacy zettel,
+  or both. The pair ``clean_pdf_count`` / ``non_clean_pdf_count`` is a true
+  partition: ``clean + non_clean == walked``. Consumers cannot derive
+  ``non_clean`` from ``len(pdf_findings) + len(legacy_layout_zettels)`` —
+  one PDF can contribute multiple findings and a legacy entry, so that
+  arithmetic double-counts.
+* ``pdf_findings`` — one entry **per finding** (not per PDF). A PDF with
+  N findings produces N entries that share the same ``pdf_path``. Each
+  entry carries ``code`` (one of the ``PdfFindingCode`` literals,
+  including the ``ocr_check_failed`` / ``hash_check_failed`` adapter
+  failures), ``issuer_slug``, ``doc_type``, and an optional ``detail``.
+* ``legacy_layout_zettels`` — absolute paths of zettels found at the v0
+  flat path ``<vault>/<doc-subdir>/<basename>.md`` rather than the v1
+  per-issuer path ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``.
+  This array is the input for a future legacy-zettel migration command.
+* ``rule_findings`` — registry-loadability errors, priority conflicts,
+  and stale-rule warnings.
+* ``issuer_inboxes`` — per-issuer ``inbox/`` directories with unprocessed
+  PDFs.
+* ``triage_pending`` — count of ``.proposed.yml`` files in ``_triage/``.
+* ``n_issuers_walked`` — distinct folder slugs the walker entered (top-level
+  PDFs contribute the empty slug).
+* ``total_rules_in_registry`` / ``total_issuers_in_registry`` — registry totals.
+* ``generated_at`` — ISO-8601 timestamp.
 
 A PDF whose zettel is at the legacy flat path is reported in
-``legacy_layout_zettels`` rather than as ``missing_zettel``.
+``legacy_layout_zettels`` rather than as ``missing_zettel`` and counts
+toward ``non_clean_pdf_count``.
 

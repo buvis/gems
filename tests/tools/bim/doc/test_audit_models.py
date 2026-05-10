@@ -22,10 +22,17 @@ from bim.commands.doc.audit.models import (
 
 
 def _make_report(**overrides: Any) -> AuditReport:
-    """Build an AuditReport with safe defaults; override per-test."""
+    """Build an AuditReport with safe defaults; override per-test.
+
+    Defaults satisfy the partition invariant
+    ``clean_pdf_count + non_clean_pdf_count == walked_pdf_count`` so tests
+    that don't care about the partition can stay short. Tests overriding
+    any of these counts are responsible for keeping the invariant.
+    """
     defaults: dict[str, Any] = {
         "walked_pdf_count": 10,
         "clean_pdf_count": 5,
+        "non_clean_pdf_count": 5,
         "pdf_findings": (),
         "legacy_layout_zettels": (),
         "rule_findings": (),
@@ -117,11 +124,22 @@ class TestAuditReport:
 
     def test_post_init_rejects_clean_exceeds_walked(self) -> None:
         with pytest.raises(ValueError):
-            _make_report(walked_pdf_count=5, clean_pdf_count=10)
+            _make_report(walked_pdf_count=5, clean_pdf_count=10, non_clean_pdf_count=0)
 
     def test_post_init_rejects_negative_walked(self) -> None:
         with pytest.raises(ValueError):
-            _make_report(walked_pdf_count=-1, clean_pdf_count=0)
+            _make_report(walked_pdf_count=-1, clean_pdf_count=0, non_clean_pdf_count=0)
+
+    def test_post_init_rejects_partition_mismatch(self) -> None:
+        # Spec invariant: clean + non_clean must equal walked. Catches the
+        # gap Diana spotted where a legacy-only PDF could fall outside both
+        # the findings list and the clean count.
+        with pytest.raises(ValueError, match="clean_pdf_count \\+ non_clean_pdf_count"):
+            _make_report(walked_pdf_count=10, clean_pdf_count=5, non_clean_pdf_count=4)
+
+    def test_post_init_rejects_negative_non_clean(self) -> None:
+        with pytest.raises(ValueError, match="non_clean_pdf_count"):
+            _make_report(walked_pdf_count=0, clean_pdf_count=0, non_clean_pdf_count=-1)
 
     def test_post_init_rejects_negative_triage_pending(self) -> None:
         with pytest.raises(ValueError):

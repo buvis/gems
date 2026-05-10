@@ -95,6 +95,14 @@ class AuditReport:
     n_issuers_walked: int
     total_rules_in_registry: int = 0
     total_issuers_in_registry: int = 0
+    # Number of distinct PDFs that are NOT clean: those with one or more
+    # findings, OR a zettel at a legacy path, OR both. Together with
+    # ``clean_pdf_count`` this is a true partition over walked PDFs:
+    # ``clean_pdf_count + non_clean_pdf_count == walked_pdf_count``. Consumers
+    # cannot derive this from ``len(pdf_findings) + len(legacy_layout_zettels)``
+    # because a single PDF may contribute multiple findings and a legacy
+    # entry; that arithmetic would double-count.
+    non_clean_pdf_count: int = 0
 
     def __post_init__(self) -> None:
         if self.generated_at.tzinfo is None:
@@ -107,6 +115,14 @@ class AuditReport:
             raise ValueError(
                 "clean_pdf_count must not exceed walked_pdf_count "
                 f"(clean={self.clean_pdf_count}, walked={self.walked_pdf_count})"
+            )
+        if self.non_clean_pdf_count < 0:
+            raise ValueError(f"non_clean_pdf_count must be >= 0, got {self.non_clean_pdf_count}")
+        if self.clean_pdf_count + self.non_clean_pdf_count != self.walked_pdf_count:
+            raise ValueError(
+                "clean_pdf_count + non_clean_pdf_count must equal walked_pdf_count "
+                f"(clean={self.clean_pdf_count}, non_clean={self.non_clean_pdf_count}, "
+                f"walked={self.walked_pdf_count})"
             )
         if self.triage_pending < 0:
             raise ValueError(f"triage_pending must be >= 0, got {self.triage_pending}")
@@ -126,6 +142,7 @@ class AuditReport:
             "generated_at": self.generated_at.isoformat(),
             "walked_pdf_count": self.walked_pdf_count,
             "clean_pdf_count": self.clean_pdf_count,
+            "non_clean_pdf_count": self.non_clean_pdf_count,
             "n_issuers_walked": self.n_issuers_walked,
             "triage_pending": self.triage_pending,
             "total_rules_in_registry": self.total_rules_in_registry,

@@ -39,6 +39,10 @@ def _make_report(**overrides: Any) -> AuditReport:
         "total_issuers_in_registry": 0,
     }
     defaults.update(overrides)
+    # Auto-derive ``non_clean_pdf_count`` to keep the partition invariant in
+    # tests that don't care about it. Tests that pin a specific non-clean
+    # value can override it explicitly.
+    defaults.setdefault("non_clean_pdf_count", defaults["walked_pdf_count"] - defaults["clean_pdf_count"])
     return AuditReport(**defaults)
 
 

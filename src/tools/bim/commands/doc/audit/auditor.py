@@ -68,6 +68,7 @@ class Auditor:
 
         walked = 0
         clean = 0
+        non_clean = 0
         pdf_findings: list[PdfFinding] = []
         legacy: list[str] = []
         n_issuers_walked: set[str] = set()
@@ -80,6 +81,8 @@ class Auditor:
             legacy.extend(legacy_for_pdf)
             if not findings and not legacy_for_pdf:
                 clean += 1
+            else:
+                non_clean += 1
 
         issuer_inboxes = self._collect_inboxes(registry)
         triage_pending = self._count_triage()
@@ -98,6 +101,7 @@ class Auditor:
             n_issuers_walked=len(n_issuers_walked),
             total_rules_in_registry=total_rules,
             total_issuers_in_registry=total_issuers,
+            non_clean_pdf_count=non_clean,
         )
 
     def _collect_rule_findings(
