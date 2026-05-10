@@ -111,3 +111,73 @@ class TestWalkBusinessRoot:
     def test_nonexistent_business_root_yields_empty(self, tmp_path: Path) -> None:
         root = tmp_path / "does-not-exist"
         assert list(walk_business_root(root)) == []
+
+    def test_symlinked_issuer_dir_pointing_outside_root_is_skipped(self, tmp_path: Path) -> None:
+        """Symlinked issuer dir whose target lies outside business_root must
+        not be traversed; otherwise audit leaks PDFs from anywhere on disk."""
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "leaked.pdf").touch()
+
+        root = tmp_path / "business"
+        root.mkdir()
+        link = root / "evil-issuer"
+        link.symlink_to(outside, target_is_directory=True)
+
+        results = list(walk_business_root(root))
+        leaked = [p for _, p in results if p.name == "leaked.pdf"]
+        assert leaked == []
+
+    def test_symlinked_subdir_under_issuer_pointing_outside_root_is_skipped(self, tmp_path: Path) -> None:
+        """Symlinked subdir under an issuer whose target lies outside the
+        business root must not be traversed."""
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "leaked.pdf").touch()
+
+        root = tmp_path / "business"
+        root.mkdir()
+        issuer = root / "acme"
+        issuer.mkdir()
+        link = issuer / "evil-sub"
+        link.symlink_to(outside, target_is_directory=True)
+
+        results = list(walk_business_root(root))
+        leaked = [p for _, p in results if p.name == "leaked.pdf"]
+        assert leaked == []
+
+    def test_symlinked_pdf_file_pointing_outside_root_is_skipped(self, tmp_path: Path) -> None:
+        """Symlinked PDF whose target lies outside business_root must not be
+        yielded."""
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        outside_pdf = outside / "leaked.pdf"
+        outside_pdf.touch()
+
+        root = tmp_path / "business"
+        root.mkdir()
+        issuer = root / "acme"
+        issuer.mkdir()
+        (issuer / "leaked.pdf").symlink_to(outside_pdf)
+
+        results = list(walk_business_root(root))
+        leaked = [p for _, p in results if p.name == "leaked.pdf"]
+        assert leaked == []
+
+    def test_symlinked_dir_pointing_inside_root_is_traversed(self, tmp_path: Path) -> None:
+        """A symlink whose target stays under business_root is OK to follow
+        (this test pins down that the containment check, not symlink
+        resolution per se, is the gate)."""
+        root = tmp_path / "business"
+        root.mkdir()
+        real = root / "acme"
+        real.mkdir()
+        (real / "ok.pdf").touch()
+
+        link_issuer = root / "acme-mirror"
+        link_issuer.symlink_to(real, target_is_directory=True)
+
+        results = list(walk_business_root(root))
+        ok = [p for _, p in results if p.name == "ok.pdf"]
+        assert len(ok) >= 1
+        assert all(p.resolve().is_relative_to(root.resolve()) for p in ok)
