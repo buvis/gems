@@ -4,30 +4,33 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, compose_zettel_title
-from bim.commands.doc.shared.zettel_writer import DocumentZettelFrontmatter
+from bim.commands.doc.shared.zettel_writer import DocumentZettelFrontmatter, IngestSource
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.classifier import ClassifyResult
     from bim.commands.doc.shared.extractor import ExtractResult
     from bim.commands.doc.shared.ocr import OCRResult
     from bim.commands.doc.shared.rules.models import RuleResult
+    from bim.commands.doc.shared.triage import TriageProposal
     from bim.params.doc_ingest import IngestParams
 
 __all__ = [
     "_ClassifyStage",
     "_ExtractStage",
     "_FilingContext",
+    "_PromoteFrontmatterContext",
     "_RuleStage",
     "_TriageContext",
     "build_filing_frontmatter",
     "build_filing_result",
+    "build_promote_frontmatter",
     "retry_llm_call",
 ]
 
@@ -44,6 +47,26 @@ class _TriageContext:
     reasons: list[str]
     issuer_slug: str
     issuer_display: str
+
+
+@dataclass(frozen=True)
+class _PromoteFrontmatterContext:
+    """Resolved inputs for :func:`build_promote_frontmatter`.
+
+    Promote-side analog of :class:`_FilingContext`. Holds primitives only —
+    no dependency on ``CommandPromote``-private types — so the helper can be
+    called from both production code and the cross-path consistency test.
+    """
+
+    proposal: TriageProposal
+    issuer_display: str
+    issuer_slug: str
+    zk_timestamp: str
+    target_pdf: Path
+    sha: str
+    ocr_engine: str
+    ocr_mean_confidence: float | None
+    ingest_today: date
 
 
 @dataclass(frozen=True)
@@ -133,6 +156,52 @@ def build_filing_frontmatter(
         extraction_method=ctx.extraction_method,
         tags=build_zettel_tags(ctx.classify_result.doc_type, ctx.issuer_slug, ctx.extract_result.date),
     )
+
+
+def build_promote_frontmatter(ctx: _PromoteFrontmatterContext) -> DocumentZettelFrontmatter | CommandResult:
+    """Build a v1 frontmatter for a human-approved triage proposal.
+
+    Mirror of :func:`build_filing_frontmatter` for the promote code path.
+    Inputs are bundled in :class:`_PromoteFrontmatterContext` (resolved
+    primitives only, no dependency on ``CommandPromote`` internals); both
+    production ``CommandPromote._build_frontmatter`` and the cross-path
+    consistency test call this function directly to pin PRD criterion 8
+    (same logical document → same frontmatter).
+    """
+    proposal = ctx.proposal
+    title = proposal.zettel_preview.title
+    if not title:
+        try:
+            title = compose_zettel_title(
+                issuer=ctx.issuer_display,
+                doc_type=proposal.document.type,
+                doc_number=proposal.document.number,
+                doc_title=proposal.document.title,
+            )
+        except ValueError as exc:
+            return CommandResult(success=False, error=f"compose title failed: {exc}")
+    try:
+        return DocumentZettelFrontmatter(
+            id=int(ctx.zk_timestamp),
+            title=title,
+            doc_type=proposal.document.type,
+            issuer=ctx.issuer_display,
+            doc_number=proposal.document.number,
+            doc_date=proposal.document.date or ctx.ingest_today,
+            doc_amount=proposal.document.amount,
+            doc_currency=proposal.document.currency,
+            doc_language=proposal.document.language,
+            ingested_at=proposal.zettel_preview.ingested_at,
+            ingest_source=cast(IngestSource, proposal.source.kind),
+            file_path=str(ctx.target_pdf.expanduser().resolve()),
+            file_sha256=ctx.sha,
+            ocr_engine=ctx.ocr_engine,
+            ocr_mean_confidence=ctx.ocr_mean_confidence,
+            extraction_method="manual",
+            tags=build_zettel_tags(proposal.document.type, ctx.issuer_slug, proposal.document.date),
+        )
+    except Exception as exc:
+        return CommandResult(success=False, error=f"frontmatter validation failed: {exc}")
 
 
 def build_filing_result(

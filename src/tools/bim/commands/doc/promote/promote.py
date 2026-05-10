@@ -22,16 +22,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, cast, get_args
+from typing import TYPE_CHECKING, get_args
 
 from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.issuers import register_issuer
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
+from bim.commands.doc.shared.pipeline_helpers import _PromoteFrontmatterContext, build_promote_frontmatter
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import read_proposal, validate_for_promote
-from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, compose_zettel_title
 from bim.commands.doc.shared.zettel_writer import (
     DocumentZettelFrontmatter,
     IngestSource,
@@ -300,45 +300,24 @@ class CommandPromote:
         sha: str,
         ingest_today: date,
     ) -> DocumentZettelFrontmatter | CommandResult:
+        # Resolve issuer display (proposal first, registry fallback) then defer
+        # the actual frontmatter assembly to the shared helper. The helper is
+        # the same one used by the cross-path consistency test, which pins
+        # PRD criterion 8.
         issuer_display = ctx.proposal.issuer.display_name or ctx.registry.issuers[ctx.proposal.issuer.slug].display_name
-        # Trust the human-approved preview's title when present; otherwise
-        # fall back to ``compose_zettel_title`` so promote stays consistent
-        # with ingest's auto-composition rule.
-        title = ctx.proposal.zettel_preview.title
-        if not title:
-            try:
-                title = compose_zettel_title(
-                    issuer=issuer_display,
-                    doc_type=ctx.proposal.document.type,
-                    doc_number=ctx.proposal.document.number,
-                    doc_title=ctx.proposal.document.title,
-                )
-            except ValueError as exc:
-                return CommandResult(success=False, error=f"compose title failed: {exc}")
-        try:
-            return DocumentZettelFrontmatter(
-                id=int(plan.zk_timestamp),
-                title=title,
-                doc_type=ctx.proposal.document.type,
-                issuer=issuer_display,
-                doc_number=ctx.proposal.document.number,
-                doc_date=ctx.proposal.document.date or ingest_today,
-                doc_amount=ctx.proposal.document.amount,
-                doc_currency=ctx.proposal.document.currency,
-                doc_language=ctx.proposal.document.language,
-                ingested_at=ctx.proposal.zettel_preview.ingested_at,
-                ingest_source=cast(IngestSource, ctx.proposal.source.kind),
-                file_path=str(plan.target_pdf.expanduser().resolve()),
-                file_sha256=sha,
+        return build_promote_frontmatter(
+            _PromoteFrontmatterContext(
+                proposal=ctx.proposal,
+                issuer_display=issuer_display,
+                issuer_slug=ctx.proposal.issuer.slug,
+                zk_timestamp=plan.zk_timestamp,
+                target_pdf=plan.target_pdf,
+                sha=sha,
                 ocr_engine=self._settings.ocr.engine,
                 ocr_mean_confidence=ocr_result.mean_confidence,
-                extraction_method="manual",
-                tags=build_zettel_tags(
-                    ctx.proposal.document.type, ctx.proposal.issuer.slug, ctx.proposal.document.date
-                ),
+                ingest_today=ingest_today,
             )
-        except Exception as exc:
-            return CommandResult(success=False, error=f"frontmatter validation failed: {exc}")
+        )
 
     # --------- helpers ---------
 

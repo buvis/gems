@@ -6,9 +6,10 @@ modulo ``extraction-method`` (which legitimately differs by design — ingest
 records the LLM/rule that produced the values; promote always records
 ``manual`` because a human approved the triage proposal).
 
-The two paths construct ``DocumentZettelFrontmatter`` from different input
-shapes (``_FilingContext`` vs ``TriageProposal``) but for equivalent inputs
-the on-disk YAML must be the same.
+Both production code paths funnel through the helpers in
+``bim.commands.doc.shared.pipeline_helpers``: ``build_filing_frontmatter``
+for ingest, ``build_promote_frontmatter`` for promote. This test calls those
+helpers directly so any drift in either production path is caught.
 """
 
 from __future__ import annotations
@@ -20,8 +21,20 @@ import pytest
 from bim.commands.doc.shared.classifier import ClassifyResult
 from bim.commands.doc.shared.extractor import ExtractResult
 from bim.commands.doc.shared.ocr import OCRResult
-from bim.commands.doc.shared.pipeline_helpers import _FilingContext, build_filing_frontmatter
-from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, compose_zettel_title
+from bim.commands.doc.shared.pipeline_helpers import (
+    _FilingContext,
+    _PromoteFrontmatterContext,
+    build_filing_frontmatter,
+    build_promote_frontmatter,
+)
+from bim.commands.doc.shared.triage import (
+    DocumentProposal,
+    IssuerProposal,
+    OCRProposal,
+    SourceProposal,
+    TriageProposal,
+    ZettelPreview,
+)
 from bim.commands.doc.shared.zettel_writer import DocumentZettelFrontmatter
 from bim.params.doc_ingest import IngestParams
 
@@ -87,33 +100,54 @@ def _build_ingest_frontmatter(extraction_method: str) -> DocumentZettelFrontmatt
     )
 
 
-def _build_promote_frontmatter() -> DocumentZettelFrontmatter:
-    """Construct frontmatter via the promote code path (mirrors CommandPromote._build_frontmatter)."""
-    title = compose_zettel_title(
-        issuer=ISSUER_DISPLAY,
-        doc_type=DOC_TYPE,
-        doc_number=DOC_NUMBER,
-        doc_title=None,
+def _build_proposal() -> TriageProposal:
+    """Synthesise the TriageProposal a human-approved triage would yield for the logical document."""
+    return TriageProposal(
+        approved=True,
+        register_issuer=False,
+        issuer=IssuerProposal(slug=ISSUER_SLUG, display_name=ISSUER_DISPLAY, confidence=0.95),
+        document=DocumentProposal(
+            type=DOC_TYPE,
+            number=DOC_NUMBER,
+            date=DOC_DATE,
+            amount=DOC_AMOUNT,
+            currency=DOC_CURRENCY,
+            language=DOC_LANGUAGE,
+        ),
+        source=SourceProposal(kind=INGEST_SOURCE, staging_path=Path("/tmp/staging/input.pdf"), sha256=SHA),
+        ocr=OCRProposal(engine=OCR_ENGINE, languages=[DOC_LANGUAGE], mean_confidence=OCR_MEAN_CONFIDENCE, pages=2),
+        triage_reasons=["low_confidence_classify"],
+        zettel_preview=ZettelPreview(
+            id=ZK_TIMESTAMP,
+            title=f"{ISSUER_DISPLAY} {DOC_TYPE} {DOC_NUMBER}",
+            ingested_at=INGESTED_AT,
+            tags=[f"document/{DOC_TYPE}", f"issuer/{ISSUER_SLUG}", f"year/{DOC_DATE.year}"],
+        ),
     )
-    return DocumentZettelFrontmatter(
-        id=int(ZK_TIMESTAMP),
-        title=title,
-        doc_type=DOC_TYPE,
-        issuer=ISSUER_DISPLAY,
-        doc_number=DOC_NUMBER,
-        doc_date=DOC_DATE,
-        doc_amount=DOC_AMOUNT,
-        doc_currency=DOC_CURRENCY,
-        doc_language=DOC_LANGUAGE,
-        ingested_at=INGESTED_AT,
-        ingest_source=INGEST_SOURCE,
-        file_path=str(TARGET_PDF.expanduser().resolve()),
-        file_sha256=SHA,
+
+
+def _build_promote_frontmatter() -> DocumentZettelFrontmatter:
+    """Construct frontmatter via the production promote helper.
+
+    Drives ``build_promote_frontmatter`` directly (the same helper that
+    ``CommandPromote._build_frontmatter`` calls), so drift in the production
+    promote path surfaces here.
+    """
+    proposal = _build_proposal()
+    ctx = _PromoteFrontmatterContext(
+        proposal=proposal,
+        issuer_display=ISSUER_DISPLAY,
+        issuer_slug=ISSUER_SLUG,
+        zk_timestamp=ZK_TIMESTAMP,
+        target_pdf=TARGET_PDF,
+        sha=SHA,
         ocr_engine=OCR_ENGINE,
         ocr_mean_confidence=OCR_MEAN_CONFIDENCE,
-        extraction_method="manual",
-        tags=build_zettel_tags(DOC_TYPE, ISSUER_SLUG, DOC_DATE),
+        ingest_today=DOC_DATE,
     )
+    result = build_promote_frontmatter(ctx)
+    assert isinstance(result, DocumentZettelFrontmatter), result
+    return result
 
 
 class TestPipelinePromoteFrontmatterConsistency:
