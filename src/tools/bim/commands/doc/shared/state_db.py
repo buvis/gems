@@ -51,7 +51,7 @@ class DedupResult(BaseModel):
     existing_row: ProcessedRow | None
 
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 _SCHEMA_DDL = (
     """
@@ -82,6 +82,12 @@ _SCHEMA_DDL = (
     CREATE TABLE IF NOT EXISTS claims (
         sha256 TEXT PRIMARY KEY,
         claimed_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS rule_matches (
+        rule_id TEXT PRIMARY KEY,
+        last_matched_at TEXT NOT NULL
     )
     """,
 )
@@ -236,6 +242,16 @@ class StateDB:
                 row.created_at.isoformat(),
             ),
         )
+
+    def record_rule_match(self, rule_id: str, matched_at: datetime) -> None:
+        self._conn.execute(
+            "INSERT OR REPLACE INTO rule_matches (rule_id, last_matched_at) VALUES (?, ?)",
+            (rule_id, matched_at.isoformat()),
+        )
+
+    def get_rule_last_matches(self) -> dict[str, datetime]:
+        cursor = self._conn.execute("SELECT rule_id, last_matched_at FROM rule_matches")
+        return {row[0]: datetime.fromisoformat(row[1]) for row in cursor.fetchall()}
 
     def close(self) -> None:
         self._conn.close()

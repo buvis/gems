@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -189,14 +189,14 @@ class TestReleaseClaim:
 
 class TestMigrationIdempotency:
     def test_reopen_idempotent(self, db_path: Path) -> None:
-        # First open creates schema_version row at v2.
+        # First open creates schema_version row at the current version.
         with open_state_db(db_path):
             pass
         # Second open should NOT raise IntegrityError despite the row existing.
         with open_state_db(db_path) as db:
-            cursor = db.connection.execute("SELECT COUNT(*) FROM schema_version WHERE version = 2")
+            cursor = db.connection.execute("SELECT COUNT(*) FROM schema_version WHERE version = 3")
             count = cursor.fetchone()[0]
-            # INSERT OR IGNORE means at most one v2 row; could be 1 here.
+            # INSERT OR IGNORE means at most one row at the current version.
             assert count == 1
 
 
@@ -248,10 +248,10 @@ class TestProcessedRowValidation:
 
 
 class TestSchemaV2:
-    def test_schema_version_is_two(self, db_path: Path) -> None:
+    def test_schema_version_is_current(self, db_path: Path) -> None:
         with open_state_db(db_path) as db:
             cursor = db.connection.execute("SELECT MAX(version) FROM schema_version")
-            assert cursor.fetchone()[0] == 2
+            assert cursor.fetchone()[0] == 3
 
 
 class TestSchemaMigrationV1ToV2:
@@ -327,7 +327,7 @@ class TestSchemaMigrationV1ToV2:
                 is not None
             )
 
-            assert db.connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 2
+            assert db.connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 3
 
             result = db.dedup("f" * 64)
             assert result.is_duplicate is True
@@ -453,3 +453,38 @@ class TestClaimConcurrency:
         with open_state_db(db_path) as db:
             cursor = db.connection.execute("SELECT COUNT(*) FROM claims WHERE sha256 = ?", (sha,))
             assert cursor.fetchone()[0] == 1
+
+
+class TestRuleMatches:
+    def test_table_exists_after_open(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            cursor = db.connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rule_matches'")
+            assert cursor.fetchone() is not None
+
+    def test_get_returns_empty_dict_when_no_matches(self, db_path: Path) -> None:
+        with open_state_db(db_path) as db:
+            assert db.get_rule_last_matches() == {}
+
+    def test_record_then_get_round_trip(self, db_path: Path) -> None:
+        t1 = datetime.now(timezone.utc)
+        with open_state_db(db_path) as db:
+            db.record_rule_match("rule-a", t1)
+            assert db.get_rule_last_matches() == {"rule-a": t1}
+
+    def test_record_overwrites_existing(self, db_path: Path) -> None:
+        t1 = datetime.now(timezone.utc)
+        t2 = t1 + timedelta(hours=1)
+        with open_state_db(db_path) as db:
+            db.record_rule_match("rule-a", t1)
+            db.record_rule_match("rule-a", t2)
+            matches = db.get_rule_last_matches()
+            assert matches == {"rule-a": t2}
+
+    def test_multiple_rules_isolated(self, db_path: Path) -> None:
+        t1 = datetime.now(timezone.utc)
+        t2 = t1 + timedelta(minutes=5)
+        with open_state_db(db_path) as db:
+            db.record_rule_match("a", t1)
+            db.record_rule_match("b", t2)
+            matches = db.get_rule_last_matches()
+            assert matches == {"a": t1, "b": t2}
