@@ -379,6 +379,59 @@ class TestCheckPriorityConflicts:
         assert len(findings) == 1
         assert "overlapping match clauses" in findings[0].detail
 
+    def test_combined_casefold_and_suffix_email_from_domain_overlaps(self) -> None:
+        # Composes both properties exercised individually above: the runtime
+        # matcher lowercases both sides AND checks suffix containment, so
+        # ``BILLING.example.com`` (uppercased) and ``example.COM`` (also
+        # uppercased) must be treated as overlapping after the audit
+        # mirrors that semantics.
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["BILLING.example.com"]),
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "b",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["example.COM"]),
+                    )
+                ],
+            }
+        )
+        findings = check_priority_conflicts(registry)
+        assert len(findings) == 1
+        assert "overlapping match clauses" in findings[0].detail
+
+    def test_casefold_match_without_suffix_email_from_domain_disjoint(self) -> None:
+        # Negative companion: identical casing-only relationship, no suffix
+        # containment. ``foo.com`` and ``BAR.com`` lowercase to ``foo.com``
+        # and ``bar.com``; neither is a suffix of the other, so no shared
+        # sender domain matches both. Audit must NOT flag.
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["foo.com"]),
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "b",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["BAR.com"]),
+                    )
+                ],
+            }
+        )
+        assert check_priority_conflicts(registry) == []
+
     def test_unrelated_subdomains_email_from_domain_disjoint(self) -> None:
         # ``billing.example.com`` and ``mail.example.com`` are not suffixes
         # of each other and no domain ends with both, so they remain disjoint.
