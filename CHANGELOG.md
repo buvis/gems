@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **bim**: `bim doc promote` now uses the triage proposal's `ingested-at` date for the `doc-date` fallback when a document has no extracted date (previously used `date.today()`, which made the same logical document yield different `doc-date` values when promoted on a different day from when it was triaged). Pipeline+promote consistency now holds for date-less documents too.
+
 ## [0.11.1] - 2026-05-10
 
 ### Added

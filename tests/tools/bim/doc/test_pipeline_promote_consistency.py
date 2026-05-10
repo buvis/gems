@@ -150,12 +150,6 @@ def _build_promote_frontmatter(doc_date: date | None = DOC_DATE) -> DocumentZett
         sha=SHA,
         ocr_engine=OCR_ENGINE,
         ocr_mean_confidence=OCR_MEAN_CONFIDENCE,
-        # ``ingest_today`` deliberately differs from ``INGESTED_AT.date()`` so
-        # any code path that uses ``date.today()`` / ``ingest_today`` for the
-        # ``doc-date`` fallback (instead of the proposal's ``ingested_at``)
-        # produces a divergent value here and is caught by the no-date
-        # parametrize variant. See PRD 00035 success metric #8.
-        ingest_today=date(2099, 1, 1),
     )
     result = build_promote_frontmatter(ctx)
     assert isinstance(result, DocumentZettelFrontmatter), result
@@ -215,16 +209,16 @@ class TestPipelinePromoteFrontmatterConsistency:
 
         For date-less documents, both helpers must fall back to the same
         value. The filing helper uses ``ingested_at.date()``; the promote
-        helper used to use ``date.today()`` (via ``ctx.ingest_today``), which
-        produced a different ``doc-date`` whenever the document was promoted
-        on a different day from the one it was ingested. This parametrize
-        variant pins the behaviour: both paths fall back to the proposal's
-        ``ingested_at.date()``.
+        helper previously used ``date.today()`` (via a now-removed
+        ``ctx.ingest_today`` field), which produced a different ``doc-date``
+        whenever the document was promoted on a different day from the one
+        it was ingested. Both paths now fall back to the proposal's
+        ``ingested_at.date()`` (sanity-checked below).
 
-        ``ingest_today`` in the promote context is set to ``date(2099, 1, 1)``
-        (clearly synthetic) so a regression that re-introduces the
-        ``date.today()``/``ingest_today`` fallback would diverge here even
-        when run on the same day as ``INGESTED_AT.date()``.
+        ``INGESTED_AT.date()`` is a fixed past date (2026-05-04) so any
+        regression that re-introduced ``date.today()`` would produce a
+        non-2026-05-04 value and break the sanity assertion below, except
+        on the unlikely day the test is run on 2026-05-04.
         """
         fm_ingest = _build_ingest_frontmatter(extraction_method="manual", doc_date=doc_date)
         fm_promote = _build_promote_frontmatter(doc_date=doc_date)

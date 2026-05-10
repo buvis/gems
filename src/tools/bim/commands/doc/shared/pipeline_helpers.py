@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar, cast
 
@@ -53,9 +53,10 @@ class _TriageContext:
 class _PromoteFrontmatterContext:
     """Resolved inputs for :func:`build_promote_frontmatter`.
 
-    Promote-side analog of :class:`_FilingContext`. Holds primitives only —
-    no dependency on ``CommandPromote``-private types — so the helper can be
-    called from both production code and the cross-path consistency test.
+    Promote-side analog of :class:`_FilingContext`. Holds resolved values
+    (primitives plus the human-approved ``TriageProposal``) — no dependency
+    on ``CommandPromote``-private types — so the helper can be called from
+    both production code and the cross-path consistency test.
     """
 
     proposal: TriageProposal
@@ -66,7 +67,6 @@ class _PromoteFrontmatterContext:
     sha: str
     ocr_engine: str
     ocr_mean_confidence: float | None
-    ingest_today: date
 
 
 @dataclass(frozen=True)
@@ -187,7 +187,12 @@ def build_promote_frontmatter(ctx: _PromoteFrontmatterContext) -> DocumentZettel
             doc_type=proposal.document.type,
             issuer=ctx.issuer_display,
             doc_number=proposal.document.number,
-            doc_date=proposal.document.date or ctx.ingest_today,
+            # Fall back to the proposal's ``ingested_at.date()`` (not
+            # ``date.today()``) so a date-less document promoted N days
+            # after triage produces the same ``doc-date`` as its filing-path
+            # counterpart. Mirrors ``build_filing_frontmatter``'s
+            # ``ingested_at.date()`` fallback. PRD 00035 success metric #8.
+            doc_date=proposal.document.date or proposal.zettel_preview.ingested_at.date(),
             doc_amount=proposal.document.amount,
             doc_currency=proposal.document.currency,
             doc_language=proposal.document.language,

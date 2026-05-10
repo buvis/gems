@@ -235,9 +235,8 @@ class CommandPromote:
         # OCR text that the filed PDF does not contain.
         source_pdf = ocr_result.pdf_path
         sha = sha256_file(source_pdf)
-        ingest_today = date.today()
 
-        frontmatter_or_err = self._build_frontmatter(ctx, ocr_result, plan, sha, ingest_today)
+        frontmatter_or_err = self._build_frontmatter(ctx, ocr_result, plan, sha)
         if isinstance(frontmatter_or_err, CommandResult):
             return frontmatter_or_err
         frontmatter = frontmatter_or_err
@@ -298,7 +297,6 @@ class CommandPromote:
         ocr_result: OCRResult,
         plan: _NamePlan,
         sha: str,
-        ingest_today: date,
     ) -> DocumentZettelFrontmatter | CommandResult:
         # Resolve issuer display (proposal first, registry fallback) then defer
         # the actual frontmatter assembly to the shared helper. The helper is
@@ -315,7 +313,6 @@ class CommandPromote:
                 sha=sha,
                 ocr_engine=self._settings.ocr.engine,
                 ocr_mean_confidence=ocr_result.mean_confidence,
-                ingest_today=ingest_today,
             )
         )
 
