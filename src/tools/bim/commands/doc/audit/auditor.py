@@ -142,15 +142,32 @@ class Auditor:
                 self.ocr_quality_reader,
                 slug_or_none,
             )
-        except Exception:
-            ocr_findings = []
-        findings.extend(ocr_findings)
+        except Exception as exc:
+            findings.append(
+                PdfFinding(
+                    pdf_path=str(pdf_path),
+                    issuer_slug=slug_or_none,
+                    doc_type=None,
+                    code="ocr_check_failed",
+                    detail=f"{type(exc).__name__}: {exc}",
+                )
+            )
+        else:
+            findings.extend(ocr_findings)
 
         try:
             sha = self.hash_reader(pdf_path)
-        except Exception:
-            sha = None
-        if sha is not None:
+        except Exception as exc:
+            findings.append(
+                PdfFinding(
+                    pdf_path=str(pdf_path),
+                    issuer_slug=slug_or_none,
+                    doc_type=None,
+                    code="hash_check_failed",
+                    detail=f"{type(exc).__name__}: {exc}",
+                )
+            )
+        else:
             findings.extend(check_state_db_entry(pdf_path, sha, self.state_db, slug_or_none))
 
         return findings, list(legacy_for_pdf)

@@ -50,6 +50,12 @@ def _render_summary_block(report: AuditReport, console: _ConsoleLike) -> None:
     _emit(console, f"  ⚠ {code_counts.get('missing_ocr', 0)} missing OCR")
     _emit(console, f"  ⚠ {code_counts.get('low_ocr_confidence', 0)} low OCR confidence")
     _emit(console, f"  ⚠ {code_counts.get('missing_state_db_entry', 0)} missing state.db entry")
+    ocr_failed = code_counts.get("ocr_check_failed", 0)
+    hash_failed = code_counts.get("hash_check_failed", 0)
+    if ocr_failed:
+        _emit(console, f"  ✘ {ocr_failed} OCR check failed")
+    if hash_failed:
+        _emit(console, f"  ✘ {hash_failed} hash check failed")
 
 
 def _render_issues_by_issuer(report: AuditReport, console: _ConsoleLike) -> None:

@@ -383,6 +383,74 @@ issuers:
         assert report.total_rules_in_registry == 3
 
 
+class TestAdapterFailures:
+    """When the OCR-quality reader or hash reader raises, the auditor must
+    surface the failure as a finding rather than silently treating the PDF
+    as clean. The PRD's "failure modes report; they do not auto-heal"
+    invariant requires this.
+    """
+
+    def test_ocr_reader_exception_emits_ocr_check_failed(
+        self,
+        tmp_path: Path,
+        factory: AuditorFactory,
+        state_db: StateDB,
+    ) -> None:
+        pdf = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(pdf)
+        _make_zettel(_docs_dir(factory.vault) / "cez-as" / CANONICAL_MD)
+        _record_processed(state_db, sha256_file(pdf))
+
+        def _boom_ocr(_path: Path) -> tuple[bool, float | None]:
+            raise OSError("permission denied")
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+        report = factory.build(ocr_quality_reader=_boom_ocr).run(issuers)
+
+        ocr_failures = [f for f in report.pdf_findings if f.code == "ocr_check_failed"]
+        assert len(ocr_failures) == 1
+        finding = ocr_failures[0]
+        assert finding.pdf_path == str(pdf)
+        assert finding.issuer_slug == "cez-as"
+        assert finding.detail is not None
+        assert "OSError" in finding.detail
+        assert "permission denied" in finding.detail
+        # PDF with adapter failure does NOT count as clean.
+        assert report.clean_pdf_count == 0
+
+    def test_hash_reader_exception_emits_hash_check_failed_and_skips_state_db_check(
+        self,
+        tmp_path: Path,
+        factory: AuditorFactory,
+        state_db: StateDB,
+    ) -> None:
+        pdf = factory.business / "cez-as" / CANONICAL_PDF
+        _make_pdf(pdf)
+        _make_zettel(_docs_dir(factory.vault) / "cez-as" / CANONICAL_MD)
+        # Note: no record_processed call, so missing_state_db_entry would
+        # normally fire; but hash failure short-circuits the check.
+
+        def _boom_hash(_path: Path) -> str:
+            raise OSError("read failed")
+
+        issuers = tmp_path / "issuers.yml"
+        _basic_issuers_yml(issuers)
+        report = factory.build(hash_reader=_boom_hash).run(issuers)
+
+        hash_failures = [f for f in report.pdf_findings if f.code == "hash_check_failed"]
+        assert len(hash_failures) == 1
+        finding = hash_failures[0]
+        assert finding.pdf_path == str(pdf)
+        assert finding.issuer_slug == "cez-as"
+        assert finding.detail is not None
+        assert "OSError" in finding.detail
+        # state_db check skipped when hash failed -- no missing_state_db_entry.
+        missing_state = [f for f in report.pdf_findings if f.code == "missing_state_db_entry"]
+        assert missing_state == []
+        assert report.clean_pdf_count == 0
+
+
 class TestReadOnlyInvariant:
     def test_state_db_unmodified(self, tmp_path: Path, factory: AuditorFactory, state_db: StateDB) -> None:
         pdf = factory.business / "cez-as" / CANONICAL_PDF

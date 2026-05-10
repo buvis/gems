@@ -43,6 +43,12 @@ PdfFindingCode = Literal[
     "missing_ocr",
     "low_ocr_confidence",
     "missing_state_db_entry",
+    # Adapter failures: surfaced when the OCR-quality reader or hash reader
+    # raises while inspecting a PDF (read error, permission denied, corrupted
+    # file, adapter bug). The audit must report these rather than treat the
+    # PDF as clean.
+    "ocr_check_failed",
+    "hash_check_failed",
 ]
 
 RuleFindingCode = Literal[
