@@ -498,3 +498,98 @@ class TestZettelWriter:
         block = _frontmatter_block(target.read_text(encoding="utf-8"))
         if "doc-number:" in block:
             assert "doc-number: null" in block or "doc-number: ~" in block
+
+
+class TestZettelWriterPerVariantFixtures:
+    """Snapshot-style coverage for every combination of optional doc fields.
+
+    PRD success criterion 1 requires the writer to produce v1 YAML for every
+    doc-type variant (with/without ``doc_number``, ``doc_amount``, ``doc_language``).
+    Criteria 2 and 3 (no quoted numbers, no underscore keys) re-asserted per
+    variant. The 8 = 2^3 combinations exercise the writer's optional-field
+    handling end-to-end.
+    """
+
+    _EXPECTED_KEY_ORDER = [
+        "id",
+        "title",
+        "type",
+        "doc-type",
+        "issuer",
+        "doc-number",
+        "doc-date",
+        "doc-amount",
+        "doc-currency",
+        "doc-language",
+        "ingested-at",
+        "ingest-source",
+        "file-path",
+        "file-sha256",
+        "ocr-engine",
+        "ocr-mean-confidence",
+        "extraction-method",
+        "tags",
+    ]
+
+    @pytest.mark.parametrize("has_doc_number", [True, False])
+    @pytest.mark.parametrize("has_doc_amount", [True, False])
+    @pytest.mark.parametrize("has_doc_language", [True, False])
+    def test_variant_serialisation_v1_invariants(
+        self,
+        tmp_path: Path,
+        has_doc_number: bool,
+        has_doc_amount: bool,
+        has_doc_language: bool,
+    ) -> None:
+        overrides: dict[str, object] = {}
+        if not has_doc_number:
+            overrides["doc_number"] = None
+        if not has_doc_amount:
+            overrides["doc_amount"] = None
+            overrides["doc_currency"] = None  # currency without amount makes no sense
+        if not has_doc_language:
+            overrides["doc_language"] = None
+
+        fm = DocumentZettelFrontmatter(**_frontmatter_kwargs(**overrides))
+        writer = ZettelWriter(
+            repo=None,
+            vault_root=tmp_path,
+            vault_documents_subdir="Zettelkasten/documents",
+        )
+        body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
+        target = writer.write(fm, body, issuer_slug="cez-as")
+        block = _frontmatter_block(target.read_text(encoding="utf-8"))
+
+        # Criterion 1: all 18 spec §5 keys present (None values serialise as
+        # ``null``/``~`` but the key is still emitted).
+        top_level_keys = [m.group(1) for m in re.finditer(r"^([a-z][a-z0-9\-]*):", block, re.MULTILINE)]
+        assert top_level_keys == self._EXPECTED_KEY_ORDER, top_level_keys
+
+        # Criterion 2: no line of the form ``<key>: "<digit>`` or ``<key>: '<digit>``.
+        assert re.search(r"^[A-Za-z][A-Za-z0-9\-]*: [\"']\d", block, re.MULTILINE) is None, block
+
+        # Criterion 3: no underscore-style frontmatter key.
+        assert re.search(r"^[a-z]+_", block, re.MULTILINE) is None, block
+
+        # Criterion 5 (proxy): ingested-at parses with fromisoformat and is tz-aware.
+        match = re.search(r"^ingested-at:\s*(\S+)", block, re.MULTILINE)
+        assert match is not None, block
+        parsed = datetime.fromisoformat(match.group(1).strip("'\""))
+        assert parsed.tzinfo is not None, parsed
+
+        # Variant-specific shape:
+        # - doc-number bare int when present, ``null`` when absent
+        if has_doc_number:
+            assert "doc-number: 7102105594\n" in block
+        else:
+            assert "doc-number: null" in block or "doc-number: ~" in block
+        # - doc-amount numeric when present, ``null`` when absent
+        if has_doc_amount:
+            assert re.search(r"^doc-amount:\s*4218(\.0)?\s*$", block, re.MULTILINE) is not None, block
+        else:
+            assert "doc-amount: null" in block or "doc-amount: ~" in block
+        # - doc-language ``cs`` when present, ``null`` when absent
+        if has_doc_language:
+            assert "doc-language: cs\n" in block
+        else:
+            assert "doc-language: null" in block or "doc-language: ~" in block
