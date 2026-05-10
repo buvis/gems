@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict
 
 from bim.commands.doc.shared.issuers import resolve_alias
 from bim.commands.doc.shared.naming import slugify
+from bim.commands.doc.shared.rules.models import SourceMetadata
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -130,10 +131,32 @@ def _reduced_system_prompt(registry: IssuerRegistry, *, omit: set[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _user_prompt(ocr_text: str, source_metadata: dict[str, object]) -> str:
-    return (
-        f"OCR text:\n{ocr_text}\n\nSource metadata: {json.dumps(source_metadata, ensure_ascii=False, sort_keys=True)}\n"
-    )
+def _source_metadata_to_prompt_dict(metadata: SourceMetadata, *, doc_type_only: bool) -> dict[str, object]:
+    """Project ``SourceMetadata`` to the JSON shape the user prompt embeds.
+
+    The legacy contract emitted ``source`` (not ``source_kind``) and only
+    populated keys whose values were truthy. ``doc_type_only`` mode (used
+    by the issuer-inbox path) further omits issuer-related hints
+    (``original_filename``, ``email_from``, ``email_subject``) so the
+    prompt stays focused on doc-type and cannot leak the pinned issuer
+    back into the LLM. ``email_date`` is intentionally also omitted: it
+    feeds the rule engine but never enters the classifier prompt.
+    """
+    payload: dict[str, object] = {"source": metadata.source_kind}
+    if doc_type_only:
+        return payload
+    if metadata.original_filename:
+        payload["original_filename"] = metadata.original_filename
+    if metadata.email_from:
+        payload["email_from"] = metadata.email_from
+    if metadata.email_subject:
+        payload["email_subject"] = metadata.email_subject
+    return payload
+
+
+def _user_prompt(ocr_text: str, source_metadata: SourceMetadata, *, doc_type_only: bool) -> str:
+    payload = _source_metadata_to_prompt_dict(source_metadata, doc_type_only=doc_type_only)
+    return f"OCR text:\n{ocr_text}\n\nSource metadata: {json.dumps(payload, ensure_ascii=False, sort_keys=True)}\n"
 
 
 def _pinned_language(pinned: dict[str, object]) -> object:
@@ -261,7 +284,7 @@ class Classifier:
     def classify(
         self,
         ocr_text: str,
-        source_metadata: dict[str, object],
+        source_metadata: SourceMetadata,
         registry: IssuerRegistry,
         *,
         doc_type_only: bool = False,
@@ -283,7 +306,7 @@ class Classifier:
     def classify_with_model(
         self,
         ocr_text: str,
-        source_metadata: dict[str, object],
+        source_metadata: SourceMetadata,
         registry: IssuerRegistry,
         *,
         model: str,
@@ -309,7 +332,7 @@ class Classifier:
             "model": model,
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": _user_prompt(ocr_text, source_metadata)},
+                {"role": "user", "content": _user_prompt(ocr_text, source_metadata, doc_type_only=doc_type_only)},
             ],
             "format": "json",
             "stream": False,
@@ -322,7 +345,7 @@ class Classifier:
         except requests.exceptions.Timeout:
             raise
         except Exception as exc:
-            # HTTP / network failure — retrying may succeed.
+            # HTTP / network failure; retrying may succeed.
             raise ClassifierError(f"HTTP error calling {url}: {exc}", transient=True) from exc
 
         try:
@@ -374,7 +397,7 @@ class Classifier:
     def classify_with_pinned(
         self,
         ocr_text: str,
-        source_metadata: dict[str, object],
+        source_metadata: SourceMetadata,
         registry: IssuerRegistry,
         pinned: dict[str, object],
         *,
@@ -414,7 +437,7 @@ class Classifier:
     def _call_chat(
         self,
         ocr_text: str,
-        source_metadata: dict[str, object],
+        source_metadata: SourceMetadata,
         registry: IssuerRegistry,
         *,
         model: str,
@@ -429,7 +452,7 @@ class Classifier:
             "model": model,
             "messages": [
                 {"role": "system", "content": _reduced_system_prompt(registry, omit=omit)},
-                {"role": "user", "content": _user_prompt(ocr_text, source_metadata)},
+                {"role": "user", "content": _user_prompt(ocr_text, source_metadata, doc_type_only=False)},
             ],
             "format": "json",
             "stream": False,

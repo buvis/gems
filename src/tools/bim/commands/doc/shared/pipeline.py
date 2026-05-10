@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
 
@@ -249,7 +249,7 @@ class Pipeline:
         reporter.stage("running OCR")
         ocr_result = self._ocr_runner.run(params.staging_path)
 
-        source_metadata = self._build_rule_source_metadata(params)
+        source_metadata = self._build_source_metadata(params)
         rule_result = self._run_rules(ocr_result.ocr_text, source_metadata, params)
         if rule_result.kind == "conflict":
             return self._triage(
@@ -465,7 +465,7 @@ class Pipeline:
         from bim.commands.doc.shared.classifier import ClassifierError
 
         doc_type_only = params.source == "issuer-inbox"
-        source_metadata = self._build_source_metadata(params, doc_type_only=doc_type_only)
+        source_metadata = self._build_source_metadata(params)
 
         def _call(model: str) -> ClassifyResult:
             return self._classifier.classify_with_model(
@@ -494,8 +494,7 @@ class Pipeline:
         """Run pinned classifier path with the same retry semantics as classification."""
         from bim.commands.doc.shared.classifier import ClassifierError
 
-        doc_type_only = params.source == "issuer-inbox"
-        source_metadata = self._build_source_metadata(params, doc_type_only=doc_type_only)
+        source_metadata = self._build_source_metadata(params)
 
         def _call(model: str) -> ClassifyResult:
             return self._classifier.classify_with_pinned(
@@ -647,25 +646,24 @@ class Pipeline:
         )
         atomic_write_text(sidecar_path, content)
 
-    def _build_source_metadata(self, params: IngestParams, *, doc_type_only: bool) -> dict[str, Any]:
-        """Compose the dict passed to ``Classifier.classify`` as ``source_metadata``.
+    def _build_source_metadata(self, params: IngestParams) -> SourceMetadata:
+        """Compose the ``SourceMetadata`` shared by the rule engine and classifier.
 
-        For the ``doc_type_only=True`` path (issuer-inbox), we deliberately
-        omit issuer-related hints (original_filename, email_from, email_subject)
-        so the prompt stays focused on doc-type identification rather than
-        re-classifying the issuer the caller already pinned. This addresses
-        the source-metadata-leakage concern deferred from PRD 00030.
+        Both paths get the full metadata; the classifier internally projects
+        it to the user-prompt JSON shape and respects ``doc_type_only`` when
+        selecting which fields to expose to the LLM (see
+        :func:`_source_metadata_to_prompt_dict`). This is the single source
+        of truth for source-metadata construction (previously two parallel
+        builders existed; PRD 00034 blind-review I4).
         """
-        meta: dict[str, Any] = {"source": params.source}
-        if doc_type_only:
-            return meta
-        if params.original_filename:
-            meta["original_filename"] = params.original_filename
-        if params.email_from:
-            meta["email_from"] = params.email_from
-        if params.email_subject:
-            meta["email_subject"] = params.email_subject
-        return meta
+        email_meta = self._load_email_sidecar(params.staging_path)
+        return SourceMetadata(
+            source_kind=params.source,
+            original_filename=params.original_filename or params.staging_path.name,
+            email_from=params.email_from or email_meta["email_from"],
+            email_subject=params.email_subject or email_meta["email_subject"],
+            email_date=email_meta["email_date"],
+        )
 
     def _run_rules(self, ocr_text: str, source_metadata: SourceMetadata, params: IngestParams) -> RuleResult:
         scope = params.issuer_slug_hint if params.source == "issuer-inbox" else None
@@ -675,16 +673,6 @@ class Pipeline:
             source_metadata,
             self._registry,
             scoped_issuer_slug=scope,
-        )
-
-    def _build_rule_source_metadata(self, params: IngestParams) -> SourceMetadata:
-        email_meta = self._load_email_sidecar(params.staging_path)
-        return SourceMetadata(
-            source_kind=params.source,
-            original_filename=params.original_filename or params.staging_path.name,
-            email_from=params.email_from or email_meta["email_from"],
-            email_subject=params.email_subject or email_meta["email_subject"],
-            email_date=email_meta["email_date"],
         )
 
     @staticmethod

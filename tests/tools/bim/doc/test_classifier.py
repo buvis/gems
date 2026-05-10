@@ -6,10 +6,16 @@ from pathlib import Path
 import pytest
 from bim.commands.doc.shared.issuers import IssuerRegistry
 from bim.commands.doc.shared.naming import DOC_TYPES
+from bim.commands.doc.shared.rules.models import SourceMetadata
 from bim.commands.doc.shared.settings_models import ClassifierSettings
 from pytest_mock import MockerFixture
 
 FIXTURES = Path(__file__).parent / "fixtures" / "ocr_text"
+
+
+def _metadata(source_kind: str = "email", filename: str | None = None) -> SourceMetadata:
+    """SourceMetadata stub for classifier tests that don't exercise the prompt's metadata payload."""
+    return SourceMetadata(source_kind=source_kind, original_filename=filename)
 
 
 class _MockResponse:
@@ -109,7 +115,7 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        result = Classifier(settings).classify(ocr_text, {}, registry)
+        result = Classifier(settings).classify(ocr_text, _metadata(), registry)
 
         assert result.issuer_slug == "cez-as"
         assert result.issuer_display == "ČEZ a.s."
@@ -139,7 +145,7 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        result = Classifier(settings).classify(ocr_text, {}, registry)
+        result = Classifier(settings).classify(ocr_text, _metadata(), registry)
 
         # Canonical fields stay None so the pipeline still triages.
         assert result.issuer_slug is None
@@ -169,7 +175,7 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        result = Classifier(settings).classify("some text", {}, registry, doc_type_only=True)
+        result = Classifier(settings).classify("some text", _metadata(), registry, doc_type_only=True)
 
         assert fake_requests.post.call_count == 1
         _, kwargs = fake_requests.post.call_args
@@ -205,7 +211,7 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        Classifier(settings).classify("text", {}, registry, doc_type_only=False)
+        Classifier(settings).classify("text", _metadata(), registry, doc_type_only=False)
 
         _, kwargs = fake_requests.post.call_args
         system_msgs = _system_messages(kwargs)
@@ -234,7 +240,7 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        Classifier(settings).classify("text", {}, registry)
+        Classifier(settings).classify("text", _metadata(), registry)
 
         args, kwargs = fake_requests.post.call_args
         url = args[0] if args else kwargs.get("url")
@@ -266,7 +272,7 @@ class TestClassifier:
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         with pytest.raises(ClassifierError):
-            Classifier(settings).classify("text", {}, registry)
+            Classifier(settings).classify("text", _metadata(), registry)
 
     def test_http_error_raises_classifier_error(
         self,
@@ -283,7 +289,7 @@ class TestClassifier:
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         with pytest.raises(ClassifierError):
-            Classifier(settings).classify("text", {}, registry)
+            Classifier(settings).classify("text", _metadata(), registry)
 
     def test_timeout_propagates_unwrapped(
         self,
@@ -298,7 +304,7 @@ class TestClassifier:
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         with pytest.raises(fake_requests.exceptions.Timeout):
-            Classifier(settings).classify("text", {}, registry)
+            Classifier(settings).classify("text", _metadata(), registry)
 
     def test_classifier_missing_doc_type_raises_classifier_error(
         self,
@@ -321,7 +327,7 @@ class TestClassifier:
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         with pytest.raises(ClassifierError) as exc_info:
-            Classifier(settings).classify("text", {}, registry)
+            Classifier(settings).classify("text", _metadata(), registry)
         assert "doc_type" in str(exc_info.value)
 
     def test_classifier_missing_confidence_raises_classifier_error(
@@ -345,7 +351,7 @@ class TestClassifier:
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
         with pytest.raises(ClassifierError) as exc_info:
-            Classifier(settings).classify("text", {}, registry)
+            Classifier(settings).classify("text", _metadata(), registry)
         assert "confidence" in str(exc_info.value)
 
     def test_alias_list_included_in_system_prompt_for_full_classify(
@@ -369,7 +375,7 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        Classifier(settings).classify("text", {}, registry, doc_type_only=False)
+        Classifier(settings).classify("text", _metadata(), registry, doc_type_only=False)
 
         _, kwargs = fake_requests.post.call_args
         system_joined = "\n".join(_system_messages(kwargs))

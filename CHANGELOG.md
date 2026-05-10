@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `bim doc promote` now uses the triage proposal's `ingested-at` date for the `doc-date` fallback when a document has no extracted date (previously used `date.today()`, which made the same logical document yield different `doc-date` values when promoted on a different day from when it was triaged). Pipeline+promote consistency now holds for date-less documents too.
 - **bim**: rule-engine conflict detection now flags two same-priority same-partial-ness rules pinning any shared field (was: only `issuer_slug`). Two rules pinning different `doc_type`, `doc_currency`, etc., are now correctly routed to triage with `rule_conflict: <id1> vs <id2>` instead of one silently winning.
 
+### Changed
+
+- **bim**: `Classifier.classify`/`classify_with_model`/`classify_with_pinned` now take a `SourceMetadata` dataclass instead of a `dict[str, object]` for `source_metadata`. The pipeline builds source metadata in one place (`Pipeline._build_source_metadata`) and feeds it to both the rule engine and the classifier, eliminating the previous parallel `_build_source_metadata` (dict) + `_build_rule_source_metadata` (dataclass) builders that could drift if a new metadata field was added to only one. Public CLI behaviour is unchanged.
+
 ## [0.11.1] - 2026-05-10
 
 ### Added

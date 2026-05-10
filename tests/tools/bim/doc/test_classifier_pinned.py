@@ -20,8 +20,14 @@ import json
 import pytest
 from bim.commands.doc.shared.issuers import IssuerRegistry
 from bim.commands.doc.shared.naming import DOC_TYPES
+from bim.commands.doc.shared.rules.models import SourceMetadata
 from bim.commands.doc.shared.settings_models import ClassifierSettings
 from pytest_mock import MockerFixture
+
+
+def _metadata(source_kind: str = "email") -> SourceMetadata:
+    """SourceMetadata stub for tests that don't exercise the prompt's metadata payload."""
+    return SourceMetadata(source_kind=source_kind, original_filename=None)
 
 
 class _MockResponse:
@@ -105,7 +111,7 @@ class TestClassifyWithPinnedFullSkip:
 
         result = Classifier(settings).classify_with_pinned(
             "ocr text",
-            {},
+            _metadata(),
             registry,
             {"issuer_slug": "cez-as", "doc_type": "invoice", "language": "cs"},
             model=settings.primary_model,
@@ -137,7 +143,7 @@ class TestClassifyWithPinnedFullSkip:
 
         result = Classifier(settings).classify_with_pinned(
             "ocr text",
-            {},
+            _metadata(),
             registry,
             {"issuer_slug": "cez-as", "doc_type": "invoice", "doc_language": "cs"},
             model=settings.primary_model,
@@ -165,7 +171,7 @@ class TestClassifyWithPinnedFullSkip:
 
         result = Classifier(settings).classify_with_pinned(
             "ocr text",
-            {},
+            _metadata(),
             registry,
             {
                 "issuer_slug": "cez-as",
@@ -198,7 +204,7 @@ class TestClassifyWithPinnedFullSkip:
 
         result = Classifier(settings).classify_with_pinned(
             "ocr text",
-            {},
+            _metadata(),
             registry,
             {"issuer_slug": "unknown-issuer", "doc_type": "invoice", "language": "cs"},
             model=settings.primary_model,
@@ -233,7 +239,7 @@ class TestClassifyWithPinnedPartialIssuer:
 
         result = Classifier(settings).classify_with_pinned(
             "ocr text",
-            {},
+            _metadata(),
             registry,
             {"issuer_slug": "cez-as"},
             model=settings.primary_model,
@@ -277,7 +283,7 @@ class TestClassifyWithPinnedPartialDocType:
 
         result = Classifier(settings).classify_with_pinned(
             "ocr text",
-            {},
+            _metadata(),
             registry,
             {"doc_type": "invoice"},
             model=settings.primary_model,
@@ -320,7 +326,7 @@ class TestClassifyWithPinnedModelOverride:
 
         Classifier(settings).classify_with_pinned(
             "ocr text",
-            {},
+            _metadata(),
             registry,
             {"issuer_slug": "cez-as"},
             model="custom-fallback-model",
