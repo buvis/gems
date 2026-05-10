@@ -32,13 +32,25 @@ from bim.commands.doc.shared.pipeline_helpers import (
     ClassifyStage,
     ExtractStage,
     FilingContext,
+    PipelineStages,
     RuleStage,
     TriageContext,
+    build_filing_context_from_stages,
     build_filing_frontmatter,
     build_filing_result,
+    build_triage_context,
+)
+from bim.commands.doc.shared.pipeline_helpers import (
+    applied_rule_id as _applied_rule_id,
+)
+from bim.commands.doc.shared.pipeline_helpers import (
+    compose_triage_title as _compose_triage_title,
 )
 from bim.commands.doc.shared.pipeline_helpers import (
     retry_llm_call as _retry_llm_call,
+)
+from bim.commands.doc.shared.pipeline_helpers import (
+    rule_extraction_method as _rule_extraction_method,
 )
 from bim.commands.doc.shared.progress import NoOpProgressReporter
 from bim.commands.doc.shared.rules.engine import RuleEngine
@@ -54,7 +66,7 @@ from bim.commands.doc.shared.triage import (
     format_rule_conflict_reason,
     write_proposal,
 )
-from bim.commands.doc.shared.zettel_helpers import build_zettel_tags, compose_zettel_title
+from bim.commands.doc.shared.zettel_helpers import build_zettel_tags
 from bim.commands.doc.shared.zettel_writer import build_zettel_body
 
 if TYPE_CHECKING:
@@ -199,21 +211,18 @@ class Pipeline:
         if isinstance(rule_stage, CommandResult):
             return rule_stage
 
-        applied_rule_id = self._applied_rule_id(rule_stage.rule_result)
-
+        applied_rule_id = _applied_rule_id(rule_stage.rule_result)
         classify_stage = self._classify_after_rules(params, rule_stage, reporter)
+        stages = PipelineStages(params=params, sha=sha, rule_stage=rule_stage, classify_stage=classify_stage)
+
         classify_result = classify_stage.classify_result
         if classify_result is None:
             return self._triage(
-                TriageContext(
-                    params=params,
-                    sha=sha,
-                    ocr_result=rule_stage.ocr_result,
+                build_triage_context(
+                    stages,
                     classify_result=None,
                     extract_result=None,
                     reasons=classify_stage.triage_reasons,
-                    issuer_slug=classify_stage.issuer_slug,
-                    issuer_display=classify_stage.issuer_display,
                     applied_rule_id=applied_rule_id,
                 )
             )
@@ -222,29 +231,16 @@ class Pipeline:
         triage_reasons = classify_stage.triage_reasons + extract_stage.triage_reasons
         if triage_reasons or extract_stage.extract_result is None:
             return self._triage(
-                TriageContext(
-                    params=params,
-                    sha=sha,
-                    ocr_result=rule_stage.ocr_result,
+                build_triage_context(
+                    stages,
                     classify_result=classify_result,
                     extract_result=extract_stage.extract_result,
                     reasons=triage_reasons,
-                    issuer_slug=classify_stage.issuer_slug,
-                    issuer_display=classify_stage.issuer_display,
                     applied_rule_id=applied_rule_id,
                 )
             )
         return self._finalize_filing(
-            FilingContext(
-                params=params,
-                sha=sha,
-                ocr_result=rule_stage.ocr_result,
-                classify_result=classify_result,
-                extract_result=extract_stage.extract_result,
-                issuer_slug=classify_stage.issuer_slug,
-                issuer_display=classify_stage.issuer_display,
-                extraction_method=rule_stage.extraction_method,
-            )
+            build_filing_context_from_stages(stages, classify_result, extract_stage.extract_result)
         )
 
     def _run_ocr_and_rules(
@@ -277,7 +273,7 @@ class Pipeline:
                     rule_result.rule_id,
                     datetime.now(timezone.utc),
                 )
-            extraction_method = self._rule_extraction_method(rule_result)
+            extraction_method = _rule_extraction_method(rule_result)
         return RuleStage(ocr_result, rule_result, extraction_method, use_pinned)
 
     def _classify_after_rules(
@@ -622,7 +618,7 @@ class Pipeline:
             triage_reasons=list(ctx.reasons),
             zettel_preview=ZettelPreview(
                 id=zk_timestamp,
-                title=self._compose_triage_title(ctx, doc_type_for_filename),
+                title=_compose_triage_title(ctx, doc_type_for_filename),
                 ingested_at=datetime.now().astimezone(),
                 tags=build_zettel_tags(
                     doc_type_for_filename,
@@ -711,48 +707,6 @@ class Pipeline:
         if isinstance(value, str):
             return value
         return str(value)
-
-    @staticmethod
-    def _compose_triage_title(ctx: TriageContext, doc_type_for_filename: str) -> str:
-        """Best-effort title for the triage proposal preview.
-
-        Falls back through the same compose helper used by the filing path,
-        but tolerates missing classify/extract results (the human will edit
-        the proposal anyway). Always returns a non-empty string so the
-        ``ZettelPreview.title`` validator accepts it.
-        """
-        issuer = ctx.issuer_display or "(unknown issuer)"
-        doc_number = ctx.extract_result.number if ctx.extract_result is not None else None
-        doc_title = ctx.extract_result.title if ctx.extract_result is not None else None
-        try:
-            return compose_zettel_title(
-                issuer=issuer,
-                doc_type=doc_type_for_filename,
-                doc_number=doc_number,
-                doc_title=doc_title,
-            )
-        except ValueError:
-            return f"{issuer} {doc_type_for_filename} (untitled)"
-
-    @staticmethod
-    def _applied_rule_id(rule_result: RuleResult) -> str | None:
-        """Return the rule_id when this rule_result represents a winning match.
-
-        ``full``/``partial`` outcomes with a known ``rule_id`` are the only
-        cases where promote (or the immediate ingest write) should refresh
-        ``state.db rule_matches``. ``none`` and ``conflict`` mean no single
-        rule won, so there's nothing to record.
-        """
-        if rule_result.kind not in {"full", "partial"}:
-            return None
-        return rule_result.rule_id
-
-    @staticmethod
-    def _rule_extraction_method(rule_result: RuleResult) -> str:
-        if rule_result.rule_id is None or rule_result.rule_version is None:
-            raise ValueError("matching rule result must include rule id and version")
-        prefix = "rule" if rule_result.kind == "full" else "rule+llm"
-        return f"{prefix}:{rule_result.rule_id}:v{rule_result.rule_version}"
 
     def _build_extractor_hints(self, params: IngestParams) -> dict[str, str] | None:
         """Compose the hints dict passed to ``Extractor.extract_with_model``.

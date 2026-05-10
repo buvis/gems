@@ -25,13 +25,19 @@ __all__ = [
     "ClassifyStage",
     "ExtractStage",
     "FilingContext",
+    "PipelineStages",
     "PromoteFrontmatterContext",
     "RuleStage",
     "TriageContext",
+    "applied_rule_id",
+    "build_filing_context_from_stages",
     "build_filing_frontmatter",
     "build_filing_result",
     "build_promote_frontmatter",
+    "build_triage_context",
+    "compose_triage_title",
     "retry_llm_call",
+    "rule_extraction_method",
 ]
 
 T = TypeVar("T")
@@ -105,6 +111,116 @@ class ClassifyStage:
 class ExtractStage:
     extract_result: ExtractResult | None
     triage_reasons: list[str]
+
+
+@dataclass(frozen=True)
+class PipelineStages:
+    """Bundle of the pipeline-stage outputs shared by the triage and filing
+    builders.
+
+    Lifts the four kwargs the two builders would otherwise repeat (params,
+    sha, rule_stage, classify_stage) into one struct so the builders stay
+    under the 5-arg lint cap and call sites read as a single ``stages``
+    handle.
+    """
+
+    params: IngestParams
+    sha: str
+    rule_stage: RuleStage
+    classify_stage: ClassifyStage
+
+
+def applied_rule_id(rule_result: RuleResult) -> str | None:
+    """Return the rule_id when this rule_result represents a winning match.
+
+    ``full``/``partial`` outcomes with a known ``rule_id`` are the only
+    cases where promote (or the immediate ingest write) should refresh
+    ``state.db rule_matches``. ``none`` and ``conflict`` mean no single
+    rule won, so there's nothing to record.
+    """
+    if rule_result.kind not in {"full", "partial"}:
+        return None
+    return rule_result.rule_id
+
+
+def rule_extraction_method(rule_result: RuleResult) -> str:
+    """Build the ``extraction_method`` string for a rule-pinned outcome."""
+    if rule_result.rule_id is None or rule_result.rule_version is None:
+        raise ValueError("matching rule result must include rule id and version")
+    prefix = "rule" if rule_result.kind == "full" else "rule+llm"
+    return f"{prefix}:{rule_result.rule_id}:v{rule_result.rule_version}"
+
+
+def build_filing_context_from_stages(
+    stages: PipelineStages,
+    classify_result: ClassifyResult,
+    extract_result: ExtractResult,
+) -> FilingContext:
+    """Assemble a :class:`FilingContext` from a resolved :class:`PipelineStages`.
+
+    Mirror of :func:`build_triage_context`: hides the eight-kwarg
+    boilerplate at the only call site that survives an end-to-end ingest.
+    """
+    return FilingContext(
+        params=stages.params,
+        sha=stages.sha,
+        ocr_result=stages.rule_stage.ocr_result,
+        classify_result=classify_result,
+        extract_result=extract_result,
+        issuer_slug=stages.classify_stage.issuer_slug,
+        issuer_display=stages.classify_stage.issuer_display,
+        extraction_method=stages.rule_stage.extraction_method,
+    )
+
+
+def compose_triage_title(ctx: TriageContext, doc_type_for_filename: str) -> str:
+    """Best-effort title for the triage proposal preview.
+
+    Falls back through the same compose helper used by the filing path,
+    but tolerates missing classify/extract results (the human will edit
+    the proposal anyway). Always returns a non-empty string so the
+    ``ZettelPreview.title`` validator accepts it.
+    """
+    issuer = ctx.issuer_display or "(unknown issuer)"
+    doc_number = ctx.extract_result.number if ctx.extract_result is not None else None
+    doc_title = ctx.extract_result.title if ctx.extract_result is not None else None
+    try:
+        return compose_zettel_title(
+            issuer=issuer,
+            doc_type=doc_type_for_filename,
+            doc_number=doc_number,
+            doc_title=doc_title,
+        )
+    except ValueError:
+        return f"{issuer} {doc_type_for_filename} (untitled)"
+
+
+def build_triage_context(
+    stages: PipelineStages,
+    *,
+    classify_result: ClassifyResult | None,
+    extract_result: ExtractResult | None,
+    reasons: list[str],
+    applied_rule_id: str | None,
+) -> TriageContext:
+    """Assemble a :class:`TriageContext` from a resolved :class:`PipelineStages`.
+
+    Encapsulates the eight kwargs the two ``_run_after_claim`` triage paths
+    repeat verbatim (params/sha/ocr_result/issuer_slug/issuer_display) so
+    the call sites carry only the variable classify/extract/reasons/
+    applied_rule_id quadruple.
+    """
+    return TriageContext(
+        params=stages.params,
+        sha=stages.sha,
+        ocr_result=stages.rule_stage.ocr_result,
+        classify_result=classify_result,
+        extract_result=extract_result,
+        reasons=reasons,
+        issuer_slug=stages.classify_stage.issuer_slug,
+        issuer_display=stages.classify_stage.issuer_display,
+        applied_rule_id=applied_rule_id,
+    )
 
 
 def retry_llm_call(
