@@ -69,6 +69,7 @@ class Auditor:
         walked = 0
         clean = 0
         non_clean = 0
+        ocr_confidence_assessable = 0
         pdf_findings: list[PdfFinding] = []
         legacy: list[str] = []
         n_issuers_walked: set[str] = set()
@@ -76,9 +77,11 @@ class Auditor:
         for folder_slug, pdf_path in walk_business_root(self.business_root):
             walked += 1
             n_issuers_walked.add(folder_slug)
-            findings, legacy_for_pdf = self._check_pdf(pdf_path, folder_slug, registry)
+            findings, legacy_for_pdf, ocr_assessable = self._check_pdf(pdf_path, folder_slug, registry)
             pdf_findings.extend(findings)
             legacy.extend(legacy_for_pdf)
+            if ocr_assessable:
+                ocr_confidence_assessable += 1
             if not findings and not legacy_for_pdf:
                 clean += 1
             else:
@@ -102,6 +105,7 @@ class Auditor:
             total_rules_in_registry=total_rules,
             total_issuers_in_registry=total_issuers,
             non_clean_pdf_count=non_clean,
+            ocr_confidence_assessable_count=ocr_confidence_assessable,
         )
 
     def _collect_rule_findings(
@@ -121,9 +125,10 @@ class Auditor:
         pdf_path: Path,
         folder_slug: str,
         registry: IssuerRegistry | None,
-    ) -> tuple[list[PdfFinding], list[str]]:
+    ) -> tuple[list[PdfFinding], list[str], bool]:
         slug_or_none = folder_slug if folder_slug != "" else None
         findings: list[PdfFinding] = []
+        ocr_assessable = False
 
         findings.extend(check_filename_canonical(pdf_path, slug_or_none))
 
@@ -140,7 +145,7 @@ class Auditor:
         findings.extend(zettel_findings)
 
         try:
-            ocr_findings = check_ocr(
+            ocr_findings, ocr_assessable = check_ocr(
                 pdf_path,
                 self.low_confidence_threshold,
                 self.ocr_quality_reader,
@@ -174,7 +179,7 @@ class Auditor:
         else:
             findings.extend(check_state_db_entry(pdf_path, sha, self.state_db, slug_or_none))
 
-        return findings, list(legacy_for_pdf)
+        return findings, list(legacy_for_pdf), ocr_assessable
 
     def _collect_inboxes(self, registry: IssuerRegistry | None) -> list[InboxSummary]:
         if registry is None:

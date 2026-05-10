@@ -151,32 +151,45 @@ def check_ocr(
     low_confidence_threshold: float,
     ocr_quality_reader: OcrQualityReader,
     folder_slug: str | None,
-) -> list[PdfFinding]:
+) -> tuple[list[PdfFinding], bool]:
     """Flag PDFs without OCR text or with mean confidence below the
-    threshold. ``confidence is None`` with text present is treated as
-    "not assessable" -- not itself an audit failure.
+    threshold.
+
+    Returns ``(findings, assessable)`` where ``assessable`` is True iff the
+    reader actually exposed a confidence value for this PDF (``has_text``
+    and ``confidence is not None``). Callers thread that bool up to the
+    audit report so the stdout reporter can avoid pretending the low-
+    confidence check ran when no PDF could be assessed -- the production
+    pdfminer-based reader returns ``None`` confidence for every page.
     """
     has_text, confidence = ocr_quality_reader(pdf_path)
+    assessable = has_text and confidence is not None
     if not has_text:
-        return [
-            PdfFinding(
-                pdf_path=str(pdf_path),
-                issuer_slug=_coerce_slug(folder_slug),
-                doc_type=None,
-                code="missing_ocr",
-            )
-        ]
+        return (
+            [
+                PdfFinding(
+                    pdf_path=str(pdf_path),
+                    issuer_slug=_coerce_slug(folder_slug),
+                    doc_type=None,
+                    code="missing_ocr",
+                )
+            ],
+            assessable,
+        )
     if confidence is not None and confidence < low_confidence_threshold:
-        return [
-            PdfFinding(
-                pdf_path=str(pdf_path),
-                issuer_slug=_coerce_slug(folder_slug),
-                doc_type=None,
-                code="low_ocr_confidence",
-                detail=f"mean_confidence: {confidence:.2f}",
-            )
-        ]
-    return []
+        return (
+            [
+                PdfFinding(
+                    pdf_path=str(pdf_path),
+                    issuer_slug=_coerce_slug(folder_slug),
+                    doc_type=None,
+                    code="low_ocr_confidence",
+                    detail=f"mean_confidence: {confidence:.2f}",
+                )
+            ],
+            assessable,
+        )
+    return ([], assessable)
 
 
 def check_state_db_entry(

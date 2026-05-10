@@ -103,6 +103,13 @@ class AuditReport:
     # because a single PDF may contribute multiple findings and a legacy
     # entry; that arithmetic would double-count.
     non_clean_pdf_count: int = 0
+    # Number of walked PDFs for which the OCR reader actually exposed a
+    # mean-confidence value (``has_text`` and ``confidence is not None``).
+    # Zero means the OCR-quality reader is incapable of confidence scoring
+    # for this run -- the stdout reporter uses this to avoid a misleading
+    # "0 low OCR confidence" line and replace it with an explicit
+    # "not assessed" notice. Always <= ``walked_pdf_count``.
+    ocr_confidence_assessable_count: int = 0
 
     def __post_init__(self) -> None:
         if self.generated_at.tzinfo is None:
@@ -130,6 +137,10 @@ class AuditReport:
             raise ValueError(f"total_rules_in_registry must be >= 0, got {self.total_rules_in_registry}")
         if self.total_issuers_in_registry < 0:
             raise ValueError(f"total_issuers_in_registry must be >= 0, got {self.total_issuers_in_registry}")
+        if self.ocr_confidence_assessable_count < 0:
+            raise ValueError(
+                f"ocr_confidence_assessable_count must be >= 0, got {self.ocr_confidence_assessable_count}"
+            )
 
     def to_json_dict(self) -> dict[str, Any]:
         """Render the report as a JSON-serializable dict.
@@ -143,6 +154,7 @@ class AuditReport:
             "walked_pdf_count": self.walked_pdf_count,
             "clean_pdf_count": self.clean_pdf_count,
             "non_clean_pdf_count": self.non_clean_pdf_count,
+            "ocr_confidence_assessable_count": self.ocr_confidence_assessable_count,
             "n_issuers_walked": self.n_issuers_walked,
             "triage_pending": self.triage_pending,
             "total_rules_in_registry": self.total_rules_in_registry,

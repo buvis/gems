@@ -48,7 +48,15 @@ def _render_summary_block(report: AuditReport, console: _ConsoleLike) -> None:
     _emit(console, f"  ⚠ {code_counts.get('invalid_doc_type', 0)} invalid doc type")
     _emit(console, f"  ⚠ {code_counts.get('unknown_issuer', 0)} unknown issuer")
     _emit(console, f"  ⚠ {code_counts.get('missing_ocr', 0)} missing OCR")
-    _emit(console, f"  ⚠ {code_counts.get('low_ocr_confidence', 0)} low OCR confidence")
+    low_ocr_count = code_counts.get("low_ocr_confidence", 0)
+    if report.ocr_confidence_assessable_count == 0 and low_ocr_count == 0:
+        # The OCR-quality reader did not expose a confidence value for any
+        # PDF in this run -- e.g. the production pdfminer-based reader.
+        # Showing "0 low OCR confidence" here would falsely imply the
+        # check ran and found nothing.
+        _emit(console, "  · low OCR confidence: not assessed (reader does not expose confidence)")
+    else:
+        _emit(console, f"  ⚠ {low_ocr_count} low OCR confidence")
     _emit(console, f"  ⚠ {code_counts.get('missing_state_db_entry', 0)} missing state.db entry")
     ocr_failed = code_counts.get("ocr_check_failed", 0)
     hash_failed = code_counts.get("hash_check_failed", 0)
