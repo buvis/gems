@@ -48,7 +48,7 @@ DOC_DATE = date(2021, 3, 11)
 DOC_AMOUNT = 4218.0
 DOC_CURRENCY = "CZK"
 DOC_LANGUAGE = "cs"
-INGESTED_AT = datetime(2026, 5, 4, 14, 30, 22, tzinfo=timezone(timedelta(hours=2)))
+INGESTED_AT = datetime(2020, 1, 15, 14, 30, 22, tzinfo=timezone(timedelta(hours=2)))
 INGEST_SOURCE = "email"
 ZK_TIMESTAMP = "20210311083422"
 SHA = "3f4a8c2b91e7d5" + ("0" * (64 - len("3f4a8c2b91e7d5")))
@@ -102,10 +102,13 @@ def _build_ingest_frontmatter(extraction_method: str, doc_date: date | None = DO
 
 def _build_proposal(doc_date: date | None = DOC_DATE) -> TriageProposal:
     """Synthesise the TriageProposal a human-approved triage would yield for the logical document."""
-    # ``year/...`` tag mirrors what the ingest path's ``build_zettel_tags``
-    # emits when ``doc_date`` is ``None`` (the helper omits the year tag in
-    # that case). Keeping these in sync is part of what the consistency
-    # test guards.
+    # ``zettel_preview.tags`` is informational on the proposal: both
+    # ``build_filing_frontmatter`` and ``build_promote_frontmatter`` call
+    # ``build_zettel_tags`` themselves and ignore this list. The list is
+    # populated here only to make the proposal realistic; the year-tag
+    # branch mirrors what ``build_zettel_tags`` does for date-less docs
+    # (omits the year tag) so an out-of-date or wrong list here would not
+    # mask a real drift in the helpers.
     tags = [f"document/{DOC_TYPE}", f"issuer/{ISSUER_SLUG}"]
     if doc_date is not None:
         tags.append(f"year/{doc_date.year}")
@@ -215,10 +218,10 @@ class TestPipelinePromoteFrontmatterConsistency:
         it was ingested. Both paths now fall back to the proposal's
         ``ingested_at.date()`` (sanity-checked below).
 
-        ``INGESTED_AT.date()`` is a fixed past date (2026-05-04) so any
-        regression that re-introduced ``date.today()`` would produce a
-        non-2026-05-04 value and break the sanity assertion below, except
-        on the unlikely day the test is run on 2026-05-04.
+        ``INGESTED_AT.date()`` is pinned to a clearly historical date
+        (2020-01-15) so any regression that re-introduced ``date.today()``
+        would produce a different value and break the sanity assertion
+        below on every plausible test-run date.
         """
         fm_ingest = _build_ingest_frontmatter(extraction_method="manual", doc_date=doc_date)
         fm_promote = _build_promote_frontmatter(doc_date=doc_date)
