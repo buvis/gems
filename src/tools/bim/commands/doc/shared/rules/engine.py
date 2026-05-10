@@ -18,7 +18,7 @@ class _Survivor:
     rule: Rule
     owning_slug: str
     pinned: dict[str, object]
-    definition_index: int
+    match_index: int
 
 
 def _has_pinned_disagreement(survivors: list[_Survivor]) -> bool:
@@ -41,7 +41,7 @@ def _has_pinned_disagreement(survivors: list[_Survivor]) -> bool:
 
 
 def _pick_result(kind: Literal["full", "partial"], survivors: list[_Survivor]) -> RuleResult:
-    ordered = sorted(survivors, key=lambda survivor: (-survivor.rule.priority, survivor.definition_index))
+    ordered = sorted(survivors, key=lambda survivor: (-survivor.rule.priority, survivor.match_index))
     picked = ordered[0]
     top_group = [survivor for survivor in ordered if survivor.rule.priority == picked.rule.priority]
 
@@ -86,7 +86,7 @@ class RuleEngine:
         scoped_issuer_slug: str | None = None,
     ) -> RuleResult:
         survivors: list[_Survivor] = []
-        definition_index = 0
+        match_index = 0
 
         for owning_slug, entry in registry.issuers.items():
             if scoped_issuer_slug is not None and owning_slug != scoped_issuer_slug:
@@ -105,9 +105,9 @@ class RuleEngine:
                         rule=rule,
                         owning_slug=owning_slug,
                         pinned=pinned,
-                        definition_index=definition_index,
+                        match_index=match_index,
                     )
                 )
-                definition_index += 1
+                match_index += 1
 
         return _select_winner(survivors)
