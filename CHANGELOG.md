@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **bim**: `bim doc audit` command — read-only walk of the Business folder reporting drift between filed PDFs and zettels. Checks per spec §9: filename canonical, issuer registered, doc-type valid, per-issuer zettel exists, OCR present, sha256 in state.db. Plus rule-engine checks: registry loadability, priority conflicts, freshness (90-day default). Writes a structured JSON report to `<state_dir>/audit/<iso-timestamp>.json`; the report's `legacy_layout_zettels` array is the input contract for the future migration command.
+
 ### Fixed
 
 - **bim**: `bim doc promote` now uses the triage proposal's `ingested-at` date for the `doc-date` fallback when a document has no extracted date (previously used `date.today()`, which made the same logical document yield different `doc-date` values when promoted on a different day from when it was triaged). Pipeline+promote consistency now holds for date-less documents too.

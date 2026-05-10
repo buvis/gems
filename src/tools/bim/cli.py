@@ -685,6 +685,45 @@ def doc_promote(ctx: click.Context, yml_path: Path, strict: bool) -> None:
     _report_doc_result(result, default_failure="promote failed", strict=strict)
 
 
+@doc.command("audit", help="Read-only audit of the Business folder")
+@click.pass_context
+def doc_audit(ctx: click.Context) -> None:
+    settings = get_settings(ctx, BimSettings)
+    if settings.doc is None:
+        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        return
+
+    try:
+        from bim.commands.doc.audit.audit import CommandAudit
+        from bim.commands.doc.audit.reporter import render_stdout
+        from bim.commands.doc.shared.health import MissingDependency
+        from bim.dependencies import get_audit_services, get_health_checker
+    except ImportError:
+        console.require_import("doc")
+        return
+
+    try:
+        get_health_checker()(settings.doc)
+    except MissingDependency as exc:
+        console.panic(str(exc))
+        return
+
+    services = get_audit_services(settings.doc)
+    cmd = CommandAudit(services=services)
+    result = cmd.execute()
+
+    if not result.success:
+        console.failure(result.error or "audit failed")
+        return
+
+    for w in result.warnings:
+        console.warning(w)
+
+    report = result.metadata["report"]
+    render_stdout(report, console)
+    console.success(f"Report: {result.metadata['report_path']}")
+
+
 register_rules_subcommands(doc)
 
 

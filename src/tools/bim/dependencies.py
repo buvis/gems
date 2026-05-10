@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.templates import HookRunner, ZettelTemplate
     from buvis.pybase.zettel.domain.value_objects.query_spec import QuerySpec
 
+    from bim.commands.doc.audit.audit import AuditServices
     from bim.commands.doc.shared.classifier import Classifier
     from bim.commands.doc.shared.extractor import Extractor
     from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -237,3 +238,38 @@ def get_pipeline(settings: DocSettings, repo: ZettelRepository) -> Pipeline:
         zettel_writer=get_zettel_writer(settings, repo),
     )
     return _Pipeline(settings, services)
+
+
+def get_audit_services(settings: DocSettings) -> AuditServices:
+    """Bundle adapters for ``bim doc audit``.
+
+    The audit's OCR-quality reader uses pdfminer to detect a text layer; it
+    cannot compute a mean confidence (pdfminer exposes no per-page signal),
+    so confidence is always ``None``. The check_ocr helper degrades to
+    "missing_ocr only" when confidence is None.
+    """
+    from bim.commands.doc.audit.audit import AuditServices
+    from bim.commands.doc.shared.hashing import sha256_file
+
+    state_dir = settings.paths.state_dir
+    issuers_file = settings.paths.issuers_file
+    if state_dir is None or issuers_file is None:
+        raise ValueError("DocSettings.paths.{state_dir,issuers_file} is not set")
+
+    def _ocr_quality_reader(pdf_path: Path) -> tuple[bool, float | None]:
+        from pdfminer.high_level import extract_text
+
+        existing_text = extract_text(str(pdf_path))
+        return (bool(existing_text.strip()), None)
+
+    return AuditServices(
+        state_db=get_state_db(settings),
+        business_root=settings.paths.business_root,
+        vault_root=settings.paths.vault_root,
+        vault_documents_subdir=settings.paths.vault_documents_subdir,
+        issuers_path=issuers_file,
+        state_dir=state_dir,
+        low_confidence_threshold=settings.ocr.low_confidence_threshold,
+        ocr_quality_reader=_ocr_quality_reader,
+        hash_reader=sha256_file,
+    )
