@@ -500,14 +500,31 @@ class TestZettelWriter:
             assert "doc-number: null" in block or "doc-number: ~" in block
 
 
+_FIXTURES_DIR = Path(__file__).parent / "fixtures" / "zettel_writer"
+
+
+def _fixture_filename(has_number: bool, has_amount: bool, has_language: bool) -> str:
+    """Mirror of ``dev/local/tmp/gen_zettel_writer_fixtures.py:_fixture_name``.
+
+    Naming scheme: ``num{0|1}_amt{0|1}_lang{0|1}.md``. Each flag indicates
+    whether the corresponding optional field is *present* in that variant.
+    """
+    return f"num{int(has_number)}_amt{int(has_amount)}_lang{int(has_language)}.md"
+
+
 class TestZettelWriterPerVariantFixtures:
-    """Snapshot-style coverage for every combination of optional doc fields.
+    """Byte-for-byte snapshot coverage for every combination of optional doc fields.
 
     PRD success criterion 1 requires the writer to produce v1 YAML for every
     doc-type variant (with/without ``doc_number``, ``doc_amount``, ``doc_language``).
-    Criteria 2 and 3 (no quoted numbers, no underscore keys) re-asserted per
-    variant. The 8 = 2^3 combinations exercise the writer's optional-field
-    handling end-to-end.
+    The 8 = 2^3 combinations are pinned against stored fixture files under
+    ``tests/tools/bim/doc/fixtures/zettel_writer/``; criteria 2 and 3 (no
+    quoted numbers, no underscore keys) re-asserted per variant on top of the
+    byte-for-byte check.
+
+    Regenerate fixtures (after intentional writer changes) with::
+
+        uv run python dev/local/tmp/gen_zettel_writer_fixtures.py
     """
 
     _EXPECTED_KEY_ORDER = [
@@ -558,10 +575,22 @@ class TestZettelWriterPerVariantFixtures:
         )
         body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
         target = writer.write(fm, body, issuer_slug="cez-as")
-        block = _frontmatter_block(target.read_text(encoding="utf-8"))
+        actual = target.read_text(encoding="utf-8")
+        block = _frontmatter_block(actual)
 
-        # Criterion 1: all 18 spec §5 keys present (None values serialise as
-        # ``null``/``~`` but the key is still emitted).
+        # Criterion 1 (primary): byte-for-byte equality against the stored
+        # snapshot fixture for this variant. Catches accidental whitespace,
+        # list-item reordering, or quoting drift that property assertions miss.
+        fixture_path = _FIXTURES_DIR / _fixture_filename(has_doc_number, has_doc_amount, has_doc_language)
+        expected = fixture_path.read_text(encoding="utf-8")
+        assert actual == expected, (
+            f"writer output drift vs {fixture_path.relative_to(Path(__file__).parent)}\n"
+            f"--- expected\n{expected}\n--- actual\n{actual}\n"
+            f"(regenerate with: uv run python dev/local/tmp/gen_zettel_writer_fixtures.py)"
+        )
+
+        # Criterion 1 (invariant): all 18 spec §5 keys present (None values
+        # serialise as ``null``/``~`` but the key is still emitted).
         top_level_keys = [m.group(1) for m in re.finditer(r"^([a-z][a-z0-9\-]*):", block, re.MULTILINE)]
         assert top_level_keys == self._EXPECTED_KEY_ORDER, top_level_keys
 
