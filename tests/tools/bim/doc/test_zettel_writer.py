@@ -324,6 +324,42 @@ class TestZettelWriter:
         with pytest.raises(ValueError):
             writer.write(frontmatter, body, issuer_slug="Has Spaces")
 
+    def test_yaml_top_level_key_order_matches_spec_section_5(
+        self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter
+    ) -> None:
+        """Field order must match dev/local/specs/bim-doc-architecture.md §5 exactly."""
+        writer = ZettelWriter(
+            repo=None,
+            vault_root=tmp_path,
+            vault_documents_subdir="Zettelkasten/documents",
+        )
+        body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
+        target = writer.write(frontmatter, body, issuer_slug="cez-as")
+        block = _frontmatter_block(target.read_text(encoding="utf-8"))
+        # Top-level keys: lines that begin with a kebab-case key followed by ":".
+        # Indented lines (list items, nested) are skipped.
+        top_level_keys = [m.group(1) for m in re.finditer(r"^([a-z][a-z0-9\-]*):", block, re.MULTILINE)]
+        assert top_level_keys == [
+            "id",
+            "title",
+            "type",
+            "doc-type",
+            "issuer",
+            "doc-number",
+            "doc-date",
+            "doc-amount",
+            "doc-currency",
+            "doc-language",
+            "ingested-at",
+            "ingest-source",
+            "file-path",
+            "file-sha256",
+            "ocr-engine",
+            "ocr-mean-confidence",
+            "extraction-method",
+            "tags",
+        ], top_level_keys
+
     def test_yaml_serialisation_uses_kebab_case_keys(
         self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter
     ) -> None:

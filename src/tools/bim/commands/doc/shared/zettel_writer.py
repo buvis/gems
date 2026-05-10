@@ -69,8 +69,8 @@ class DocumentZettelFrontmatter(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
     id: int
-    type: Literal["document"] = "document"
     title: str
+    type: Literal["document"] = "document"
     doc_type: str = Field(alias="doc-type")
     issuer: str
     doc_number: str | None = Field(alias="doc-number")
