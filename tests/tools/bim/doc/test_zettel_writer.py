@@ -572,9 +572,9 @@ class TestZettelWriterPerVariantFixtures:
         overrides: dict[str, object] = {}
         if not has_doc_number:
             overrides["doc_number"] = None
-            # Title comes from the ``doc_title`` fallback branch — mirrors
-            # what ``compose_zettel_title`` would produce in production when
-            # extraction yields a title but no number. PRD 00035 metric #7.
+            # Title comes from the ``doc_title`` fallback branch, which
+            # mirrors what ``compose_zettel_title`` would produce in production
+            # when extraction yields a title but no number. PRD 00035 metric #7.
             overrides["title"] = compose_zettel_title(
                 issuer=SAMPLE_ISSUER,
                 doc_type=SAMPLE_DOC_TYPE,
