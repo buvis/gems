@@ -521,3 +521,78 @@ triage with a ``rule_conflict: <id1> vs <id2>`` reason.
 
 **Authoring workflow:** write rule → ``rules validate`` → ``rules test``
 on a sample → ``rules backtest`` to verify no cross-folder hits → deploy.
+
+bim doc audit
+~~~~~~~~~~~~~
+
+Read-only walk of the Business folder; reports drift between filed PDFs and
+their corresponding zettels. Never moves, deletes, or rewrites any file.
+
+.. code-block:: bash
+
+    bim doc audit
+
+No flags, no positional arguments. Output is a human-readable summary on
+stdout plus a structured JSON report at
+``<state_dir>/audit/<iso-timestamp>.json``.
+
+**What audit checks for each PDF:**
+
+.. list-table::
+   :header-rows: 1
+
+   * - Check
+     - Pass condition
+   * - Filename canonical
+     - Matches ``<14digits>-<slug>-<title>.<doctype>.<ext>``
+   * - Issuer registered
+     - Folder name is a key in ``issuers.yml.issuers``
+   * - Doc type valid
+     - Suffix is in ``issuers.yml.doc_types``
+   * - Zettel exists
+     - ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md`` exists
+   * - OCR present
+     - PDF has a text layer (audit uses pdfminer; mean confidence is not
+       computed in v1, so the "low OCR confidence" check fires only when a
+       confidence reader is plugged in)
+   * - sha256 in state.db
+     - Document is tracked in the doc subsystem's processed table
+
+**What audit checks for the rule engine:**
+
+.. list-table::
+   :header-rows: 1
+
+   * - Check
+     - Pass condition
+   * - Rule file syntax
+     - ``issuers.yml`` parses and validates against the schema
+   * - Rule id uniqueness
+     - No two rules share an id (across all issuers)
+   * - Regex compiles
+     - All ``pattern:`` values compile
+   * - No conflicts
+     - No two enabled rules with same priority pin the same field to
+       statically-different constant values (matches the runtime conflict
+       detector; rules pinning via ``ExtractSpec`` are skipped because their
+       output is OCR-dependent and undecidable statically)
+   * - Rule freshness
+     - Each enabled rule has matched at least one document in the last 90
+       days (warning only — never fails the audit)
+
+**Reports surfaced in stdout but treated as informational:**
+
+* Per-issuer ``inbox/`` directories with unprocessed PDFs.
+* ``_triage/`` directory awaiting review.
+
+**JSON report contract.** The report's top-level fields include
+``walked_pdf_count``, ``clean_pdf_count``, ``pdf_findings`` (one entry per
+non-clean PDF), ``legacy_layout_zettels`` (list of absolute paths), and
+``rule_findings``. The ``legacy_layout_zettels`` array is the input for a
+future legacy-zettel migration command — entries listed there are zettels
+filed at the v0 flat path ``<vault>/<doc-subdir>/<basename>.md`` rather than
+the v1 per-issuer path ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``.
+
+A PDF whose zettel is at the legacy flat path is reported in
+``legacy_layout_zettels`` rather than as ``missing_zettel``.
+
