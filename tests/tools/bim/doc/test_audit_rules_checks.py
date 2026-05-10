@@ -190,18 +190,25 @@ class TestCheckPriorityConflicts:
         assert f.code == "priority_conflict"
         assert f.rule_id == "a-rule"
         assert "b-rule" in f.detail
+        assert "overlapping match clauses" in f.detail
         assert "doc_type" in f.detail
         assert "invoice" in f.detail
         assert "statement" in f.detail
 
-    def test_no_conflict_when_same_priority_same_field_same_value(self) -> None:
+    def test_conflict_when_same_priority_no_disagreement_overlapping_clauses(self) -> None:
         registry = _make_registry(
             {
                 "acme": [_make_rule("a", priority=50, extract={"doc_type": "invoice"})],
                 "beta": [_make_rule("b", priority=50, extract={"doc_type": "invoice"})],
             }
         )
-        assert check_priority_conflicts(registry) == []
+        findings = check_priority_conflicts(registry)
+        assert len(findings) == 1
+        f = findings[0]
+        assert f.code == "priority_conflict"
+        assert "overlapping match clauses" in f.detail
+        # No disagreement enrichment when extract values agree.
+        assert "e.g." not in f.detail
 
     def test_no_conflict_when_disabled_rule(self) -> None:
         registry = _make_registry(
@@ -219,7 +226,7 @@ class TestCheckPriorityConflicts:
         )
         assert check_priority_conflicts(registry) == []
 
-    def test_extractspec_pinned_values_skipped(self) -> None:
+    def test_extractspec_does_not_block_overlap_finding(self) -> None:
         spec = ExtractSpec(**{"from": "ocr_match", "pattern": r"(\d+)", "group": 1})
         registry = _make_registry(
             {
@@ -233,9 +240,15 @@ class TestCheckPriorityConflicts:
                 ],
             }
         )
-        assert check_priority_conflicts(registry) == []
+        findings = check_priority_conflicts(registry)
+        # Both default to ocr_contains=["foo"] so match clauses still overlap.
+        assert len(findings) == 1
+        assert findings[0].code == "priority_conflict"
+        assert "overlapping match clauses" in findings[0].detail
+        # ExtractSpec values are skipped from disagreement enrichment.
+        assert "e.g." not in findings[0].detail
 
-    def test_dedup_per_pair_per_field(self) -> None:
+    def test_one_finding_per_overlapping_pair_with_disagreement_enrichment(self) -> None:
         registry = _make_registry(
             {
                 "acme": [
@@ -255,10 +268,76 @@ class TestCheckPriorityConflicts:
             }
         )
         findings = check_priority_conflicts(registry)
-        assert len(findings) == 2
-        fields_reported = sorted(f.detail.split("on field ")[1].split(":")[0].strip(" '\"") for f in findings)
-        assert fields_reported == ["doc_number", "doc_type"]
-        assert all(f.rule_id == "a" for f in findings)
+        # New semantics: one finding per overlapping pair, not per shared field.
+        assert len(findings) == 1
+        f = findings[0]
+        assert f.rule_id == "a"
+        assert f.code == "priority_conflict"
+        assert "overlapping match clauses" in f.detail
+        # Disagreement enrichment lists at least one disagreeing field.
+        assert "e.g." in f.detail
+        assert "doc_type" in f.detail or "doc_number" in f.detail
+
+    def test_disjoint_email_from_domain_blocks_overlap(self) -> None:
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["acme.com"]),
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "b",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["beta.com"]),
+                    )
+                ],
+            }
+        )
+        assert check_priority_conflicts(registry) == []
+
+    def test_intersecting_email_from_domain_keeps_overlap(self) -> None:
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["acme.com", "beta.com"]),
+                    )
+                ],
+                "beta": [
+                    _make_rule(
+                        "b",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["beta.com", "gamma.com"]),
+                    )
+                ],
+            }
+        )
+        findings = check_priority_conflicts(registry)
+        assert len(findings) == 1
+        assert "overlapping match clauses" in findings[0].detail
+
+    def test_one_side_unconstrained_email_domain_overlaps(self) -> None:
+        registry = _make_registry(
+            {
+                "acme": [
+                    _make_rule(
+                        "a",
+                        priority=50,
+                        match=MatchClauses(email_from_domain=["acme.com"]),
+                    )
+                ],
+                "beta": [_make_rule("b", priority=50)],
+            }
+        )
+        findings = check_priority_conflicts(registry)
+        assert len(findings) == 1
+        assert "overlapping match clauses" in findings[0].detail
 
 
 class TestCheckRuleFreshness:

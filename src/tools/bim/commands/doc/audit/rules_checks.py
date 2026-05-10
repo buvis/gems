@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from bim.commands.doc.audit.models import RuleFinding, RuleFindingCode
 from bim.commands.doc.shared.issuers import IssuerRegistry, load_registry
-from bim.commands.doc.shared.rules.models import ExtractSpec, Rule
+from bim.commands.doc.shared.rules.models import ExtractSpec, MatchClauses, Rule
 
 __all__ = [
     "check_priority_conflicts",
@@ -136,18 +136,30 @@ def _pinned_constants(rule: Rule) -> dict[str, str | int | float]:
 
 
 def check_priority_conflicts(registry: IssuerRegistry) -> list[RuleFinding]:
-    """Detect pairs of enabled rules sharing a priority that pin the same field
-    to statically-different *constant* values.
+    """Detect pairs of enabled rules sharing a priority whose match clauses
+    can both apply to the same document (spec §9 "No conflicts").
 
-    LIMITATION: spec wording is "no two enabled rules with same priority and
-    overlapping match clauses" -- full match-clause overlap is undecidable
-    for arbitrary regexes. We implement the decidable subset: same priority
-    plus statically-disagreeing pinned constant values, which is the runtime
-    failure mode ``engine._has_pinned_disagreement`` would surface.
+    Static-overlap heuristic. Two rules are reported as conflicting iff:
 
-    Only constants are compared (str/int/float values in ``extract``).
-    Pinned ``ExtractSpec`` values are skipped because they extract from OCR
-    text at runtime; disagreement is undecidable without input text.
+    * they are both enabled,
+    * they share the same priority, and
+    * their ``match`` clauses are not statically provably disjoint.
+
+    The only statically decidable disjointness we detect is on
+    ``email_from_domain`` -- when both rules constrain the field with literal
+    domain lists and those lists do not intersect, no document can satisfy
+    both. All other clause types (``ocr_contains``, regex matchers, filename
+    regex, subject substrings) are conservatively treated as potentially
+    overlapping; regex/substring disjointness is undecidable in general.
+
+    When both rules pin the same ``extract`` field to statically-different
+    constant values, that disagreement is appended to the finding detail to
+    help authors locate the source of the conflict. Pinned ``ExtractSpec``
+    values are skipped from the disagreement enrichment because they extract
+    from OCR text at runtime; static comparison is meaningless.
+
+    One finding is emitted per overlapping pair. ``rule_id`` is the
+    lexicographically smaller id of the pair; the detail names the partner.
     """
     enabled_rules: list[Rule] = []
     for entry in registry.issuers.values():
@@ -159,52 +171,80 @@ def check_priority_conflicts(registry: IssuerRegistry) -> list[RuleFinding]:
     for rule in enabled_rules:
         by_priority.setdefault(rule.priority, []).append(rule)
 
-    seen: set[tuple[str, str, str]] = set()
+    seen_pairs: set[tuple[str, str]] = set()
     findings: list[RuleFinding] = []
     for priority, rules in by_priority.items():
         if len(rules) < 2:
             continue
         for rule_a, rule_b in combinations(rules, 2):
-            findings.extend(_pair_conflict_findings(rule_a, rule_b, priority, seen))
+            finding = _pair_overlap_finding(rule_a, rule_b, priority, seen_pairs)
+            if finding is not None:
+                findings.append(finding)
     return findings
 
 
-def _pair_conflict_findings(
+def _pair_overlap_finding(
     rule_a: Rule,
     rule_b: Rule,
     priority: int,
-    seen: set[tuple[str, str, str]],
-) -> list[RuleFinding]:
-    """Emit one priority_conflict finding per shared field with disagreeing constants."""
+    seen_pairs: set[tuple[str, str]],
+) -> RuleFinding | None:
+    """Emit one ``priority_conflict`` finding if the pair's match clauses can overlap."""
     if rule_a.id == rule_b.id:
-        return []
+        return None
+    first_id, second_id = sorted((rule_a.id, rule_b.id))
+    key = (first_id, second_id)
+    if key in seen_pairs:
+        return None
+    if not _match_clauses_can_overlap(rule_a.match, rule_b.match):
+        return None
+    seen_pairs.add(key)
+    detail = f"conflicts with rule {second_id!r} at priority {priority}: overlapping match clauses"
+    enrichment = _disagreement_enrichment(rule_a, rule_b, first_id)
+    if enrichment:
+        detail = f"{detail} ({enrichment})"
+    return RuleFinding(rule_id=first_id, code="priority_conflict", detail=detail)
+
+
+def _match_clauses_can_overlap(a: MatchClauses, b: MatchClauses) -> bool:
+    """Return True if some document could satisfy both clause sets.
+
+    The only statically decidable disjointness is on ``email_from_domain``:
+    when both sides constrain the field with literal domain lists, the
+    lists must intersect for a shared document to exist. All other clause
+    types (regex, substring) are conservatively treated as overlapping.
+    An unconstrained side (None) imposes no restriction on that field.
+    """
+    if a.email_from_domain is not None and b.email_from_domain is not None:
+        if not set(a.email_from_domain) & set(b.email_from_domain):
+            return False
+    return True
+
+
+def _disagreement_enrichment(
+    rule_a: Rule,
+    rule_b: Rule,
+    first_id: str,
+) -> str:
+    """Build an `e.g. field <name>: <a> vs <b>` snippet for disagreeing constants.
+
+    Returns an empty string when no shared ``extract`` field has
+    statically-different constant values across the two rules.
+    """
     consts_a = _pinned_constants(rule_a)
     consts_b = _pinned_constants(rule_b)
-    shared_fields = set(consts_a) & set(consts_b)
-    findings: list[RuleFinding] = []
-    for field in sorted(shared_fields):
+    shared_fields = sorted(set(consts_a) & set(consts_b))
+    parts: list[str] = []
+    for field in shared_fields:
         value_a = consts_a[field]
         value_b = consts_b[field]
         if value_a == value_b:
             continue
-        first_id, second_id = sorted((rule_a.id, rule_b.id))
-        key = (first_id, second_id, field)
-        if key in seen:
-            continue
-        seen.add(key)
         first_value, second_value = (value_a, value_b) if rule_a.id == first_id else (value_b, value_a)
-        findings.append(
-            RuleFinding(
-                rule_id=first_id,
-                code="priority_conflict",
-                detail=(
-                    f"conflicts with rule {second_id!r} at "
-                    f"priority {priority} on field {field!r}: "
-                    f"{first_value!r} vs {second_value!r}"
-                ),
-            )
-        )
-    return findings
+        parts.append(f"field {field!r}: {first_value!r} vs {second_value!r}")
+    if not parts:
+        return ""
+    return "e.g. " + "; ".join(parts)
 
 
 def _ensure_utc(dt: datetime) -> datetime:

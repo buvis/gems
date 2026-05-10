@@ -572,10 +572,15 @@ stdout plus a structured JSON report at
    * - Regex compiles
      - All ``pattern:`` values compile
    * - No conflicts
-     - No two enabled rules with same priority pin the same field to
-       statically-different constant values (matches the runtime conflict
-       detector; rules pinning via ``ExtractSpec`` are skipped because their
-       output is OCR-dependent and undecidable statically)
+     - No two enabled rules with same priority whose match clauses can both
+       apply to the same document. Static-overlap heuristic: rules whose
+       ``email_from_domain`` lists are disjoint cannot overlap; all other
+       clause types (substrings, regex, filename regex) are conservatively
+       treated as potentially overlapping because regex/substring
+       disjointness is undecidable in general. When both rules pin the same
+       ``extract`` field to statically-different constant values, that
+       disagreement is included in the finding detail to help authors
+       locate the source of the conflict.
    * - Rule freshness
      - Each enabled rule has matched at least one document in the last 90
        days (warning only — never fails the audit)
