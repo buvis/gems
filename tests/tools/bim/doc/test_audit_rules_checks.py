@@ -274,9 +274,12 @@ class TestCheckPriorityConflicts:
         assert f.rule_id == "a"
         assert f.code == "priority_conflict"
         assert "overlapping match clauses" in f.detail
-        # Disagreement enrichment lists at least one disagreeing field.
+        # Disagreement enrichment lists every disagreeing shared field, joined
+        # with `; `. Asserting both must be present catches regressions where
+        # `_disagreement_enrichment` silently drops a field.
         assert "e.g." in f.detail
-        assert "doc_type" in f.detail or "doc_number" in f.detail
+        assert "doc_type" in f.detail
+        assert "doc_number" in f.detail
 
     def test_disjoint_email_from_domain_blocks_overlap(self) -> None:
         registry = _make_registry(
