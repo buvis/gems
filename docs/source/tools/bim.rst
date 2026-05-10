@@ -290,7 +290,7 @@ display name), ISO-8601 ``ingested-at`` datetime with offset, absolute
 ``file://`` link in the body, optional LLM-generated summary paragraph,
 and per-issuer vault subfolder.
 
-.. code-block:: yaml
+.. code-block:: markdown
 
     ---
     id: 20210311083422
@@ -300,7 +300,7 @@ and per-issuer vault subfolder.
     issuer: ČEZ a.s.
     doc-number: 7102105594
     doc-date: 2021-03-11
-    doc-amount: 4218
+    doc-amount: 4218.0
     doc-currency: CZK
     doc-language: cs
     ingested-at: 2026-05-04T14:30:15+02:00
