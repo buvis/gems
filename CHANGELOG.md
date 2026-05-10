@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-05-10
+
 ### Added
 
 - **bim**: doc rule engine v1 — deterministic per-issuer extraction before LLM fallback. New `bim doc rules` subcommand group (`list`, `validate`, `test`, `backtest`) for authoring and verifying rules. Existing `issuers.yml` files without `rules:` blocks load unchanged; full-rule matches set `extraction_method: rule:<id>:v<n>` and skip both Ollama calls, partial-rule matches set `extraction_method: rule+llm:<id>:v<n>` and reduce the prompt scope.
@@ -324,7 +326,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.11.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.11.1...HEAD
+[0.11.1]: https://github.com/buvis/gems/compare/gems-v0.11.0...gems-v0.11.1
 [0.11.0]: https://github.com/buvis/gems/compare/gems-v0.10.0...gems-v0.11.0
 [0.10.0]: https://github.com/buvis/gems/compare/gems-v0.9.0...gems-v0.10.0
 [0.9.0]: https://github.com/buvis/gems/compare/gems-v0.8.7...gems-v0.9.0
