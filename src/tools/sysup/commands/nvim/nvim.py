@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from collections import deque
@@ -14,27 +15,35 @@ from sysup.commands.step_result import StepResult
 _MASON_LOG_TAIL_LINES = 200
 _MASON_LOG_TAIL_BYTES = 8192
 
-_MASON_PROBE_LUA = (
+# Strips ANSI OSC sequences (ESC ] ... BEL or ESC ] ... ESC \) and CSI
+# sequences (ESC [ ... <letter>). Required because iTerm2 shell integration
+# injects OSC 1337 user-var escapes around print() output without intervening
+# newlines, which otherwise glues itself to the probe's `mason DONE` /
+# `mason FAIL <name>` markers and breaks substring matching.
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]")
+
+# Registers a mason-registry listener for package:install:failed before
+# MasonToolsUpdateSync runs. The registry emits the mason package name the
+# installer tried to install (already resolved through mason-lspconfig /
+# mason-nvim-dap / mason-null-ls integrations by mason-tool-installer), so we
+# avoid the lspconfig-name-vs-mason-package-name mismatch that arose when
+# probing ensure_installed entries directly via mason-registry.is_installed.
+_MASON_REGISTER_LISTENER_LUA = (
     "lua "
     "local ok, err = pcall(function() "
-    "local ok_reg, r = pcall(require, 'mason-registry') "
+    "local ok_reg, mr = pcall(require, 'mason-registry') "
     "if not ok_reg then print('mason INCONCLUSIVE mason-registry unavailable') return end "
-    "local ok_lazy, lazy_cfg = pcall(require, 'lazy.core.config') "
-    "if not ok_lazy then print('mason INCONCLUSIVE lazy.core.config unavailable') return end "
-    "local spec = lazy_cfg.plugins and lazy_cfg.plugins['mason-tool-installer.nvim'] "
-    "local ensure = spec and spec.opts and spec.opts.ensure_installed "
-    "if type(ensure) ~= 'table' then "
-    "print('mason INCONCLUSIVE mason-tool-installer ensure_installed unavailable') return end "
-    "local ok_names, names = pcall(r.get_installed_package_names) "
-    "if not ok_names or type(names) ~= 'table' then "
-    "print('mason INCONCLUSIVE mason-registry get_installed_package_names failed') return end "
-    "for _, name in ipairs(names) do print('mason OK ' .. name) end "
-    "for _, entry in ipairs(ensure) do "
-    "local name = type(entry) == 'table' and entry[1] or entry "
-    "if type(name) == 'string' then "
-    "local ok_is, installed = pcall(r.is_installed, name) "
-    "if ok_is and not installed then print('mason FAIL ' .. name) end end end end) "
-    "if not ok then print('mason INCONCLUSIVE probe error: ' .. tostring(err)) end"
+    "_G._sysup_mason_failed = {} "
+    "mr:on('package:install:failed', function(pkg) "
+    "table.insert(_G._sysup_mason_failed, pkg.name) end) end) "
+    "if not ok then print('mason INCONCLUSIVE listener setup error: ' .. tostring(err)) end"
+)
+
+# Drains the captured failures and prints a `mason DONE` sentinel so the
+# Python side can tell `probe ran with no failures` from `nvim never reached
+# the report step`.
+_MASON_REPORT_LUA = (
+    "lua for _, name in ipairs(_G._sysup_mason_failed or {}) do print('mason FAIL ' .. name) end print('mason DONE')"
 )
 
 
@@ -82,9 +91,11 @@ class CommandNvim:
                     "-c",
                     "Lazy load mason.nvim mason-tool-installer.nvim",
                     "-c",
+                    _MASON_REGISTER_LISTENER_LUA,
+                    "-c",
                     "MasonToolsUpdateSync",
                     "-c",
-                    _MASON_PROBE_LUA,
+                    _MASON_REPORT_LUA,
                     "+qa",
                 ],
                 capture_output=True,
@@ -106,10 +117,11 @@ class CommandNvim:
         stdout = result.stdout or ""
         stderr = result.stderr or ""
         combined = (stdout + ("\n" if stdout and stderr else "") + stderr).strip()
+        combined = _ANSI_ESCAPE_RE.sub("", combined)
         lines = combined.splitlines()
         failed = [line[len("mason FAIL ") :].strip() for line in lines if line.startswith("mason FAIL ")]
         inconclusive = [line for line in lines if line.startswith("mason INCONCLUSIVE")]
-        probe_ran = any(line.startswith(("mason OK ", "mason FAIL ", "mason INCONCLUSIVE")) for line in lines)
+        probe_done = any(line.strip() == "mason DONE" for line in lines)
 
         if result.returncode != 0:
             message = "\n".join(p for p in (stderr.strip(), stdout.strip()) if p) or "unknown error"
@@ -125,7 +137,7 @@ class CommandNvim:
         if inconclusive:
             return StepResult("mason", success=True, message=inconclusive[0])
 
-        if not probe_ran:
+        if not probe_done:
             return StepResult(
                 "mason",
                 success=True,

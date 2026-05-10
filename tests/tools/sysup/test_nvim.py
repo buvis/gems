@@ -157,24 +157,32 @@ class TestCommandNvim:
         assert "Lazy load mason.nvim mason-tool-installer.nvim" in mason_args
         assert "MasonToolsUpdateSync" in mason_args
         assert "+qa" in mason_args
-        assert not any("MasonToolsUpdateCompleted" in a for a in mason_args)
         assert mock_run.call_args_list[1].kwargs["timeout"] == CommandNvim.MASON_TIMEOUT
         assert CommandNvim.MASON_TIMEOUT == 600
-        # Probe block: one -c argument must reference mason-registry and emit mason FAIL/OK lines
-        probe_args = [a for a in mason_args if "mason-registry" in a]
-        assert probe_args, "expected a -c arg running a Lua probe over mason-registry"
-        probe = probe_args[0]
-        assert "mason FAIL" in probe
-        assert "mason OK" in probe
-        assert "ensure_installed" in probe
-        assert "lazy.core.config" in probe
+        # Listener registration: one -c arg must subscribe to package:install:failed
+        listener_args = [a for a in mason_args if "package:install:failed" in a]
+        assert listener_args, "expected a -c arg subscribing to package:install:failed"
+        listener = listener_args[0]
+        assert "mason-registry" in listener
+        assert "_sysup_mason_failed" in listener
+        # Report block: a separate -c arg must drain failures and emit a sentinel
+        report_args = [a for a in mason_args if "mason DONE" in a]
+        assert report_args, "expected a -c arg printing the mason DONE sentinel"
+        report = report_args[0]
+        assert "mason FAIL" in report
+        assert "_sysup_mason_failed" in report
+        # Sequencing: register listener, then sync, then report
+        listener_idx = mason_args.index(listener)
+        sync_idx = mason_args.index("MasonToolsUpdateSync")
+        report_idx = mason_args.index(report)
+        assert listener_idx < sync_idx < report_idx
 
     def test_mason_all_tools_installed_succeeds_silently(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="mason OK foo\nmason OK bar\n"),
+            self._result(stdout="mason DONE\n"),
             self._result(),
         ]
 
@@ -189,7 +197,7 @@ class TestCommandNvim:
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="mason OK foo\nmason FAIL terraform-ls\nmason FAIL ast-grep\n"),
+            self._result(stdout="mason FAIL terraform-ls\nmason FAIL ast-grep\nmason DONE\n"),
             self._result(),
         ]
 
@@ -205,28 +213,28 @@ class TestCommandNvim:
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="mason INCONCLUSIVE lazy.core.config unavailable\n"),
+            self._result(stdout="mason INCONCLUSIVE mason-registry unavailable\n"),
             self._result(),
         ]
 
         steps = list(CommandNvim().execute())
 
         assert steps[1].success
-        assert "lazy.core.config unavailable" in steps[1].message
+        assert "mason-registry unavailable" in steps[1].message
 
-    def test_mason_inconclusive_when_ensure_installed_missing(self, mocker) -> None:
+    def test_mason_inconclusive_when_listener_setup_errors(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="mason INCONCLUSIVE mason-tool-installer ensure_installed unavailable\n"),
+            self._result(stdout="mason INCONCLUSIVE listener setup error: nope\n"),
             self._result(),
         ]
 
         steps = list(CommandNvim().execute())
 
         assert steps[1].success
-        assert steps[1].message == "mason INCONCLUSIVE mason-tool-installer ensure_installed unavailable"
+        assert steps[1].message == "mason INCONCLUSIVE listener setup error: nope"
 
     def test_mason_no_probe_output_is_inconclusive(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
@@ -244,7 +252,7 @@ class TestCommandNvim:
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="", stderr="mason OK foo\nmason FAIL bar\n"),
+            self._result(stdout="", stderr="mason FAIL bar\nmason DONE\n"),
             self._result(),
         ]
 
@@ -259,7 +267,7 @@ class TestCommandNvim:
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="mason OK foo\n", stderr="mason FAIL bar\n"),
+            self._result(stdout="mason DONE\n", stderr="mason FAIL bar\n"),
             self._result(),
         ]
 
@@ -268,12 +276,49 @@ class TestCommandNvim:
         assert not steps[1].success
         assert "bar" in steps[1].message
 
-    def test_mason_all_ok_on_stderr_succeeds_silently(self, mocker) -> None:
+    def test_mason_strips_iterm_osc_user_vars_around_sentinel(self, mocker) -> None:
+        """iTerm2 shell integration wraps print() output with OSC 1337 user-var
+        sequences (ESC ] 1337 ; ... BEL) and emits them with no surrounding
+        newlines, gluing them to `mason DONE` and `mason FAIL <name>` markers.
+        The parser must strip those escapes before matching."""
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mocker.patch.object(CommandNvim, "_read_mason_log_tail", return_value="")
+        osc_open = "\x1b]1337;SetUserVar=IS_NVIM=dHJ1ZQ==\x07"
+        osc_close = "\x1b]1337;SetUserVar=IS_NVIM=ZmFsc2U=\x07"
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stderr=f"{osc_open}mason FAIL terraform-ls\nmason DONE{osc_close}"),
+            self._result(),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert not steps[1].success
+        assert "terraform-ls" in steps[1].message
+
+    def test_mason_strips_osc_when_only_done_sentinel(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        osc_open = "\x1b]1337;SetUserVar=IS_NVIM=dHJ1ZQ==\x07"
+        osc_close = "\x1b]1337;SetUserVar=IS_NVIM=ZmFsc2U=\x07"
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stderr=f"{osc_open}mason DONE{osc_close}"),
+            self._result(),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert steps[1].success
+        assert steps[1].message == ""
+
+    def test_mason_done_on_stderr_succeeds_silently(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
         mock_run.side_effect = [
             self._result(),
-            self._result(stdout="", stderr="mason OK foo\nmason OK bar\n"),
+            self._result(stdout="", stderr="mason DONE\n"),
             self._result(),
         ]
 

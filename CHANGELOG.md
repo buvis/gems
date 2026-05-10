@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `doc ingest` and `doc promote` route missing-file errors through buvis console instead of Click's default `Usage: ... Error: ...` formatting
 - **morph**: `html2md` and `deblank` route missing-path errors through buvis console
 - **puc**: `strip` routes missing-file errors through buvis console
+- **sysup**: `sysup nvim` no longer misreports successful mason installs as failures when `mason-tool-installer.nvim`'s `ensure_installed` mixes lspconfig names (`bashls`, `lua_ls`, `dockerls`, …) with mason package names. The probe now subscribes to `mason-registry`'s `package:install:failed` event before `MasonToolsUpdateSync` instead of querying `ensure_installed` entries by raw name, so the resolved mason package names are checked. Also strips iTerm2 OSC user-var escapes injected around the probe sentinels by shell integration
 
 ## [0.11.0] - 2026-05-06
 
