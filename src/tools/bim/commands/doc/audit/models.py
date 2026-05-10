@@ -76,6 +76,8 @@ class AuditReport:
     triage_pending: int
     generated_at: datetime
     n_issuers_walked: int
+    total_rules_in_registry: int = 0
+    total_issuers_in_registry: int = 0
 
     def __post_init__(self) -> None:
         if self.generated_at.tzinfo is None:
@@ -91,6 +93,10 @@ class AuditReport:
             )
         if self.triage_pending < 0:
             raise ValueError(f"triage_pending must be >= 0, got {self.triage_pending}")
+        if self.total_rules_in_registry < 0:
+            raise ValueError(f"total_rules_in_registry must be >= 0, got {self.total_rules_in_registry}")
+        if self.total_issuers_in_registry < 0:
+            raise ValueError(f"total_issuers_in_registry must be >= 0, got {self.total_issuers_in_registry}")
 
     def to_json_dict(self) -> dict[str, Any]:
         """Render the report as a JSON-serializable dict.
@@ -105,6 +111,8 @@ class AuditReport:
             "clean_pdf_count": self.clean_pdf_count,
             "n_issuers_walked": self.n_issuers_walked,
             "triage_pending": self.triage_pending,
+            "total_rules_in_registry": self.total_rules_in_registry,
+            "total_issuers_in_registry": self.total_issuers_in_registry,
             "pdf_findings": [
                 {
                     "pdf_path": finding.pdf_path,
