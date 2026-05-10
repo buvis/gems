@@ -799,6 +799,60 @@ class TestPipeline:
         # The new filename should differ in the seconds portion of the timestamp.
         assert filed_pdf.name.startswith("20210311000001-cez-as-7102105594.invoice")
 
+    def test_zettel_collision_in_per_issuer_subfolder_increments_timestamp(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """A pre-existing zettel under <vault>/<doc-subdir>/<issuer-slug>/ must
+        block the same canonical filename from being reused.
+
+        Regression: blind review found _resolve_collision probed the flat
+        legacy path (vault/<basename>.md) while ZettelWriter writes to the
+        per-issuer path (vault/<issuer-slug>/<basename>.md). A collision in
+        the per-issuer subfolder was therefore missed and the existing zettel
+        would be silently overwritten.
+        """
+        # Pre-create a colliding zettel in the per-issuer vault subfolder.
+        existing_zettel = (
+            settings.paths.vault_root
+            / "Zettelkasten"
+            / "documents"
+            / "cez-as"
+            / "20210311000000-cez-as-7102105594.invoice.md"
+        )
+        existing_zettel.parent.mkdir(parents=True, exist_ok=True)
+        existing_text = "# pre-existing zettel\n\nthis content must survive\n"
+        existing_zettel.write_text(existing_text, encoding="utf-8")
+
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=staging_pdf),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="email", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.success is True
+        assert result.metadata["outcome"] == "filed"
+
+        # The pre-existing zettel must still hold its original bytes.
+        assert existing_zettel.exists()
+        assert existing_zettel.read_text(encoding="utf-8") == existing_text
+
+        # The newly-written zettel must use a different (advanced) timestamp.
+        new_zettel = Path(result.metadata["zettel_path"])
+        assert new_zettel != existing_zettel
+        assert new_zettel.name.startswith("20210311000001-cez-as-7102105594.invoice")
+        assert new_zettel.parent == existing_zettel.parent
+
     def test_claim_released_on_filed_path(
         self,
         settings: DocSettings,
