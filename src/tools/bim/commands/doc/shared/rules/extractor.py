@@ -79,6 +79,15 @@ def apply_extract(
     source: SourceMetadata,
     captures: dict[str, list[re.Match[str]]],
 ) -> dict[str, object] | None:
+    """Apply a rule's ``extract:`` block to produce a pinned-field dict.
+
+    ``captures`` is reserved for a future optimisation: when an
+    :class:`ExtractSpec` omits ``pattern``, the extractor could reuse
+    ``re.Match`` objects already produced during the match phase rather
+    than re-running ``re.search``. v1 always re-runs the search, so
+    callers may pass any dict (commonly empty); the value is
+    intentionally unread here.
+    """
     _ = captures
     pinned: dict[str, object] = {}
 

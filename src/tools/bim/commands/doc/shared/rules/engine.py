@@ -21,8 +21,23 @@ class _Survivor:
     definition_index: int
 
 
-def _issuer_slug_values(survivors: list[_Survivor]) -> set[object]:
-    return {survivor.pinned["issuer_slug"] for survivor in survivors if "issuer_slug" in survivor.pinned}
+def _has_pinned_disagreement(survivors: list[_Survivor]) -> bool:
+    """True when two survivors pin the same field with different values.
+
+    A field appearing in only one survivor (or pinned to the same value
+    across all that pin it) is not a disagreement. Comparison uses ``!=``
+    so unhashable values (lists, dicts) compare structurally without
+    needing a hashable normalisation step.
+    """
+    seen: dict[str, object] = {}
+    for survivor in survivors:
+        for field_name, value in survivor.pinned.items():
+            if field_name in seen:
+                if seen[field_name] != value:
+                    return True
+            else:
+                seen[field_name] = value
+    return False
 
 
 def _pick_result(kind: Literal["full", "partial"], survivors: list[_Survivor]) -> RuleResult:
@@ -30,7 +45,7 @@ def _pick_result(kind: Literal["full", "partial"], survivors: list[_Survivor]) -
     picked = ordered[0]
     top_group = [survivor for survivor in ordered if survivor.rule.priority == picked.rule.priority]
 
-    if len(_issuer_slug_values(top_group)) > 1:
+    if _has_pinned_disagreement(top_group):
         return RuleResult(
             kind="conflict",
             rule_id=None,

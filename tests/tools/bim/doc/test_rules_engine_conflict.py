@@ -153,6 +153,92 @@ class TestConflict:
         assert result.rule_id == "full-cez"
         assert result.conflicting_rules == []
 
+    def test_two_partial_rules_disagree_on_doc_type(self) -> None:
+        """Conflict detection covers any pinned field, not just issuer_slug.
+
+        Two same-priority partial rules that pin the same ``issuer_slug``
+        but pin different ``doc_type`` values are a conflict: the engine
+        cannot pick a winner without losing data.
+        """
+        engine = RuleEngine()
+        rule_invoice = {
+            "id": "rule-cez-invoice",
+            "version": 1,
+            "priority": 50,
+            "partial": True,
+            "match": {"ocr_contains": ["Energy bill"]},
+            "extract": {
+                "issuer_slug": "cez-as",
+                "doc_type": "invoice",
+            },
+        }
+        rule_statement = {
+            "id": "rule-cez-statement",
+            "version": 1,
+            "priority": 50,
+            "partial": True,
+            "match": {"ocr_contains": ["Energy bill"]},
+            "extract": {
+                "issuer_slug": "cez-as",
+                "doc_type": "statement",
+            },
+        }
+        registry = _registry(
+            {
+                "cez-as": {
+                    "slug": "cez-as",
+                    "display_name": "CEZ a.s.",
+                    "rules": [rule_invoice, rule_statement],
+                },
+            }
+        )
+
+        result = engine.evaluate("Energy bill summary for the period.", _source(), registry)
+
+        assert result.kind == "conflict"
+        assert set(result.conflicting_rules) == {"rule-cez-invoice", "rule-cez-statement"}
+        assert result.rule_id is None
+
+    def test_two_partial_rules_pin_disjoint_fields_do_not_conflict(self) -> None:
+        """Pinning non-overlapping fields is not a disagreement.
+
+        Rule A pins only ``issuer_slug``; rule B pins only ``doc_language``.
+        No single field has two different values, so neither rule conflicts
+        with the other; the engine returns ``kind=partial`` for the picked
+        rule and ``conflicting_rules`` stays empty.
+        """
+        engine = RuleEngine()
+        rule_issuer = {
+            "id": "rule-issuer",
+            "version": 1,
+            "priority": 50,
+            "partial": True,
+            "match": {"ocr_contains": ["Energy bill"]},
+            "extract": {"issuer_slug": "cez-as"},
+        }
+        rule_language = {
+            "id": "rule-language",
+            "version": 1,
+            "priority": 50,
+            "partial": True,
+            "match": {"ocr_contains": ["Energy bill"]},
+            "extract": {"doc_language": "cs"},
+        }
+        registry = _registry(
+            {
+                "cez-as": {
+                    "slug": "cez-as",
+                    "display_name": "CEZ a.s.",
+                    "rules": [rule_issuer, rule_language],
+                },
+            }
+        )
+
+        result = engine.evaluate("Energy bill summary for the period.", _source(), registry)
+
+        assert result.kind == "partial"
+        assert result.conflicting_rules == []
+
     def test_higher_priority_breaks_potential_conflict(self) -> None:
         """Two rules disagree on issuer_slug, but one has higher priority.
 

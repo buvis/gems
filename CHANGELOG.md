@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **bim**: `bim doc promote` now uses the triage proposal's `ingested-at` date for the `doc-date` fallback when a document has no extracted date (previously used `date.today()`, which made the same logical document yield different `doc-date` values when promoted on a different day from when it was triaged). Pipeline+promote consistency now holds for date-less documents too.
+- **bim**: rule-engine conflict detection now flags two same-priority same-partial-ness rules pinning any shared field (was: only `issuer_slug`). Two rules pinning different `doc_type`, `doc_currency`, etc., are now correctly routed to triage with `rule_conflict: <id1> vs <id2>` instead of one silently winning.
 
 ## [0.11.1] - 2026-05-10
 

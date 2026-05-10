@@ -494,8 +494,9 @@ All clauses within a rule are ANDed. Source-irrelevant clauses
 2. Among same partial-ness, higher ``priority`` wins.
 3. Ties broken by definition order in ``issuers.yml``.
 
-**Conflict** (two rules of same partial-ness disagreeing on ``issuer_slug``)
-sends the document to triage with a ``rule_conflict: <id1> vs <id2>`` reason.
+**Conflict** (two rules of same partial-ness and same priority pinning the
+same field to different values, on any pinned field) sends the document to
+triage with a ``rule_conflict: <id1> vs <id2>`` reason.
 
 **bim doc rules subcommands:**
 
