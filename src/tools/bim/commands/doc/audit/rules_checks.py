@@ -51,10 +51,31 @@ def _resolve_rule_id_from_loc(parsed: Any, loc: tuple[Any, ...]) -> str | None:
     return rule_id if isinstance(rule_id, str) else None
 
 
+# Marker strings emitted by the registry-loading validators. Keeping them
+# centralised makes the dependency between this classifier and the validator
+# error messages explicit: changing either side without updating the other
+# silently mis-classifies findings. Production validators raising these are:
+# - ``ExtractSpec._pattern_compiles`` / ``MatchClauses._regex_lists_compile``
+#   / ``MatchClauses._filename_regex_compiles`` (via ``_compile_regex``)
+#   raise ``ValueError(f"invalid regex {pattern!r}: {exc}")``.
+# - ``IssuerRegistry`` rule-id-uniqueness check raises
+#   ``ValueError(f"duplicate rule id ...")``.
+_INVALID_REGEX_MARKER = "invalid regex"
+_DUPLICATE_RULE_ID_MARKER = "duplicate rule id"
+
+
 def _classify_validation_error(msg: str) -> RuleFindingCode:
-    if "invalid regex" in msg:
+    """Map a pydantic ``ValidationError.errors()[i]['msg']`` to a finding code.
+
+    Pydantic v2 wraps ``ValueError`` raised inside field/model validators
+    with ``type='value_error'`` and the original message as ``msg``. We
+    pattern-match on stable substrings produced by our own validators
+    (see ``_INVALID_REGEX_MARKER`` / ``_DUPLICATE_RULE_ID_MARKER``);
+    anything else falls back to the generic ``validation_error`` bucket.
+    """
+    if _INVALID_REGEX_MARKER in msg:
         return "regex_compile_failure"
-    if "duplicate rule id" in msg:
+    if _DUPLICATE_RULE_ID_MARKER in msg:
         return "duplicate_id"
     return "validation_error"
 

@@ -319,6 +319,24 @@ class TestAuditE2EAgainstFullFixture:
         # inbox PDF and the triage proposal must be excluded from the walk.
         assert report.walked_pdf_count == 6
         assert report.n_issuers_walked >= 3
+        # Partition invariant: clean + non_clean == walked. Catches the
+        # double-counting trap from naively summing pdf_findings + legacy.
+        assert report.clean_pdf_count + report.non_clean_pdf_count == report.walked_pdf_count
+
+        # ---- (10a) missing_state_db_entry ---------------------------------
+        # Only the clean PDF has a recorded ProcessedRow; every other walked
+        # PDF must surface ``missing_state_db_entry``. This regression-tests
+        # the case Diana flagged where the integration test never exercised
+        # the ``check_state_db_entry`` failure path.
+        for pdf in (
+            fx.legacy_pdf,
+            fx.missing_zettel_pdf,
+            fx.non_canonical_pdf,
+            fx.o2_pdf,
+            fx.unknown_folder_pdf,
+        ):
+            assert "missing_state_db_entry" in _codes_for(report, pdf), pdf
+        assert "missing_state_db_entry" not in _codes_for(report, fx.clean_pdf)
 
         # ---- (11) JSON shape sanity ---------------------------------------
         assert isinstance(report_json["legacy_layout_zettels"], list)
