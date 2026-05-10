@@ -460,6 +460,47 @@ class TestCommandPromote:
         assert "pdf" in (result.error or "").lower()
         assert yml.exists()
 
+    def test_promote_preserves_proposal_ingested_at(
+        self,
+        settings: DocSettings,
+        registry_path: Path,
+        lock_path: Path,
+        state_db: StateDB,
+        mocker: MockerFixture,
+    ) -> None:
+        """Regression for criterion 8: promote must preserve the proposal's ingested-at."""
+        triage_dir = settings.paths.business_root / "_triage"
+        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
+        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf))
+
+        # _build_proposal pins ingested_at to a known datetime; freeze it here so
+        # the assertion is independent of helper internals.
+        proposal_ingested_at = datetime(2026, 5, 4, 9, 34, 22, tzinfo=timezone(timedelta(hours=2)))
+
+        cmd, _ = _build_command(
+            settings=settings,
+            registry_path=registry_path,
+            lock_path=lock_path,
+            state_db=state_db,
+            proposal_yml=yml,
+            mocker=mocker,
+            ocr_pdf=pdf,
+        )
+
+        result = cmd.execute()
+        assert result.success is True
+
+        zettel_path = Path(result.metadata["zettel_path"])
+        text = zettel_path.read_text(encoding="utf-8")
+        # Frontmatter is between the first two `---` fences.
+        _, frontmatter_text, _ = text.split("---", 2)
+        frontmatter = yaml.safe_load(frontmatter_text)
+
+        zettel_ingested_at = frontmatter["ingested-at"]
+        assert isinstance(zettel_ingested_at, datetime)
+        assert zettel_ingested_at == proposal_ingested_at
+
 
 class TestPromoteValidatesYAMLSchema:
     """Sanity check that round-tripped YAML reload works for the proposals we build."""

@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **bim**: doc zettel frontmatter and body switched to v1 shape — kebab-case keys (`doc-type`, `ingested-at`, `file-path`, ...), single `issuer` field (no more `issuer_slug`/`issuer_display`; the slug is in the canonical filename and `tags`), required `title` field, ISO 8601 datetime `ingested-at` with offset, absolute clickable `file://` PDF link in the body, optional LLM-generated summary paragraph, and per-issuer vault subfolder (`<vault>/<doc-subdir>/<issuer-slug>/<basename>.md`) mirroring the business-folder layout
+- **bim**: doc zettel frontmatter and body switched to v1 shape — kebab-case keys (`doc-type`, `ingested-at`, `file-path`, ...), single `issuer` field (no more `issuer_slug`/`issuer_display`; the slug is in the canonical filename and `tags`), required `title` field, ISO 8601 datetime `ingested-at` with offset, absolute clickable `file://` PDF link in the body, optional LLM-generated summary paragraph, and per-issuer vault subfolder (`<vault>/<doc-subdir>/<issuer-slug>/<basename>.md`) mirroring the business-folder layout. `bim doc promote` preserves the triage proposal's `ingested-at`, so the same logical document driven through ingest vs promote now yields equivalent frontmatter (modulo `extraction-method`).
 - **bim**: `bim doc ingest` extractor system prompt now spells out date/amount/currency formatting rules with examples (15.11.2024 → 2024-11-15, "1 234,56" → 1234.56, Kč → CZK), names the OCR-noise reconstruction expectation, and distinguishes invoice issue date from payment due date
 
 ### Removed

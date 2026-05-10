@@ -326,7 +326,7 @@ class CommandPromote:
                 doc_amount=ctx.proposal.document.amount,
                 doc_currency=ctx.proposal.document.currency,
                 doc_language=ctx.proposal.document.language,
-                ingested_at=datetime.now().astimezone(),
+                ingested_at=ctx.proposal.zettel_preview.ingested_at,
                 ingest_source=cast(IngestSource, ctx.proposal.source.kind),
                 file_path=str(plan.target_pdf.expanduser().resolve()),
                 file_sha256=sha,
