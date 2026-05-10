@@ -145,26 +145,6 @@ class DocumentZettelFrontmatter(BaseModel):
         return v
 
 
-class _ZettelYamlDumper(yaml.SafeDumper):
-    """Local SafeDumper subclass scoped to ``ZettelWriter._serialize_frontmatter``.
-
-    The only customisation is the datetime representer: PyYAML's default
-    emits ``2026-05-04 14:30:22+02:00`` (space separator), which Python
-    3.10's ``datetime.fromisoformat`` cannot parse (3.11+ accepts both
-    forms). The PRD's success metric requires ``fromisoformat`` parses
-    ``ingested-at`` on every supported Python version, so we emit the
-    ``T`` form via ``datetime.isoformat()``. Scoped to a subclass to
-    avoid mutating the global ``yaml.SafeDumper`` registry.
-    """
-
-
-def _datetime_representer(dumper: yaml.SafeDumper, data: datetime) -> yaml.ScalarNode:
-    return dumper.represent_scalar("tag:yaml.org,2002:timestamp", data.isoformat())
-
-
-_ZettelYamlDumper.add_representer(datetime, _datetime_representer)
-
-
 def _coerce_doc_number(value: str | None) -> int | str | None:
     """Render doc_number as bare int when the string round-trips, else as string.
 
@@ -278,9 +258,8 @@ class ZettelWriter:
         # strings (which PyYAML auto-quotes when ambiguous with numbers).
         if "doc-number" in payload:
             payload["doc-number"] = _coerce_doc_number(payload["doc-number"])
-        return yaml.dump(
+        return yaml.safe_dump(
             payload,
-            Dumper=_ZettelYamlDumper,
             default_flow_style=False,
             sort_keys=False,
             allow_unicode=True,

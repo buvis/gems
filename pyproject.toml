@@ -9,7 +9,7 @@ description = "BUVIS Python toolkit and CLI tools"
 authors = [{ name = "Tomas Bouska", email = "tomas@buvis.net" }]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 dependencies = [
   "click>=8.1.0,<9",
   "inflection>=0.5.1,<1",
@@ -120,7 +120,7 @@ source = ["src/lib", "src/tools"]
 branch = true
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 plugins = ["pydantic.mypy"]
 strict = true
 warn_return_any = true

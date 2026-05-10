@@ -9,7 +9,7 @@ doc-date: 2021-03-11
 doc-amount: 4218.0
 doc-currency: CZK
 doc-language: cs
-ingested-at: 2026-05-04T14:30:22+02:00
+ingested-at: 2026-05-04 14:30:22+02:00
 ingest-source: email
 file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
 file-sha256: 3f4a8c2b91e7d500000000000000000000000000000000000000000000000000

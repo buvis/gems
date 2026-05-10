@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **bim**: `Classifier.classify`/`classify_with_model`/`classify_with_pinned` now take a `SourceMetadata` dataclass instead of a `dict[str, object]` for `source_metadata`. The pipeline builds source metadata in one place (`Pipeline._build_source_metadata`) and feeds it to both the rule engine and the classifier, eliminating the previous parallel `_build_source_metadata` (dict) + `_build_rule_source_metadata` (dataclass) builders that could drift if a new metadata field was added to only one. Public CLI behaviour is unchanged.
 - **bim**: triage proposals now carry the LLM-generated `summary` from extraction in their `zettel_preview.summary` field, and `bim doc promote` threads that summary into the promoted zettel body. Documents promoted from triage now match the ingest-path body shape (summary paragraph between the `[Open PDF]` link and the `## OCR text` callout). Existing proposals without a `summary` field load unchanged (defaults to `None`).
+- **bim**: zettel `ingested-at` frontmatter is now serialised with PyYAML's default space-separated form (`2026-05-04 14:30:22+02:00`) instead of T-separated. Round-trips via `datetime.fromisoformat` on Python 3.11+. v1 zettels written before this change (T-separated) still parse correctly; existing zettels are not rewritten.
+
+### Removed
+
+- **build**: dropped Python 3.10 support. `requires-python` is now `>=3.11,<4.0`. The motivating constraint was the `ingested-at` `fromisoformat` round-trip in zettels, which on 3.10 required a custom YAML dumper to emit the T-separated form. With 3.11+ as the floor, the dumper is gone and the writer uses `yaml.safe_dump` directly. Users on 3.10 should upgrade to 3.11+ before installing 0.12+.
 
 ## [0.11.1] - 2026-05-10
 

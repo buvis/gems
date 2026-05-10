@@ -488,11 +488,12 @@ class TestZettelWriter:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
         block = _frontmatter_block(target.read_text(encoding="utf-8"))
-        # PyYAML serialises tz-aware datetimes as ISO 8601 with offset.
-        match = re.search(r"^ingested-at:\s*(\S+)", block, re.MULTILINE)
+        # PyYAML serialises tz-aware datetimes as ISO 8601 with offset using a
+        # space separator (``2026-05-04 14:30:22+02:00``). Python 3.11+
+        # ``datetime.fromisoformat`` parses both space- and T-separated forms.
+        match = re.search(r"^ingested-at:\s*(.+)$", block, re.MULTILINE)
         assert match is not None, block
-        value = match.group(1).strip("'\"")
-        # Strip a possible ``Z`` form (PyYAML uses +HH:MM by default but be tolerant).
+        value = match.group(1).strip().strip("'\"")
         parsed = datetime.fromisoformat(value)
         assert parsed.tzinfo is not None
         assert parsed == SAMPLE_INGESTED_AT
@@ -628,9 +629,9 @@ class TestZettelWriterPerVariantFixtures:
         assert re.search(r"^[a-z]+_", block, re.MULTILINE) is None, block
 
         # Criterion 5 (proxy): ingested-at parses with fromisoformat and is tz-aware.
-        match = re.search(r"^ingested-at:\s*(\S+)", block, re.MULTILINE)
+        match = re.search(r"^ingested-at:\s*(.+)$", block, re.MULTILINE)
         assert match is not None, block
-        parsed = datetime.fromisoformat(match.group(1).strip("'\""))
+        parsed = datetime.fromisoformat(match.group(1).strip().strip("'\""))
         assert parsed.tzinfo is not None, parsed
 
         # Variant-specific shape:

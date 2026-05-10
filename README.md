@@ -6,7 +6,7 @@ BUVIS Python toolkit and CLI tools, shipped as a single PyPI package.
 
 ## Install
 
-Pre-built wheels for Linux (x64, ARM), macOS (ARM), and Windows (x64). Python 3.10+.
+Pre-built wheels for Linux (x64, ARM), macOS (ARM), and Windows (x64). Python 3.11+.
 
 ### uv
 
