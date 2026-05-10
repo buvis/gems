@@ -256,13 +256,17 @@ class TestRenderStdout:
         assert "Stale rules:" in joined
         assert "[r-old] last hit 400d ago" in joined
 
-    def test_renders_watcher_not_configured(self) -> None:
+    def test_does_not_render_watcher_section(self) -> None:
+        """The watcher row is in spec §10's sample output but is NOT in the
+        normative §9 audit table imported by PRD 00037. Emitting a stub line
+        for an unimplemented section adds noise; the section is omitted
+        entirely until a watcher heartbeat is wired in."""
         report = _make_report()
         cons = _CapturingConsole()
         render_stdout(report, cons)
         joined = "\n".join(cons.lines)
-        assert "Watcher:" in joined
-        assert "not configured" in joined
+        assert "Watcher" not in joined
+        assert "not configured" not in joined
 
     def test_low_ocr_confidence_line_replaced_when_no_pdf_was_assessable(self) -> None:
         """When the OCR reader cannot expose per-PDF confidence (e.g. the
