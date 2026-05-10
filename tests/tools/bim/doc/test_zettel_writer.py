@@ -503,8 +503,8 @@ class TestZettelWriter:
 _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "zettel_writer"
 
 
-def _fixture_filename(has_number: bool, has_amount: bool, has_language: bool) -> str:
-    """Mirror of ``dev/local/tmp/gen_zettel_writer_fixtures.py:_fixture_name``.
+def _fixture_name(has_number: bool, has_amount: bool, has_language: bool) -> str:
+    """Mirror of ``dev/bin/gen_zettel_writer_fixtures.py:_fixture_name``.
 
     Naming scheme: ``num{0|1}_amt{0|1}_lang{0|1}.md``. Each flag indicates
     whether the corresponding optional field is *present* in that variant.
@@ -524,7 +524,7 @@ class TestZettelWriterPerVariantFixtures:
 
     Regenerate fixtures (after intentional writer changes) with::
 
-        uv run python dev/local/tmp/gen_zettel_writer_fixtures.py
+        uv run python dev/bin/gen_zettel_writer_fixtures.py
     """
 
     _EXPECTED_KEY_ORDER = [
@@ -581,12 +581,12 @@ class TestZettelWriterPerVariantFixtures:
         # Criterion 1 (primary): byte-for-byte equality against the stored
         # snapshot fixture for this variant. Catches accidental whitespace,
         # list-item reordering, or quoting drift that property assertions miss.
-        fixture_path = _FIXTURES_DIR / _fixture_filename(has_doc_number, has_doc_amount, has_doc_language)
+        fixture_path = _FIXTURES_DIR / _fixture_name(has_doc_number, has_doc_amount, has_doc_language)
         expected = fixture_path.read_text(encoding="utf-8")
         assert actual == expected, (
             f"writer output drift vs {fixture_path.relative_to(Path(__file__).parent)}\n"
             f"--- expected\n{expected}\n--- actual\n{actual}\n"
-            f"(regenerate with: uv run python dev/local/tmp/gen_zettel_writer_fixtures.py)"
+            f"(regenerate with: uv run python dev/bin/gen_zettel_writer_fixtures.py)"
         )
 
         # Criterion 1 (invariant): all 18 spec §5 keys present (None values
