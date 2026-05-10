@@ -130,24 +130,20 @@ def _render_rules(report: AuditReport, console: _ConsoleLike) -> None:
             _emit(console, f"    [{label}] {finding.detail}")
 
 
-def _render_watcher(console: _ConsoleLike) -> None:
-    _blank(console)
-    _emit(console, "Watcher:")
-    _emit(console, "  not configured")
-
-
 def render_stdout(report: AuditReport, console_obj: _ConsoleLike) -> None:
     """Render the audit report to the buvis console.
 
     All output goes through ``console_obj.print(line, mode="raw")``. Sections
-    are separated by blank raw lines.
+    are separated by blank raw lines. Sections correspond 1:1 to the spec
+    §9 audit table -- the §10 sample includes a watcher heartbeat row but
+    that row is not in the normative §9 table imported by PRD 00037, so
+    no watcher section is rendered until the watcher heartbeat is wired.
     """
     _render_summary_block(report, console_obj)
     _render_issues_by_issuer(report, console_obj)
     _render_issuer_inboxes(report, console_obj)
     _render_triage(report, console_obj)
     _render_rules(report, console_obj)
-    _render_watcher(console_obj)
     _blank(console_obj)
 
 
