@@ -268,6 +268,11 @@ class Pipeline:
         extraction_method = f"llm:{self._settings.classifier.primary_model}"
         use_pinned = rule_result.kind in {"full", "partial"}
         if use_pinned:
+            if rule_result.rule_id is not None:
+                self._state_db.record_rule_match(
+                    rule_result.rule_id,
+                    datetime.now(timezone.utc),
+                )
             extraction_method = self._rule_extraction_method(rule_result)
         return RuleStage(ocr_result, rule_result, extraction_method, use_pinned)
 
