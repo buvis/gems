@@ -792,7 +792,7 @@ class Pipeline:
             )
             target_pdf = self._settings.paths.business_root / issuer_slug / canonical
             zettel_basename = canonical.removesuffix(".pdf") + ".md"
-            zettel_path = vault_dir / zettel_basename
+            zettel_path = vault_dir / issuer_slug / zettel_basename
             if not target_pdf.exists() and not zettel_path.exists():
                 target_pdf.parent.mkdir(parents=True, exist_ok=True)
                 return canonical, candidate_zk, target_pdf
