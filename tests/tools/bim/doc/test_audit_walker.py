@@ -164,6 +164,90 @@ class TestWalkBusinessRoot:
         leaked = [p for _, p in results if p.name == "leaked.pdf"]
         assert leaked == []
 
+    def test_permission_error_on_subdir_iterdir_does_not_abort_walk(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """One unreadable subdirectory must not crash the whole audit.
+
+        The walker calls ``iterdir()`` at every directory level; on a misconfigured
+        business_root subtree the user may lack read access to one folder. The
+        walker must skip that folder and continue walking its siblings.
+        """
+        root = tmp_path / "business"
+        root.mkdir()
+        bad = root / "unreadable"
+        bad.mkdir()
+        (bad / "would-be-leaked.pdf").touch()
+
+        good = root / "readable"
+        good.mkdir()
+        (good / "20260101000000-readable-x.invoice.pdf").touch()
+
+        original_iterdir = Path.iterdir
+
+        def fake_iterdir(self: Path):
+            if self == bad:
+                raise PermissionError(f"Permission denied: {self}")
+            return original_iterdir(self)
+
+        monkeypatch.setattr(Path, "iterdir", fake_iterdir)
+
+        results = list(walk_business_root(root))
+
+        # Sibling directory still yields its PDF
+        assert any(p.name == "20260101000000-readable-x.invoice.pdf" for _, p in results)
+        # Unreadable subtree contributes nothing
+        assert not any(p.name == "would-be-leaked.pdf" for _, p in results)
+
+    def test_permission_error_on_business_root_iterdir_yields_nothing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """If the top-level business_root itself is unreadable, the audit must
+        return an empty walk rather than raising."""
+        root = tmp_path / "business"
+        root.mkdir()
+        (root / "x.pdf").touch()
+
+        original_iterdir = Path.iterdir
+
+        def fake_iterdir(self: Path):
+            if self == root:
+                raise PermissionError(f"Permission denied: {self}")
+            return original_iterdir(self)
+
+        monkeypatch.setattr(Path, "iterdir", fake_iterdir)
+
+        # Must not raise
+        assert list(walk_business_root(root)) == []
+
+    def test_permission_error_on_issuer_top_level_iterdir_skips_only_that_issuer(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A PermissionError raised when iterating an issuer folder must skip
+        only that issuer's subtree, not the entire walk."""
+        root = tmp_path / "business"
+        root.mkdir()
+        bad_issuer = root / "bad-issuer"
+        bad_issuer.mkdir()
+        (bad_issuer / "20260101000000-bad-issuer-x.invoice.pdf").touch()
+
+        good_issuer = root / "good-issuer"
+        good_issuer.mkdir()
+        (good_issuer / "20260101000001-good-issuer-y.invoice.pdf").touch()
+
+        original_iterdir = Path.iterdir
+
+        def fake_iterdir(self: Path):
+            if self == bad_issuer:
+                raise PermissionError(f"Permission denied: {self}")
+            return original_iterdir(self)
+
+        monkeypatch.setattr(Path, "iterdir", fake_iterdir)
+
+        results = list(walk_business_root(root))
+        assert any(p.name == "20260101000001-good-issuer-y.invoice.pdf" for _, p in results)
+        assert not any(p.name == "20260101000000-bad-issuer-x.invoice.pdf" for _, p in results)
+
     def test_symlinked_dir_pointing_inside_root_is_traversed(self, tmp_path: Path) -> None:
         """A symlink whose target stays under business_root is OK to follow
         (this test pins down that the containment check, not symlink
