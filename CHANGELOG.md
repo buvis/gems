@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **pidash**: bundled hook runtime (``pidash hooks run <event>``) plus ``pidash hooks install``/``uninstall``/``status`` admin commands. Run ``pidash hooks install`` after ``pip install buvis-gems[pidash]`` to wire the autopilot dashboard hooks into ``~/.claude/settings.json`` in one step. Existing legacy entries (``python3 ~/.claude/hooks/<name>.py`` paths from the dotfiles repo) are detected and replaced during install, with unrelated hook entries preserved in place.
 - **bim**: `bim doc audit` command — read-only walk of the Business folder reporting drift between filed PDFs and zettels. Checks per spec §9: filename canonical, issuer registered, doc-type valid, per-issuer zettel exists, OCR present, sha256 in state.db. Plus rule-engine checks: registry loadability, priority conflicts, freshness (90-day default). Writes a structured JSON report to `<state_dir>/audit/<iso-timestamp>.json`; the report's `legacy_layout_zettels` array is the input contract for the future migration command.
 
 ### Fixed
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **pidash**: ``pidash`` is now a Click group. The TUI is still the default (``pidash`` with no args); to pass a project path explicitly, use ``pidash --project-path <path>`` or ``pidash tui <path>``. The previous positional ``pidash <path>`` form is no longer accepted.
 - **bim**: `bim doc audit` JSON report adds a `non_clean_pdf_count` field so consumers have an exact partition with `clean_pdf_count` (`clean + non_clean == walked`). The audit's stdout is unchanged. Documentation now states explicitly that `pdf_findings` is one-entry-per-finding (a PDF with multiple findings appears multiple times sharing `pdf_path`), not one-entry-per-PDF, eliminating the previous doc/impl drift that PRD 00036 consumers might trip over.
 - **bim**: `bim doc audit` "No conflicts" check now detects overlapping match clauses per spec §9, not only pinned-constant disagreement. Two enabled rules at the same priority are flagged whenever their `match` clauses are not statically provably disjoint (only `email_from_domain` literal-list disjointness is currently decidable; regex/substring clauses are conservatively treated as potentially overlapping). Disagreeing pinned `extract` values continue to be surfaced in the finding detail to help authors locate the conflict.
 - **bim**: `Classifier.classify`/`classify_with_model`/`classify_with_pinned` now take a `SourceMetadata` dataclass instead of a `dict[str, object]` for `source_metadata`. The pipeline builds source metadata in one place (`Pipeline._build_source_metadata`) and feeds it to both the rule engine and the classifier, eliminating the previous parallel `_build_source_metadata` (dict) + `_build_rule_source_metadata` (dataclass) builders that could drift if a new metadata field was added to only one. Public CLI behaviour is unchanged.
