@@ -101,6 +101,17 @@ class TestSyncAgentReturnHook:
         main()
         assert state_path.read_text() == before
 
+    def test_tty_stdin_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
+        """Hook returns early when stdin is a TTY (no piped input from Claude Code)."""
+        state_path = _seed_state(sandbox, [{"name": "Task A", "status": "pending"}])
+        before = state_path.read_text()
+        fake_stdin = mocker.MagicMock()
+        fake_stdin.isatty.return_value = True
+        mocker.patch("sys.stdin", fake_stdin)
+        main()
+        fake_stdin.read.assert_not_called()
+        assert state_path.read_text() == before
+
     def test_empty_response_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
         state_path = _seed_state(sandbox, [{"name": "Task A", "status": "pending"}])
         before = state_path.read_text()

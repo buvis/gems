@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from pathlib import Path
 
-from pidash.hooks.session import mirror_to_session_dir
+from pidash.hooks.session import mirror_to_session_dir, read_hook_input
 
 _PREFIX_RE = re.compile(r"^\[(?:C\d+|DOUBT)\]\s*")
 # Unicode dashes normalized to ASCII '-' so titles round-trip through tools
@@ -170,11 +169,8 @@ def _apply_match(
 
 def main() -> None:
     """Apply the TaskUpdate to state.json and mirror to session dir."""
-    try:
-        hook_input = json.load(sys.stdin)
-    except (json.JSONDecodeError, ValueError):
-        return
-    if not isinstance(hook_input, dict):
+    hook_input = read_hook_input()
+    if not hook_input:
         return
 
     request = _parse_request(hook_input)

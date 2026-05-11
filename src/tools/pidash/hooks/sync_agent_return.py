@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from pathlib import Path
 
-from pidash.hooks.session import mirror_to_session_dir
+from pidash.hooks.session import mirror_to_session_dir, read_hook_input
 
 _PREFIX_RE = re.compile(r"^\[(?:C\d+|DOUBT)\]\s*")
 _EN_DASH = "\u2013"
@@ -113,11 +112,8 @@ def _apply_markers(
 
 def main() -> None:
     """Parse agent response markers and reflect them into state.json."""
-    try:
-        hook_input = json.load(sys.stdin)
-    except (json.JSONDecodeError, ValueError):
-        return
-    if not isinstance(hook_input, dict):
+    hook_input = read_hook_input()
+    if not hook_input:
         return
 
     response_text = str(hook_input.get("tool_response", ""))

@@ -145,6 +145,17 @@ class TestUpdateTasksHook:
         main()
         assert state_path.read_text() == before
 
+    def test_tty_stdin_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
+        """Hook returns early when stdin is a TTY (no piped input from Claude Code)."""
+        state_path = _seed_state(sandbox, [{"id": "1", "name": "T", "status": "pending"}])
+        before = state_path.read_text()
+        fake_stdin = mocker.MagicMock()
+        fake_stdin.isatty.return_value = True
+        mocker.patch("sys.stdin", fake_stdin)
+        main()
+        fake_stdin.read.assert_not_called()
+        assert state_path.read_text() == before
+
     def test_missing_tool_input_id_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
         state_path = _seed_state(sandbox, [{"id": "1", "name": "T", "status": "pending"}])
         before = state_path.read_text()
