@@ -7,7 +7,7 @@ from pathlib import Path
 from textual.message import Message
 from textual.worker import get_current_worker
 
-from pidash.hooks.session import SESSIONS_DIR as SESSIONS_DIR
+from pidash.hooks.session import SESSIONS_DIR
 
 logger = logging.getLogger(__name__)
 

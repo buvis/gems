@@ -46,7 +46,7 @@ class TestPidashCli:
         sessions_dir = tmp_path / "sessions"
         sessions_dir.mkdir()
         runner = CliRunner()
-        with patch("pidash.tui.watcher.SESSIONS_DIR", sessions_dir):
+        with patch("pidash.hooks.session.SESSIONS_DIR", sessions_dir):
             result = runner.invoke(cli, ["--cleanup"])
         assert result.exit_code == 0
         assert "0" in result.output
@@ -54,7 +54,7 @@ class TestPidashCli:
     def test_cleanup_no_dir(self, tmp_path: Path) -> None:
         missing_dir = tmp_path / "nonexistent"
         runner = CliRunner()
-        with patch("pidash.tui.watcher.SESSIONS_DIR", missing_dir):
+        with patch("pidash.hooks.session.SESSIONS_DIR", missing_dir):
             result = runner.invoke(cli, ["--cleanup"])
         assert result.exit_code == 0
         assert "No sessions" in result.output

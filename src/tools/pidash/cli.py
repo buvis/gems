@@ -160,7 +160,7 @@ def _render_status_failure(result: object) -> None:
 
 
 def _cleanup_sessions(max_age_hours: int = 24, *, quiet: bool = False) -> None:
-    from pidash.tui.watcher import SESSIONS_DIR
+    from pidash.hooks.session import SESSIONS_DIR
 
     if not SESSIONS_DIR.is_dir():
         if not quiet:

@@ -11,9 +11,9 @@ from textual.css.query import NoMatches
 from textual.geometry import Region
 from textual.widgets import Static
 
+from pidash.hooks.session import SESSIONS_DIR
 from pidash.tui.state import PrdState, SessionState, parse_session_file, parse_state
 from pidash.tui.watcher import (
-    SESSIONS_DIR,
     STATE_DIR,
     STATE_FILENAME,
     SessionRemoved,
