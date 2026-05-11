@@ -59,9 +59,6 @@ class TestCleanupSessionHook:
         assert not (sandbox / "sessions").exists()
 
     def test_null_byte_session_id_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
-        # Embedded null bytes are not valid in filesystem paths and would raise
-        # ``ValueError`` (not ``OSError``) inside ``tempfile.mkstemp``. Reject
-        # up-front so the hook stays a silent no-op.
         _run_with_stdin({"session_id": "abc\x00def"}, mocker)
         assert not (sandbox / "sessions").exists()
 

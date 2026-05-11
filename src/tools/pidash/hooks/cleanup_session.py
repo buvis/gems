@@ -21,9 +21,6 @@ def main() -> None:
     if not isinstance(raw_id, str) or not raw_id:
         return
     if "\x00" in raw_id:
-        # Null bytes are invalid in any filesystem path on Linux/macOS and raise
-        # ValueError (not OSError) downstream; reject them here so the hook stays
-        # a silent no-op for malformed input.
         return
     session_id = Path(raw_id).name
     if not session_id:

@@ -103,9 +103,6 @@ class TestMirrorToSessionDir:
         assert state == {"phase": "work"}
 
     def test_null_byte_session_id_is_silent_no_op(self) -> None:
-        # Embedded null bytes raise ``ValueError`` (not ``OSError``) inside
-        # ``tempfile.mkstemp``'s ``os.open`` and would propagate past the
-        # ``except OSError`` in ``write_json_atomic``. Reject up-front instead.
         mirror_to_session_dir({"session_id": "abc\x00def"}, {"phase": "work"})
         assert not self._sandbox.exists()
 

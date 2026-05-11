@@ -43,9 +43,6 @@ def mirror_to_session_dir(hook_input: dict[str, object], state: dict[str, object
     if not isinstance(raw_id, str) or not raw_id:
         return
     if "\x00" in raw_id:
-        # Null bytes are invalid in any filesystem path on Linux/macOS and raise
-        # ValueError (not OSError) from ``os.open`` inside ``tempfile.mkstemp``;
-        # reject them here so the hook stays a silent no-op for malformed input.
         return
     session_id = Path(raw_id).name  # strip directory components
     if not session_id:
