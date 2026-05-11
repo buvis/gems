@@ -33,9 +33,11 @@ Files older than 24 hours are auto-cleaned on startup.
 Single-project mode
 ~~~~~~~~~~~~~~~~~~~
 
-Running ``pidash /path/to/project`` watches ``dev/local/autopilot/state.json``
-in the given directory. This is the original mode, preserved for backward
-compatibility.
+Use ``pidash --project-path /path/to/project`` (or the explicit ``pidash tui
+/path/to/project`` subcommand form) to watch ``dev/local/autopilot/state.json``
+in the given directory. The earlier bare-positional form ``pidash <path>`` is
+no longer accepted: ``pidash`` is now a Click group, so the first non-option
+argument is parsed as a subcommand name.
 
 Keybindings
 -----------
