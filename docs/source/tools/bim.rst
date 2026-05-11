@@ -237,7 +237,7 @@ System dependencies (install separately):
 
 - **Tesseract** (with Czech language pack): ``brew install tesseract tesseract-lang``
 - **OCRmyPDF**: ``brew install ocrmypdf``
-- **Ollama**: ``brew install ollama``, then ``ollama pull qwen2.5:7b-instruct``
+- **Ollama**: ``brew install ollama``, then ``ollama pull qwen3:30b-a3b`` (and ``ollama pull qwen3:14b`` for the fallback)
 
 Configuration lives under ``[doc]`` in the bim config (see ``DocSettings``
 for the full schema): ``paths.business_root``, ``paths.vault_root``,

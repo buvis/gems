@@ -131,8 +131,8 @@ class ClassifierSettings(BaseModel):
 
     backend: str = "ollama"
     endpoint: str = "http://localhost:11434"
-    primary_model: str = "qwen2.5:7b-instruct"
-    fallback_model: str = "qwen2.5:14b-instruct"
+    primary_model: str = "qwen3:30b-a3b"
+    fallback_model: str = "qwen3:14b"
     triage_threshold: float = 0.85
     max_retries: int = 2
 

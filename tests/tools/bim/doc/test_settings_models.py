@@ -152,8 +152,8 @@ class TestClassifierSettings:
         s = ClassifierSettings()
         assert s.backend == "ollama"
         assert s.endpoint == "http://localhost:11434"
-        assert s.primary_model == "qwen2.5:7b-instruct"
-        assert s.fallback_model == "qwen2.5:14b-instruct"
+        assert s.primary_model == "qwen3:30b-a3b"
+        assert s.fallback_model == "qwen3:14b"
         assert s.triage_threshold == pytest.approx(0.85)
         assert s.max_retries == 2
 
@@ -179,7 +179,7 @@ class TestDocSettings:
         paths = DocPaths.model_validate(required_paths_data)
         settings = DocSettings(paths=paths)
         assert settings.ocr.languages == ["ces", "eng"]
-        assert settings.classifier.primary_model == "qwen2.5:7b-instruct"
+        assert settings.classifier.primary_model == "qwen3:30b-a3b"
         assert settings.zettel.ocr_text_in_body is True
 
     def test_extra_field_rejected(self, required_paths_data: dict[str, str]) -> None:

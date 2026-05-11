@@ -44,7 +44,7 @@ class TestCheckHealth:
             return_value=_ok_proc(),
         )
         fake_requests = mocker.MagicMock()
-        fake_requests.get.return_value = _MockResponse({"models": [{"name": "qwen2.5:7b-instruct"}]})
+        fake_requests.get.return_value = _MockResponse({"models": [{"name": "qwen3:30b-a3b"}]})
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
         check_health(settings)  # should not raise
 
@@ -91,7 +91,7 @@ class TestCheckHealth:
         fake_requests = mocker.MagicMock()
         fake_requests.get.return_value = _MockResponse({"models": [{"name": "some-other-model"}]})
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
-        with pytest.raises(MissingDependency, match="qwen2.5:7b-instruct"):
+        with pytest.raises(MissingDependency, match="qwen3:30b-a3b"):
             check_health(settings)
 
     def test_ollama_non_json_response_wrapped(self, settings: DocSettings, mocker: MockerFixture) -> None:
