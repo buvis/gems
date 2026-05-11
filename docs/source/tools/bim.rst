@@ -286,8 +286,9 @@ Zettel v1 shape
 
 Both ``bim doc ingest`` and ``bim doc promote`` produce zettels in the v1
 shape: kebab-case keys throughout, single ``issuer`` field (the human
-display name), ISO-8601 ``ingested-at`` datetime with offset, absolute
-``file://`` link in the body, optional LLM-generated summary paragraph,
+display name), ISO-8601 ``ingested-at`` datetime with offset, the
+source-file link embedded in the ``file-path`` frontmatter key as a
+double-quoted Markdown link, optional LLM-generated summary paragraph,
 and per-issuer vault subfolder.
 
 .. code-block:: markdown
@@ -305,7 +306,7 @@ and per-issuer vault subfolder.
     doc-language: cs
     ingested-at: 2026-05-04T14:30:15+02:00
     ingest-source: email
-    file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
+    file-path: "[Open file](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)"
     file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
     ocr-engine: tesseract
     ocr-mean-confidence: 0.91
@@ -317,8 +318,6 @@ and per-issuer vault subfolder.
     ---
 
     # ČEZ a.s. invoice 7102105594
-
-    [Open PDF](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)
 
     Vyúčtování za elektřinu za období 1.1.2021 – 28.2.2021. Splatnost 25.3.2021. Variabilní symbol 7102105594.
 
@@ -335,9 +334,14 @@ Reserved frontmatter keys:
 - ``doc-number`` — emitted as a bare integer when the string round-trips
   (``str(int(s)) == s``); otherwise quoted to preserve leading zeros.
 - ``ingested-at`` — tz-aware ISO 8601 with offset, parses with
-  ``datetime.fromisoformat`` on Python 3.10+.
-- ``file-path`` — absolute filesystem path, no ``~`` segment. The body
-  ``file://`` link URL-encodes spaces but preserves tildes literal.
+  ``datetime.fromisoformat``.
+- ``file-path`` — a double-quoted Markdown link with text ``Open file``
+  wrapping a URL-encoded ``file://`` URL:
+  ``"[Open file](file://<URL-encoded-absolute-path>)"``. The URL encoder
+  preserves slashes and tildes (``urllib.parse.quote(path, safe="/~")``);
+  spaces become ``%20``. Obsidian renders the value as a clickable link in
+  the Properties pane. The body carries no ``[Open PDF]`` or ``[Open file]``
+  line — the link is metadata, not prose.
 
 bim doc promote
 ~~~~~~~~~~~~~~~
