@@ -120,3 +120,21 @@ class TestCommandInstall:
         assert not result.success
         assert "malformed" in (result.error or "").lower()
         assert target.read_text() == before
+
+    def test_install_on_non_dict_hooks_value_returns_failure(self, tmp_path: Path) -> None:
+        target = tmp_path / "settings.json"
+        target.write_text(json.dumps({"hooks": []}), encoding="utf-8")
+        before = target.read_text()
+        result = CommandInstall(target).execute()
+        assert not result.success
+        assert "hooks" in (result.error or "").lower()
+        assert target.read_text() == before
+
+    def test_install_on_string_hooks_value_returns_failure(self, tmp_path: Path) -> None:
+        target = tmp_path / "settings.json"
+        target.write_text(json.dumps({"hooks": "oops"}), encoding="utf-8")
+        before = target.read_text()
+        result = CommandInstall(target).execute()
+        assert not result.success
+        assert "hooks" in (result.error or "").lower()
+        assert target.read_text() == before
