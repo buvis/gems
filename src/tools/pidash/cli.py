@@ -4,7 +4,10 @@ import time
 from pathlib import Path
 
 import click
+from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options
+
+_DEFAULT_SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 
 _HOOK_EVENTS = (
     "set-attention",
@@ -86,6 +89,61 @@ def hooks_run(event: str) -> None:
     else:  # sync-agent-return
         from pidash.hooks.sync_agent_return import main as _main
     _main()
+
+
+_SETTINGS_OPT = click.option(
+    "--settings-path",
+    "settings_path",
+    default=_DEFAULT_SETTINGS_PATH,
+    type=click.Path(path_type=Path),
+    show_default=True,
+    help="Path to Claude Code settings.json.",
+)
+
+
+@hooks.command("install", help="Install pidash hooks into ~/.claude/settings.json")
+@_SETTINGS_OPT
+def hooks_install(settings_path: Path) -> None:
+    from pidash.commands.hooks.install import CommandInstall
+
+    console.report_result(CommandInstall(settings_path=settings_path).execute())
+
+
+@hooks.command("uninstall", help="Remove pidash hooks from ~/.claude/settings.json")
+@_SETTINGS_OPT
+def hooks_uninstall(settings_path: Path) -> None:
+    from pidash.commands.hooks.uninstall import CommandUninstall
+
+    console.report_result(CommandUninstall(settings_path=settings_path).execute())
+
+
+@hooks.command("status", help="Show pidash hook installation status")
+@_SETTINGS_OPT
+def hooks_status(settings_path: Path) -> None:
+    from pidash.commands.hooks.status import CommandStatus
+
+    result = CommandStatus(settings_path=settings_path).execute()
+    console.report_result(result, on_failure=_render_status_failure)
+    if result.success:
+        for row in result.metadata.get("hooks", []):
+            console.info(_format_status_row(row))
+
+
+def _format_status_row(row: dict[str, object]) -> str:
+    matcher = row.get("matcher")
+    matcher_str = matcher if isinstance(matcher, str) else "(default)"
+    event = row.get("event")
+    run_event = row.get("run_event")
+    glyph = "✓" if row.get("installed") else "✘"
+    return f"{glyph} {event}/{matcher_str} → {run_event}"
+
+
+def _render_status_failure(result: object) -> None:
+    error = getattr(result, "error", None)
+    metadata = getattr(result, "metadata", {}) or {}
+    console.failure(error or "pidash hooks status: failure")
+    for row in metadata.get("hooks", []):
+        console.info(_format_status_row(row))
 
 
 def _cleanup_sessions(max_age_hours: int = 24, *, quiet: bool = False) -> None:
