@@ -219,16 +219,12 @@ class TestBuildZettelBody:
 
     def test_summary_paragraph_present_when_provided(self, frontmatter: DocumentZettelFrontmatter) -> None:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT, summary="A monthly electricity invoice.")
-        # Exactly one blank line between H1 and the summary; no link line between them.
         assert body.startswith(f"# {SAMPLE_TITLE}\n\nA monthly electricity invoice.\n\n"), body[:200]
-        # Summary appears before the OCR section.
         assert body.index("A monthly electricity invoice.") < body.index("## OCR text")
 
     def test_summary_paragraph_omitted_when_none(self, frontmatter: DocumentZettelFrontmatter) -> None:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT, summary=None)
-        # Exactly one blank line between H1 and ``## OCR text``; no link line between them.
         assert body.startswith(f"# {SAMPLE_TITLE}\n\n## OCR text\n"), body[:200]
-        # No double-blank-line gap where the summary would be.
         assert "\n\n\n## OCR text" not in body
 
     def test_summary_paragraph_omitted_when_empty(self, frontmatter: DocumentZettelFrontmatter) -> None:
@@ -472,20 +468,16 @@ class TestZettelWriter:
         text = target.read_text(encoding="utf-8")
         block = _frontmatter_block(text)
 
-        # Raw scalar: file-path emitted as a double-quoted Markdown link.
         assert '\nfile-path: "[Open file](file://' in block, block
 
-        # Parsed scalar: yaml-loaded value matches the link shape.
         parsed = yaml.safe_load(block)
         assert isinstance(parsed, dict)
         link = parsed["file-path"]
         match = re.match(r"^\[Open file\]\(file://(.+)\)$", link)
         assert match is not None, link
 
-        # Round-trip: URL inside link decodes back to SAMPLE_FILE_PATH.
         assert urllib.parse.unquote(match.group(1)) == SAMPLE_FILE_PATH
 
-        # Body carries no source-file link line.
         body_section = text.split("---\n", 2)[2]
         assert "[Open PDF]" not in body_section
         assert "[Open file]" not in body_section
@@ -499,14 +491,10 @@ class TestZettelWriter:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
         block = _frontmatter_block(target.read_text(encoding="utf-8"))
-        # Raw scalar must be a double-quoted Markdown link with ``Open file`` text.
         match = re.search(r'^file-path: "\[Open file\]\(file://([^)]+)\)"$', block, re.MULTILINE)
         assert match is not None, block
-        # URL inside the link round-trips to the absolute path the writer received.
         decoded = urllib.parse.unquote(match.group(1))
         assert decoded == SAMPLE_FILE_PATH
-        # Decoded path is absolute; legitimate tildes inside path components are fine,
-        # but the value does not start with a bare ``~/``.
         assert decoded.startswith("/"), decoded
         assert not decoded.startswith("~"), decoded
 

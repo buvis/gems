@@ -572,9 +572,6 @@ class TestCommandPromote:
         zettel_path = Path(result.metadata["zettel_path"])
         text = zettel_path.read_text(encoding="utf-8")
         _, _, body = text.split("---", 2)
-        # The H1 is followed by exactly one blank line then the OCR section.
-        # No placeholder summary paragraph between them (source-file link now
-        # lives in the file-path frontmatter key, not the body).
         body_lines = body.split("\n")
         h1_idx = next(i for i, line in enumerate(body_lines) if line.startswith("# "))
         assert body_lines[h1_idx + 1] == ""

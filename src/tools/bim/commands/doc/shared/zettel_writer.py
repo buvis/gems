@@ -10,7 +10,8 @@ The basename is derived from the canonical PDF filename in
 v1 frontmatter uses kebab-case keys (``doc-type``, ``ingested-at``,
 ``file-path``, ...) emitted via Pydantic field aliases. ``id`` is a bare int.
 ``ingested-at`` is a tz-aware datetime serialised as ISO 8601 with offset.
-``file-path`` is an absolute filesystem path with no ``~`` segment.
+``frontmatter.file_path`` stays an absolute filesystem path; YAML serialisation
+wraps it as an ``[Open file](file://...)`` link in the ``file-path`` key.
 """
 
 from __future__ import annotations
