@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pidash.commands.hooks.install import CommandInstall
 from pidash.commands.hooks.settings import HOOK_REGISTRY, PIDASH_COMMAND_PREFIX
+from pidash.commands.hooks.uninstall import CommandUninstall
 
 
 def _all_pidash_commands(data: dict) -> list[str]:
@@ -138,3 +139,46 @@ class TestCommandInstall:
         assert not result.success
         assert "hooks" in (result.error or "").lower()
         assert target.read_text() == before
+
+    def test_install_preserves_unrelated_top_level_keys(self, tmp_path: Path) -> None:
+        """Top-level keys other than ``hooks`` (permissions, env, mcpServers, …)
+        must round-trip unchanged through both install and uninstall."""
+        target = tmp_path / "settings.json"
+        seed = {
+            "permissions": {"allow": ["Bash(git:*)"], "deny": ["Bash(rm -rf /:*)"]},
+            "env": {"FOO": "bar", "DEBUG": "1"},
+            "mcpServers": {
+                "exa": {"command": "npx", "args": ["-y", "exa-mcp"]},
+            },
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "matcher": "Edit|Write|MultiEdit",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "python3 ~/.claude/hooks/design-quality-check.py",
+                                "timeout": 5,
+                            }
+                        ],
+                    }
+                ],
+            },
+        }
+        target.write_text(json.dumps(seed, indent=2), encoding="utf-8")
+
+        assert CommandInstall(target).execute().success
+        after_install = json.loads(target.read_text())
+        for key in ("permissions", "env", "mcpServers"):
+            assert after_install[key] == seed[key], f"{key} mutated by install"
+
+        assert CommandUninstall(target).execute().success
+        after_uninstall = json.loads(target.read_text())
+        for key in ("permissions", "env", "mcpServers"):
+            assert after_uninstall[key] == seed[key], f"{key} mutated by uninstall"
+        # The unrelated hook entry must also still be there.
+        post_blocks = after_uninstall["hooks"]["PostToolUse"]
+        assert any(
+            any(h.get("command") == "python3 ~/.claude/hooks/design-quality-check.py" for h in block.get("hooks", []))
+            for block in post_blocks
+        )
