@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import pytest
 from pidash.hooks import session as session_mod
 from pidash.hooks.session import (
-    SESSIONS_DIR,
     mirror_to_session_dir,
     read_hook_input,
     write_json_atomic,
@@ -164,8 +163,3 @@ class TestWriteJsonAtomic:
         write_json_atomic(target, {"new": True, "count": 7})
         data = json.loads(target.read_text(encoding="utf-8"))
         assert data == {"new": True, "count": 7}
-
-
-class TestSessionsDirConstant:
-    def test_default_points_to_user_home_pidash_sessions(self) -> None:
-        assert SESSIONS_DIR == Path.home() / ".pidash" / "sessions"

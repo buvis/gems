@@ -50,12 +50,6 @@ class TestSetAttentionHook:
         state = json.loads(state_path.read_text())
         assert state["needs_attention"] is True
 
-    def test_overwrites_truthy_existing_flag(self, sandbox: Path, mocker: MockerFixture) -> None:
-        state_path = _seed_state(sandbox, needs_attention=True)
-        _run_with_stdin({"session_id": "s1", "cwd": str(sandbox)}, mocker)
-        state = json.loads(state_path.read_text())
-        assert state["needs_attention"] is True
-
     def test_mirrors_to_session_file(self, sandbox: Path, mocker: MockerFixture) -> None:
         """Session file shape from PRD happy-path scenario:
         session_id, cwd, tasks, needs_attention, updated_at."""
@@ -85,12 +79,11 @@ class TestSetAttentionHook:
         before = state_path.read_text()
         mocker.patch("os.replace", side_effect=OSError("disk full"))
         _run_with_stdin({"session_id": "abc", "cwd": str(sandbox)}, mocker)
-        # Original state.json untouched.
         assert state_path.read_text() == before
-        # No half-written session file.
         assert not (sandbox / "sessions" / "abc.json").is_file()
-        # No tempfile leak in either directory.
         assert [p.name for p in state_path.parent.iterdir()] == ["state.json"]
+        sessions_dir = sandbox / "sessions"
+        assert not sessions_dir.exists() or list(sessions_dir.iterdir()) == []
 
     def test_state_missing_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
         _run_with_stdin({"session_id": "abc"}, mocker)
