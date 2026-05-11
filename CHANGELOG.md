@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-11
+
 ### Added
 
 - **pidash**: bundled hook runtime (``pidash hooks run <event>``) plus ``pidash hooks install``/``uninstall``/``status`` admin commands. Run ``pidash hooks install`` after ``pip install buvis-gems[pidash]`` to wire the autopilot dashboard hooks into ``~/.claude/settings.json`` in one step. Existing legacy entries (``python3 ~/.claude/hooks/<name>.py`` paths from the dotfiles repo) are detected and replaced during install, with unrelated hook entries preserved in place.
@@ -361,7 +363,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.11.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.0...HEAD
+[0.12.0]: https://github.com/buvis/gems/compare/gems-v0.11.1...gems-v0.12.0
 [0.11.1]: https://github.com/buvis/gems/compare/gems-v0.11.0...gems-v0.11.1
 [0.11.0]: https://github.com/buvis/gems/compare/gems-v0.10.0...gems-v0.11.0
 [0.10.0]: https://github.com/buvis/gems/compare/gems-v0.9.0...gems-v0.10.0
