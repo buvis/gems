@@ -330,7 +330,7 @@ layout and indexes each one with a Zettelkasten note, OCR’d and structured.</p
 <ul class="simple">
 <li><p><strong>Tesseract</strong> (with Czech language pack): <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">tesseract</span> <span class="pre">tesseract-lang</span></code></p></li>
 <li><p><strong>OCRmyPDF</strong>: <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">ocrmypdf</span></code></p></li>
-<li><p><strong>Ollama</strong>: <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">ollama</span></code>, then <code class="docutils literal notranslate"><span class="pre">ollama</span> <span class="pre">pull</span> <span class="pre">qwen2.5:7b-instruct</span></code></p></li>
+<li><p><strong>Ollama</strong>: <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">ollama</span></code>, then <code class="docutils literal notranslate"><span class="pre">ollama</span> <span class="pre">pull</span> <span class="pre">qwen3:30b-a3b</span></code> (and <code class="docutils literal notranslate"><span class="pre">ollama</span> <span class="pre">pull</span> <span class="pre">qwen3:14b</span></code> for the fallback)</p></li>
 </ul>
 <p>Configuration lives under <code class="docutils literal notranslate"><span class="pre">[doc]</span></code> in the bim config (see <code class="docutils literal notranslate"><span class="pre">DocSettings</span></code>
 for the full schema): <code class="docutils literal notranslate"><span class="pre">paths.business_root</span></code>, <code class="docutils literal notranslate"><span class="pre">paths.vault_root</span></code>,
@@ -374,8 +374,9 @@ human review.</p></li>
 <h3>Zettel v1 shape<a class="headerlink" href="#zettel-v1-shape" title="Link to this heading"></a></h3>
 <p>Both <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">ingest</span></code> and <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">promote</span></code> produce zettels in the v1
 shape: kebab-case keys throughout, single <code class="docutils literal notranslate"><span class="pre">issuer</span></code> field (the human
-display name), ISO-8601 <code class="docutils literal notranslate"><span class="pre">ingested-at</span></code> datetime with offset, absolute
-<code class="docutils literal notranslate"><span class="pre">file://</span></code> link in the body, optional LLM-generated summary paragraph,
+display name), ISO-8601 <code class="docutils literal notranslate"><span class="pre">ingested-at</span></code> datetime with offset, the
+source-file link embedded in the <code class="docutils literal notranslate"><span class="pre">file-path</span></code> frontmatter key as a
+double-quoted Markdown link, optional LLM-generated summary paragraph,
 and per-issuer vault subfolder.</p>
 <div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>---
 id: 20210311083422
@@ -388,9 +389,9 @@ doc-date: 2021-03-11
 doc-amount: 4218.0
 doc-currency: CZK
 doc-language: cs
-ingested-at: 2026-05-04T14:30:15+02:00
+ingested-at: 2026-05-04 14:30:15+02:00
 ingest-source: email
-file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
+file-path: &quot;[Open file](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)&quot;
 file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
 ocr-engine: tesseract
 ocr-mean-confidence: 0.91
@@ -402,8 +403,6 @@ tags:
 <span class="gu">---</span>
 
 <span class="gh"># ČEZ a.s. invoice 7102105594</span>
-
-[<span class="nt">Open PDF</span>](<span class="na">file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf</span>)
 
 Vyúčtování za elektřinu za období 1.1.2021 – 28.2.2021. Splatnost 25.3.2021. Variabilní symbol 7102105594.
 
@@ -421,9 +420,14 @@ Vyúčtování za elektřinu za období 1.1.2021 – 28.2.2021. Splatnost 25.3.2
 <li><p><code class="docutils literal notranslate"><span class="pre">doc-number</span></code> — emitted as a bare integer when the string round-trips
 (<code class="docutils literal notranslate"><span class="pre">str(int(s))</span> <span class="pre">==</span> <span class="pre">s</span></code>); otherwise quoted to preserve leading zeros.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ingested-at</span></code> — tz-aware ISO 8601 with offset, parses with
-<code class="docutils literal notranslate"><span class="pre">datetime.fromisoformat</span></code> on Python 3.10+.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">file-path</span></code> — absolute filesystem path, no <code class="docutils literal notranslate"><span class="pre">~</span></code> segment. The body
-<code class="docutils literal notranslate"><span class="pre">file://</span></code> link URL-encodes spaces but preserves tildes literal.</p></li>
+<code class="docutils literal notranslate"><span class="pre">datetime.fromisoformat</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">file-path</span></code> — a double-quoted Markdown link with text <code class="docutils literal notranslate"><span class="pre">Open</span> <span class="pre">file</span></code>
+wrapping a URL-encoded <code class="docutils literal notranslate"><span class="pre">file://</span></code> URL:
+<code class="docutils literal notranslate"><span class="pre">&quot;[Open</span> <span class="pre">file](file://&lt;URL-encoded-absolute-path&gt;)&quot;</span></code>. The URL encoder
+preserves slashes and tildes (<code class="docutils literal notranslate"><span class="pre">urllib.parse.quote(path,</span> <span class="pre">safe=&quot;/~&quot;)</span></code>);
+spaces become <code class="docutils literal notranslate"><span class="pre">%20</span></code>. Obsidian renders the value as a clickable link in
+the Properties pane. The body carries no <code class="docutils literal notranslate"><span class="pre">[Open</span> <span class="pre">PDF]</span></code> or <code class="docutils literal notranslate"><span class="pre">[Open</span> <span class="pre">file]</span></code>
+line — the link is metadata, not prose.</p></li>
 </ul>
 </section>
 <section id="bim-doc-promote">
@@ -572,8 +576,9 @@ specific fields).</p>
 <li><p>Among same partial-ness, higher <code class="docutils literal notranslate"><span class="pre">priority</span></code> wins.</p></li>
 <li><p>Ties broken by definition order in <code class="docutils literal notranslate"><span class="pre">issuers.yml</span></code>.</p></li>
 </ol>
-<p><strong>Conflict</strong> (two rules of same partial-ness disagreeing on <code class="docutils literal notranslate"><span class="pre">issuer_slug</span></code>)
-sends the document to triage with a <code class="docutils literal notranslate"><span class="pre">rule_conflict:</span> <span class="pre">&lt;id1&gt;</span> <span class="pre">vs</span> <span class="pre">&lt;id2&gt;</span></code> reason.</p>
+<p><strong>Conflict</strong> (two rules of same partial-ness and same priority pinning the
+same field to different values, on any pinned field) sends the document to
+triage with a <code class="docutils literal notranslate"><span class="pre">rule_conflict:</span> <span class="pre">&lt;id1&gt;</span> <span class="pre">vs</span> <span class="pre">&lt;id2&gt;</span></code> reason.</p>
 <p><strong>bim doc rules subcommands:</strong></p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">rules</span> <span class="pre">list</span></code></dt><dd><p>Print all rules with id, issuer, version, partial, priority, enabled.</p>
@@ -594,6 +599,125 @@ most dangerous failure mode.</p>
 </dl>
 <p><strong>Authoring workflow:</strong> write rule → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">validate</span></code> → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">test</span></code>
 on a sample → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">backtest</span></code> to verify no cross-folder hits → deploy.</p>
+</section>
+<section id="bim-doc-audit">
+<h3>bim doc audit<a class="headerlink" href="#bim-doc-audit" title="Link to this heading"></a></h3>
+<p>Read-only walk of the Business folder; reports drift between filed PDFs and
+their corresponding zettels. Never moves, deletes, or rewrites any file.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>doc<span class="w"> </span>audit
+</pre></div>
+</div>
+<p>No flags, no positional arguments. Output is a human-readable summary on
+stdout plus a structured JSON report at
+<code class="docutils literal notranslate"><span class="pre">&lt;state_dir&gt;/audit/&lt;iso-timestamp&gt;.json</span></code>.</p>
+<p><strong>What audit checks for each PDF:</strong></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Check</p></th>
+<th class="head"><p>Pass condition</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Filename canonical</p></td>
+<td><p>Matches <code class="docutils literal notranslate"><span class="pre">&lt;14digits&gt;-&lt;slug&gt;-&lt;title&gt;.&lt;doctype&gt;.&lt;ext&gt;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Issuer registered</p></td>
+<td><p>Folder name is a key in <code class="docutils literal notranslate"><span class="pre">issuers.yml.issuers</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Doc type valid</p></td>
+<td><p>Suffix is in <code class="docutils literal notranslate"><span class="pre">issuers.yml.doc_types</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Zettel exists</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/&lt;doc-subdir&gt;/&lt;issuer-slug&gt;/&lt;basename&gt;.md</span></code> exists</p></td>
+</tr>
+<tr class="row-even"><td><p>OCR present</p></td>
+<td><p>PDF has a text layer (audit uses pdfminer; mean confidence is not
+computed in v1, so the “low OCR confidence” check fires only when a
+confidence reader is plugged in)</p></td>
+</tr>
+<tr class="row-odd"><td><p>sha256 in state.db</p></td>
+<td><p>Document is tracked in the doc subsystem’s processed table</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>What audit checks for the rule engine:</strong></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Check</p></th>
+<th class="head"><p>Pass condition</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Rule file syntax</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">issuers.yml</span></code> parses and validates against the schema</p></td>
+</tr>
+<tr class="row-odd"><td><p>Rule id uniqueness</p></td>
+<td><p>No two rules share an id (across all issuers)</p></td>
+</tr>
+<tr class="row-even"><td><p>Regex compiles</p></td>
+<td><p>All <code class="docutils literal notranslate"><span class="pre">pattern:</span></code> values compile</p></td>
+</tr>
+<tr class="row-odd"><td><p>No conflicts</p></td>
+<td><p>No two enabled rules with same priority whose match clauses can both
+apply to the same document. Static-overlap heuristic: rules whose
+<code class="docutils literal notranslate"><span class="pre">email_from_domain</span></code> lists are disjoint cannot overlap; all other
+clause types (substrings, regex, filename regex) are conservatively
+treated as potentially overlapping because regex/substring
+disjointness is undecidable in general. When both rules pin the same
+<code class="docutils literal notranslate"><span class="pre">extract</span></code> field to statically-different constant values, that
+disagreement is included in the finding detail to help authors
+locate the source of the conflict.</p></td>
+</tr>
+<tr class="row-even"><td><p>Rule freshness</p></td>
+<td><p>Each enabled rule has matched at least one document in the last 90
+days (warning only — never fails the audit)</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reports surfaced in stdout but treated as informational:</strong></p>
+<ul class="simple">
+<li><p>Per-issuer <code class="docutils literal notranslate"><span class="pre">inbox/</span></code> directories with unprocessed PDFs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_triage/</span></code> directory awaiting review.</p></li>
+</ul>
+<p><strong>JSON report contract.</strong> Top-level fields:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">walked_pdf_count</span></code> — every PDF the walker yielded.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">clean_pdf_count</span></code> — PDFs with no findings and no legacy zettel.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">non_clean_pdf_count</span></code> — PDFs with one or more findings, a legacy zettel,
+or both. The pair <code class="docutils literal notranslate"><span class="pre">clean_pdf_count</span></code> / <code class="docutils literal notranslate"><span class="pre">non_clean_pdf_count</span></code> is a true
+partition: <code class="docutils literal notranslate"><span class="pre">clean</span> <span class="pre">+</span> <span class="pre">non_clean</span> <span class="pre">==</span> <span class="pre">walked</span></code>. Consumers cannot derive
+<code class="docutils literal notranslate"><span class="pre">non_clean</span></code> from <code class="docutils literal notranslate"><span class="pre">len(pdf_findings)</span> <span class="pre">+</span> <span class="pre">len(legacy_layout_zettels)</span></code> —
+one PDF can contribute multiple findings and a legacy entry, so that
+arithmetic double-counts.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ocr_confidence_assessable_count</span></code> — PDFs for which the OCR-quality reader
+actually returned a numeric mean confidence (<code class="docutils literal notranslate"><span class="pre">has_text</span></code> and
+<code class="docutils literal notranslate"><span class="pre">confidence</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">None</span></code>). Zero means the reader cannot assess
+confidence at all for this run (the production pdfminer-based reader is
+one such reader); the stdout reporter uses this signal to replace the
+misleading <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">low</span> <span class="pre">OCR</span> <span class="pre">confidence</span></code> row with an explicit <code class="docutils literal notranslate"><span class="pre">low</span> <span class="pre">OCR</span>
+<span class="pre">confidence:</span> <span class="pre">not</span> <span class="pre">assessed</span></code> notice.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pdf_findings</span></code> — one entry <strong>per finding</strong> (not per PDF). A PDF with
+N findings produces N entries that share the same <code class="docutils literal notranslate"><span class="pre">pdf_path</span></code>. Each
+entry carries <code class="docutils literal notranslate"><span class="pre">code</span></code> (one of the <code class="docutils literal notranslate"><span class="pre">PdfFindingCode</span></code> literals,
+including the <code class="docutils literal notranslate"><span class="pre">ocr_check_failed</span></code> / <code class="docutils literal notranslate"><span class="pre">hash_check_failed</span></code> adapter
+failures), <code class="docutils literal notranslate"><span class="pre">issuer_slug</span></code>, <code class="docutils literal notranslate"><span class="pre">doc_type</span></code>, and an optional <code class="docutils literal notranslate"><span class="pre">detail</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">legacy_layout_zettels</span></code> — absolute paths of zettels found at the v0
+flat path <code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/&lt;doc-subdir&gt;/&lt;basename&gt;.md</span></code> rather than the v1
+per-issuer path <code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/&lt;doc-subdir&gt;/&lt;issuer-slug&gt;/&lt;basename&gt;.md</span></code>.
+This array is the input for a future legacy-zettel migration command.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rule_findings</span></code> — registry-loadability errors, priority conflicts,
+and stale-rule warnings.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">issuer_inboxes</span></code> — per-issuer <code class="docutils literal notranslate"><span class="pre">inbox/</span></code> directories with unprocessed
+PDFs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">triage_pending</span></code> — count of <code class="docutils literal notranslate"><span class="pre">.proposed.yml</span></code> files in <code class="docutils literal notranslate"><span class="pre">_triage/</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n_issuers_walked</span></code> — distinct folder slugs the walker entered (top-level
+PDFs contribute the empty slug).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">total_rules_in_registry</span></code> / <code class="docutils literal notranslate"><span class="pre">total_issuers_in_registry</span></code> — registry totals.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">generated_at</span></code> — ISO-8601 timestamp.</p></li>
+</ul>
+<p>A PDF whose zettel is at the legacy flat path is reported in
+<code class="docutils literal notranslate"><span class="pre">legacy_layout_zettels</span></code> rather than as <code class="docutils literal notranslate"><span class="pre">missing_zettel</span></code> and counts
+toward <code class="docutils literal notranslate"><span class="pre">non_clean_pdf_count</span></code>.</p>
 </section>
 </section>
 </section>

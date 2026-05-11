@@ -237,7 +237,7 @@ System dependencies (install separately):
 
 - **Tesseract** (with Czech language pack): ``brew install tesseract tesseract-lang``
 - **OCRmyPDF**: ``brew install ocrmypdf``
-- **Ollama**: ``brew install ollama``, then ``ollama pull qwen2.5:7b-instruct``
+- **Ollama**: ``brew install ollama``, then ``ollama pull qwen3:30b-a3b`` (and ``ollama pull qwen3:14b`` for the fallback)
 
 Configuration lives under ``[doc]`` in the bim config (see ``DocSettings``
 for the full schema): ``paths.business_root``, ``paths.vault_root``,
@@ -286,8 +286,9 @@ Zettel v1 shape
 
 Both ``bim doc ingest`` and ``bim doc promote`` produce zettels in the v1
 shape: kebab-case keys throughout, single ``issuer`` field (the human
-display name), ISO-8601 ``ingested-at`` datetime with offset, absolute
-``file://`` link in the body, optional LLM-generated summary paragraph,
+display name), ISO-8601 ``ingested-at`` datetime with offset, the
+source-file link embedded in the ``file-path`` frontmatter key as a
+double-quoted Markdown link, optional LLM-generated summary paragraph,
 and per-issuer vault subfolder.
 
 .. code-block:: markdown
@@ -303,9 +304,9 @@ and per-issuer vault subfolder.
     doc-amount: 4218.0
     doc-currency: CZK
     doc-language: cs
-    ingested-at: 2026-05-04T14:30:15+02:00
+    ingested-at: 2026-05-04 14:30:15+02:00
     ingest-source: email
-    file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
+    file-path: "[Open file](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)"
     file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
     ocr-engine: tesseract
     ocr-mean-confidence: 0.91
@@ -317,8 +318,6 @@ and per-issuer vault subfolder.
     ---
 
     # ČEZ a.s. invoice 7102105594
-
-    [Open PDF](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)
 
     Vyúčtování za elektřinu za období 1.1.2021 – 28.2.2021. Splatnost 25.3.2021. Variabilní symbol 7102105594.
 
@@ -335,9 +334,14 @@ Reserved frontmatter keys:
 - ``doc-number`` — emitted as a bare integer when the string round-trips
   (``str(int(s)) == s``); otherwise quoted to preserve leading zeros.
 - ``ingested-at`` — tz-aware ISO 8601 with offset, parses with
-  ``datetime.fromisoformat`` on Python 3.10+.
-- ``file-path`` — absolute filesystem path, no ``~`` segment. The body
-  ``file://`` link URL-encodes spaces but preserves tildes literal.
+  ``datetime.fromisoformat``.
+- ``file-path`` — a double-quoted Markdown link with text ``Open file``
+  wrapping a URL-encoded ``file://`` URL:
+  ``"[Open file](file://<URL-encoded-absolute-path>)"``. The URL encoder
+  preserves slashes and tildes (``urllib.parse.quote(path, safe="/~")``);
+  spaces become ``%20``. Obsidian renders the value as a clickable link in
+  the Properties pane. The body carries no ``[Open PDF]`` or ``[Open file]``
+  line — the link is metadata, not prose.
 
 bim doc promote
 ~~~~~~~~~~~~~~~
@@ -494,8 +498,9 @@ All clauses within a rule are ANDed. Source-irrelevant clauses
 2. Among same partial-ness, higher ``priority`` wins.
 3. Ties broken by definition order in ``issuers.yml``.
 
-**Conflict** (two rules of same partial-ness disagreeing on ``issuer_slug``)
-sends the document to triage with a ``rule_conflict: <id1> vs <id2>`` reason.
+**Conflict** (two rules of same partial-ness and same priority pinning the
+same field to different values, on any pinned field) sends the document to
+triage with a ``rule_conflict: <id1> vs <id2>`` reason.
 
 **bim doc rules subcommands:**
 
@@ -520,3 +525,112 @@ sends the document to triage with a ``rule_conflict: <id1> vs <id2>`` reason.
 
 **Authoring workflow:** write rule → ``rules validate`` → ``rules test``
 on a sample → ``rules backtest`` to verify no cross-folder hits → deploy.
+
+bim doc audit
+~~~~~~~~~~~~~
+
+Read-only walk of the Business folder; reports drift between filed PDFs and
+their corresponding zettels. Never moves, deletes, or rewrites any file.
+
+.. code-block:: bash
+
+    bim doc audit
+
+No flags, no positional arguments. Output is a human-readable summary on
+stdout plus a structured JSON report at
+``<state_dir>/audit/<iso-timestamp>.json``.
+
+**What audit checks for each PDF:**
+
+.. list-table::
+   :header-rows: 1
+
+   * - Check
+     - Pass condition
+   * - Filename canonical
+     - Matches ``<14digits>-<slug>-<title>.<doctype>.<ext>``
+   * - Issuer registered
+     - Folder name is a key in ``issuers.yml.issuers``
+   * - Doc type valid
+     - Suffix is in ``issuers.yml.doc_types``
+   * - Zettel exists
+     - ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md`` exists
+   * - OCR present
+     - PDF has a text layer (audit uses pdfminer; mean confidence is not
+       computed in v1, so the "low OCR confidence" check fires only when a
+       confidence reader is plugged in)
+   * - sha256 in state.db
+     - Document is tracked in the doc subsystem's processed table
+
+**What audit checks for the rule engine:**
+
+.. list-table::
+   :header-rows: 1
+
+   * - Check
+     - Pass condition
+   * - Rule file syntax
+     - ``issuers.yml`` parses and validates against the schema
+   * - Rule id uniqueness
+     - No two rules share an id (across all issuers)
+   * - Regex compiles
+     - All ``pattern:`` values compile
+   * - No conflicts
+     - No two enabled rules with same priority whose match clauses can both
+       apply to the same document. Static-overlap heuristic: rules whose
+       ``email_from_domain`` lists are disjoint cannot overlap; all other
+       clause types (substrings, regex, filename regex) are conservatively
+       treated as potentially overlapping because regex/substring
+       disjointness is undecidable in general. When both rules pin the same
+       ``extract`` field to statically-different constant values, that
+       disagreement is included in the finding detail to help authors
+       locate the source of the conflict.
+   * - Rule freshness
+     - Each enabled rule has matched at least one document in the last 90
+       days (warning only — never fails the audit)
+
+**Reports surfaced in stdout but treated as informational:**
+
+* Per-issuer ``inbox/`` directories with unprocessed PDFs.
+* ``_triage/`` directory awaiting review.
+
+**JSON report contract.** Top-level fields:
+
+* ``walked_pdf_count`` — every PDF the walker yielded.
+* ``clean_pdf_count`` — PDFs with no findings and no legacy zettel.
+* ``non_clean_pdf_count`` — PDFs with one or more findings, a legacy zettel,
+  or both. The pair ``clean_pdf_count`` / ``non_clean_pdf_count`` is a true
+  partition: ``clean + non_clean == walked``. Consumers cannot derive
+  ``non_clean`` from ``len(pdf_findings) + len(legacy_layout_zettels)`` —
+  one PDF can contribute multiple findings and a legacy entry, so that
+  arithmetic double-counts.
+* ``ocr_confidence_assessable_count`` — PDFs for which the OCR-quality reader
+  actually returned a numeric mean confidence (``has_text`` and
+  ``confidence is not None``). Zero means the reader cannot assess
+  confidence at all for this run (the production pdfminer-based reader is
+  one such reader); the stdout reporter uses this signal to replace the
+  misleading ``0 low OCR confidence`` row with an explicit ``low OCR
+  confidence: not assessed`` notice.
+* ``pdf_findings`` — one entry **per finding** (not per PDF). A PDF with
+  N findings produces N entries that share the same ``pdf_path``. Each
+  entry carries ``code`` (one of the ``PdfFindingCode`` literals,
+  including the ``ocr_check_failed`` / ``hash_check_failed`` adapter
+  failures), ``issuer_slug``, ``doc_type``, and an optional ``detail``.
+* ``legacy_layout_zettels`` — absolute paths of zettels found at the v0
+  flat path ``<vault>/<doc-subdir>/<basename>.md`` rather than the v1
+  per-issuer path ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``.
+  This array is the input for a future legacy-zettel migration command.
+* ``rule_findings`` — registry-loadability errors, priority conflicts,
+  and stale-rule warnings.
+* ``issuer_inboxes`` — per-issuer ``inbox/`` directories with unprocessed
+  PDFs.
+* ``triage_pending`` — count of ``.proposed.yml`` files in ``_triage/``.
+* ``n_issuers_walked`` — distinct folder slugs the walker entered (top-level
+  PDFs contribute the empty slug).
+* ``total_rules_in_registry`` / ``total_issuers_in_registry`` — registry totals.
+* ``generated_at`` — ISO-8601 timestamp.
+
+A PDF whose zettel is at the legacy flat path is reported in
+``legacy_layout_zettels`` rather than as ``missing_zettel`` and counts
+toward ``non_clean_pdf_count``.
+

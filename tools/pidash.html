@@ -71,6 +71,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#keybindings">Keybindings</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#display">Display</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#claude-code-hooks">Claude Code hooks</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
@@ -121,9 +122,13 @@
 <p><strong>Extra:</strong> <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[pidash]</span></code></p>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pidash<span class="w">                    </span><span class="c1"># multi-session mode (watch all active sessions)</span>
-pidash<span class="w"> </span>/path/to/project<span class="w">   </span><span class="c1"># single-project mode (watch one project)</span>
-pidash<span class="w"> </span>--cleanup<span class="w">          </span><span class="c1"># remove session files older than 24h</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pidash<span class="w">                              </span><span class="c1"># multi-session mode (watch all active sessions)</span>
+pidash<span class="w"> </span>--project-path<span class="w"> </span>/repo<span class="w">         </span><span class="c1"># single-project mode</span>
+pidash<span class="w"> </span>tui<span class="w"> </span>/repo<span class="w">                    </span><span class="c1"># equivalent explicit subcommand form</span>
+pidash<span class="w"> </span>--cleanup<span class="w">                    </span><span class="c1"># remove session files older than 24h</span>
+pidash<span class="w"> </span>hooks<span class="w"> </span>install<span class="w">                </span><span class="c1"># register pidash hooks in ~/.claude/settings.json</span>
+pidash<span class="w"> </span>hooks<span class="w"> </span>status<span class="w">                 </span><span class="c1"># report which hooks are registered</span>
+pidash<span class="w"> </span>hooks<span class="w"> </span>uninstall<span class="w">              </span><span class="c1"># remove pidash-owned entries from settings.json</span>
 </pre></div>
 </div>
 <section id="multi-session-mode">
@@ -136,9 +141,11 @@ Files older than 24 hours are auto-cleaned on startup.</p>
 </section>
 <section id="single-project-mode">
 <h3>Single-project mode<a class="headerlink" href="#single-project-mode" title="Link to this heading"></a></h3>
-<p>Running <code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">/path/to/project</span></code> watches <code class="docutils literal notranslate"><span class="pre">dev/local/autopilot/state.json</span></code>
-in the given directory. This is the original mode, preserved for backward
-compatibility.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">--project-path</span> <span class="pre">/path/to/project</span></code> (or the explicit <code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">tui</span>
+<span class="pre">/path/to/project</span></code> subcommand form) to watch <code class="docutils literal notranslate"><span class="pre">dev/local/autopilot/state.json</span></code>
+in the given directory. The earlier bare-positional form <code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">&lt;path&gt;</span></code> is
+no longer accepted: <code class="docutils literal notranslate"><span class="pre">pidash</span></code> is now a Click group, so the first non-option
+argument is parsed as a subcommand name.</p>
 </section>
 </section>
 <section id="keybindings">
@@ -164,6 +171,63 @@ completed. Cycle rework tasks (<code class="docutils literal notranslate"><span 
 <p><strong>Decisions panel</strong> - autonomous and deferred decisions color-coded by severity
 (critical, high, medium, low).</p>
 <p><strong>Attention banner</strong> - red overlay when autopilot needs a human decision.</p>
+</section>
+<section id="claude-code-hooks">
+<h2>Claude Code hooks<a class="headerlink" href="#claude-code-hooks" title="Link to this heading"></a></h2>
+<p>pidash watches <code class="docutils literal notranslate"><span class="pre">~/.pidash/sessions/</span></code> for session files written by a small set
+of Claude Code hooks. These hooks ship inside the pidash package; you register
+them with one command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pidash<span class="w"> </span>hooks<span class="w"> </span>install
+</pre></div>
+</div>
+<p>This writes (or rewrites) six entries in <code class="docutils literal notranslate"><span class="pre">~/.claude/settings.json</span></code>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Event</p></th>
+<th class="head"><p>Matcher</p></th>
+<th class="head"><p>pidash command</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Notification</p></td>
+<td><p>permission_prompt</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">set-attention</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Notification</p></td>
+<td><p>idle_prompt</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">set-attention</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>PostToolUse</p></td>
+<td><p>TaskUpdate</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">update-tasks</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>PostToolUse</p></td>
+<td><p>Agent</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sync-agent-return</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>PostToolUse</p></td>
+<td><p><em>(default)</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">clear-attention</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Stop</p></td>
+<td><p><em>(default)</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cleanup-session</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Unrelated hook entries (e.g. <code class="docutils literal notranslate"><span class="pre">notify.py</span></code>) are preserved in place. Re-running
+<code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">hooks</span> <span class="pre">install</span></code> is idempotent and detects legacy
+<code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">~/.claude/hooks/&lt;name&gt;.py</span></code> entries left over from earlier dotfiles
+installs, replacing them with <code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">hooks</span> <span class="pre">run</span> <span class="pre">&lt;event&gt;</span></code> entries.</p>
+<p><code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">hooks</span> <span class="pre">status</span></code> reports which of the six entries are currently
+registered and exits non-zero if any are missing. <code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">hooks</span> <span class="pre">uninstall</span></code>
+removes pidash-owned entries (commands starting with the <code class="docutils literal notranslate"><span class="pre">pidash</span> <span class="pre">hooks</span> <span class="pre">run</span></code>
+prefix) and leaves everything else untouched.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">pidash</span></code> binary must be on the PATH that Claude Code uses to spawn hook
+commands. Installing with <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[pidash]</span></code> or
+<code class="docutils literal notranslate"><span class="pre">pipx</span> <span class="pre">install</span> <span class="pre">buvis-gems</span></code> is the common case; a project-local
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--all-extras</span></code> works too, provided that environment is the active
+shell PATH when Claude Code runs.</p>
 </section>
 </section>
 
