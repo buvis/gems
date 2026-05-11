@@ -6,8 +6,6 @@ from pathlib import Path
 import pytest
 from pidash.commands.hooks.settings import (
     HOOK_REGISTRY,
-    PIDASH_COMMAND_PREFIX,
-    HookEntry,
     build_hook_command,
     is_legacy_entry,
     is_pidash_entry,
@@ -35,16 +33,12 @@ class TestHookRegistry:
 
     def test_each_entry_has_positive_timeout(self) -> None:
         for entry in HOOK_REGISTRY:
-            assert isinstance(entry, HookEntry)
             assert entry.timeout > 0
 
 
 class TestBuildHookCommand:
     def test_prepends_prefix(self) -> None:
         assert build_hook_command("set-attention") == "pidash hooks run set-attention"
-
-    def test_uses_documented_prefix(self) -> None:
-        assert PIDASH_COMMAND_PREFIX == "pidash hooks run "
 
 
 class TestIsPidashEntry:

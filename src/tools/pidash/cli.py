@@ -23,8 +23,7 @@ def _launch_tui(project_path: Path | None) -> None:
         from textual import __version__ as _t  # noqa: F401
         from watchfiles import __version__ as _w  # noqa: F401
     except ImportError:
-        click.echo("pidash requires the 'pidash' extra: pip install buvis-gems[pidash]")
-        raise SystemExit(1) from None
+        console.require_import("pidash", "pidash")
 
     from pidash.tui.app import PidashApp
 
@@ -36,6 +35,12 @@ def _launch_tui(project_path: Path | None) -> None:
     app.run()
 
 
+def _validate_project_path(project_path: Path | None) -> Path | None:
+    if project_path is not None and not project_path.is_dir():
+        console.panic(f"project path not found: {project_path}")
+    return project_path
+
+
 @click.group(
     invoke_without_command=True,
     help="Read-only TUI dashboard for autopilot PRD cycle progress",
@@ -45,7 +50,7 @@ def _launch_tui(project_path: Path | None) -> None:
     "--project-path",
     "project_path",
     default=None,
-    type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path),
+    type=click.Path(file_okay=False, resolve_path=True, path_type=Path),
     help="Project root to watch (defaults to multi-session mode).",
 )
 @click.option("--cleanup", is_flag=True, help="Remove session files older than 24h")
@@ -56,7 +61,7 @@ def cli(ctx: click.Context, project_path: Path | None, cleanup: bool) -> None:
         return
     if ctx.invoked_subcommand is not None:
         return
-    _launch_tui(project_path)
+    _launch_tui(_validate_project_path(project_path))
 
 
 @cli.command("tui", help="Launch the dashboard TUI (default action)")
@@ -64,10 +69,10 @@ def cli(ctx: click.Context, project_path: Path | None, cleanup: bool) -> None:
     "project_path",
     default=None,
     required=False,
-    type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path),
+    type=click.Path(file_okay=False, resolve_path=True, path_type=Path),
 )
 def tui(project_path: Path | None) -> None:
-    _launch_tui(project_path)
+    _launch_tui(_validate_project_path(project_path))
 
 
 @cli.group("hooks", help="Manage pidash Claude Code hooks")
@@ -159,7 +164,7 @@ def _cleanup_sessions(max_age_hours: int = 24, *, quiet: bool = False) -> None:
 
     if not SESSIONS_DIR.is_dir():
         if not quiet:
-            click.echo("No sessions directory found.")
+            console.info("No sessions directory found.")
         return
 
     now = time.time()
@@ -170,7 +175,7 @@ def _cleanup_sessions(max_age_hours: int = 24, *, quiet: bool = False) -> None:
             f.unlink()
             removed += 1
     if not quiet:
-        click.echo(f"Removed {removed} stale session file(s).")
+        console.success(f"Removed {removed} stale session file(s).")
 
 
 def _auto_cleanup_sessions() -> None:
