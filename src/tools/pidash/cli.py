@@ -6,36 +6,86 @@ from pathlib import Path
 import click
 from buvis.pybase.configuration import buvis_options
 
-
-@click.command(help="Read-only TUI dashboard for autopilot PRD cycle progress")
-@buvis_options
-@click.argument(
-    "project_path",
-    default=None,
-    required=False,
-    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+_HOOK_EVENTS = (
+    "set-attention",
+    "clear-attention",
+    "cleanup-session",
+    "update-tasks",
+    "sync-agent-return",
 )
-@click.option("--cleanup", is_flag=True, help="Remove session files older than 24h")
-def cli(project_path: str | None, cleanup: bool) -> None:
-    if cleanup:
-        _cleanup_sessions()
-        return
 
+
+def _launch_tui(project_path: Path | None) -> None:
     try:
         from textual import __version__ as _t  # noqa: F401
         from watchfiles import __version__ as _w  # noqa: F401
     except ImportError:
         click.echo("pidash requires the 'pidash' extra: pip install buvis-gems[pidash]")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
     from pidash.tui.app import PidashApp
 
     if project_path is not None:
-        app = PidashApp(project_path=Path(project_path))
+        app = PidashApp(project_path=project_path)
     else:
         _auto_cleanup_sessions()
         app = PidashApp()
     app.run()
+
+
+@click.group(
+    invoke_without_command=True,
+    help="Read-only TUI dashboard for autopilot PRD cycle progress",
+)
+@buvis_options
+@click.option(
+    "--project-path",
+    "project_path",
+    default=None,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path),
+    help="Project root to watch (defaults to multi-session mode).",
+)
+@click.option("--cleanup", is_flag=True, help="Remove session files older than 24h")
+@click.pass_context
+def cli(ctx: click.Context, project_path: Path | None, cleanup: bool) -> None:
+    if cleanup:
+        _cleanup_sessions()
+        return
+    if ctx.invoked_subcommand is not None:
+        return
+    _launch_tui(project_path)
+
+
+@cli.command("tui", help="Launch the dashboard TUI (default action)")
+@click.argument(
+    "project_path",
+    default=None,
+    required=False,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True, path_type=Path),
+)
+def tui(project_path: Path | None) -> None:
+    _launch_tui(project_path)
+
+
+@cli.group("hooks", help="Manage pidash Claude Code hooks")
+def hooks() -> None:
+    pass
+
+
+@hooks.command("run", help="Run a bundled pidash hook by event name")
+@click.argument("event", type=click.Choice(_HOOK_EVENTS))
+def hooks_run(event: str) -> None:
+    if event == "set-attention":
+        from pidash.hooks.set_attention import main as _main
+    elif event == "clear-attention":
+        from pidash.hooks.clear_attention import main as _main
+    elif event == "cleanup-session":
+        from pidash.hooks.cleanup_session import main as _main
+    elif event == "update-tasks":
+        from pidash.hooks.update_tasks import main as _main
+    else:  # sync-agent-return
+        from pidash.hooks.sync_agent_return import main as _main
+    _main()
 
 
 def _cleanup_sessions(max_age_hours: int = 24, *, quiet: bool = False) -> None:

@@ -13,6 +13,7 @@ web = false
 
 [tool.commands]
 watch = "Watch PRD cycle state and display dashboard"
+hooks = "Install or manage pidash Claude Code hooks"
 
 [tool.requirements]
 python = ">=3.10"
