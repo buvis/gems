@@ -106,7 +106,10 @@ _SETTINGS_OPT = click.option(
 def hooks_install(settings_path: Path) -> None:
     from pidash.commands.hooks.install import CommandInstall
 
-    console.report_result(CommandInstall(settings_path=settings_path).execute())
+    result = CommandInstall(settings_path=settings_path).execute()
+    console.report_result(result)
+    if not result.success:
+        raise SystemExit(1)
 
 
 @hooks.command("uninstall", help="Remove pidash hooks from ~/.claude/settings.json")
@@ -114,7 +117,10 @@ def hooks_install(settings_path: Path) -> None:
 def hooks_uninstall(settings_path: Path) -> None:
     from pidash.commands.hooks.uninstall import CommandUninstall
 
-    console.report_result(CommandUninstall(settings_path=settings_path).execute())
+    result = CommandUninstall(settings_path=settings_path).execute()
+    console.report_result(result)
+    if not result.success:
+        raise SystemExit(1)
 
 
 @hooks.command("status", help="Show pidash hook installation status")
@@ -127,6 +133,8 @@ def hooks_status(settings_path: Path) -> None:
     if result.success:
         for row in result.metadata.get("hooks", []):
             console.info(_format_status_row(row))
+    else:
+        raise SystemExit(1)
 
 
 def _format_status_row(row: dict[str, object]) -> str:

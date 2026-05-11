@@ -112,6 +112,7 @@ markers = [
     "vuc: vuc tests",
     "zseq: zseq tests",
     "pidash: pidash tests",
+    "integration: integration tests requiring multiple components",
     "snapshot: snapshot tests",
 ]
 
