@@ -109,13 +109,13 @@ class CommandInstall:
         else:
             data = {}
 
-        existing_hooks = data.get("hooks")
-        if existing_hooks is not None and not isinstance(existing_hooks, dict):
+        if "hooks" in data and not isinstance(data["hooks"], dict):
             return CommandResult(
                 success=False,
-                error=(f"malformed settings.json: `hooks` must be a JSON object, got {type(existing_hooks).__name__}"),
+                error=(f"malformed settings.json: `hooks` must be a JSON object, got {type(data['hooks']).__name__}"),
             )
-        raw_hooks: dict[str, object] = existing_hooks if existing_hooks is not None else {}
+        existing = data.get("hooks")
+        raw_hooks: dict[str, object] = existing if isinstance(existing, dict) else {}
         data["hooks"] = raw_hooks
 
         replaced_total = 0

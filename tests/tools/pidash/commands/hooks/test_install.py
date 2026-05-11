@@ -140,6 +140,17 @@ class TestCommandInstall:
         assert "hooks" in (result.error or "").lower()
         assert target.read_text() == before
 
+    def test_install_on_null_hooks_value_returns_failure(self, tmp_path: Path) -> None:
+        """A JSON ``null`` value for ``hooks`` is malformed-for-our-purposes,
+        like an array or string. The original file must be left untouched."""
+        target = tmp_path / "settings.json"
+        target.write_text(json.dumps({"hooks": None}), encoding="utf-8")
+        before = target.read_text()
+        result = CommandInstall(target).execute()
+        assert not result.success
+        assert "hooks" in (result.error or "").lower()
+        assert target.read_text() == before
+
     def test_install_preserves_unrelated_top_level_keys(self, tmp_path: Path) -> None:
         """Top-level keys other than ``hooks`` (permissions, env, mcpServers, …)
         must round-trip unchanged through both install and uninstall."""
