@@ -56,11 +56,17 @@ def is_pidash_entry(entry: dict[str, object]) -> bool:
 
 
 def is_legacy_entry(entry: dict[str, object]) -> bool:
-    """True when ``entry`` points at one of the legacy ``~/.claude/hooks/*.py`` scripts."""
+    """True when ``entry`` points at one of the legacy ``~/.claude/hooks/*.py`` scripts.
+
+    Matches on the *basename* of each whitespace-separated token in the command
+    string. A bare substring match would falsely fire on commands like
+    ``python3 backup-set-pidash-attention.py`` (where the legacy filename is a
+    proper suffix of an unrelated script name).
+    """
     cmd = entry.get("command", "")
     if not isinstance(cmd, str):
         return False
-    return any(name in cmd for name in LEGACY_HOOK_FILENAMES)
+    return any(Path(token).name in LEGACY_HOOK_FILENAMES for token in cmd.split())
 
 
 def load_settings(path: Path) -> dict[str, object]:

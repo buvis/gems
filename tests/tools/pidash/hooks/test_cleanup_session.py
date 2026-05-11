@@ -58,6 +58,13 @@ class TestCleanupSessionHook:
         _run_with_stdin({"session_id": ""}, mocker)
         assert not (sandbox / "sessions").exists()
 
+    def test_null_byte_session_id_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
+        # Embedded null bytes are not valid in filesystem paths and would raise
+        # ``ValueError`` (not ``OSError``) inside ``tempfile.mkstemp``. Reject
+        # up-front so the hook stays a silent no-op.
+        _run_with_stdin({"session_id": "abc\x00def"}, mocker)
+        assert not (sandbox / "sessions").exists()
+
     def test_path_traversal_in_session_id_is_stripped(self, sandbox: Path, mocker: MockerFixture) -> None:
         """``Path(session_id).name`` must collapse traversal attempts to a basename."""
         _run_with_stdin({"session_id": "../../../etc/passwd"}, mocker)

@@ -75,6 +75,13 @@ class TestIsLegacyEntry:
     def test_unrelated_command_not_legacy(self) -> None:
         assert not is_legacy_entry({"command": "python3 ~/.claude/hooks/notify.py"})
 
+    def test_filename_substring_in_unrelated_script_not_legacy(self) -> None:
+        # A user-written wrapper whose filename happens to end in one of the
+        # legacy script names (e.g. ``backup-set-pidash-attention.py``) must
+        # NOT be flagged: matching is by basename equality, not substring.
+        assert not is_legacy_entry({"command": "python3 ~/scripts/backup-set-pidash-attention.py"})
+        assert not is_legacy_entry({"command": "python3 my-set-pidash-attention.py.bak"})
+
 
 class TestLoadSettings:
     def test_loads_valid_json(self, tmp_path: Path) -> None:
