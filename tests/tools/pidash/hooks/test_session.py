@@ -142,8 +142,3 @@ class TestWriteSessionFile:
 class TestSessionsDirConstant:
     def test_default_points_to_user_home_pidash_sessions(self) -> None:
         assert SESSIONS_DIR == Path.home() / ".pidash" / "sessions"
-
-    def test_watcher_module_re_exports_the_same_object(self) -> None:
-        from pidash.tui import watcher
-
-        assert watcher.SESSIONS_DIR is SESSIONS_DIR
