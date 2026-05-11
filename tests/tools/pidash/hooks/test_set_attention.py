@@ -57,15 +57,40 @@ class TestSetAttentionHook:
         assert state["needs_attention"] is True
 
     def test_mirrors_to_session_file(self, sandbox: Path, mocker: MockerFixture) -> None:
-        _seed_state(sandbox)
+        """Session file shape from PRD happy-path scenario:
+        session_id, cwd, tasks, needs_attention, updated_at."""
+        _seed_state(
+            sandbox,
+            tasks=[
+                {"id": "1", "name": "T", "status": "pending"},
+            ],
+            tasks_total=1,
+            tasks_completed=0,
+        )
         _run_with_stdin({"session_id": "abc", "cwd": str(sandbox)}, mocker)
         session_file = sandbox / "sessions" / "abc.json"
         assert session_file.is_file()
         data = json.loads(session_file.read_text())
-        assert data["needs_attention"] is True
         assert data["session_id"] == "abc"
         assert data["cwd"] == str(sandbox)
+        assert data["needs_attention"] is True
+        assert data["tasks"] == [{"id": "1", "name": "T", "status": "pending"}]
         assert "updated_at" in data
+
+    def test_atomic_write_failure_does_not_corrupt_either_file(self, sandbox: Path, mocker: MockerFixture) -> None:
+        """Both state.json and session-file writes share fate: when
+        ``os.replace`` fails, neither target gets a partial write.
+        The seeded state.json content stays intact."""
+        state_path = _seed_state(sandbox, needs_attention=False)
+        before = state_path.read_text()
+        mocker.patch("os.replace", side_effect=OSError("disk full"))
+        _run_with_stdin({"session_id": "abc", "cwd": str(sandbox)}, mocker)
+        # Original state.json untouched.
+        assert state_path.read_text() == before
+        # No half-written session file.
+        assert not (sandbox / "sessions" / "abc.json").is_file()
+        # No tempfile leak in either directory.
+        assert [p.name for p in state_path.parent.iterdir()] == ["state.json"]
 
     def test_state_missing_is_noop(self, sandbox: Path, mocker: MockerFixture) -> None:
         _run_with_stdin({"session_id": "abc"}, mocker)
