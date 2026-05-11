@@ -6,6 +6,7 @@ from pathlib import Path
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options
+from buvis.pybase.result import CommandResult
 
 _DEFAULT_SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 
@@ -151,11 +152,9 @@ def _format_status_row(row: dict[str, object]) -> str:
     return f"{glyph} {event}/{matcher_str} → {run_event}"
 
 
-def _render_status_failure(result: object) -> None:
-    error = getattr(result, "error", None)
-    metadata = getattr(result, "metadata", {}) or {}
-    console.failure(error or "pidash hooks status: failure")
-    for row in metadata.get("hooks", []):
+def _render_status_failure(result: CommandResult) -> None:
+    console.failure(result.error or "pidash hooks status: failure")
+    for row in result.metadata.get("hooks", []):
         console.info(_format_status_row(row))
 
 
