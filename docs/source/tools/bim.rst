@@ -304,7 +304,7 @@ and per-issuer vault subfolder.
     doc-amount: 4218.0
     doc-currency: CZK
     doc-language: cs
-    ingested-at: 2026-05-04T14:30:15+02:00
+    ingested-at: 2026-05-04 14:30:15+02:00
     ingest-source: email
     file-path: "[Open file](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)"
     file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
