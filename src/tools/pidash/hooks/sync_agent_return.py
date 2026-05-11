@@ -15,7 +15,7 @@ import json
 import re
 from pathlib import Path
 
-from pidash.hooks.session import mirror_to_session_dir, read_hook_input
+from pidash.hooks.session import mirror_to_session_dir, read_hook_input, write_json_atomic
 
 _PREFIX_RE = re.compile(r"^\[(?:C\d+|DOUBT)\]\s*")
 _EN_DASH = "\u2013"
@@ -138,9 +138,6 @@ def main() -> None:
     state["tasks_completed"] = sum(1 for t in tasks if t.get("status") == "completed")
     state["tasks_total"] = len(tasks)
 
-    try:
-        state_file.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        pass  # mirror anyway: legacy behavior
+    write_json_atomic(state_file, state)
 
     mirror_to_session_dir(hook_input, state)

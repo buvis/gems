@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pidash.hooks.session import mirror_to_session_dir, read_hook_input
+from pidash.hooks.session import mirror_to_session_dir, read_hook_input, write_json_atomic
 
 
 def main() -> None:
@@ -23,9 +23,10 @@ def main() -> None:
 
     try:
         state = json.loads(state_file.read_text(encoding="utf-8"))
-        state["needs_attention"] = True
-        state_file.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
     except (json.JSONDecodeError, OSError):
         return
+
+    state["needs_attention"] = True
+    write_json_atomic(state_file, state)
 
     mirror_to_session_dir(hook_input, state)

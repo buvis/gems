@@ -59,6 +59,17 @@ def mirror_to_session_dir(hook_input: dict[str, object], state: dict[str, object
 
 def write_session_file(target: Path, data: dict[str, object]) -> None:
     """Atomically write JSON ``data`` to ``target`` via tempfile + os.replace."""
+    write_json_atomic(target, data)
+
+
+def write_json_atomic(target: Path, data: dict[str, object]) -> None:
+    """Atomically write JSON ``data`` to ``target`` via tempfile + os.replace.
+
+    On any ``OSError`` (full disk, permission denied, etc.) the tempfile is
+    cleaned up and the original ``target`` is left untouched -- no truncated
+    or half-written file. ``target.parent`` is auto-created.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = ""
     try:
         fd, tmp_path = tempfile.mkstemp(dir=target.parent, suffix=".tmp", prefix=f"{target.stem}.")

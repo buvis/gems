@@ -11,6 +11,7 @@ from pidash.hooks.session import (
     SESSIONS_DIR,
     mirror_to_session_dir,
     read_hook_input,
+    write_json_atomic,
     write_session_file,
 )
 
@@ -123,11 +124,11 @@ class TestWriteSessionFile:
         write_session_file(target, {"new": True})
         assert json.loads(target.read_text(encoding="utf-8")) == {"new": True}
 
-    def test_swallows_oserror_when_target_dir_missing(self, tmp_path: Path) -> None:
+    def test_creates_target_parent_when_missing(self, tmp_path: Path) -> None:
         target = tmp_path / "missing-parent" / "out.json"
         write_session_file(target, {"a": 1})
-        assert not target.exists()
-        assert list(tmp_path.iterdir()) == []
+        assert target.is_file()
+        assert json.loads(target.read_text(encoding="utf-8")) == {"a": 1}
 
     def test_cleans_up_tempfile_when_replace_fails(self, tmp_path: Path, mocker: MockerFixture) -> None:
         target = tmp_path / "out.json"
@@ -137,6 +138,32 @@ class TestWriteSessionFile:
         # tempfile must not leak into the target directory
         leftovers = [p for p in tmp_path.iterdir() if p.name.startswith("out.")]
         assert leftovers == []
+
+
+class TestWriteJsonAtomic:
+    def test_preserves_original_file_when_replace_fails(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """A failed mid-write must leave the original target untouched.
+
+        This is the contract that lets hooks safely update ``state.json``:
+        partial-write corruption would destroy autopilot progress tracking.
+        """
+        target = tmp_path / "state.json"
+        target.write_text('{"original": true}\n', encoding="utf-8")
+        original = target.read_text(encoding="utf-8")
+
+        mocker.patch("os.replace", side_effect=OSError("disk full"))
+        write_json_atomic(target, {"new": "data"})
+
+        assert target.read_text(encoding="utf-8") == original
+        leftovers = [p for p in tmp_path.iterdir() if p.name.startswith("state.")]
+        assert leftovers == [target]  # only the original; no tempfile leak
+
+    def test_writes_new_content_on_success(self, tmp_path: Path) -> None:
+        target = tmp_path / "state.json"
+        target.write_text('{"old": true}\n', encoding="utf-8")
+        write_json_atomic(target, {"new": True, "count": 7})
+        data = json.loads(target.read_text(encoding="utf-8"))
+        assert data == {"new": True, "count": 7}
 
 
 class TestSessionsDirConstant:
