@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+import yaml
 from bim.commands.doc.shared.settings_models import ZettelSettings
 from bim.commands.doc.shared.zettel_helpers import compose_zettel_title
 from bim.commands.doc.shared.zettel_writer import (
@@ -216,29 +217,19 @@ class TestBuildZettelBody:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         assert body.startswith(f"# {SAMPLE_TITLE}\n")
 
-    def test_open_pdf_link_uses_file_url(self, frontmatter: DocumentZettelFrontmatter) -> None:
-        body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
-        match = re.search(r"\[Open PDF\]\((file://[^\)]+)\)", body)
-        assert match is not None, "expected file:// link in body"
-        url = match.group(1)
-        assert url.startswith("file://")
-        # Tildes stay literal; spaces are %20-encoded.
-        assert "%20" in url
-        # Round-trip back to the absolute path.
-        decoded = urllib.parse.unquote(url[len("file://") :])
-        assert decoded == SAMPLE_FILE_PATH
-
     def test_summary_paragraph_present_when_provided(self, frontmatter: DocumentZettelFrontmatter) -> None:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT, summary="A monthly electricity invoice.")
-        assert "\nA monthly electricity invoice.\n" in body
+        # Exactly one blank line between H1 and the summary; no link line between them.
+        assert body.startswith(f"# {SAMPLE_TITLE}\n\nA monthly electricity invoice.\n\n"), body[:200]
         # Summary appears before the OCR section.
         assert body.index("A monthly electricity invoice.") < body.index("## OCR text")
 
     def test_summary_paragraph_omitted_when_none(self, frontmatter: DocumentZettelFrontmatter) -> None:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT, summary=None)
+        # Exactly one blank line between H1 and ``## OCR text``; no link line between them.
+        assert body.startswith(f"# {SAMPLE_TITLE}\n\n## OCR text\n"), body[:200]
         # No double-blank-line gap where the summary would be.
         assert "\n\n\n## OCR text" not in body
-        assert "## OCR text" in body
 
     def test_summary_paragraph_omitted_when_empty(self, frontmatter: DocumentZettelFrontmatter) -> None:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT, summary="")
@@ -305,9 +296,16 @@ class TestZettelWriter:
         assert meta["doc-type"] == "invoice"
         assert meta["doc-number"] == 7102105594  # round-trip-safe int
         assert str(meta["doc-date"]).startswith("2021-03-11")
-        # Absolute path; legitimate iCloud tildes inside path components are fine.
-        assert str(meta["file-path"]).startswith("/")
-        assert not str(meta["file-path"]).startswith("~")
+        # file-path is now a double-quoted Markdown link wrapping an absolute URL.
+        # The URL inside, decoded, points at an absolute filesystem path with no
+        # legacy ``~/`` prefix. Legitimate iCloud tildes inside path components
+        # (``com~apple~CloudDocs``) are fine.
+        link = str(meta["file-path"])
+        match = re.match(r"^\[Open file\]\(file://(.+)\)$", link)
+        assert match is not None, link
+        decoded = urllib.parse.unquote(match.group(1))
+        assert decoded.startswith("/"), decoded
+        assert not decoded.startswith("~"), decoded
         assert meta["extraction-method"] == "rule:cez-invoice-2024-template:v1"
         assert isinstance(meta["tags"], list)
         assert "document/invoice" in meta["tags"]
@@ -461,6 +459,37 @@ class TestZettelWriter:
         assert "issuer: ČEZ a.s." in text
         assert "\\u010c" not in text.lower()
 
+    def test_file_path_yaml_value_is_open_file_link(
+        self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter
+    ) -> None:
+        writer = ZettelWriter(
+            repo=None,
+            vault_root=tmp_path,
+            vault_documents_subdir="Zettelkasten/documents",
+        )
+        body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
+        target = writer.write(frontmatter, body, issuer_slug="cez-as")
+        text = target.read_text(encoding="utf-8")
+        block = _frontmatter_block(text)
+
+        # Raw scalar: file-path emitted as a double-quoted Markdown link.
+        assert '\nfile-path: "[Open file](file://' in block, block
+
+        # Parsed scalar: yaml-loaded value matches the link shape.
+        parsed = yaml.safe_load(block)
+        assert isinstance(parsed, dict)
+        link = parsed["file-path"]
+        match = re.match(r"^\[Open file\]\(file://(.+)\)$", link)
+        assert match is not None, link
+
+        # Round-trip: URL inside link decodes back to SAMPLE_FILE_PATH.
+        assert urllib.parse.unquote(match.group(1)) == SAMPLE_FILE_PATH
+
+        # Body carries no source-file link line.
+        body_section = text.split("---\n", 2)[2]
+        assert "[Open PDF]" not in body_section
+        assert "[Open file]" not in body_section
+
     def test_yaml_writes_file_path_as_absolute(self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter) -> None:
         writer = ZettelWriter(
             repo=None,
@@ -470,14 +499,16 @@ class TestZettelWriter:
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
         block = _frontmatter_block(target.read_text(encoding="utf-8"))
-        assert "file-path:" in block
-        # The value starts with ``/`` (absolute), NOT ``~/`` (legacy form).
-        # Embedded tildes inside path components (e.g. iCloud's
-        # ``com~apple~CloudDocs``) are legitimate and not rejected.
-        value_line = block.split("file-path:", 1)[1].split("\n", 1)[0].strip()
-        assert value_line.startswith("/"), value_line
-        assert not value_line.startswith("~"), value_line
-        assert SAMPLE_FILE_PATH in block
+        # Raw scalar must be a double-quoted Markdown link with ``Open file`` text.
+        match = re.search(r'^file-path: "\[Open file\]\(file://([^)]+)\)"$', block, re.MULTILINE)
+        assert match is not None, block
+        # URL inside the link round-trips to the absolute path the writer received.
+        decoded = urllib.parse.unquote(match.group(1))
+        assert decoded == SAMPLE_FILE_PATH
+        # Decoded path is absolute; legitimate tildes inside path components are fine,
+        # but the value does not start with a bare ``~/``.
+        assert decoded.startswith("/"), decoded
+        assert not decoded.startswith("~"), decoded
 
     def test_yaml_emits_ingested_at_with_offset(self, tmp_path: Path, frontmatter: DocumentZettelFrontmatter) -> None:
         writer = ZettelWriter(

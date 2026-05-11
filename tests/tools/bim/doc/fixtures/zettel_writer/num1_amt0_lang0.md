@@ -11,7 +11,7 @@ doc-currency: null
 doc-language: null
 ingested-at: 2026-05-04 14:30:22+02:00
 ingest-source: email
-file-path: /Users/bob/Library/Mobile Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf
+file-path: "[Open file](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)"
 file-sha256: 3f4a8c2b91e7d500000000000000000000000000000000000000000000000000
 ocr-engine: tesseract
 ocr-mean-confidence: 0.91
@@ -23,8 +23,6 @@ tags:
 ---
 
 # ČEZ a.s. invoice 7102105594
-
-[Open PDF](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)
 
 ## OCR text
 

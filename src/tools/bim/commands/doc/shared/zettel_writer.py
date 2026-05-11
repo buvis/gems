@@ -38,6 +38,23 @@ __all__ = [
 ]
 
 
+class _DoubleQuoted(str):
+    """Marker subclass forcing PyYAML to emit the value with style ``"``.
+
+    Used only by ``ZettelWriter._serialize_frontmatter`` to wrap the
+    ``file-path`` Markdown link. The cast happens at serialisation time so
+    every in-process caller of ``DocumentZettelFrontmatter.file_path`` keeps
+    seeing a plain absolute path string.
+    """
+
+
+def _represent_double_quoted(dumper: yaml.SafeDumper, data: _DoubleQuoted) -> yaml.nodes.ScalarNode:
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style='"')
+
+
+yaml.SafeDumper.add_representer(_DoubleQuoted, _represent_double_quoted)
+
+
 _ID_MIN = 10**13
 _ID_MAX = 10**14 - 1
 # llm:<model-name> permits colons in the tail because Ollama's canonical
@@ -172,19 +189,18 @@ def build_zettel_body(
 ) -> str:
     """Compose the Markdown body (everything after the YAML frontmatter).
 
-    v1 layout: ``# {title}``, blank, ``[Open PDF](file://...)``, blank,
-    optional summary paragraph + blank, ``## OCR text``, blank, the existing
-    Obsidian ``> [!quote]- Full text`` callout with each OCR line prefixed
-    by ``> ``. When ``settings.ocr_text_max_chars`` is positive and the OCR
-    text exceeds it, the text is truncated with a Unicode ellipsis appended
-    before the callout is composed.
-    """
-    file_url = "file://" + urllib.parse.quote(frontmatter.file_path, safe="/~")
+    v1 layout: ``# {title}``, blank, optional summary paragraph + blank,
+    ``## OCR text``, blank, the existing Obsidian ``> [!quote]- Full text``
+    callout with each OCR line prefixed by ``> ``. When
+    ``settings.ocr_text_max_chars`` is positive and the OCR text exceeds it,
+    the text is truncated with a Unicode ellipsis appended before the
+    callout is composed.
 
+    The source-file link lives in the ``file-path`` frontmatter key (see
+    ``ZettelWriter._serialize_frontmatter``), not the body.
+    """
     lines: list[str] = [
         f"# {frontmatter.title}",
-        "",
-        f"[Open PDF]({file_url})",
         "",
     ]
 
@@ -258,6 +274,14 @@ class ZettelWriter:
         # strings (which PyYAML auto-quotes when ambiguous with numbers).
         if "doc-number" in payload:
             payload["doc-number"] = _coerce_doc_number(payload["doc-number"])
+        # Wrap file-path as a double-quoted Markdown link at serialisation
+        # time. The in-process attribute (``fm.file_path``) stays a raw
+        # absolute path; only the YAML value is the ``[Open file](file://...)``
+        # form. ``safe="/~"`` preserves slashes and literal tildes; spaces
+        # become ``%20``.
+        raw_path = payload["file-path"]
+        encoded = urllib.parse.quote(raw_path, safe="/~")
+        payload["file-path"] = _DoubleQuoted(f"[Open file](file://{encoded})")
         return yaml.safe_dump(
             payload,
             default_flow_style=False,
