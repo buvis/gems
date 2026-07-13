@@ -92,7 +92,7 @@ jobs:
         run: uv sync --all-extras --group test --group dev
 
       - name: Audit dependencies
-        run: uv run pip-audit --ignore-vuln CVE-2026-4539  # pygments, no fix available yet
+        run: uv run pip-audit --skip-editable --ignore-vuln CVE-2026-4539  # pygments, no fix available yet
 
       - name: Lint & format check
         run: |

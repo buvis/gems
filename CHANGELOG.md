@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **deps**: bump `cryptography`, `idna`, `msgpack`, `pillow`, `pip`, `pydantic-settings`, `soupsieve`, `starlette` to patched versions, closing 20 known CVEs flagged by `pip-audit`.
+
 ## [0.12.0] - 2026-05-11
 
 ### Added
