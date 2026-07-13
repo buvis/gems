@@ -154,6 +154,18 @@ def create(ctx):
 - All user-facing output must route through `console`. No `print()`, `sys.stdout.write()`, `sys.stderr.write()`, `click.echo()`, `click.secho()`, or the Python logging module. Plain writes bypass the buvis prefix markers (`✘`, `✓`, etc.) and become indistinguishable from stray output, which is what makes a missed `console.panic` look like a print statement to the user.
 - Never let raw exceptions (stack traces) reach the user.
 
+## Invariants (evolution guardrails)
+
+These encode the failure classes surfaced by the 2026-07-09 evolution assessment (`dev/local/evolution-assessment-2026-07-09.md`). Each is either **HOLDS** (enforce it) or a **GAP** (a tracked PRD is closing it — write new code to the target state, not the current one).
+
+- **Atomic persistence** — never persist a note, state file, or config with a bare `Path.write_text`/`open(...,"w")`. Use `pybase.filesystem.atomic_write` (tempfile + fsync + `os.replace`). Truncate-then-write loses data on crash/ENOSPC. *GAP → 00041 (helper + note-save + updater); 00049 (pidash).*
+- **Confine request-derived paths** — any filesystem path built from an HTTP request / external input must be `resolve()`d and asserted under an allowed root before read/write/delete/open. Network-facing servers must have auth + `TrustedHostMiddleware`. *GAP → 00042 (bim serve).*
+- **The library stays interface-agnostic** — `src/lib/buvis/pybase/` must not import a UI framework at module import time or emit output outside the console adapter. No import-time Click monkey-patching, no `sys.exit`/`click.echo`/`print` in lib code. A TUI/API/WebUI process must be able to `import` settings without pulling Click. *GAP → 00052.*
+- **One action, one implementation across interfaces** — CLI/TUI/API/WebUI adapters must drive the same command class / use case through the composition root and return `CommandResult`; do not reimplement business logic per interface (dot's TUI is the anti-pattern; bim's serve action registry is the exemplar). *GAP → 00051 design doc, then 00053/00054.*
+- **Claim/lifecycle release on any exit** — resource claims and locks release in `finally` (or catch `BaseException`), never only `except Exception`; `KeyboardInterrupt` must not leak a claim. *GAP → 00044.*
+- **`CommandResult` discipline** — commands return `CommandResult`; the CLI/adapter layer renders it (`console.report_result`) and maps exit/HTTP status. No `sys.exit`/`console.panic` inside command classes. *HOLDS in `src/tools/*/commands/**` — keep it.*
+- **Clean-architecture layering + tool isolation** — zettel `domain → application → infrastructure → integrations` one-directional; no cross-tool imports; no `src/lib → src/tools`. *HOLDS — keep it.*
+
 ## Testing
 
 - pytest + pytest-mock + pytest-cov
