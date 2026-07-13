@@ -156,7 +156,7 @@ def create(ctx):
 
 ## Invariants (evolution guardrails)
 
-These encode the failure classes surfaced by the 2026-07-09 evolution assessment (`dev/local/evolution-assessment-2026-07-09.md`). Each is either **HOLDS** (enforce it) or a **GAP** (a tracked PRD is closing it — write new code to the target state, not the current one).
+These encode the failure classes surfaced by the 2026-07-09 evolution assessment (`dev/local/audit-results/evolution-assessment-2026-07-09.md`). Each is either **HOLDS** (enforce it) or a **GAP** (a tracked PRD is closing it — write new code to the target state, not the current one).
 
 - **Atomic persistence** — never persist a note, state file, or config with a bare `Path.write_text`/`open(...,"w")`. Use `pybase.filesystem.atomic_write` (tempfile + fsync + `os.replace`). Truncate-then-write loses data on crash/ENOSPC. *GAP → 00041 (helper + note-save + updater); 00049 (pidash).*
 - **Confine request-derived paths** — any filesystem path built from an HTTP request / external input must be `resolve()`d and asserted under an allowed root before read/write/delete/open. Network-facing servers must have auth + `TrustedHostMiddleware`. *GAP → 00042 (bim serve).*
