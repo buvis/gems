@@ -125,11 +125,12 @@ class TestBimDocAudit:
 
         assert result.exit_code == 0
         assert "Audit complete." in result.output
-        # The Rich console may line-wrap long paths in success output; assert
-        # on the report-path basename rather than the full absolute path so
-        # the test is wrap-tolerant.
+        # The Rich console may line-wrap long paths in success output, including
+        # inside the filename itself (e.g. splitting "2026-" from "01-01.json"
+        # on the hyphen); strip newlines before checking so the test tolerates
+        # any wrap point, not just wraps between path segments.
         assert "Report:" in result.output
-        assert report_path.name in result.output
+        assert report_path.name in result.output.replace("\n", "")
 
     def test_doc_audit_writes_json_report(self, runner: CliRunner, tmp_path: Path) -> None:
         settings = _bim_settings_with_doc(tmp_path)
