@@ -128,6 +128,9 @@ shell’s PATH still points at, so it must not run before the other lookups.</p>
 fresh in the background) so brew cask installs don’t stop for a password
 mid-flight. Declining the prompt is fine; steps that need sudo will then
 prompt on their own as before.</p>
+<p>The helm step updates repos only when <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">repo</span> <span class="pre">list</span></code> shows at least
+one; an empty list reports a clean skip instead of helm’s “no repositories
+found” error.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>mac
 </pre></div>
 </div>
