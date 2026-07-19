@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-07-19
+
 ### Fixed
 
 - **sysup**: `sysup mac` no longer reports a failed helm step on machines with no helm repositories configured — an empty `helm repo list` now reports "no helm repos configured, skipping" instead of helm's "no repositories found" error.
@@ -382,7 +384,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.2...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.3...HEAD
+[0.12.3]: https://github.com/buvis/gems/compare/gems-v0.12.2...gems-v0.12.3
 [0.12.2]: https://github.com/buvis/gems/compare/gems-v0.12.1...gems-v0.12.2
 [0.12.1]: https://github.com/buvis/gems/compare/gems-v0.12.0...gems-v0.12.1
 [0.12.0]: https://github.com/buvis/gems/compare/gems-v0.11.1...gems-v0.12.0
