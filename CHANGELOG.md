@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **sysup**: `sysup mac` caches sudo credentials upfront (`sudo -v` plus a background refresh) so brew cask installs no longer stop for a password mid-run; the prompt now appears once, predictably, at the start.
+
 ## [0.12.1] - 2026-07-19
 
 ### Fixed

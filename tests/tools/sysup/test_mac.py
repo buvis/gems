@@ -13,6 +13,9 @@ class TestCommandMac:
     def _result(args: list[str], returncode: int = 0, stderr: str = "") -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args=args, returncode=returncode, stdout="", stderr=stderr)
 
+    def _sudo(self, returncode: int = 0) -> subprocess.CompletedProcess[str]:
+        return self._result(["/usr/local/bin/sudo", "-v"], returncode=returncode)
+
     def test_all_steps_succeed(self, mocker) -> None:
         mocker.patch(
             "sysup.commands.mac.mac.shutil.which",
@@ -22,6 +25,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
@@ -56,6 +60,64 @@ class TestCommandMac:
 
         assert mock_run.call_args_list[-1].args[0] == ["/usr/local/bin/mise", "upgrade"]
 
+    def test_sudo_primed_before_steps(self, mocker) -> None:
+        """Credentials are cached upfront so brew casks don't prompt mid-run."""
+        mocker.patch(
+            "sysup.commands.mac.mac.shutil.which",
+            side_effect=lambda name: f"/usr/local/bin/{name}",
+        )
+        mock_run = mocker.patch("sysup.commands.mac.mac.subprocess.run")
+        mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
+        mock_pip.return_value.execute.return_value = []
+        mock_run.return_value = self._result([], returncode=0)
+
+        CommandMac().execute()
+
+        assert mock_run.call_args_list[0].args[0] == ["/usr/local/bin/sudo", "-v"]
+
+    def test_sudo_missing_skips_prime(self, mocker) -> None:
+        mapping = {
+            "brew": "/usr/local/bin/brew",
+            "mise": "/usr/local/bin/mise",
+            "npm-check": "/usr/local/bin/npm-check",
+            "uv": "/usr/local/bin/uv",
+            "helm": "/usr/local/bin/helm",
+        }
+        mocker.patch("sysup.commands.mac.mac.shutil.which", side_effect=lambda name: mapping.get(name))
+        mock_run = mocker.patch("sysup.commands.mac.mac.subprocess.run")
+        mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
+        mock_pip.return_value.execute.return_value = []
+        mock_run.return_value = self._result([], returncode=0)
+
+        steps = CommandMac().execute()
+
+        assert mock_run.call_args_list[0].args[0] == ["/usr/local/bin/brew", "update"]
+        assert any(s.label == "brew" and s.success for s in steps)
+
+    def test_sudo_prime_declined_continues(self, mocker) -> None:
+        """A declined or failed sudo prompt must not block the update run."""
+        mocker.patch(
+            "sysup.commands.mac.mac.shutil.which",
+            side_effect=lambda name: f"/usr/local/bin/{name}",
+        )
+        mock_run = mocker.patch("sysup.commands.mac.mac.subprocess.run")
+        mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
+        mock_pip.return_value.execute.return_value = []
+        mock_run.side_effect = [
+            self._sudo(returncode=1),
+            self._result(["/usr/local/bin/brew", "update"]),
+            self._result(["/usr/local/bin/brew", "upgrade"]),
+            self._result(["/usr/local/bin/brew", "cleanup"]),
+            self._result(["/usr/local/bin/npm-check", "-gu"]),
+            self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
+        ]
+
+        steps = CommandMac().execute()
+
+        assert any(s.label == "brew" and s.success for s in steps)
+
     def test_brew_missing_raises(self, mocker) -> None:
         mocker.patch("sysup.commands.mac.mac.shutil.which", return_value=None)
 
@@ -71,6 +133,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"], returncode=1, stderr="boom"),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
@@ -121,6 +184,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
@@ -146,6 +210,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
@@ -174,6 +239,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"], returncode=1, stderr="upgrade fail"),
             # cleanup is skipped due to break
@@ -198,6 +264,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"], returncode=1, stderr="cleanup fail"),
@@ -222,6 +289,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"], returncode=1, stderr=""),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
@@ -244,6 +312,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
@@ -294,6 +363,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
@@ -320,6 +390,7 @@ class TestCommandMac:
         mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
+            self._sudo(),
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),

@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import threading
+from typing import TYPE_CHECKING
 
 from buvis.pybase.result import FatalError
 
 from sysup.commands.step_result import StepResult
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class CommandMac:
@@ -14,6 +19,13 @@ class CommandMac:
         if brew_path is None:
             raise FatalError("brew not found")
 
+        stop_sudo_refresh = self._prime_sudo()
+        try:
+            return self._run_steps(brew_path)
+        finally:
+            stop_sudo_refresh()
+
+    def _run_steps(self: CommandMac, brew_path: str) -> list[StepResult]:
         steps: list[StepResult] = []
 
         brew_ok = True
@@ -41,6 +53,29 @@ class CommandMac:
         steps.extend(self._run_optional("mise", ["mise", "upgrade"], "mise"))
 
         return steps
+
+    def _prime_sudo(self: CommandMac) -> Callable[[], None]:
+        """Cache sudo credentials upfront so brew casks don't prompt mid-run.
+
+        Returns a stop callback for the background refresher that keeps the
+        ticket fresh past sudo's 5-minute timeout. A missing sudo or a declined
+        prompt is not an error: later steps then prompt as before.
+        """
+        sudo_path = shutil.which("sudo")
+        if sudo_path is None:
+            return lambda: None
+        prime = subprocess.run([sudo_path, "-v"], check=False)
+        if prime.returncode != 0:
+            return lambda: None
+
+        stop = threading.Event()
+
+        def refresh() -> None:
+            while not stop.wait(60):
+                subprocess.run([sudo_path, "-n", "-v"], capture_output=True, check=False)
+
+        threading.Thread(target=refresh, daemon=True).start()
+        return stop.set
 
     def _run_optional(self: CommandMac, binary: str, command: list[str], label: str) -> list[StepResult]:
         binary_path = shutil.which(binary)

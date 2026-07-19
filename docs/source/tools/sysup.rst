@@ -17,6 +17,11 @@ Steps run in order: brew, npm-check, pip, uv tools, helm repos, and mise
 last — mise upgrade deletes replaced tool version directories that the
 shell's PATH still points at, so it must not run before the other lookups.
 
+The run caches sudo credentials first (one upfront password prompt, kept
+fresh in the background) so brew cask installs don't stop for a password
+mid-flight. Declining the prompt is fine; steps that need sudo will then
+prompt on their own as before.
+
 .. code-block:: bash
 
     sysup mac
