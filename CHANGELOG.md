@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-07-19
+
 ### Added
 
 - **sysup**: `sysup mac` caches sudo credentials upfront (`sudo -v` plus a background refresh) so brew cask installs no longer stop for a password mid-run; the prompt now appears once, predictably, at the start.
@@ -376,7 +378,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.2...HEAD
+[0.12.2]: https://github.com/buvis/gems/compare/gems-v0.12.1...gems-v0.12.2
 [0.12.1]: https://github.com/buvis/gems/compare/gems-v0.12.0...gems-v0.12.1
 [0.12.0]: https://github.com/buvis/gems/compare/gems-v0.11.1...gems-v0.12.0
 [0.11.1]: https://github.com/buvis/gems/compare/gems-v0.11.0...gems-v0.11.1
