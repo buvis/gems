@@ -25,10 +25,10 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -39,6 +39,22 @@ class TestCommandMac:
         assert "npm-check" in labels
         assert "uv tools" in labels
         assert "helm repos" in labels
+
+    def test_mise_runs_last(self, mocker) -> None:
+        """Regression: mise upgrade deletes old tool version dirs still referenced
+        by the inherited PATH, so it must run after every other tool lookup."""
+        mocker.patch(
+            "sysup.commands.mac.mac.shutil.which",
+            side_effect=lambda name: f"/usr/local/bin/{name}",
+        )
+        mock_run = mocker.patch("sysup.commands.mac.mac.subprocess.run")
+        mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
+        mock_pip.return_value.execute.return_value = []
+        mock_run.return_value = self._result([], returncode=0)
+
+        CommandMac().execute()
+
+        assert mock_run.call_args_list[-1].args[0] == ["/usr/local/bin/mise", "upgrade"]
 
     def test_brew_missing_raises(self, mocker) -> None:
         mocker.patch("sysup.commands.mac.mac.shutil.which", return_value=None)
@@ -56,10 +72,10 @@ class TestCommandMac:
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
             self._result(["/usr/local/bin/brew", "update"], returncode=1, stderr="boom"),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -108,10 +124,10 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"], returncode=1, stderr="mise broken"),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"], returncode=1, stderr="mise broken"),
         ]
 
         steps = CommandMac().execute()
@@ -133,10 +149,10 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         CommandMac().execute()
@@ -161,10 +177,10 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"], returncode=1, stderr="upgrade fail"),
             # cleanup is skipped due to break
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -185,10 +201,10 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"], returncode=1, stderr="cleanup fail"),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -207,10 +223,10 @@ class TestCommandMac:
         mock_pip.return_value.execute.return_value = []
         mock_run.side_effect = [
             self._result(["/usr/local/bin/brew", "update"], returncode=1, stderr=""),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -231,10 +247,10 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"], returncode=1, stderr=""),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"], returncode=1, stderr=""),
         ]
 
         steps = CommandMac().execute()
@@ -258,9 +274,9 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -281,12 +297,12 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             subprocess.CompletedProcess(
                 args=["/usr/local/bin/npm-check", "-gu"], returncode=1, stdout=None, stderr=None
             ),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -307,10 +323,10 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
             self._result(["/usr/local/bin/helm", "repo", "update"], returncode=1, stderr="helm error"),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()
@@ -334,9 +350,9 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"]),
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
-            self._result(["/usr/local/bin/mise", "upgrade"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
 
         steps = CommandMac().execute()

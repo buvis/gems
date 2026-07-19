@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **deps**: bump `cryptography`, `idna`, `msgpack`, `pillow`, `pip`, `pydantic-settings`, `soupsieve`, `starlette` to patched versions, closing 20 known CVEs flagged by `pip-audit`.
 - **sysup**: `sysup nvim` no longer crashes with a raw traceback when a concurrent `mise upgrade` replaces the nvim binary mid-run — the path is re-resolved before each step and a vanished binary reports a failed step instead. Terminal escape sequences are also stripped from the mason timeout message.
+- **sysup**: the pip step now upgrades every mise-managed Python (PATH `python3` as fallback) instead of sysup's own interpreter — under a mise pipx install that venv is uv-built and has no pip, so `sysup mac`/`sysup pip` always failed with "No module named pip". Interpreters without pip are reported and skipped.
+- **sysup**: `sysup mac` runs `mise upgrade` last. Running it early deleted replaced tool version directories still referenced by the shell's PATH, making later steps falsely report `uv not found` / `helm not found`.
 
 ## [0.12.0] - 2026-05-11
 

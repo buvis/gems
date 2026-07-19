@@ -27,7 +27,6 @@ class CommandMac:
         if brew_ok:
             steps.append(StepResult("brew", success=True))
 
-        steps.extend(self._run_optional("mise", ["mise", "upgrade"], "mise"))
         steps.extend(self._run_optional_interactive("npm-check", ["npm-check", "-gu"], "npm-check"))
 
         from sysup.commands.pip.pip import CommandPip
@@ -36,6 +35,10 @@ class CommandMac:
 
         steps.extend(self._run_optional("uv", ["uv", "tool", "upgrade", "--all"], "uv tools"))
         steps.extend(self._run_optional("helm", ["helm", "repo", "update"], "helm repos"))
+
+        # mise upgrade deletes replaced tool version dirs that the inherited PATH
+        # still points at, so it must run after every other tool lookup.
+        steps.extend(self._run_optional("mise", ["mise", "upgrade"], "mise"))
 
         return steps
 

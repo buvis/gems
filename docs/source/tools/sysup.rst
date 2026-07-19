@@ -13,6 +13,10 @@ sysup mac
 
 Run macOS system and tooling updates. Only available on macOS.
 
+Steps run in order: brew, npm-check, pip, uv tools, helm repos, and mise
+last — mise upgrade deletes replaced tool version directories that the
+shell's PATH still points at, so it must not run before the other lookups.
+
 .. code-block:: bash
 
     sysup mac
@@ -20,7 +24,9 @@ Run macOS system and tooling updates. Only available on macOS.
 sysup pip
 ~~~~~~~~~
 
-Upgrade pip and outdated Python packages.
+Upgrade pip and outdated packages in every mise-managed Python (falls back
+to the ``python3`` on PATH when mise is absent). Interpreters without pip,
+such as uv-built venvs, are reported and skipped.
 
 .. code-block:: bash
 
