@@ -121,13 +121,18 @@
 <section id="sysup-mac">
 <h3>sysup mac<a class="headerlink" href="#sysup-mac" title="Link to this heading"></a></h3>
 <p>Run macOS system and tooling updates. Only available on macOS.</p>
+<p>Steps run in order: brew, npm-check, pip, uv tools, helm repos, and mise
+last — mise upgrade deletes replaced tool version directories that the
+shell’s PATH still points at, so it must not run before the other lookups.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>mac
 </pre></div>
 </div>
 </section>
 <section id="sysup-pip">
 <h3>sysup pip<a class="headerlink" href="#sysup-pip" title="Link to this heading"></a></h3>
-<p>Upgrade pip and outdated Python packages.</p>
+<p>Upgrade pip and outdated packages in every mise-managed Python (falls back
+to the <code class="docutils literal notranslate"><span class="pre">python3</span></code> on PATH when mise is absent). Interpreters without pip,
+such as uv-built venvs, are reported and skipped.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>pip
 </pre></div>
 </div>
