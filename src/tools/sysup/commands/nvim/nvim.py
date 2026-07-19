@@ -54,29 +54,39 @@ class CommandNvim:
         self: CommandNvim,
         on_step_start: Callable[[str], None] | None = None,
     ) -> Iterator[StepResult]:
-        nvim_path = shutil.which("nvim")
-        if nvim_path is None:
-            raise FatalError("nvim not found")
-
+        nvim_path = self._resolve_nvim()
         if on_step_start:
             on_step_start("lazy")
         yield self._sync_lazy(nvim_path)
 
+        nvim_path = self._resolve_nvim()
         if on_step_start:
             on_step_start("mason")
         yield self._update_mason(nvim_path)
 
+        nvim_path = self._resolve_nvim()
         if on_step_start:
             on_step_start("treesitter")
         yield self._update_treesitter(nvim_path)
 
+    def _resolve_nvim(self: CommandNvim) -> str:
+        # Re-resolved before every step: a concurrent `mise upgrade` deletes
+        # the version-pinned install dir a single startup resolution points at.
+        nvim_path = shutil.which("nvim")
+        if nvim_path is None:
+            raise FatalError("nvim not found")
+        return nvim_path
+
     def _sync_lazy(self: CommandNvim, nvim_path: str) -> StepResult:
-        result = subprocess.run(
-            [nvim_path, "--headless", "+Lazy! sync", "+qa"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [nvim_path, "--headless", "+Lazy! sync", "+qa"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            return StepResult("lazy", success=False, message=f"lazy sync failed: {exc}")
         if result.returncode == 0:
             return StepResult("lazy", success=True)
         message = result.stderr.strip() or "unknown error"
@@ -107,13 +117,18 @@ class CommandNvim:
             parts = [f"mason update timed out after {self.MASON_TIMEOUT}s"]
             raw = exc.stderr or exc.stdout or b""
             captured = raw.decode(errors="replace").strip() if isinstance(raw, bytes) else raw.strip()
+            captured = _ANSI_ESCAPE_RE.sub("", captured).strip()
             if captured:
                 parts.append(captured)
             tail = self._read_mason_log_tail()
             if tail:
                 parts.append(f"mason.log tail:\n{tail}")
             return StepResult("mason", success=False, message="\n".join(parts))
+        except OSError as exc:
+            return StepResult("mason", success=False, message=f"mason update failed: {exc}")
+        return self._parse_mason_result(result)
 
+    def _parse_mason_result(self: CommandNvim, result: subprocess.CompletedProcess[str]) -> StepResult:
         stdout = result.stdout or ""
         stderr = result.stderr or ""
         combined = (stdout + ("\n" if stdout and stderr else "") + stderr).strip()
@@ -147,12 +162,15 @@ class CommandNvim:
         return StepResult("mason", success=True)
 
     def _update_treesitter(self: CommandNvim, nvim_path: str) -> StepResult:
-        result = subprocess.run(
-            [nvim_path, "--headless", "+TSUpdateSync", "+qa"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [nvim_path, "--headless", "+TSUpdateSync", "+qa"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            return StepResult("treesitter", success=False, message=f"treesitter update failed: {exc}")
         if result.returncode == 0:
             return StepResult("treesitter", success=True)
         message = result.stderr.strip() or "unknown error"

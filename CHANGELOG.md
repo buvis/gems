@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **deps**: bump `cryptography`, `idna`, `msgpack`, `pillow`, `pip`, `pydantic-settings`, `soupsieve`, `starlette` to patched versions, closing 20 known CVEs flagged by `pip-audit`.
+- **sysup**: `sysup nvim` no longer crashes with a raw traceback when a concurrent `mise upgrade` replaces the nvim binary mid-run — the path is re-resolved before each step and a vanished binary reports a failed step instead. Terminal escape sequences are also stripped from the mason timeout message.
 
 ## [0.12.0] - 2026-05-11
 

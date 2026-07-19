@@ -415,6 +415,59 @@ class TestCommandNvim:
         assert "301" in lines
         assert "300" not in lines
 
+    def test_treesitter_stale_nvim_path_returns_failure(self, mocker) -> None:
+        """A concurrent mise upgrade can delete the resolved nvim binary
+        mid-run; the step must fail as a StepResult, not raise."""
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/mise/nvim/0.12.2/bin/nvim")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        mock_run.side_effect = [
+            self._result(),
+            self._result(stdout="mason DONE\n"),
+            FileNotFoundError(2, "No such file or directory"),
+        ]
+
+        steps = list(CommandNvim().execute())
+
+        assert len(steps) == 3
+        assert not steps[2].success
+        assert "treesitter update failed" in steps[2].message
+
+    def test_reresolves_nvim_before_each_step(self, mocker) -> None:
+        which = mocker.patch(
+            "sysup.commands.nvim.nvim.shutil.which",
+            side_effect=["/old/nvim", "/old/nvim", "/new/nvim"],
+        )
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run", return_value=self._result())
+
+        list(CommandNvim().execute())
+
+        assert which.call_count == 3
+        assert mock_run.call_args_list[2].args[0][0] == "/new/nvim"
+
+    def test_nvim_vanishing_mid_run_raises_fatal(self, mocker) -> None:
+        mocker.patch(
+            "sysup.commands.nvim.nvim.shutil.which",
+            side_effect=["/usr/local/bin/nvim", None],
+        )
+        mocker.patch("sysup.commands.nvim.nvim.subprocess.run", return_value=self._result())
+
+        with pytest.raises(FatalError, match="nvim not found"):
+            list(CommandNvim().execute())
+
+    def test_mason_timeout_strips_ansi_from_captured_output(self, mocker) -> None:
+        mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
+        mocker.patch.object(CommandNvim, "_read_mason_log_tail", return_value="")
+        mock_run = mocker.patch("sysup.commands.nvim.nvim.subprocess.run")
+        exc = subprocess.TimeoutExpired(cmd="nvim", timeout=300)
+        exc.stdout = b"\x1b]1337;SetUserVar=IS_NVIM=dHJ1ZQ==\x07installing foo\n"
+        mock_run.side_effect = [self._result(), exc, self._result()]
+
+        steps = list(CommandNvim().execute())
+
+        assert not steps[1].success
+        assert "installing foo" in steps[1].message
+        assert "1337" not in steps[1].message
+
     def test_on_step_start_callback(self, mocker) -> None:
         mocker.patch("sysup.commands.nvim.nvim.shutil.which", return_value="/usr/local/bin/nvim")
         mocker.patch("sysup.commands.nvim.nvim.subprocess.run", return_value=self._result())
