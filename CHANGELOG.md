@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-07-19
+
 ### Fixed
 
 - **deps**: bump `cryptography`, `idna`, `msgpack`, `pillow`, `pip`, `pydantic-settings`, `soupsieve`, `starlette` to patched versions, closing 20 known CVEs flagged by `pip-audit`.
@@ -370,7 +372,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.1...HEAD
+[0.12.1]: https://github.com/buvis/gems/compare/gems-v0.12.0...gems-v0.12.1
 [0.12.0]: https://github.com/buvis/gems/compare/gems-v0.11.1...gems-v0.12.0
 [0.11.1]: https://github.com/buvis/gems/compare/gems-v0.11.0...gems-v0.11.1
 [0.11.0]: https://github.com/buvis/gems/compare/gems-v0.10.0...gems-v0.11.0
