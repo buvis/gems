@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import threading
@@ -46,7 +47,7 @@ class CommandMac:
         steps.extend(CommandPip().execute())
 
         steps.extend(self._run_optional("uv", ["uv", "tool", "upgrade", "--all"], "uv tools"))
-        steps.extend(self._run_optional("helm", ["helm", "repo", "update"], "helm repos"))
+        steps.extend(self._run_helm())
 
         # mise upgrade deletes replaced tool version dirs that the inherited PATH
         # still points at, so it must run after every other tool lookup.
@@ -76,6 +77,32 @@ class CommandMac:
 
         threading.Thread(target=refresh, daemon=True).start()
         return stop.set
+
+    def _run_helm(self: CommandMac) -> list[StepResult]:
+        """`helm repo update` errors when no repos are configured; treat that as a no-op.
+
+        A failing or unparseable repo list falls through to the update so real
+        problems still surface as a failed step.
+        """
+        helm_path = shutil.which("helm")
+        if helm_path is None:
+            return [StepResult("helm repos", success=False, message="helm not found, skipping")]
+
+        listing = subprocess.run(
+            [helm_path, "repo", "list", "-o", "json"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if listing.returncode == 0:
+            try:
+                repos = json.loads(listing.stdout)
+            except json.JSONDecodeError:
+                repos = None
+            if repos == []:
+                return [StepResult("helm repos", success=True, message="no helm repos configured, skipping")]
+
+        return self._run_optional("helm", ["helm", "repo", "update"], "helm repos")
 
     def _run_optional(self: CommandMac, binary: str, command: list[str], label: str) -> list[StepResult]:
         binary_path = shutil.which(binary)

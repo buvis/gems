@@ -22,6 +22,10 @@ fresh in the background) so brew cask installs don't stop for a password
 mid-flight. Declining the prompt is fine; steps that need sudo will then
 prompt on their own as before.
 
+The helm step updates repos only when ``helm repo list`` shows at least
+one; an empty list reports a clean skip instead of helm's "no repositories
+found" error.
+
 .. code-block:: bash
 
     sysup mac

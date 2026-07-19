@@ -10,11 +10,27 @@ from sysup.commands.mac.mac import CommandMac
 
 class TestCommandMac:
     @staticmethod
-    def _result(args: list[str], returncode: int = 0, stderr: str = "") -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(args=args, returncode=returncode, stdout="", stderr=stderr)
+    def _result(
+        args: list[str],
+        returncode: int = 0,
+        stdout: str = "",
+        stderr: str = "",
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args=args, returncode=returncode, stdout=stdout, stderr=stderr)
 
     def _sudo(self, returncode: int = 0) -> subprocess.CompletedProcess[str]:
         return self._result(["/usr/local/bin/sudo", "-v"], returncode=returncode)
+
+    def _helm_list(
+        self,
+        repos_json: str = '[{"name":"stable"}]',
+        returncode: int = 0,
+    ) -> subprocess.CompletedProcess[str]:
+        return self._result(
+            ["/usr/local/bin/helm", "repo", "list", "-o", "json"],
+            returncode=returncode,
+            stdout=repos_json,
+        )
 
     def test_all_steps_succeed(self, mocker) -> None:
         mocker.patch(
@@ -31,6 +47,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -110,6 +127,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -137,6 +155,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"], returncode=1, stderr="boom"),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -164,6 +183,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
         ]
 
@@ -190,6 +210,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"], returncode=1, stderr="mise broken"),
         ]
@@ -216,6 +237,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -245,6 +267,7 @@ class TestCommandMac:
             # cleanup is skipped due to break
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -270,6 +293,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"], returncode=1, stderr="cleanup fail"),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -293,6 +317,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "update"], returncode=1, stderr=""),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -318,6 +343,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"], returncode=1, stderr=""),
         ]
@@ -344,6 +370,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -371,6 +398,7 @@ class TestCommandMac:
                 args=["/usr/local/bin/npm-check", "-gu"], returncode=1, stdout=None, stderr=None
             ),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -396,6 +424,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
             self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"], returncode=1, stderr="helm error"),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]
@@ -405,6 +434,63 @@ class TestCommandMac:
         helm_step = next(s for s in steps if s.label == "helm repos")
         assert helm_step.success is False
         assert "helm error" in helm_step.message
+
+    def test_helm_no_repos_skips_update(self, mocker) -> None:
+        """Regression: an empty helm repo list is a benign no-op, not a red failure."""
+        mocker.patch(
+            "sysup.commands.mac.mac.shutil.which",
+            side_effect=lambda name: f"/usr/local/bin/{name}",
+        )
+        mock_run = mocker.patch("sysup.commands.mac.mac.subprocess.run")
+        mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
+        mock_pip.return_value.execute.return_value = []
+        mock_run.side_effect = [
+            self._sudo(),
+            self._result(["/usr/local/bin/brew", "update"]),
+            self._result(["/usr/local/bin/brew", "upgrade"]),
+            self._result(["/usr/local/bin/brew", "cleanup"]),
+            self._result(["/usr/local/bin/npm-check", "-gu"]),
+            self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(repos_json="[]"),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
+        ]
+
+        steps = CommandMac().execute()
+
+        helm_step = next(s for s in steps if s.label == "helm repos")
+        assert helm_step.success is True
+        assert "no helm repos" in helm_step.message
+        update_calls = [
+            call_item
+            for call_item in mock_run.call_args_list
+            if call_item.args[0] == ["/usr/local/bin/helm", "repo", "update"]
+        ]
+        assert update_calls == []
+
+    def test_helm_list_error_still_updates(self, mocker) -> None:
+        """A failing repo list must not mask a real problem: run the update anyway."""
+        mocker.patch(
+            "sysup.commands.mac.mac.shutil.which",
+            side_effect=lambda name: f"/usr/local/bin/{name}",
+        )
+        mock_run = mocker.patch("sysup.commands.mac.mac.subprocess.run")
+        mock_pip = mocker.patch("sysup.commands.pip.pip.CommandPip")
+        mock_pip.return_value.execute.return_value = []
+        mock_run.side_effect = [
+            self._sudo(),
+            self._result(["/usr/local/bin/brew", "update"]),
+            self._result(["/usr/local/bin/brew", "upgrade"]),
+            self._result(["/usr/local/bin/brew", "cleanup"]),
+            self._result(["/usr/local/bin/npm-check", "-gu"]),
+            self._result(["/usr/local/bin/uv", "tool", "upgrade", "--all"]),
+            self._helm_list(repos_json="", returncode=1),
+            self._result(["/usr/local/bin/helm", "repo", "update"]),
+            self._result(["/usr/local/bin/mise", "upgrade"]),
+        ]
+
+        steps = CommandMac().execute()
+
+        assert any(s.label == "helm repos" and s.success for s in steps)
 
     def test_uv_missing(self, mocker) -> None:
         mapping = {
@@ -422,6 +508,7 @@ class TestCommandMac:
             self._result(["/usr/local/bin/brew", "upgrade"]),
             self._result(["/usr/local/bin/brew", "cleanup"]),
             self._result(["/usr/local/bin/npm-check", "-gu"]),
+            self._helm_list(),
             self._result(["/usr/local/bin/helm", "repo", "update"]),
             self._result(["/usr/local/bin/mise", "upgrade"]),
         ]

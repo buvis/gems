@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **sysup**: `sysup mac` no longer reports a failed helm step on machines with no helm repositories configured — an empty `helm repo list` now reports "no helm repos configured, skipping" instead of helm's "no repositories found" error.
+
 ## [0.12.2] - 2026-07-19
 
 ### Added
