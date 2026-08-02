@@ -29,3 +29,29 @@ class TestMorphDeblanFatalErrorPropagation:
         mock_cmd_cls.return_value.execute.side_effect = FatalError("Broken pipe")
         result = runner.invoke(cli, ["deblank", str(pdf)])
         assert "Broken pipe" in result.output
+
+
+class TestMorphPdf2PngImportError:
+    def test_pdf2png_import_error(self, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+
+        mod_key = "morph.commands.pdf2png.pdf2png"
+        saved = sys.modules.pop(mod_key, None)
+        try:
+            with patch.dict(sys.modules, {mod_key: None}):
+                result = runner.invoke(cli, ["pdf2png", str(pdf)])
+                assert "requires the 'morph' extra" in result.output
+        finally:
+            if saved is not None:
+                sys.modules[mod_key] = saved
+
+
+class TestMorphPdf2PngFatalErrorPropagation:
+    @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png")
+    def test_pdf2png_execute_raises_fatal_error(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        mock_cmd_cls.return_value.execute.side_effect = FatalError("Broken pipe")
+        result = runner.invoke(cli, ["pdf2png", str(pdf)])
+        assert "Broken pipe" in result.output

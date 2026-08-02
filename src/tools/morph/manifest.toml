@@ -14,6 +14,7 @@ web = false
 [tool.commands]
 html2md = "Convert HTML files to Markdown"
 deblank = "Remove blank pages from PDFs"
+pdf2png = "Convert PDF pages into one stacked PNG"
 
 [tool.requirements]
 python = ">=3.10"

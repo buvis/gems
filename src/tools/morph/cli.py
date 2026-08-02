@@ -53,5 +53,30 @@ def deblank(files: tuple[str, ...]) -> None:
     console.report_result(result)
 
 
+@cli.command("pdf2png", help="Convert PDF pages into one stacked PNG")
+@click.argument("files", nargs=-1, required=True, type=click.Path())
+@click.option("--dpi", default=200, show_default=True, help="Render resolution in DPI")
+def pdf2png(files: tuple[str, ...], dpi: int) -> None:
+    for f in files:
+        if not Path(f).is_file():
+            console.panic(f"file not found: {f}")
+            return
+
+    try:
+        from morph.commands.pdf2png.pdf2png import CommandPdf2Png
+    except ImportError:
+        console.require_import("morph")
+        return
+
+    try:
+        cmd = CommandPdf2Png(files=files, dpi=dpi)
+        result = cmd.execute()
+    except FatalError as error:
+        console.panic(str(error))
+        return
+
+    console.report_result(result)
+
+
 if __name__ == "__main__":
     cli()

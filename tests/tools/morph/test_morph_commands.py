@@ -91,3 +91,56 @@ class TestMorphDeblanCommand:
         pdf.write_bytes(b"%PDF-1.4")
         result = runner.invoke(cli, ["deblank", str(pdf)])
         assert "Missing tools" in result.output
+
+
+class TestMorphPdf2PngCommand:
+    @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png")
+    def test_pdf2png_success(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=True, output="Processed 1 file")
+        result = runner.invoke(cli, ["pdf2png", str(pdf)])
+        assert result.exit_code == 0
+        assert "Processed 1 file" in result.output
+
+    @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png")
+    def test_pdf2png_success_no_output(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=True)
+        result = runner.invoke(cli, ["pdf2png", str(pdf)])
+        assert result.exit_code == 0
+
+    @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png")
+    def test_pdf2png_failure(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="render failed")
+        result = runner.invoke(cli, ["pdf2png", str(pdf)])
+        assert result.exit_code == 0
+
+    @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png")
+    def test_pdf2png_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(
+            success=True, output="Processed 1 file", warnings=["skipped bad.pdf"]
+        )
+        result = runner.invoke(cli, ["pdf2png", str(pdf)])
+        assert result.exit_code == 0
+
+    @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png")
+    def test_pdf2png_dpi_option(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=True, output="Processed 1 file")
+        result = runner.invoke(cli, ["pdf2png", "--dpi", "300", str(pdf)])
+        assert result.exit_code == 0
+        mock_cmd_cls.assert_called_once_with(files=(str(pdf),), dpi=300)
+
+    @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png", side_effect=FatalError("Missing tool"))
+    def test_pdf2png_fatal_error(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        result = runner.invoke(cli, ["pdf2png", str(pdf)])
+        assert "Missing tool" in result.output

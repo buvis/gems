@@ -104,6 +104,7 @@ all = [
     { name = "markdownify" },
     { name = "ocrmypdf" },
     { name = "pdfminer-six" },
+    { name = "pillow" },
     { name = "ping3" },
     { name = "pyfiglet" },
     { name = "python-slugify" },
@@ -141,6 +142,7 @@ hello-world = [
 ]
 morph = [
     { name = "markdownify" },
+    { name = "pillow" },
 ]
 muc = [
     { name = "ffmpeg-python" },
@@ -192,6 +194,7 @@ requires-dist = [
     { name = "ocrmypdf", marker = "extra == 'doc'", specifier = ">=16,<17" },
     { name = "packaging", specifier = ">=24.0" },
     { name = "pdfminer-six", marker = "extra == 'doc'", specifier = ">=20240706" },
+    { name = "pillow", marker = "extra == 'morph'", specifier = ">=12.3,<13" },
     { name = "ping3", marker = "extra == 'pinger'", specifier = ">=5.1.5,<6" },
     { name = "pydantic", specifier = ">=2.0,<3" },
     { name = "pydantic-settings", specifier = ">=2.0,<3" },

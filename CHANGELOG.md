@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **morph**: `morph pdf2png` command — renders every page of a PDF into one tall stacked PNG (poppler `pdftoppm` + Pillow).
+
 ## [0.12.3] - 2026-07-19
 
 ### Fixed

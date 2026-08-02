@@ -10,6 +10,7 @@ class TestMorphCli:
         assert result.exit_code == 0
         assert "html2md" in result.output
         assert "deblank" in result.output
+        assert "pdf2png" in result.output
 
     def test_html2md_help(self, runner) -> None:
         result = runner.invoke(cli, ["html2md", "--help"])
@@ -18,5 +19,10 @@ class TestMorphCli:
 
     def test_deblank_help(self, runner) -> None:
         result = runner.invoke(cli, ["deblank", "--help"])
+
+        assert result.exit_code == 0
+
+    def test_pdf2png_help(self, runner) -> None:
+        result = runner.invoke(cli, ["pdf2png", "--help"])
 
         assert result.exit_code == 0
