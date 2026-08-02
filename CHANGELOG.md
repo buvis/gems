@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-08-02
+
 ### Added
 
 - **morph**: `morph pdf2png` command — renders every page of a PDF into one tall stacked PNG (poppler `pdftoppm` + Pillow).
@@ -388,7 +390,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.3...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.4...HEAD
+[0.12.4]: https://github.com/buvis/gems/compare/gems-v0.12.3...gems-v0.12.4
 [0.12.3]: https://github.com/buvis/gems/compare/gems-v0.12.2...gems-v0.12.3
 [0.12.2]: https://github.com/buvis/gems/compare/gems-v0.12.1...gems-v0.12.2
 [0.12.1]: https://github.com/buvis/gems/compare/gems-v0.12.0...gems-v0.12.1
