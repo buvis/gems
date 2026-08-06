@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **gems**: publish a source distribution alongside the wheels, so package indexes that list versions from `.tar.gz` filenames (Artifactory mirrors, mise's `pipx` backend) can see new releases.
+
 ## [0.12.4] - 2026-08-02
 
 ### Added

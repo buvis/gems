@@ -57,10 +57,16 @@ jobs:
           rm -rf dist
           mv dist-repaired dist
 
+      # One sdist for the whole release: indexes that list versions from
+      # .tar.gz filenames (Artifactory, mise's pipx backend) need it.
+      - name: Build sdist
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: uv build --sdist
+
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: dist/*.whl
+          path: dist/*
 
   publish:
     needs: build-wheels
@@ -79,7 +85,7 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
         with:
-          subject-path: dist/*.whl
+          subject-path: dist/*
 
       - name: Publish
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
@@ -126,4 +132,5 @@ jobs:
           body_path: release-notes.md
           files: |
             dist/*.whl
+            dist/*.tar.gz
             dist/*.cdx.json
