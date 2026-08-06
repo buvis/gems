@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.6] - 2026-08-06
+
 ### Security
 
 - **deps**: bump `cryptography` 49.0.0 -> 50.0.0 (PYSEC-2026-3552), pulled in by `pdfminer.six`.
@@ -400,7 +402,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.5...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.6...HEAD
+[0.12.6]: https://github.com/buvis/gems/compare/gems-v0.12.5...gems-v0.12.6
 [0.12.5]: https://github.com/buvis/gems/compare/gems-v0.12.4...gems-v0.12.5
 [0.12.4]: https://github.com/buvis/gems/compare/gems-v0.12.3...gems-v0.12.4
 [0.12.3]: https://github.com/buvis/gems/compare/gems-v0.12.2...gems-v0.12.3
