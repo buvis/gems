@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **deps**: bump `cryptography` 49.0.0 -> 50.0.0 (PYSEC-2026-3552), pulled in by `pdfminer.six`.
+
 ## [0.12.5] - 2026-08-06
 
 ### Fixed
