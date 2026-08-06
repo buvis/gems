@@ -46,7 +46,7 @@ A reader needs to know up front which species a file belongs to, because the val
 
 **A source document is a Markdown file that holds the full body of one external content item, plus frontmatter that records the item's form and provenance.**
 
-- Lives in `sources/YYYY-MM/` (or `sources/archive/YYYY-MM/` after the derived zettels have been approved).
+- Lives in `sources/YYYY-MM/` (or `sources/archive/YYYY-MM/` once ingest has committed; the move is part of ingest's atomic commit).
 - Filename is descriptive kebab-case: `article-resilience-patterns.md`, `book-meditations-marcus-aurelius.md`, `quote-aurelius-confine-to-present.md`. Filenames stay readable to match the Web Clipper output and to give the user a recognizable file in `ls`.
 - The `id` field equals the filename without `.md`.
 - Body is the source's words: the article text, the book chapter, the quoted passage, the transcript. Cleaned of navigation cruft and ads but otherwise unchanged.
@@ -113,7 +113,9 @@ Zettels live under `wiki/notes/` relative to the root (section 10). The director
 
 Maps of Content (MOCs) live under `wiki/mocs/` and use kebab-case slugs as filenames (`architecture.md`, `self.md`, `reading-list.md`). Trail files live under `wiki/trails/` with the same compact format: `YYYYMMDDHHmmSS.md`.
 
-The internal format of MOC and trail files is deliberately not specified here yet; it is an open question for Klyreon's requirements. This spec governs only their location and filename rules.
+A trail is the journal of one autonomous run: every ingest and maintain run writes exactly one, recording sources ingested, zettels created, each conflict and the shape it resolved into, promotions, and prune candidates or prunes. Roadmap query sessions will write the same shape.
+
+The internal format of MOC and trail files is deliberately not specified here yet; it is an open item for Klyreon's design. This spec governs their location, filename rules, and (for trails) the run-journal purpose above.
 
 ### 3.2 Source document filenames
 
@@ -133,9 +135,9 @@ Examples:
 
 The filename is chosen at capture time and SHOULD remain readable. It usually includes the type (article, book, etc.) followed by a slug derived from the title or source. The `id` field equals the filename without `.md`.
 
-Source documents live under `sources/YYYY-MM/` initially. After the derived zettels have been approved and committed, the source document moves to `sources/archive/YYYY-MM/`. The archived path is what zettels reference, so the link is stable.
+Source documents live under `sources/YYYY-MM/` initially. Ingest is archive-first: it resolves the archive path up front, every derived zettel cites `sources/archive/YYYY-MM/...` from birth, and the physical move lands in the same atomic commit as the zettels. "Archived" therefore means "ingest committed", not "approved by a human". A failed ingest applies nothing: the source stays in `sources/YYYY-MM/` and no zettel references it.
 
-Open question for the requirements phase: a zettel created before its source is archived either cites the archive path (dangling until the move) or the live path (broken by the move). The resolution - validator grace for pre-archive paths, cite-live-then-rewrite at archival, or archive-first ingest - is not yet specified.
+Resolved (discovery Q15/Q16): archive-first ingest. Because zettels cite the archive path from birth and the move is atomic with them, no committed vault state contains a dangling source path, and the validator stays strict with no two-location fallback.
 
 ## 4. Overall layout
 
@@ -323,9 +325,9 @@ The commonplacing distillation state. Closed enumeration.
 | `literature` | Distilled per-source. Structured. Cited from one source, rendered in the vault's voice. |
 | `evergreen` | Generalized across sources. Can stand alone without the source open in the next tab. |
 
-Promotion and pruning are rule-driven maintenance operations and MAY run automatically; a human decision always overrides. A `fleeting` zettel that has earned links or corroboration over a maintenance window is a candidate for `literature`. A `literature` zettel cited by multiple sources and rewritten for general use is a candidate for `evergreen`.
+Promotion is a rule-driven maintenance operation and MAY run automatically; pruning detection MAY run automatically, but deletion is opt-in (below); a human decision always overrides. A `fleeting` zettel that has earned links or corroboration over a maintenance window is a candidate for `literature`. A `literature` zettel cited by multiple sources and rewritten for general use is a candidate for `evergreen`.
 
-The inverse also holds: a `fleeting` zettel still orphaned and uncorroborated at the end of the window is a pruning candidate. Pruning deletes the file and cleans inbound references; git history is the archive. Two exemptions: `assent: rejected` zettels (the record of what was considered and refused) and zettels carrying a non-empty `delivered-as` (deleting one breaks the provenance of work that already shipped). Exact windows and thresholds belong to the operational design.
+The inverse also holds: a `fleeting` zettel still orphaned and uncorroborated at the end of the window is a pruning candidate. Pruning is report-only by default: maintenance lists candidates but deletes nothing until the owner enables pruning in configuration, at which point the window defaults to 365 days. When enabled, pruning deletes the file and cleans inbound references; git history is the archive. Two exemptions: `assent: rejected` zettels (the record of what was considered and refused) and zettels carrying a non-empty `delivered-as` (deleting one breaks the provenance of work that already shipped). Remaining thresholds belong to the operational design.
 
 ### 7.4 Why the three dimensions are orthogonal
 
@@ -551,14 +553,14 @@ The root is a directory that contains at minimum:
 ├── sources/
 │   ├── YYYY-MM/        # unprocessed source documents
 │   └── archive/
-│       └── YYYY-MM/    # source documents whose derived zettels have been approved
+│       └── YYYY-MM/    # source documents whose ingest has committed
 └── wiki/
     ├── notes/          # zettels (concept and utility)
     ├── mocs/           # maps of content (the loci "rooms")
-    └── trails/         # session logs
+    └── trails/         # run journals (one per ingest/maintain run)
 ```
 
-Of the other directories that may appear under `wiki/`, only `assets/` is used by this spec (image downloads, section 11.2). Anything else (`arrangements/`, wiki-level files such as `index.md`, `log.md`, `lint-report.md`) belongs to Klyreon's operational design, specified separately; it is an open item for the requirements phase.
+Of the other directories that may appear under `wiki/`, only `assets/` is used by this spec (image downloads, section 11.2). Anything else (`arrangements/`, wiki-level files such as `index.md`, `log.md`, `lint-report.md`) belongs to Klyreon's operational design, specified separately; v1 ships none of them - status and validate compute on demand and print.
 
 ### 10.3 External links
 
@@ -689,7 +691,7 @@ window.
 [... rest of the article body ...]
 ````
 
-This file is the raw material. It has no `concept-type`, no `assent`, no `lifecycle`, no `links`, no `mocs`. It lives in `sources/2026-04/article-resilience-patterns.md` and moves to `sources/archive/2026-04/article-resilience-patterns.md` after its derived concept zettels are approved.
+This file is the raw material. It has no `concept-type`, no `assent`, no `lifecycle`, no `links`, no `mocs`. It lives in `sources/2026-04/article-resilience-patterns.md` and moves to `sources/archive/2026-04/article-resilience-patterns.md` in the same atomic commit that lands its derived concept zettels.
 
 ### 12.2 Concept zettel derived from the article
 
