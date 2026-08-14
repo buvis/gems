@@ -81,10 +81,8 @@ impl From<serde_yml::Value> for YamlValue {
             serde_yml::Value::Number(n) => {
                 if let Some(i) = n.as_i64() {
                     YamlValue::Int(i)
-                } else if let Some(f) = n.as_f64() {
-                    YamlValue::Float(f)
                 } else {
-                    YamlValue::Null
+                    YamlValue::Float(n.as_f64())
                 }
             }
             serde_yml::Value::String(s) => {
@@ -119,19 +117,11 @@ impl From<serde_yml::Value> for YamlValue {
                 YamlValue::List(seq.into_iter().map(YamlValue::from).collect())
             }
             serde_yml::Value::Mapping(m) => {
-                let map: IndexMap<String, YamlValue> = m
-                    .into_iter()
-                    .filter_map(|(k, v)| {
-                        let key = match k {
-                            serde_yml::Value::String(s) => s,
-                            other => format!("{:?}", other),
-                        };
-                        Some((key, YamlValue::from(v)))
-                    })
-                    .collect();
+                let map: IndexMap<String, YamlValue> =
+                    m.into_iter().map(|(k, v)| (k, YamlValue::from(v))).collect();
                 YamlValue::Dict(map)
             }
-            serde_yml::Value::Tagged(tagged) => YamlValue::from(tagged.value),
+            serde_yml::Value::Tagged(tagged) => YamlValue::from(tagged.value().clone()),
         }
     }
 }

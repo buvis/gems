@@ -66,9 +66,7 @@ fn yaml_to_map(val: serde_yml::Value) -> IndexMap<String, YamlValue> {
 
     if let serde_yml::Value::Mapping(mapping) = val {
         for (k, v) in mapping {
-            if let serde_yml::Value::String(key) = k {
-                map.insert(key, YamlValue::from(v));
-            }
+            map.insert(k, YamlValue::from(v));
         }
     }
 

@@ -93,10 +93,7 @@ fn merge_reference_list(val: serde_yml::Value) -> IndexMap<String, YamlValue> {
     for item in items {
         if let serde_yml::Value::Mapping(mapping) = item {
             for (k, v) in mapping {
-                let key = match k {
-                    serde_yml::Value::String(s) => s.trim_end_matches(':').to_string(),
-                    _ => continue,
-                };
+                let key = k.trim_end_matches(':').to_string();
                 let value = YamlValue::from(v);
 
                 if let Some(existing) = map.get_mut(&key) {
