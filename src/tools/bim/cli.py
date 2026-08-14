@@ -104,7 +104,7 @@ def format_note(
     paths: tuple[str, ...],
     query_file: str | None,
     query_string: str | None,
-    output: None | Path,
+    output: Path | None,
     **kwargs: Any,
 ) -> None:
     resolved = resolve_paths(ctx, paths, query_file, query_string)

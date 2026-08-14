@@ -266,7 +266,7 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
         )
         @click.pass_context
         @functools.wraps(f)
-        def wrapper(  # noqa: PLR0913  # receives all buvis_options Click params
+        def wrapper(  # noqa: PLR0913, PLR0917  # receives all buvis_options Click params
             ctx: click.Context,
             debug: bool | None,
             log_level: str | None,
