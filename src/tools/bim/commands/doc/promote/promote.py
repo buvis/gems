@@ -217,7 +217,7 @@ class CommandPromote:
                 vault_dir=self._settings.paths.vault_root / self._settings.paths.vault_documents_subdir,
             )
         except ValueError as exc:
-            return CommandResult(success=False, error=f"collision resolution failed: {exc}")
+            return CommandResult(success=False, error=f"could not build a canonical filename: {exc}")
         except OSError as exc:
             return CommandResult(success=False, error=f"filesystem error while resolving the filename collision: {exc}")
 
