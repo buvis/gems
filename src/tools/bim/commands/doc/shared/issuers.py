@@ -14,9 +14,9 @@ import os
 from pathlib import Path
 
 import yaml
+from buvis.pybase.filesystem import atomic_write_text
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.naming import SLUG_REGEX, slugify
 from bim.commands.doc.shared.rules.models import Rule
 
