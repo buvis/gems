@@ -28,7 +28,7 @@ from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.issuers import register_issuer
-from bim.commands.doc.shared.naming import build_canonical_filename, slugify
+from bim.commands.doc.shared.naming import resolve_collision, slugify
 from bim.commands.doc.shared.pipeline_helpers import PromoteFrontmatterContext, build_promote_frontmatter
 from bim.commands.doc.shared.state_db import ProcessedRow
 from bim.commands.doc.shared.triage import read_proposal, validate_for_promote
@@ -206,21 +206,21 @@ class CommandPromote:
         zk_timestamp = self._zk_timestamp(proposal.document.date or proposal.zettel_preview.ingested_at.date())
 
         try:
-            canonical_filename = build_canonical_filename(
+            canonical_filename, resolved_zk_timestamp, target_pdf = resolve_collision(
                 zk_timestamp=zk_timestamp,
                 issuer_slug=proposal.issuer.slug,
                 title_or_number=title_slug,
                 doc_type=proposal.document.type,
+                business_root=self._settings.paths.business_root,
+                vault_dir=self._settings.paths.vault_root / self._settings.paths.vault_documents_subdir,
             )
         except ValueError as exc:
-            return CommandResult(success=False, error=f"canonical filename failed: {exc}")
+            return CommandResult(success=False, error=f"collision resolution failed: {exc}")
 
-        target_pdf = self._settings.paths.business_root / proposal.issuer.slug / canonical_filename
-        target_pdf.parent.mkdir(parents=True, exist_ok=True)
         return _NamePlan(
             canonical_filename=canonical_filename,
             target_pdf=target_pdf,
-            zk_timestamp=zk_timestamp,
+            zk_timestamp=resolved_zk_timestamp,
         )
 
     # --------- stage 5: write zettel, move pdf, record processed, delete proposal ---------
