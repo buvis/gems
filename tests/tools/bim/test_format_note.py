@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -174,6 +175,13 @@ class TestCommandFormatNote:
     ) -> None:
         """UnicodeEncodeError writing output file returns failure."""
         output_path = tmp_path / "out.md"
+        real_fdopen = os.fdopen
+
+        def break_write(*args, **kwargs):
+            handle = real_fdopen(*args, **kwargs)
+            handle.write = MagicMock(side_effect=UnicodeEncodeError("utf-8", "", 0, 1, "bad"))
+            return handle
+
         with (
             patch("bim.commands.format_note.format_note.ReadZettelUseCase") as mock_reader_cls,
             patch("bim.commands.format_note.format_note.PrintZettelUseCase") as mock_printer_cls,
@@ -188,7 +196,7 @@ class TestCommandFormatNote:
                 formatter=MagicMock(),
             )
 
-            with patch.object(Path, "write_text", side_effect=UnicodeEncodeError("utf-8", "", 0, 1, "bad")):
+            with patch("buvis.pybase.filesystem.atomic_write.os.fdopen", side_effect=break_write):
                 result = cmd.execute()
 
         assert result.success is False
