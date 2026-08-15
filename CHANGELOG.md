@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `sync`, `format`, and the WebUI's PATCH endpoint now write notes atomically instead of each using their own bare write, so an interrupted write no longer truncates them.
 - **pybase**: updater state is now written atomically, so an interrupted update can no longer leave the shared state JSON torn.
 - **bim**: `doc promote` no longer overwrites an already-filed document and its zettel when a second document resolves to the same canonical filename — it files the newcomer under the next free name, and fails without writing anything if no free name is available.
+- **bim**: `doc promote` reports a filesystem failure while picking the filed name (read-only vault, permissions, disk full) as a plain error message instead of crashing with a stack trace.
 
 ## [0.12.6] - 2026-08-06
 

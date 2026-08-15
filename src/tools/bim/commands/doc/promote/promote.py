@@ -216,6 +216,8 @@ class CommandPromote:
             )
         except ValueError as exc:
             return CommandResult(success=False, error=f"collision resolution failed: {exc}")
+        except OSError as exc:
+            return CommandResult(success=False, error=f"filesystem error while resolving the filename collision: {exc}")
 
         return _NamePlan(
             canonical_filename=canonical_filename,
