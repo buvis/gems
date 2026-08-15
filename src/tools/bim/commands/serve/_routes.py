@@ -114,7 +114,11 @@ class AdhocQueryBody(BaseModel):
 
 
 @router.post("/queries/{name}/exec")
-async def exec_query(name: str, request: Request) -> dict[str, Any]:
+async def exec_query(
+    name: str,
+    request: Request,
+    _: None = Depends(require_token),
+) -> dict[str, Any]:
     if name.endswith((".yaml", ".yml")):
         raise HTTPException(status_code=404, detail=f"Unknown query: {name}")
     directory = _get_directory(request)
@@ -127,9 +131,18 @@ async def exec_query(name: str, request: Request) -> dict[str, Any]:
 
 
 @router.post("/queries/_adhoc")
-async def exec_adhoc(body: AdhocQueryBody, request: Request) -> dict[str, Any]:
+async def exec_adhoc(
+    body: AdhocQueryBody,
+    request: Request,
+    _: None = Depends(require_token),
+) -> dict[str, Any]:
     directory = _get_directory(request)
     spec = parse_query_spec(body.spec)
+    if spec.source.directory is not None:
+        confine_path(spec.source.directory, request.app.state)
+    for lookup in getattr(spec, "lookups", None) or []:
+        if lookup.source.directory is not None:
+            confine_path(lookup.source.directory, request.app.state)
     return _run_query(spec, directory)
 
 

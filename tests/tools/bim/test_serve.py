@@ -176,7 +176,10 @@ class TestServeQueries:
             mock_resolve.return_value = Path("/tmp/query.yaml")
             mock_parse.return_value = query_spec
 
-            response = client.post("/api/queries/example/exec")
+            response = client.post(
+                "/api/queries/example/exec",
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
 
         assert response.status_code == 200
         body = response.json()
@@ -205,7 +208,11 @@ class TestServeQueries:
             use_case.execute.return_value = [{"title": "Z1"}]
             mock_parse.return_value = query_spec
 
-            response = client.post("/api/queries/_adhoc", json={"spec": {"source": {}}})
+            response = client.post(
+                "/api/queries/_adhoc",
+                json={"spec": {"source": {}}},
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
 
         assert response.status_code == 200
         body = response.json()
@@ -239,7 +246,10 @@ class TestServeQueries:
         with patch("bim.commands.serve._routes.resolve_query_file") as mock_resolve:
             mock_resolve.return_value = Path("/tmp/query.yaml")
 
-            response = client.post(f"/api/queries/{name}/exec")
+            response = client.post(
+                f"/api/queries/{name}/exec",
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
 
         assert response.status_code == 404
         assert response.json()["detail"] == f"Unknown query: {name}"
