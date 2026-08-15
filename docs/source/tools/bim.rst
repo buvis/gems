@@ -225,6 +225,46 @@ Options:
 - ``-H, --host TEXT`` — host (default: 127.0.0.1)
 - ``--no-browser`` — don't auto-open browser
 
+Security
+^^^^^^^^
+
+The dashboard exposes your vault over HTTP, so it is locked down three ways:
+
+**Path confinement.** Every filesystem path the API receives is resolved and
+must land under the configured zettelkasten directory or the archive
+directory. Anything else is rejected with ``403``, including traversal and
+symlinks that point out of the vault.
+
+**Auth token.** Each run mints a random token and requires it as the
+``X-Buvis-Token`` header on the mutating and query-executing routes (patch,
+open, the action endpoints, and the query ``exec`` routes). Read-only ``GET``
+routes are not token-gated. When the server is bound to a loopback host the
+token is injected into the served page, so the web UI authenticates itself
+with no setup.
+
+**Host allowlist.** On a loopback bind the ``Host`` header must be
+``localhost``, ``127.0.0.1``, or ``::1``. A request with any other ``Host``
+gets ``400``, which is what stops a web page you visit from reaching the
+server by DNS rebinding.
+
+Exposing it on the LAN
+^^^^^^^^^^^^^^^^^^^^^^
+
+``bim serve -H 0.0.0.0`` publishes the dashboard to every host that can reach
+the port, and weakens two of the protections above:
+
+- **Reads are unauthenticated.** The ``GET`` routes carry no token, so anyone
+  who can reach the port can read your notes.
+- **The Host allowlist is disabled** (it cannot be derived from a wildcard
+  bind), so rebinding protection does not apply.
+- **Writes still require the token, and the token is not in the page.** It is
+  printed to the console you started the server from; pass it as
+  ``X-Buvis-Token`` to make authenticated requests. The web UI served over the
+  LAN can therefore read but not write.
+
+The command prints a warning saying as much on every non-loopback bind. Use it
+only on a network you trust.
+
 bim doc
 -------
 
