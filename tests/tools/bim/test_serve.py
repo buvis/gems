@@ -430,6 +430,18 @@ class TestServeActions:
 
         assert response.status_code == 401
 
+    def test_exec_action_with_non_ascii_token_header_returns_401(self, client: TestClient) -> None:
+        """A non-ASCII ``X-Buvis-Token`` header (raw byte 0xE9, which
+        Starlette decodes as latin-1) must not crash the comparison into an
+        uncaught 500; it must fail closed with the documented 401."""
+        response = client.post(
+            "/api/actions/some-action",
+            json={"file_path": "note.md", "args": {}, "row": {}},
+            headers=[(b"X-Buvis-Token", b"\xe9")],
+        )
+
+        assert response.status_code == 401
+
     def test_patch_action_outside_vault_returns_403(self, client: TestClient) -> None:
         client.app.state.buvis_token = "test-token"
 

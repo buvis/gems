@@ -320,6 +320,18 @@ class TestRequireToken:
 
         assert require_token(request) is None
 
+    def test_non_ascii_header_raises_401_not_type_error(self) -> None:
+        """``secrets.compare_digest`` raises ``TypeError`` on a non-ASCII
+        ``str`` argument; that must be turned into the documented 401, not
+        left to escape as an uncaught exception."""
+        app = FastAPI()
+        app.state.buvis_token = "expected-token"
+        request = _make_request({TOKEN_HEADER: "tökén"}, app)
+
+        with pytest.raises(HTTPException) as exc_info:
+            require_token(request)
+        assert exc_info.value.status_code == 401
+
 
 class TestInstallSecurity:
     def _trusted_host_kwargs(self, app: FastAPI) -> dict[str, object]:
