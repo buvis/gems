@@ -11,11 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **pybase**: `atomic_write_text` / `atomic_write_bytes` — new public helpers in `buvis.pybase.filesystem` for crash-safe (tempfile + fsync + `os.replace`) writes.
 
+### Security
+
+- **bim**: `serve` confines every request-derived filesystem path to the configured vault and archive directories, so its API can no longer read, overwrite, delete, open, or import files outside them. Paths outside the vault are rejected with 403.
+- **bim**: `serve` requires a per-run auth token (`X-Buvis-Token`) on its mutating and query-executing routes, and installs a Host allowlist so a web page cannot reach the default loopback-bound server by DNS rebinding. The WebUI sends the token automatically; read-only `GET` routes stay token-free.
+- **bim**: `serve` no longer embeds the auth token in the page it serves when bound to a non-loopback host, so a LAN caller (or a DNS-rebinding page) can no longer read the token and gain write access; the token is printed to the operator's console instead.
+
 ### Fixed
 
 - **bim**: `serve` answers a request whose auth-token header contains a non-ASCII character with the documented 401 instead of crashing into a 500 with a raw stack trace.
 - **bim**: `serve` path confinement expands `~` in both the request path and the configured vault/archive directories, so a tilde-form directory no longer locks out every legitimate path with a 403.
-- **bim**: `serve` no longer embeds the auth token in the page it serves when bound to a non-loopback host, so a LAN caller (or a DNS-rebinding page) can no longer read the token and gain write access; the token is printed to the operator's console instead.
 - **bim**: `import` writes the imported note atomically, so an interrupted import (crash, kill, disk full) no longer truncates an existing note.
 - **pybase**: atomic writes clean up their temp file when interrupted by Ctrl-C, no longer leak a file descriptor if the permission step fails, and no longer replace the real write error with a cleanup error.
 - **zettel**: note saves are now atomic — the single write path behind `bim edit`, note creation, archive, the TUI, and the WebUI's action endpoint; an interrupted save no longer truncates the note.
