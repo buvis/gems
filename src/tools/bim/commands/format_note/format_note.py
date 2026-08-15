@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
@@ -38,7 +39,7 @@ class CommandFormatNote:
                     continue
                 zettel = reader.execute(str(path))
                 formatted_content = printer.execute(zettel.get_data())
-                path.write_text(formatted_content, encoding="utf-8")
+                atomic_write_text(path, formatted_content, encoding="utf-8")
                 formatted_count += 1
             return CommandResult(
                 success=True,
@@ -56,7 +57,7 @@ class CommandFormatNote:
 
         if path_output:
             try:
-                path_output.write_text(formatted_content, encoding="utf-8")
+                atomic_write_text(path_output, formatted_content, encoding="utf-8")
             except OSError as exc:
                 return CommandResult(
                     success=False,
