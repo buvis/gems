@@ -413,6 +413,110 @@ class TestServeActions:
 
         assert response.status_code == 401
 
+    def test_patch_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.serve._actions.get_repo") as mock_get_repo:
+            response = client.post(
+                "/api/actions/patch",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_get_repo.assert_not_called()
+
+    def test_sync_note_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_command:
+            response = client.post(
+                "/api/actions/sync_note",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_command.assert_not_called()
+
+    def test_create_note_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_command:
+            response = client.post(
+                "/api/actions/create_note",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_command.assert_not_called()
+
+    def test_archive_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.archive_note.archive_note.CommandArchiveNote") as mock_command:
+            response = client.post(
+                "/api/actions/archive",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_command.assert_not_called()
+
+    def test_open_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.serve._actions.open_in_os") as mock_open_in_os:
+            response = client.post(
+                "/api/actions/open",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_open_in_os.assert_not_called()
+
+    def test_format_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_command:
+            response = client.post(
+                "/api/actions/format",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_command.assert_not_called()
+
+    def test_delete_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_command:
+            response = client.post(
+                "/api/actions/delete",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_command.assert_not_called()
+
+    def test_import_action_outside_vault_returns_403(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.import_note.import_note.CommandImportNote") as mock_command:
+            response = client.post(
+                "/api/actions/import",
+                json={"file_path": "/etc/passwd", "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_command.assert_not_called()
+
 
 class TestServeErrors:
     def test_unknown_action_returns_404(self, client: TestClient) -> None:
