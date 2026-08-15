@@ -187,6 +187,231 @@ class TestReleaseClaim:
             assert db.claim(sha) is True
 
 
+class TestClaimStaleness:
+    """``is_claim_stale`` answers whether a claim row is older than max_age.
+
+    ``now`` is injected so the boundary is deterministic (no sleeping).
+    """
+
+    def test_missing_claim_row_is_not_stale(self, db_path: Path) -> None:
+        # Nothing to reclaim when no worker ever claimed the sha.
+        with open_state_db(db_path) as db:
+            assert db.is_claim_stale("a" * 64, timedelta(minutes=60)) is False
+
+    @pytest.mark.parametrize("max_age", [timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=60)])
+    def test_claim_exactly_max_age_old_is_not_stale(self, db_path: Path, max_age: timedelta) -> None:
+        sha = "b" * 64
+        claimed_at = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                (claimed_at.isoformat(), sha),
+            )
+            # Strict greater-than: an age of exactly max_age is still active.
+            assert db.is_claim_stale(sha, max_age, now=claimed_at + max_age) is False
+
+    @pytest.mark.parametrize("max_age", [timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=60)])
+    def test_claim_one_second_past_max_age_is_stale(self, db_path: Path, max_age: timedelta) -> None:
+        """The boundary tracks the caller's max_age, not a fixed threshold.
+
+        A one-minute max_age must call a five-minute-old claim stale; a
+        hardcoded internal cutoff would only satisfy one of these cases.
+        """
+        sha = "c" * 64
+        claimed_at = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                (claimed_at.isoformat(), sha),
+            )
+            assert db.is_claim_stale(sha, max_age, now=claimed_at + max_age + timedelta(seconds=1)) is True
+
+    def test_short_max_age_makes_a_five_minute_old_claim_stale(self, db_path: Path) -> None:
+        """A claim well younger than an hour is stale under a one-minute max_age."""
+        sha = "ba" * 32
+        claimed_at = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                (claimed_at.isoformat(), sha),
+            )
+            now = claimed_at + timedelta(minutes=5)
+            assert db.is_claim_stale(sha, timedelta(minutes=1), now=now) is True
+            # Same claim, same instant, a max_age it has not outlived yet.
+            assert db.is_claim_stale(sha, timedelta(minutes=10), now=now) is False
+
+    def test_naive_now_is_treated_as_utc(self, db_path: Path) -> None:
+        """A tzinfo-less ``now`` must not raise and must mean UTC.
+
+        ``claimed_at`` is stored tz-aware, so subtracting a naive ``now``
+        without coercion raises TypeError. Reading it as local time instead
+        of UTC shifts the age by the host's offset, which flips these
+        one-second-boundary asserts on any non-UTC machine.
+        """
+        sha = "d" * 64
+        max_age = timedelta(minutes=60)
+        claimed_at = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+        aware_now = claimed_at + max_age + timedelta(seconds=1)
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                (claimed_at.isoformat(), sha),
+            )
+            assert db.is_claim_stale(sha, max_age, now=aware_now.replace(tzinfo=None)) is True
+            assert db.is_claim_stale(sha, max_age, now=aware_now) is True
+            # Same naive path, other side of the boundary.
+            assert db.is_claim_stale(sha, max_age, now=(claimed_at + max_age).replace(tzinfo=None)) is False
+
+    def test_verdict_follows_the_asked_sha_when_several_claims_coexist(self, db_path: Path) -> None:
+        """Each sha is judged by its own row, not by whatever row exists.
+
+        Two workers hold claims at once: one stale, one fresh. Answering from
+        "the claims row" instead of "this sha's claims row" would give both the
+        same verdict, and would call a sha nobody ever claimed stale just
+        because the table is not empty.
+        """
+        stale_sha = "1a" * 32
+        fresh_sha = "2b" * 32
+        never_claimed_sha = "3c" * 32
+        max_age = timedelta(minutes=60)
+        now = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+        with open_state_db(db_path) as db:
+            assert db.claim(stale_sha) is True
+            assert db.claim(fresh_sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                ((now - max_age - timedelta(minutes=1)).isoformat(), stale_sha),
+            )
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                ((now - timedelta(minutes=1)).isoformat(), fresh_sha),
+            )
+
+            assert db.is_claim_stale(stale_sha, max_age, now=now) is True
+            assert db.is_claim_stale(fresh_sha, max_age, now=now) is False
+            assert db.is_claim_stale(never_claimed_sha, max_age, now=now) is False
+
+    def test_aware_now_in_non_utc_offset_is_converted_not_reinterpreted(self, db_path: Path) -> None:
+        """An aware ``now`` at +05:00 names the same instant as its UTC form.
+
+        Swapping the tzinfo instead of converting keeps the wall-clock digits
+        and shifts the computed age by the offset, so a claim exactly at the
+        boundary would wrongly read as five hours over it.
+        """
+        sha = "da" * 32
+        max_age = timedelta(minutes=60)
+        claimed_at = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+        boundary = (claimed_at + max_age).astimezone(timezone(timedelta(hours=5)))
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                (claimed_at.isoformat(), sha),
+            )
+            assert db.is_claim_stale(sha, max_age, now=boundary) is False
+            assert db.is_claim_stale(sha, max_age, now=boundary + timedelta(seconds=1)) is True
+
+
+class TestClaimReclaim:
+    """``claim(max_age=...)`` steals a claim only once it has gone stale."""
+
+    def test_stale_claim_is_reclaimed_with_refreshed_timestamp(self, db_path: Path) -> None:
+        sha = "e" * 64
+        # A five-minute-old claim is stale under a one-minute max_age: the
+        # caller's value decides, not some threshold baked into claim().
+        max_age = timedelta(minutes=1)
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                ((datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(), sha),
+            )
+            before = datetime.now(timezone.utc)
+            assert db.claim(sha, max_age=max_age) is True
+
+            rows = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchall()
+            assert len(rows) == 1
+            # A no-op that merely returned True would leave the stale timestamp.
+            assert datetime.fromisoformat(rows[0][0]) >= before
+
+    def test_reclaim_leaves_another_shas_live_claim_untouched(self, db_path: Path) -> None:
+        """Only the stale sha's own row is dropped.
+
+        Another worker holds a fresh claim on an unrelated sha at the same
+        time. Clearing the claims table wholesale would look identical from the
+        reclaimer's side while silently handing that worker's document away.
+        """
+        stale_sha = "4d" * 32
+        bystander_sha = "5e" * 32
+        with open_state_db(db_path) as db:
+            assert db.claim(stale_sha) is True
+            assert db.claim(bystander_sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                ((datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(), stale_sha),
+            )
+            before = db.connection.execute(
+                "SELECT claimed_at FROM claims WHERE sha256 = ?", (bystander_sha,)
+            ).fetchone()[0]
+
+            assert db.claim(stale_sha, max_age=timedelta(minutes=1)) is True
+
+            after = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (bystander_sha,)).fetchone()
+            assert after is not None, "the bystander's claim row was deleted by an unrelated reclaim"
+            assert after[0] == before
+            # Its row survived intact, so the bystander is still claimed.
+            assert db.claim(bystander_sha) is False
+
+    def test_stale_claim_on_processed_sha_is_not_reclaimed(self, db_path: Path) -> None:
+        """An already-processed sha is never reclaimable, however stale its claim.
+
+        ``record_processed`` leaves the claims row in place, so an old claim
+        plus a processed row is a reachable state. Reclaiming it would hand a
+        second worker a document that is already done.
+        """
+        sha = "cc" * 32
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.record_processed(_sample_processed(sha=sha))
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                ((datetime.now(timezone.utc) - timedelta(hours=5)).isoformat(), sha),
+            )
+
+            assert db.claim(sha, max_age=timedelta(minutes=60)) is False
+            # Same verdict the no-max_age path already gives for a processed sha.
+            assert db.claim(sha) is False
+
+    def test_fresh_claim_is_not_reclaimed(self, db_path: Path) -> None:
+        sha = "aa" * 32
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            original = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchone()[0]
+
+            assert db.claim(sha, max_age=timedelta(minutes=60)) is False
+
+            after = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchone()[0]
+            assert after == original
+
+    def test_ancient_claim_without_max_age_still_blocks(self, db_path: Path) -> None:
+        """``max_age=None`` (the default) means no staleness check at all."""
+        sha = "bb" * 32
+        ancient = (datetime.now(timezone.utc) - timedelta(days=3650)).isoformat()
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute("UPDATE claims SET claimed_at = ? WHERE sha256 = ?", (ancient, sha))
+
+            assert db.claim(sha) is False
+            assert db.claim(sha, max_age=None) is False
+
+            after = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchone()[0]
+            assert after == ancient
+
+
 class TestMigrationIdempotency:
     def test_reopen_idempotent(self, db_path: Path) -> None:
         # First open creates schema_version row at the current version.

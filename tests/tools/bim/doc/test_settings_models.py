@@ -187,6 +187,24 @@ class TestDocSettings:
         with pytest.raises(ValidationError):
             DocSettings.model_validate({"paths": paths.model_dump(mode="json"), "unknown_key": 1})
 
+    def test_claim_max_age_minutes_defaults_to_60(self, required_paths_data: dict[str, str]) -> None:
+        paths = DocPaths.model_validate(required_paths_data)
+        settings = DocSettings(paths=paths)
+        assert settings.claim_max_age_minutes == 60
+
+    @pytest.mark.parametrize("minutes", [1, 15, 30, 120])
+    def test_claim_max_age_minutes_accepts_override(self, required_paths_data: dict[str, str], minutes: int) -> None:
+        paths = DocPaths.model_validate(required_paths_data)
+        settings = DocSettings(paths=paths, claim_max_age_minutes=minutes)
+        assert settings.claim_max_age_minutes == minutes
+
+    def test_claim_max_age_minutes_rejects_non_int(self, required_paths_data: dict[str, str]) -> None:
+        """The field is typed, so a bad config value fails at load, not later
+        when the minutes are turned into a timedelta."""
+        paths = DocPaths.model_validate(required_paths_data)
+        with pytest.raises(ValidationError):
+            DocSettings(paths=paths, claim_max_age_minutes="banana")
+
 
 class TestBusinessRootUnderHomeValidator:
     """Pin the validator: ``DocPaths.business_root`` must resolve to a path
