@@ -15,6 +15,7 @@ class CommandServe:
         app = create_app(
             self.params.default_directory,
             self.params.archive_directory,
+            host=self.params.host,
         )
 
         if not self.params.no_browser:
