@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import tzlocal
+from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
@@ -96,7 +97,7 @@ class CommandSyncNote:
                 f"- [i] {timestamp} - Jira Issue created: {md_style_link}",
             )
             formatted_content = PrintZettelUseCase(self.formatter).execute(project.get_data())
-            path.write_text(formatted_content, encoding="utf-8")
+            atomic_write_text(path, formatted_content)
             messages.append(f"Jira Issue {new_issue.id} created from {path}")
             synced_count += 1
 
