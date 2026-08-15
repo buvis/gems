@@ -8,6 +8,7 @@ from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
     MarkdownZettelRepository,
 )
+from pytest_mock import MockerFixture
 
 
 @pytest.fixture
@@ -42,6 +43,38 @@ class TestSave:
 
         with pytest.raises(ValueError):
             repository.save(zettel)
+
+    @patch(
+        "buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter.MarkdownZettelFormatter.format"
+    )
+    def test_save_propagates_atomic_write_failure_and_leaves_file_unchanged(
+        self,
+        mock_format,
+        mocker: MockerFixture,
+        repository,
+        tmp_path,
+    ) -> None:
+        file_path = tmp_path / "zettel.md"
+        original_content = "original zettel content"
+        file_path.write_text(original_content, encoding="utf-8")
+
+        zettel_data = ZettelData(file_path=str(file_path))
+        zettel = MagicMock(spec=Zettel)
+        zettel.get_data.return_value = zettel_data
+        mock_format.return_value = "new formatted content"
+
+        # Force os.replace (the swap step) to fail; the target must remain unchanged
+        # and the exception must propagate to the caller.
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("simulated swap failure"),
+        )
+
+        with pytest.raises(OSError):
+            repository.save(zettel)
+
+        # Verify the file remains unchanged (no partial write, no corruption)
+        assert file_path.read_text(encoding="utf-8") == original_content
 
 
 class TestDelete:
