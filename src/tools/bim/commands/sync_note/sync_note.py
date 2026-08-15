@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import tzlocal
@@ -77,28 +78,10 @@ class CommandSyncNote:
                 continue
 
             if current_us:
-                issue_key = _extract_issue_key(current_us)
-                if issue_key:
-                    updated = self._target.update_description_from_project(issue_key, project)
-                    if updated:
-                        messages.append(f"Description updated for {issue_key}")
-                        synced_count += 1
-                    else:
-                        messages.append(f"Already in sync with {issue_key}")
-                else:
-                    warnings.append(f"Can't parse issue key from: {current_us}")
+                synced_count += self._update_existing_issue(current_us, project, messages, warnings)
                 continue
 
-            new_issue = self._target.create_from_project(project)
-            md_style_link = f"[{new_issue.id}]({new_issue.link})"
-            project.us = md_style_link
-            timestamp = datetime.now(tzlocal.get_localzone()).strftime("%Y-%m-%d %H:%M")
-            project.add_log_entry(
-                f"- [i] {timestamp} - Jira Issue created: {md_style_link}",
-            )
-            formatted_content = PrintZettelUseCase(self.formatter).execute(project.get_data())
-            atomic_write_text(path, formatted_content)
-            messages.append(f"Jira Issue {new_issue.id} created from {path}")
+            messages.append(self._create_issue(path, project))
             synced_count += 1
 
         return CommandResult(
@@ -107,3 +90,33 @@ class CommandSyncNote:
             warnings=warnings,
             metadata={"synced_count": synced_count},
         )
+
+    def _create_issue(self, path: Path, project: ProjectZettel) -> str:
+        new_issue = self._target.create_from_project(project)
+        md_style_link = f"[{new_issue.id}]({new_issue.link})"
+        project.us = md_style_link
+        timestamp = datetime.now(tzlocal.get_localzone()).strftime("%Y-%m-%d %H:%M")
+        project.add_log_entry(
+            f"- [i] {timestamp} - Jira Issue created: {md_style_link}",
+        )
+        formatted_content = PrintZettelUseCase(self.formatter).execute(project.get_data())
+        atomic_write_text(path, formatted_content)
+        return f"Jira Issue {new_issue.id} created from {path}"
+
+    def _update_existing_issue(
+        self,
+        current_us: str,
+        project: ProjectZettel,
+        messages: list[str],
+        warnings: list[str],
+    ) -> int:
+        issue_key = _extract_issue_key(current_us)
+        if not issue_key:
+            warnings.append(f"Can't parse issue key from: {current_us}")
+            return 0
+        updated = self._target.update_description_from_project(issue_key, project)
+        if updated:
+            messages.append(f"Description updated for {issue_key}")
+            return 1
+        messages.append(f"Already in sync with {issue_key}")
+        return 0

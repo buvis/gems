@@ -53,7 +53,7 @@ class MarkdownZettelRepository(ZettelRepository):
         if not data.file_path:
             raise ValueError("Cannot save zettel without file_path")
         formatted = MarkdownZettelFormatter.format(data)
-        atomic_write_text(Path(data.file_path), formatted, encoding="utf-8")
+        atomic_write_text(Path(data.file_path), formatted)
 
     def delete(self, zettel: Zettel) -> None:
         data = zettel.get_data()

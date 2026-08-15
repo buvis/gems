@@ -57,7 +57,7 @@ class CommandFormatNote:
 
         if path_output:
             try:
-                atomic_write_text(path_output, formatted_content, encoding="utf-8")
+                atomic_write_text(path_output, formatted_content)
             except OSError as exc:
                 return CommandResult(
                     success=False,

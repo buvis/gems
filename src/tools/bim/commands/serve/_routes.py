@@ -154,7 +154,7 @@ async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
         data.metadata[body.field] = body.value
 
     formatted = PrintZettelUseCase(get_formatter()).execute(data)
-    atomic_write_text(fp, formatted, encoding="utf-8")
+    atomic_write_text(fp, formatted)
     return {"status": "ok"}
 
 
