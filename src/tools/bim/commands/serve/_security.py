@@ -74,7 +74,7 @@ def require_token(request: Request) -> None:
     expected = getattr(request.app.state, "buvis_token", None)
     provided = request.headers.get(TOKEN_HEADER)
 
-    if provided is None or expected is None or not secrets.compare_digest(provided, expected):
+    if provided is None or expected is None or not secrets.compare_digest(provided.encode(), expected.encode()):
         raise HTTPException(status_code=401, detail="missing or invalid token")
 
 

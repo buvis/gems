@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: `serve` answers a request whose auth-token header contains a non-ASCII character with the documented 401 instead of crashing into a 500 with a raw stack trace.
 - **bim**: `serve` path confinement expands `~` in both the request path and the configured vault/archive directories, so a tilde-form directory no longer locks out every legitimate path with a 403.
 - **bim**: `serve` no longer embeds the auth token in the page it serves when bound to a non-loopback host, so a LAN caller (or a DNS-rebinding page) can no longer read the token and gain write access; the token is printed to the operator's console instead.
 - **bim**: `import` writes the imported note atomically, so an interrupted import (crash, kill, disk full) no longer truncates an existing note.
