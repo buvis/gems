@@ -9,10 +9,11 @@ from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
+from bim.commands.serve._security import confine_path, require_token
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import (
     get_evaluator,
@@ -98,6 +99,8 @@ async def list_queries(request: Request) -> dict[str, Any]:
 
 @router.get("/queries/{name}")
 async def get_query(name: str) -> dict[str, Any]:
+    if name.endswith((".yaml", ".yml")):
+        raise HTTPException(status_code=404, detail=f"Unknown query: {name}")
     try:
         path = resolve_query_file(name, bundled_dir=BUNDLED_QUERY_DIR)
     except FileNotFoundError as e:
@@ -112,6 +115,8 @@ class AdhocQueryBody(BaseModel):
 
 @router.post("/queries/{name}/exec")
 async def exec_query(name: str, request: Request) -> dict[str, Any]:
+    if name.endswith((".yaml", ".yml")):
+        raise HTTPException(status_code=404, detail=f"Unknown query: {name}")
     directory = _get_directory(request)
     try:
         path = resolve_query_file(name, bundled_dir=BUNDLED_QUERY_DIR)
@@ -135,8 +140,13 @@ class PatchBody(BaseModel):
 
 
 @router.patch("/zettels/{file_path:path}")
-async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
-    fp = Path(file_path)
+async def patch_zettel(
+    file_path: str,
+    body: PatchBody,
+    request: Request,
+    _: None = Depends(require_token),
+) -> dict[str, str]:
+    fp = confine_path(file_path, request.app.state)
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
@@ -159,8 +169,8 @@ async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
 
 
 @router.get("/zettels/{file_path:path}")
-async def get_zettel(file_path: str) -> dict[str, Any]:
-    fp = Path(file_path)
+async def get_zettel(file_path: str, request: Request) -> dict[str, Any]:
+    fp = confine_path(file_path, request.app.state)
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
@@ -180,8 +190,12 @@ class OpenBody(BaseModel):
 
 
 @router.post("/open")
-async def open_file(body: OpenBody) -> dict[str, str]:
-    fp = Path(body.path)
+async def open_file(
+    body: OpenBody,
+    request: Request,
+    _: None = Depends(require_token),
+) -> dict[str, str]:
+    fp = confine_path(body.path, request.app.state)
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {body.path}")
 
@@ -197,7 +211,12 @@ class ActionBody(BaseModel):
 
 
 @router.post("/actions/{action_name}")
-async def exec_action(action_name: str, body: ActionBody, request: Request) -> dict[str, str]:
+async def exec_action(
+    action_name: str,
+    body: ActionBody,
+    request: Request,
+    _: None = Depends(require_token),
+) -> dict[str, str]:
     handler = ACTION_HANDLERS.get(action_name)
     if not handler:
         raise HTTPException(status_code=404, detail=f"Unknown action: {action_name}")
