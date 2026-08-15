@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from buvis.pybase.adapters import console
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -37,12 +38,18 @@ def create_app(
 
     if STATIC_DIR.is_dir() and any(STATIC_DIR.iterdir()):
 
-        @app.get("/", response_class=HTMLResponse)
+        @app.get("/", response_class=HTMLResponse, include_in_schema=False)
         async def _index() -> HTMLResponse:
-            html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+            index_path = STATIC_DIR / "index.html"
+            if not index_path.is_file():
+                raise HTTPException(status_code=404, detail="index.html not found")
+            html = index_path.read_text(encoding="utf-8")
             if app.state.token_in_page:
                 script = f'<script>window.__BUVIS_TOKEN__ = "{app.state.buvis_token}";</script>'
-                html = html.replace("</head>", f"{script}</head>", 1)
+                if "</head>" in html:
+                    html = html.replace("</head>", f"{script}</head>", 1)
+                else:
+                    console.warning("bim serve: index.html has no </head>; auth token was not injected")
             return HTMLResponse(html)
 
         app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")

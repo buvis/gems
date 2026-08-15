@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: `serve` returns 404 instead of crashing with a 500 when its static directory has no `index.html`, and warns instead of silently dropping the auth token when the served page has no `</head>`.
 - **bim**: `serve` answers a request whose auth-token header contains a non-ASCII character with the documented 401 instead of crashing into a 500 with a raw stack trace.
 - **bim**: `serve` path confinement expands `~` in both the request path and the configured vault/archive directories, so a tilde-form directory no longer locks out every legitimate path with a 403.
 - **bim**: `import` writes the imported note atomically, so an interrupted import (crash, kill, disk full) no longer truncates an existing note.
