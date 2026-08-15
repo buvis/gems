@@ -145,6 +145,7 @@ class StateDB:
         self,
         sha256: str,
         max_age: timedelta,
+        *,
         now: datetime | None = None,
     ) -> bool:
         """Report whether this sha's claim is older than ``max_age``.
@@ -166,7 +167,7 @@ class StateDB:
             moment = moment.replace(tzinfo=timezone.utc)
         return moment - datetime.fromisoformat(row[0]) > max_age
 
-    def claim(self, sha256: str, max_age: timedelta | None = None) -> bool:
+    def claim(self, sha256: str, *, max_age: timedelta | None = None) -> bool:
         """Atomically claim ownership of processing this sha256.
 
         Returns True if this caller successfully claimed (no prior claim or
