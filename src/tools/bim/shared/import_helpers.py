@@ -52,18 +52,12 @@ def interactive_import(path_note: Path, path_zettelkasten: Path, global_settings
         console.failure(f"{path_note} doesn't exist")
         return
 
-    from buvis.pybase.zettel import ReadZettelUseCase
     from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 
-    from bim.dependencies import get_formatter, get_repo
+    from bim.dependencies import get_formatter
 
     original_content = path_note.read_text(encoding="utf-8")
-    repo = get_repo()
-    reader = ReadZettelUseCase(repo)
-    note = reader.execute(str(path_note))
-
-    if note.type == "project":
-        note.data.metadata["resources"] = f"[project resources]({path_note.parent.resolve().as_uri()})"
+    note = _load_note_for_import(path_note)
 
     if note.id is None:
         console.failure(f"Note at {path_note} has no ID, skipping")
@@ -73,6 +67,41 @@ def interactive_import(path_note: Path, path_zettelkasten: Path, global_settings
     formatted_content = PrintZettelUseCase(get_formatter()).execute(note.get_data())
     _, _, markdown_content = formatted_content.partition("\n---\n")
 
+    if not _confirm_import(original_content, formatted_content):
+        return
+
+    path_output = resolve_output_path(note, path_output, path_note, path_zettelkasten)
+
+    if not note.tags and global_settings.ollama_model:
+        formatted_content = _suggest_tags(
+            note, markdown_content, global_settings.ollama_model, global_settings.ollama_url
+        )
+
+    atomic_write_text(path_output, formatted_content)
+    console.success(f"Note imported as {path_output}")
+    remove_file = console.confirm("Do you want to remove the original?")
+
+    if remove_file:
+        path_note.unlink()
+        console.success(f"{path_note} was removed")
+
+
+def _load_note_for_import(path_note: Path) -> Any:
+    from buvis.pybase.zettel import ReadZettelUseCase
+
+    from bim.dependencies import get_repo
+
+    repo = get_repo()
+    reader = ReadZettelUseCase(repo)
+    note = reader.execute(str(path_note))
+
+    if note.type == "project":
+        note.data.metadata["resources"] = f"[project resources]({path_note.parent.resolve().as_uri()})"
+
+    return note
+
+
+def _confirm_import(original_content: str, formatted_content: str) -> bool:
     console.print_side_by_side(
         "Original",
         original_content,
@@ -89,33 +118,29 @@ def interactive_import(path_note: Path, path_zettelkasten: Path, global_settings
 
     if not is_import_approved:
         console.warning("Import cancelled by user")
-        return
+        return False
 
-    path_output = resolve_output_path(note, path_output, path_note, path_zettelkasten)
+    return True
 
-    if not note.tags and global_settings.ollama_model:
-        from buvis.pybase.formatting import StringOperator
 
-        console.nl()
-        console.warning("There are no tags in this note. Suggesting via ollama...")
-        console.nl()
-        new_tags = []
-        suggested = StringOperator.suggest_tags(
-            markdown_content,
-            global_settings.ollama_model,
-            global_settings.ollama_url,
-        )
-        for suggested_tag in suggested:
-            add_tag = console.confirm(f"Tag with '{suggested_tag}'?")
-            if add_tag:
-                new_tags.append(suggested_tag)
-        note.tags = new_tags
-        formatted_content = PrintZettelUseCase(get_formatter()).execute(note.get_data())
+def _suggest_tags(note: Any, markdown_content: str, ollama_model: str, ollama_url: str) -> str:
+    from buvis.pybase.formatting import StringOperator
+    from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 
-    atomic_write_text(path_output, formatted_content)
-    console.success(f"Note imported as {path_output}")
-    remove_file = console.confirm("Do you want to remove the original?")
+    from bim.dependencies import get_formatter
 
-    if remove_file:
-        path_note.unlink()
-        console.success(f"{path_note} was removed")
+    console.nl()
+    console.warning("There are no tags in this note. Suggesting via ollama...")
+    console.nl()
+    new_tags = []
+    suggested = StringOperator.suggest_tags(
+        markdown_content,
+        ollama_model,
+        ollama_url,
+    )
+    for suggested_tag in suggested:
+        add_tag = console.confirm(f"Tag with '{suggested_tag}'?")
+        if add_tag:
+            new_tags.append(suggested_tag)
+    note.tags = new_tags
+    return PrintZettelUseCase(get_formatter()).execute(note.get_data())

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import tzlocal
@@ -15,6 +14,8 @@ from bim.integrations.jira_adapter import ZettelJiraAdapter
 from bim.params.sync_note import SyncNoteParams
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from buvis.pybase.zettel.domain.interfaces.zettel_formatter import ZettelFormatter
     from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
 
@@ -78,7 +79,12 @@ class CommandSyncNote:
                 continue
 
             if current_us:
-                synced_count += self._update_existing_issue(current_us, project, messages, warnings)
+                warning, message, count = self._update_existing_issue(current_us, project)
+                if warning:
+                    warnings.append(warning)
+                if message:
+                    messages.append(message)
+                synced_count += count
                 continue
 
             messages.append(self._create_issue(path, project))
@@ -107,16 +113,12 @@ class CommandSyncNote:
         self,
         current_us: str,
         project: ProjectZettel,
-        messages: list[str],
-        warnings: list[str],
-    ) -> int:
+    ) -> tuple[str | None, str | None, int]:
+        """Return (warning, message, count) for the caller to append/accumulate."""
         issue_key = _extract_issue_key(current_us)
         if not issue_key:
-            warnings.append(f"Can't parse issue key from: {current_us}")
-            return 0
+            return f"Can't parse issue key from: {current_us}", None, 0
         updated = self._target.update_description_from_project(issue_key, project)
         if updated:
-            messages.append(f"Description updated for {issue_key}")
-            return 1
-        messages.append(f"Already in sync with {issue_key}")
-        return 0
+            return None, f"Description updated for {issue_key}", 1
+        return None, f"Already in sync with {issue_key}", 0

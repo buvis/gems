@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from bim.shared.import_helpers import interactive_import
+from pytest_mock import MockerFixture
 
 
 def _make_note(note_id: str = "202401151030") -> MagicMock:
@@ -22,7 +23,7 @@ class TestInteractiveImport:
     def test_overwrite_write_failure_leaves_existing_note_untouched(
         self,
         tmp_path: Path,
-        mocker,
+        mocker: MockerFixture,
     ) -> None:
         """os.replace failure during the atomic write leaves the pre-existing note byte-for-byte intact."""
         path_note = tmp_path / "source.md"
@@ -36,7 +37,7 @@ class TestInteractiveImport:
         output_path.write_text("old content", encoding="utf-8")
 
         mock_console = mocker.patch("bim.shared.import_helpers.console")
-        mock_console.confirm.side_effect = [True, True, False]
+        mock_console.confirm.side_effect = [True, True]
 
         mock_reader_cls = mocker.patch("buvis.pybase.zettel.ReadZettelUseCase")
         mock_reader_cls.return_value.execute.return_value = note
