@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
 from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
@@ -52,7 +53,7 @@ class MarkdownZettelRepository(ZettelRepository):
         if not data.file_path:
             raise ValueError("Cannot save zettel without file_path")
         formatted = MarkdownZettelFormatter.format(data)
-        Path(data.file_path).write_text(formatted, encoding="utf-8")
+        atomic_write_text(Path(data.file_path), formatted, encoding="utf-8")
 
     def delete(self, zettel: Zettel) -> None:
         data = zettel.get_data()
