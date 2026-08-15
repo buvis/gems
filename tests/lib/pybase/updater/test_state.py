@@ -13,6 +13,7 @@ from buvis.pybase.updater.state import (
     read_cache,
     write_cache,
 )
+from pytest_mock import MockerFixture
 
 
 @pytest.fixture()
@@ -59,6 +60,24 @@ class TestWriteCache:
         state = json.loads((state_dir / STATE_FILE_NAME).read_text())
         assert state["latest_version"] == "1.0.0"
         assert "last_check" in state
+
+    def test_replace_failure_leaves_existing_state_byte_for_byte_intact(
+        self, state_dir: Path, mocker: MockerFixture
+    ) -> None:
+        state_path = state_dir / STATE_FILE_NAME
+        state_path.write_text(json.dumps({"last_check": "2020-01-01T00:00:00+00:00", "latest_version": "0.1.0"}))
+        original_bytes = state_path.read_bytes()
+
+        # _write_state swallows all exceptions, so a failed swap must not
+        # raise here — but it must also not have truncated the existing file.
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("simulated swap failure"),
+        )
+
+        write_cache(state_dir, "9.9.9")
+
+        assert state_path.read_bytes() == original_bytes
 
     def test_preserves_existing_log(self, state_dir: Path) -> None:
         (state_dir / STATE_FILE_NAME).write_text(

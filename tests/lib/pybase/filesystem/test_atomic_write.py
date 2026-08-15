@@ -16,7 +16,7 @@ class TestAtomicWriteBytes:
         atomic_write_bytes(target, payload)
         assert target.read_bytes() == payload
 
-    def test_failure_during_write_leaves_target_untouched(self, tmp_path: Path, mocker: MockerFixture) -> None:
+    def test_failure_during_replace_leaves_target_untouched(self, tmp_path: Path, mocker: MockerFixture) -> None:
         target = tmp_path / "out.bin"
         target.write_bytes(b"original-content")
 
@@ -32,6 +32,53 @@ class TestAtomicWriteBytes:
         assert target.read_bytes() == b"original-content"
         leftover = list(tmp_path.glob(target.name + ".*.tmp"))
         assert leftover == []
+
+    def test_failure_during_fsync_leaves_target_untouched(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        target = tmp_path / "out.bin"
+        target.write_bytes(b"original-content")
+
+        # Force a failure during the write/fsync stage (before the replace
+        # swap even happens); the target must remain unchanged.
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.fsync",
+            side_effect=OSError("simulated write failure"),
+        )
+        with pytest.raises(OSError):
+            atomic_write_bytes(target, b"new-content")
+
+        assert target.read_bytes() == b"original-content"
+        leftover = list(tmp_path.glob(target.name + ".*.tmp"))
+        assert leftover == []
+
+    def test_temp_file_created_in_target_directory(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        target = tmp_path / "out.bin"
+        # A temp file on another filesystem would make os.replace raise EXDEV;
+        # same-directory placement is what makes the swap atomic.
+        replace_spy = mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=os.replace,
+        )
+
+        atomic_write_bytes(target, b"data")
+
+        tmp_src = Path(replace_spy.call_args.args[0])
+        assert tmp_src.parent == target.parent
+
+    def test_fsync_called_before_replace(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        target = tmp_path / "out.bin"
+        call_order: list[str] = []
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.fsync",
+            side_effect=lambda fd: call_order.append("fsync"),
+        )
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=lambda *args, **kwargs: call_order.append("replace"),
+        )
+
+        atomic_write_bytes(target, b"data")
+
+        assert call_order == ["fsync", "replace"]
 
     def test_base_exception_during_replace_still_cleans_up_temp_file(
         self, tmp_path: Path, mocker: MockerFixture
@@ -113,6 +160,31 @@ class TestAtomicWriteBytes:
         atomic_write_bytes(target, b"new")
         assert target.read_bytes() == b"new"
 
+    @pytest.mark.skipif(
+        not hasattr(os, "fchmod"),
+        reason="fchmod is unavailable here (e.g. Windows); atomic_write skips permission handling.",
+    )
+    def test_new_file_gets_default_mode(self, tmp_path: Path) -> None:
+        target = tmp_path / "out-default-mode.bin"
+        atomic_write_bytes(target, b"data")
+        assert (target.stat().st_mode & 0o777) == 0o644
+
+    @pytest.mark.skipif(
+        not hasattr(os, "fchmod"),
+        reason="fchmod is unavailable here (e.g. Windows); atomic_write skips permission handling.",
+    )
+    def test_overwrite_preserves_existing_file_permissions(self, tmp_path: Path) -> None:
+        target = tmp_path / "out-preserve-mode.bin"
+        target.write_bytes(b"old")
+        target.chmod(0o640)
+
+        # atomic_write_bytes has no mode kwarg; the pre-existing target's own
+        # permissions must still win over the tempfile/default mode.
+        atomic_write_bytes(target, b"new")
+
+        assert target.read_bytes() == b"new"
+        assert (target.stat().st_mode & 0o777) == 0o640
+
 
 class TestAtomicWriteText:
     def test_happy_path_writes_data(self, tmp_path: Path) -> None:
@@ -121,7 +193,7 @@ class TestAtomicWriteText:
         atomic_write_text(target, payload)
         assert target.read_text(encoding="utf-8") == payload
 
-    def test_failure_during_write_leaves_target_untouched(self, tmp_path: Path, mocker: MockerFixture) -> None:
+    def test_failure_during_replace_leaves_target_untouched(self, tmp_path: Path, mocker: MockerFixture) -> None:
         target = tmp_path / "out.txt"
         target.write_text("original-content", encoding="utf-8")
 
@@ -226,16 +298,28 @@ class TestAtomicWriteText:
         atomic_write_text(target, payload, encoding="latin-1")
         assert target.read_text(encoding="latin-1") == payload
 
+    @pytest.mark.skipif(
+        not hasattr(os, "fchmod"),
+        reason="fchmod is unavailable here (e.g. Windows); atomic_write skips permission handling.",
+    )
     def test_new_file_gets_requested_mode(self, tmp_path: Path) -> None:
         target = tmp_path / "out-mode.txt"
         atomic_write_text(target, "data", mode=0o600)
         assert (target.stat().st_mode & 0o777) == 0o600
 
+    @pytest.mark.skipif(
+        not hasattr(os, "fchmod"),
+        reason="fchmod is unavailable here (e.g. Windows); atomic_write skips permission handling.",
+    )
     def test_new_file_gets_default_mode_when_unspecified(self, tmp_path: Path) -> None:
         target = tmp_path / "out-default-mode.txt"
         atomic_write_text(target, "data")
         assert (target.stat().st_mode & 0o777) == 0o644
 
+    @pytest.mark.skipif(
+        not hasattr(os, "fchmod"),
+        reason="fchmod is unavailable here (e.g. Windows); atomic_write skips permission handling.",
+    )
     def test_overwrite_preserves_existing_file_permissions(self, tmp_path: Path) -> None:
         target = tmp_path / "out-preserve-mode.txt"
         target.write_text("old", encoding="utf-8")
