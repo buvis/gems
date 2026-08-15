@@ -290,6 +290,21 @@ class TestAtomicWriteText:
         atomic_write_text(target, "new")
         assert target.read_text(encoding="utf-8") == "new"
 
+    def test_writing_through_a_symlink_replaces_the_link_not_the_target(self, tmp_path: Path) -> None:
+        real_target = tmp_path / "real.txt"
+        real_target.write_text("original-content", encoding="utf-8")
+        link_path = tmp_path / "link.txt"
+        link_path.symlink_to(real_target)
+
+        atomic_write_text(link_path, "new-content")
+
+        # os.replace swaps a new inode into the link's own path rather than
+        # writing through it: the symlink becomes a plain file holding the
+        # new content, and the real target it used to point at is untouched.
+        assert not link_path.is_symlink()
+        assert link_path.read_text(encoding="utf-8") == "new-content"
+        assert real_target.read_text(encoding="utf-8") == "original-content"
+
     def test_writes_and_reads_back_with_non_default_encoding(self, tmp_path: Path) -> None:
         target = tmp_path / "out-latin1.txt"
         # A string containing a byte value that differs in meaning between

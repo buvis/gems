@@ -1,7 +1,7 @@
 Filesystem
 ==========
 
-Utilities for file metadata operations.
+Utilities for file metadata operations and crash-safe atomic writes.
 
 .. contents:: Table of Contents
    :local:
@@ -13,6 +13,10 @@ Overview
 `FileMetadataReader` is a static utility class under
 `buvis.pybase.filesystem`. It surfaces creation and first-commit datetimes
 with platform-aware fallbacks. No instantiation is required.
+
+`atomic_write_text` and `atomic_write_bytes` write a file via a sibling
+temp file, fsync, and `os.replace`, so an interrupted write cannot leave a
+truncated target.
 
 Quick Start
 -----------
@@ -28,6 +32,13 @@ Quick Start
     first_commit = FileMetadataReader.get_first_commit_datetime(project_root / "pyproject.toml")
 
     print(creation_dt, first_commit)
+
+.. code-block:: python
+
+    from pathlib import Path
+    from buvis.pybase.filesystem import atomic_write_text
+
+    atomic_write_text(Path("notes.md"), "# Notes\n")
 
 API Reference
 -------------

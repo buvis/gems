@@ -3,6 +3,12 @@
 Writes to a sibling temp file, fsyncs it, then ``os.replace`` swaps it into
 place. On any failure, the temp file is removed and the target is left
 untouched.
+
+The rename itself is not fsynced: only the temp file's contents are, so the
+rename is not guaranteed durable across a power loss. ``os.replace`` also
+swaps a new inode into ``path`` itself rather than following a symlink or
+hardlink, so writing to a symlinked or hardlinked path leaves a plain file
+at that path and the original link target stale.
 """
 
 from __future__ import annotations

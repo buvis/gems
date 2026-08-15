@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **pybase**: `atomic_write_text` / `atomic_write_bytes` — new public helpers in `buvis.pybase.filesystem` for crash-safe (tempfile + fsync + `os.replace`) writes.
+
 ### Fixed
 
 - **bim**: `import` writes the imported note atomically, so an interrupted import (crash, kill, disk full) no longer truncates an existing note.
 - **pybase**: atomic writes clean up their temp file when interrupted by Ctrl-C, no longer leak a file descriptor if the permission step fails, and no longer replace the real write error with a cleanup error.
+- **zettel**: note saves are now atomic — the single write path behind `bim edit`, note creation, archive, the TUI, and the WebUI's action endpoint; an interrupted save no longer truncates the note.
+- **bim**: `sync`, `format`, and the WebUI's PATCH endpoint now write notes atomically instead of each using their own bare write, so an interrupted write no longer truncates them.
+- **pybase**: updater state is now written atomically, so an interrupted update can no longer leave the shared state JSON torn.
 
 ## [0.12.6] - 2026-08-06
 
