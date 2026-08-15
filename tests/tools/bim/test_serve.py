@@ -776,7 +776,13 @@ class TestServeIndexTokenInjection:
 
         assert "/" not in app.openapi()["paths"]
 
-    def test_get_root_missing_head_close_still_returns_200_and_warns(self, tmp_path: Path) -> None:
+    def test_get_root_missing_head_close_still_returns_200_and_warns(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``console.capture()`` cannot be used here: ``TestClient`` runs the
+        handler on a worker thread and Rich buffers per thread, so the capture
+        entered on the main thread never sees it. ``capsys`` captures the real
+        stdout and does observe it."""
         zettels_dir = tmp_path / "zettels"
         zettels_dir.mkdir()
         static_dir = tmp_path / "static"
@@ -792,11 +798,11 @@ class TestServeIndexTokenInjection:
             patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
         ):
             app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
-            with TestClient(app, base_url="http://127.0.0.1") as test_client, console.capture() as capture:
+            with TestClient(app, base_url="http://127.0.0.1") as test_client:
                 response = test_client.get("/")
 
         assert response.status_code == 200
-        assert capture.get() != ""
+        assert "</head>" in capsys.readouterr().out
 
 
 class TestServeIndexMissing:
