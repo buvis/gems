@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **bim**: `import` writes the imported note atomically, so an interrupted import (crash, kill, disk full) no longer truncates an existing note.
+- **pybase**: atomic writes clean up their temp file when interrupted by Ctrl-C, no longer leak a file descriptor if the permission step fails, and no longer replace the real write error with a cleanup error.
 
 ## [0.12.6] - 2026-08-06
 

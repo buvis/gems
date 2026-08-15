@@ -7,11 +7,44 @@ untouched.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import tempfile
 from pathlib import Path
 
 __all__ = ["atomic_write_bytes", "atomic_write_text"]
+
+
+def _atomic_write(
+    path: Path,
+    data: str | bytes,
+    file_mode: str,
+    encoding: str | None,
+    target_mode: int,
+) -> None:
+    """Write ``data`` to ``path`` atomically.
+
+    Shared body for :func:`atomic_write_text` and :func:`atomic_write_bytes`.
+    """
+    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
+    tmp_path = Path(tmp_name)
+    try:
+        if hasattr(os, "fchmod"):
+            try:
+                os.fchmod(fd, target_mode)
+            except BaseException:
+                os.close(fd)
+                raise
+        with os.fdopen(fd, file_mode, encoding=encoding) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        # A cleanup failure must never replace the original write error.
+        with contextlib.suppress(OSError):
+            tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def atomic_write_text(
@@ -27,20 +60,7 @@ def atomic_write_text(
     the replacement file. Otherwise the new file is created with ``mode``.
     """
     target_mode = path.stat().st_mode & 0o777 if path.exists() else mode
-    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
-    tmp_path = Path(tmp_name)
-    try:
-        if hasattr(os, "fchmod"):
-            os.fchmod(fd, target_mode)
-        with os.fdopen(fd, "w", encoding=encoding) as handle:
-            handle.write(data)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp_path, path)
-    except Exception:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
+    _atomic_write(path, data, "w", encoding, target_mode)
 
 
 def atomic_write_bytes(path: Path, data: bytes) -> None:
@@ -51,17 +71,4 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
     Otherwise the new file is created with mode ``0o644``.
     """
     target_mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
-    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
-    tmp_path = Path(tmp_name)
-    try:
-        if hasattr(os, "fchmod"):
-            os.fchmod(fd, target_mode)
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(data)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp_path, path)
-    except Exception:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
+    _atomic_write(path, data, "wb", None, target_mode)
