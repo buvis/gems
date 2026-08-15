@@ -19,10 +19,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from buvis.pybase.filesystem import atomic_write_bytes
 from pdfminer.high_level import extract_text
 from pdfminer.pdfpage import PDFPage
-
-from bim.commands.doc.shared.atomic_write import atomic_write_bytes
 
 if TYPE_CHECKING:
     from bim.commands.doc.shared.settings_models import DocSettings
