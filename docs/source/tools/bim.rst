@@ -281,8 +281,12 @@ System dependencies (install separately):
 
 Configuration lives under ``[doc]`` in the bim config (see ``DocSettings``
 for the full schema): ``paths.business_root``, ``paths.vault_root``,
-``paths.state_dir``, ``paths.issuers_file``, plus ``ocr``, ``classifier``,
-and ``zettel`` blocks.
+``paths.state_dir``, ``paths.issuers_file``, ``claim_max_age_minutes``, plus
+``ocr``, ``classifier``, and ``zettel`` blocks.
+
+``claim_max_age_minutes`` (default ``60``) sets how long a claim on a document
+stays live: an older one is treated as abandoned and a fresh ingest attempt
+takes it over.
 
 bim doc ingest
 ~~~~~~~~~~~~~~

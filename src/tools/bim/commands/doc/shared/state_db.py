@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import TracebackType
 
@@ -141,7 +141,35 @@ class StateDB:
             conn.execute("ROLLBACK")
             raise
 
-    def claim(self, sha256: str) -> bool:
+    def is_claim_stale(
+        self,
+        sha256: str,
+        max_age: timedelta,
+        now: datetime | None = None,
+    ) -> bool:
+        """Report whether this sha's claim is older than ``max_age``.
+
+        Args:
+            sha256: The claimed document hash.
+            max_age: How long a claim stays live. A claim aged exactly
+                ``max_age`` is still live; staleness is strictly older.
+            now: The instant to measure against; defaults to the current UTC
+                time. A tz-naive value is read as UTC.
+
+        Returns:
+            False when no claim row exists for ``sha256``.
+        """
+        row = self._conn.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha256,)).fetchone()
+        if row is None:
+            return False
+        moment = now if now is not None else datetime.now(timezone.utc)
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        # Both sides are tz-aware, so the subtraction already normalises any
+        # offset difference to the same instant.
+        return moment - datetime.fromisoformat(row[0]) > max_age
+
+    def claim(self, sha256: str, max_age: timedelta | None = None) -> bool:
         """Atomically claim ownership of processing this sha256.
 
         Returns True if this caller successfully claimed (no prior claim or
@@ -157,7 +185,24 @@ class StateDB:
         Spec section 6 step 1: "Record the hash now to prevent concurrent
         re-processing." Single-statement INSERT with WHERE NOT EXISTS keeps
         the check-and-claim atomic under SQLite WAL+autocommit.
+
+        Args:
+            sha256: The document hash to claim.
+            max_age: When given, a claim on this sha older than ``max_age`` is
+                treated as abandoned (its worker died without releasing it) and
+                is taken over with a refreshed timestamp. ``None`` (the default)
+                never reclaims: any existing claim blocks. An already-processed
+                sha is never reclaimed, however old its claim.
         """
+        if max_age is not None and self.is_claim_stale(sha256, max_age):
+            self._conn.execute(
+                """
+                DELETE FROM claims
+                WHERE sha256 = ?
+                  AND NOT EXISTS (SELECT 1 FROM processed WHERE sha256 = ?)
+                """,
+                (sha256, sha256),
+            )
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = self._conn.execute(
             """

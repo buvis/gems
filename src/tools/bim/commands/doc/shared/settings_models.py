@@ -156,6 +156,9 @@ class DocSettings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     paths: DocPaths
+    # A claim older than this many minutes counts as abandoned (its worker died
+    # without releasing it) and can be taken over by a fresh ingest attempt.
+    claim_max_age_minutes: int = 60
     ocr: OCRSettings = OCRSettings()
     classifier: ClassifierSettings = ClassifierSettings()
     zettel: ZettelSettings = ZettelSettings()
