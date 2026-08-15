@@ -12,7 +12,9 @@ pytest.importorskip("httpx")
 
 from bim.commands.serve._app import create_app
 from bim.commands.serve.serve import CommandServe
+from buvis.pybase.adapters import console
 from pytest_mock import MockerFixture
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.testclient import TestClient
 
 
@@ -72,7 +74,7 @@ def client(tmp_path: Path) -> TestClient:
         patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
     ):
         app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
-        with TestClient(app) as test_client:
+        with TestClient(app, base_url="http://127.0.0.1") as test_client:
             yield test_client
 
 
@@ -558,3 +560,113 @@ class TestServeOpen:
 
         assert response.status_code == 403
         mock_open_in_os.assert_not_called()
+
+
+class TestServeTrustedHost:
+    def test_foreign_host_header_rejected(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        with (
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
+            with TestClient(app, base_url="http://evil.example.com") as test_client:
+                response = test_client.get("/api/health")
+
+        assert response.status_code == 400
+
+    def test_matching_loopback_host_passes_through(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        with (
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
+            with TestClient(app, base_url="http://127.0.0.1") as test_client:
+                response = test_client.get("/api/health")
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok"}
+
+    def test_non_loopback_host_installs_wildcard_allowed_hosts_and_warns(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        with (
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+            console.capture() as capture,
+        ):
+            app = create_app(
+                default_directory=str(zettels_dir),
+                archive_directory="archive",
+                host="0.0.0.0",
+            )
+
+        trusted_host_middlewares = [m for m in app.user_middleware if m.cls is TrustedHostMiddleware]
+
+        assert len(trusted_host_middlewares) == 1
+        assert trusted_host_middlewares[0].kwargs["allowed_hosts"] == ["*"]
+        assert "0.0.0.0" in capture.get()
+
+
+class TestServeIndexTokenInjection:
+    def test_get_root_injects_token_before_head_close(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        static_dir = tmp_path / "static"
+        static_dir.mkdir()
+        (static_dir / "index.html").write_text(
+            "<html><head><title>bim</title></head><body>app</body></html>",
+            encoding="utf-8",
+        )
+        (static_dir / "app.js").write_text("console.log('asset');", encoding="utf-8")
+
+        with (
+            patch("bim.commands.serve._app.STATIC_DIR", static_dir),
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
+            with TestClient(app, base_url="http://127.0.0.1") as test_client:
+                index_response = test_client.get("/")
+                asset_response = test_client.get("/app.js")
+
+        token = app.state.buvis_token
+        expected_script = f'<script>window.__BUVIS_TOKEN__ = "{token}";</script>'
+
+        assert index_response.status_code == 200
+        body = index_response.text
+        assert expected_script in body
+        assert body.index(expected_script) < body.index("</head>")
+        assert "<title>bim</title>" in body
+
+        assert asset_response.status_code == 200
+        assert asset_response.text == "console.log('asset');"
+
+
+class TestCommandServeExecute:
+    def test_execute_passes_host_to_create_app(self) -> None:
+        from bim.params.serve import ServeParams
+
+        params = ServeParams(
+            default_directory="zettels",
+            archive_directory="archive",
+            host="0.0.0.0",
+            port=9001,
+            no_browser=True,
+        )
+        cmd = CommandServe(params=params)
+
+        with (
+            patch("bim.commands.serve._app.create_app") as mock_create_app,
+            patch("uvicorn.run") as mock_uvicorn_run,
+        ):
+            mock_app = MagicMock()
+            mock_create_app.return_value = mock_app
+
+            cmd.execute()
+
+        mock_create_app.assert_called_once_with("zettels", "archive", host="0.0.0.0")
+        mock_uvicorn_run.assert_called_once_with(mock_app, host="0.0.0.0", port=9001, log_level="info")
