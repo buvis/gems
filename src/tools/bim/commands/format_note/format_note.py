@@ -39,7 +39,7 @@ class CommandFormatNote:
                     continue
                 zettel = reader.execute(str(path))
                 formatted_content = printer.execute(zettel.get_data())
-                atomic_write_text(path, formatted_content, encoding="utf-8")
+                atomic_write_text(path, formatted_content)
                 formatted_count += 1
             return CommandResult(
                 success=True,
