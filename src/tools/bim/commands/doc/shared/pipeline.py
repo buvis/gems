@@ -22,9 +22,9 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.result import CommandResult
 
-from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.extractor import IncompleteExtraction
 from bim.commands.doc.shared.hashing import sha256_file
 from bim.commands.doc.shared.naming import build_canonical_filename, slugify
