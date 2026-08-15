@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -30,6 +32,75 @@ class TestAtomicWriteBytes:
         assert target.read_bytes() == b"original-content"
         leftover = list(tmp_path.glob(target.name + ".*.tmp"))
         assert leftover == []
+
+    def test_base_exception_during_replace_still_cleans_up_temp_file(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        target = tmp_path / "out.bin"
+        target.write_bytes(b"original-content")
+
+        # KeyboardInterrupt/SystemExit derive from BaseException, not Exception.
+        # Cleanup must still run so no orphaned .tmp sibling survives a Ctrl-C.
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=KeyboardInterrupt,
+        )
+        with pytest.raises(KeyboardInterrupt):
+            atomic_write_bytes(target, b"new-content")
+
+        leftover = list(tmp_path.glob(target.name + ".*.tmp"))
+        assert leftover == []
+
+    def test_fchmod_failure_closes_descriptor_instead_of_leaking(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        target = tmp_path / "out.bin"
+        captured_fd: dict[str, int] = {}
+        real_mkstemp = tempfile.mkstemp
+
+        def fake_mkstemp(*args: object, **kwargs: object) -> tuple[int, str]:
+            fd, name = real_mkstemp(*args, **kwargs)
+            captured_fd["fd"] = fd
+            return fd, name
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.tempfile.mkstemp",
+            side_effect=fake_mkstemp,
+        )
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.fchmod",
+            side_effect=PermissionError("nope"),
+        )
+        close_spy = mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.close",
+            side_effect=os.close,
+        )
+
+        with pytest.raises(PermissionError):
+            atomic_write_bytes(target, b"data")
+
+        closed_fds = [call.args[0] for call in close_spy.call_args_list]
+        assert captured_fd["fd"] in closed_fds
+
+    def test_cleanup_unlink_failure_does_not_mask_original_write_error(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        target = tmp_path / "out.bin"
+        target.write_bytes(b"original-content")
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("disk full"),
+        )
+        # Cleanup's own unlink fails with a different error; the caller must
+        # still see the original write/replace failure, not this one.
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.unlink",
+            side_effect=PermissionError("cleanup denied"),
+        )
+
+        with pytest.raises(OSError) as exc_info:
+            atomic_write_bytes(target, b"new-content")
+
+        assert str(exc_info.value) == "disk full"
 
     def test_parent_dir_must_exist(self, tmp_path: Path) -> None:
         target = tmp_path / "missing-parent" / "out.bin"
@@ -66,6 +137,75 @@ class TestAtomicWriteText:
         assert target.read_text(encoding="utf-8") == "original-content"
         leftover = list(tmp_path.glob(target.name + ".*.tmp"))
         assert leftover == []
+
+    def test_base_exception_during_replace_still_cleans_up_temp_file(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        target = tmp_path / "out.txt"
+        target.write_text("original-content", encoding="utf-8")
+
+        # KeyboardInterrupt/SystemExit derive from BaseException, not Exception.
+        # Cleanup must still run so no orphaned .tmp sibling survives a Ctrl-C.
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=KeyboardInterrupt,
+        )
+        with pytest.raises(KeyboardInterrupt):
+            atomic_write_text(target, "new-content")
+
+        leftover = list(tmp_path.glob(target.name + ".*.tmp"))
+        assert leftover == []
+
+    def test_fchmod_failure_closes_descriptor_instead_of_leaking(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        target = tmp_path / "out.txt"
+        captured_fd: dict[str, int] = {}
+        real_mkstemp = tempfile.mkstemp
+
+        def fake_mkstemp(*args: object, **kwargs: object) -> tuple[int, str]:
+            fd, name = real_mkstemp(*args, **kwargs)
+            captured_fd["fd"] = fd
+            return fd, name
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.tempfile.mkstemp",
+            side_effect=fake_mkstemp,
+        )
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.fchmod",
+            side_effect=PermissionError("nope"),
+        )
+        close_spy = mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.close",
+            side_effect=os.close,
+        )
+
+        with pytest.raises(PermissionError):
+            atomic_write_text(target, "data")
+
+        closed_fds = [call.args[0] for call in close_spy.call_args_list]
+        assert captured_fd["fd"] in closed_fds
+
+    def test_cleanup_unlink_failure_does_not_mask_original_write_error(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        target = tmp_path / "out.txt"
+        target.write_text("original-content", encoding="utf-8")
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("disk full"),
+        )
+        # Cleanup's own unlink fails with a different error; the caller must
+        # still see the original write/replace failure, not this one.
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.unlink",
+            side_effect=PermissionError("cleanup denied"),
+        )
+
+        with pytest.raises(OSError) as exc_info:
+            atomic_write_text(target, "new-content")
+
+        assert str(exc_info.value) == "disk full"
 
     def test_parent_dir_must_exist(self, tmp_path: Path) -> None:
         target = tmp_path / "missing-parent" / "out.txt"
