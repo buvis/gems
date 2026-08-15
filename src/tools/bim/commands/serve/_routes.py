@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
@@ -153,7 +154,7 @@ async def patch_zettel(file_path: str, body: PatchBody) -> dict[str, str]:
         data.metadata[body.field] = body.value
 
     formatted = PrintZettelUseCase(get_formatter()).execute(data)
-    fp.write_text(formatted, encoding="utf-8")
+    atomic_write_text(fp, formatted, encoding="utf-8")
     return {"status": "ok"}
 
 
