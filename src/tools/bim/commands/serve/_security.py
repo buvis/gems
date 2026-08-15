@@ -44,12 +44,12 @@ def confine_path(file_path: str, app_state: AppState) -> Path:
     if not file_path:
         raise HTTPException(status_code=403, detail="path is required")
 
-    allowed_roots = [Path(app_state.default_directory).resolve()]
+    allowed_roots = [Path(app_state.default_directory).expanduser().resolve()]
     if app_state.archive_directory:
-        allowed_roots.append(Path(app_state.archive_directory).resolve())
+        allowed_roots.append(Path(app_state.archive_directory).expanduser().resolve())
 
     try:
-        resolved = Path(file_path).resolve()
+        resolved = Path(file_path).expanduser().resolve()
     except OSError as exc:
         raise HTTPException(status_code=403, detail="path could not be resolved") from exc
 
