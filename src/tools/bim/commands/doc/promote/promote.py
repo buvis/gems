@@ -205,6 +205,8 @@ class CommandPromote:
         # encoding from ``_zk_timestamp``).
         zk_timestamp = self._zk_timestamp(proposal.document.date or proposal.zettel_preview.ingested_at.date())
 
+        # Check-then-write gap against _finalize's later write: inherited
+        # from the ingest path this resolver came from, accepted, not introduced.
         try:
             canonical_filename, resolved_zk_timestamp, target_pdf = resolve_collision(
                 zk_timestamp=zk_timestamp,

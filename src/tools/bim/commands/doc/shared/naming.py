@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
 __all__ = [
@@ -105,6 +105,10 @@ def resolve_collision(
     Caps at 60 attempts (one minute of collisions) and raises
     ``ValueError`` if exhausted - that condition signals a serious clock
     / state-db mismatch worth surfacing rather than silently overwriting.
+
+    Side effect: on success this creates ``target_pdf``'s parent directory
+    (``mkdir(parents=True, exist_ok=True)``). Despite the name, this is not
+    a pure lookup.
     """
     candidate_zk = zk_timestamp
     for _ in range(60):
@@ -126,5 +130,5 @@ def resolve_collision(
 
 def _increment_zk_seconds(zk_timestamp: str) -> str:
     """Add one second to a 14-digit zk timestamp with proper rollover."""
-    dt = datetime.strptime(zk_timestamp, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    dt = datetime.strptime(zk_timestamp, "%Y%m%d%H%M%S")
     return (dt + timedelta(seconds=1)).strftime("%Y%m%d%H%M%S")

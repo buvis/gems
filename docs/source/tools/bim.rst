@@ -404,6 +404,20 @@ Options:
 The proposal must have ``approved: true`` and a slug present in the issuer
 registry (or ``register_issuer: true`` to add a new issuer entry under flock).
 
+Name collisions
+^^^^^^^^^^^^^^^
+
+The canonical name normally encodes the document's own date with a zeroed
+time (``YYYYMMDD000000``). When that name is already taken — another
+document from the same issuer with the same date and title/number — promote
+does **not** overwrite the filed document. It advances the seconds field by
+one and retries, so the filed name's seconds can differ from the document
+date (``…000001``, ``…000002``, and so on). The zettel's ``id`` carries the
+same advanced timestamp as its filename.
+
+If 60 consecutive names are taken, promote fails and writes nothing: the
+PDF is not moved, no zettel is created, and the proposal is left in place.
+
 Retry behaviour
 ~~~~~~~~~~~~~~~
 
