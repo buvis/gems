@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -27,7 +27,7 @@ from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.shared.extractor import IncompleteExtraction
 from bim.commands.doc.shared.hashing import sha256_file
-from bim.commands.doc.shared.naming import build_canonical_filename, slugify
+from bim.commands.doc.shared.naming import build_canonical_filename, resolve_collision, slugify
 from bim.commands.doc.shared.pipeline_helpers import (
     ClassifyStage,
     ExtractStage,
@@ -336,11 +336,13 @@ class Pipeline:
             return slug_title
 
         zk_timestamp = self._zk_timestamp(ctx.extract_result.date)
-        canonical_filename, zk_timestamp, target_pdf = self._resolve_collision(
+        canonical_filename, zk_timestamp, target_pdf = resolve_collision(
             zk_timestamp=zk_timestamp,
             issuer_slug=ctx.issuer_slug,
             title_or_number=slug_title,
             doc_type=ctx.classify_result.doc_type,
+            business_root=self._settings.paths.business_root,
+            vault_dir=self._settings.paths.vault_root / self._settings.paths.vault_documents_subdir,
         )
         return self._file_document(ctx, canonical_filename, zk_timestamp, target_pdf)
 
@@ -718,50 +720,6 @@ class Pipeline:
         if params.email_subject:
             hints["email_subject"] = params.email_subject
         return hints or None
-
-    def _resolve_collision(
-        self,
-        *,
-        zk_timestamp: str,
-        issuer_slug: str,
-        title_or_number: str,
-        doc_type: str,
-    ) -> tuple[str, str, Path]:
-        """Increment the zk_timestamp seconds field until both target_pdf and
-        the future zettel basename are free.
-
-        Spec §11 rows 10/11 mandate a pre-write/pre-move collision check:
-        increment the timestamp by one second and retry. The PDF and zettel
-        basenames are linked (same canonical stem with .pdf / .md), so a
-        single resolved zk_timestamp covers both.
-
-        Caps at 60 attempts (one minute of collisions) and raises
-        ``ValueError`` if exhausted - that condition signals a serious clock
-        / state-db mismatch worth surfacing rather than silently overwriting.
-        """
-        candidate_zk = zk_timestamp
-        vault_dir = self._settings.paths.vault_root / self._settings.paths.vault_documents_subdir
-        for _ in range(60):
-            canonical = build_canonical_filename(
-                zk_timestamp=candidate_zk,
-                issuer_slug=issuer_slug,
-                title_or_number=title_or_number,
-                doc_type=doc_type,
-            )
-            target_pdf = self._settings.paths.business_root / issuer_slug / canonical
-            zettel_basename = canonical.removesuffix(".pdf") + ".md"
-            zettel_path = vault_dir / issuer_slug / zettel_basename
-            if not target_pdf.exists() and not zettel_path.exists():
-                target_pdf.parent.mkdir(parents=True, exist_ok=True)
-                return canonical, candidate_zk, target_pdf
-            candidate_zk = self._increment_zk_seconds(candidate_zk)
-        raise ValueError(f"could not resolve filename collision after 60 attempts starting from {zk_timestamp}")
-
-    @staticmethod
-    def _increment_zk_seconds(zk_timestamp: str) -> str:
-        """Add one second to a 14-digit zk timestamp with proper rollover."""
-        dt = datetime.strptime(zk_timestamp, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
-        return (dt + timedelta(seconds=1)).strftime("%Y%m%d%H%M%S")
 
     @staticmethod
     def _zk_timestamp(doc_date: date | None) -> str:

@@ -152,6 +152,7 @@ combine-as-imports = true
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "S104", "ANN", "ARG", "SLF001", "PLR0913", "PLR0917", "PLR2004", "RUF043", "RUF059", "UP007"]
 "src/tools/*/cli.py" = ["PLR0913"]
+"src/tools/bim/commands/doc/shared/naming.py" = ["PLR0913"]
 "src/tools/bim/commands/serve/_*.py" = ["ARG001"]
 "src/lib/buvis/pybase/updater/checker.py" = ["S310"]
 "src/lib/buvis/pybase/formatting/string_operator/suggest_tags.py" = ["S310"]
