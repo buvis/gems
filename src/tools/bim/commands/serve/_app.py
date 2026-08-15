@@ -40,8 +40,9 @@ def create_app(
         @app.get("/", response_class=HTMLResponse)
         async def _index() -> HTMLResponse:
             html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-            script = f'<script>window.__BUVIS_TOKEN__ = "{app.state.buvis_token}";</script>'
-            html = html.replace("</head>", f"{script}</head>", 1)
+            if app.state.token_in_page:
+                script = f'<script>window.__BUVIS_TOKEN__ = "{app.state.buvis_token}";</script>'
+                html = html.replace("</head>", f"{script}</head>", 1)
             return HTMLResponse(html)
 
         app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")

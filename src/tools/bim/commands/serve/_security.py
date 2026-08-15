@@ -86,15 +86,19 @@ def install_security(app: FastAPI, host: str) -> None:
         host: The interface the server is bound to; loopback hosts get a
             tight allow-list, anything else falls back to a wildcard.
     """
-    app.state.buvis_token = generate_token()
+    token = generate_token()
+    app.state.buvis_token = token
 
     if host in LOOPBACK_HOSTS:
         allowed_hosts = list(LOOPBACK_HOSTS)
+        app.state.token_in_page = True
     else:
         allowed_hosts = ["*"]
+        app.state.token_in_page = False
         console.warning(
             f"bim serve is bound to non-loopback host {host!r}: any host that can reach "
-            "this port can read notes without the auth token (writes still require it)"
+            "this port can read notes without the auth token. The token is not embedded "
+            f"in the page; use it for authenticated requests: {token}"
         )
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
