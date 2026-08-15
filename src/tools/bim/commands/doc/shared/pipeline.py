@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -167,8 +167,10 @@ class Pipeline:
                 },
             )
 
-        # Step 1b: claim (atomic check-and-reserve)
-        if not self._state_db.claim(sha):
+        # Step 1b: claim (atomic check-and-reserve). A claim older than
+        # ``claim_max_age_minutes`` belonged to a worker that died without
+        # releasing it, so it is taken over rather than trusted.
+        if not self._state_db.claim(sha, max_age=timedelta(minutes=self._settings.claim_max_age_minutes)):
             # Another worker already claimed; treat as duplicate from this caller's POV.
             return CommandResult(
                 success=True,
@@ -178,13 +180,11 @@ class Pipeline:
         try:
             return self._run_after_claim(params, sha, active_reporter)
         except Exception as exc:
-            # Release the claim so a retry can re-attempt rather than parking forever.
             # Map any escaping exception to a structured CommandResult per AGENTS.md
             # "never let raw exceptions reach the user" - the CLI handler turns
             # success=False into console.failure rather than a stack trace.
             # Capture exception_type/repr alongside stage so log analysis can
             # distinguish failure modes without violating the no-stack-trace rule.
-            self._state_db.release_claim(sha)
             return CommandResult(
                 success=False,
                 error=f"pipeline failed: {exc}",
@@ -195,6 +195,12 @@ class Pipeline:
                     "exception_repr": repr(exc),
                 },
             )
+        finally:
+            # Single release point for every exit - return, exception, and
+            # BaseException alike (a Ctrl-C must not park the sha forever).
+            # On the filed path the processed row already prevents re-ingestion;
+            # the claim row was only the in-flight reservation.
+            self._state_db.release_claim(sha)
 
     # --------- internals ---------
 
@@ -408,11 +414,6 @@ class Pipeline:
                 extraction_method=ctx.extraction_method,
             )
         )
-        # Release the claim once filing has finalised so the claims table
-        # doesn't accumulate one orphan row per successfully-filed document.
-        # On the happy path the processed row already prevents re-ingestion;
-        # the claim row was the in-flight reservation.
-        self._state_db.release_claim(ctx.sha)
 
         return build_filing_result(
             outcome=IngestOutcome.FILED.value,
@@ -624,9 +625,6 @@ class Pipeline:
             applied_rule_id=ctx.applied_rule_id,
         )
         write_proposal(proposal_path, proposal)
-
-        # Release the claim so a re-run on the same SHA can re-triage cleanly.
-        self._state_db.release_claim(ctx.sha)
 
         return CommandResult(
             success=True,
