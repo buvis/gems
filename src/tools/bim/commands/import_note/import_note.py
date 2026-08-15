@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel import ReadZettelUseCase
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
@@ -58,7 +59,7 @@ class CommandImportNote:
                 continue
 
             formatted = PrintZettelUseCase(self.formatter).execute(note.get_data())
-            path_output.write_text(formatted, encoding="utf-8")
+            atomic_write_text(path_output, formatted)
             messages.append(f"Imported {path.name} as {path_output.name}")
             imported_count += 1
 

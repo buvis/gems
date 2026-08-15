@@ -5,6 +5,7 @@ from typing import Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import GlobalSettings
+from buvis.pybase.filesystem import atomic_write_text
 
 
 def resolve_output_path(
@@ -111,7 +112,7 @@ def interactive_import(path_note: Path, path_zettelkasten: Path, global_settings
         note.tags = new_tags
         formatted_content = PrintZettelUseCase(get_formatter()).execute(note.get_data())
 
-    path_output.write_text(formatted_content, encoding="utf-8")
+    atomic_write_text(path_output, formatted_content)
     console.success(f"Note imported as {path_output}")
     remove_file = console.confirm("Do you want to remove the original?")
 
