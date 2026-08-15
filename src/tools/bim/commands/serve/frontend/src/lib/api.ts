@@ -1,4 +1,5 @@
 const BASE = '/api';
+const TOKEN = (window as unknown as { __BUVIS_TOKEN__?: string }).__BUVIS_TOKEN__ ?? '';
 
 export async function fetchQueries(): Promise<Record<string, string>> {
 	const res = await fetch(`${BASE}/queries`);
@@ -109,7 +110,7 @@ export async function patchZettel(
 ): Promise<void> {
 	const res = await fetch(`${BASE}/zettels/${encodeURIComponent(filePath)}`, {
 		method: 'PATCH',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'X-Buvis-Token': TOKEN },
 		body: JSON.stringify({ field, value, target })
 	});
 	if (!res.ok) throw new Error(`Patch failed: ${res.statusText}`);
@@ -129,7 +130,7 @@ export async function execAction(
 ): Promise<Record<string, unknown>> {
 	const res = await fetch(`${BASE}/actions/${encodeURIComponent(name)}`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'X-Buvis-Token': TOKEN },
 		body: JSON.stringify({ file_path: filePath, args, row })
 	});
 	if (!res.ok) throw new Error(`Action failed: ${res.statusText}`);
@@ -139,7 +140,7 @@ export async function execAction(
 export async function openFile(filePath: string): Promise<void> {
 	const res = await fetch(`${BASE}/open`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'X-Buvis-Token': TOKEN },
 		body: JSON.stringify({ path: filePath })
 	});
 	if (!res.ok) throw new Error(`Open failed: ${res.statusText}`);
