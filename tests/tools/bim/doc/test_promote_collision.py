@@ -266,3 +266,58 @@ class TestCommandPromoteCollisions:
         # No zettel was written for this issuer at all.
         vault_issuer_dir = settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
         assert not vault_issuer_dir.exists() or list(vault_issuer_dir.glob("*.md")) == []
+
+    def test_filesystem_error_during_collision_resolution_returns_failure_without_traceback(
+        self,
+        settings: DocSettings,
+        registry_path: Path,
+        lock_path: Path,
+        state_db: StateDB,
+        mocker: MockerFixture,
+    ) -> None:
+        """An OSError raised from inside resolve_collision (e.g. a read-only
+        vault, a permissions failure, or ENOSPC) must be caught and returned
+        as a CommandResult(success=False, error=...) instead of propagating
+        out of CommandPromote.execute() as a raw traceback.
+
+        The resulting error message must be non-empty, must surface the
+        OSError's own text, and must be distinguishable from the unrelated
+        60-attempt exhaustion failure message (which contains the substring
+        "collision resolution failed").
+        """
+        triage_dir = settings.paths.business_root / "_triage"
+        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
+        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf))
+
+        cmd, _ = _build_command(
+            settings=settings,
+            registry_path=registry_path,
+            lock_path=lock_path,
+            state_db=state_db,
+            proposal_yml=yml,
+            mocker=mocker,
+            ocr_pdf=pdf,
+        )
+
+        os_error_text = "[Errno 30] Read-only file system"
+        mocker.patch(
+            "bim.commands.doc.promote.promote.resolve_collision",
+            side_effect=OSError(os_error_text),
+        )
+
+        result = cmd.execute()
+
+        assert result.success is False
+        error = result.error or ""
+        assert error != ""
+        # The OSError's own text must be surfaced to the caller.
+        assert os_error_text in error
+        # Must be distinguishable from the exhaustion-path failure message.
+        assert "collision resolution failed" not in error
+
+        # _finalize must never have run: proposal is untouched, nothing written.
+        assert yml.exists()
+        assert not (settings.paths.business_root / "cez-as").exists()
+        vault_issuer_dir = settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
+        assert not vault_issuer_dir.exists()
