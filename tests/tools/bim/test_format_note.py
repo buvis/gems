@@ -142,6 +142,32 @@ class TestCommandFormatNote:
 
         assert a.read_text(encoding="utf-8") == original_a
 
+    def test_single_write_failure_leaves_existing_file_untouched(
+        self,
+        zettel_file: Path,
+        tmp_path: Path,
+        format_note_dependencies,
+        mocker: MockerFixture,
+    ) -> None:
+        """os.replace failure writing path_output returns failure and leaves the file byte-for-byte intact."""
+        output_path = tmp_path / "formatted.md"
+        output_path.write_text("original content", encoding="utf-8")
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("disk full"),
+        )
+
+        cmd = CommandFormatNote(
+            params=FormatNoteParams(paths=[zettel_file], path_output=output_path),
+            repo=format_note_dependencies["repo"],
+            formatter=format_note_dependencies["formatter"],
+        )
+        result = cmd.execute()
+
+        assert result.success is False
+        assert output_path.read_text(encoding="utf-8") == "original content"
+
     def test_single_returns_content(
         self,
         zettel_file: Path,
