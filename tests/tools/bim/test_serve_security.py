@@ -20,6 +20,7 @@ from bim.commands.serve._security import (
     install_security,
     require_token,
 )
+from buvis.pybase.adapters import console
 from fastapi import FastAPI, HTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
@@ -225,3 +226,30 @@ class TestInstallSecurity:
         install_security(app, "0.0.0.0")
         kwargs = self._trusted_host_kwargs(app)
         assert list(kwargs["allowed_hosts"]) == ["*"]
+
+    @pytest.mark.parametrize("host", sorted(LOOPBACK_HOSTS))
+    def test_loopback_host_marks_token_in_page_true(self, host: str) -> None:
+        app = FastAPI()
+        install_security(app, host)
+        assert app.state.token_in_page is True
+
+    def test_non_loopback_host_marks_token_in_page_false(self) -> None:
+        app = FastAPI()
+        install_security(app, "0.0.0.0")
+        assert app.state.token_in_page is False
+
+    def test_non_loopback_host_surfaces_minted_token_to_operator_via_console(self) -> None:
+        app = FastAPI()
+        with console.capture() as capture:
+            install_security(app, "0.0.0.0")
+
+        assert app.state.buvis_token in capture.get()
+
+    def test_non_loopback_warning_describes_unauthenticated_reads_not_protected_writes(self) -> None:
+        app = FastAPI()
+        with console.capture() as capture:
+            install_security(app, "0.0.0.0")
+
+        output = capture.get().lower()
+        assert "read notes without" in output
+        assert "writes still require it" not in output

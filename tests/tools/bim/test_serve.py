@@ -625,6 +625,22 @@ class TestServeTrustedHost:
         assert trusted_host_middlewares[0].kwargs["allowed_hosts"] == ["*"]
         assert "0.0.0.0" in capture.get()
 
+    def test_non_loopback_host_still_rejects_mutating_request_without_token(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        with (
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive", host="0.0.0.0")
+            with TestClient(app, base_url="http://127.0.0.1") as test_client:
+                response = test_client.post(
+                    "/api/actions/some-action",
+                    json={"file_path": "note.md", "args": {}, "row": {}},
+                )
+
+        assert response.status_code == 401
+
 
 class TestServeIndexTokenInjection:
     def test_get_root_injects_token_before_head_close(self, tmp_path: Path) -> None:
@@ -659,6 +675,31 @@ class TestServeIndexTokenInjection:
 
         assert asset_response.status_code == 200
         assert asset_response.text == "console.log('asset');"
+
+    def test_get_root_omits_token_on_non_loopback_host(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        static_dir = tmp_path / "static"
+        static_dir.mkdir()
+        index_html = "<html><head><title>bim</title></head><body>app</body></html>"
+        (static_dir / "index.html").write_text(index_html, encoding="utf-8")
+
+        with (
+            patch("bim.commands.serve._app.STATIC_DIR", static_dir),
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive", host="0.0.0.0")
+            with TestClient(app, base_url="http://127.0.0.1") as test_client:
+                index_response = test_client.get("/")
+
+        token = app.state.buvis_token
+        body = index_response.text
+
+        assert index_response.status_code == 200
+        assert token not in body
+        assert "__BUVIS_TOKEN__" not in body
+        assert body == index_html
 
 
 class TestCommandServeExecute:
