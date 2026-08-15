@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+from pathlib import Path
+
 import pytest
 from bim.commands.doc.shared.naming import (
     CANONICAL_REGEX,
     build_canonical_filename,
+    resolve_collision,
     slugify,
 )
 from pytest_mock import MockerFixture
+
+
+def _advance_seconds(zk_timestamp: str, seconds: int) -> str:
+    moment = datetime.strptime(zk_timestamp, "%Y%m%d%H%M%S")
+    return (moment + timedelta(seconds=seconds)).strftime("%Y%m%d%H%M%S")
 
 
 class TestSlugify:
@@ -167,3 +176,139 @@ class TestLazyUnidecodeImport:
         finally:
             if original is not None:
                 sys.modules["bim.commands.doc.shared.naming"] = original
+
+
+class TestResolveCollision:
+    def test_no_collision_returns_first_candidate_and_creates_target_dir(self, tmp_path: Path) -> None:
+        business_root = tmp_path / "business"
+        vault_dir = tmp_path / "vault"
+        zk_timestamp = "20210311083422"
+        issuer_slug = "cez-as"
+        title_or_number = "7102105594"
+        doc_type = "invoice"
+
+        canonical_filename, resolved_zk_timestamp, target_pdf = resolve_collision(
+            zk_timestamp=zk_timestamp,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+            business_root=business_root,
+            vault_dir=vault_dir,
+        )
+
+        expected_filename = build_canonical_filename(
+            zk_timestamp=zk_timestamp,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+        )
+        assert canonical_filename == expected_filename
+        assert resolved_zk_timestamp == zk_timestamp
+        assert target_pdf == business_root / issuer_slug / expected_filename
+        assert target_pdf.parent.is_dir()
+
+    def test_one_pdf_collision_advances_timestamp_by_one_second(self, tmp_path: Path) -> None:
+        business_root = tmp_path / "business"
+        vault_dir = tmp_path / "vault"
+        zk_timestamp = "20210311083422"
+        issuer_slug = "cez-as"
+        title_or_number = "7102105594"
+        doc_type = "invoice"
+
+        colliding_filename = build_canonical_filename(
+            zk_timestamp=zk_timestamp,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+        )
+        colliding_pdf = business_root / issuer_slug / colliding_filename
+        colliding_pdf.parent.mkdir(parents=True)
+        colliding_pdf.write_bytes(b"existing pdf")
+
+        canonical_filename, resolved_zk_timestamp, target_pdf = resolve_collision(
+            zk_timestamp=zk_timestamp,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+            business_root=business_root,
+            vault_dir=vault_dir,
+        )
+
+        expected_ts = _advance_seconds(zk_timestamp, 1)
+        expected_filename = build_canonical_filename(
+            zk_timestamp=expected_ts,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+        )
+        assert resolved_zk_timestamp == expected_ts
+        assert canonical_filename == expected_filename
+        assert target_pdf == business_root / issuer_slug / expected_filename
+
+    def test_zettel_only_collision_still_advances_timestamp(self, tmp_path: Path) -> None:
+        business_root = tmp_path / "business"
+        vault_dir = tmp_path / "vault"
+        zk_timestamp = "20210311083422"
+        issuer_slug = "cez-as"
+        title_or_number = "7102105594"
+        doc_type = "invoice"
+
+        colliding_filename = build_canonical_filename(
+            zk_timestamp=zk_timestamp,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+        )
+        colliding_zettel = vault_dir / issuer_slug / (colliding_filename.removesuffix(".pdf") + ".md")
+        colliding_zettel.parent.mkdir(parents=True)
+        colliding_zettel.write_text("existing zettel")
+
+        canonical_filename, resolved_zk_timestamp, target_pdf = resolve_collision(
+            zk_timestamp=zk_timestamp,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+            business_root=business_root,
+            vault_dir=vault_dir,
+        )
+
+        expected_ts = _advance_seconds(zk_timestamp, 1)
+        expected_filename = build_canonical_filename(
+            zk_timestamp=expected_ts,
+            issuer_slug=issuer_slug,
+            title_or_number=title_or_number,
+            doc_type=doc_type,
+        )
+        assert resolved_zk_timestamp == expected_ts
+        assert canonical_filename == expected_filename
+        assert target_pdf == business_root / issuer_slug / expected_filename
+
+    def test_sixty_consecutive_collisions_raises_value_error(self, tmp_path: Path) -> None:
+        business_root = tmp_path / "business"
+        vault_dir = tmp_path / "vault"
+        zk_timestamp = "20210311083422"
+        issuer_slug = "cez-as"
+        title_or_number = "7102105594"
+        doc_type = "invoice"
+
+        issuer_dir = business_root / issuer_slug
+        issuer_dir.mkdir(parents=True)
+        for offset in range(60):
+            candidate_ts = _advance_seconds(zk_timestamp, offset)
+            candidate_filename = build_canonical_filename(
+                zk_timestamp=candidate_ts,
+                issuer_slug=issuer_slug,
+                title_or_number=title_or_number,
+                doc_type=doc_type,
+            )
+            (issuer_dir / candidate_filename).write_bytes(b"existing pdf")
+
+        with pytest.raises(ValueError):
+            resolve_collision(
+                zk_timestamp=zk_timestamp,
+                issuer_slug=issuer_slug,
+                title_or_number=title_or_number,
+                doc_type=doc_type,
+                business_root=business_root,
+                vault_dir=vault_dir,
+            )
