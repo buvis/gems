@@ -47,7 +47,7 @@ class CommandSyncNote:
     def execute(self) -> CommandResult:
         match self.params.target_system:
             case "jira":
-                self._target = ZettelJiraAdapter(self.jira_adapter_config)
+                target = ZettelJiraAdapter(self.jira_adapter_config)
             case _:
                 return CommandResult(
                     success=False,
@@ -58,37 +58,10 @@ class CommandSyncNote:
         synced_count = 0
 
         for path in self.params.paths:
-            if not path.is_file():
-                warnings.append(f"{path} doesn't exist")
-                continue
-
-            reader = ReadZettelUseCase(self.repo)
-            note = reader.execute(str(path))
-
-            if isinstance(note, ProjectZettel):
-                project: ProjectZettel = note
-            else:
-                warnings.append(f"{path} is not a project")
-                continue
-
-            ignore_flag = self.jira_adapter_config.get("ignore", DEFAULT_JIRA_IGNORE_US_LABEL)
-            current_us = getattr(project, "us", None)
-
-            if current_us == ignore_flag:
-                warnings.append("Project is set to ignore Jira")
-                continue
-
-            if current_us:
-                warning, message, count = self._update_existing_issue(current_us, project)
-                if warning:
-                    warnings.append(warning)
-                if message:
-                    messages.append(message)
-                synced_count += count
-                continue
-
-            messages.append(self._create_issue(path, project))
-            synced_count += 1
+            msgs, warns, count = self._sync_path(path, target)
+            messages.extend(msgs)
+            warnings.extend(warns)
+            synced_count += count
 
         return CommandResult(
             success=True,
@@ -97,8 +70,39 @@ class CommandSyncNote:
             metadata={"synced_count": synced_count},
         )
 
-    def _create_issue(self, path: Path, project: ProjectZettel) -> str:
-        new_issue = self._target.create_from_project(project)
+    def _sync_path(
+        self,
+        path: Path,
+        target: ZettelJiraAdapter,
+    ) -> tuple[list[str], list[str], int]:
+        """Return (messages, warnings, synced_count) for the given path."""
+        if not path.is_file():
+            return [], [f"{path} doesn't exist"], 0
+
+        reader = ReadZettelUseCase(self.repo)
+        note = reader.execute(str(path))
+
+        if isinstance(note, ProjectZettel):
+            project: ProjectZettel = note
+        else:
+            return [], [f"{path} is not a project"], 0
+
+        ignore_flag = self.jira_adapter_config.get("ignore", DEFAULT_JIRA_IGNORE_US_LABEL)
+        current_us = getattr(project, "us", None)
+
+        if current_us == ignore_flag:
+            return [], ["Project is set to ignore Jira"], 0
+
+        if current_us:
+            warning, message, count = self._update_existing_issue(current_us, project, target)
+            messages = [message] if message else []
+            warnings = [warning] if warning else []
+            return messages, warnings, count
+
+        return [self._create_issue(path, project, target)], [], 1
+
+    def _create_issue(self, path: Path, project: ProjectZettel, target: ZettelJiraAdapter) -> str:
+        new_issue = target.create_from_project(project)
         md_style_link = f"[{new_issue.id}]({new_issue.link})"
         project.us = md_style_link
         timestamp = datetime.now(tzlocal.get_localzone()).strftime("%Y-%m-%d %H:%M")
@@ -113,12 +117,13 @@ class CommandSyncNote:
         self,
         current_us: str,
         project: ProjectZettel,
+        target: ZettelJiraAdapter,
     ) -> tuple[str | None, str | None, int]:
         """Return (warning, message, count) for the caller to append/accumulate."""
         issue_key = _extract_issue_key(current_us)
         if not issue_key:
             return f"Can't parse issue key from: {current_us}", None, 0
-        updated = self._target.update_description_from_project(issue_key, project)
+        updated = target.update_description_from_project(issue_key, project)
         if updated:
             return None, f"Description updated for {issue_key}", 1
         return None, f"Already in sync with {issue_key}", 0
