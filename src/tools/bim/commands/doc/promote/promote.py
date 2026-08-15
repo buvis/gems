@@ -278,6 +278,20 @@ class CommandPromote:
                     extraction_method="manual",
                 )
             )
+            # Second identity: the raw source sha the ingest run claimed on,
+            # carried through the proposal. Nothing on disk hashes to it any
+            # more once OCR embedded a text layer, so re-ingesting the original
+            # source would otherwise look brand new.
+            self._services.state_db.record_processed(
+                ProcessedRow(
+                    sha256=ctx.proposal.source.sha256,
+                    canonical_filename=plan.canonical_filename,
+                    issuer_slug=ctx.proposal.issuer.slug,
+                    doc_type=ctx.proposal.document.type,
+                    processed_at=datetime.now(timezone.utc),
+                    extraction_method="manual",
+                )
+            )
             # Refresh rule freshness when this triage came from a rule-engine
             # match (``applied_rule_id`` set by the pipeline). Pre-existing
             # proposals without the field skip the refresh and behave as before.

@@ -626,6 +626,20 @@ class Pipeline:
         )
         write_proposal(proposal_path, proposal)
 
+        # Stamp the raw source sha as seen so a resent copy is caught as a
+        # duplicate while the proposal waits for review. Nothing is filed yet,
+        # so the row points at the parked _triage PDF.
+        self._state_db.record_processed(
+            ProcessedRow(
+                sha256=ctx.sha,
+                canonical_filename=basename,
+                issuer_slug=proposal_slug,
+                doc_type=doc_type_for_filename,
+                processed_at=datetime.now(timezone.utc),
+                extraction_method="pending-triage",
+            )
+        )
+
         return CommandResult(
             success=True,
             metadata={
