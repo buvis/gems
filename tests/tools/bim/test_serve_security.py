@@ -36,6 +36,15 @@ def _make_request(headers: dict[str, str], app: FastAPI) -> Request:
     return Request(scope)
 
 
+@pytest.fixture
+def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A fake ``$HOME`` directory, with ``HOME`` patched to point at it."""
+    home = tmp_path / "fake_home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    return home
+
+
 class TestConfinePath:
     def test_rejects_path_outside_allowed_roots(self, tmp_path: Path) -> None:
         vault = tmp_path / "vault"
@@ -78,20 +87,6 @@ class TestConfinePath:
         assert exc_info.value.status_code == 403
 
     def test_allows_real_in_vault_path(self, tmp_path: Path) -> None:
-        vault = tmp_path / "vault"
-        vault.mkdir()
-        note = vault / "note.md"
-        note.write_text("hello")
-
-        app_state = AppState(default_directory=str(vault), archive_directory=None)
-
-        result = confine_path(str(note), app_state)
-        assert result == note.resolve()
-
-    def test_none_archive_directory_does_not_raise_for_that_reason(self, tmp_path: Path) -> None:
-        """Building the allowed-roots list must not crash on a ``None``
-        ``archive_directory`` for an otherwise-valid ``default_directory``
-        path."""
         vault = tmp_path / "vault"
         vault.mkdir()
         note = vault / "note.md"
@@ -160,16 +155,10 @@ class TestConfinePath:
             confine_path(target, app_state)
         assert exc_info.value.status_code == 403
 
-    def test_allows_absolute_path_under_tilde_form_default_directory(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_allows_absolute_path_under_tilde_form_default_directory(self, fake_home: Path) -> None:
         """``default_directory`` given in tilde form must be expanded before
         confinement, so a real file inside it is reachable by its absolute
         path, not just by luck of a matching cwd."""
-        fake_home = tmp_path / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-
         vault = fake_home / "vault-under-a-fake-home"
         vault.mkdir()
         note = vault / "note.md"
@@ -180,15 +169,9 @@ class TestConfinePath:
         result = confine_path(str(note), app_state)
         assert result == note.resolve()
 
-    def test_allows_tilde_form_request_path_under_tilde_form_default_directory(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_allows_tilde_form_request_path_under_tilde_form_default_directory(self, fake_home: Path) -> None:
         """The incoming ``file_path`` is also expanded, so a tilde-form
         request path resolves to the same real file as its absolute form."""
-        fake_home = tmp_path / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-
         vault = fake_home / "vault-under-a-fake-home"
         vault.mkdir()
         note = vault / "note.md"
@@ -199,13 +182,7 @@ class TestConfinePath:
         result = confine_path("~/vault-under-a-fake-home/note.md", app_state)
         assert result == note.resolve()
 
-    def test_rejects_path_outside_tilde_form_default_directory(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home = tmp_path / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-
+    def test_rejects_path_outside_tilde_form_default_directory(self, fake_home: Path) -> None:
         vault = fake_home / "vault-under-a-fake-home"
         vault.mkdir()
         outside = fake_home / "outside"
@@ -219,15 +196,9 @@ class TestConfinePath:
             confine_path(str(secret), app_state)
         assert exc_info.value.status_code == 403
 
-    def test_allows_path_under_tilde_form_archive_directory(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_allows_path_under_tilde_form_archive_directory(self, fake_home: Path) -> None:
         """``archive_directory`` given in tilde form must be expanded the
         same way as ``default_directory``."""
-        fake_home = tmp_path / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-
         vault = fake_home / "vault"
         vault.mkdir()
         archive = fake_home / "archive-under-a-fake-home"
@@ -240,15 +211,9 @@ class TestConfinePath:
         result = confine_path(str(archived_note), app_state)
         assert result == archived_note.resolve()
 
-    def test_allows_tilde_form_request_path_against_absolute_form_allowed_root(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_allows_tilde_form_request_path_against_absolute_form_allowed_root(self, fake_home: Path) -> None:
         """A tilde-form request path must expand and resolve into an
         ordinary, already-absolute ``default_directory``."""
-        fake_home = tmp_path / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-
         vault = fake_home / "vault"
         vault.mkdir()
         note = vault / "note.md"
@@ -259,13 +224,7 @@ class TestConfinePath:
         result = confine_path("~/vault/note.md", app_state)
         assert result == note.resolve()
 
-    def test_rejects_tilde_form_request_path_outside_absolute_form_allowed_root(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home = tmp_path / "fake_home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-
+    def test_rejects_tilde_form_request_path_outside_absolute_form_allowed_root(self, fake_home: Path) -> None:
         vault = fake_home / "vault"
         vault.mkdir()
         outside = fake_home / "outside"

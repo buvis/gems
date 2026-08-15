@@ -255,6 +255,18 @@ class TestServeQueries:
         assert response.json()["detail"] == f"Unknown query: {name}"
         mock_resolve.assert_not_called()
 
+    def test_exec_query_missing_returns_404(self, client: TestClient) -> None:
+        with patch("bim.commands.serve._routes.resolve_query_file") as mock_resolve:
+            mock_resolve.side_effect = FileNotFoundError("nope")
+
+            response = client.post(
+                "/api/queries/missing/exec",
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
+
+        assert response.status_code == 404
+        assert "nope" in response.json()["detail"]
+
 
 class TestServeZettels:
     def test_get_zettel(self, client: TestClient, tmp_path: Path) -> None:
@@ -546,6 +558,22 @@ class TestServeActions:
         assert response.status_code == 403
         mock_command.assert_not_called()
 
+    def test_open_action_in_vault_with_valid_token_returns_200_and_opens_resolved_path(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.serve._actions.open_in_os") as mock_open_in_os:
+            response = client.post(
+                "/api/actions/open",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
+
+        assert response.status_code == 200
+        mock_open_in_os.assert_called_once_with(real_file.resolve())
+
 
 class TestServeErrors:
     def test_unknown_action_returns_404(self, client: TestClient) -> None:
@@ -587,6 +615,22 @@ class TestServeOpen:
 
         assert response.status_code == 403
         mock_open_in_os.assert_not_called()
+
+    def test_open_file_in_vault_with_valid_token_returns_200_and_opens_resolved_path(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.serve._routes.open_in_os") as mock_open_in_os:
+            response = client.post(
+                "/api/open",
+                json={"path": str(real_file)},
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
+
+        assert response.status_code == 200
+        mock_open_in_os.assert_called_once_with(real_file.resolve())
 
 
 class TestServeTrustedHost:
@@ -712,6 +756,67 @@ class TestServeIndexTokenInjection:
         assert token not in body
         assert "__BUVIS_TOKEN__" not in body
         assert body == index_html
+
+    def test_get_root_not_in_openapi_schema(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        static_dir = tmp_path / "static"
+        static_dir.mkdir()
+        (static_dir / "index.html").write_text(
+            "<html><head><title>bim</title></head><body>app</body></html>",
+            encoding="utf-8",
+        )
+
+        with (
+            patch("bim.commands.serve._app.STATIC_DIR", static_dir),
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
+
+        assert "/" not in app.openapi()["paths"]
+
+    def test_get_root_missing_head_close_still_returns_200_and_warns(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        static_dir = tmp_path / "static"
+        static_dir.mkdir()
+        (static_dir / "index.html").write_text(
+            "<html><body>app</body></html>",
+            encoding="utf-8",
+        )
+
+        with (
+            patch("bim.commands.serve._app.STATIC_DIR", static_dir),
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
+            with TestClient(app, base_url="http://127.0.0.1") as test_client, console.capture() as capture:
+                response = test_client.get("/")
+
+        assert response.status_code == 200
+        assert capture.get() != ""
+
+
+class TestServeIndexMissing:
+    def test_index_missing_returns_404(self, tmp_path: Path) -> None:
+        zettels_dir = tmp_path / "zettels"
+        zettels_dir.mkdir()
+        static_dir = tmp_path / "static"
+        static_dir.mkdir()
+        (static_dir / "app.js").write_text("console.log('asset');", encoding="utf-8")
+
+        with (
+            patch("bim.commands.serve._app.STATIC_DIR", static_dir),
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock),
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock),
+        ):
+            app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
+            with TestClient(app, base_url="http://127.0.0.1") as test_client:
+                response = test_client.get("/")
+
+        assert response.status_code == 404
 
 
 class TestCommandServeExecute:
