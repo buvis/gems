@@ -89,7 +89,7 @@ def install_security(app: FastAPI, host: str) -> None:
     app.state.buvis_token = generate_token()
 
     if host in LOOPBACK_HOSTS:
-        allowed_hosts = ["127.0.0.1", "localhost", "::1"]
+        allowed_hosts = list(LOOPBACK_HOSTS)
     else:
         allowed_hosts = ["*"]
         console.warning(
