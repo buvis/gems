@@ -40,6 +40,16 @@ FileMetadataReader
    :undoc-members:
    :show-inheritance:
 
+atomic_write_text
+~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: buvis.pybase.filesystem.atomic_write_text
+
+atomic_write_bytes
+~~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: buvis.pybase.filesystem.atomic_write_bytes
+
 Examples
 --------
 
