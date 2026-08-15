@@ -310,3 +310,39 @@ class TestCommandImportNote:
         assert result.metadata["imported_count"] == 2
         assert (zettelkasten_dir / "1.md").is_file()
         assert (zettelkasten_dir / "2.md").is_file()
+
+    def test_force_overwrite_write_failure_leaves_existing_note_untouched(
+        self,
+        note_file: Path,
+        zettelkasten_dir: Path,
+        deps: tuple[MagicMock, MagicMock],
+    ) -> None:
+        """os.replace failure during the atomic write leaves the pre-existing note byte-for-byte intact."""
+        repo, formatter = deps
+        note = _make_note()
+        output_path = zettelkasten_dir / f"{note.id}.md"
+        output_path.write_text("old", encoding="utf-8")
+
+        with (
+            patch("bim.commands.import_note.import_note.ReadZettelUseCase") as mock_reader,
+            patch("bim.commands.import_note.import_note.PrintZettelUseCase") as mock_formatter,
+            patch(
+                "buvis.pybase.filesystem.atomic_write.os.replace",
+                side_effect=OSError("disk full"),
+            ),
+        ):
+            mock_reader.return_value.execute.return_value = note
+            mock_formatter.return_value.execute.return_value = "formatted content"
+
+            params = ImportNoteParams(paths=[note_file], force=True)
+            cmd = CommandImportNote(
+                params=params,
+                path_zettelkasten=zettelkasten_dir,
+                repo=repo,
+                formatter=formatter,
+            )
+
+            with pytest.raises(OSError):
+                cmd.execute()
+
+        assert output_path.read_text(encoding="utf-8") == "old"
