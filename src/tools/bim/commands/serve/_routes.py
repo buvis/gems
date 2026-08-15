@@ -34,6 +34,15 @@ def _get_directory(request: Request) -> str:
     return str(request.app.state.default_directory)
 
 
+def _resolve_query_path(name: str) -> Path:
+    if name.endswith((".yaml", ".yml")):
+        raise HTTPException(status_code=404, detail=f"Unknown query: {name}")
+    try:
+        return resolve_query_file(name, bundled_dir=BUNDLED_QUERY_DIR)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
 def _run_query(spec: Any, directory: str) -> dict[str, Any]:
     if spec.source.directory is None:
         spec.source.directory = directory
@@ -99,12 +108,7 @@ async def list_queries(request: Request) -> dict[str, Any]:
 
 @router.get("/queries/{name}")
 async def get_query(name: str) -> dict[str, Any]:
-    if name.endswith((".yaml", ".yml")):
-        raise HTTPException(status_code=404, detail=f"Unknown query: {name}")
-    try:
-        path = resolve_query_file(name, bundled_dir=BUNDLED_QUERY_DIR)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+    path = _resolve_query_path(name)
     spec = parse_query_file(str(path))
     return dataclasses.asdict(spec)
 
@@ -119,13 +123,8 @@ async def exec_query(
     request: Request,
     _: None = Depends(require_token),
 ) -> dict[str, Any]:
-    if name.endswith((".yaml", ".yml")):
-        raise HTTPException(status_code=404, detail=f"Unknown query: {name}")
+    path = _resolve_query_path(name)
     directory = _get_directory(request)
-    try:
-        path = resolve_query_file(name, bundled_dir=BUNDLED_QUERY_DIR)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
     spec = parse_query_file(str(path))
     return _run_query(spec, directory)
 
