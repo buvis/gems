@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from bim.commands.format_note.format_note import CommandFormatNote
 from bim.params.format_note import FormatNoteParams
+from pytest_mock import MockerFixture
 
 
 @pytest.fixture
@@ -110,6 +111,36 @@ class TestCommandFormatNote:
         assert result.metadata["formatted_count"] == 1
         assert result.warnings == [f"{missing} doesn't exist"]
         assert exists.read_text(encoding="utf-8") == "formatted content"
+
+    def test_batch_write_failure_leaves_existing_file_untouched(
+        self,
+        tmp_path: Path,
+        minimal_zettel: str,
+        format_note_dependencies,
+        mocker: MockerFixture,
+    ) -> None:
+        """os.replace failure during the atomic write propagates and leaves the file byte-for-byte intact."""
+        a = tmp_path / "a.md"
+        b = tmp_path / "b.md"
+        a.write_text(minimal_zettel, encoding="utf-8")
+        b.write_text(minimal_zettel, encoding="utf-8")
+        original_a = a.read_text(encoding="utf-8")
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("disk full"),
+        )
+
+        cmd = CommandFormatNote(
+            params=FormatNoteParams(paths=[a, b]),
+            repo=format_note_dependencies["repo"],
+            formatter=format_note_dependencies["formatter"],
+        )
+
+        with pytest.raises(OSError):
+            cmd.execute()
+
+        assert a.read_text(encoding="utf-8") == original_a
 
     def test_single_returns_content(
         self,

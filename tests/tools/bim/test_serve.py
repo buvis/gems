@@ -12,6 +12,7 @@ pytest.importorskip("httpx")
 
 from bim.commands.serve._app import create_app
 from bim.commands.serve.serve import CommandServe
+from pytest_mock import MockerFixture
 from starlette.testclient import TestClient
 
 
@@ -275,6 +276,44 @@ class TestServeZettels:
         mock_use_case_cls.assert_called_once_with(formatter)
         use_case.execute.assert_called_once_with(data)
         assert real_file.read_text(encoding="utf-8") == "formatted"
+
+    def test_patch_zettel_write_failure_leaves_original_untouched(
+        self, client: TestClient, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        real_file = tmp_path / "note.md"
+        real_file.write_text("original content", encoding="utf-8")
+
+        data = SimpleNamespace(
+            metadata={},
+            reference={},
+            sections=[],
+            file_path=str(real_file),
+        )
+        zettel = MagicMock()
+        zettel.get_data.return_value = data
+        repo = MagicMock()
+        repo.find_by_location.return_value = zettel
+        formatter = MagicMock()
+        use_case = MagicMock()
+        use_case.execute.return_value = "formatted"
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("disk full"),
+        )
+
+        with (
+            patch("bim.commands.serve._routes.get_repo", return_value=repo),
+            patch("bim.commands.serve._routes.get_formatter", return_value=formatter),
+            patch("bim.commands.serve._routes.PrintZettelUseCase", return_value=use_case),
+            pytest.raises(OSError),
+        ):
+            client.patch(
+                f"/api/zettels/{real_file}",
+                json={"field": "title", "value": "New Title"},
+            )
+
+        assert real_file.read_text(encoding="utf-8") == "original content"
 
     def test_get_zettel_missing_returns_404(self, client: TestClient) -> None:
         with patch("pathlib.Path.is_file", return_value=False):
