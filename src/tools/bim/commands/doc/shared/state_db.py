@@ -150,7 +150,6 @@ class StateDB:
         """Report whether this sha's claim is older than ``max_age``.
 
         Args:
-            sha256: The claimed document hash.
             max_age: How long a claim stays live. A claim aged exactly
                 ``max_age`` is still live; staleness is strictly older.
             now: The instant to measure against; defaults to the current UTC
@@ -165,8 +164,6 @@ class StateDB:
         moment = now if now is not None else datetime.now(timezone.utc)
         if moment.tzinfo is None:
             moment = moment.replace(tzinfo=timezone.utc)
-        # Both sides are tz-aware, so the subtraction already normalises any
-        # offset difference to the same instant.
         return moment - datetime.fromisoformat(row[0]) > max_age
 
     def claim(self, sha256: str, max_age: timedelta | None = None) -> bool:
@@ -187,7 +184,6 @@ class StateDB:
         the check-and-claim atomic under SQLite WAL+autocommit.
 
         Args:
-            sha256: The document hash to claim.
             max_age: When given, a claim on this sha older than ``max_age`` is
                 treated as abandoned (its worker died without releasing it) and
                 is taken over with a refreshed timestamp. ``None`` (the default)
