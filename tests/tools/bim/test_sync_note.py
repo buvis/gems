@@ -360,3 +360,53 @@ class TestCommandSyncNote:
         assert result.success is True
         assert len(result.warnings) == 2
         assert result.metadata["synced_count"] == 0
+
+    def test_replace_failure_leaves_original_note_untouched(self, zettel_file: Path, mocker) -> None:
+        """os.replace failure during the atomic write propagates and leaves the original note byte-for-byte intact."""
+        original_content = zettel_file.read_text(encoding="utf-8")
+
+        project = MagicMock(spec=ProjectZettel)
+        project.us = None
+
+        mock_reader = MagicMock()
+        mock_reader.execute.return_value = project
+        mocker.patch(
+            "bim.commands.sync_note.sync_note.ReadZettelUseCase",
+            return_value=mock_reader,
+        )
+
+        new_issue = MagicMock()
+        new_issue.id = "PROJ-101"
+        new_issue.link = "https://jira.example.com/browse/PROJ-101"
+
+        mock_adapter = MagicMock()
+        mock_adapter.create_from_project.return_value = new_issue
+        mocker.patch(
+            "bim.commands.sync_note.sync_note.ZettelJiraAdapter",
+            return_value=mock_adapter,
+        )
+
+        mock_printer = MagicMock()
+        mock_printer.execute.return_value = "formatted note"
+        mocker.patch(
+            "bim.commands.sync_note.sync_note.PrintZettelUseCase",
+            return_value=mock_printer,
+        )
+
+        mocker.patch(
+            "buvis.pybase.filesystem.atomic_write.os.replace",
+            side_effect=OSError("disk full"),
+        )
+
+        params = SyncNoteParams(paths=[zettel_file], target_system="jira")
+        cmd = CommandSyncNote(
+            params=params,
+            jira_adapter_config={},
+            repo=MagicMock(),
+            formatter=MagicMock(),
+        )
+
+        with pytest.raises(OSError):
+            cmd.execute()
+
+        assert zettel_file.read_text(encoding="utf-8") == original_content
