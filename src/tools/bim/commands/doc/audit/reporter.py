@@ -11,8 +11,9 @@ import json
 from collections import Counter
 from typing import TYPE_CHECKING, Protocol
 
+from buvis.pybase.filesystem import atomic_write_text
+
 from bim.commands.doc.audit.models import VALIDATION_ERROR_CODES, AuditReport
-from bim.commands.doc.shared.atomic_write import atomic_write_text
 
 if TYPE_CHECKING:
     from pathlib import Path
