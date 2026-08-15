@@ -241,12 +241,15 @@ class TestServeZettels:
         assert body["file_path"] == "note.md"
         repo.find_by_location.assert_called_once_with("note.md")
 
-    def test_patch_zettel_metadata(self, client: TestClient) -> None:
+    def test_patch_zettel_metadata(self, client: TestClient, tmp_path: Path) -> None:
+        real_file = tmp_path / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
         data = SimpleNamespace(
             metadata={},
             reference={},
             sections=[],
-            file_path="note.md",
+            file_path=str(real_file),
         )
         zettel = MagicMock()
         zettel.get_data.return_value = data
@@ -257,14 +260,12 @@ class TestServeZettels:
         use_case.execute.return_value = "formatted"
 
         with (
-            patch("pathlib.Path.is_file", return_value=True),
-            patch("pathlib.Path.write_text") as mock_write,
             patch("bim.commands.serve._routes.get_repo", return_value=repo),
             patch("bim.commands.serve._routes.get_formatter", return_value=formatter),
             patch("bim.commands.serve._routes.PrintZettelUseCase", return_value=use_case) as mock_use_case_cls,
         ):
             response = client.patch(
-                "/api/zettels/note.md",
+                f"/api/zettels/{real_file}",
                 json={"field": "title", "value": "New Title"},
             )
 
@@ -273,7 +274,7 @@ class TestServeZettels:
         assert data.metadata["title"] == "New Title"
         mock_use_case_cls.assert_called_once_with(formatter)
         use_case.execute.assert_called_once_with(data)
-        mock_write.assert_called_once_with("formatted", encoding="utf-8")
+        assert real_file.read_text(encoding="utf-8") == "formatted"
 
     def test_get_zettel_missing_returns_404(self, client: TestClient) -> None:
         with patch("pathlib.Path.is_file", return_value=False):
