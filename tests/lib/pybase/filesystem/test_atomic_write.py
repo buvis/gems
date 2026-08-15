@@ -98,6 +98,10 @@ class TestAtomicWriteBytes:
         leftover = list(tmp_path.glob(target.name + ".*.tmp"))
         assert leftover == []
 
+    @pytest.mark.skipif(
+        not hasattr(os, "fchmod"),
+        reason="fchmod is unavailable here (e.g. Windows); atomic_write skips permission handling.",
+    )
     def test_fchmod_failure_closes_descriptor_instead_of_leaking(self, tmp_path: Path, mocker: MockerFixture) -> None:
         target = tmp_path / "out.bin"
         captured_fd: dict[str, int] = {}
@@ -116,16 +120,12 @@ class TestAtomicWriteBytes:
             "buvis.pybase.filesystem.atomic_write.os.fchmod",
             side_effect=PermissionError("nope"),
         )
-        close_spy = mocker.patch(
-            "buvis.pybase.filesystem.atomic_write.os.close",
-            side_effect=os.close,
-        )
 
         with pytest.raises(PermissionError):
             atomic_write_bytes(target, b"data")
 
-        closed_fds = [call.args[0] for call in close_spy.call_args_list]
-        assert captured_fd["fd"] in closed_fds
+        with pytest.raises(OSError):
+            os.fstat(captured_fd["fd"])
 
     def test_cleanup_unlink_failure_does_not_mask_original_write_error(
         self, tmp_path: Path, mocker: MockerFixture
@@ -228,6 +228,10 @@ class TestAtomicWriteText:
         leftover = list(tmp_path.glob(target.name + ".*.tmp"))
         assert leftover == []
 
+    @pytest.mark.skipif(
+        not hasattr(os, "fchmod"),
+        reason="fchmod is unavailable here (e.g. Windows); atomic_write skips permission handling.",
+    )
     def test_fchmod_failure_closes_descriptor_instead_of_leaking(self, tmp_path: Path, mocker: MockerFixture) -> None:
         target = tmp_path / "out.txt"
         captured_fd: dict[str, int] = {}
@@ -246,16 +250,12 @@ class TestAtomicWriteText:
             "buvis.pybase.filesystem.atomic_write.os.fchmod",
             side_effect=PermissionError("nope"),
         )
-        close_spy = mocker.patch(
-            "buvis.pybase.filesystem.atomic_write.os.close",
-            side_effect=os.close,
-        )
 
         with pytest.raises(PermissionError):
             atomic_write_text(target, "data")
 
-        closed_fds = [call.args[0] for call in close_spy.call_args_list]
-        assert captured_fd["fd"] in closed_fds
+        with pytest.raises(OSError):
+            os.fstat(captured_fd["fd"])
 
     def test_cleanup_unlink_failure_does_not_mask_original_write_error(
         self, tmp_path: Path, mocker: MockerFixture

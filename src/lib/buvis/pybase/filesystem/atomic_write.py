@@ -24,9 +24,9 @@ __all__ = ["atomic_write_bytes", "atomic_write_text"]
 def _atomic_write(
     path: Path,
     data: str | bytes,
-    file_mode: str,
+    open_mode: str,
     encoding: str | None,
-    default_mode: int,
+    default_permissions: int,
 ) -> None:
     """Write ``data`` to ``path`` atomically.
 
@@ -35,17 +35,13 @@ def _atomic_write(
     try:
         target_mode = path.stat().st_mode & 0o777
     except FileNotFoundError:
-        target_mode = default_mode
+        target_mode = default_permissions
     fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     tmp_path = Path(tmp_name)
     try:
-        if hasattr(os, "fchmod"):
-            try:
+        with os.fdopen(fd, open_mode, encoding=encoding) as handle:
+            if hasattr(os, "fchmod"):
                 os.fchmod(fd, target_mode)
-            except BaseException:
-                os.close(fd)
-                raise
-        with os.fdopen(fd, file_mode, encoding=encoding) as handle:
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
