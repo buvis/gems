@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.filesystem import atomic_write_text
+
 __all__ = [
     "DEFAULT_STATE_DIR",
     "STATE_FILE_NAME",
@@ -37,7 +39,7 @@ def _write_state(state_dir: Path, state: dict[str, Any]) -> None:
     """Write state file, silently ignoring errors."""
     try:
         state_dir.mkdir(parents=True, exist_ok=True)
-        _state_path(state_dir).write_text(json.dumps(state, indent=2))
+        atomic_write_text(_state_path(state_dir), json.dumps(state, indent=2))
     except Exception:
         return
 
