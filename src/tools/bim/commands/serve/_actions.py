@@ -2,20 +2,14 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Coroutine
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 
+from bim.commands.serve._security import AppState, confine_path
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import get_repo
-
-
-@dataclass
-class AppState:
-    default_directory: str
-    archive_directory: str | None
 
 
 def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
@@ -34,7 +28,7 @@ def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, A
 
 
 async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
-    fp = Path(file_path)
+    fp = confine_path(file_path, app_state)
     repo = get_repo()
     zettel = repo.find_by_location(str(fp))
 
@@ -45,13 +39,14 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState
 
 
 async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+    fp = confine_path(file_path, app_state)
     from bim.commands.sync_note.sync_note import CommandSyncNote
     from bim.dependencies import get_formatter, get_repo
     from bim.params.sync_note import SyncNoteParams
 
     target_system = args.get("target_system", "jira")
     jira_config = args.get("jira_config", {})
-    params = SyncNoteParams(paths=[Path(file_path)], target_system=target_system)
+    params = SyncNoteParams(paths=[fp], target_system=target_system)
     cmd = CommandSyncNote(
         params=params,
         jira_adapter_config=jira_config,
@@ -69,7 +64,7 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
     from bim.dependencies import get_hook_runner, get_repo, get_templates
     from bim.params.create_note import CreateNoteParams
 
-    directory = Path(file_path).parent if file_path else Path(str(app_state.default_directory))
+    directory = confine_path(file_path, app_state).parent if file_path else Path(str(app_state.default_directory))
     params = CreateNoteParams(
         zettel_type=args.get("type"),
         title=args.get("title"),
@@ -90,12 +85,13 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
 
 
 async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+    fp = confine_path(file_path, app_state)
     from bim.commands.archive_note.archive_note import CommandArchiveNote
     from bim.params.archive_note import ArchiveNoteParams
 
     archive_dir = Path(str(app_state.archive_directory)).expanduser().resolve()
     zettelkasten_dir = Path(str(app_state.default_directory)).expanduser().resolve()
-    params = ArchiveNoteParams(paths=[Path(file_path)])
+    params = ArchiveNoteParams(paths=[fp])
     cmd = CommandArchiveNote(
         params=params,
         path_archive=archive_dir,
@@ -109,7 +105,7 @@ async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppSta
 
 
 async def handle_open(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
-    fp = Path(file_path)
+    fp = confine_path(file_path, app_state)
     open_in_os(fp)
     return {"status": "ok"}
 
@@ -119,7 +115,7 @@ async def handle_format(file_path: str, args: dict[str, Any], app_state: AppStat
     from bim.dependencies import get_formatter, get_repo
     from bim.params.format_note import FormatNoteParams
 
-    target = Path(file_path)
+    target = confine_path(file_path, app_state)
     params = FormatNoteParams(paths=[target], path_output=target)
     cmd = CommandFormatNote(
         params=params,
@@ -133,10 +129,11 @@ async def handle_format(file_path: str, args: dict[str, Any], app_state: AppStat
 
 
 async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+    fp = confine_path(file_path, app_state)
     from bim.commands.delete_note.delete_note import CommandDeleteNote
     from bim.params.delete_note import DeleteNoteParams
 
-    params = DeleteNoteParams(paths=[Path(file_path)])
+    params = DeleteNoteParams(paths=[fp])
     cmd = CommandDeleteNote(params=params, repo=get_repo())
     result = cmd.execute()
     if not result.success:
@@ -145,6 +142,7 @@ async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppStat
 
 
 async def handle_import(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+    fp = confine_path(file_path, app_state)
     from bim.commands.import_note.import_note import CommandImportNote
     from bim.dependencies import get_formatter, get_repo
     from bim.params.import_note import ImportNoteParams
@@ -153,7 +151,7 @@ async def handle_import(file_path: str, args: dict[str, Any], app_state: AppStat
     tags = args.get("tags")
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     params = ImportNoteParams(
-        paths=[Path(file_path)],
+        paths=[fp],
         tags=tag_list,
         force=args.get("force", False),
         remove_original=args.get("remove_original", False),
