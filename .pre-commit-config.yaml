@@ -20,7 +20,7 @@ repos:
         name: no framework imports in commands/params
         entry: >
           bash -c 'if rg -q "from buvis\.pybase\.adapters import|import click|import textual|import fastapi"
-          src/tools/*/commands/ src/tools/*/params/ --glob "!*/serve/*";
+          src/tools/*/commands/ src/tools/*/params/ --glob "!**/serve/**";
           then echo "ERROR: framework imports in commands/ or params/"; exit 1; fi'
         language: system
         pass_filenames: false
