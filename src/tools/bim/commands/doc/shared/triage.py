@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from buvis.pybase.filesystem import atomic_write_text
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from bim.commands.doc.shared.atomic_write import atomic_write_text
 from bim.commands.doc.shared.issuers import IssuerRegistry
 from bim.commands.doc.shared.naming import DOC_TYPES
 from bim.commands.doc.shared.validators import validate_sha256_hex64
