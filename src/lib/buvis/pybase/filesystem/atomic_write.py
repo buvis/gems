@@ -20,12 +20,16 @@ def _atomic_write(
     data: str | bytes,
     file_mode: str,
     encoding: str | None,
-    target_mode: int,
+    default_mode: int,
 ) -> None:
     """Write ``data`` to ``path`` atomically.
 
     Shared body for :func:`atomic_write_text` and :func:`atomic_write_bytes`.
     """
+    try:
+        target_mode = path.stat().st_mode & 0o777
+    except FileNotFoundError:
+        target_mode = default_mode
     fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     tmp_path = Path(tmp_name)
     try:
@@ -59,8 +63,7 @@ def atomic_write_text(
     If ``path`` already exists, its current permission bits are preserved on
     the replacement file. Otherwise the new file is created with ``mode``.
     """
-    target_mode = path.stat().st_mode & 0o777 if path.exists() else mode
-    _atomic_write(path, data, "w", encoding, target_mode)
+    _atomic_write(path, data, "w", encoding, mode)
 
 
 def atomic_write_bytes(path: Path, data: bytes) -> None:
@@ -70,5 +73,4 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
     its current permission bits are preserved on the replacement file.
     Otherwise the new file is created with mode ``0o644``.
     """
-    target_mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
-    _atomic_write(path, data, "wb", None, target_mode)
+    _atomic_write(path, data, "wb", None, 0o644)
