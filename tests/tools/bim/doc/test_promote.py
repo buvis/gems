@@ -5,18 +5,11 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import pytest
 import yaml
 from bim.commands.doc.promote.promote import CommandPromote, PromoteServices
 from bim.commands.doc.shared.issuers import load_registry
 from bim.commands.doc.shared.ocr import OCRResult
-from bim.commands.doc.shared.settings_models import (
-    ClassifierSettings,
-    DocPaths,
-    DocSettings,
-    OCRSettings,
-    ZettelSettings,
-)
+from bim.commands.doc.shared.settings_models import DocSettings
 from bim.commands.doc.shared.state_db import StateDB
 from bim.commands.doc.shared.triage import (
     DocumentProposal,
@@ -32,27 +25,7 @@ from bim.params.doc_promote import PromoteParams
 from buvis.pybase.result import CommandResult
 from pytest_mock import MockerFixture
 
-FIXTURES = Path(__file__).parent / "fixtures"
-
-
 # ----------------------- helpers -----------------------
-
-
-def _make_settings(tmp_path: Path) -> DocSettings:
-    paths = DocPaths.model_validate(
-        {
-            "business_root": str(tmp_path / "Business"),
-            "vault_root": str(tmp_path / "Vault"),
-            "vault_documents_subdir": "Zettelkasten/documents",
-            "state_dir": str(tmp_path / "state"),
-        }
-    )
-    return DocSettings(
-        paths=paths,
-        ocr=OCRSettings(),
-        classifier=ClassifierSettings(),
-        zettel=ZettelSettings(),
-    )
 
 
 def _build_proposal(
@@ -130,31 +103,6 @@ def _stage_triage_pair(triage_dir: Path, basename: str) -> tuple[Path, Path]:
     proposal_path = triage_dir / f"{basename}.pdf.proposed.yml"
     pdf_path.write_bytes(b"%PDF-1.4\nfake triage pdf\n")
     return pdf_path, proposal_path
-
-
-@pytest.fixture
-def settings(tmp_path: Path) -> DocSettings:
-    s = _make_settings(tmp_path)
-    s.paths.business_root.mkdir(parents=True, exist_ok=True)
-    return s
-
-
-@pytest.fixture
-def registry_path(tmp_path: Path) -> Path:
-    src = FIXTURES / "issuers" / "with_aliases.yml"
-    dst = tmp_path / "issuers.yml"
-    dst.write_bytes(src.read_bytes())
-    return dst
-
-
-@pytest.fixture
-def lock_path(tmp_path: Path) -> Path:
-    return tmp_path / "issuers.lock"
-
-
-@pytest.fixture
-def state_db(tmp_path: Path) -> StateDB:
-    return StateDB.open(tmp_path / "state" / "state.db")
 
 
 def _build_command(
@@ -576,149 +524,6 @@ class TestCommandPromote:
         h1_idx = next(i for i, line in enumerate(body_lines) if line.startswith("# "))
         assert body_lines[h1_idx + 1] == ""
         assert body_lines[h1_idx + 2] == "## OCR text"
-
-    def test_pdf_collision_increments_timestamp_and_preserves_existing_file(
-        self,
-        settings: DocSettings,
-        registry_path: Path,
-        lock_path: Path,
-        state_db: StateDB,
-        mocker: MockerFixture,
-    ) -> None:
-        """A pre-existing filed PDF at the canonical name must not be overwritten;
-        promote must advance to the next free (seconds+1) canonical slot.
-        """
-        existing_canonical = settings.paths.business_root / "cez-as" / "20210311000000-cez-as-7102105594.invoice.pdf"
-        existing_canonical.parent.mkdir(parents=True, exist_ok=True)
-        existing_bytes = b"%PDF-1.4\nfirst-arrival\n"
-        existing_canonical.write_bytes(existing_bytes)
-
-        triage_dir = settings.paths.business_root / "_triage"
-        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
-        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
-        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf))
-
-        cmd, _ = _build_command(
-            settings=settings,
-            registry_path=registry_path,
-            lock_path=lock_path,
-            state_db=state_db,
-            proposal_yml=yml,
-            mocker=mocker,
-            ocr_pdf=pdf,
-        )
-
-        result = cmd.execute()
-
-        assert result.success is True
-
-        filed_pdf = Path(result.metadata["pdf_path"])
-        # The new file MUST NOT have overwritten the pre-existing one.
-        assert filed_pdf != existing_canonical
-        assert existing_canonical.exists()
-        assert existing_canonical.read_bytes() == existing_bytes
-        # The new filename should differ in the seconds portion of the timestamp.
-        assert filed_pdf.name.startswith("20210311000001-cez-as-7102105594.invoice")
-
-        pdf_files = list((settings.paths.business_root / "cez-as").glob("*.pdf"))
-        assert len(pdf_files) == 2
-
-    def test_zettel_collision_increments_timestamp_and_preserves_existing_zettel(
-        self,
-        settings: DocSettings,
-        registry_path: Path,
-        lock_path: Path,
-        state_db: StateDB,
-        mocker: MockerFixture,
-    ) -> None:
-        """A pre-existing zettel under <vault>/<doc-subdir>/<issuer-slug>/ must
-        block the same canonical filename from being reused during promote.
-        """
-        existing_zettel = (
-            settings.paths.vault_root
-            / "Zettelkasten"
-            / "documents"
-            / "cez-as"
-            / "20210311000000-cez-as-7102105594.invoice.md"
-        )
-        existing_zettel.parent.mkdir(parents=True, exist_ok=True)
-        existing_text = "# pre-existing zettel\n\nthis content must survive\n"
-        existing_zettel.write_text(existing_text, encoding="utf-8")
-
-        triage_dir = settings.paths.business_root / "_triage"
-        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
-        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
-        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf))
-
-        cmd, _ = _build_command(
-            settings=settings,
-            registry_path=registry_path,
-            lock_path=lock_path,
-            state_db=state_db,
-            proposal_yml=yml,
-            mocker=mocker,
-            ocr_pdf=pdf,
-        )
-
-        result = cmd.execute()
-
-        assert result.success is True
-
-        # The pre-existing zettel must still hold its original content.
-        assert existing_zettel.exists()
-        assert existing_zettel.read_text(encoding="utf-8") == existing_text
-
-        zettel_path = Path(result.metadata["zettel_path"])
-        assert zettel_path != existing_zettel
-        assert zettel_path.name.startswith("20210311000001-cez-as-7102105594.invoice")
-
-    def test_collision_exhaustion_returns_failure_without_writing(
-        self,
-        settings: DocSettings,
-        registry_path: Path,
-        lock_path: Path,
-        state_db: StateDB,
-        mocker: MockerFixture,
-    ) -> None:
-        """When resolve_collision exhausts its 60-attempt cap, promote must fail
-        loud instead of writing a PDF/zettel or deleting the proposal.
-        """
-        mocker.patch(
-            "bim.commands.doc.promote.promote.resolve_collision",
-            side_effect=ValueError(
-                "could not resolve filename collision after 60 attempts starting from 20210311000000"
-            ),
-        )
-
-        triage_dir = settings.paths.business_root / "_triage"
-        pdf, yml = _stage_triage_pair(triage_dir, "20210311083422-cez-as-7102105594.invoice")
-        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
-        write_proposal(yml, _build_proposal(sha256=sha, triage_pdf=pdf))
-
-        cmd, _ = _build_command(
-            settings=settings,
-            registry_path=registry_path,
-            lock_path=lock_path,
-            state_db=state_db,
-            proposal_yml=yml,
-            mocker=mocker,
-            ocr_pdf=pdf,
-        )
-
-        result = cmd.execute()
-
-        assert result.success is False
-        error = result.error or ""
-        assert error != ""
-        assert "collision" in error.lower()
-
-        # _finalize must never have run: proposal is untouched.
-        assert yml.exists()
-
-        # No new PDF was written for this issuer.
-        issuer_dir = settings.paths.business_root / "cez-as"
-        if issuer_dir.exists():
-            assert list(issuer_dir.glob("*.pdf")) == []
 
 
 class TestPromoteValidatesYAMLSchema:

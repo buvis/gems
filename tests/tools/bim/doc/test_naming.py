@@ -303,7 +303,7 @@ class TestResolveCollision:
             )
             (issuer_dir / candidate_filename).write_bytes(b"existing pdf")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"could not resolve filename collision after 60 attempts"):
             resolve_collision(
                 zk_timestamp=zk_timestamp,
                 issuer_slug=issuer_slug,
