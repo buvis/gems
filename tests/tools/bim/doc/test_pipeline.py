@@ -432,9 +432,17 @@ class TestPipeline:
         triage_pdfs = list(triage_dir.glob("*.pdf"))
         assert len(triage_pdfs) == 1
 
-        # state_db.processed must NOT have a row (only triaged, not filed).
+        # Triage records a dedup row for the raw source sha so the same bytes
+        # arriving again while the proposal is still pending don't re-run the
+        # whole pipeline. Nothing is filed yet - that half is pinned by
+        # ``test_triage_records_processed_row_for_raw_source_sha``.
         dedup = state_db.dedup(sha)
-        assert dedup.is_duplicate is False
+        assert dedup.is_duplicate is True
+        assert dedup.existing_row is not None
+        # The row has to describe THIS document: the file it names is the one
+        # this run parked in _triage, so anyone following the dedup record
+        # reaches the pending proposal instead of an unrelated document.
+        assert dedup.existing_row.canonical_filename == triage_pdfs[0].name
 
     # --- 6. triage on extractor IncompleteExtraction (missing required field) ---
 
@@ -606,6 +614,8 @@ class TestPipeline:
             ),
             extract_result=_make_extract_result(),
         )
+        # Computed before run() because triage moves the staging PDF away.
+        sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
         params = IngestParams(source="email", staging_path=staging_pdf)
         result = pipeline.run(params)
 
@@ -618,6 +628,16 @@ class TestPipeline:
         # Should include a triage reason mentioning the issuer not being known.
         lower = proposal_text.lower()
         assert any(token in lower for token in ("unknown issuer", "unrecognized issuer", "issuer not in registry"))
+
+        # The dedup row this triage records has to describe THIS document: the
+        # document type the classifier returned, and no attribution to an
+        # issuer nobody identified. (Which placeholder stands in for "no
+        # issuer" is not pinned by the spec, so only the misattribution is
+        # ruled out here.)
+        row = state_db.dedup(sha).existing_row
+        assert row is not None
+        assert row.doc_type == "invoice"
+        assert row.issuer_slug != "cez-as"
 
         # Extraction must run even when the issuer is unknown so the human
         # reviewer sees the model's best guess at the document fields, not a
@@ -757,8 +777,153 @@ class TestPipeline:
         result = pipeline.run(params)
         assert result.metadata["outcome"] == "triaged"
 
-        # The first claim should have been released so a re-run could re-attempt.
-        assert state_db.claim(sha) is True
+        # The in-flight claim row must be gone; release_claim returns False when
+        # there was nothing left to remove. ``claim()`` can no longer stand in
+        # for this check - triage now records a processed row for the raw source
+        # sha, and claim() refuses any sha that is already processed.
+        assert state_db.release_claim(sha) is False
+        # So a later claim is refused, but for the right reason: the document
+        # is known, not because this run parked its reservation forever. Both
+        # halves together are what "released" means after triage.
+        assert state_db.claim(sha) is False
+
+    def test_triage_records_processed_row_for_raw_source_sha(
+        self,
+        tmp_path: Path,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """Routing to triage must still stamp the raw source sha as seen.
+
+        The proposal can sit in ``_triage`` for days. Until it is promoted no
+        ``processed`` row used to exist, so the same source arriving again paid
+        for a second OCR/classify/extract pass. The row is a dedup marker only -
+        nothing is filed at this point.
+        """
+        # A scanned source: OCR writes a NEW pdf carrying the text layer, so the
+        # file that ends up parked in _triage does not hash to the file that
+        # arrived. Only the identity the run claimed on can match a re-arrival
+        # of the source, so re-hashing whatever is on hand records a sha no
+        # incoming file will ever have.
+        ocr_pdf = _write_pdf(tmp_path / "ocr_output.pdf", b"%PDF-1.4\nocr'd content with a text layer\n")
+        # Deliberately not the default ČEZ invoice the other tests use: doc
+        # type, date and number all differ, so the row below can only be right
+        # if it was built from this run's own inputs.
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=ocr_pdf),
+            classify_result=_make_classify_result(doc_type="receipt", confidence=0.30),
+            extract_result=_make_extract_result(
+                doc_type="receipt",
+                number="RS-2019-0042",
+                date_value=date(2019, 7, 4),
+            ),
+        )
+        # Computed before run() because triage moves the staging PDF away.
+        sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
+        assert hashlib.sha256(ocr_pdf.read_bytes()).hexdigest() != sha  # sanity: bytes truly differ
+        params = IngestParams(source="email", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "triaged"
+
+        dedup = state_db.dedup(sha)
+        assert dedup.is_duplicate is True
+        assert dedup.existing_row is not None
+        row = dedup.existing_row
+        assert row.sha256 == sha
+        # The row describes this document, not a generic placeholder: it names
+        # the very file the run parked in _triage (whose timestamp and title
+        # come from the extracted date and number), and carries the issuer and
+        # document type the classifier produced for it.
+        triage_pdf = Path(result.metadata["triage_pdf_path"])
+        assert triage_pdf.exists()
+        # The parked file is not the source file - the sha above is the claimed
+        # one, not a hash taken after the move.
+        assert hashlib.sha256(triage_pdf.read_bytes()).hexdigest() != sha
+        assert row.canonical_filename == triage_pdf.name
+        assert row.issuer_slug == "cez-as"
+        assert row.doc_type == "receipt"
+        # Stamped when this run happened. A fixed instant would make every
+        # "what did we process this week" query answer wrong.
+        assert datetime.now(timezone.utc) - row.processed_at < timedelta(minutes=1)
+
+        # Nothing was filed to earn that row: the PDF is still parked in
+        # _triage beside its proposal, and no zettel exists.
+        triage_dir = settings.paths.business_root / "_triage"
+        assert Path(result.metadata["proposal_path"]).exists()
+        assert [p for p in settings.paths.business_root.rglob("*.pdf") if p.parent != triage_dir] == []
+        assert list(settings.paths.vault_root.rglob("*.md")) == []
+
+    def test_second_arrival_of_triaged_document_is_duplicate_without_reprocessing(
+        self,
+        tmp_path: Path,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """A resent copy of a document awaiting triage must cost nothing.
+
+        Same bytes, different staging path (a re-sent mail, a repeated scan).
+        The pending proposal already represents this document, so the second
+        run reports ``duplicate`` and touches none of the slow boundaries.
+        """
+        source_bytes = staging_pdf.read_bytes()
+        # The first run's OCR produces its own file, so what waits in _triage
+        # hashes differently from the source. Recognising the resent copy can
+        # then only work off the identity the first run claimed on.
+        first_ocr_pdf = _write_pdf(tmp_path / "ingest_ocr_output.pdf", b"%PDF-1.4\nocr'd content with a text layer\n")
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=first_ocr_pdf),
+            classify_result=_make_classify_result(confidence=0.30),
+            extract_result=_make_extract_result(),
+        )
+        first = pipeline.run(IngestParams(source="email", staging_path=staging_pdf))
+        assert first.metadata["outcome"] == "triaged"
+        calls_after_first = (
+            mocks["ocr"].call_count,
+            mocks["classify"].call_count,
+            mocks["extract"].call_count,
+        )
+
+        resent = _write_pdf(tmp_path / "staging-resent" / "input.pdf", source_bytes)
+        # Point the OCR stub at the file the second run would hand it, so this
+        # run could complete on its own merits. Reporting ``duplicate`` has to
+        # be a decision, not a crash on a moved staging file.
+        mocks["ocr"].return_value = _make_ocr_result(pdf_path=resent)
+        second = pipeline.run(IngestParams(source="email", staging_path=resent))
+
+        assert second.success is True
+        assert second.metadata["outcome"] == "duplicate"
+        # The reviewer is pointed at the pending file this document already
+        # produced - the name the first run wrote to _triage, both in the
+        # result and in the sidecar left next to the resent copy.
+        first_triage_name = Path(first.metadata["triage_pdf_path"]).name
+        assert second.metadata["existing_canonical_filename"] == first_triage_name
+        sidecar = resent.with_suffix(resent.suffix + ".duplicate.yml")
+        assert sidecar.exists()
+        assert first_triage_name in sidecar.read_text(encoding="utf-8")
+        # Not one extra call to OCR, the classifier or the extractor.
+        assert (
+            mocks["ocr"].call_count,
+            mocks["classify"].call_count,
+            mocks["extract"].call_count,
+        ) == calls_after_first
+        # And no second proposal competing for the reviewer's attention.
+        triage_dir = settings.paths.business_root / "_triage"
+        assert len(list(triage_dir.glob("*.proposed.yml"))) == 1
 
     def test_filename_collision_increments_timestamp(
         self,
