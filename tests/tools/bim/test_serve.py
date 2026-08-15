@@ -65,6 +65,11 @@ class QuerySpecStub:
     output: OutputSpec
 
 
+@dataclass
+class LookupSpec:
+    source: SourceSpec
+
+
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
     zettels_dir = tmp_path / "zettels"
@@ -670,3 +675,203 @@ class TestCommandServeExecute:
 
         mock_create_app.assert_called_once_with("zettels", "archive", host="0.0.0.0")
         mock_uvicorn_run.assert_called_once_with(mock_app, host="0.0.0.0", port=9001, log_level="info")
+
+
+class TestServeQueriesSecurity:
+    def test_exec_adhoc_without_token_returns_401(self, client: TestClient, query_spec: QuerySpecStub) -> None:
+        with (
+            patch("bim.commands.serve._routes.parse_query_spec") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            mock_parse.return_value = query_spec
+
+            response = client.post("/api/queries/_adhoc", json={"spec": {"source": {}}})
+
+        assert response.status_code == 401
+        mock_parse.assert_not_called()
+        mock_repo.assert_not_called()
+        mock_eval.assert_not_called()
+        mock_use_case_cls.assert_not_called()
+
+    def test_exec_adhoc_with_wrong_token_returns_401(self, client: TestClient, query_spec: QuerySpecStub) -> None:
+        client.app.state.buvis_token = "correct-token"
+
+        with (
+            patch("bim.commands.serve._routes.parse_query_spec") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            mock_parse.return_value = query_spec
+
+            response = client.post(
+                "/api/queries/_adhoc",
+                json={"spec": {"source": {}}},
+                headers={"X-Buvis-Token": "wrong-token"},
+            )
+
+        assert response.status_code == 401
+        mock_parse.assert_not_called()
+        mock_repo.assert_not_called()
+        mock_eval.assert_not_called()
+        mock_use_case_cls.assert_not_called()
+
+    def test_exec_query_without_token_returns_401(self, client: TestClient, query_spec: QuerySpecStub) -> None:
+        with (
+            patch("bim.commands.serve._routes.resolve_query_file") as mock_resolve,
+            patch("bim.commands.serve._routes.parse_query_file") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            mock_resolve.return_value = Path("/tmp/query.yaml")
+            mock_parse.return_value = query_spec
+
+            response = client.post("/api/queries/example/exec")
+
+        assert response.status_code == 401
+        mock_resolve.assert_not_called()
+        mock_repo.assert_not_called()
+        mock_eval.assert_not_called()
+        mock_use_case_cls.assert_not_called()
+
+    def test_exec_query_with_wrong_token_returns_401(self, client: TestClient, query_spec: QuerySpecStub) -> None:
+        client.app.state.buvis_token = "correct-token"
+
+        with (
+            patch("bim.commands.serve._routes.resolve_query_file") as mock_resolve,
+            patch("bim.commands.serve._routes.parse_query_file") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            mock_resolve.return_value = Path("/tmp/query.yaml")
+            mock_parse.return_value = query_spec
+
+            response = client.post(
+                "/api/queries/example/exec",
+                headers={"X-Buvis-Token": "wrong-token"},
+            )
+
+        assert response.status_code == 401
+        mock_resolve.assert_not_called()
+        mock_repo.assert_not_called()
+        mock_eval.assert_not_called()
+        mock_use_case_cls.assert_not_called()
+
+    def test_exec_adhoc_source_directory_outside_vault_returns_403(
+        self, client: TestClient, query_spec: QuerySpecStub
+    ) -> None:
+        client.app.state.buvis_token = "test-token"
+        query_spec.source.directory = "/etc"
+
+        with (
+            patch("bim.commands.serve._routes.parse_query_spec") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            mock_parse.return_value = query_spec
+
+            response = client.post(
+                "/api/queries/_adhoc",
+                json={"spec": {"source": {"directory": "/etc"}}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_repo.assert_not_called()
+        mock_eval.assert_not_called()
+        mock_use_case_cls.assert_not_called()
+
+    def test_exec_adhoc_lookup_directory_outside_vault_returns_403(
+        self, client: TestClient, query_spec: QuerySpecStub
+    ) -> None:
+        client.app.state.buvis_token = "test-token"
+        query_spec.lookups = [LookupSpec(source=SourceSpec(directory="/etc"))]
+
+        with (
+            patch("bim.commands.serve._routes.parse_query_spec") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            mock_parse.return_value = query_spec
+
+            response = client.post(
+                "/api/queries/_adhoc",
+                json={"spec": {"source": {}, "lookups": [{"source": {"directory": "/etc"}}]}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 403
+        mock_repo.assert_not_called()
+        mock_eval.assert_not_called()
+        mock_use_case_cls.assert_not_called()
+
+    def test_exec_adhoc_with_in_vault_source_directory_returns_200(
+        self, client: TestClient, query_spec: QuerySpecStub, tmp_path: Path
+    ) -> None:
+        client.app.state.buvis_token = "test-token"
+        in_vault_dir = str(tmp_path / "zettels")
+        query_spec.source.directory = in_vault_dir
+
+        with (
+            patch("bim.commands.serve._routes.parse_query_spec") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            repo = MagicMock()
+            evaluator = MagicMock()
+            use_case = MagicMock()
+            mock_repo.return_value = repo
+            mock_eval.return_value = evaluator
+            mock_use_case_cls.return_value = use_case
+            use_case.execute.return_value = [{"title": "Z1"}]
+            mock_parse.return_value = query_spec
+
+            response = client.post(
+                "/api/queries/_adhoc",
+                json={"spec": {"source": {"directory": in_vault_dir}}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["count"] == 1
+        assert query_spec.source.directory == in_vault_dir
+
+    def test_exec_adhoc_without_source_directory_returns_200_and_uses_default_directory(
+        self, client: TestClient, query_spec: QuerySpecStub, tmp_path: Path
+    ) -> None:
+        client.app.state.buvis_token = "test-token"
+        query_spec.source.directory = None
+
+        with (
+            patch("bim.commands.serve._routes.parse_query_spec") as mock_parse,
+            patch("bim.commands.serve._routes.get_repo") as mock_repo,
+            patch("bim.commands.serve._routes.get_evaluator") as mock_eval,
+            patch("bim.commands.serve._routes.QueryZettelsUseCase") as mock_use_case_cls,
+        ):
+            repo = MagicMock()
+            evaluator = MagicMock()
+            use_case = MagicMock()
+            mock_repo.return_value = repo
+            mock_eval.return_value = evaluator
+            mock_use_case_cls.return_value = use_case
+            use_case.execute.return_value = [{"title": "Z1"}]
+            mock_parse.return_value = query_spec
+
+            response = client.post(
+                "/api/queries/_adhoc",
+                json={"spec": {"source": {}}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["count"] == 1
+        assert query_spec.source.directory == str(tmp_path / "zettels")
