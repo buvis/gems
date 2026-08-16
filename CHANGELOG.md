@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **pybase**: `atomic_write_text` / `atomic_write_bytes` — new public helpers in `buvis.pybase.filesystem` for crash-safe (tempfile + fsync + `os.replace`) writes.
+- **bim**: `doc` gains a `claim_max_age_minutes` setting (default 60). An ingest claim left behind by a run that died without cleaning up is treated as abandoned once it passes that age, so re-running the document proceeds instead of reporting it as a duplicate forever.
 
 ### Security
 
@@ -33,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: reclaiming an abandoned `doc ingest` claim can no longer delete a live claim that another run legitimately took over in the meantime, so two runs cannot end up processing the same document at once.
 - **bim**: `doc` rejects a `claim_max_age_minutes` of zero or less instead of silently accepting it and treating every claim as abandoned, which disabled ingest mutual exclusion entirely.
 - **bim**: `doc ingest` survives a corrupt `claimed_at` timestamp in its state database — the untrustworthy claim is taken over rather than crashing the run with a stack trace or parking the document forever.
+- **bim**: interrupting a `doc ingest` with Ctrl-C no longer parks the document permanently. The claim is released on every exit path, so a re-run proceeds instead of reporting the document as a duplicate that never gets filed.
+- **bim**: a document filed through `doc` triage and then `doc promote` is now recognised as a duplicate when the same source arrives again (a re-download or re-export), instead of re-running the whole pipeline and filing a second archive copy under an incremented name.
 
 ## [0.12.6] - 2026-08-06
 
