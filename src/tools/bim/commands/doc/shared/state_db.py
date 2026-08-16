@@ -146,15 +146,17 @@ class StateDB:
         sha256: str,
         max_age: timedelta,
         now: datetime | None = None,
-    ) -> tuple[bool, str | None]:
+    ) -> tuple[bool, str | bytes | None]:
         """Read the claim row once and judge it against ``max_age``.
 
         Returns:
             ``(stale, claimed_at)`` where ``claimed_at`` is the exact stored
-            string the verdict was formed from, or ``None`` when no claim row
-            exists. Handing that string back lets ``claim`` bind it in its
-            delete, so a claim refreshed between the read and the delete is
-            recognised as a different value and survives.
+            value the verdict was formed from, or ``None`` when no claim row
+            exists. It is ``bytes`` when a foreign writer stored a BLOB in this
+            TEXT column, which is why the type is not ``str`` alone. Handing
+            that value back lets ``claim`` bind it in its delete, so a claim
+            refreshed between the read and the delete is recognised as a
+            different value and survives.
         """
         row = self._conn.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha256,)).fetchone()
         if row is None:
@@ -199,7 +201,7 @@ class StateDB:
         stale, _ = self._read_claim_staleness(sha256, max_age, now)
         return stale
 
-    def _delete_stale_claim(self, sha256: str, claimed_at: str | None) -> None:
+    def _delete_stale_claim(self, sha256: str, claimed_at: str | bytes | None) -> None:
         # Compare-and-delete on the value the read observed. Binding it
         # verbatim is what closes the gap between the two statements: a
         # rival that reclaimed the sha meanwhile wrote a different string, so
