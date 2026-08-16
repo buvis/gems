@@ -179,3 +179,24 @@ class TestCommandBalance:
         assert "Acme" in result.error
         assert _has_meaningful_cause(result.error)
         assert "<class '" not in result.error
+
+    @patch("fctracker.commands.balance.balance.TransactionsReader")
+    @patch("fctracker.commands.balance.balance.TransactionsDirScanner")
+    def test_zero_amount_division_error_differs_from_malformed_amount_error(
+        self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock
+    ) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+
+        with pytest.raises(InvalidOperation) as conversion_exc_info:
+            Decimal("abc")
+        mock_reader_cls.return_value.get_transactions.side_effect = conversion_exc_info.value
+        malformed_result = self._make_cmd().execute()
+
+        with pytest.raises(InvalidOperation) as division_exc_info:
+            Decimal("0") / Decimal("0")
+        mock_reader_cls.return_value.get_transactions.side_effect = division_exc_info.value
+        zero_result = self._make_cmd().execute()
+
+        assert malformed_result.success is False
+        assert zero_result.success is False
+        assert malformed_result.error != zero_result.error

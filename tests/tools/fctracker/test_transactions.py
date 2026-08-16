@@ -3,9 +3,11 @@ from __future__ import annotations
 import datetime
 import queue
 from decimal import Decimal, DivisionUndefined, InvalidOperation
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from buvis.pybase.result import CommandResult
+from fctracker.commands.balance.balance import CommandBalance
 from fctracker.commands.transactions.transactions import CommandTransactions
 from fctracker.settings import ForeignCurrencyConfig, LocalCurrencyConfig
 
@@ -342,3 +344,93 @@ class TestCommandTransactions:
 
         assert result.success is False
         assert "Acme" in result.error
+
+
+class TestTransactionsAndBalanceErrorParity:
+    """CommandTransactions and CommandBalance must render identical error text for the same bad CSV."""
+
+    def _run_both_commands(
+        self,
+        tmp_path: Path,
+        csv_content: str,
+        account_key: str = "Acme",
+        currency_key: str = "EUR",
+    ) -> tuple[CommandResult, CommandResult]:
+        csv_path = tmp_path / account_key.lower() / f"{currency_key.lower()}.csv"
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text(csv_content)
+
+        foreign = {"EUR": ForeignCurrencyConfig(symbol="E", precision=2)}
+        local = LocalCurrencyConfig(code="CZK", symbol="Kc", precision=2)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+
+            with patch("fctracker.commands.transactions.transactions.TransactionsDirScanner") as tx_scanner_cls:
+                tx_scanner_cls.return_value.accounts = {account_key: [currency_key]}
+                tx_result = CommandTransactions(foreign_currencies=foreign, local_currency=local).execute()
+
+            with patch("fctracker.commands.balance.balance.TransactionsDirScanner") as bal_scanner_cls:
+                bal_scanner_cls.return_value.accounts = {account_key: [currency_key]}
+                bal_result = CommandBalance(foreign_currencies=foreign, local_currency=local).execute()
+
+        return tx_result, bal_result
+
+    def test_malformed_amount_cell_matches_across_commands(self, tmp_path: Path) -> None:
+        tx_result, bal_result = self._run_both_commands(
+            tmp_path, "date,amount,rate,description\n2024-01-15,abc,25.50,\n"
+        )
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "Acme" in tx_result.error
+        assert "abc" in tx_result.error
+        assert "<class '" not in tx_result.error
+        assert "zero" not in tx_result.error.lower()
+        assert tx_result.error == bal_result.error
+
+    def test_zero_amount_matches_across_commands_and_differs_from_malformed_amount(self, tmp_path: Path) -> None:
+        zero_tx_result, zero_bal_result = self._run_both_commands(
+            tmp_path, "date,amount,rate,description\n2024-01-15,0.00,,\n"
+        )
+
+        assert zero_tx_result.success is False
+        assert "Acme" in zero_tx_result.error
+        assert "zero" in zero_tx_result.error.lower()
+        assert zero_tx_result.error == zero_bal_result.error
+
+        malformed_tx_result, _ = self._run_both_commands(
+            tmp_path, "date,amount,rate,description\n2024-01-15,abc,25.50,\n"
+        )
+        assert zero_tx_result.error != malformed_tx_result.error
+
+    def test_malformed_date_matches_across_commands_and_is_not_order_violation(self, tmp_path: Path) -> None:
+        tx_result, bal_result = self._run_both_commands(
+            tmp_path, "date,amount,rate,description\n2024-13-99,10.00,25.00,\n"
+        )
+
+        assert tx_result.success is False
+        assert "Acme" in tx_result.error
+        assert "2024-13-99" in tx_result.error
+        assert "newest-first" not in tx_result.error
+        assert tx_result.error == bal_result.error
+
+    def test_order_violation_matches_across_commands(self, tmp_path: Path) -> None:
+        csv_content = (
+            "date,amount,rate,description\n2024-01-10,10.00,25.00,\n2024-01-20,20.00,25.00,\n2024-01-05,30.00,25.00,\n"
+        )
+        tx_result, bal_result = self._run_both_commands(tmp_path, csv_content)
+
+        assert tx_result.success is False
+        assert "newest-first" in tx_result.error
+        assert tx_result.error == bal_result.error
+
+    def test_overdraft_matches_across_commands(self, tmp_path: Path) -> None:
+        tx_result, bal_result = self._run_both_commands(
+            tmp_path, "date,amount,rate,description\n2024-01-15,-50.00,,Overdraft test\n"
+        )
+
+        assert tx_result.success is False
+        assert "Acme" in tx_result.error
+        assert "overdraw" in tx_result.error.lower()
+        assert tx_result.error == bal_result.error

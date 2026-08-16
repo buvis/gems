@@ -114,3 +114,74 @@ class TestTransactionsReader:
 
         assert account.deposit.call_count == 0
         assert account.withdraw.call_count == 0
+
+    def test_malformed_amount_cell_names_offending_value(self, tmp_path: Path) -> None:
+        csv_content = "date,amount,rate,description\n2024-01-15,abc,25.50,\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        message = str(exc_info.value)
+        assert "abc" in message
+        assert "<class '" not in message
+        assert "zero" not in message.lower()
+
+    def test_zero_amount_withdrawal_indicates_zero_amount(self, tmp_path: Path) -> None:
+        from fctracker.domain.account import Account
+
+        csv_content = "date,amount,rate,description\n2024-01-15,0.00,,\n"
+        account = Account(
+            name="acme",
+            currency="eur",
+            precision=2,
+            symbol="E",
+            local_precision=2,
+            local_symbol="Kc",
+        )
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        message = str(exc_info.value)
+        assert "zero" in message.lower()
+        assert "<class '" not in message
+
+    def test_malformed_date_cell_names_value_and_is_not_order_violation(self, tmp_path: Path) -> None:
+        csv_content = "date,amount,rate,description\n2024-13-99,10.00,25.00,\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        message = str(exc_info.value)
+        assert "2024-13-99" in message
+        assert "newest-first" not in message
