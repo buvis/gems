@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
@@ -1082,3 +1084,107 @@ class TestUpdateFlag:
 
         mock_force.assert_not_called()
         mock_passive.assert_called_once()
+
+
+class TestParseArgsPatchInstallation:
+    """Tests for when the parse_args monkeypatch gets installed.
+
+    _parse_args_patch_installed is a plain module global with no test-fixture
+    reset, and other tests in this file legitimately decorate commands with
+    @buvis_options, which installs the patch permanently for the rest of the
+    pytest process. Each case here therefore runs in a fresh subprocess so
+    the assertion is not collection-order-dependent.
+    """
+
+    def test_import_alone_does_not_patch_command_parse_args(self) -> None:
+        """Merely importing click_integration must not patch click.Command.parse_args."""
+        code = (
+            "import click\n"
+            "original = click.Command.parse_args\n"
+            "import buvis.pybase.configuration.click_integration\n"
+            "assert click.Command.parse_args is original, 'import patched click.Command.parse_args'\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
+
+    def test_bare_decorator_patches_command_parse_args(self) -> None:
+        """Bare @buvis_options still installs the click.Command.parse_args patch."""
+        code = (
+            "import click\n"
+            "original = click.Command.parse_args\n"
+            "from buvis.pybase.configuration import buvis_options\n"
+            "\n"
+            "@click.command()\n"
+            "@buvis_options\n"
+            "def cmd():\n"
+            "    pass\n"
+            "\n"
+            "assert click.Command.parse_args is not original, "
+            "'bare @buvis_options did not patch click.Command.parse_args'\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
+
+    def test_settings_class_kwarg_patches_command_parse_args(self) -> None:
+        """@buvis_options(settings_class=X) (factory form) still installs the patch."""
+        code = (
+            "import click\n"
+            "original = click.Command.parse_args\n"
+            "from buvis.pybase.configuration import buvis_options\n"
+            "from buvis.pybase.configuration.settings import GlobalSettings\n"
+            "\n"
+            "class CustomSettings(GlobalSettings):\n"
+            "    custom_field: str = 'default'\n"
+            "\n"
+            "@click.command()\n"
+            "@buvis_options(settings_class=CustomSettings)\n"
+            "def cmd():\n"
+            "    pass\n"
+            "\n"
+            "assert click.Command.parse_args is not original, "
+            "'@buvis_options(settings_class=...) did not patch click.Command.parse_args'\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
+
+    def test_bare_decorator_on_group_patches_group_parse_args(self) -> None:
+        """Bare @buvis_options on a click.Group still installs the click.Group.parse_args patch."""
+        code = (
+            "import click\n"
+            "original = click.Group.parse_args\n"
+            "from buvis.pybase.configuration import buvis_options\n"
+            "\n"
+            "@click.group()\n"
+            "@buvis_options\n"
+            "def cli():\n"
+            "    pass\n"
+            "\n"
+            "assert click.Group.parse_args is not original, "
+            "'bare @buvis_options did not patch click.Group.parse_args'\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
+
+    def test_second_application_does_not_repatch(self) -> None:
+        """A second @buvis_options application does not stack another patch layer."""
+        code = (
+            "import click\n"
+            "from buvis.pybase.configuration import buvis_options\n"
+            "\n"
+            "@click.command()\n"
+            "@buvis_options\n"
+            "def cmd1():\n"
+            "    pass\n"
+            "\n"
+            "after_first = click.Command.parse_args\n"
+            "\n"
+            "@click.command()\n"
+            "@buvis_options\n"
+            "def cmd2():\n"
+            "    pass\n"
+            "\n"
+            "assert click.Command.parse_args is after_first, "
+            "'second buvis_options application re-patched click.Command.parse_args'\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
