@@ -12,6 +12,7 @@ Module name is underscore-prefixed so pytest's collector ignores it.
 from __future__ import annotations
 
 import multiprocessing as mp
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -75,6 +76,35 @@ def claim_worker(
         db = StateDB.open(Path(db_path_str))
         try:
             won = db.claim(sha256)
+            out_queue.put("true" if won else "false")
+        finally:
+            db.connection.close()
+    except Exception as exc:
+        # Same diagnostic-surface rationale as register_issuer_worker above.
+        out_queue.put(f"error: {exc!r}")
+
+
+def reclaiming_claim_worker(
+    db_path_str: str,
+    sha256: str,
+    max_age_seconds: float,
+    out_queue: mp.queues.Queue,
+    barrier: mp.synchronize.Barrier,
+) -> None:
+    """Open the state DB and call ``claim(sha256, max_age=...)``.
+
+    Same race as ``claim_worker``, but every worker meets a claim already
+    older than ``max_age_seconds``, so they all take the reclaim branch
+    instead of the plain insert. Exactly one may still win. Result strings:
+    ``"true"`` / ``"false"`` / ``"error: <repr>"``.
+    """
+    from bim.commands.doc.shared.state_db import StateDB
+
+    barrier.wait()
+    try:
+        db = StateDB.open(Path(db_path_str))
+        try:
+            won = db.claim(sha256, max_age=timedelta(seconds=max_age_seconds))
             out_queue.put("true" if won else "false")
         finally:
             db.connection.close()

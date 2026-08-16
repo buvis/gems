@@ -186,6 +186,33 @@ class TestReleaseClaim:
         with open_state_db(db_path) as db:
             assert db.claim(sha) is True
 
+    def test_release_leaves_another_shas_live_claim_untouched(self, db_path: Path) -> None:
+        """Releasing one sha frees that sha and nothing else.
+
+        Another worker holds a live claim on an unrelated sha at the same
+        time. Clearing the claims table wholesale looks identical to the
+        releasing caller while silently handing that worker's document away.
+        """
+        released_sha = "6f" * 32
+        bystander_sha = "7e" * 32
+        with open_state_db(db_path) as db:
+            assert db.claim(released_sha) is True
+            assert db.claim(bystander_sha) is True
+            held = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (bystander_sha,)).fetchone()[
+                0
+            ]
+
+            # Two rows in the table, one of them ours: still a real release.
+            assert db.release_claim(released_sha) is True
+
+            after = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (bystander_sha,)).fetchone()
+            assert after is not None, "the bystander's claim row was deleted by an unrelated release"
+            assert after[0] == held
+            # Its row survived intact, so the bystander is still held.
+            assert db.claim(bystander_sha) is False
+            # ...and the sha we did release really is free again.
+            assert db.claim(released_sha) is True
+
 
 class TestClaimStaleness:
     """``is_claim_stale`` answers whether a claim row is older than max_age.
@@ -198,7 +225,10 @@ class TestClaimStaleness:
         with open_state_db(db_path) as db:
             assert db.is_claim_stale("a" * 64, timedelta(minutes=60)) is False
 
-    @pytest.mark.parametrize("max_age", [timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=60)])
+    @pytest.mark.parametrize(
+        "max_age",
+        [timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=60), timedelta(hours=25)],
+    )
     def test_claim_exactly_max_age_old_is_not_stale(self, db_path: Path, max_age: timedelta) -> None:
         sha = "b" * 64
         claimed_at = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
@@ -211,12 +241,18 @@ class TestClaimStaleness:
             # Strict greater-than: an age of exactly max_age is still active.
             assert db.is_claim_stale(sha, max_age, now=claimed_at + max_age) is False
 
-    @pytest.mark.parametrize("max_age", [timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=60)])
+    @pytest.mark.parametrize(
+        "max_age",
+        [timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=60), timedelta(hours=25)],
+    )
     def test_claim_one_second_past_max_age_is_stale(self, db_path: Path, max_age: timedelta) -> None:
         """The boundary tracks the caller's max_age, not a fixed threshold.
 
         A one-minute max_age must call a five-minute-old claim stale; a
         hardcoded internal cutoff would only satisfy one of these cases.
+        The day-long window matters as much as the short ones: an operator
+        may configure one, and a cap baked into the implementation would
+        quietly refuse to ever trust it.
         """
         sha = "c" * 64
         claimed_at = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
@@ -319,16 +355,21 @@ class TestClaimStaleness:
 class TestClaimReclaim:
     """``claim(max_age=...)`` steals a claim only once it has gone stale."""
 
-    def test_stale_claim_is_reclaimed_with_refreshed_timestamp(self, db_path: Path) -> None:
+    @pytest.mark.parametrize("max_age", [timedelta(minutes=1), timedelta(minutes=60), timedelta(hours=25)])
+    def test_stale_claim_is_reclaimed_with_refreshed_timestamp(self, db_path: Path, max_age: timedelta) -> None:
+        """The caller's window decides, not a threshold baked into claim().
+
+        A claim five minutes past a one-minute window is abandoned, and so
+        is one five minutes past a twenty-five-hour window. An
+        implementation that quietly refuses to trust a window longer than
+        some invented cap wedges every sha in such a deployment forever.
+        """
         sha = "e" * 64
-        # A five-minute-old claim is stale under a one-minute max_age: the
-        # caller's value decides, not some threshold baked into claim().
-        max_age = timedelta(minutes=1)
         with open_state_db(db_path) as db:
             assert db.claim(sha) is True
             db.connection.execute(
                 "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
-                ((datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(), sha),
+                ((datetime.now(timezone.utc) - max_age - timedelta(minutes=5)).isoformat(), sha),
             )
             before = datetime.now(timezone.utc)
             assert db.claim(sha, max_age=max_age) is True
@@ -386,13 +427,16 @@ class TestClaimReclaim:
             # Same verdict the no-max_age path already gives for a processed sha.
             assert db.claim(sha) is False
 
-    def test_fresh_claim_is_not_reclaimed(self, db_path: Path) -> None:
+    @pytest.mark.parametrize("max_age", [timedelta(minutes=1), timedelta(minutes=60), timedelta(hours=25)])
+    def test_fresh_claim_is_not_reclaimed(self, db_path: Path, max_age: timedelta) -> None:
+        """The other side of the same window: a claim taken moments ago is
+        live under every configured max_age, short or day-long."""
         sha = "aa" * 32
         with open_state_db(db_path) as db:
             assert db.claim(sha) is True
             original = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchone()[0]
 
-            assert db.claim(sha, max_age=timedelta(minutes=60)) is False
+            assert db.claim(sha, max_age=max_age) is False
 
             after = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchone()[0]
             assert after == original
@@ -410,6 +454,270 @@ class TestClaimReclaim:
 
             after = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchone()[0]
             assert after == ancient
+
+
+class TestReclaimRaceWindow:
+    """Reclaiming must not destroy a claim that went live again meanwhile.
+
+    Reading the age and dropping the row are two separate statements, so a
+    rival worker can take the sha over in the gap between them and write a
+    brand-new ``claimed_at``. A drop that carries no age condition removes
+    that live claim, and both workers then process the same document.
+    """
+
+    @pytest.mark.parametrize(
+        "rival_zone",
+        [timezone.utc, timezone(timedelta(hours=-5))],
+        ids=["rival-stamps-utc", "rival-stamps-utc-minus-5"],
+    )
+    def test_claim_refreshed_inside_the_reclaim_gap_is_not_destroyed(self, db_path: Path, rival_zone: timezone) -> None:
+        """The rival's own offset must not decide whether its claim survives.
+
+        A worker in a non-UTC zone stamps ``2026-08-15T19:50:17-05:00`` for
+        the same instant a UTC worker writes as ``2026-08-16T00:50:17+00:00``.
+        Sorted as text the first one falls BELOW a UTC cutoff, so a drop that
+        re-derives staleness by comparing strings destroys a claim taken one
+        second ago. Only matching the exact value the staleness read observed
+        survives both stampings.
+        """
+        import sqlite3
+
+        from bim.commands.doc.shared.state_db import StateDB
+
+        sha = "7a" * 32
+        control_sha = "7b" * 32
+        # Abandoned half an hour ago, so the reclaim branch is entered.
+        stale_claimed_at = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+
+        class BufferedCursor:
+            """Serve rows already drained from a real cursor."""
+
+            def __init__(self, rows: list[tuple[object, ...]], rowcount: int) -> None:
+                self._rows = list(rows)
+                self.rowcount = rowcount
+
+            def fetchone(self) -> tuple[object, ...] | None:
+                return self._rows.pop(0) if self._rows else None
+
+            def fetchall(self) -> list[tuple[object, ...]]:
+                rows, self._rows = self._rows, []
+                return rows
+
+        class InterloperConnection:
+            """Wrap a real connection and slip a rival's claim into the gap.
+
+            The rival fires the instant a statement hands back the abandoned
+            ``claimed_at``: that read is where the gap opens, and its result
+            is what the caller is about to act on. Keying on the value
+            observed rather than on statement text means neither a decoy read
+            that returns nothing nor a ``WHERE 1 = 0`` write can spring the
+            trap early and defuse it. ``total_changes`` is sampled around
+            every statement, so a write that matched no row is not mistaken
+            for work. Same wrapping trick as ``FlakyConnection`` below, so
+            the race is deterministic: no sleeping, no second process.
+            """
+
+            def __init__(self, real_conn: sqlite3.Connection) -> None:
+                self._real = real_conn
+                self.rival_claimed_at: str | None = None
+                self.rival_rows_changed = 0
+                self.rows_changed_after_rival = 0
+
+            def execute(self, sql: str, *args: object, **kwargs: object) -> object:
+                before = self._real.total_changes
+                cursor = self._real.execute(sql, *args, **kwargs)
+                if self.rival_claimed_at is not None:
+                    self.rows_changed_after_rival += self._real.total_changes - before
+                    return cursor
+                if not " ".join(sql.split()).upper().startswith("SELECT"):
+                    return cursor
+                rows = cursor.fetchall()
+                if any(stale_claimed_at in row for row in rows):
+                    # The caller is holding the stale verdict now. Take the
+                    # sha over before it can act on it.
+                    self.rival_claimed_at = datetime.now(rival_zone).isoformat()
+                    mark = self._real.total_changes
+                    self._real.execute(
+                        "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                        (self.rival_claimed_at, sha),
+                    )
+                    self.rival_rows_changed = self._real.total_changes - mark
+                return BufferedCursor(rows, cursor.rowcount)
+
+            def __getattr__(self, name: str) -> object:
+                return getattr(self._real, name)
+
+        with open_state_db(db_path) as db:
+            # Control: on the same seeded state, with nobody racing, the
+            # reclaim really does rewrite the table. A "reclaim" that matches
+            # no row cannot satisfy this, so a row surviving the race below
+            # cannot be credited to a statement that never did anything.
+            assert db.claim(control_sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                (stale_claimed_at, control_sha),
+            )
+            changes_before = db.connection.total_changes
+            assert db.claim(control_sha, max_age=timedelta(minutes=1)) is True
+            assert db.connection.total_changes - changes_before >= 1, "the reclaim changed no row at all"
+
+            assert db.claim(sha) is True
+            db.connection.execute(
+                "UPDATE claims SET claimed_at = ? WHERE sha256 = ?",
+                (stale_claimed_at, sha),
+            )
+
+            racing = InterloperConnection(db.connection)
+            won = StateDB(racing).claim(sha, max_age=timedelta(minutes=1))
+
+            assert racing.rival_claimed_at is not None, "nothing ever read the stale stamp; the gap never opened"
+            assert racing.rival_rows_changed == 1, "the rival's takeover never landed, so no live claim was at risk"
+            row = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchone()
+            assert row is not None, "the rival worker's live claim row was deleted"
+            # A surviving row is not enough: a reclaim that dropped the rival's
+            # row and inserted its own leaves the table looking identical.
+            assert row[0] == racing.rival_claimed_at, "the rival's live claim was replaced by the reclaimer's own"
+            assert racing.rows_changed_after_rival == 0, "the reclaimer still wrote to a sha it no longer owned"
+            assert won is False, "the sha was claimed again before the drop, so this caller must lose"
+
+
+_UNPARSEABLE_CLAIMED_AT = ("", "not-a-timestamp", "2026-02-30T12:00:00+00:00", "null")
+
+
+class TestClaimedAtParsing:
+    """Whatever the ``claims`` table happens to hold must not blow up a run.
+
+    A hand-edited state file, a restored backup, or another writer can leave
+    a ``claimed_at`` no ISO-8601 parser accepts, or one with no timezone at
+    all. The ingest pipeline calls ``claim()`` before its own try block, so
+    an escaping ValueError or TypeError reaches the user as a stack trace.
+    """
+
+    @pytest.mark.parametrize("claimed_at", _UNPARSEABLE_CLAIMED_AT)
+    def test_unparseable_claimed_at_reads_as_stale(self, db_path: Path, claimed_at: str) -> None:
+        """A timestamp nobody can read cannot be trusted to mean "live", so the
+        row counts as abandoned rather than wedging its sha forever."""
+        sha = "8b" * 32
+        with open_state_db(db_path) as db:
+            db.connection.execute(
+                "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+                (sha, claimed_at),
+            )
+            now = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+            assert db.is_claim_stale(sha, timedelta(minutes=60), now=now) is True
+
+    def test_tz_naive_stored_claimed_at_is_read_as_utc(self, db_path: Path) -> None:
+        """A stored ``claimed_at`` without an offset must mean UTC.
+
+        Subtracting a naive stored value from an aware ``now`` raises
+        TypeError; reading it as local time instead of UTC shifts the age by
+        the host's offset and flips this one-second boundary pair on any
+        non-UTC machine. Mirrors the coercion already applied to ``now``.
+        """
+        sha = "9c" * 32
+        max_age = timedelta(minutes=60)
+        stored_naive = datetime(2026, 5, 4, 12, 0)
+        with open_state_db(db_path) as db:
+            db.connection.execute(
+                "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+                (sha, stored_naive.isoformat()),
+            )
+            boundary = datetime(2026, 5, 4, 13, 0, tzinfo=timezone.utc)
+            assert db.is_claim_stale(sha, max_age, now=boundary) is False
+            assert db.is_claim_stale(sha, max_age, now=boundary + timedelta(seconds=1)) is True
+
+    @pytest.mark.parametrize("claimed_at", [*_UNPARSEABLE_CLAIMED_AT, "2026-05-04T12:00:00"])
+    def test_claim_takes_over_an_untrustworthy_row_instead_of_raising(self, db_path: Path, claimed_at: str) -> None:
+        """``claim()`` runs outside the pipeline's try block, so anything raised
+        here surfaces as a raw stack trace. A row nobody can read counts as
+        abandoned, so this caller must win it - anything else wedges the sha
+        forever. The takeover has to be complete: one row left, stamped with a
+        live UTC time of this caller's own, not the value it distrusted. Its
+        blast radius stops at that row: a healthy claim another worker holds
+        on an unrelated sha must come through untouched."""
+        sha = "ad" * 32
+        bystander_sha = "bd" * 32
+        max_age = timedelta(minutes=60)
+        with open_state_db(db_path) as db:
+            db.connection.execute(
+                "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+                (sha, claimed_at),
+            )
+            assert db.claim(bystander_sha) is True
+            held = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (bystander_sha,)).fetchone()[
+                0
+            ]
+
+            before = datetime.now(timezone.utc)
+            assert db.claim(sha, max_age=max_age) is True
+            after = datetime.now(timezone.utc)
+
+            # The sha may not be left unclaimed either: dropping the row
+            # without taking it over would hand the document to the next two
+            # workers at once.
+            rows = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchall()
+            assert len(rows) == 1
+            assert rows[0][0] != claimed_at, "the distrusted value survived, so the sha was never really taken over"
+
+            # Must parse, or the next reader inherits the same problem.
+            stamped = datetime.fromisoformat(rows[0][0])
+            assert stamped.utcoffset() == timedelta(0), "a claim with no offset is the bug this row already had"
+            # One second of slack absorbs a stamp truncated to whole seconds.
+            assert before - timedelta(seconds=1) <= stamped <= after + timedelta(seconds=1)
+
+            surviving = db.connection.execute(
+                "SELECT claimed_at FROM claims WHERE sha256 = ?", (bystander_sha,)
+            ).fetchone()
+            assert surviving is not None, "a bystander's healthy claim was swept up by the takeover"
+            assert surviving[0] == held
+            assert db.claim(bystander_sha) is False
+
+    @pytest.mark.parametrize("claimed_at", [*_UNPARSEABLE_CLAIMED_AT, "2026-05-04T12:00:00"])
+    def test_untrustworthy_claim_on_a_processed_sha_is_not_taken_over(self, db_path: Path, claimed_at: str) -> None:
+        """A finished document is never handed out again, however corrupt its
+        claim row. Distrusting the timestamp says nothing about the ``processed``
+        table, so the completed-work guard has to survive the takeover path -
+        the twin of ``test_stale_claim_on_processed_sha_is_not_reclaimed``."""
+        sha = "be" * 32
+        with open_state_db(db_path) as db:
+            db.record_processed(_sample_processed(sha=sha))
+            db.connection.execute(
+                "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+                (sha, claimed_at),
+            )
+
+            assert db.claim(sha, max_age=timedelta(minutes=60)) is False
+            # Same verdict the no-max_age path already gives for a processed sha.
+            assert db.claim(sha) is False
+            assert db.dedup(sha).is_duplicate is True
+
+    def test_unreadable_claims_table_raises_instead_of_reporting_staleness(self, db_path: Path) -> None:
+        """Only an unreadable timestamp is absorbed - not an unreadable database.
+
+        A locked or missing table says nothing about how old a claim is.
+        Answering "stale" for it turns any database fault into permission to
+        steal a live claim, which is worse than the stack trace the absorbing
+        exists to prevent.
+        """
+        import sqlite3
+
+        sha = "ce" * 32
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            db.connection.execute("DROP TABLE claims")
+            with pytest.raises(sqlite3.OperationalError):
+                db.is_claim_stale(sha, timedelta(minutes=60))
+
+    @pytest.mark.parametrize("max_age", [3600, 3600.0, "1h"])
+    def test_non_timedelta_max_age_raises_instead_of_returning_a_verdict(self, db_path: Path, max_age: object) -> None:
+        """Seconds passed where a timedelta belongs is a caller bug, and a bool
+        answer hides it. Absorbing that comparison as "stale" would release
+        every live claim the caller asked about."""
+        sha = "df" * 32
+        with open_state_db(db_path) as db:
+            assert db.claim(sha) is True
+            with pytest.raises(TypeError):
+                db.is_claim_stale(sha, max_age, now=datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc))
 
 
 class TestMigrationIdempotency:
@@ -675,6 +983,81 @@ class TestClaimConcurrency:
         assert results.count("false") == worker_count - 1, f"expected {worker_count - 1} losing claims, got: {results}"
 
         # Verify exactly one row landed in the claims table.
+        with open_state_db(db_path) as db:
+            cursor = db.connection.execute("SELECT COUNT(*) FROM claims WHERE sha256 = ?", (sha,))
+            assert cursor.fetchone()[0] == 1
+
+    @pytest.mark.parametrize(
+        "seeded_claimed_at",
+        [(datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(), "not-a-timestamp"],
+        ids=["abandoned-an-hour-ago", "unreadable-stamp"],
+    )
+    def test_only_one_winner_when_workers_race_to_reclaim_a_stale_claim(
+        self, db_path: Path, monkeypatch: pytest.MonkeyPatch, seeded_claimed_at: str
+    ) -> None:
+        """Reclaiming must stay as exclusive as claiming.
+
+        Every worker meets the same abandoned claim, so every worker takes
+        the reclaim branch - drop the dead row, then insert its own. A
+        reclaim that is not atomic hands one document to several workers.
+
+        A row nobody can parse is abandoned too, and it takes a different
+        code path to that verdict. Two workers reading it as untrustworthy
+        at the same instant must still leave one winner: the table looks
+        healthy afterwards either way (one row, one fresh stamp), so the
+        count of winners is the only thing that tells them apart.
+        """
+        import multiprocessing as mp
+        import os
+        import sys
+
+        from bim.commands.doc.shared.state_db import StateDB
+
+        # See TestRegisterIssuerConcurrency for the PYTHONPATH rationale.
+        worker_dir = str(Path(__file__).parent)
+        if worker_dir not in sys.path:
+            sys.path.insert(0, worker_dir)
+        monkeypatch.setenv(
+            "PYTHONPATH",
+            worker_dir + os.pathsep + os.environ.get("PYTHONPATH", ""),
+        )
+        import _concurrency_workers
+
+        worker_count = 5
+        sha = "decaf0" * 10 + "beef"  # 64 hex chars
+        # Schema and the abandoned claim are seeded in the parent so the
+        # children race only the reclaim. Its worker is long gone, well past
+        # the one-minute max_age they all pass in.
+        seed = StateDB.open(db_path)
+        seed.connection.execute(
+            "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+            (sha, seeded_claimed_at),
+        )
+        seed.connection.close()
+
+        ctx = mp.get_context("spawn")
+        out_queue: mp.queues.Queue[str] = ctx.Queue()
+        barrier = ctx.Barrier(worker_count)
+        processes = [
+            ctx.Process(
+                target=_concurrency_workers.reclaiming_claim_worker,
+                args=(str(db_path), sha, 60.0, out_queue, barrier),
+            )
+            for _ in range(worker_count)
+        ]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join(timeout=20)
+            assert not p.is_alive(), "worker still running after timeout — SQL deadlock"
+            assert p.exitcode == 0, f"worker exited with {p.exitcode}"
+
+        results = sorted(out_queue.get_nowait() for _ in range(worker_count))
+        assert all(r in ("true", "false") for r in results), f"a worker failed outright: {results}"
+        assert results.count("true") == 1, f"expected exactly 1 winning reclaim, got: {results}"
+        assert results.count("false") == worker_count - 1, f"expected {worker_count - 1} losers, got: {results}"
+
+        # The stale row was taken over once, not duplicated or wiped.
         with open_state_db(db_path) as db:
             cursor = db.connection.execute("SELECT COUNT(*) FROM claims WHERE sha256 = ?", (sha,))
             assert cursor.fetchone()[0] == 1

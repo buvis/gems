@@ -1515,6 +1515,9 @@ class TestClaimReleaseAndReclaim:
         # No work done - the other worker owns this document.
         mocks["ocr"].assert_not_called()
         mocks["classify"].assert_not_called()
+        # Backing off must not release someone else's claim: a fresh attempt
+        # can only lose while the live worker's row is still there.
+        assert state_db.claim(sha) is False
 
     def test_exception_path_keeps_structured_result_and_releases_claim(
         self,

@@ -197,6 +197,10 @@ class TestDocSettings:
         paths = DocPaths.model_validate(required_paths_data)
         settings = DocSettings(paths=paths, claim_max_age_minutes=minutes)
         assert settings.claim_max_age_minutes == minutes
+        # A whole number of minutes, still: widening the field to a float to
+        # get a lower bound would keep this equality true while opening the
+        # door to the sub-second windows rejected below.
+        assert isinstance(settings.claim_max_age_minutes, int)
 
     def test_claim_max_age_minutes_rejects_non_int(self, required_paths_data: dict[str, str]) -> None:
         """The field is typed, so a bad config value fails at load, not later
@@ -204,6 +208,38 @@ class TestDocSettings:
         paths = DocPaths.model_validate(required_paths_data)
         with pytest.raises(ValidationError):
             DocSettings(paths=paths, claim_max_age_minutes="banana")
+
+    @pytest.mark.parametrize("minutes", [0, -1, -5, -7, -60, -999999])
+    def test_claim_max_age_minutes_rejects_non_positive(
+        self, required_paths_data: dict[str, str], minutes: int
+    ) -> None:
+        """A window of zero or less makes every claim instantly stale, so a run
+        reclaims the live claim another worker is holding and ingest mutual
+        exclusion silently disappears. The config must fail closed, at load.
+
+        The rejection has to be a lower bound, not a list of bad values: the
+        error names the ``greater than 0`` constraint, so any value at or below
+        zero is refused rather than the handful this case happens to try.
+        """
+        paths = DocPaths.model_validate(required_paths_data)
+        with pytest.raises(ValidationError, match="greater than 0"):
+            DocSettings(paths=paths, claim_max_age_minutes=minutes)
+
+    @pytest.mark.parametrize("minutes", [0.5, 1e-7])
+    def test_claim_max_age_minutes_rejects_a_fractional_window(
+        self, required_paths_data: dict[str, str], minutes: float
+    ) -> None:
+        """The same fail-open, reached from above zero instead of below it.
+
+        A window of a ten-millionth of a minute is six microseconds: every
+        claim is stale the instant after it is written, so ingest mutual
+        exclusion disappears exactly as it does at zero. A bound that only
+        says "greater than 0" lets that through, so the field must stay
+        whole minutes.
+        """
+        paths = DocPaths.model_validate(required_paths_data)
+        with pytest.raises(ValidationError):
+            DocSettings(paths=paths, claim_max_age_minutes=minutes)
 
 
 class TestBusinessRootUnderHomeValidator:
