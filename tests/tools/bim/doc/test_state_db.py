@@ -691,6 +691,67 @@ class TestClaimedAtParsing:
             assert db.claim(sha) is False
             assert db.dedup(sha).is_duplicate is True
 
+    def test_blob_claimed_at_reads_as_stale(self, db_path: Path) -> None:
+        """A ``claimed_at`` stored as a BLOB comes back as ``bytes`` - a
+        different failure path than the corrupt-text cases above - but the
+        same verdict applies: a stamp nobody can read cannot vouch for a live
+        worker, so the row counts as abandoned rather than raising."""
+        import sqlite3
+
+        sha = "af" * 32
+        with open_state_db(db_path) as db:
+            db.connection.execute(
+                "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+                (sha, sqlite3.Binary(b"\x00\x01")),
+            )
+            now = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+            assert db.is_claim_stale(sha, timedelta(minutes=60), now=now) is True
+
+    def test_claim_takes_over_a_blob_claimed_at_row(self, db_path: Path) -> None:
+        """``claim()`` must win a BLOB-valued row rather than raising:
+        anything raised here surfaces as a raw stack trace, and a row nobody
+        can read must not wedge its sha forever. The takeover has to be
+        complete: one row left, stamped with a fresh, parseable UTC time."""
+        import sqlite3
+
+        sha = "bf" * 32
+        with open_state_db(db_path) as db:
+            db.connection.execute(
+                "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+                (sha, sqlite3.Binary(b"\x00\x01")),
+            )
+            before = datetime.now(timezone.utc)
+            assert db.claim(sha, max_age=timedelta(minutes=60)) is True
+            after = datetime.now(timezone.utc)
+
+            rows = db.connection.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha,)).fetchall()
+            assert len(rows) == 1
+            # Must parse, or the next reader inherits the same problem.
+            stamped = datetime.fromisoformat(rows[0][0])
+            assert stamped.utcoffset() == timedelta(0)
+            # One second of slack absorbs a stamp truncated to whole seconds.
+            assert before - timedelta(seconds=1) <= stamped <= after + timedelta(seconds=1)
+
+    def test_blob_claimed_at_on_a_processed_sha_is_not_taken_over(self, db_path: Path) -> None:
+        """A finished document is never handed out again even when its claim
+        row is a BLOB: the completed-work guard has to survive this failure
+        path too, the twin of
+        ``test_untrustworthy_claim_on_a_processed_sha_is_not_taken_over``."""
+        import sqlite3
+
+        sha = "cf" * 32
+        with open_state_db(db_path) as db:
+            db.record_processed(_sample_processed(sha=sha))
+            db.connection.execute(
+                "INSERT INTO claims (sha256, claimed_at) VALUES (?, ?)",
+                (sha, sqlite3.Binary(b"\x00\x01")),
+            )
+
+            assert db.claim(sha, max_age=timedelta(minutes=60)) is False
+            # Same verdict the no-max_age path already gives for a processed sha.
+            assert db.claim(sha) is False
+            assert db.dedup(sha).is_duplicate is True
+
     def test_unreadable_claims_table_raises_instead_of_reporting_staleness(self, db_path: Path) -> None:
         """Only an unreadable timestamp is absorbed - not an unreadable database.
 
