@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import queue
+from decimal import InvalidOperation
 from typing import Any
 
 from buvis.pybase.result import CommandResult
@@ -50,6 +52,11 @@ class CommandTransactions:
                             reader.get_transactions()
                         except (FileNotFoundError, ValueError) as exc:
                             return CommandResult(success=False, error=str(exc))
+                        except (queue.Empty, InvalidOperation) as exc:
+                            return CommandResult(
+                                success=False,
+                                error=f"error processing transactions for account '{account_name}': {exc}",
+                            )
 
                         filtered_transactions = [
                             t

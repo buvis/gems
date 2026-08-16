@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **fctracker**: transactions are now rejected with a clear error when the CSV is not newest-first, instead of being silently processed in the wrong order and reporting wrong cost basis and rates.
+- **fctracker**: an overdrawn account, a zero-amount withdrawal, or a malformed amount cell now returns a friendly error naming the account, instead of crashing with a raw traceback.
 - **bim**: `serve` returns 404 instead of crashing with a 500 when its static directory has no `index.html`, and warns instead of silently dropping the auth token when the served page has no `</head>`.
 - **bim**: `serve` answers a request whose auth-token header contains a non-ASCII character with the documented 401 instead of crashing into a 500 with a raw stack trace.
 - **bim**: `serve` path confinement expands `~` in both the request path and the configured vault/archive directories, so a tilde-form directory no longer locks out every legitimate path with a 403.
