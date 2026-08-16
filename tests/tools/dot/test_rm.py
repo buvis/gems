@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
 from dot.commands.rm.rm import CommandRm
 
 
@@ -45,9 +47,18 @@ class TestCommandRmRemoveNormal:
         assert not result.success
         assert result.error
 
+    @pytest.mark.parametrize("odd_name", ["my file.txt", "a;rm -rf /"])
+    def test_quotes_odd_filename_in_shell_command(self, dotfiles_root: Path, odd_name: str) -> None:
+        shell = MagicMock()
+        shell.exe.return_value = ("", "")
+        cmd = CommandRm(shell=shell, file_path=odd_name)
+        result = cmd._remove_normal()
+        assert result.success
+        shell.exe.assert_any_call(f"cfg rm --cached {shlex.quote(odd_name)}", dotfiles_root)
+
 
 class TestCommandRmRemoveEncrypted:
-    def test_removes_encrypted_file_fully(self, dotfiles_root: Path) -> None:
+    def test_untracks_encrypted_file_without_deleting_plaintext(self, dotfiles_root: Path) -> None:
         gitignore = dotfiles_root / ".gitignore"
         gitignore.write_text(".secret_file\n.other_file\n")
         plaintext = dotfiles_root / ".secret_file"
@@ -59,11 +70,11 @@ class TestCommandRmRemoveEncrypted:
         result = cmd._remove_encrypted()
 
         assert result.success
-        shell.exe.assert_any_call("cfg secret remove -c .secret_file", dotfiles_root)
+        shell.exe.assert_any_call("cfg secret remove .secret_file", dotfiles_root)
         shell.exe.assert_any_call("cfg add .gitignore", dotfiles_root)
         assert ".secret_file" not in gitignore.read_text()
         assert ".other_file" in gitignore.read_text()
-        assert not plaintext.exists()
+        assert plaintext.exists()
 
     def test_fails_on_secret_remove_error(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
@@ -80,23 +91,6 @@ class TestCommandRmRemoveEncrypted:
         result = cmd._remove_encrypted()
         assert result.success
 
-    def test_fails_on_plaintext_unlink_error(self, dotfiles_root: Path) -> None:
-        plaintext = dotfiles_root / ".secret_file"
-        plaintext.write_text("secret")
-        plaintext.chmod(0o000)
-        dotfiles_root.chmod(0o555)
-
-        shell = MagicMock()
-        shell.exe.return_value = ("", "")
-        cmd = CommandRm(shell=shell, file_path=".secret_file")
-        result = cmd._remove_encrypted()
-
-        dotfiles_root.chmod(0o755)
-        plaintext.chmod(0o644)
-
-        assert not result.success
-        assert "Failed to delete plaintext" in result.error
-
     def test_cleans_only_matching_gitignore_line(self, dotfiles_root: Path) -> None:
         gitignore = dotfiles_root / ".gitignore"
         gitignore.write_text(".secret_file\n.secret_file_backup\n.other\n")
@@ -111,6 +105,15 @@ class TestCommandRmRemoveEncrypted:
         assert ".secret_file_backup" in lines
         assert ".other" in lines
 
+    @pytest.mark.parametrize("odd_name", ["my file.txt", "a;rm -rf /"])
+    def test_quotes_odd_filename_in_shell_command(self, dotfiles_root: Path, odd_name: str) -> None:
+        shell = MagicMock()
+        shell.exe.return_value = ("", "")
+        cmd = CommandRm(shell=shell, file_path=odd_name)
+        result = cmd._remove_encrypted()
+        assert result.success
+        shell.exe.assert_any_call(f"cfg secret remove {shlex.quote(odd_name)}", dotfiles_root)
+
 
 class TestCommandRmExecute:
     def test_dispatches_to_encrypted_path(self, dotfiles_root: Path) -> None:
@@ -123,14 +126,14 @@ class TestCommandRmExecute:
         # _is_encrypted call returns file in list, then _remove_encrypted succeeds
         shell.exe.side_effect = [
             ("", ".secret_file"),  # cfg secret list
-            ("", ""),  # cfg secret remove -c
+            ("", ""),  # cfg secret remove
             ("", ""),  # cfg add .gitignore
         ]
         cmd = CommandRm(shell=shell, file_path=".secret_file")
         result = cmd.execute()
 
         assert result.success
-        shell.exe.assert_any_call("cfg secret remove -c .secret_file", dotfiles_root)
+        shell.exe.assert_any_call("cfg secret remove .secret_file", dotfiles_root)
 
     def test_dispatches_to_normal_path(self, dotfiles_root: Path) -> None:
         shell = MagicMock()
