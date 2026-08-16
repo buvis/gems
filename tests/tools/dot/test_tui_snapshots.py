@@ -50,7 +50,7 @@ def _many_file_entries(prefix: str, count: int, status: str) -> list[FileEntry]:
 
 
 def _mock_git_ops_with_content() -> MagicMock:
-    """GitOps mock with overflowing content for snapshot tests."""
+    """DotGitService mock with overflowing content for snapshot tests."""
     ops = MagicMock()
     staged = _many_file_entries("staged", 15, "M ")
     unstaged = _many_file_entries("unstaged", 18, " M")
@@ -97,7 +97,7 @@ class TestMainScreenSnapshots:
 
         mock_ops = _mock_git_ops_with_content()
 
-        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.DotGitService") as cls:
             cls.return_value = mock_ops
             app = DotApp(dotfiles_root="/tmp/test")
             assert snap_compare(app, terminal_size=terminal_size)
@@ -130,7 +130,7 @@ class TestDiffViewBottomScrollSnapshot:
         mock_ops = _mock_git_ops_with_content()
         mock_ops.diff.return_value = _very_long_single_hunk_diff()
 
-        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as cls:
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.DotGitService") as cls:
             cls.return_value = mock_ops
             app = DotApp(dotfiles_root="/tmp/test")
 
@@ -165,7 +165,7 @@ class TestBrowseScreenSnapshots:
 
         with (
             patch("dot.tui.app.ShellAdapter"),
-            patch("dot.tui.app.GitOps") as cls,
+            patch("dot.tui.app.DotGitService") as cls,
             patch("dot.tui.screens.browse.list_directory", return_value=entries),
         ):
             cls.return_value = mock_ops
@@ -203,7 +203,7 @@ class TestSecretsScreenSnapshots:
 
         with (
             patch("dot.tui.app.ShellAdapter"),
-            patch("dot.tui.app.GitOps") as cls,
+            patch("dot.tui.app.DotGitService") as cls,
             patch("dot.tui.screens.secrets.list_secrets", return_value=secrets),
         ):
             cls.return_value = mock_ops
