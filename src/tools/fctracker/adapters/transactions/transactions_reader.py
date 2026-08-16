@@ -31,9 +31,12 @@ class TransactionsReader:
 
             for index in range(1, len(dates)):
                 if dates[index] < dates[index - 1]:
-                    raise ValueError(f"transactions must be newest-first; row {index} breaks order")
+                    data_row = len(rows) - index + 1
+                    raise ValueError(
+                        f"{self.account.name}: transactions must be newest-first; data row {data_row} breaks order"
+                    )
 
-            for row in rows:
+            for row, date in zip(rows, dates, strict=True):
                 try:
                     amount = Decimal(row["amount"])
                 except InvalidOperation:
@@ -41,8 +44,6 @@ class TransactionsReader:
 
                 if amount == 0:
                     raise ValueError("transaction amount is zero")
-
-                date = datetime.strptime(row["date"], "%Y-%m-%d")
 
                 if amount > 0:
                     self.account.deposit(date=date, amount=amount, rate=Decimal(f"{row['rate']}"))
