@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import enum
-import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,16 +27,8 @@ class DirEntry:
 
 def _query_git_sets(git_ops: DotGitService, rel_query: str) -> tuple[set[str], set[str]]:
     """Return (tracked, ignored) relative path sets for a directory."""
-    tracked: set[str] = set()
-    err, out = git_ops.shell.exe(f"cfg ls-files {shlex.quote(rel_query)}", git_ops.wd)
-    if not err and out and out.strip():
-        tracked = {line for line in out.strip().split("\n") if line}
-
-    ignored: set[str] = set()
-    err, out = git_ops.shell.exe(f"cfg check-ignore {shlex.quote(rel_query)}/*", git_ops.wd)
-    if not err and out and out.strip():
-        ignored = {line for line in out.strip().split("\n") if line}
-
+    tracked = git_ops.ls_files(rel_query)
+    ignored = git_ops.check_ignore(f"{rel_query}/*")
     return tracked, ignored
 
 
@@ -105,12 +96,12 @@ def list_directory(git_ops: DotGitService, path: str) -> list[DirEntry]:
 
 def get_tracking_status(git_ops: DotGitService, path: str) -> TrackingStatus:
     """Check tracking status for a single path."""
-    err, out = git_ops.shell.exe(f"cfg ls-files {shlex.quote(path)}", git_ops.wd)
-    if not err and out and path in out:
+    tracked = git_ops.ls_files(path)
+    if path in tracked:
         return TrackingStatus.TRACKED
 
-    err, out = git_ops.shell.exe(f"cfg check-ignore {shlex.quote(path)}", git_ops.wd)
-    if not err and out and path in out:
+    ignored = git_ops.check_ignore(path)
+    if path in ignored:
         return TrackingStatus.IGNORED
 
     return TrackingStatus.UNTRACKED
