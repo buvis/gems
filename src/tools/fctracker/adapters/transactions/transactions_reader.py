@@ -10,6 +10,9 @@ from fctracker.domain.account import Account
 
 
 class TransactionsReader:
+    REQUIRED_COLUMNS = ("date", "amount", "rate", "description")
+    REQUIRED_ROW_VALUES = ("date", "amount", "rate")
+
     def __init__(self, account: Account) -> None:
         self.file_path = Path(
             cfg.transactions_dir,
@@ -28,18 +31,18 @@ class TransactionsReader:
                 for row in reader:
                     rows.insert(0, row)
 
-                return rows, list(reader.fieldnames) if reader.fieldnames else []
+                return rows, list(reader.fieldnames or [])
         except UnicodeDecodeError:
             raise ValueError(f"{self.file_path}: file is not valid UTF-8") from None
 
     def _validate_columns(self, fieldnames: list[str]) -> None:
-        for column in ("date", "amount"):
+        for column in self.REQUIRED_COLUMNS:
             if column not in fieldnames:
                 raise ValueError(f"{self.file_path}: missing required column '{column}'")
 
     def _validate_rows(self, rows: list[dict[str, str]]) -> None:
         for index, row in enumerate(rows):
-            for column in ("date", "amount"):
+            for column in self.REQUIRED_ROW_VALUES:
                 if row[column] is None:
                     data_row = len(rows) - index
                     raise ValueError(f"{self.file_path}: row {data_row} is missing a value for '{column}'")
