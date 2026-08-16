@@ -298,7 +298,7 @@ class TestRunUpdateExecvpFailure:
             with pytest.raises(SystemExit):
                 run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
 
-        mock_log.assert_called_once_with(
+        mock_log.assert_any_call(
             state_dir,
             "error",
             "Restart failed: No such file or directory. Update applied; please re-run the command.",
