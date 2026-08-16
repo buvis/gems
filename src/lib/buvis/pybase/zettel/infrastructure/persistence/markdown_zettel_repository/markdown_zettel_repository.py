@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.adapters.console.console import console
 from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
@@ -32,6 +33,13 @@ def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
     data.sections = [(h, c) for h, c in raw.get("sections", [])]
     data.file_path = raw.get("file_path") or None
     return data
+
+
+def _warn_parse_errors(errors: list[tuple[str, str]]) -> None:
+    if not errors:
+        return
+    paths = ", ".join(path for path, _ in errors)
+    console.warning(f"{len(errors)} note(s) could not be parsed and were skipped: {paths}")
 
 
 class MarkdownZettelRepository(ZettelRepository):
@@ -90,9 +98,10 @@ class MarkdownZettelRepository(ZettelRepository):
         if _HAS_RUST:
             if metadata_eq:
                 cp = _default_cache_path()
-                raw_list, _errors = load_filtered(directory, self._extensions, metadata_eq, cp)
+                raw_list, errors = load_filtered(directory, self._extensions, metadata_eq, cp)
             else:
-                raw_list, _errors = load_all(directory, self._extensions)
+                raw_list, errors = load_all(directory, self._extensions)
+            _warn_parse_errors(errors)
             return [ZettelFactory.create(Zettel(_rust_dict_to_zettel_data(raw), from_rust=True)) for raw in raw_list]
 
         from buvis.pybase.zettel.infrastructure.persistence.file_parsers.zettel_file_parser import (
@@ -102,11 +111,17 @@ class MarkdownZettelRepository(ZettelRepository):
         exts = self._extensions
         dir_path = Path(directory).expanduser().resolve()
         zettels: list[Zettel] = []
+        errors = []
         for ext in exts:
             for file_path in sorted(dir_path.rglob(f"*.{ext}")):
-                zettel_data = ZettelFileParser.from_file(file_path)
+                try:
+                    zettel_data = ZettelFileParser.from_file(file_path)
+                except (OSError, ValueError) as exc:
+                    errors.append((str(file_path), str(exc)))
+                    continue
                 if metadata_eq and not all(zettel_data.metadata.get(k) == v for k, v in metadata_eq.items()):
                     continue
                 zettel_data.file_path = str(file_path)
                 zettels.append(ZettelFactory.create(Zettel(zettel_data)))
+        _warn_parse_errors(errors)
         return zettels
