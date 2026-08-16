@@ -13,7 +13,11 @@ from dot.tui.models import BranchInfo, FileEntry
 if TYPE_CHECKING:
     from buvis.pybase.adapters.shell.shell import ShellAdapter
 
-__all__ = ["GitOps"]
+__all__ = ["GitOps", "GitOpsError"]
+
+
+class GitOpsError(Exception):
+    """Raised when a GitOps operation fails unexpectedly."""
 
 
 class GitOps:
@@ -41,6 +45,12 @@ class GitOps:
 
     def status(self) -> list[FileEntry]:
         has_secret = self.shell.is_command_available("git-secret")
+
+        if has_secret:
+            err, _out = self.shell.exe("cfg secret hide -m", self.wd)
+            if err:
+                raise GitOpsError(f"hide failed: {err}")
+
         err, out = self.shell.exe("cfg status --porcelain", self.wd)
 
         if err or not out or not out.strip():
