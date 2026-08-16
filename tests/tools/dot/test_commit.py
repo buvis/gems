@@ -1,86 +1,77 @@
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
+import os
+from unittest.mock import MagicMock, patch
 
+from buvis.pybase.result import CommandResult
 from dot.commands.commit.commit import CommandCommit
 
 
 class TestCommandCommitInit:
-    def test_init_sets_env_and_alias(self, tmp_path: Path, monkeypatch) -> None:
-        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
-        monkeypatch.setattr("dot.commands.commit.commit.Path.home", staticmethod(lambda: tmp_path))
+    @patch("dot.commands.commit.commit.DotGitService")
+    def test_constructs_dot_git_service_with_shell_and_dotfiles_root(self, mock_service_cls, dotfiles_root) -> None:
         shell = MagicMock()
 
-        cmd = CommandCommit(shell=shell, message="message")
+        CommandCommit(shell=shell, dotfiles_root=str(dotfiles_root), message="message")
 
-        import os
+        mock_service_cls.assert_called_once_with(shell, str(dotfiles_root))
 
-        assert os.environ["DOTFILES_ROOT"] == str(tmp_path.resolve())
-        shell.alias.assert_called_once_with(
-            "cfg",
-            "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
-        )
-        assert cmd.shell is shell
-        assert cmd.message == "message"
+    def test_does_not_mutate_environment(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
+        shell = MagicMock()
+
+        with patch("dot.commands.commit.commit.DotGitService"):
+            CommandCommit(shell=shell, dotfiles_root=str(tmp_path), message="message")
+
+        assert "DOTFILES_ROOT" not in os.environ
+
+    @patch("dot.commands.commit.commit.DotGitService")
+    def test_does_not_call_shell_alias(self, mock_service_cls, dotfiles_root) -> None:
+        shell = MagicMock()
+
+        CommandCommit(shell=shell, dotfiles_root=str(dotfiles_root), message="message")
+
+        shell.alias.assert_not_called()
 
 
 class TestCommandCommitExecute:
-    def test_execute_commits_without_git_secret(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.commit.commit.DotGitService")
+    def test_execute_commits_via_service_with_message_and_returns_success(
+        self, mock_service_cls, dotfiles_root
+    ) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.commit.return_value = CommandResult(success=True, output="Changes committed", warnings=[])
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "")
 
-        cmd = CommandCommit(shell=shell, message="message")
+        cmd = CommandCommit(shell=shell, dotfiles_root=str(dotfiles_root), message="my message")
         result = cmd.execute()
 
+        mock_service.commit.assert_called_once_with("my message")
         assert result.success
         assert result.output == "Changes committed"
         assert result.warnings == []
 
-    def test_execute_commits_with_git_secret_success(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.commit.commit.DotGitService")
+    def test_execute_returns_service_failure_passthrough(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.commit.return_value = CommandResult(success=False, error="secret error")
         shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.side_effect = [("", ""), ("", "")]
 
-        cmd = CommandCommit(shell=shell, message="message")
-        result = cmd.execute()
-
-        assert result.success
-        assert result.warnings == []
-        assert shell.exe.call_count == 2
-        shell.exe.assert_any_call("cfg secret hide -m", dotfiles_root)
-
-    def test_execute_fails_on_git_secret_failure(self, dotfiles_root: Path) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.side_effect = [("secret err", "details")]
-
-        cmd = CommandCommit(shell=shell, message="message")
+        cmd = CommandCommit(shell=shell, dotfiles_root=str(dotfiles_root), message="message")
         result = cmd.execute()
 
         assert not result.success
-        assert "Error hiding secrets" in result.error
+        assert result.error == "secret error"
 
-    def test_execute_fails_on_commit_error(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.commit.commit.DotGitService")
+    def test_execute_never_calls_shell_directly(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.commit.return_value = CommandResult(success=True, output="Changes committed", warnings=[])
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.return_value = ("commit error", "")
 
-        cmd = CommandCommit(shell=shell, message="message")
-        result = cmd.execute()
+        cmd = CommandCommit(shell=shell, dotfiles_root=str(dotfiles_root), message="message")
+        cmd.execute()
 
-        assert not result.success
-        assert result.error.startswith("Commit failed")
-
-    def test_execute_quotes_message(self, dotfiles_root: Path) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.return_value = ("", "")
-
-        cmd = CommandCommit(shell=shell, message="hello world")
-        result = cmd.execute()
-
-        assert result.success
-        command = shell.exe.call_args.args[0]
-        assert "'hello world'" in command
+        shell.exe.assert_not_called()
+        shell.interact.assert_not_called()
+        shell.alias.assert_not_called()

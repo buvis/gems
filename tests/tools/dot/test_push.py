@@ -1,79 +1,86 @@
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
+import os
+from unittest.mock import MagicMock, patch
 
+from buvis.pybase.result import CommandResult
 from dot.commands.push.push import CommandPush
 
 
 class TestCommandPushInit:
-    def test_init_sets_env_and_alias(self, tmp_path: Path, monkeypatch) -> None:
-        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
-        monkeypatch.setattr("dot.commands.push.push.Path.home", staticmethod(lambda: tmp_path))
+    @patch("dot.commands.push.push.DotGitService")
+    def test_constructs_dot_git_service_with_shell_and_dotfiles_root(self, mock_service_cls, dotfiles_root) -> None:
         shell = MagicMock()
 
-        cmd = CommandPush(shell=shell)
+        CommandPush(shell=shell, dotfiles_root=str(dotfiles_root))
 
-        import os
+        mock_service_cls.assert_called_once_with(shell, str(dotfiles_root))
 
-        assert os.environ["DOTFILES_ROOT"] == str(tmp_path.resolve())
-        shell.alias.assert_called_once_with(
-            "cfg",
-            "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
-        )
-        assert cmd.shell is shell
+    def test_does_not_mutate_environment(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
+        shell = MagicMock()
+
+        with patch("dot.commands.push.push.DotGitService"):
+            CommandPush(shell=shell, dotfiles_root=str(tmp_path))
+
+        assert "DOTFILES_ROOT" not in os.environ
+
+    @patch("dot.commands.push.push.DotGitService")
+    def test_does_not_call_shell_alias(self, mock_service_cls, dotfiles_root) -> None:
+        shell = MagicMock()
+
+        CommandPush(shell=shell, dotfiles_root=str(dotfiles_root))
+
+        shell.alias.assert_not_called()
 
 
 class TestCommandPushExecute:
-    def test_execute_pushes_when_unpushed_commits(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.push.push.DotGitService")
+    def test_execute_returns_nothing_to_push_from_service(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.push.return_value = CommandResult(success=True, output="Nothing to push")
         shell = MagicMock()
-        shell.exe.side_effect = [("", "1"), ("", "")]
 
-        cmd = CommandPush(shell=shell)
+        cmd = CommandPush(shell=shell, dotfiles_root=str(dotfiles_root))
+        result = cmd.execute()
+
+        mock_service.push.assert_called_once_with()
+        assert result.success
+        assert result.output == "Nothing to push"
+
+    @patch("dot.commands.push.push.DotGitService")
+    def test_execute_returns_changes_pushed_from_service(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.push.return_value = CommandResult(success=True, output="Changes pushed")
+        shell = MagicMock()
+
+        cmd = CommandPush(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
         assert result.output == "Changes pushed"
-        assert shell.exe.call_count == 2
 
-    def test_execute_nothing_to_push(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.push.push.DotGitService")
+    def test_execute_returns_service_failure_passthrough(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.push.return_value = CommandResult(success=False, error="Push failed: push error")
         shell = MagicMock()
-        shell.exe.return_value = ("", "0")
 
-        cmd = CommandPush(shell=shell)
-        result = cmd.execute()
-
-        assert result.success
-        assert result.output == "Nothing to push"
-        shell.exe.assert_called_once()
-
-    def test_execute_fails_on_push_error(self, dotfiles_root: Path) -> None:
-        shell = MagicMock()
-        shell.exe.side_effect = [("", "2"), ("push error", "")]
-
-        cmd = CommandPush(shell=shell)
+        cmd = CommandPush(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert not result.success
-        assert result.error.startswith("Push failed")
+        assert result.error == "Push failed: push error"
 
-    def test_execute_pushes_when_revlist_errors(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.push.push.DotGitService")
+    def test_execute_never_calls_shell_directly(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.push.return_value = CommandResult(success=True, output="Nothing to push")
         shell = MagicMock()
-        shell.exe.side_effect = [("no upstream", ""), ("", "")]
 
-        cmd = CommandPush(shell=shell)
-        result = cmd.execute()
+        cmd = CommandPush(shell=shell, dotfiles_root=str(dotfiles_root))
+        cmd.execute()
 
-        assert result.success
-        assert result.output == "Changes pushed"
-        assert shell.exe.call_count == 2
-
-    def test_execute_nothing_to_push_when_no_output(self, dotfiles_root: Path) -> None:
-        shell = MagicMock()
-        shell.exe.return_value = ("", "")
-
-        cmd = CommandPush(shell=shell)
-        result = cmd.execute()
-
-        assert result.success
-        assert result.output == "Nothing to push"
+        shell.exe.assert_not_called()
+        shell.interact.assert_not_called()
+        shell.alias.assert_not_called()
