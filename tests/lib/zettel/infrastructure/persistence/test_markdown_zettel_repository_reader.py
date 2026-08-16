@@ -29,6 +29,15 @@ type: note
 Body text.
 """
 
+# Invalid UTF-8 bytes: used for the cross-backend fixture below because it is
+# a failure genuinely isolated by both the Rust and Python-fallback backends.
+# Malformed YAML frontmatter would not work here: the Rust backend silently
+# accepting it (parsing to empty metadata instead of erroring) is a
+# recorded, deliberately deferred gap for this PRD -- not an endorsed
+# permanent divergence -- tracked in
+# dev/local/reviews/00050-zettel-scanner-error-surfacing-v1-ledger.json.
+INVALID_UTF8_NOTE_BYTES = b"\xff\xfe---\ntitle: Bad\n---\n\n## Content\n\nBody.\n"
+
 
 class TestRustDictToZettelData:
     def test_converts_full_dict(self) -> None:
@@ -145,42 +154,6 @@ class TestFindAllPythonFallback:
         mock_console.warning.assert_called_once()
         assert "bad.md" in mock_console.warning.call_args[0][0]
 
-    @patch(
-        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
-        False,
-    )
-    @patch(
-        "buvis.pybase.adapters.console.console.console",
-    )
-    def test_find_all_filtered_surfaces_parse_error_and_keeps_matching_note(
-        self, mock_console: MagicMock, tmp_path: Path
-    ) -> None:
-        match = tmp_path / "match.md"
-        match.write_text(
-            "---\ntitle: Match\ntype: note\n---\n\n## Content\n\nBody.\n",
-            encoding="utf-8",
-        )
-        bad = tmp_path / "bad.md"
-        bad.write_bytes(INVALID_UTF8_NOTE_BYTES)
-
-        repo = MarkdownZettelRepository()
-        zettels = repo.find_all(str(tmp_path), metadata_eq={"type": "note"})
-
-        titles = [z.get_data().metadata.get("title") for z in zettels]
-        assert "Match" in titles
-        mock_console.warning.assert_called_once()
-        assert "bad.md" in mock_console.warning.call_args[0][0]
-
-
-# Invalid UTF-8 bytes: used for the cross-backend fixture below because it is
-# a failure genuinely isolated by both the Rust and Python-fallback backends.
-# Malformed YAML frontmatter would not work here: the Rust backend silently
-# accepting it (parsing to empty metadata instead of erroring) is a
-# recorded, deliberately deferred gap for this PRD -- not an endorsed
-# permanent divergence -- tracked in
-# dev/local/reviews/00050-zettel-scanner-error-surfacing-v1-ledger.json.
-INVALID_UTF8_NOTE_BYTES = b"\xff\xfe---\ntitle: Bad\n---\n\n## Content\n\nBody.\n"
-
 
 def _write_mixed_notes(tmp_path: Path) -> None:
     good = tmp_path / "good.md"
@@ -231,7 +204,72 @@ class TestFindAllBackendParseErrors:
         assert "bad.md" in mock_console.warning.call_args[0][0]
 
 
-class TestFindAllMultipleParseErrors:
+class TestFindAllFilteredBackendParseErrors:
+    """The `metadata_eq` filtered branch (`load_filtered` for Rust, the
+    filtered rglob loop for Python) must isolate an unparseable note the same
+    way regardless of backend: skip it, keep the matching note, warn exactly
+    once naming it.
+    """
+
+    @pytest.mark.parametrize(
+        "use_rust",
+        [
+            pytest.param(False, id="python-fallback"),
+            pytest.param(
+                True,
+                id="rust-backend",
+                marks=pytest.mark.skipif(not HAS_RUST, reason="Rust _core not available"),
+            ),
+        ],
+    )
+    @patch(
+        "buvis.pybase.adapters.console.console.console",
+    )
+    def test_find_all_filtered_surfaces_parse_error_and_keeps_matching_note(
+        self,
+        mock_console: MagicMock,
+        use_rust: bool,
+        tmp_path: Path,
+        tmp_path_factory: pytest.TempPathFactory,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        match = tmp_path / "match.md"
+        match.write_text(
+            "---\ntitle: Match\ntype: note\n---\n\n## Content\n\nBody.\n",
+            encoding="utf-8",
+        )
+        bad = tmp_path / "bad.md"
+        bad.write_bytes(INVALID_UTF8_NOTE_BYTES)
+
+        if use_rust:
+            # The Rust `load_filtered` branch resolves a cache path from
+            # XDG_CACHE_HOME (falling back to ~/.cache). Redirect it to a
+            # separate per-test tmp dir so this test starts from a cold,
+            # isolated cache and never reads/writes the developer's real
+            # ~/.cache/buvis - a warmed cache would change what the scan
+            # reports and make this test flaky/non-hermetic.
+            cache_home = tmp_path_factory.mktemp("xdg_cache_home")
+            monkeypatch.setenv("XDG_CACHE_HOME", str(cache_home))
+
+        force_python_fallback = (
+            nullcontext()
+            if use_rust
+            else patch(
+                "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
+                False,
+            )
+        )
+        with force_python_fallback:
+            repo = MarkdownZettelRepository()
+            zettels = repo.find_all(str(tmp_path), metadata_eq={"type": "note"})
+
+        titles = [z.get_data().metadata.get("title") for z in zettels]
+        assert "Match" in titles
+        mock_console.warning.assert_called_once()
+        assert "bad.md" in mock_console.warning.call_args[0][0]
+
+
+class TestFindAllWarningAggregation:
     @patch(
         "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
         False,
