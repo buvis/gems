@@ -379,6 +379,47 @@ class TestPipeline:
         sidecar_text = sidecar.read_text(encoding="utf-8")
         assert existing.canonical_filename in sidecar_text
 
+    def test_filed_document_duplicate_sidecar_keeps_filed_wording(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """A duplicate of a genuinely filed document must keep today's sidecar
+        wording unchanged. Only a duplicate of a still-pending triage document
+        should stop claiming the document was filed - this row was actually
+        filed, so the claim is true and must survive the fix.
+        """
+        sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
+        existing = ProcessedRow(
+            sha256=sha,
+            canonical_filename="20210311083422-cez-as-7102105594.invoice.pdf",
+            issuer_slug="cez-as",
+            doc_type="invoice",
+            processed_at=datetime(2021, 3, 11, 8, 34, 22, tzinfo=timezone.utc),
+            extraction_method="llm:qwen2.5:7b-instruct",
+        )
+        state_db.record_processed(existing)
+
+        pipeline, _ = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(),
+            classify_result=_make_classify_result(),
+            extract_result=_make_extract_result(),
+        )
+        params = IngestParams(source="email", staging_path=staging_pdf)
+        result = pipeline.run(params)
+
+        assert result.metadata["outcome"] == "duplicate"
+        sidecar = staging_pdf.with_suffix(staging_pdf.suffix + ".duplicate.yml")
+        sidecar_text = sidecar.read_text(encoding="utf-8")
+        assert "already maps to a filed document" in sidecar_text
+
     # --- 5. triage on classifier confidence below threshold ---
 
     def test_triage_on_low_classifier_confidence(
@@ -442,7 +483,7 @@ class TestPipeline:
         # The row has to describe THIS document: the file it names is the one
         # this run parked in _triage, so anyone following the dedup record
         # reaches the pending proposal instead of an unrelated document.
-        assert dedup.existing_row.canonical_filename == triage_pdfs[0].name
+        assert dedup.existing_row.canonical_filename == f"_triage/{triage_pdfs[0].name} (pending review)"
 
     # --- 6. triage on extractor IncompleteExtraction (missing required field) ---
 
@@ -847,7 +888,7 @@ class TestPipeline:
         # The parked file is not the source file - the sha above is the claimed
         # one, not a hash taken after the move.
         assert hashlib.sha256(triage_pdf.read_bytes()).hexdigest() != sha
-        assert row.canonical_filename == triage_pdf.name
+        assert row.canonical_filename == f"_triage/{triage_pdf.name} (pending review)"
         assert row.issuer_slug == "cez-as"
         assert row.doc_type == "receipt"
         # Stamped when this run happened. A fixed instant would make every
@@ -911,7 +952,7 @@ class TestPipeline:
         # produced - the name the first run wrote to _triage, both in the
         # result and in the sidecar left next to the resent copy.
         first_triage_name = Path(first.metadata["triage_pdf_path"]).name
-        assert second.metadata["existing_canonical_filename"] == first_triage_name
+        assert second.metadata["existing_canonical_filename"] == f"_triage/{first_triage_name} (pending review)"
         sidecar = resent.with_suffix(resent.suffix + ".duplicate.yml")
         assert sidecar.exists()
         assert first_triage_name in sidecar.read_text(encoding="utf-8")
@@ -924,6 +965,43 @@ class TestPipeline:
         # And no second proposal competing for the reviewer's attention.
         triage_dir = settings.paths.business_root / "_triage"
         assert len(list(triage_dir.glob("*.proposed.yml"))) == 1
+
+    def test_pending_triage_duplicate_sidecar_says_awaiting_review_not_filed(
+        self,
+        tmp_path: Path,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        """A duplicate of a document still parked in ``_triage`` must not lie
+        and say it was filed - nothing has been filed yet, the document is
+        awaiting human review.
+        """
+        source_bytes = staging_pdf.read_bytes()
+        first_ocr_pdf = _write_pdf(tmp_path / "ingest_ocr_output.pdf", b"%PDF-1.4\nocr'd content with a text layer\n")
+        pipeline, mocks = _build_pipeline(
+            settings,
+            registry,
+            state_db,
+            mocker,
+            ocr_result=_make_ocr_result(pdf_path=first_ocr_pdf),
+            classify_result=_make_classify_result(confidence=0.30),
+            extract_result=_make_extract_result(),
+        )
+        first = pipeline.run(IngestParams(source="email", staging_path=staging_pdf))
+        assert first.metadata["outcome"] == "triaged"
+
+        resent = _write_pdf(tmp_path / "staging-resent" / "input.pdf", source_bytes)
+        mocks["ocr"].return_value = _make_ocr_result(pdf_path=resent)
+        second = pipeline.run(IngestParams(source="email", staging_path=resent))
+
+        assert second.metadata["outcome"] == "duplicate"
+        sidecar = resent.with_suffix(resent.suffix + ".duplicate.yml")
+        sidecar_text = sidecar.read_text(encoding="utf-8")
+        assert "filed document" not in sidecar_text
+        assert "review" in sidecar_text.lower()
 
     def test_filename_collision_increments_timestamp(
         self,
