@@ -21,7 +21,8 @@ Precedence (highest to lowest):
 
 from __future__ import annotations
 
-from .click_integration import apply_generated_options, buvis_options, generate_click_options, get_settings
+from typing import TYPE_CHECKING, Any
+
 from .config_writer import ConfigWriter
 from .exceptions import (
     ConfigurationError,
@@ -39,6 +40,20 @@ from .validators import (
     validate_json_env_size,
     validate_nesting_depth,
 )
+
+_CLICK_INTEGRATION_NAMES = ("apply_generated_options", "buvis_options", "generate_click_options", "get_settings")
+
+if TYPE_CHECKING:
+    from .click_integration import apply_generated_options, buvis_options, generate_click_options, get_settings
+
+
+def __getattr__(name: str) -> Any:
+    if name in _CLICK_INTEGRATION_NAMES:
+        from . import click_integration
+
+        return getattr(click_integration, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "MAX_JSON_ENV_SIZE",
