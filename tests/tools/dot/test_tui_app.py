@@ -344,6 +344,58 @@ class TestMainScreen:
                 ops.add_to_gitignore.assert_called_once_with("unstaged.txt")
 
     @pytest.mark.anyio
+    async def test_status_error_does_not_crash_or_update_panes(self) -> None:
+        from dot.tui.app import DotApp
+        from dot.tui.git_ops import GitOpsError
+        from dot.tui.widgets import FileListWidget
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                unstaged = app.screen.query_one("#unstaged", FileListWidget)
+                staged = app.screen.query_one("#staged", FileListWidget)
+                unstaged.update_files = MagicMock()
+                staged.update_files = MagicMock()
+
+                ops.status.side_effect = GitOpsError("hide failed: disk full")
+                await pilot.press("r")
+                await pilot.pause()
+
+                assert app.is_running
+                unstaged.update_files.assert_not_called()
+                staged.update_files.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_status_error_surfaces_message_with_exception_text(self) -> None:
+        from dot.tui.app import DotApp
+        from dot.tui.git_ops import GitOpsError
+        from dot.tui.widgets import DiffView
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.GitOps") as mock_cls:
+            ops = _mock_git_ops(_TEST_ENTRIES)
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+
+                diff_view = app.screen.query_one("#diff", DiffView)
+                diff_view.update_diff = MagicMock()
+
+                ops.status.side_effect = GitOpsError("hide failed: disk full")
+                await pilot.press("r")
+                await pilot.pause()
+
+                diff_view.update_diff.assert_called_once()
+                msg = diff_view.update_diff.call_args[0][0]
+                assert "hide failed: disk full" in msg
+
+    @pytest.mark.anyio
     async def test_commit_happy_path(self) -> None:
         from dot.tui.app import DotApp
 

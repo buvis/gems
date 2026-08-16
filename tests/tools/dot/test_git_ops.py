@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from dot.tui.git_ops import GitOps
+from dot.tui.git_ops import GitOps, GitOpsError
 from dot.tui.models import BranchInfo, FileEntry
 
 
@@ -98,6 +98,7 @@ class TestGitOpsStatus:
     def test_secret_files_marked(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.side_effect = [
+            ("", ""),  # cfg secret hide -m
             ("", "M  .bashrc\nM  .ssh/config"),  # cfg status --porcelain
             ("", ".ssh/config\n"),  # cfg secret list
         ]
@@ -120,6 +121,7 @@ class TestGitOpsStatus:
     def test_git_secret_list_error_all_not_secret(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.side_effect = [
+            ("", ""),  # cfg secret hide -m
             ("", "M  .bashrc"),  # cfg status --porcelain
             ("error getting secrets", ""),  # cfg secret list fails
         ]
@@ -127,6 +129,47 @@ class TestGitOpsStatus:
         result = git_ops.status()
 
         assert all(not f.is_secret for f in result)
+
+    def test_hide_not_called_when_secret_unavailable(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "M  .bashrc")
+
+        git_ops.status()
+
+        for call in shell.exe.call_args_list:
+            assert "cfg secret hide" not in call[0][0]
+
+    def test_hide_failure_raises_and_skips_porcelain_status(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.return_value = ("permission denied", "")
+
+        with pytest.raises(GitOpsError):
+            git_ops.status()
+
+        assert shell.exe.call_count == 1
+        for call in shell.exe.call_args_list:
+            assert "cfg status --porcelain" not in call[0][0]
+
+    def test_modified_secret_file_visible_without_prior_status_call(self, git_ops: GitOps, shell: MagicMock) -> None:
+        """Regression test for #92: TUI sees secret changes on first status() call,
+        with no prior CLI `dot status` run required to hide the secret."""
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret hide -m
+            ("", "M  .ssh/config"),  # cfg status --porcelain
+            ("", ".ssh/config\n"),  # cfg secret list
+        ]
+
+        result = git_ops.status()
+
+        hide_cmd = shell.exe.call_args_list[0][0][0]
+        status_cmd = shell.exe.call_args_list[1][0][0]
+        assert "cfg secret hide -m" in hide_cmd
+        assert "cfg status --porcelain" in status_cmd
+
+        ssh_config = next(f for f in result if f.path == ".ssh/config")
+        assert ssh_config.is_secret is True
+        assert ssh_config.status == "M "
 
 
 class TestGitOpsDiff:
