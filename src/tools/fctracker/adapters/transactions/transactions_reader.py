@@ -33,7 +33,7 @@ class TransactionsReader:
                 if dates[index] < dates[index - 1]:
                     data_row = len(rows) - index + 1
                     raise ValueError(
-                        f"{self.account.name}: transactions must be newest-first; data row {data_row} breaks order"
+                        f"{self.file_path}: transactions must be newest-first; data row {data_row} breaks order"
                     )
 
             for row, date in zip(rows, dates, strict=True):
