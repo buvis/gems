@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
+
+from dot.git.service import DotGitService
 
 if TYPE_CHECKING:
     from buvis.pybase.adapters.shell.shell import ShellAdapter
@@ -20,69 +20,37 @@ _STATUS_LABELS = {
 
 
 class CommandStatus:
-    def __init__(self: CommandStatus, shell: ShellAdapter) -> None:
-        self.shell = shell
-
-        if not os.environ.get("DOTFILES_ROOT"):
-            path_dotfiles = Path.home()
-            os.environ.setdefault("DOTFILES_ROOT", str(path_dotfiles.resolve()))
-
-        self.shell.alias(
-            "cfg",
-            "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
-        )
+    def __init__(self: CommandStatus, shell: ShellAdapter, dotfiles_root: str) -> None:
+        self.dot_git_service = DotGitService(shell, dotfiles_root)
 
     def execute(self: CommandStatus) -> CommandResult:
         warnings: list[str] = []
         info: list[str] = []
 
-        if self.shell.is_command_available("git-secret"):
-            err, out = self.shell.exe("cfg secret hide -m", Path(os.environ["DOTFILES_ROOT"]))
+        entries, hide_error = self.dot_git_service.status()
+        if hide_error:
+            return CommandResult(success=False, error=f"Error hiding secrets: {hide_error}")
 
-            if err:
-                return CommandResult(success=False, error=f"Error hiding secrets: {err}\n{out}")
+        for entry in entries:
+            index_status, worktree_status = entry.status[0], entry.status[1]
+            if index_status == "?" and worktree_status == "?":
+                warnings.append(f"unstaged: {entry.path} untracked")
+                continue
+            if index_status != " " and index_status in _STATUS_LABELS:
+                info.append(f"staged: {entry.path} {_STATUS_LABELS[index_status]}")
+            if worktree_status != " " and worktree_status in _STATUS_LABELS:
+                warnings.append(f"unstaged: {entry.path} {_STATUS_LABELS[worktree_status]}")
 
-        err, out = self.shell.exe("cfg status --porcelain", Path(os.environ["DOTFILES_ROOT"]))
-
-        if err:
-            return CommandResult(success=False, error=f"Error executing command: {err}")
-
-        if out and out.strip():
-            staged, unstaged = parse_porcelain_status(out)
-            for path, change_type in staged:
-                info.append(f"staged: {path} {change_type}")
-            for path, change_type in unstaged:
-                warnings.append(f"unstaged: {path} {change_type}")
-
-        ahead, behind = self._get_ahead_behind()
-        if ahead:
-            warnings.append(f"{ahead} commit(s) not pushed")
-        if behind:
-            warnings.append(f"{behind} commit(s) not pulled")
+        branch = self.dot_git_service.branch_info()
+        if branch.ahead:
+            warnings.append(f"{branch.ahead} commit(s) not pushed")
+        if branch.behind:
+            warnings.append(f"{branch.behind} commit(s) not pulled")
 
         if not info and not warnings:
             return CommandResult(success=True, output="No modifications found")
 
         return CommandResult(success=True, info=info, warnings=warnings)
-
-    def _get_ahead_behind(self: CommandStatus) -> tuple[int, int]:
-        """Return (ahead, behind) counts relative to upstream tracking branch."""
-        err, out = self.shell.exe(
-            "cfg rev-list --count --left-right @{u}...HEAD",
-            Path(os.environ["DOTFILES_ROOT"]),
-        )
-
-        if err or not out or not out.strip():
-            return 0, 0
-
-        parts = out.strip().split()
-        if len(parts) == 2:
-            try:
-                return int(parts[1]), int(parts[0])
-            except ValueError:
-                return 0, 0
-
-        return 0, 0
 
 
 def parse_porcelain_status(

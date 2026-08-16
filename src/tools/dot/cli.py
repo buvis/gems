@@ -42,7 +42,8 @@ def status() -> None:
     from dot.commands.status.status import CommandStatus
 
     shell = ShellAdapter(suppress_logging=True)
-    cmd = CommandStatus(shell=shell)
+    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
+    cmd = CommandStatus(shell=shell, dotfiles_root=dotfiles_root)
     result = cmd.execute()
     console.report_result(
         result,
@@ -62,7 +63,8 @@ def add(ctx: click.Context, file_path: str | None = None) -> None:
     from dot.commands.add.add import CommandAdd
 
     shell = ShellAdapter(suppress_logging=True)
-    cmd = CommandAdd(shell=shell, file_path=resolved_path)
+    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
+    cmd = CommandAdd(shell=shell, dotfiles_root=dotfiles_root, file_path=resolved_path)
     console.report_result(cmd.execute())
 
 
@@ -133,7 +135,8 @@ def unstage(file_path: str | None = None) -> None:
     from dot.commands.unstage.unstage import CommandUnstage
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandUnstage(shell=shell, file_path=file_path).execute())
+    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
+    console.report_result(CommandUnstage(shell=shell, dotfiles_root=dotfiles_root, file_path=file_path).execute())
 
 
 @cli.command("push", help="Push dotfiles to remote")
