@@ -100,11 +100,12 @@ def pull() -> None:
     from dot.commands.pull.pull import CommandPull
 
     shell = ShellAdapter(suppress_logging=True)
+    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
 
     if shell.is_command_available("git-secret"):
         console.info("GPG passphrase required to decrypt secret files")
 
-    console.report_result(CommandPull(shell=shell).execute())
+    console.report_result(CommandPull(shell=shell, dotfiles_root=dotfiles_root).execute())
 
 
 @cli.command("commit", help="Commit dotfiles changes")
@@ -113,7 +114,8 @@ def commit(message: str) -> None:
     from dot.commands.commit.commit import CommandCommit
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandCommit(shell=shell, message=message).execute())
+    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
+    console.report_result(CommandCommit(shell=shell, dotfiles_root=dotfiles_root, message=message).execute())
 
 
 @cli.command(
@@ -144,7 +146,8 @@ def push() -> None:
     from dot.commands.push.push import CommandPush
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandPush(shell=shell).execute())
+    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
+    console.report_result(CommandPush(shell=shell, dotfiles_root=dotfiles_root).execute())
 
 
 if __name__ == "__main__":
