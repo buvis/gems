@@ -268,29 +268,21 @@ class CommandPromote:
             ctx.sibling_pdf.unlink(missing_ok=True)
 
         try:
-            self._services.state_db.record_processed(
-                ProcessedRow(
-                    sha256=sha,
-                    canonical_filename=plan.canonical_filename,
-                    issuer_slug=ctx.proposal.issuer.slug,
-                    doc_type=ctx.proposal.document.type,
-                    processed_at=datetime.now(timezone.utc),
-                    extraction_method="manual",
-                )
+            filed_row = ProcessedRow(
+                sha256=sha,
+                canonical_filename=plan.canonical_filename,
+                issuer_slug=ctx.proposal.issuer.slug,
+                doc_type=ctx.proposal.document.type,
+                processed_at=datetime.now(timezone.utc),
+                extraction_method="manual",
             )
+            self._services.state_db.record_processed(filed_row)
             # Second identity: the raw source sha the ingest run claimed on,
             # carried through the proposal. Nothing on disk hashes to it any
             # more once OCR embedded a text layer, so re-ingesting the original
             # source would otherwise look brand new.
             self._services.state_db.record_processed(
-                ProcessedRow(
-                    sha256=ctx.proposal.source.sha256,
-                    canonical_filename=plan.canonical_filename,
-                    issuer_slug=ctx.proposal.issuer.slug,
-                    doc_type=ctx.proposal.document.type,
-                    processed_at=datetime.now(timezone.utc),
-                    extraction_method="manual",
-                )
+                filed_row.model_copy(update={"sha256": ctx.proposal.source.sha256})
             )
             # Refresh rule freshness when this triage came from a rule-engine
             # match (``applied_rule_id`` set by the pipeline). Pre-existing
