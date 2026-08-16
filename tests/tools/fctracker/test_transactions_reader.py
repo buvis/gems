@@ -94,9 +94,12 @@ class TestTransactionsReader:
         # File claims to be newest-first, but data row 2 (2024-01-20) is
         # newer than data row 1 (2024-01-10) -- row 2 is the offender: it
         # should be no later than row 1 but isn't. After reversal the
-        # in-memory order is 2024-01-05, 2024-01-20, 2024-01-10; the raw
-        # reversed-list index trips at 1, but the corrected message must
-        # report data row 2, the row as the user counts it in the file.
+        # in-memory order is 2024-01-05, 2024-01-20, 2024-01-10, so the raw
+        # reversed-list index trips at 2 (dates[2] < dates[1]) -- the same
+        # number the corrected message reports, by coincidence, for this
+        # symmetric 3-row fixture. The mapping bug only becomes visible when
+        # index and data row diverge, which is what the 4-row fixture in
+        # test_order_violation_names_offending_row_and_csv exists to catch.
         csv_content = (
             "date,amount,rate,description\n2024-01-10,10.00,25.00,\n2024-01-20,20.00,25.00,\n2024-01-05,30.00,25.00,\n"
         )
