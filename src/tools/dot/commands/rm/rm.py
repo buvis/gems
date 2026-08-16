@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -35,7 +36,7 @@ class CommandRm:
 
     def _remove_normal(self: CommandRm) -> CommandResult:
         cwd = Path(os.environ["DOTFILES_ROOT"])
-        err, _ = self.shell.exe(f"cfg rm --cached {self.file_path}", cwd)
+        err, _ = self.shell.exe(f"cfg rm --cached {shlex.quote(self.file_path)}", cwd)
         if err:
             return CommandResult(success=False, error=f"Failed to remove: {err}")
         return CommandResult(success=True, output=f"{self.file_path} removed from tracking", warnings=self.warnings)
@@ -43,7 +44,7 @@ class CommandRm:
     def _remove_encrypted(self: CommandRm) -> CommandResult:
         cwd = Path(os.environ["DOTFILES_ROOT"])
 
-        err, _ = self.shell.exe(f"cfg secret remove -c {self.file_path}", cwd)
+        err, _ = self.shell.exe(f"cfg secret remove {shlex.quote(self.file_path)}", cwd)
         if err:
             return CommandResult(success=False, error=f"Failed to remove from git-secret: {err}")
 
@@ -57,16 +58,9 @@ class CommandRm:
                 if err:
                     self.warnings.append(f"Failed to stage .gitignore: {err}")
 
-        plaintext = cwd / self.file_path
-        if plaintext.exists():
-            try:
-                plaintext.unlink()
-            except OSError as exc:
-                return CommandResult(success=False, error=f"Failed to delete plaintext: {exc}")
-
         return CommandResult(
             success=True,
-            output=f"{self.file_path} removed from git-secret and disk",
+            output=f"{self.file_path} removed from git-secret",
             warnings=self.warnings,
         )
 
