@@ -199,6 +199,19 @@ class TestCommandRmRemoveEncrypted:
         # The ciphertext is still tracked, so the mapping change must not be staged.
         assert not any(".gitsecret" in command for command in _issued_commands(shell))
 
+    def test_ciphertext_untrack_failure_explains_mapping_change_and_recovery(self, dotfiles_root: Path) -> None:
+        # `cfg secret remove` already rewrote the mapping on disk, so a blind retry
+        # sees an unmapped file and misroutes to the plaintext path. The error must
+        # say the mapping changed and name the `.gitsecret/` recovery command.
+        shell = _shell(failing="--cached", error="fatal: unable to write index")
+        cmd = CommandRm(shell=shell, file_path=".netrc")
+        result = cmd._remove_encrypted()
+
+        assert not result.success
+        assert "already" in result.error.lower()
+        assert "mapping" in result.error.lower()
+        assert "cfg checkout -- .gitsecret/" in result.error
+
     @pytest.mark.parametrize(
         "error",
         ["fatal: unable to write index", "fatal: pathspec '.gitsecret/' did not match any files"],

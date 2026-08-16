@@ -50,7 +50,16 @@ class CommandRm:
 
         err, _ = self.shell.exe(f"cfg rm --cached {shlex.quote(self.file_path + '.secret')}", cwd)
         if err:
-            return CommandResult(success=False, error=f"Failed to untrack encrypted file: {err}")
+            return CommandResult(
+                success=False,
+                error=(
+                    f"Failed to untrack encrypted file: {err}. "
+                    "The git-secret mapping was already changed on disk, so do not simply retry "
+                    "dot rm: it would take the plaintext path instead. Restore the mapping with "
+                    "`cfg checkout -- .gitsecret/` (this discards other unstaged .gitsecret/ "
+                    "changes), then retry."
+                ),
+            )
 
         err, _ = self.shell.exe("cfg add .gitsecret/", cwd)
         if err:
