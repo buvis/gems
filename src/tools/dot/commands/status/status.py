@@ -51,36 +51,3 @@ class CommandStatus:
             return CommandResult(success=True, output="No modifications found")
 
         return CommandResult(success=True, info=info, warnings=warnings)
-
-
-def parse_porcelain_status(
-    git_output: str,
-) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
-    """Parse ``git status --porcelain`` output into staged and unstaged lists.
-
-    Returns:
-        Tuple of (staged, unstaged) where each is a list of (filepath, change_label).
-    """
-    staged: list[tuple[str, str]] = []
-    unstaged: list[tuple[str, str]] = []
-
-    for line in git_output.split("\n"):
-        if len(line) < 3:
-            continue
-
-        index_status = line[0]
-        worktree_status = line[1]
-        filepath = line[3:]
-
-        # untracked
-        if index_status == "?" and worktree_status == "?":
-            unstaged.append((filepath, "untracked"))
-            continue
-
-        if index_status != " " and index_status in _STATUS_LABELS:
-            staged.append((filepath, _STATUS_LABELS[index_status]))
-
-        if worktree_status != " " and worktree_status in _STATUS_LABELS:
-            unstaged.append((filepath, _STATUS_LABELS[worktree_status]))
-
-    return staged, unstaged

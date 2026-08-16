@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from unittest.mock import MagicMock, patch
 
-from dot.commands.status.status import CommandStatus, parse_porcelain_status
+from dot.commands.status.status import CommandStatus
 from dot.git.models import BranchInfo, FileEntry
 
 
@@ -243,64 +243,3 @@ class TestCommandStatusExecute:
         shell.exe.assert_not_called()
         shell.interact.assert_not_called()
         shell.alias.assert_not_called()
-
-
-class TestParsePorcelainStatus:
-    def test_empty_output(self) -> None:
-        staged, unstaged = parse_porcelain_status("")
-
-        assert staged == []
-        assert unstaged == []
-
-    def test_staged_modified(self) -> None:
-        staged, unstaged = parse_porcelain_status("M  config.yaml")
-
-        assert len(staged) == 1
-        assert staged[0] == ("config.yaml", "modified")
-        assert unstaged == []
-
-    def test_unstaged_modified(self) -> None:
-        staged, unstaged = parse_porcelain_status(" M config.yaml")
-
-        assert staged == []
-        assert len(unstaged) == 1
-        assert unstaged[0] == ("config.yaml", "modified")
-
-    def test_both_staged_and_unstaged(self) -> None:
-        staged, unstaged = parse_porcelain_status("MM config.yaml")
-
-        assert len(staged) == 1
-        assert len(unstaged) == 1
-        assert staged[0] == ("config.yaml", "modified")
-        assert unstaged[0] == ("config.yaml", "modified")
-
-    def test_mixed_changes(self) -> None:
-        output = "A  readme.md\nM  config.yaml\n D old.txt\n"
-
-        staged, unstaged = parse_porcelain_status(output)
-
-        assert len(staged) == 2
-        assert staged[0] == ("readme.md", "new file")
-        assert staged[1] == ("config.yaml", "modified")
-        assert len(unstaged) == 1
-        assert unstaged[0] == ("old.txt", "deleted")
-
-    def test_untracked(self) -> None:
-        staged, unstaged = parse_porcelain_status("?? newfile.txt")
-
-        assert staged == []
-        assert len(unstaged) == 1
-        assert unstaged[0] == ("newfile.txt", "untracked")
-
-    def test_renamed(self) -> None:
-        staged, unstaged = parse_porcelain_status("R  old.conf -> new.conf")
-
-        assert len(staged) == 1
-        assert staged[0] == ("old.conf -> new.conf", "renamed")
-        assert unstaged == []
-
-    def test_short_lines_skipped(self) -> None:
-        staged, unstaged = parse_porcelain_status("ab\n\n")
-
-        assert staged == []
-        assert unstaged == []
