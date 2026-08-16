@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
     MarkdownZettelRepository,
     _rust_dict_to_zettel_data,
 )
+
+HAS_RUST = importlib.util.find_spec("buvis.pybase.zettel._core") is not None
 
 MINIMAL_ZETTEL = """\
 ---
@@ -108,3 +112,53 @@ class TestFindAllPythonFallback:
         repo = MarkdownZettelRepository()
         zettels = repo.find_all(str(tmp_path))
         assert zettels == []
+
+
+# Invalid UTF-8 bytes: a failure genuinely isolated by both the Rust and
+# Python-fallback backends (unlike malformed YAML frontmatter, which Rust
+# silently accepts as empty metadata).
+INVALID_UTF8_NOTE_BYTES = b"\xff\xfe---\ntitle: Bad\n---\n\n## Content\n\nBody.\n"
+
+
+def _write_mixed_notes(tmp_path: Path) -> None:
+    good = tmp_path / "good.md"
+    good.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+    bad = tmp_path / "bad.md"
+    bad.write_bytes(INVALID_UTF8_NOTE_BYTES)
+
+
+class TestFindAllPythonFallbackParseErrors:
+    @patch(
+        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
+        False,
+    )
+    @patch(
+        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+    )
+    def test_find_all_skips_invalid_utf8_note_and_warns_once(self, mock_console: MagicMock, tmp_path: Path) -> None:
+        _write_mixed_notes(tmp_path)
+
+        repo = MarkdownZettelRepository()
+        zettels = repo.find_all(str(tmp_path))
+
+        assert len(zettels) == 1
+        assert zettels[0].get_data().metadata.get("title") == "Test"
+        mock_console.warning.assert_called_once()
+        assert "bad.md" in mock_console.warning.call_args[0][0]
+
+
+class TestFindAllRustBackendParseErrors:
+    @pytest.mark.skipif(not HAS_RUST, reason="Rust _core not available")
+    @patch(
+        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+    )
+    def test_find_all_skips_invalid_utf8_note_and_warns_once(self, mock_console: MagicMock, tmp_path: Path) -> None:
+        _write_mixed_notes(tmp_path)
+
+        repo = MarkdownZettelRepository()
+        zettels = repo.find_all(str(tmp_path))
+
+        assert len(zettels) == 1
+        assert zettels[0].get_data().metadata.get("title") == "Test"
+        mock_console.warning.assert_called_once()
+        assert "bad.md" in mock_console.warning.call_args[0][0]
