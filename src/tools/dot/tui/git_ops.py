@@ -13,11 +13,7 @@ from dot.tui.models import BranchInfo, FileEntry
 if TYPE_CHECKING:
     from buvis.pybase.adapters.shell.shell import ShellAdapter
 
-__all__ = ["GitOps", "GitOpsError"]
-
-
-class GitOpsError(Exception):
-    """Raised when a GitOps operation fails unexpectedly."""
+__all__ = ["GitOps"]
 
 
 class GitOps:
@@ -43,21 +39,22 @@ class GitOps:
                 self.wd,
             )
 
-    def status(self) -> list[FileEntry]:
-        has_secret = self.shell.is_command_available("git-secret")
+    def _hide_secrets(self) -> str | None:
+        if not self.shell.is_command_available("git-secret"):
+            return None
+        err, _out = self.shell.exe("cfg secret hide -m", self.wd)
+        return err or None
 
-        if has_secret:
-            err, _out = self.shell.exe("cfg secret hide -m", self.wd)
-            if err:
-                raise GitOpsError(f"hide failed: {err}")
+    def status(self) -> tuple[list[FileEntry], str | None]:
+        hide_error = self._hide_secrets()
 
         err, out = self.shell.exe("cfg status --porcelain", self.wd)
 
         if err or not out or not out.strip():
-            return []
+            return [], hide_error
 
         secrets: set[str] = set()
-        if has_secret:
+        if self.shell.is_command_available("git-secret"):
             serr, sout = self.shell.exe("cfg secret list", self.wd)
             if not serr and sout:
                 secrets = {line for line in sout.strip().split("\n") if line}
@@ -76,7 +73,7 @@ class GitOps:
                 )
             )
 
-        return entries
+        return entries, hide_error
 
     def diff(self, path: str, staged: bool = False) -> str:
         cached = " --cached" if staged else ""
@@ -96,10 +93,9 @@ class GitOps:
         return CommandResult(success=True)
 
     def commit(self, message: str) -> CommandResult:
-        if self.shell.is_command_available("git-secret"):
-            err, _out = self.shell.exe("cfg secret hide -m", self.wd)
-            if err:
-                return CommandResult(success=False, error=err)
+        hide_error = self._hide_secrets()
+        if hide_error:
+            return CommandResult(success=False, error=hide_error)
 
         err, _out = self.shell.exe(f"cfg commit -m {shlex.quote(message)}", self.wd)
         if err:
@@ -143,6 +139,7 @@ class GitOps:
         return CommandResult(success=True, output="Dotfiles pulled successfully")
 
     def has_uncommitted_changes(self) -> bool:
+        self._hide_secrets()
         err, out = self.shell.exe("cfg status --porcelain", self.wd)
         if err:
             return False

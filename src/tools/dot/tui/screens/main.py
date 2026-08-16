@@ -7,7 +7,6 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Footer
 
-from dot.tui.git_ops import GitOpsError
 from dot.tui.patch import build_hunk_patch, build_line_patch, build_partial_revert_patch
 from dot.tui.widgets import (
     CommitModal,
@@ -139,11 +138,7 @@ class MainScreen(Screen[None]):
         return None
 
     def refresh_status(self) -> None:
-        try:
-            entries = self._git_ops.status()
-        except GitOpsError as exc:
-            self._show_message(f"Error refreshing status: {exc}")
-            return
+        entries, hide_error = self._git_ops.status()
 
         staged: list[FileEntry] = []
         unstaged: list[FileEntry] = []
@@ -163,6 +158,9 @@ class MainScreen(Screen[None]):
         self.query_one("#unstaged", FileListWidget).update_files(unstaged)
         self.query_one("#staged", FileListWidget).update_files(staged)
         self.query_one("#status-bar", StatusBar).update_info(self._git_ops.branch_info())
+
+        if hide_error:
+            self._show_message(hide_error)
 
     def action_focus_next_pane(self) -> None:
         focused = self.focused
