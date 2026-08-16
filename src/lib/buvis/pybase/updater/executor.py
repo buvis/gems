@@ -9,6 +9,7 @@ from pathlib import Path
 from subprocess import TimeoutExpired
 
 import click
+from buvis.pybase.adapters import console
 
 from .detector import InstallerInfo
 from .state import DEFAULT_STATE_DIR, append_log
@@ -144,7 +145,7 @@ def _reexec_or_exit(installer: InstallerInfo, state_dir: Path) -> None:
             "error",
             f"Restart failed: {exc}. Update applied; please re-run the command.",
         )
-        sys.exit(0)
+        console.panic(f"Restart failed: {exc}. Update applied; please re-run the command.")
 
 
 def _resolve_reexec_argv(installer: InstallerInfo) -> list[str]:
