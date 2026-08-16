@@ -295,7 +295,7 @@ class TestMainScreen:
 
         with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.DotGitService") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
-            ops.rm.return_value = CommandResult(success=True)
+            ops.delete.return_value = CommandResult(success=True)
             mock_cls.return_value = ops
 
             app = DotApp(dotfiles_root="/tmp/test")
@@ -306,7 +306,7 @@ class TestMainScreen:
                 # Confirmation screen should be showing
                 await pilot.press("y")
                 await pilot.pause()
-                ops.rm.assert_called_once_with("unstaged.txt")
+                ops.delete.assert_called_once_with("unstaged.txt")
 
     @pytest.mark.anyio
     async def test_delete_cancelled(self) -> None:
@@ -323,7 +323,7 @@ class TestMainScreen:
                 await pilot.pause()
                 await pilot.press("n")
                 await pilot.pause()
-                ops.rm.assert_not_called()
+                ops.delete.assert_not_called()
 
     @pytest.mark.anyio
     async def test_ignore_opens_modal(self) -> None:

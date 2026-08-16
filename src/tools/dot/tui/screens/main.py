@@ -213,7 +213,7 @@ class MainScreen(Screen[None]):
         def _on_confirm(confirmed: bool | None) -> None:
             if not confirmed:
                 return
-            result = self._git_ops.rm(entry.path)
+            result = self._git_ops.delete(entry.path)
             if not result.success:
                 self._show_message(f"Error deleting: {result.error}")
                 return
