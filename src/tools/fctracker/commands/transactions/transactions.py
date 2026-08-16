@@ -51,9 +51,9 @@ class CommandTransactions:
                         try:
                             reader = TransactionsReader(account)
                             reader.get_transactions()
-                        except (FileNotFoundError, ValueError) as exc:
+                        except FileNotFoundError as exc:
                             return CommandResult(success=False, error=str(exc))
-                        except (queue.Empty, InvalidOperation) as exc:
+                        except (ValueError, queue.Empty, InvalidOperation) as exc:
                             return CommandResult(
                                 success=False,
                                 error=describe_transaction_error(account_name, exc),
