@@ -295,13 +295,16 @@ class TestTransactionsAndBalanceErrorParity:
     def _run_both_commands(
         self,
         tmp_path: Path,
-        csv_content: str,
+        csv_content: str | bytes,
         account_key: str = "Acme",
         currency_key: str = "EUR",
     ) -> tuple[CommandResult, CommandResult]:
         csv_path = tmp_path / account_key.lower() / f"{currency_key.lower()}.csv"
         csv_path.parent.mkdir(parents=True, exist_ok=True)
-        csv_path.write_text(csv_content)
+        if isinstance(csv_content, bytes):
+            csv_path.write_bytes(csv_content)
+        else:
+            csv_path.write_text(csv_content)
 
         foreign = {"EUR": ForeignCurrencyConfig(symbol="E", precision=2)}
         local = LocalCurrencyConfig(code="CZK", symbol="Kc", precision=2)
@@ -429,3 +432,58 @@ class TestTransactionsAndBalanceErrorParity:
         # the failure.
         assert tx_result.metadata == {}
         assert bal_result.metadata == {}
+
+    def test_ragged_row_rejected_as_failed_result_across_both_commands(self, tmp_path: Path) -> None:
+        # Row has only the date cell; csv.DictReader fills the rest with
+        # None, which currently makes Decimal(None) raise an uncaught
+        # TypeError instead of a CommandResult.
+        tx_result, bal_result = self._run_both_commands(tmp_path, "date,amount,rate,description\n2024-02-02\n")
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "acme" in tx_result.error.lower()
+        assert tx_result.error == bal_result.error
+
+    def test_missing_date_column_rejected_across_both_commands(self, tmp_path: Path) -> None:
+        tx_result, bal_result = self._run_both_commands(tmp_path, "amount,rate,description\n10.00,25.00,\n")
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "date" in tx_result.error.lower()
+        assert tx_result.error == bal_result.error
+
+    def test_missing_amount_column_rejected_across_both_commands(self, tmp_path: Path) -> None:
+        tx_result, bal_result = self._run_both_commands(tmp_path, "date,rate,description\n2024-01-01,25.00,\n")
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "amount" in tx_result.error.lower()
+        assert tx_result.error == bal_result.error
+
+    def test_non_utf8_file_rejected_across_both_commands_without_order_violation_wording(self, tmp_path: Path) -> None:
+        csv_content = "date,amount,rate,description\n2024-01-15,10.00,25.50,caf\xe9 purchase\n"
+        tx_result, bal_result = self._run_both_commands(tmp_path, csv_content.encode("latin-1"))
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "utf-8" in tx_result.error.lower()
+        assert "newest-first" not in tx_result.error
+        assert "newest-first" not in bal_result.error
+        assert tx_result.error == bal_result.error
+
+    def test_malformed_rate_cell_matches_across_commands_and_differs_from_malformed_amount(
+        self, tmp_path: Path
+    ) -> None:
+        tx_result, bal_result = self._run_both_commands(
+            tmp_path, "date,amount,rate,description\n2024-01-15,10.00,xyz,\n"
+        )
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "xyz" in tx_result.error
+        assert "rate" in tx_result.error.lower()
+        assert "amount" not in tx_result.error.lower()
+        assert tx_result.error == bal_result.error
+
+        amount_tx_result, _ = self._run_both_commands(tmp_path, "date,amount,rate,description\n2024-01-15,abc,25.50,\n")
+        assert tx_result.error != amount_tx_result.error

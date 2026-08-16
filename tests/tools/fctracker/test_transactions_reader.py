@@ -237,3 +237,150 @@ class TestTransactionsReader:
         message = str(exc_info.value)
         assert "2024-13-99" in message
         assert "newest-first" not in message
+
+    def test_ragged_row_is_rejected_without_leaking_typeerror(self, tmp_path: Path) -> None:
+        # Row has only the date cell; csv.DictReader fills the missing
+        # amount/rate/description cells with None. Decimal(None) currently
+        # raises a bare TypeError. No digit in the fixture besides the
+        # expected row reference is "1", so its presence in the message
+        # pins that the row is identified, not just the file.
+        csv_content = "date,amount,rate,description\n2024-02-02\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        assert not isinstance(exc_info.value, TypeError)
+        message = str(exc_info.value)
+        assert "acme" in message
+        assert "row" in message.lower()
+        assert "1" in message
+
+    def test_missing_date_column_is_rejected_with_column_name(self, tmp_path: Path) -> None:
+        csv_content = "amount,rate,description\n10.00,25.00,\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        assert not isinstance(exc_info.value, KeyError)
+        message = str(exc_info.value)
+        assert "date" in message.lower()
+        assert "<class '" not in message
+
+    def test_missing_amount_column_is_rejected_with_column_name(self, tmp_path: Path) -> None:
+        csv_content = "date,rate,description\n2024-01-01,25.00,\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        assert not isinstance(exc_info.value, KeyError)
+        message = str(exc_info.value)
+        assert "amount" in message.lower()
+        assert "<class '" not in message
+
+    def test_utf8_bom_header_is_read_successfully_like_plain_utf8(self, tmp_path: Path) -> None:
+        # Common spreadsheet export: a UTF-8 BOM prefixes the header, so the
+        # first header cell would read "﻿date" if opened naively. The
+        # file is otherwise identical to test_reads_deposits_and_withdrawals
+        # and must be read successfully, not rejected.
+        csv_content = "date,amount,rate,description\n2024-01-20,-50.00,,Amazon purchase\n2024-01-15,100.00,25.50,\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content, encoding="utf-8-sig")
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+            reader.get_transactions()
+
+        assert account.deposit.call_count == 1
+        assert account.withdraw.call_count == 1
+
+        dep_call = account.deposit.call_args
+        assert dep_call.kwargs["amount"] == Decimal("100.00")
+        assert dep_call.kwargs["rate"] == Decimal("25.50")
+
+        wd_call = account.withdraw.call_args
+        assert wd_call.kwargs["amount"] == Decimal("50.00")
+        assert wd_call.kwargs["description"] == "Amazon purchase"
+
+    def test_non_utf8_file_is_rejected_as_encoding_problem_not_order_violation(self, tmp_path: Path) -> None:
+        csv_content = "date,amount,rate,description\n2024-01-15,10.00,25.50,caf\xe9 purchase\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_bytes(csv_content.encode("latin-1"))
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        message = str(exc_info.value)
+        assert "utf-8" in message.lower()
+        assert "newest-first" not in message
+        assert "acme" in message
+
+    def test_malformed_rate_cell_names_offending_value_and_says_rate_not_amount(self, tmp_path: Path) -> None:
+        csv_content = "date,amount,rate,description\n2024-01-15,10.00,xyz,\n"
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(Exception) as exc_info:
+                reader.get_transactions()
+
+        message = str(exc_info.value)
+        assert "xyz" in message
+        assert "rate" in message.lower()
+        assert "amount" not in message.lower()
+        assert "<class '" not in message
