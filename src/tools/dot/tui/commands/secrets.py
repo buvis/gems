@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from buvis.pybase.result import CommandResult
 
 if TYPE_CHECKING:
-    from dot.tui.git_ops import GitOps
+    from dot.git.service import DotGitService
 
 __all__ = [
     "SecretEntry",
@@ -26,11 +26,11 @@ class SecretEntry:
     status: str
 
 
-def _git_secret_available(git_ops: GitOps) -> bool:
+def _git_secret_available(git_ops: DotGitService) -> bool:
     return git_ops.shell.is_command_available("git-secret")
 
 
-def list_secrets(git_ops: GitOps) -> list[SecretEntry]:
+def list_secrets(git_ops: DotGitService) -> list[SecretEntry]:
     if not _git_secret_available(git_ops):
         return []
 
@@ -52,7 +52,7 @@ def list_secrets(git_ops: GitOps) -> list[SecretEntry]:
     return entries
 
 
-def register_secret(git_ops: GitOps, path: str) -> CommandResult:
+def register_secret(git_ops: DotGitService, path: str) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 
@@ -62,7 +62,7 @@ def register_secret(git_ops: GitOps, path: str) -> CommandResult:
     return CommandResult(success=True)
 
 
-def unregister_secret(git_ops: GitOps, path: str) -> CommandResult:
+def unregister_secret(git_ops: DotGitService, path: str) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 
@@ -72,7 +72,7 @@ def unregister_secret(git_ops: GitOps, path: str) -> CommandResult:
     return CommandResult(success=True)
 
 
-def reveal_all(git_ops: GitOps, passphrase: str | None = None) -> CommandResult:
+def reveal_all(git_ops: DotGitService, passphrase: str | None = None) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 
@@ -85,7 +85,7 @@ def reveal_all(git_ops: GitOps, passphrase: str | None = None) -> CommandResult:
     return CommandResult(success=True)
 
 
-def hide_all(git_ops: GitOps) -> CommandResult:
+def hide_all(git_ops: DotGitService) -> CommandResult:
     if not _git_secret_available(git_ops):
         return CommandResult(success=False, error="git-secret not installed")
 

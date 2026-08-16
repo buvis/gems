@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dot.tui.git_ops import GitOps
+    from dot.git.service import DotGitService
 
 __all__ = ["DirEntry", "TrackingStatus", "get_tracking_status", "list_directory"]
 
@@ -26,7 +26,7 @@ class DirEntry:
     status: TrackingStatus
 
 
-def _query_git_sets(git_ops: GitOps, rel_query: str) -> tuple[set[str], set[str]]:
+def _query_git_sets(git_ops: DotGitService, rel_query: str) -> tuple[set[str], set[str]]:
     """Return (tracked, ignored) relative path sets for a directory."""
     tracked: set[str] = set()
     err, out = git_ops.shell.exe(f"cfg ls-files {shlex.quote(rel_query)}", git_ops.wd)
@@ -41,7 +41,7 @@ def _query_git_sets(git_ops: GitOps, rel_query: str) -> tuple[set[str], set[str]
     return tracked, ignored
 
 
-def list_directory(git_ops: GitOps, path: str) -> list[DirEntry]:
+def list_directory(git_ops: DotGitService, path: str) -> list[DirEntry]:
     """List directory contents with git tracking status."""
     p = Path(path)
 
@@ -103,7 +103,7 @@ def list_directory(git_ops: GitOps, path: str) -> list[DirEntry]:
     return entries
 
 
-def get_tracking_status(git_ops: GitOps, path: str) -> TrackingStatus:
+def get_tracking_status(git_ops: DotGitService, path: str) -> TrackingStatus:
     """Check tracking status for a single path."""
     err, out = git_ops.shell.exe(f"cfg ls-files {shlex.quote(path)}", git_ops.wd)
     if not err and out and path in out:

@@ -14,7 +14,7 @@ from dot.tui.widgets.gitignore_modal import GitignoreModal
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from dot.tui.git_ops import GitOps
+    from dot.git.service import DotGitService
 
 __all__ = ["BrowseScreen"]
 
@@ -35,7 +35,7 @@ class BrowseScreen(Screen[None]):
         Binding("backspace", "go_parent", "Parent", show=False),
     ]
 
-    def __init__(self, git_ops: GitOps) -> None:
+    def __init__(self, git_ops: DotGitService) -> None:
         super().__init__()
         self._git_ops = git_ops
         self._current_path = git_ops.dotfiles_root

@@ -21,7 +21,7 @@ from dot.tui.widgets import (
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from dot.tui.git_ops import GitOps
+    from dot.git.service import DotGitService
     from dot.tui.models import FileEntry
 
 __all__ = ["MainScreen"]
@@ -102,7 +102,7 @@ class MainScreen(Screen[None]):
 
     _FOCUS_ORDER = ["unstaged", "staged", "diff"]
 
-    def __init__(self, git_ops: GitOps, *, confirm_revert: bool = True) -> None:
+    def __init__(self, git_ops: DotGitService, *, confirm_revert: bool = True) -> None:
         super().__init__()
         self._git_ops = git_ops
         self._current_diff_path: str = ""

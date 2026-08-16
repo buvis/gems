@@ -22,7 +22,7 @@ from dot.tui.widgets.passphrase_modal import PassphraseModal
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-    from dot.tui.git_ops import GitOps
+    from dot.git.service import DotGitService
 
 __all__ = ["SecretsScreen"]
 
@@ -131,7 +131,7 @@ class SecretsScreen(Screen[None]):
         Binding("up", "cursor_up", "Up", show=False),
     ]
 
-    def __init__(self, git_ops: GitOps) -> None:
+    def __init__(self, git_ops: DotGitService) -> None:
         super().__init__()
         self._git_ops = git_ops
 

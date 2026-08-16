@@ -9,7 +9,7 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Label
 
-from dot.tui.git_ops import GitOps
+from dot.git.service import DotGitService
 from dot.tui.screens.main import MainScreen
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ class DotApp(App[None]):
     ) -> None:
         super().__init__()
         shell = ShellAdapter(suppress_logging=True)
-        self._git_ops = GitOps(shell, dotfiles_root)
+        self._git_ops = DotGitService(shell, dotfiles_root)
         self.theme = theme
         self._confirm_revert = confirm_revert
 
