@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.adapters.console.console import console
 from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelRepository
@@ -38,7 +37,10 @@ def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
 def _warn_parse_errors(errors: list[tuple[str, str]]) -> None:
     if not errors:
         return
-    paths = ", ".join(path for path, _ in errors)
+    from buvis.pybase.adapters.console.console import console
+    from rich.markup import escape
+
+    paths = ", ".join(escape(path) for path, _ in errors)
     console.warning(f"{len(errors)} note(s) could not be parsed and were skipped: {paths}")
 
 
@@ -95,6 +97,7 @@ class MarkdownZettelRepository(ZettelRepository):
         directory: str,
         metadata_eq: dict[str, Any] | None = None,
     ) -> list[Zettel]:
+        errors: list[tuple[str, str]]
         if _HAS_RUST:
             if metadata_eq:
                 cp = _default_cache_path()

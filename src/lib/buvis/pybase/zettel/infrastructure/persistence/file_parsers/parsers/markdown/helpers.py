@@ -85,9 +85,15 @@ def extract_reference(content: str) -> tuple[dict[str, Any] | None, str]:
             )
             or [],
         )
+        if not isinstance(reference_raw, list):
+            msg = f"Failed to parse reference: expected a list, got {type(reference_raw).__name__}"
+            raise ValueError(msg)
         reference: dict[str, Any] = {}
 
         for item in reference_raw:
+            if not isinstance(item, dict):
+                msg = f"Failed to parse reference: expected a mapping, got {type(item).__name__}"
+                raise ValueError(msg)
             for key, value in item.items():
                 key = key.rstrip(":")
 
@@ -116,6 +122,9 @@ def extract_reference(content: str) -> tuple[dict[str, Any] | None, str]:
 
 
 def normalize_dict_keys(data: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        msg = f"Failed to parse metadata: expected a mapping, got {type(data).__name__}"
+        raise ValueError(msg)
     return {StringOperator.as_note_field_name(key): value for key, value in data.items()}
 
 

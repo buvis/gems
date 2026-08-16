@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **dot**: the TUI now shows a changed git-secret file in its unstaged pane on first render, instead of only after a prior CLI `dot status` call has hidden it. A failure while hiding secrets no longer leaves the displayed status stale — the file panes still populate and the failure is surfaced in the status bar, where it stays visible until the next refresh instead of being buried by the next keystroke (#92).
 - **pybase**: the updater now reports a re-exec failure after a successful upgrade and exits with status 1, instead of exiting 0 silently and leaving the user unaware the restart failed.
 - **pybase**: a user-initiated `--update` upgrade is no longer killed after 120 seconds; it now runs for up to 30 minutes before being reported as timed out.
-- **zettel**: `find_all` no longer silently drops a note that fails to parse — it returns the remaining notes and prints one warning naming the file(s) that failed. The Python fallback now isolates a bad file the same way the Rust backend does, instead of letting one poisoned note crash the whole scan.
+- **zettel**: `find_all` no longer silently drops a note that fails to parse — it returns the remaining notes and prints one warning naming the file(s) that failed. The Python fallback now isolates an unparseable note and reports it instead of crashing the whole scan, and the parse errors the Rust scanner already returned are no longer discarded by the caller.
 
 ## [0.12.6] - 2026-08-06
 

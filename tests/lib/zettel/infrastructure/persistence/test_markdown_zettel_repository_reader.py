@@ -119,7 +119,7 @@ class TestFindAllPythonFallback:
         False,
     )
     @patch(
-        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+        "buvis.pybase.adapters.console.console.console",
     )
     def test_find_all_skips_malformed_yaml_frontmatter_and_warns_once(
         self, mock_console: MagicMock, tmp_path: Path
@@ -160,7 +160,7 @@ class TestFindAllPythonFallbackParseErrors:
         False,
     )
     @patch(
-        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+        "buvis.pybase.adapters.console.console.console",
     )
     def test_find_all_skips_invalid_utf8_note_and_warns_once(self, mock_console: MagicMock, tmp_path: Path) -> None:
         _write_mixed_notes(tmp_path)
@@ -177,7 +177,7 @@ class TestFindAllPythonFallbackParseErrors:
 class TestFindAllRustBackendParseErrors:
     @pytest.mark.skipif(not HAS_RUST, reason="Rust _core not available")
     @patch(
-        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+        "buvis.pybase.adapters.console.console.console",
     )
     def test_find_all_skips_invalid_utf8_note_and_warns_once(self, mock_console: MagicMock, tmp_path: Path) -> None:
         _write_mixed_notes(tmp_path)
@@ -220,7 +220,7 @@ class TestFindAllPythonFallbackNonMappingParseErrors:
         False,
     )
     @patch(
-        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+        "buvis.pybase.adapters.console.console.console",
     )
     def test_find_all_skips_note_with_bare_scalar_frontmatter_and_warns_once(
         self, mock_console: MagicMock, tmp_path: Path
@@ -246,7 +246,7 @@ class TestFindAllPythonFallbackNonMappingParseErrors:
         False,
     )
     @patch(
-        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+        "buvis.pybase.adapters.console.console.console",
     )
     def test_find_all_skips_note_with_scalar_int_backmatter_and_warns_once(
         self, mock_console: MagicMock, tmp_path: Path
@@ -272,7 +272,7 @@ class TestFindAllPythonFallbackNonMappingParseErrors:
         False,
     )
     @patch(
-        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+        "buvis.pybase.adapters.console.console.console",
     )
     def test_find_all_skips_note_with_bare_string_backmatter_and_warns_once(
         self, mock_console: MagicMock, tmp_path: Path
