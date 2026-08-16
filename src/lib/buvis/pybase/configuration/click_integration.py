@@ -176,9 +176,6 @@ def _install_parse_args_patch() -> None:
     click.Group.parse_args = patched_group_parse_args  # type: ignore[method-assign]
 
 
-_install_parse_args_patch()
-
-
 def _update_callback(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
     """Force-check PyPI and upgrade if newer version is available, then exit."""
     if not value or ctx.resilient_parsing:
@@ -218,6 +215,8 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
     """Build a decorator that injects settings into the Click context."""
 
     def decorator(f: F) -> F:
+        _install_parse_args_patch()
+
         @click.version_option(
             version=pkg_version("buvis-gems"),
             prog_name="buvis-gems",
