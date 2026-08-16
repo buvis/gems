@@ -1,288 +1,248 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+import os
+from unittest.mock import MagicMock, patch
 
 from dot.commands.status.status import CommandStatus, parse_porcelain_status
+from dot.git.models import BranchInfo, FileEntry
 
 
 class TestCommandStatusInit:
-    def test_preserves_existing_dotfiles_root(self, tmp_path, monkeypatch) -> None:
-        custom_root = tmp_path / "custom"
-        custom_root.mkdir()
-        monkeypatch.setenv("DOTFILES_ROOT", str(custom_root))
+    @patch("dot.commands.status.status.DotGitService")
+    def test_constructs_dot_git_service_with_shell_and_dotfiles_root(self, mock_service_cls, dotfiles_root) -> None:
         shell = MagicMock()
 
-        CommandStatus(shell=shell)
+        CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
 
-        import os
+        mock_service_cls.assert_called_once_with(shell, str(dotfiles_root))
 
-        assert os.environ["DOTFILES_ROOT"] == str(custom_root)
-
-    def test_sets_dotfiles_root_when_missing(self, tmp_path, monkeypatch) -> None:
+    def test_does_not_mutate_environment(self, tmp_path, monkeypatch) -> None:
         monkeypatch.delenv("DOTFILES_ROOT", raising=False)
         shell = MagicMock()
 
-        CommandStatus(shell=shell)
+        with patch("dot.commands.status.status.DotGitService"):
+            CommandStatus(shell=shell, dotfiles_root=str(tmp_path))
 
-        import os
+        assert "DOTFILES_ROOT" not in os.environ
 
-        assert os.environ.get("DOTFILES_ROOT") is not None
+    @patch("dot.commands.status.status.DotGitService")
+    def test_does_not_call_shell_alias(self, mock_service_cls, dotfiles_root) -> None:
+        shell = MagicMock()
+
+        CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
+
+        shell.alias.assert_not_called()
 
 
 class TestCommandStatusExecute:
-    def test_git_secret_hide_success(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_returns_failure_when_secret_hide_errors(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], "secret error")
         shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.side_effect = [
-            ("", ""),  # cfg secret hide -m
-            ("", ""),  # cfg status --porcelain (empty = clean)
-            ("", ""),  # cfg rev-list (no upstream)
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
+        result = cmd.execute()
+
+        assert not result.success
+        assert result.error == "Error hiding secrets: secret error"
+        mock_service.branch_info.assert_not_called()
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_nothing_to_commit(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
+        shell = MagicMock()
+
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
         assert result.output == "No modifications found"
-        assert shell.exe.call_count == 3
-        shell.exe.assert_any_call("cfg secret hide -m", dotfiles_root)
-
-    def test_git_secret_hide_error(self, dotfiles_root) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.return_value = ("secret error", "details")
-
-        cmd = CommandStatus(shell=shell)
-        result = cmd.execute()
-
-        assert not result.success
-        assert "Error hiding secrets" in result.error
-
-    def test_cfg_status_error(self, dotfiles_root) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.return_value = ("git error", "")
-
-        cmd = CommandStatus(shell=shell)
-        result = cmd.execute()
-
-        assert not result.success
-        assert "Error executing command" in result.error
-
-    def test_nothing_to_commit(self, dotfiles_root) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", ""),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
-
-        cmd = CommandStatus(shell=shell)
-        result = cmd.execute()
-
-        assert result.success
-        assert result.output == "No modifications found"
+        assert result.info == []
         assert result.warnings == []
 
-    def test_empty_output(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_staged_modified_files(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = (
+            [
+                FileEntry(path=".bashrc", status="M "),
+                FileEntry(path=".vimrc", status="M "),
+            ],
+            None,
+        )
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", ""),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert result.output == "No modifications found"
+        assert result.info == ["staged: .bashrc modified", "staged: .vimrc modified"]
+        assert result.warnings == []
 
-    def test_staged_modified_files(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_unstaged_modified_files(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = (
+            [
+                FileEntry(path=".bashrc", status=" M"),
+                FileEntry(path=".vimrc", status=" M"),
+            ],
+            None,
+        )
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", "M  .bashrc\nM  .vimrc"),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.info) == 2
-        assert "staged: .bashrc modified" in result.info
-        assert "staged: .vimrc modified" in result.info
+        assert result.info == []
+        assert result.warnings == ["unstaged: .bashrc modified", "unstaged: .vimrc modified"]
 
-    def test_unstaged_modified_files(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_staged_and_unstaged_mixed(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = (
+            [
+                FileEntry(path=".bashrc", status="M "),
+                FileEntry(path=".vimrc", status=" M"),
+            ],
+            None,
+        )
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", " M .bashrc\n M .vimrc"),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 2
-        assert "unstaged: .bashrc modified" in result.warnings
-        assert "unstaged: .vimrc modified" in result.warnings
+        assert result.info == ["staged: .bashrc modified"]
+        assert result.warnings == ["unstaged: .vimrc modified"]
 
-    def test_staged_and_unstaged_mixed(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_both_staged_and_unstaged_same_file(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([FileEntry(path=".bashrc", status="MM")], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", "M  .bashrc\n M .vimrc"),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.info) == 1
-        assert "staged: .bashrc modified" in result.info
-        assert len(result.warnings) == 1
-        assert "unstaged: .vimrc modified" in result.warnings
+        assert result.info == ["staged: .bashrc modified"]
+        assert result.warnings == ["unstaged: .bashrc modified"]
 
-    def test_both_staged_and_unstaged_same_file(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_deleted_file_unstaged(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([FileEntry(path=".config/nushell/env.nu", status=" D")], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", "MM .bashrc"),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.info) == 1
-        assert "staged: .bashrc modified" in result.info
-        assert len(result.warnings) == 1
-        assert "unstaged: .bashrc modified" in result.warnings
+        assert result.warnings == ["unstaged: .config/nushell/env.nu deleted"]
 
-    def test_deleted_files(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_new_file_staged(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([FileEntry(path=".newrc", status="A ")], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", " D .config/nushell/env.nu"),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 1
-        assert "unstaged: .config/nushell/env.nu deleted" in result.warnings
+        assert result.info == ["staged: .newrc new file"]
 
-    def test_new_file_staged(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_untracked_file(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([FileEntry(path=".newrc", status="??")], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", "A  .newrc"),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.info) == 1
-        assert "staged: .newrc new file" in result.info
+        assert result.info == []
+        assert result.warnings == ["unstaged: .newrc untracked"]
 
-    def test_untracked_files(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_unpushed_commits(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main", ahead=3)
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", "?? .newrc"),  # cfg status --porcelain
-            ("", ""),  # cfg rev-list (no upstream)
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 1
-        assert "unstaged: .newrc untracked" in result.warnings
+        assert result.warnings == ["3 commit(s) not pushed"]
 
-    def test_unpushed_commits(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_unpulled_commits(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main", behind=2)
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", ""),  # cfg status --porcelain (clean)
-            ("", "0\t3"),  # cfg rev-list: 0 behind, 3 ahead
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 1
-        assert "3 commit(s) not pushed" in result.warnings
+        assert result.warnings == ["2 commit(s) not pulled"]
 
-    def test_unpulled_commits(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_both_unpushed_and_unpulled(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main", ahead=3, behind=2)
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", ""),  # cfg status --porcelain (clean)
-            ("", "2\t0"),  # cfg rev-list: 2 behind, 0 ahead
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 1
-        assert "2 commit(s) not pulled" in result.warnings
+        assert result.warnings == ["3 commit(s) not pushed", "2 commit(s) not pulled"]
 
-    def test_both_unpushed_and_unpulled(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_staged_with_unpushed(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([FileEntry(path=".bashrc", status="M ")], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main", ahead=1)
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", ""),  # cfg status --porcelain (clean)
-            ("", "2\t3"),  # cfg rev-list: 2 behind, 3 ahead
-        ]
 
-        cmd = CommandStatus(shell=shell)
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert result.success
-        assert len(result.warnings) == 2
-        assert "3 commit(s) not pushed" in result.warnings
-        assert "2 commit(s) not pulled" in result.warnings
+        assert result.info == ["staged: .bashrc modified"]
+        assert result.warnings == ["1 commit(s) not pushed"]
 
-    def test_no_upstream_tracking(self, dotfiles_root) -> None:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_execute_never_calls_shell_directly(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
         shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", ""),  # cfg status --porcelain (clean)
-            ("fatal: no upstream", ""),  # cfg rev-list: error
-        ]
 
-        cmd = CommandStatus(shell=shell)
-        result = cmd.execute()
+        cmd = CommandStatus(shell=shell, dotfiles_root=str(dotfiles_root))
+        cmd.execute()
 
-        assert result.success
-        assert result.output == "No modifications found"
-
-    def test_staged_with_unpushed(self, dotfiles_root) -> None:
-        shell = MagicMock()
-        shell.is_command_available.return_value = False
-        shell.exe.side_effect = [
-            ("", "M  .bashrc"),  # cfg status --porcelain
-            ("", "0\t1"),  # cfg rev-list: 1 ahead
-        ]
-
-        cmd = CommandStatus(shell=shell)
-        result = cmd.execute()
-
-        assert result.success
-        assert "staged: .bashrc modified" in result.info
-        assert "1 commit(s) not pushed" in result.warnings
+        shell.exe.assert_not_called()
+        shell.interact.assert_not_called()
+        shell.alias.assert_not_called()
 
 
 class TestParsePorcelainStatus:

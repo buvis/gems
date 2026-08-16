@@ -2,173 +2,152 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from buvis.pybase.result import CommandResult
 from dot.commands.add.add import CommandAdd
 
 
 class TestCommandAddInit:
-    def test_preserves_existing_dotfiles_root(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.add.add.DotGitService")
+    def test_constructs_dot_git_service_with_shell_and_dotfiles_root(
+        self, mock_service_cls, dotfiles_root: Path
+    ) -> None:
         shell = MagicMock()
-        CommandAdd(shell=shell)
-        assert os.environ["DOTFILES_ROOT"] == str(dotfiles_root)
 
-    def test_sets_dotfiles_root_when_missing(self, tmp_path: Path, monkeypatch) -> None:
+        CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root))
+
+        mock_service_cls.assert_called_once_with(shell, str(dotfiles_root))
+
+    def test_does_not_mutate_environment(self, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.delenv("DOTFILES_ROOT", raising=False)
         shell = MagicMock()
-        CommandAdd(shell=shell)
-        assert os.environ["DOTFILES_ROOT"] == str(Path.home().resolve())
 
-    def test_alias_defined(self, dotfiles_root: Path) -> None:
+        with patch("dot.commands.add.add.DotGitService"):
+            CommandAdd(shell=shell, dotfiles_root=str(tmp_path))
+
+        assert "DOTFILES_ROOT" not in os.environ
+
+    @patch("dot.commands.add.add.DotGitService")
+    def test_does_not_call_shell_alias(self, mock_service_cls, dotfiles_root: Path) -> None:
         shell = MagicMock()
-        CommandAdd(shell=shell)
-        shell.alias.assert_called_once_with(
-            "cfg",
-            "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
-        )
 
-    def test_absolute_file_path_resolved(self, dotfiles_root: Path) -> None:
+        CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root))
+
+        shell.alias.assert_not_called()
+
+    @patch("dot.commands.add.add.DotGitService")
+    def test_absolute_file_path_resolved(self, mock_service_cls, dotfiles_root: Path) -> None:
         target = dotfiles_root / "test.txt"
         target.write_text("hello", encoding="utf-8")
         shell = MagicMock()
-        cmd = CommandAdd(shell=shell, file_path=str(target))
+
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root), file_path=str(target))
+
         assert cmd.file_path == Path(str(target))
         assert cmd.warnings == []
 
-    def test_relative_file_path_resolved_under_dotfiles(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.add.add.DotGitService")
+    def test_relative_file_path_resolved_under_dotfiles_root(self, mock_service_cls, dotfiles_root: Path) -> None:
         target = dotfiles_root / ".bashrc"
         target.write_text("export FOO=1", encoding="utf-8")
         shell = MagicMock()
-        cmd = CommandAdd(shell=shell, file_path=".bashrc")
+
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".bashrc")
+
         assert cmd.file_path == dotfiles_root / ".bashrc"
         assert cmd.warnings == []
 
-    def test_absolute_dir_path_resolved(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.add.add.DotGitService")
+    def test_absolute_dir_path_resolved(self, mock_service_cls, dotfiles_root: Path) -> None:
         target = dotfiles_root / "subdir"
         target.mkdir()
         shell = MagicMock()
-        cmd = CommandAdd(shell=shell, file_path=str(target))
+
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root), file_path=str(target))
+
         assert cmd.file_path == target
         assert cmd.warnings == []
 
-    def test_relative_dir_path_resolved_under_dotfiles(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.add.add.DotGitService")
+    def test_relative_dir_path_resolved_under_dotfiles_root(self, mock_service_cls, dotfiles_root: Path) -> None:
         target = dotfiles_root / ".config"
         target.mkdir()
         shell = MagicMock()
-        cmd = CommandAdd(shell=shell, file_path=".config")
+
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".config")
+
         assert cmd.file_path == dotfiles_root / ".config"
         assert cmd.warnings == []
 
-    def test_nonexistent_file_warns(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.add.add.DotGitService")
+    def test_nonexistent_file_warns(self, mock_service_cls, dotfiles_root: Path) -> None:
         shell = MagicMock()
-        cmd = CommandAdd(shell=shell, file_path="no_such_file.txt")
-        assert cmd.file_path is None
-        assert len(cmd.warnings) == 1
-        assert "doesn't exist" in cmd.warnings[0]
 
-    def test_no_file_path(self, dotfiles_root: Path) -> None:
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root), file_path="no_such_file.txt")
+
+        assert cmd.file_path is None
+        assert cmd.warnings == ["Path no_such_file.txt doesn't exist. Proceeding with cherry picking all."]
+
+    @patch("dot.commands.add.add.DotGitService")
+    def test_no_file_path(self, mock_service_cls, dotfiles_root: Path) -> None:
         shell = MagicMock()
-        cmd = CommandAdd(shell=shell)
+
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root))
+
         assert cmd.file_path is None
         assert cmd.warnings == []
 
 
 class TestCommandAddExecute:
-    def test_no_file_runs_add_all(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.add.add.DotGitService")
+    def test_no_file_calls_stage_interactive_with_none(self, mock_service_cls, dotfiles_root: Path) -> None:
+        mock_service = mock_service_cls.return_value
         shell = MagicMock()
-        cmd = CommandAdd(shell=shell)
+
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
         assert isinstance(result, CommandResult)
         assert result.success is True
-        shell.interact.assert_called_once_with(
-            "cfg add -p",
-            dotfiles_root,
-        )
+        assert result.warnings == []
+        mock_service.stage_interactive.assert_called_once_with(None)
 
-    def test_tracked_file_runs_add_patch(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.add.add.DotGitService")
+    def test_with_file_calls_stage_interactive_with_str_path(self, mock_service_cls, dotfiles_root: Path) -> None:
         target = dotfiles_root / "tracked.txt"
         target.write_text("content", encoding="utf-8")
+        mock_service = mock_service_cls.return_value
         shell = MagicMock()
-        shell.exe.return_value = ("", str(target))
 
-        cmd = CommandAdd(shell=shell, file_path=str(target))
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root), file_path=str(target))
         result = cmd.execute()
 
         assert result.success is True
-        shell.exe.assert_called_once()
-        shell.interact.assert_called_once_with(
-            f"cfg add -p {target}",
-            dotfiles_root,
-        )
+        assert result.warnings == []
+        mock_service.stage_interactive.assert_called_once_with(str(target))
 
-    def test_untracked_file_runs_add_without_patch(self, dotfiles_root: Path) -> None:
-        target = dotfiles_root / "newfile.txt"
-        target.write_text("content", encoding="utf-8")
+    @patch("dot.commands.add.add.DotGitService")
+    def test_nonexistent_file_still_calls_stage_interactive_with_none_and_warns(
+        self, mock_service_cls, dotfiles_root: Path
+    ) -> None:
+        mock_service = mock_service_cls.return_value
         shell = MagicMock()
-        shell.exe.return_value = ("returned non-zero exit status 1", "")
 
-        cmd = CommandAdd(shell=shell, file_path=str(target))
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root), file_path="missing.txt")
         result = cmd.execute()
 
         assert result.success is True
-        shell.interact.assert_called_once_with(
-            f"cfg add {target}",
-            dotfiles_root,
-        )
+        assert result.warnings == ["Path missing.txt doesn't exist. Proceeding with cherry picking all."]
+        mock_service.stage_interactive.assert_called_once_with(None)
 
-    def test_dir_with_untracked_files_runs_intent_to_add_then_patch(self, dotfiles_root: Path) -> None:
-        target = dotfiles_root / "subdir"
-        target.mkdir()
+    @patch("dot.commands.add.add.DotGitService")
+    def test_execute_never_calls_shell_directly(self, mock_service_cls, dotfiles_root: Path) -> None:
         shell = MagicMock()
-        shell.exe.side_effect = [
-            ("", "subdir/new.txt\nsubdir/other.txt\n"),
-            ("", ""),
-        ]
 
-        cmd = CommandAdd(shell=shell, file_path=str(target))
-        result = cmd.execute()
+        cmd = CommandAdd(shell=shell, dotfiles_root=str(dotfiles_root))
+        cmd.execute()
 
-        assert result.success is True
-        assert shell.exe.call_count == 2
-        shell.exe.assert_any_call(
-            f"cfg ls-files --others --exclude-standard {target}",
-            dotfiles_root,
-        )
-        shell.exe.assert_any_call(
-            f"cfg add --intent-to-add {target}",
-            dotfiles_root,
-        )
-        shell.interact.assert_called_once_with(
-            f"cfg add -p {target}",
-            dotfiles_root,
-        )
-
-    def test_dir_without_untracked_files_runs_patch_only(self, dotfiles_root: Path) -> None:
-        target = dotfiles_root / "subdir"
-        target.mkdir()
-        shell = MagicMock()
-        shell.exe.return_value = ("", "")
-
-        cmd = CommandAdd(shell=shell, file_path=str(target))
-        result = cmd.execute()
-
-        assert result.success is True
-        shell.exe.assert_called_once_with(
-            f"cfg ls-files --others --exclude-standard {target}",
-            dotfiles_root,
-        )
-        shell.interact.assert_called_once_with(
-            f"cfg add -p {target}",
-            dotfiles_root,
-        )
-
-    def test_warnings_propagated(self, dotfiles_root: Path) -> None:
-        shell = MagicMock()
-        cmd = CommandAdd(shell=shell, file_path="missing.txt")
-        result = cmd.execute()
-
-        assert result.success is True
-        assert len(result.warnings) == 1
-        assert "doesn't exist" in result.warnings[0]
+        shell.exe.assert_not_called()
+        shell.interact.assert_not_called()
+        shell.alias.assert_not_called()
