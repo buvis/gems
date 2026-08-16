@@ -425,6 +425,29 @@ class TestTransactionsAndBalanceErrorParity:
         assert "newest-first" in tx_result.error
         assert tx_result.error == bal_result.error
 
+    def test_order_violation_row_number_matches_across_commands(self, tmp_path: Path) -> None:
+        # Same asymmetric fixture as the reader-level test: data row 4
+        # (2024-02-01) is newer than data row 3 (2024-01-01), breaking
+        # newest-first order. The raw reversed-list index where the naive
+        # check trips is far from the correct data row 4, so this pins that
+        # the CORRECTED row number (not the raw index) reaches both commands.
+        csv_content = (
+            "date,amount,rate,description\n"
+            "2024-04-01,10.00,25.00,\n"
+            "2024-03-01,10.00,25.00,\n"
+            "2024-01-01,10.00,25.00,\n"
+            "2024-02-01,10.00,25.00,\n"
+        )
+        tx_result, bal_result = self._run_both_commands(tmp_path, csv_content)
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "data row 4" in tx_result.error
+        assert "data row 4" in bal_result.error
+        assert "newest-first" in tx_result.error
+        assert "Acme" in tx_result.error
+        assert tx_result.error == bal_result.error
+
     def test_overdraft_matches_across_commands(self, tmp_path: Path) -> None:
         tx_result, bal_result = self._run_both_commands(
             tmp_path, "date,amount,rate,description\n2024-01-15,-50.00,,Overdraft test\n"

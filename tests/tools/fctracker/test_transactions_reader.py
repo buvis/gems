@@ -91,9 +91,12 @@ class TestTransactionsReader:
         assert account.deposit.call_count == 3
 
     def test_rejects_non_monotonic_date_order(self, tmp_path: Path) -> None:
-        # File is newest-first; after reversal the oldest-first order is
-        # 2024-01-10, 2024-01-20, 2024-01-05 -- the last row (index 2) goes
-        # backwards from 2024-01-20, breaking the non-decreasing invariant.
+        # File claims to be newest-first, but data row 2 (2024-01-20) is
+        # newer than data row 1 (2024-01-10) -- row 2 is the offender: it
+        # should be no later than row 1 but isn't. After reversal the
+        # in-memory order is 2024-01-05, 2024-01-20, 2024-01-10; the raw
+        # reversed-list index trips at 1, but the corrected message must
+        # report data row 2, the row as the user counts it in the file.
         csv_content = (
             "date,amount,rate,description\n2024-01-10,10.00,25.00,\n2024-01-20,20.00,25.00,\n2024-01-05,30.00,25.00,\n"
         )
@@ -109,9 +112,55 @@ class TestTransactionsReader:
             mock_cfg.transactions_dir = tmp_path
             reader = TransactionsReader(account)
 
-            with pytest.raises(ValueError, match="transactions must be newest-first; row 2 breaks order"):
+            with pytest.raises(ValueError, match="transactions must be newest-first; data row 2 breaks order"):
                 reader.get_transactions()
 
+        assert account.deposit.call_count == 0
+        assert account.withdraw.call_count == 0
+
+    def test_order_violation_names_offending_row_and_csv(self, tmp_path: Path) -> None:
+        # File (newest-first expected), data rows as the user counts them:
+        #   row 1: 2024-04-01
+        #   row 2: 2024-03-01
+        #   row 3: 2024-01-01
+        #   row 4: 2024-02-01  <- offender: newer than row 3, so it should be
+        #                         no later than row 3 but isn't.
+        # The raw reversed-list index where the naive check trips is 1 (or a
+        # simple len-based offset of it would be 4), far enough from the
+        # correct data row 4 that an off-by-one or off-by-a-constant fix
+        # cannot pass this fixture by accident.
+        csv_content = (
+            "date,amount,rate,description\n"
+            "2024-04-01,10.00,25.00,\n"
+            "2024-03-01,10.00,25.00,\n"
+            "2024-01-01,10.00,25.00,\n"
+            "2024-02-01,10.00,25.00,\n"
+        )
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(ValueError) as exc_info:
+                reader.get_transactions()
+
+        message = str(exc_info.value)
+        # A. reports the DATA row number (header excluded, first data row = 1),
+        #    and states the numbering convention explicitly ("data row").
+        assert "data row 4" in message
+        # C. the newest-first instruction must survive the row-number fix.
+        assert "newest-first" in message
+        # B. identifies which CSV: account.name and self.file_path both
+        #    contain "acme" for this fixture, so either satisfies this.
+        assert "acme" in message
+        # D. fail-before-mutate: no transaction applied on an order violation.
         assert account.deposit.call_count == 0
         assert account.withdraw.call_count == 0
 
