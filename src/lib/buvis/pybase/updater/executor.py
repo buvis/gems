@@ -17,6 +17,9 @@ from .state import DEFAULT_STATE_DIR, append_log
 __all__ = ["run_update", "run_update_interactive"]
 
 _UPGRADE_TIMEOUT = 120
+# --update is a foreground, user-initiated wait; bounded generously (not removed) so a
+# genuinely hung installer is still reported rather than blocking forever.
+_INTERACTIVE_UPGRADE_TIMEOUT = 1800
 _MISE_WHERE_TIMEOUT = 10
 
 
@@ -112,7 +115,7 @@ def run_update_interactive(
         result = subprocess.run(
             installer.upgrade_command,
             capture_output=False,
-            timeout=_UPGRADE_TIMEOUT,
+            timeout=_INTERACTIVE_UPGRADE_TIMEOUT,
         )
     except (TimeoutExpired, FileNotFoundError, OSError) as exc:
         click.echo(f"Update failed: {exc}", err=True)
