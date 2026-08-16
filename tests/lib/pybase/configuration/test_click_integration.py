@@ -1188,3 +1188,33 @@ class TestParseArgsPatchInstallation:
         )
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
         assert result.returncode == 0, result.stderr.decode(errors="replace")
+
+
+class TestConfigurationImportSideEffects:
+    """Tests for import-time side effects of buvis.pybase.configuration.
+
+    Other tests in this file permanently patch Click via @buvis_options, which
+    would make an in-process assertion collection-order-dependent. This case
+    therefore runs in a fresh subprocess, matching TestParseArgsPatchInstallation.
+    """
+
+    def test_constructing_global_settings_does_not_patch_click_or_import_updater(self) -> None:
+        """Importing GlobalSettings from the top-level configuration package and
+        constructing it must not patch click.Command.parse_args, must not
+        import buvis.pybase.updater, and must not import the click_integration
+        submodule (the eager re-export in configuration/__init__.py must be lazy)."""
+        code = (
+            "import sys\n"
+            "import click\n"
+            "original = click.Command.parse_args\n"
+            "from buvis.pybase.configuration import GlobalSettings\n"
+            "GlobalSettings()\n"
+            "assert click.Command.parse_args is original, "
+            "'constructing GlobalSettings patched click.Command.parse_args'\n"
+            "assert 'buvis.pybase.updater' not in sys.modules, "
+            "'constructing GlobalSettings imported buvis.pybase.updater'\n"
+            "assert 'buvis.pybase.configuration.click_integration' not in sys.modules, "
+            "'constructing GlobalSettings imported buvis.pybase.configuration.click_integration'\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
