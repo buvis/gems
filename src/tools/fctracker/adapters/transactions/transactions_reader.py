@@ -27,6 +27,12 @@ class TransactionsReader:
             for row in reader:
                 rows.insert(0, row)
 
+            dates = [datetime.strptime(row["date"], "%Y-%m-%d") for row in rows]
+
+            for index in range(1, len(dates)):
+                if dates[index] < dates[index - 1]:
+                    raise ValueError(f"transactions must be newest-first; row {index} breaks order")
+
             for row in rows:
                 amount = Decimal(row["amount"])
                 date = datetime.strptime(row["date"], "%Y-%m-%d")
