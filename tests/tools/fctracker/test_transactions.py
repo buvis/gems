@@ -285,3 +285,17 @@ class TestCommandTransactions:
 
         assert result.success is False
         assert "data file missing" in result.error
+
+    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
+    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
+    def test_reader_order_violation(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = ValueError(
+            "transactions must be newest-first; row 3 breaks order"
+        )
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "transactions must be newest-first; row 3 breaks order" in result.error
