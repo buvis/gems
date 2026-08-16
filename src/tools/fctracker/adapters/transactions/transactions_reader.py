@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from fctracker.adapters.config.config import cfg
@@ -34,7 +34,14 @@ class TransactionsReader:
                     raise ValueError(f"transactions must be newest-first; row {index} breaks order")
 
             for row in rows:
-                amount = Decimal(row["amount"])
+                try:
+                    amount = Decimal(row["amount"])
+                except InvalidOperation:
+                    raise ValueError(f"invalid transaction amount '{row['amount']}'") from None
+
+                if amount == 0:
+                    raise ValueError("transaction amount is zero")
+
                 date = datetime.strptime(row["date"], "%Y-%m-%d")
 
                 if amount > 0:

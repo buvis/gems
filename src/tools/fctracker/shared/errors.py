@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import queue
-from decimal import InvalidOperation
+from decimal import DivisionUndefined, InvalidOperation
 
 
 def describe_transaction_error(account_name: str, exc: Exception) -> str:
@@ -12,7 +12,10 @@ def describe_transaction_error(account_name: str, exc: Exception) -> str:
     `queue.Empty` stringifies to an empty string and `decimal.InvalidOperation`
     stringifies to a bare class repr (e.g. "[<class 'decimal.ConversionSyntax'>]"),
     so both are given a fixed, human-readable cause instead of interpolating
-    `str(exc)` directly.
+    `str(exc)` directly. `InvalidOperation` covers two distinct signals -
+    malformed input (`ConversionSyntax`) and division by a zero amount
+    (`DivisionUndefined`) - distinguished via `exc.args[0]`, the list of
+    decimal condition classes that fired.
 
     Args:
         account_name: name of the account being processed.
@@ -24,7 +27,11 @@ def describe_transaction_error(account_name: str, exc: Exception) -> str:
     if isinstance(exc, queue.Empty):
         cause = "account is overdrawn"
     elif isinstance(exc, InvalidOperation):
-        cause = "malformed or undefined transaction amount"
+        conditions = exc.args[0] if exc.args else []
+        if DivisionUndefined in conditions:
+            cause = "transaction amount is zero"
+        else:
+            cause = "malformed or undefined transaction amount"
     else:
         cause = str(exc)
     return f"error processing transactions for account '{account_name}': {cause}"
