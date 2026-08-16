@@ -1015,3 +1015,604 @@ class TestDotGitServiceApplyReverseToWorktree:
         git_service.apply_reverse_to_worktree(patch)
 
         assert recorded_content == [patch]
+
+
+def _service_at(shell: MagicMock, root: Path) -> DotGitService:
+    """Build a service rooted at a real directory, with construction calls forgotten."""
+    shell.exe.return_value = ("", "")
+    service = DotGitService(shell=shell, dotfiles_root=str(root))
+    shell.exe.reset_mock()
+    return service
+
+
+class TestDotGitServiceLsFiles:
+    def test_returns_tracked_paths_as_set(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", ".bashrc\n.vimrc\n")
+
+        result = git_service.ls_files(".*")
+
+        assert result == {".bashrc", ".vimrc"}
+
+    def test_blank_lines_are_dropped(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", ".bashrc\n\n.vimrc\n\n")
+
+        result = git_service.ls_files(".*")
+
+        assert result == {".bashrc", ".vimrc"}
+
+    def test_no_output_returns_empty_set(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        assert git_service.ls_files("nothing") == set()
+
+    def test_command_error_returns_empty_set(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("fatal: not a git repository", "")
+
+        assert git_service.ls_files(".*") == set()
+
+    def test_quotes_pathspec_and_runs_in_dotfiles_root(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        git_service.ls_files("*.txt")
+
+        cmd, cwd = shell.exe.call_args[0][0], shell.exe.call_args[0][1]
+        assert cmd == "cfg ls-files '*.txt'"
+        assert str(cwd) == "/home/user/dotfiles"
+
+
+class TestDotGitServiceCheckIgnore:
+    def test_returns_ignored_paths_as_set(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", ".ssh/config\n.aws/credentials\n")
+
+        result = git_service.check_ignore(".*")
+
+        assert result == {".ssh/config", ".aws/credentials"}
+
+    def test_nothing_ignored_returns_empty_set(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        assert git_service.check_ignore(".bashrc") == set()
+
+    def test_command_error_returns_empty_set(self, git_service: DotGitService, shell: MagicMock) -> None:
+        # git check-ignore exits non-zero when nothing matches, so an error is a normal outcome
+        shell.exe.return_value = ("returned non-zero exit status 1", "")
+
+        assert git_service.check_ignore(".bashrc") == set()
+
+    def test_quotes_pathspec_and_asks_check_ignore(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        git_service.check_ignore("*.log")
+
+        cmd = shell.exe.call_args[0][0]
+        assert cmd == "cfg check-ignore '*.log'"
+
+
+class TestDotGitServiceStageInteractive:
+    def test_without_path_starts_patch_mode_over_whole_worktree(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        result = git_service.stage_interactive()
+
+        assert result is None
+        shell.exe.assert_not_called()
+        assert shell.interact.call_args[0][0] == "cfg add -p"
+        assert str(shell.interact.call_args[0][1]) == "/home/user/dotfiles"
+
+    def test_tracked_file_is_staged_in_patch_mode(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", ".bashrc\n")  # ls-files --error-unmatch: file is tracked
+
+        result = git_service.stage_interactive(".bashrc")
+
+        assert result is None
+        assert "--error-unmatch" in shell.exe.call_args[0][0]
+        interact_cmd = shell.interact.call_args[0][0]
+        assert interact_cmd.startswith("cfg add -p")
+        assert ".bashrc" in interact_cmd
+
+    def test_untracked_file_is_staged_whole_without_patch_mode(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        shell.exe.return_value = ("Command 'cfg ls-files' returned non-zero exit status 1.", "")
+
+        git_service.stage_interactive("newfile.txt")
+
+        interact_cmd = shell.interact.call_args[0][0]
+        assert "-p" not in interact_cmd
+        assert interact_cmd.startswith("cfg add")
+        assert "newfile.txt" in interact_cmd
+
+    def test_directory_with_untracked_content_gets_intent_to_add_first(
+        self, git_service: DotGitService, shell: MagicMock, tmp_path: Path
+    ) -> None:
+        shell.exe.side_effect = [
+            ("", "sub/new.txt\n"),  # ls-files --others --exclude-standard
+            ("", ""),  # add --intent-to-add
+        ]
+
+        git_service.stage_interactive(str(tmp_path))
+
+        cmds = [c[0][0] for c in shell.exe.call_args_list]
+        assert "cfg ls-files --others --exclude-standard" in cmds[0]
+        assert "cfg add --intent-to-add" in cmds[1]
+        assert str(tmp_path) in cmds[1]
+        assert [name for name, _a, _k in shell.mock_calls][-1] == "interact"
+        interact_cmd = shell.interact.call_args[0][0]
+        assert interact_cmd.startswith("cfg add -p")
+        assert str(tmp_path) in interact_cmd
+
+    def test_directory_without_untracked_content_skips_intent_to_add(
+        self, git_service: DotGitService, shell: MagicMock, tmp_path: Path
+    ) -> None:
+        shell.exe.return_value = ("", "\n")  # no untracked files below the directory
+
+        git_service.stage_interactive(str(tmp_path))
+
+        cmds = [c[0][0] for c in shell.exe.call_args_list]
+        assert len(cmds) == 1
+        assert "--intent-to-add" not in cmds[0]
+        assert shell.interact.call_args[0][0].startswith("cfg add -p")
+
+
+class TestDotGitServiceUnstage:
+    def test_single_path_is_reset_and_reported(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.unstage("my file.txt")
+
+        assert result.success is True
+        assert result.output == "my file.txt unstaged"
+        assert shell.exe.call_args[0][0] == "cfg reset HEAD -- 'my file.txt'"
+
+    def test_without_path_everything_is_reset(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.unstage()
+
+        assert result.success is True
+        assert result.output == "All files unstaged"
+        assert shell.exe.call_args[0][0] == "cfg reset HEAD"
+
+    def test_failure_reports_reset_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("fatal: ambiguous argument 'HEAD'", "")
+
+        result = git_service.unstage(".bashrc")
+
+        assert result.success is False
+        assert result.error == "Unstage failed: fatal: ambiguous argument 'HEAD'"
+
+
+class TestDotGitServiceRm:
+    def test_plain_file_is_untracked_but_kept_on_disk(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ".ssh/config\n"),  # cfg secret list: .bashrc is not encrypted
+            ("", ""),  # cfg rm --cached
+        ]
+
+        result = git_service.rm(".bashrc")
+
+        assert result.success is True
+        assert result.output == ".bashrc removed from tracking"
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm --cached .bashrc"
+
+    def test_plain_file_removal_failure_reports_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret list: nothing encrypted
+            ("fatal: pathspec '.bashrc' did not match any files", ""),  # cfg rm --cached
+        ]
+
+        result = git_service.rm(".bashrc")
+
+        assert result.success is False
+        assert result.error is not None
+        assert "did not match any files" in result.error
+
+    def test_encrypted_file_removal_runs_git_secret_sequence(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        """Regression guard for the TUI rm action, which used to run a bare ``cfg rm``.
+
+        Every caller now shares this one encrypted-file path: unregister from git-secret,
+        untrack the ciphertext, then stage the updated ``.gitsecret/`` mapping.
+        """
+        shell.exe.side_effect = [
+            ("", ".ssh/config\n"),  # cfg secret list: encrypted
+            ("", ""),  # cfg secret remove
+            ("", ""),  # cfg rm --cached <path>.secret
+            ("", ""),  # cfg add .gitsecret/
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.success is True
+        assert result.output == ".ssh/config removed from git-secret, plaintext kept on disk"
+        assert [c[0][0] for c in shell.exe.call_args_list] == [
+            "cfg secret list",
+            "cfg secret remove .ssh/config",
+            "cfg rm --cached .ssh/config.secret",
+            "cfg add .gitsecret/",
+        ]
+
+    def test_partial_line_match_is_not_treated_as_encrypted(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ".ssh/config.secret\n"),  # only the ciphertext path is listed
+            ("", ""),  # cfg rm --cached
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.output == ".ssh/config removed from tracking"
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm --cached .ssh/config"
+
+    def test_git_secret_unregister_failure_stops_before_untracking(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        shell.exe.side_effect = [
+            ("", ".ssh/config\n"),  # cfg secret list
+            ("gpg: decryption failed", ""),  # cfg secret remove fails
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.success is False
+        assert result.error is not None
+        assert "gpg: decryption failed" in result.error
+        assert shell.exe.call_count == 2
+
+    def test_ciphertext_untrack_failure_warns_about_changed_mapping(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        shell.exe.side_effect = [
+            ("", ".ssh/config\n"),  # cfg secret list
+            ("", ""),  # cfg secret remove ok
+            ("fatal: pathspec did not match", ""),  # cfg rm --cached <path>.secret fails
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.success is False
+        assert result.error is not None
+        assert "already" in result.error
+        assert "mapping" in result.error
+        assert "cfg checkout -- .gitsecret/" in result.error
+
+    def test_staging_gitsecret_failure_is_only_a_warning(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ".ssh/config\n"),  # cfg secret list
+            ("", ""),  # cfg secret remove
+            ("", ""),  # cfg rm --cached <path>.secret
+            ("fatal: unable to index file", ""),  # cfg add .gitsecret/ fails
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.success is True
+        assert result.output == ".ssh/config removed from git-secret, plaintext kept on disk"
+        assert any("unable to index file" in w for w in result.warnings)
+
+    def test_unreadable_secret_list_falls_back_to_plain_removal_with_warning(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        shell.exe.side_effect = [
+            ("git-secret: abort: no keys", ""),  # cfg secret list fails
+            ("", ""),  # cfg rm --cached
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.success is True
+        assert result.output == ".ssh/config removed from tracking"
+        assert any("no keys" in w for w in result.warnings)
+
+    def test_does_not_depend_on_dotfiles_root_env_var(
+        self, git_service: DotGitService, shell: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
+        before = dict(os.environ)
+        shell.exe.side_effect = [
+            ("", ".ssh/config\n"),
+            ("", ""),
+            ("", ""),
+            ("", ""),
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.success is True
+        assert str(shell.exe.call_args[0][1]) == "/home/user/dotfiles"
+        assert dict(os.environ) == before
+
+
+class TestDotGitServiceDelete:
+    def test_plain_file_is_removed_from_index_and_worktree(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret list: nothing encrypted
+            ("", ""),  # cfg rm
+        ]
+
+        result = git_service.delete("my file.txt")
+
+        assert result.success is True
+        assert result.output == "my file.txt deleted from dotfiles"
+        # ported verbatim from CommandDelete: the pathspec is passed unquoted
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm my file.txt"
+
+    def test_plain_file_removal_failure_reports_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret list
+            ("fatal: pathspec 'gone' did not match", ""),  # cfg rm
+        ]
+
+        result = git_service.delete("gone")
+
+        assert result.success is False
+        assert result.error is not None
+        assert "did not match" in result.error
+
+    def test_encrypted_file_is_unregistered_and_erased_from_disk(self, shell: MagicMock, tmp_path: Path) -> None:
+        plaintext = tmp_path / "secret.conf"
+        plaintext.write_text("token")
+        service = _service_at(shell, tmp_path)
+        shell.exe.side_effect = [
+            ("", "secret.conf\n"),  # cfg secret list
+            ("", ""),  # cfg secret remove -c
+        ]
+
+        result = service.delete("secret.conf")
+
+        assert result.success is True
+        assert result.output == "secret.conf deleted from git-secret and disk"
+        assert not plaintext.exists()
+        assert [c[0][0] for c in shell.exe.call_args_list] == [
+            "cfg secret list",
+            "cfg secret remove -c secret.conf",
+        ]
+
+    def test_encrypted_file_drops_its_gitignore_line_and_stages_it(self, shell: MagicMock, tmp_path: Path) -> None:
+        (tmp_path / ".gitignore").write_text("*.pyc\nsecret.conf\nnode_modules/\n")
+        service = _service_at(shell, tmp_path)
+        shell.exe.side_effect = [
+            ("", "secret.conf\n"),  # cfg secret list
+            ("", ""),  # cfg secret remove -c
+            ("", ""),  # cfg add .gitignore
+        ]
+
+        result = service.delete("secret.conf")
+
+        assert result.success is True
+        content = (tmp_path / ".gitignore").read_text()
+        assert "secret.conf" not in content
+        assert "*.pyc" in content
+        assert "node_modules/" in content
+        assert shell.exe.call_args_list[2][0][0] == "cfg add .gitignore"
+
+    def test_untouched_gitignore_is_not_staged(self, shell: MagicMock, tmp_path: Path) -> None:
+        (tmp_path / ".gitignore").write_text("*.pyc\n")
+        service = _service_at(shell, tmp_path)
+        shell.exe.side_effect = [
+            ("", "secret.conf\n"),  # cfg secret list
+            ("", ""),  # cfg secret remove -c
+        ]
+
+        service.delete("secret.conf")
+
+        assert (tmp_path / ".gitignore").read_text() == "*.pyc\n"
+        assert all(".gitignore" not in c[0][0] for c in shell.exe.call_args_list)
+
+    def test_git_secret_unregister_failure_keeps_plaintext(self, shell: MagicMock, tmp_path: Path) -> None:
+        plaintext = tmp_path / "secret.conf"
+        plaintext.write_text("token")
+        service = _service_at(shell, tmp_path)
+        shell.exe.side_effect = [
+            ("", "secret.conf\n"),  # cfg secret list
+            ("git-secret: abort: file not found", ""),  # cfg secret remove -c fails
+        ]
+
+        result = service.delete("secret.conf")
+
+        assert result.success is False
+        assert result.error is not None
+        assert "file not found" in result.error
+        assert plaintext.exists()
+
+    def test_undeletable_plaintext_reports_hard_error(self, shell: MagicMock, tmp_path: Path) -> None:
+        # a directory at the plaintext path exists but cannot be unlinked, so the OS error surfaces
+        blocked = tmp_path / "secret.conf"
+        blocked.mkdir()
+        (blocked / "child").write_text("x")
+        service = _service_at(shell, tmp_path)
+        shell.exe.side_effect = [
+            ("", "secret.conf\n"),  # cfg secret list
+            ("", ""),  # cfg secret remove -c
+        ]
+
+        result = service.delete("secret.conf")
+
+        assert result.success is False
+        assert result.error is not None
+        assert result.error.startswith("Failed to delete plaintext:")
+
+
+class TestDotGitServiceEncryptAndStage:
+    def test_registers_encrypts_then_stages(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.encrypt_and_stage(".ssh/config")
+
+        assert result.success is True
+        assert result.output == ".ssh/config encrypted and staged"
+        assert [c[0][0] for c in shell.exe.call_args_list] == [
+            "cfg secret add .ssh/config",
+            "cfg secret hide -m",
+            "cfg add .ssh/config.secret .gitsecret/ .gitignore",
+        ]
+
+    def test_does_not_gate_on_git_secret_availability(self, git_service: DotGitService, shell: MagicMock) -> None:
+        # the installed-check belongs to the caller; the service just runs the sequence
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "")
+
+        result = git_service.encrypt_and_stage(".ssh/config")
+
+        assert result.success is True
+        assert shell.exe.call_count == 3
+
+    def test_registration_failure_stops_before_hiding(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("git-secret: abort: file not found", "")
+
+        result = git_service.encrypt_and_stage(".ssh/config")
+
+        assert result.success is False
+        assert result.error == "Failed to register file: git-secret: abort: file not found"
+        assert shell.exe.call_count == 1
+
+    def test_encryption_failure_stops_before_staging(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret add
+            ("gpg: no public key", ""),  # cfg secret hide -m
+        ]
+
+        result = git_service.encrypt_and_stage(".ssh/config")
+
+        assert result.success is False
+        assert result.error == "Failed to encrypt: gpg: no public key"
+        assert shell.exe.call_count == 2
+
+    def test_staging_failure_reports_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret add
+            ("", ""),  # cfg secret hide -m
+            ("fatal: unable to index file", ""),  # cfg add
+        ]
+
+        result = git_service.encrypt_and_stage(".ssh/config")
+
+        assert result.success is False
+        assert result.error == "Failed to stage: fatal: unable to index file"
+
+
+class TestDotGitServiceIsSecretToolAvailable:
+    def test_true_when_git_secret_is_installed(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+
+        assert git_service.is_secret_tool_available() is True
+        assert shell.is_command_available.call_args[0][0] == "git-secret"
+
+    def test_false_when_git_secret_is_missing(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+
+        assert git_service.is_secret_tool_available() is False
+
+
+class TestDotGitServiceListSecrets:
+    def test_returns_registered_paths_in_listed_order(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.return_value = ("", ".ssh/config\n.aws/credentials\n.ssh/config\n")
+
+        result = git_service.list_secrets()
+
+        assert result == [".ssh/config", ".aws/credentials", ".ssh/config"]
+        assert shell.exe.call_args[0][0] == "cfg secret list"
+
+    def test_returns_empty_list_without_git_secret(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+
+        assert git_service.list_secrets() == []
+        shell.exe.assert_not_called()
+
+    def test_returns_empty_list_when_nothing_registered(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.return_value = ("", "\n")
+
+        assert git_service.list_secrets() == []
+
+    def test_returns_empty_list_on_command_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.return_value = ("git-secret: abort: no keys", ".ssh/config\n")
+
+        assert git_service.list_secrets() == []
+
+
+class TestDotGitServiceRegisterSecret:
+    def test_adds_path_to_git_secret(self, git_service: DotGitService, shell: MagicMock) -> None:
+        # availability is the caller's concern: the service runs regardless
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "")
+
+        result = git_service.register_secret("my secrets.txt")
+
+        assert result.success is True
+        assert shell.exe.call_args[0][0] == "cfg secret add 'my secrets.txt'"
+
+    def test_failure_returns_raw_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("git-secret: abort: file not found", "")
+
+        result = git_service.register_secret(".ssh/config")
+
+        assert result.success is False
+        assert result.error == "git-secret: abort: file not found"
+
+
+class TestDotGitServiceUnregisterSecret:
+    def test_removes_path_from_git_secret(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "")
+
+        result = git_service.unregister_secret("my secrets.txt")
+
+        assert result.success is True
+        assert shell.exe.call_args[0][0] == "cfg secret remove 'my secrets.txt'"
+
+    def test_failure_returns_raw_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("git-secret: abort: not in .gitsecret", "")
+
+        result = git_service.unregister_secret(".ssh/config")
+
+        assert result.success is False
+        assert result.error == "git-secret: abort: not in .gitsecret"
+
+
+class TestDotGitServiceRevealSecrets:
+    def test_reveals_all_secrets_forcefully(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "")
+
+        result = git_service.reveal_secrets()
+
+        assert result.success is True
+        assert shell.exe.call_args[0][0] == "cfg secret reveal -f"
+
+    def test_passphrase_is_quoted_and_appended(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        git_service.reveal_secrets("pass phrase")
+
+        assert shell.exe.call_args[0][0] == "cfg secret reveal -f -p 'pass phrase'"
+
+    def test_failure_returns_raw_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("gpg: decryption failed", "")
+
+        result = git_service.reveal_secrets()
+
+        assert result.success is False
+        assert result.error == "gpg: decryption failed"
+
+
+class TestDotGitServiceHideSecrets:
+    def test_hides_secrets_without_deleting_plaintext(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "")
+
+        result = git_service.hide_secrets()
+
+        assert result.success is True
+        # the explicit action never carries -m: that flag belongs to commit()'s pre-hide step
+        assert shell.exe.call_args[0][0] == "cfg secret hide"
+
+    def test_failure_returns_raw_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("gpg: no public key", "")
+
+        result = git_service.hide_secrets()
+
+        assert result.success is False
+        assert result.error == "gpg: no public key"
