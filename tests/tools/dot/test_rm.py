@@ -76,13 +76,23 @@ class TestCommandRmRemoveNormal:
         assert result.error
 
     @pytest.mark.parametrize("odd_name", ["my file.txt", "a;rm -rf /"])
-    def test_quotes_odd_filename_in_shell_command(self, dotfiles_root: Path, odd_name: str) -> None:
-        shell = MagicMock()
-        shell.exe.return_value = ("", "")
+    def test_passes_odd_filename_as_single_token(self, dotfiles_root: Path, odd_name: str) -> None:
+        # Bind to the property, not to the helper: the filename must survive as
+        # exactly one shell token equal to itself. Re-deriving the expected string
+        # with shlex.quote would pass even if the code stopped quoting and the
+        # test recomputed the same wrong answer.
+        # Names containing $VAR are deliberately NOT parametrized here: the shell
+        # is a double, so this test cannot see ShellAdapter's post-quoting
+        # expandvars. That gap is PRD 00078's, and a param that can never fail
+        # here would imply coverage that does not exist.
+        shell = _shell()
         cmd = CommandRm(shell=shell, file_path=odd_name)
         result = cmd._remove_normal()
+
         assert result.success
-        shell.exe.assert_any_call(f"cfg rm --cached {shlex.quote(odd_name)}", dotfiles_root)
+        commands = _issued_commands(shell)
+        assert len(commands) == 1
+        assert shlex.split(commands[0]) == ["cfg", "rm", "--cached", odd_name]
 
 
 class TestCommandRmRemoveEncrypted:
