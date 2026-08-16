@@ -33,8 +33,9 @@ def run_update(
 
     After a successful upgrade, this function re-execs the current process with
     the upgraded binary and does not return. If the re-exec cannot be performed,
-    the process exits immediately because the current interpreter's cached files
-    may have been replaced by the upgrade and continuing execution is unsafe.
+    the process prints a user-visible failure message and exits with status 1,
+    because the current interpreter's cached files may have been replaced by the
+    upgrade and continuing execution is unsafe.
 
     Args:
         current: Currently installed version string.
@@ -137,18 +138,16 @@ def _reexec_or_exit(installer: InstallerInfo, state_dir: Path) -> None:
 
     Never returns. The current interpreter's loaded modules and open file handles
     may no longer match the files on disk after an upgrade, so the only safe
-    options are to ``execvp`` into a fresh process or to exit immediately.
+    options are to ``execvp`` into a fresh process or to report the failure
+    through the console adapter and exit non-zero.
     """
     reexec_argv = _resolve_reexec_argv(installer)
     try:
         os.execvp(reexec_argv[0], reexec_argv)
     except OSError as exc:
-        append_log(
-            state_dir,
-            "error",
-            f"Restart failed: {exc}. Update applied; please re-run the command.",
-        )
-        console.panic(f"Restart failed: {exc}. Update applied; please re-run the command.")
+        message = f"Restart failed: {exc}. Update applied; please re-run the command."
+        append_log(state_dir, "error", message)
+        console.panic(message)
 
 
 def _resolve_reexec_argv(installer: InstallerInfo) -> list[str]:

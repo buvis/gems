@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: a document filed through `doc` triage and then `doc promote` is now recognised as a duplicate when the same source arrives again (a re-download or re-export), instead of re-running the whole pipeline and filing a second archive copy under an incremented name.
 - **dot**: `rm` on an encrypted (git-secret) file now only untracks it, matching the plain `rm --cached` path — it no longer also deletes the decrypted plaintext copy from disk. The plaintext keeps its `.gitignore` entry, so the surviving cleartext secret is not offered for staging by the next `dot add`, and the committed `<file>.secret` ciphertext is untracked too, so the file really does leave the repo. If untracking the ciphertext fails, the error now says the git-secret mapping was already changed and names the command that restores it, instead of leaving a blind retry to silently take the plaintext path.
 - **dot**: the TUI now shows a changed git-secret file in its unstaged pane on first render, instead of only after a prior CLI `dot status` call has hidden it. A failure while hiding secrets no longer leaves the displayed status stale — the file panes still populate and the failure is surfaced in the status bar, where it stays visible until the next refresh instead of being buried by the next keystroke (#92).
+- **pybase**: the updater now reports a re-exec failure after a successful upgrade and exits with status 1, instead of exiting 0 silently and leaving the user unaware the restart failed.
+- **pybase**: a user-initiated `--update` upgrade is no longer killed after 120 seconds; it now runs for up to 30 minutes before being reported as timed out.
 
 ## [0.12.6] - 2026-08-06
 
