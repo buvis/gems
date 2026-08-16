@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import importlib.util
+import importlib
+from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +12,11 @@ from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.m
     _rust_dict_to_zettel_data,
 )
 
-HAS_RUST = importlib.util.find_spec("buvis.pybase.zettel._core") is not None
+try:
+    importlib.import_module("buvis.pybase.zettel._core")
+    HAS_RUST = True
+except ImportError:
+    HAS_RUST = False
 
 MINIMAL_ZETTEL = """\
 ---
@@ -140,10 +145,40 @@ class TestFindAllPythonFallback:
         mock_console.warning.assert_called_once()
         assert "bad.md" in mock_console.warning.call_args[0][0]
 
+    @patch(
+        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
+        False,
+    )
+    @patch(
+        "buvis.pybase.adapters.console.console.console",
+    )
+    def test_find_all_filtered_surfaces_parse_error_and_keeps_matching_note(
+        self, mock_console: MagicMock, tmp_path: Path
+    ) -> None:
+        match = tmp_path / "match.md"
+        match.write_text(
+            "---\ntitle: Match\ntype: note\n---\n\n## Content\n\nBody.\n",
+            encoding="utf-8",
+        )
+        bad = tmp_path / "bad.md"
+        bad.write_bytes(INVALID_UTF8_NOTE_BYTES)
 
-# Invalid UTF-8 bytes: a failure genuinely isolated by both the Rust and
-# Python-fallback backends (unlike malformed YAML frontmatter, which Rust
-# silently accepts as empty metadata).
+        repo = MarkdownZettelRepository()
+        zettels = repo.find_all(str(tmp_path), metadata_eq={"type": "note"})
+
+        titles = [z.get_data().metadata.get("title") for z in zettels]
+        assert "Match" in titles
+        mock_console.warning.assert_called_once()
+        assert "bad.md" in mock_console.warning.call_args[0][0]
+
+
+# Invalid UTF-8 bytes: used for the cross-backend fixture below because it is
+# a failure genuinely isolated by both the Rust and Python-fallback backends.
+# Malformed YAML frontmatter would not work here: the Rust backend silently
+# accepting it (parsing to empty metadata instead of erroring) is a
+# recorded, deliberately deferred gap for this PRD -- not an endorsed
+# permanent divergence -- tracked in
+# dev/local/reviews/00050-zettel-scanner-error-surfacing-v1-ledger.json.
 INVALID_UTF8_NOTE_BYTES = b"\xff\xfe---\ntitle: Bad\n---\n\n## Content\n\nBody.\n"
 
 
@@ -154,7 +189,49 @@ def _write_mixed_notes(tmp_path: Path) -> None:
     bad.write_bytes(INVALID_UTF8_NOTE_BYTES)
 
 
-class TestFindAllPythonFallbackParseErrors:
+class TestFindAllBackendParseErrors:
+    """An unparseable note must be isolated the same way regardless of
+    backend: skip it, keep the good note, warn exactly once naming it.
+    """
+
+    @pytest.mark.parametrize(
+        "use_rust",
+        [
+            pytest.param(False, id="python-fallback"),
+            pytest.param(
+                True,
+                id="rust-backend",
+                marks=pytest.mark.skipif(not HAS_RUST, reason="Rust _core not available"),
+            ),
+        ],
+    )
+    @patch(
+        "buvis.pybase.adapters.console.console.console",
+    )
+    def test_find_all_skips_invalid_utf8_note_and_warns_once(
+        self, mock_console: MagicMock, use_rust: bool, tmp_path: Path
+    ) -> None:
+        _write_mixed_notes(tmp_path)
+
+        force_python_fallback = (
+            nullcontext()
+            if use_rust
+            else patch(
+                "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
+                False,
+            )
+        )
+        with force_python_fallback:
+            repo = MarkdownZettelRepository()
+            zettels = repo.find_all(str(tmp_path))
+
+        assert len(zettels) == 1
+        assert zettels[0].get_data().metadata.get("title") == "Test"
+        mock_console.warning.assert_called_once()
+        assert "bad.md" in mock_console.warning.call_args[0][0]
+
+
+class TestFindAllMultipleParseErrors:
     @patch(
         "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
         False,
@@ -162,33 +239,44 @@ class TestFindAllPythonFallbackParseErrors:
     @patch(
         "buvis.pybase.adapters.console.console.console",
     )
-    def test_find_all_skips_invalid_utf8_note_and_warns_once(self, mock_console: MagicMock, tmp_path: Path) -> None:
-        _write_mixed_notes(tmp_path)
+    def test_find_all_warns_once_naming_every_bad_note_when_two_notes_fail(
+        self, mock_console: MagicMock, tmp_path: Path
+    ) -> None:
+        good = tmp_path / "good.md"
+        good.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        bad_one = tmp_path / "bad_one.md"
+        bad_one.write_bytes(INVALID_UTF8_NOTE_BYTES)
+        bad_two = tmp_path / "bad_two.md"
+        bad_two.write_text(
+            "---\ntitle: [unclosed\ntype: note\n---\n\n## Content\n\nBody.\n",
+            encoding="utf-8",
+        )
 
         repo = MarkdownZettelRepository()
         zettels = repo.find_all(str(tmp_path))
 
         assert len(zettels) == 1
-        assert zettels[0].get_data().metadata.get("title") == "Test"
         mock_console.warning.assert_called_once()
-        assert "bad.md" in mock_console.warning.call_args[0][0]
+        message = mock_console.warning.call_args[0][0]
+        assert "bad_one.md" in message
+        assert "bad_two.md" in message
 
-
-class TestFindAllRustBackendParseErrors:
-    @pytest.mark.skipif(not HAS_RUST, reason="Rust _core not available")
+    @patch(
+        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
+        False,
+    )
     @patch(
         "buvis.pybase.adapters.console.console.console",
     )
-    def test_find_all_skips_invalid_utf8_note_and_warns_once(self, mock_console: MagicMock, tmp_path: Path) -> None:
-        _write_mixed_notes(tmp_path)
+    def test_find_all_does_not_warn_when_every_note_parses(self, mock_console: MagicMock, tmp_path: Path) -> None:
+        good = tmp_path / "good.md"
+        good.write_text(MINIMAL_ZETTEL, encoding="utf-8")
 
         repo = MarkdownZettelRepository()
         zettels = repo.find_all(str(tmp_path))
 
         assert len(zettels) == 1
-        assert zettels[0].get_data().metadata.get("title") == "Test"
-        mock_console.warning.assert_called_once()
-        assert "bad.md" in mock_console.warning.call_args[0][0]
+        mock_console.warning.assert_not_called()
 
 
 # A well-formed note (valid mapping front matter) used as the base for the
