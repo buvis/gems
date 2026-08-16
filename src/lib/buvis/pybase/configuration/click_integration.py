@@ -215,8 +215,6 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
     """Build a decorator that injects settings into the Click context."""
 
     def decorator(f: F) -> F:
-        _install_parse_args_patch()
-
         @click.version_option(
             version=pkg_version("buvis-gems"),
             prog_name="buvis-gems",
@@ -348,6 +346,7 @@ def buvis_options(  # type: ignore[misc]
             if settings.debug:
                 click.echo("Debug mode enabled")
     """
+    _install_parse_args_patch()
 
     if callable(settings_class_or_func) and not isinstance(settings_class_or_func, type):
         return _create_buvis_options(GlobalSettings)(settings_class_or_func)
