@@ -48,19 +48,17 @@ class CommandRm:
         if err:
             return CommandResult(success=False, error=f"Failed to remove from git-secret: {err}")
 
-        gitignore = cwd / ".gitignore"
-        if gitignore.exists():
-            lines = gitignore.read_text().splitlines()
-            cleaned = [line for line in lines if line != self.file_path]
-            if len(cleaned) != len(lines):
-                gitignore.write_text(("\n".join(cleaned) + "\n") if cleaned else "")
-                err, _ = self.shell.exe("cfg add .gitignore", cwd)
-                if err:
-                    self.warnings.append(f"Failed to stage .gitignore: {err}")
+        err, _ = self.shell.exe(f"cfg rm --cached {shlex.quote(self.file_path + '.secret')}", cwd)
+        if err:
+            return CommandResult(success=False, error=f"Failed to untrack encrypted file: {err}")
+
+        err, _ = self.shell.exe("cfg add .gitsecret/", cwd)
+        if err:
+            self.warnings.append(f"Failed to stage .gitsecret/: {err}")
 
         return CommandResult(
             success=True,
-            output=f"{self.file_path} removed from git-secret",
+            output=f"{self.file_path} removed from git-secret, plaintext kept on disk",
             warnings=self.warnings,
         )
 

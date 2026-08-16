@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `doc promote` reports a filesystem failure while picking the filed name (read-only vault, permissions, disk full) as a plain error message instead of crashing with a stack trace.
 - **bim**: interrupting a `doc ingest` with Ctrl-C no longer parks the document permanently. The claim is released on every exit path, so a re-run proceeds instead of reporting the document as a duplicate that never gets filed.
 - **bim**: a document filed through `doc` triage and then `doc promote` is now recognised as a duplicate when the same source arrives again (a re-download or re-export), instead of re-running the whole pipeline and filing a second archive copy under an incremented name.
-- **dot**: `rm` on an encrypted (git-secret) file now only untracks it, matching the plain `rm --cached` path — it no longer also deletes the decrypted plaintext copy from disk.
+- **dot**: `rm` on an encrypted (git-secret) file now only untracks it, matching the plain `rm --cached` path — it no longer also deletes the decrypted plaintext copy from disk. The plaintext keeps its `.gitignore` entry, so the surviving cleartext secret is not offered for staging by the next `dot add`, and the committed `<file>.secret` ciphertext is untracked too, so the file really does leave the repo.
 
 ## [0.12.6] - 2026-08-06
 
