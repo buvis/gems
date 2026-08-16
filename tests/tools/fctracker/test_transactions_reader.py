@@ -4,6 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fctracker.adapters.transactions.transactions_reader import TransactionsReader
 
 
@@ -66,3 +67,50 @@ class TestTransactionsReader:
             reader = TransactionsReader(account)
 
         assert reader.file_path == tmp_path / "acme" / "eur.csv"
+
+    def test_accepts_non_decreasing_dates_including_equal_dates(self, tmp_path: Path) -> None:
+        # File is newest-first; after reversal the oldest-first order is
+        # 2024-01-10, 2024-01-10, 2024-01-20 -- non-decreasing (equal dates
+        # allowed), so no error should be raised and every row is processed.
+        csv_content = (
+            "date,amount,rate,description\n2024-01-20,20.00,25.00,\n2024-01-10,10.00,25.00,\n2024-01-10,15.00,25.00,\n"
+        )
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+            reader.get_transactions()
+
+        assert account.deposit.call_count == 3
+
+    def test_rejects_non_monotonic_date_order(self, tmp_path: Path) -> None:
+        # File is newest-first; after reversal the oldest-first order is
+        # 2024-01-10, 2024-01-20, 2024-01-05 -- the last row (index 2) goes
+        # backwards from 2024-01-20, breaking the non-decreasing invariant.
+        csv_content = (
+            "date,amount,rate,description\n2024-01-10,10.00,25.00,\n2024-01-20,20.00,25.00,\n2024-01-05,30.00,25.00,\n"
+        )
+        account = MagicMock()
+        account.name = "acme"
+        account.currency = "eur"
+
+        csv_path = tmp_path / "acme" / "eur.csv"
+        csv_path.parent.mkdir(parents=True)
+        csv_path.write_text(csv_content)
+
+        with patch("fctracker.adapters.transactions.transactions_reader.cfg") as mock_cfg:
+            mock_cfg.transactions_dir = tmp_path
+            reader = TransactionsReader(account)
+
+            with pytest.raises(ValueError, match="transactions must be newest-first; row 2 breaks order"):
+                reader.get_transactions()
+
+        assert account.deposit.call_count == 0
+        assert account.withdraw.call_count == 0
