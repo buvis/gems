@@ -456,7 +456,7 @@ class DotGitService:
 
     def list_secrets(self) -> list[str]:
         """List the paths registered with git-secret."""
-        if not self.shell.is_command_available("git-secret"):
+        if not self.is_secret_tool_available():
             return []
         err, out = self.shell.exe("cfg secret list", self.wd)
         if err:
