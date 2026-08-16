@@ -61,50 +61,25 @@ def claim_worker(
     sha256: str,
     out_queue: mp.queues.Queue,
     barrier: mp.synchronize.Barrier,
-) -> None:
-    """Open the state DB and call ``claim(sha256)``.
-
-    All workers wait at ``barrier`` so they race into the SQL INSERT
-    together. Exactly one worker should observe ``rowcount == 1`` (True);
-    the rest should see ``False``. Result strings: ``"true"`` /
-    ``"false"`` / ``"error: <repr>"``.
-    """
-    from bim.commands.doc.shared.state_db import StateDB
-
-    barrier.wait()
-    try:
-        db = StateDB.open(Path(db_path_str))
-        try:
-            won = db.claim(sha256)
-            out_queue.put("true" if won else "false")
-        finally:
-            db.connection.close()
-    except Exception as exc:
-        # Same diagnostic-surface rationale as register_issuer_worker above.
-        out_queue.put(f"error: {exc!r}")
-
-
-def reclaiming_claim_worker(
-    db_path_str: str,
-    sha256: str,
-    max_age_seconds: float,
-    out_queue: mp.queues.Queue,
-    barrier: mp.synchronize.Barrier,
+    max_age_seconds: float | None = None,
 ) -> None:
     """Open the state DB and call ``claim(sha256, max_age=...)``.
 
-    Same race as ``claim_worker``, but every worker meets a claim already
-    older than ``max_age_seconds``, so they all take the reclaim branch
-    instead of the plain insert. Exactly one may still win. Result strings:
-    ``"true"`` / ``"false"`` / ``"error: <repr>"``.
+    All workers wait at ``barrier`` so they race into the SQL INSERT
+    together. Exactly one worker should observe ``rowcount == 1`` (True);
+    the rest should see ``False``. Pass ``max_age_seconds`` when every
+    worker meets a claim already older than it, so they all take the
+    reclaim branch instead of the plain insert; exactly one may still win.
+    Result strings: ``"true"`` / ``"false"`` / ``"error: <repr>"``.
     """
     from bim.commands.doc.shared.state_db import StateDB
 
+    max_age = timedelta(seconds=max_age_seconds) if max_age_seconds is not None else None
     barrier.wait()
     try:
         db = StateDB.open(Path(db_path_str))
         try:
-            won = db.claim(sha256, max_age=timedelta(seconds=max_age_seconds))
+            won = db.claim(sha256, max_age=max_age)
             out_queue.put("true" if won else "false")
         finally:
             db.connection.close()
