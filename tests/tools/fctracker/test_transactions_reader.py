@@ -10,7 +10,7 @@ from fctracker.adapters.transactions.transactions_reader import TransactionsRead
 
 class TestTransactionsReader:
     def test_reads_deposits_and_withdrawals(self, tmp_path: Path) -> None:
-        csv_content = "date,amount,rate,description\n2024-01-15,100.00,25.50,\n2024-01-20,-50.00,,Amazon purchase\n"
+        csv_content = "date,amount,rate,description\n2024-01-20,-50.00,,Amazon purchase\n2024-01-15,100.00,25.50,\n"
         account = MagicMock()
         account.name = "acme"
         account.currency = "eur"
@@ -38,7 +38,7 @@ class TestTransactionsReader:
         assert wd_call.kwargs["description"] == "Amazon purchase"
 
     def test_processes_rows_in_reverse_order(self, tmp_path: Path) -> None:
-        csv_content = "date,amount,rate,description\n2024-01-01,10.00,25.00,\n2024-02-01,20.00,26.00,\n"
+        csv_content = "date,amount,rate,description\n2024-02-01,20.00,26.00,\n2024-01-01,10.00,25.00,\n"
         account = MagicMock()
         account.name = "bank"
         account.currency = "usd"
@@ -52,10 +52,10 @@ class TestTransactionsReader:
             reader = TransactionsReader(account)
             reader.get_transactions()
 
-        # Rows reversed: 2024-02-01 processed first, then 2024-01-01
+        # Rows reversed: 2024-01-01 (last in file) processed first, then 2024-02-01
         calls = account.deposit.call_args_list
-        assert calls[0].kwargs["amount"] == Decimal("20.00")
-        assert calls[1].kwargs["amount"] == Decimal("10.00")
+        assert calls[0].kwargs["amount"] == Decimal("10.00")
+        assert calls[1].kwargs["amount"] == Decimal("20.00")
 
     def test_file_path_constructed_correctly(self, tmp_path: Path) -> None:
         account = MagicMock()
