@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `serve` confines every request-derived filesystem path to the configured vault and archive directories, so its API can no longer read, overwrite, delete, open, or import files outside them. Paths outside the vault are rejected with 403.
 - **bim**: `serve` requires a per-run auth token (`X-Buvis-Token`) on its mutating and query-executing routes, and installs a Host allowlist so a web page cannot reach the default loopback-bound server by DNS rebinding. The WebUI sends the token automatically; read-only `GET` routes stay token-free.
 - **bim**: `serve` no longer embeds the auth token in the page it serves when bound to a non-loopback host, so a LAN caller (or a DNS-rebinding page) can no longer read the token and gain write access; the token is printed to the operator's console instead.
+- **dot**: `rm` no longer interpolates the filename unquoted into its shell commands, closing a shell-injection hole for a dotfile name containing spaces or shell metacharacters (`;`, `` ` ``, `$()`).
 
 ### Fixed
 
@@ -33,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `doc promote` reports a filesystem failure while picking the filed name (read-only vault, permissions, disk full) as a plain error message instead of crashing with a stack trace.
 - **bim**: interrupting a `doc ingest` with Ctrl-C no longer parks the document permanently. The claim is released on every exit path, so a re-run proceeds instead of reporting the document as a duplicate that never gets filed.
 - **bim**: a document filed through `doc` triage and then `doc promote` is now recognised as a duplicate when the same source arrives again (a re-download or re-export), instead of re-running the whole pipeline and filing a second archive copy under an incremented name.
+- **dot**: `rm` on an encrypted (git-secret) file now only untracks it, matching the plain `rm --cached` path — it no longer also deletes the decrypted plaintext copy from disk.
 
 ## [0.12.6] - 2026-08-06
 
