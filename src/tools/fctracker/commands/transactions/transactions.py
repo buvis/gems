@@ -9,6 +9,7 @@ from buvis.pybase.result import CommandResult
 from fctracker.adapters import TransactionsDirScanner, TransactionsReader
 from fctracker.domain import Account, Deposit
 from fctracker.settings import ForeignCurrencyConfig, LocalCurrencyConfig
+from fctracker.shared import describe_transaction_error
 
 
 class CommandTransactions:
@@ -55,7 +56,7 @@ class CommandTransactions:
                         except (queue.Empty, InvalidOperation) as exc:
                             return CommandResult(
                                 success=False,
-                                error=f"error processing transactions for account '{account_name}': {exc}",
+                                error=describe_transaction_error(account_name, exc),
                             )
 
                         filtered_transactions = [

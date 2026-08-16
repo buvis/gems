@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import queue
+from decimal import InvalidOperation
+
 from buvis.pybase.result import CommandResult
 
 from fctracker.adapters import TransactionsDirScanner, TransactionsReader
 from fctracker.domain import Account
 from fctracker.settings import ForeignCurrencyConfig, LocalCurrencyConfig
+from fctracker.shared import describe_transaction_error
 
 
 class CommandBalance:
@@ -40,6 +44,11 @@ class CommandBalance:
                     reader.get_transactions()
                 except FileNotFoundError as exc:
                     return CommandResult(success=False, error=str(exc))
+                except (ValueError, queue.Empty, InvalidOperation) as exc:
+                    return CommandResult(
+                        success=False,
+                        error=describe_transaction_error(account_name, exc),
+                    )
                 accounts.append(account)
 
         return CommandResult(
