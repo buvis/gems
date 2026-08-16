@@ -48,7 +48,7 @@ class CommandTransactions:
                         try:
                             reader = TransactionsReader(account)
                             reader.get_transactions()
-                        except FileNotFoundError as exc:
+                        except (FileNotFoundError, ValueError) as exc:
                             return CommandResult(success=False, error=str(exc))
 
                         filtered_transactions = [
