@@ -399,6 +399,29 @@ class TestRunUpdateInteractive:
         assert result == 1
         mock_sub.run.assert_not_called()
 
+    def test_slow_upgrade_is_not_bound_to_120_second_automatic_path_timeout(self, state_dir: Path) -> None:
+        """A slow-but-successful interactive upgrade must run under a timeout well above the
+        automatic path's 120s bound, so it is not killed mid-upgrade on a slow network."""
+
+        def fake_subprocess_run(*args: object, **kwargs: object) -> MagicMock:
+            # Simulates a slow upgrade that would exceed the automatic path's 120s bound
+            # but still completes successfully within the interactive path's own timeout.
+            return MagicMock(returncode=0)
+
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+        ):
+            mock_sub.run.side_effect = fake_subprocess_run
+
+            result = run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        assert result == 0
+        mock_os.execvp.assert_not_called()
+        call = mock_sub.run.call_args_list[0]
+        assert call.kwargs.get("timeout") == 1800
+        assert call.kwargs.get("timeout") != 120
+
 
 class TestRunUpdateUnknownInstaller:
     def test_logs_notification_only(self, state_dir: Path) -> None:
