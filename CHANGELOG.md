@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `serve` confines every request-derived filesystem path to the configured vault and archive directories, so its API can no longer read, overwrite, delete, open, or import files outside them. Paths outside the vault are rejected with 403.
 - **bim**: `serve` requires a per-run auth token (`X-Buvis-Token`) on its mutating and query-executing routes, and installs a Host allowlist so a web page cannot reach the default loopback-bound server by DNS rebinding. The WebUI sends the token automatically; read-only `GET` routes stay token-free.
 - **bim**: `serve` no longer embeds the auth token in the page it serves when bound to a non-loopback host, so a LAN caller (or a DNS-rebinding page) can no longer read the token and gain write access; the token is printed to the operator's console instead.
-- **dot**: `rm` no longer interpolates the filename unquoted into its shell commands, closing a shell-injection hole for a dotfile name containing spaces or shell metacharacters (`;`, `` ` ``, `$()`).
+- **dot**: `rm` now shell-quotes the filename instead of interpolating it raw, so a dotfile name containing a space, `;` or a backtick is passed through literally instead of running as shell. This is necessary but not yet sufficient: the shell adapter still expands `$VAR` and `${VAR}` after the quoting is applied, so a name containing one is still mis-handled — that half is not fixed here.
 
 ### Fixed
 

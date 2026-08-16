@@ -137,14 +137,18 @@ Commit staged dotfiles changes. Message is a positional argument.
 dot rm
 ~~~~~~
 
-Remove a file from dotfiles tracking, keeping the file on disk. For encrypted
-files, goes through full git-secret removal (untrack, clean ``.gitignore``,
-delete plaintext).
+Remove a file from dotfiles tracking, keeping the file on disk. ``rm`` untracks;
+``delete`` is the command that removes a file from disk.
+
+For encrypted files, ``rm`` unregisters the file from git-secret and untracks the
+committed ``<file>.secret`` ciphertext. The decrypted plaintext stays on disk and
+keeps its ``.gitignore`` entry, so the cleartext secret is not offered for staging
+by the next ``dot add``. Cleaning up that ignore entry belongs to ``dot delete``.
 
 .. code-block:: bash
 
     dot rm .bashrc                  # stop tracking (file stays on disk)
-    dot rm .config/secrets.yaml     # unregister encrypted file
+    dot rm .config/secrets.yaml     # unregister encrypted file (plaintext kept)
 
 dot delete
 ~~~~~~~~~~
