@@ -1,60 +1,92 @@
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
+import os
+from unittest.mock import MagicMock, patch
 
+from buvis.pybase.result import CommandResult
 from dot.commands.delete.delete import CommandDelete
 
 
-class TestCommandDeleteNormal:
-    def test_deletes_file_from_tracking_and_disk(self, dotfiles_root: Path) -> None:
+class TestCommandDeleteInit:
+    @patch("dot.commands.delete.delete.DotGitService")
+    def test_constructs_dot_git_service_with_shell_and_dotfiles_root(self, mock_service_cls, dotfiles_root) -> None:
         shell = MagicMock()
-        shell.exe.side_effect = [
-            ("", ""),  # cfg secret list (not encrypted)
-            ("", ""),  # cfg rm
-        ]
-        cmd = CommandDelete(shell=shell, file_path=".config/app.conf")
+
+        CommandDelete(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".bashrc")
+
+        mock_service_cls.assert_called_once_with(shell, str(dotfiles_root))
+
+    def test_does_not_mutate_environment(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
+        shell = MagicMock()
+
+        with patch("dot.commands.delete.delete.DotGitService"):
+            CommandDelete(shell=shell, dotfiles_root=str(tmp_path), file_path=".bashrc")
+
+        assert "DOTFILES_ROOT" not in os.environ
+
+    @patch("dot.commands.delete.delete.DotGitService")
+    def test_does_not_call_shell_alias(self, mock_service_cls, dotfiles_root) -> None:
+        shell = MagicMock()
+
+        CommandDelete(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".bashrc")
+
+        shell.alias.assert_not_called()
+
+
+class TestCommandDeleteExecute:
+    @patch("dot.commands.delete.delete.DotGitService")
+    def test_execute_deletes_via_service_with_file_path_and_returns_success(
+        self, mock_service_cls, dotfiles_root
+    ) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.delete.return_value = CommandResult(
+            success=True, output=".bashrc deleted from dotfiles", warnings=[]
+        )
+        shell = MagicMock()
+
+        cmd = CommandDelete(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".bashrc")
         result = cmd.execute()
+
+        mock_service.delete.assert_called_once_with(".bashrc")
         assert result.success
-        shell.exe.assert_any_call("cfg rm .config/app.conf", dotfiles_root)
+        assert result.output == ".bashrc deleted from dotfiles"
+        assert result.warnings == []
 
-    def test_fails_on_cfg_rm_error(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.delete.delete.DotGitService")
+    def test_execute_returns_service_failure_passthrough(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.delete.return_value = CommandResult(success=False, error="Failed to delete: fatal error")
         shell = MagicMock()
-        shell.exe.side_effect = [
-            ("", ""),  # cfg secret list
-            ("fatal: pathspec did not match", ""),  # cfg rm error
-        ]
-        cmd = CommandDelete(shell=shell, file_path=".config/app.conf")
+
+        cmd = CommandDelete(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".bashrc")
         result = cmd.execute()
+
         assert not result.success
+        assert result.error == "Failed to delete: fatal error"
 
-
-class TestCommandDeleteEncrypted:
-    def test_deletes_encrypted_file_fully(self, dotfiles_root: Path) -> None:
-        gitignore = dotfiles_root / ".gitignore"
-        gitignore.write_text(".secret_file\n.other_file\n")
-        plaintext = dotfiles_root / ".secret_file"
-        plaintext.write_text("secret content")
-
+    @patch("dot.commands.delete.delete.DotGitService")
+    def test_execute_calls_service_delete_exactly_once(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.delete.return_value = CommandResult(success=True, output="ok", warnings=[])
         shell = MagicMock()
-        shell.exe.side_effect = [
-            ("", ".secret_file"),  # cfg secret list
-            ("", ""),  # cfg secret remove -c
-            ("", ""),  # cfg add .gitignore
-        ]
-        cmd = CommandDelete(shell=shell, file_path=".secret_file")
-        result = cmd.execute()
 
-        assert result.success
-        shell.exe.assert_any_call("cfg secret remove -c .secret_file", dotfiles_root)
-        assert not plaintext.exists()
+        cmd = CommandDelete(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".bashrc")
+        cmd.execute()
 
-    def test_fails_on_secret_remove_error(self, dotfiles_root: Path) -> None:
+        assert mock_service.delete.call_count == 1
+
+    @patch("dot.commands.delete.delete.DotGitService")
+    def test_execute_never_calls_shell_directly(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.delete.return_value = CommandResult(
+            success=True, output=".bashrc deleted from dotfiles", warnings=[]
+        )
         shell = MagicMock()
-        shell.exe.side_effect = [
-            ("", ".secret_file"),  # cfg secret list
-            ("git-secret: abort", ""),  # cfg secret remove error
-        ]
-        cmd = CommandDelete(shell=shell, file_path=".secret_file")
-        result = cmd.execute()
-        assert not result.success
+
+        cmd = CommandDelete(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".bashrc")
+        cmd.execute()
+
+        shell.exe.assert_not_called()
+        shell.interact.assert_not_called()
+        shell.alias.assert_not_called()

@@ -1,84 +1,128 @@
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock
+import os
+from unittest.mock import MagicMock, patch
 
+from buvis.pybase.result import CommandResult
 from dot.commands.encrypt.encrypt import CommandEncrypt
 
 
 class TestCommandEncryptInit:
-    def test_init_sets_env_and_alias(self, tmp_path: Path, monkeypatch) -> None:
-        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
-        monkeypatch.setattr("dot.commands.encrypt.encrypt.Path.home", staticmethod(lambda: tmp_path))
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_constructs_dot_git_service_with_shell_and_dotfiles_root(self, mock_service_cls, dotfiles_root) -> None:
         shell = MagicMock()
 
-        cmd = CommandEncrypt(shell=shell, file_path=".secret_file")
+        cmd = CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
 
-        import os
-
-        assert os.environ["DOTFILES_ROOT"] == str(tmp_path.resolve())
-        shell.alias.assert_called_once_with(
-            "cfg",
-            "git --git-dir=${DOTFILES_ROOT}/.buvis/ --work-tree=${DOTFILES_ROOT}",
-        )
+        mock_service_cls.assert_called_once_with(shell, str(dotfiles_root))
         assert cmd.file_path == ".secret_file"
 
-
-class TestCommandEncryptExecute:
-    def test_fails_without_git_secret(self, dotfiles_root: Path) -> None:
+    def test_does_not_mutate_environment(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.delenv("DOTFILES_ROOT", raising=False)
         shell = MagicMock()
-        shell.is_command_available.return_value = False
 
-        cmd = CommandEncrypt(shell=shell, file_path=".secret_file")
+        with patch("dot.commands.encrypt.encrypt.DotGitService"):
+            CommandEncrypt(shell=shell, dotfiles_root=str(tmp_path), file_path=".secret_file")
+
+        assert "DOTFILES_ROOT" not in os.environ
+
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_does_not_call_shell_alias(self, mock_service_cls, dotfiles_root) -> None:
+        shell = MagicMock()
+
+        CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
+
+        shell.alias.assert_not_called()
+
+
+class TestCommandEncryptExecuteWithoutGitSecret:
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_execute_fails_without_calling_encrypt_and_stage(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.is_secret_tool_available.return_value = False
+        shell = MagicMock()
+
+        cmd = CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
         result = cmd.execute()
 
         assert not result.success
-        assert "git-secret is not installed" in result.error
+        assert result.error == "git-secret is not installed"
+        mock_service.encrypt_and_stage.assert_not_called()
 
-    def test_registers_encrypts_and_stages(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_execute_never_calls_shell_directly(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.is_secret_tool_available.return_value = False
         shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.side_effect = [("", ""), ("", ""), ("", "")]
 
-        cmd = CommandEncrypt(shell=shell, file_path=".secret_file")
+        cmd = CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
+        cmd.execute()
+
+        shell.exe.assert_not_called()
+        shell.interact.assert_not_called()
+        shell.alias.assert_not_called()
+        shell.is_command_available.assert_not_called()
+
+
+class TestCommandEncryptExecuteWithGitSecret:
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_execute_encrypts_via_service_with_file_path_and_returns_success(
+        self, mock_service_cls, dotfiles_root
+    ) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.is_secret_tool_available.return_value = True
+        mock_service.encrypt_and_stage.return_value = CommandResult(
+            success=True, output=".secret_file encrypted and staged"
+        )
+        shell = MagicMock()
+
+        cmd = CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
         result = cmd.execute()
 
+        mock_service.encrypt_and_stage.assert_called_once_with(".secret_file")
         assert result.success
-        assert "encrypted and staged" in result.output
-        assert shell.exe.call_count == 3
-        shell.exe.assert_any_call("cfg secret add .secret_file", dotfiles_root)
-        shell.exe.assert_any_call("cfg secret hide -m", dotfiles_root)
-        shell.exe.assert_any_call("cfg add .secret_file.secret .gitsecret/ .gitignore", dotfiles_root)
+        assert result.output == ".secret_file encrypted and staged"
 
-    def test_fails_on_secret_add_error(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_execute_returns_service_failure_passthrough(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.is_secret_tool_available.return_value = True
+        mock_service.encrypt_and_stage.return_value = CommandResult(
+            success=False, error="Failed to encrypt: hide error"
+        )
         shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.return_value = ("add error", "")
 
-        cmd = CommandEncrypt(shell=shell, file_path=".secret_file")
+        cmd = CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
         result = cmd.execute()
 
         assert not result.success
-        assert "Failed to register file" in result.error
+        assert result.error == "Failed to encrypt: hide error"
 
-    def test_fails_on_hide_error(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_execute_calls_service_encrypt_and_stage_exactly_once(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.is_secret_tool_available.return_value = True
+        mock_service.encrypt_and_stage.return_value = CommandResult(success=True, output="ok")
         shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.side_effect = [("", ""), ("hide error", "")]
 
-        cmd = CommandEncrypt(shell=shell, file_path=".secret_file")
-        result = cmd.execute()
+        cmd = CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
+        cmd.execute()
 
-        assert not result.success
-        assert "Failed to encrypt" in result.error
+        assert mock_service.encrypt_and_stage.call_count == 1
 
-    def test_fails_on_stage_error(self, dotfiles_root: Path) -> None:
+    @patch("dot.commands.encrypt.encrypt.DotGitService")
+    def test_execute_never_calls_shell_directly(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.is_secret_tool_available.return_value = True
+        mock_service.encrypt_and_stage.return_value = CommandResult(
+            success=True, output=".secret_file encrypted and staged"
+        )
         shell = MagicMock()
-        shell.is_command_available.return_value = True
-        shell.exe.side_effect = [("", ""), ("", ""), ("stage error", "")]
 
-        cmd = CommandEncrypt(shell=shell, file_path=".secret_file")
-        result = cmd.execute()
+        cmd = CommandEncrypt(shell=shell, dotfiles_root=str(dotfiles_root), file_path=".secret_file")
+        cmd.execute()
 
-        assert not result.success
-        assert "Failed to stage" in result.error
+        shell.exe.assert_not_called()
+        shell.interact.assert_not_called()
+        shell.alias.assert_not_called()
+        shell.is_command_available.assert_not_called()
