@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from dot.tui.git_ops import GitOps, GitOpsError
+from dot.tui.git_ops import GitOps
 from dot.tui.models import BranchInfo, FileEntry
 
 
@@ -27,96 +27,99 @@ class TestGitOpsStatus:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "")
 
-        result = git_ops.status()
+        entries, hide_error = git_ops.status()
 
-        assert result == []
+        assert entries == []
+        assert hide_error is None
 
     def test_modified_staged(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "M  .bashrc")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert FileEntry(path=".bashrc", status="M ") in result
+        assert FileEntry(path=".bashrc", status="M ") in entries
 
     def test_modified_unstaged(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", " M .bashrc")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert FileEntry(path=".bashrc", status=" M") in result
+        assert FileEntry(path=".bashrc", status=" M") in entries
 
     def test_added_staged(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "A  .newrc")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert FileEntry(path=".newrc", status="A ") in result
+        assert FileEntry(path=".newrc", status="A ") in entries
 
     def test_deleted_unstaged(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", " D .oldrc")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert FileEntry(path=".oldrc", status=" D") in result
+        assert FileEntry(path=".oldrc", status=" D") in entries
 
     def test_untracked(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "?? newfile.txt")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert FileEntry(path="newfile.txt", status="??") in result
+        assert FileEntry(path="newfile.txt", status="??") in entries
 
     def test_multiple_files(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "M  .bashrc\n M .vimrc\n?? new.txt")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert len(result) == 3
+        assert len(entries) == 3
 
     def test_both_staged_and_unstaged_same_file(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "MM .bashrc")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert FileEntry(path=".bashrc", status="MM") in result
+        assert FileEntry(path=".bashrc", status="MM") in entries
 
     def test_file_with_spaces_in_path(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "M  my config file.txt")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert FileEntry(path="my config file.txt", status="M ") in result
+        assert FileEntry(path="my config file.txt", status="M ") in entries
 
-    def test_secret_files_marked(self, git_ops: GitOps, shell: MagicMock) -> None:
+    def test_non_secret_file_not_marked_as_secret(self, git_ops: GitOps, shell: MagicMock) -> None:
+        # ".ssh/config.secret" is the realistic ciphertext path git-secret leaves in the
+        # worktree after a hide; ".ssh/config" itself is gitignored and can never appear
+        # in porcelain output.
         shell.is_command_available.return_value = True
         shell.exe.side_effect = [
             ("", ""),  # cfg secret hide -m
-            ("", "M  .bashrc\nM  .ssh/config"),  # cfg status --porcelain
+            ("", "M  .bashrc\n M .ssh/config.secret"),  # cfg status --porcelain
             ("", ".ssh/config\n"),  # cfg secret list
         ]
 
-        result = git_ops.status()
+        entries, hide_error = git_ops.status()
 
-        bashrc = next(f for f in result if f.path == ".bashrc")
-        ssh_config = next(f for f in result if f.path == ".ssh/config")
+        bashrc = next(f for f in entries if f.path == ".bashrc")
         assert bashrc.is_secret is False
-        assert ssh_config.is_secret is True
+        assert hide_error is None
 
     def test_git_secret_unavailable_all_not_secret(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "M  .bashrc\nM  .ssh/config")
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert all(not f.is_secret for f in result)
+        assert all(not f.is_secret for f in entries)
 
     def test_git_secret_list_error_all_not_secret(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
@@ -126,50 +129,119 @@ class TestGitOpsStatus:
             ("error getting secrets", ""),  # cfg secret list fails
         ]
 
-        result = git_ops.status()
+        entries, _hide_error = git_ops.status()
 
-        assert all(not f.is_secret for f in result)
+        assert all(not f.is_secret for f in entries)
 
-    def test_hide_not_called_when_secret_unavailable(self, git_ops: GitOps, shell: MagicMock) -> None:
+    def test_first_call_is_porcelain_when_secret_unavailable(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "M  .bashrc")
 
         git_ops.status()
 
-        for call in shell.exe.call_args_list:
-            assert "cfg secret hide" not in call[0][0]
+        first_cmd = shell.exe.call_args_list[0][0][0]
+        assert "cfg status --porcelain" in first_cmd
 
-    def test_hide_failure_raises_and_skips_porcelain_status(self, git_ops: GitOps, shell: MagicMock) -> None:
-        shell.is_command_available.return_value = True
-        shell.exe.return_value = ("permission denied", "")
-
-        with pytest.raises(GitOpsError):
-            git_ops.status()
-
-        assert shell.exe.call_count == 1
-        for call in shell.exe.call_args_list:
-            assert "cfg status --porcelain" not in call[0][0]
-
-    def test_modified_secret_file_visible_without_prior_status_call(self, git_ops: GitOps, shell: MagicMock) -> None:
-        """Regression test for #92: TUI sees secret changes on first status() call,
-        with no prior CLI `dot status` run required to hide the secret."""
+    def test_hide_failure_still_returns_entries_with_hide_error(self, git_ops: GitOps, shell: MagicMock) -> None:
         shell.is_command_available.return_value = True
         shell.exe.side_effect = [
-            ("", ""),  # cfg secret hide -m
-            ("", "M  .ssh/config"),  # cfg status --porcelain
+            ("permission denied", ""),  # cfg secret hide -m fails
+            ("", " M .ssh/config.secret"),  # cfg status --porcelain still runs
             ("", ".ssh/config\n"),  # cfg secret list
         ]
 
-        result = git_ops.status()
+        entries, hide_error = git_ops.status()
+
+        assert entries != []
+        assert any(f.path == ".ssh/config.secret" for f in entries)
+        assert hide_error is not None
+        assert "permission denied" in hide_error
 
         hide_cmd = shell.exe.call_args_list[0][0][0]
         status_cmd = shell.exe.call_args_list[1][0][0]
         assert "cfg secret hide -m" in hide_cmd
         assert "cfg status --porcelain" in status_cmd
 
-        ssh_config = next(f for f in result if f.path == ".ssh/config")
-        assert ssh_config.is_secret is True
-        assert ssh_config.status == "M "
+    def test_hide_success_returns_entries_with_no_hide_error(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret hide -m succeeds
+            ("", "M  .bashrc"),  # cfg status --porcelain
+            ("", ""),  # cfg secret list
+        ]
+
+        entries, hide_error = git_ops.status()
+
+        assert entries != []
+        assert hide_error is None
+
+    def test_modified_secret_file_visible_without_prior_status_call(self, git_ops: GitOps, shell: MagicMock) -> None:
+        """Regression test for #92: TUI sees secret changes on first status() call,
+        with no prior CLI `dot status` run required to hide the secret. git-secret
+        re-encrypts the plaintext into a ciphertext file, so a modified secret shows
+        up in porcelain as the unstaged, modified ``<path>.secret`` file - never as
+        the (gitignored) plaintext path."""
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret hide -m
+            ("", " M .ssh/config.secret"),  # cfg status --porcelain
+            ("", ".ssh/config\n"),  # cfg secret list
+        ]
+
+        entries, hide_error = git_ops.status()
+
+        hide_cmd = shell.exe.call_args_list[0][0][0]
+        status_cmd = shell.exe.call_args_list[1][0][0]
+        assert "cfg secret hide -m" in hide_cmd
+        assert "cfg status --porcelain" in status_cmd
+
+        secret_entry = next(f for f in entries if f.path == ".ssh/config.secret")
+        assert secret_entry.status == " M"
+        assert hide_error is None
+
+    def test_git_ops_error_removed_from_module(self) -> None:
+        import dot.tui.git_ops as git_ops_module
+
+        assert not hasattr(git_ops_module, "GitOpsError")
+
+
+class TestGitOpsHasUncommittedChanges:
+    def test_hides_secrets_before_reading_porcelain(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [
+            ("", ""),  # cfg secret hide -m
+            ("", " M .ssh/config.secret"),  # cfg status --porcelain
+        ]
+
+        result = git_ops.has_uncommitted_changes()
+
+        hide_cmd = shell.exe.call_args_list[0][0][0]
+        status_cmd = shell.exe.call_args_list[1][0][0]
+        assert "cfg secret hide -m" in hide_cmd
+        assert "cfg status --porcelain" in status_cmd
+        assert result is True
+
+    def test_hide_failure_does_not_raise_and_dirty_answer_still_true(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [
+            ("permission denied", ""),  # cfg secret hide -m fails
+            ("", " M .ssh/config.secret"),  # cfg status --porcelain still runs
+        ]
+
+        result = git_ops.has_uncommitted_changes()
+
+        assert result is True
+
+    def test_hide_failure_with_clean_porcelain_returns_false(self, git_ops: GitOps, shell: MagicMock) -> None:
+        shell.is_command_available.return_value = True
+        shell.exe.side_effect = [
+            ("permission denied", ""),  # cfg secret hide -m fails
+            ("", ""),  # cfg status --porcelain: clean
+        ]
+
+        result = git_ops.has_uncommitted_changes()
+
+        assert result is False
 
 
 class TestGitOpsDiff:
@@ -293,6 +365,9 @@ class TestGitOpsCommit:
         result = git_ops.commit("my message")
 
         assert result.success is False
+        assert result.error is not None
+        assert "secret hide error" in result.error
+        assert shell.exe.call_count == 1  # commit itself never ran
 
 
 class TestGitOpsPush:
