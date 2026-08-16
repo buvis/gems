@@ -11,7 +11,12 @@ from fctracker.domain.account import Account
 
 class TransactionsReader:
     REQUIRED_COLUMNS = ("date", "amount", "rate", "description")
-    REQUIRED_ROW_VALUES = ("date", "amount", "rate")
+    # Every column is checked for a present cell: csv.DictReader yields None only
+    # for a cell a short row omits entirely, never for an empty one, so a
+    # legitimately blank rate or description still passes. Without `description`
+    # here, a withdrawal row short by its trailing cell reaches
+    # Withdrawal.__init__, whose f-string turns None into the literal "None".
+    REQUIRED_ROW_VALUES = REQUIRED_COLUMNS
 
     def __init__(self, account: Account) -> None:
         self.file_path = Path(
