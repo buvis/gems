@@ -242,39 +242,82 @@ class TestRunUpdateFailure:
 
 
 class TestRunUpdateExecvpFailure:
-    def test_logs_and_exits_on_execvp_os_error(self, state_dir: Path) -> None:
+    def test_exits_with_status_one_on_execvp_os_error(self, state_dir: Path) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
             patch("buvis.pybase.updater.executor.os") as mock_os,
             patch("buvis.pybase.updater.executor.sys") as mock_sys,
+            patch("buvis.pybase.updater.executor.console") as mock_console,
+            patch("buvis.pybase.updater.executor.append_log"),
+        ):
+            mock_sub.run.return_value = MagicMock(returncode=0)
+            mock_os.execvp.side_effect = OSError("No such file or directory")
+            mock_sys.argv = ["bim", "list"]
+            mock_console.panic.side_effect = SystemExit(1)
+
+            with pytest.raises(SystemExit) as exc_info:
+                run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        assert exc_info.value.code == 1
+
+    def test_emits_error_message_via_console_panic_on_execvp_os_error(self, state_dir: Path) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+            patch("buvis.pybase.updater.executor.sys") as mock_sys,
+            patch("buvis.pybase.updater.executor.console") as mock_console,
+            patch("buvis.pybase.updater.executor.append_log"),
+        ):
+            mock_sub.run.return_value = MagicMock(returncode=0)
+            mock_os.execvp.side_effect = OSError("No such file or directory")
+            mock_sys.argv = ["bim", "list"]
+            mock_console.panic.side_effect = SystemExit(1)
+
+            with pytest.raises(SystemExit):
+                run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        mock_console.panic.assert_called_once()
+        args, kwargs = mock_console.panic.call_args
+        message = args[0] if args else kwargs["message"]
+        assert isinstance(message, str)
+        assert message.strip() != ""
+
+    def test_logs_restart_failed_before_exiting_on_execvp_os_error(self, state_dir: Path) -> None:
+        with (
+            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
+            patch("buvis.pybase.updater.executor.os") as mock_os,
+            patch("buvis.pybase.updater.executor.sys") as mock_sys,
+            patch("buvis.pybase.updater.executor.console") as mock_console,
             patch("buvis.pybase.updater.executor.append_log") as mock_log,
         ):
             mock_sub.run.return_value = MagicMock(returncode=0)
             mock_os.execvp.side_effect = OSError("No such file or directory")
             mock_sys.argv = ["bim", "list"]
-            mock_sys.exit.side_effect = SystemExit(0)
+            mock_console.panic.side_effect = SystemExit(1)
 
             with pytest.raises(SystemExit):
                 run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
 
-        mock_sys.exit.assert_called_once_with(0)
-        log_calls = [call.args for call in mock_log.call_args_list]
-        assert any(level == "error" and "restart failed" in msg.lower() for _, level, msg in log_calls)
+        mock_log.assert_called_once_with(
+            state_dir,
+            "error",
+            "Restart failed: No such file or directory. Update applied; please re-run the command.",
+        )
 
-    def test_does_not_return_after_successful_upgrade(self, state_dir: Path) -> None:
-        """Regression: on execvp failure, run_update must exit instead of returning to caller."""
+    def test_success_path_calls_execvp_and_does_not_touch_console_panic(self, state_dir: Path) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
             patch("buvis.pybase.updater.executor.os") as mock_os,
             patch("buvis.pybase.updater.executor.sys") as mock_sys,
+            patch("buvis.pybase.updater.executor.console") as mock_console,
         ):
             mock_sub.run.return_value = MagicMock(returncode=0)
-            mock_os.execvp.side_effect = OSError("ENOENT")
-            mock_sys.argv = ["bim"]
-            mock_sys.exit.side_effect = SystemExit(0)
+            mock_sys.argv = ["bim", "list"]
 
-            with pytest.raises(SystemExit):
-                run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+            run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+
+        mock_os.execvp.assert_called_once_with("bim", ["bim", "list"])
+        mock_console.panic.assert_not_called()
 
 
 class TestRunUpdateInteractive:
