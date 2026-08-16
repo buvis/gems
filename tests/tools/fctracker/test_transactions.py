@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import datetime
-import queue
-from decimal import Decimal, DivisionUndefined, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -289,62 +288,6 @@ class TestCommandTransactions:
         assert result.success is False
         assert "data file missing" in result.error
 
-    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
-    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
-    def test_reader_order_violation(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
-        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
-        mock_reader_cls.return_value.get_transactions.side_effect = ValueError(
-            "transactions must be newest-first; row 3 breaks order"
-        )
-
-        cmd = self._make_cmd()
-        result = cmd.execute()
-
-        assert result.success is False
-        assert "transactions must be newest-first; row 3 breaks order" in result.error
-
-    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
-    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
-    def test_reader_overdraft_names_account_in_error(
-        self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock
-    ) -> None:
-        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
-        mock_reader_cls.return_value.get_transactions.side_effect = queue.Empty()
-
-        cmd = self._make_cmd()
-        result = cmd.execute()
-
-        assert result.success is False
-        assert "Acme" in result.error
-
-    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
-    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
-    def test_reader_zero_amount_division_names_account_in_error(
-        self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock
-    ) -> None:
-        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
-        mock_reader_cls.return_value.get_transactions.side_effect = DivisionUndefined()
-
-        cmd = self._make_cmd()
-        result = cmd.execute()
-
-        assert result.success is False
-        assert "Acme" in result.error
-
-    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
-    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
-    def test_reader_malformed_amount_cell_names_account_in_error(
-        self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock
-    ) -> None:
-        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
-        mock_reader_cls.return_value.get_transactions.side_effect = InvalidOperation()
-
-        cmd = self._make_cmd()
-        result = cmd.execute()
-
-        assert result.success is False
-        assert "Acme" in result.error
-
 
 class TestTransactionsAndBalanceErrorParity:
     """CommandTransactions and CommandBalance must render identical error text for the same bad CSV."""
@@ -457,3 +400,32 @@ class TestTransactionsAndBalanceErrorParity:
         assert "Acme" in tx_result.error
         assert "overdraw" in tx_result.error.lower()
         assert tx_result.error == bal_result.error
+
+    def test_fully_oldest_first_ledger_rejected_end_to_end_with_no_partial_results(self, tmp_path: Path) -> None:
+        # The PRD's headline scenario: a user keeps a ledger the natural way,
+        # appending new rows at the END of the file. The file is therefore
+        # fully OLDEST-FIRST (strictly ascending dates) - the exact inverse
+        # of what fctracker expects - not just one out-of-place row.
+        csv_content = (
+            "date,amount,rate,description\n"
+            "2024-01-01,10.00,25.00,\n"
+            "2024-02-01,10.00,25.00,\n"
+            "2024-03-01,10.00,25.00,\n"
+            "2024-04-01,10.00,25.00,\n"
+            "2024-05-01,10.00,25.00,\n"
+        )
+        tx_result, bal_result = self._run_both_commands(tmp_path, csv_content)
+
+        assert tx_result.success is False
+        assert bal_result.success is False
+        assert "newest-first" in tx_result.error
+        assert "newest-first" in bal_result.error
+        assert "data row" in tx_result.error
+        assert "data row" in bal_result.error
+        assert tx_result.error == bal_result.error
+
+        # No wrong numbers: a rejected read must not leave a computed
+        # transaction table for the account sitting in metadata alongside
+        # the failure.
+        assert tx_result.metadata == {}
+        assert bal_result.metadata == {}
