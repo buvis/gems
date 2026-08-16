@@ -35,6 +35,7 @@ class TestPackageNotFound:
         assert result == 1
         out = capsys.readouterr().out
         assert "buvis-gems" in out.lower() and "not installed" in out.lower()
+        assert "✘" in out  # console.failure's CROSSMARK; proves routing through the console adapter
 
     def test_logs_error_event(self) -> None:
         with (
@@ -60,6 +61,7 @@ class TestPypiUnreachable:
         assert result == 1
         out = capsys.readouterr().out
         assert "pypi" in out.lower() or "reach" in out.lower() or "unreachable" in out.lower()
+        assert "✘" in out  # console.failure's CROSSMARK; proves routing through the console adapter
 
     def test_logs_error_event(self) -> None:
         with (
@@ -86,6 +88,7 @@ class TestAlreadyUpToDate:
         out = capsys.readouterr().out
         assert "0.8.0" in out
         assert "up to date" in out.lower()
+        assert "✔" in out  # console.success's CHECKMARK; proves routing through the console adapter
         mock_detect.assert_not_called()
         mock_run.assert_not_called()
 
@@ -127,6 +130,7 @@ class TestUnknownInstaller:
         assert "uv tool upgrade buvis-gems" in out
         assert "pipx upgrade buvis-gems" in out
         assert "mise upgrade pipx:buvis-gems" in out
+        assert "✘" in out  # console.failure's CROSSMARK; proves routing through the console adapter
         mock_run.assert_not_called()
 
     def test_logs_error_event(self) -> None:

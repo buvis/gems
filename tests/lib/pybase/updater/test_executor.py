@@ -288,8 +288,10 @@ class TestRunUpdateInteractive:
         assert call.kwargs.get("capture_output") is False
         out = capsys.readouterr().out
         assert "0.7.0" in out and "0.8.0" in out
+        assert "Upgraded." in out
+        assert "✔" in out  # console.success's CHECKMARK; proves routing through the console adapter
 
-    def test_subprocess_nonzero_returns_one(self, state_dir: Path) -> None:
+    def test_subprocess_nonzero_returns_one(self, state_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
             patch("buvis.pybase.updater.executor.os") as mock_os,
@@ -302,8 +304,11 @@ class TestRunUpdateInteractive:
         assert result == 1
         mock_os.execvp.assert_not_called()
         assert any(level == "error" for _, level, _ in (c.args for c in mock_log.call_args_list))
+        out = capsys.readouterr().out
+        assert "Update failed: installer exited with code 2" in out
+        assert "✘" in out  # console.failure's CROSSMARK; proves routing through the console adapter
 
-    def test_timeout_returns_one(self, state_dir: Path) -> None:
+    def test_timeout_returns_one(self, state_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
             patch("buvis.pybase.updater.executor.os") as mock_os,
@@ -315,8 +320,11 @@ class TestRunUpdateInteractive:
 
         assert result == 1
         mock_os.execvp.assert_not_called()
+        out = capsys.readouterr().out
+        assert "Update failed" in out
+        assert "✘" in out  # console.failure's CROSSMARK; proves routing through the console adapter
 
-    def test_file_not_found_returns_one(self, state_dir: Path) -> None:
+    def test_file_not_found_returns_one(self, state_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
             patch("buvis.pybase.updater.executor.os") as mock_os,
@@ -328,6 +336,9 @@ class TestRunUpdateInteractive:
 
         assert result == 1
         mock_os.execvp.assert_not_called()
+        out = capsys.readouterr().out
+        assert "Update failed: uv not found" in out
+        assert "✘" in out  # console.failure's CROSSMARK; proves routing through the console adapter
 
     def test_logs_success(self, state_dir: Path) -> None:
         with (
