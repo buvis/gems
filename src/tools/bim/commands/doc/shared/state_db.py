@@ -141,6 +141,40 @@ class StateDB:
             conn.execute("ROLLBACK")
             raise
 
+    def _read_claim_staleness(
+        self,
+        sha256: str,
+        max_age: timedelta,
+        now: datetime | None = None,
+    ) -> tuple[bool, str | None]:
+        """Read the claim row once and judge it against ``max_age``.
+
+        Returns:
+            ``(stale, claimed_at)`` where ``claimed_at`` is the exact stored
+            string the verdict was formed from, or ``None`` when no claim row
+            exists. Handing that string back lets ``claim`` bind it in its
+            delete, so a claim refreshed between the read and the delete is
+            recognised as a different value and survives.
+        """
+        row = self._conn.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha256,)).fetchone()
+        if row is None:
+            return False, None
+        moment = now if now is not None else datetime.now(timezone.utc)
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        try:
+            claimed_at = datetime.fromisoformat(row[0])
+        except ValueError:
+            # A stamp no parser accepts cannot vouch for a live worker, so the
+            # row reads as abandoned instead of wedging its sha forever. Only
+            # this one failure is absorbed: a database fault says nothing about
+            # a claim's age, and calling it stale would license stealing a live
+            # claim, so everything else propagates.
+            return True, row[0]
+        if claimed_at.tzinfo is None:
+            claimed_at = claimed_at.replace(tzinfo=timezone.utc)
+        return moment - claimed_at > max_age, row[0]
+
     def is_claim_stale(
         self,
         sha256: str,
@@ -157,15 +191,12 @@ class StateDB:
                 time. A tz-naive value is read as UTC.
 
         Returns:
-            False when no claim row exists for ``sha256``.
+            False when no claim row exists for ``sha256``. True when the stored
+            ``claimed_at`` cannot be parsed. A tz-naive stored value is read as
+            UTC, mirroring ``now``.
         """
-        row = self._conn.execute("SELECT claimed_at FROM claims WHERE sha256 = ?", (sha256,)).fetchone()
-        if row is None:
-            return False
-        moment = now if now is not None else datetime.now(timezone.utc)
-        if moment.tzinfo is None:
-            moment = moment.replace(tzinfo=timezone.utc)
-        return moment - datetime.fromisoformat(row[0]) > max_age
+        stale, _ = self._read_claim_staleness(sha256, max_age, now)
+        return stale
 
     def claim(self, sha256: str, *, max_age: timedelta | None = None) -> bool:
         """Atomically claim ownership of processing this sha256.
@@ -178,7 +209,8 @@ class StateDB:
             1. claim(sha) - skip if already processed or claimed
             2. process the document
             3. record_processed(row) - finalize
-            4. release_claim(sha) on error paths
+            4. release_claim(sha) in a finally - the single exit point every
+               path runs through, success or failure
 
         Spec section 6 step 1: "Record the hash now to prevent concurrent
         re-processing." Single-statement INSERT with WHERE NOT EXISTS keeps
@@ -191,15 +223,26 @@ class StateDB:
                 never reclaims: any existing claim blocks. An already-processed
                 sha is never reclaimed, however old its claim.
         """
-        if max_age is not None and self.is_claim_stale(sha256, max_age):
-            self._conn.execute(
-                """
-                DELETE FROM claims
-                WHERE sha256 = ?
-                  AND NOT EXISTS (SELECT 1 FROM processed WHERE sha256 = ?)
-                """,
-                (sha256, sha256),
-            )
+        if max_age is not None:
+            stale, claimed_at = self._read_claim_staleness(sha256, max_age)
+            if stale:
+                # Compare-and-delete on the value the read observed. Binding it
+                # verbatim is what closes the gap between the two statements: a
+                # rival that reclaimed the sha meanwhile wrote a different
+                # string, so its live claim no longer matches and survives.
+                # Re-deriving staleness in SQL cannot do this - claimed_at is
+                # TEXT, so a comparison against a cutoff sorts lexicographically
+                # and a fresh claim stamped in a negative offset falls below a
+                # UTC cutoff.
+                self._conn.execute(
+                    """
+                    DELETE FROM claims
+                    WHERE sha256 = ?
+                      AND claimed_at = ?
+                      AND NOT EXISTS (SELECT 1 FROM processed WHERE sha256 = ?)
+                    """,
+                    (sha256, claimed_at, sha256),
+                )
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = self._conn.execute(
             """
@@ -216,8 +259,9 @@ class StateDB:
 
         Returns True if a claim row was actually removed; False if there was
         no claim to release (already processed, never claimed, or already
-        released). Used by error paths in the ingest pipeline so a crashed
-        run doesn't permanently park a sha256.
+        released). Called from the ingest pipeline's finally - the single exit
+        point every path runs through, success or failure - so no run leaves a
+        sha256 permanently parked.
         """
         cursor = self._conn.execute("DELETE FROM claims WHERE sha256 = ?", (sha256,))
         return cursor.rowcount == 1

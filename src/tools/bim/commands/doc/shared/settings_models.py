@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 __all__ = [
     "ClassifierSettings",
@@ -161,4 +161,7 @@ class DocSettings(BaseModel):
     zettel: ZettelSettings = ZettelSettings()
     # A claim older than this many minutes counts as abandoned (its worker died
     # without releasing it) and can be taken over by a fresh ingest attempt.
-    claim_max_age_minutes: int = 60
+    # Whole minutes, strictly positive: a zero or fractional window makes every
+    # claim stale the instant it is written, so ingest mutual exclusion would
+    # silently disappear.
+    claim_max_age_minutes: int = Field(default=60, gt=0)

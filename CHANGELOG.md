@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `doc promote` no longer overwrites an already-filed document and its zettel when a second document resolves to the same canonical filename — it files the newcomer under the next free name, and fails without writing anything if no free name is available.
 - **bim**: `doc promote` reports a filesystem failure while picking the filed name (read-only vault, permissions, disk full) as a plain error message instead of crashing with a stack trace.
 - **bim**: `doc ingest` no longer reports a document that is still awaiting triage review as already filed — the duplicate sidecar now says the document is awaiting review in `_triage/`, and the recorded dedup entry names it as pending rather than as an archived filename.
+- **bim**: reclaiming an abandoned `doc ingest` claim can no longer delete a live claim that another run legitimately took over in the meantime, so two runs cannot end up processing the same document at once.
+- **bim**: `doc` rejects a `claim_max_age_minutes` of zero or less instead of silently accepting it and treating every claim as abandoned, which disabled ingest mutual exclusion entirely.
+- **bim**: `doc ingest` survives a corrupt `claimed_at` timestamp in its state database — the untrustworthy claim is taken over rather than crashing the run with a stack trace or parking the document forever.
 
 ## [0.12.6] - 2026-08-06
 
