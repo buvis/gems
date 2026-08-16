@@ -267,6 +267,7 @@ class TestRunUpdateExecvpFailure:
         message = "Restart failed: No such file or directory. Update applied; please re-run the command."
         printed = " ".join(capsys.readouterr().out.split())
         assert message in printed
+        assert "✘" in printed
         mock_log.assert_any_call(state_dir, "error", message)
 
 
@@ -350,16 +351,23 @@ class TestRunUpdateInteractive:
         mock_sub.run.assert_not_called()
 
     def test_slow_upgrade_is_not_bound_to_120_second_automatic_path_timeout(self, state_dir: Path) -> None:
-        """A slow-but-successful interactive upgrade must run under a timeout well above the
-        automatic path's 120s bound, so it is not killed mid-upgrade on a slow network."""
+        """A slow-but-successful interactive upgrade must run under a timeout that honors the
+        documented 30-minute (1800s) contract, not merely anything above the automatic path's
+        120s bound."""
 
         def fake_subprocess_run(*args: object, **kwargs: object) -> MagicMock:
             # A real slow upgrade would still be running past the automatic path's 120s
-            # bound; simulate that by raising the real timeout error at or below it, and
-            # only succeeding once the caller waits longer than that.
+            # bound and beyond; simulate that by raising the real timeout error for any
+            # finite timeout below the 1800s contract, and only succeeding once the caller
+            # waits at least that long (or passes no timeout at all).
             timeout = kwargs.get("timeout")
-            if timeout is not None and timeout <= 120:
-                raise subprocess.TimeoutExpired(cmd=args[0], timeout=timeout)
+            if timeout is None:
+                return MagicMock(returncode=0)
+            assert isinstance(timeout, (int, float))
+            if timeout < 1800:
+                cmd = args[0]
+                assert isinstance(cmd, tuple)
+                raise subprocess.TimeoutExpired(cmd=cmd, timeout=timeout)
             return MagicMock(returncode=0)
 
         with (
