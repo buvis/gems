@@ -209,8 +209,7 @@ class StateDB:
             1. claim(sha) - skip if already processed or claimed
             2. process the document
             3. record_processed(row) - finalize
-            4. release_claim(sha) in a finally - the single exit point every
-               path runs through, success or failure
+            4. release_claim(sha) in a finally
 
         Spec section 6 step 1: "Record the hash now to prevent concurrent
         re-processing." Single-statement INSERT with WHERE NOT EXISTS keeps
@@ -259,9 +258,8 @@ class StateDB:
 
         Returns True if a claim row was actually removed; False if there was
         no claim to release (already processed, never claimed, or already
-        released). Called from the ingest pipeline's finally - the single exit
-        point every path runs through, success or failure - so no run leaves a
-        sha256 permanently parked.
+        released). Called from the ingest pipeline's finally, so no run leaves
+        a sha256 permanently parked.
         """
         cursor = self._conn.execute("DELETE FROM claims WHERE sha256 = ?", (sha256,))
         return cursor.rowcount == 1
