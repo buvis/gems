@@ -157,10 +157,7 @@ class MainScreen(Screen[None]):
 
         self.query_one("#unstaged", FileListWidget).update_files(unstaged)
         self.query_one("#staged", FileListWidget).update_files(staged)
-        self.query_one("#status-bar", StatusBar).update_info(self._git_ops.branch_info())
-
-        if hide_error:
-            self._show_message(hide_error)
+        self.query_one("#status-bar", StatusBar).update_info(self._git_ops.branch_info(), error=hide_error)
 
     def action_focus_next_pane(self) -> None:
         focused = self.focused

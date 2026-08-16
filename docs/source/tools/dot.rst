@@ -58,7 +58,7 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 - ``b`` - open file browser (browse untracked files, add to tracking)
 - ``S`` (shift+s) - open secrets panel (manage git-secret files)
 - ``e`` - quick encrypt (register focused file with git-secret)
-- ``r`` (in file panes) - refresh all panes
+- ``r`` (in file panes) - hide (re-encrypt) modified secrets, then refresh all panes
 - ``q`` - quit
 
 **Browse view** (``b``):
@@ -84,8 +84,9 @@ Requires the ``dot`` extra: ``pip install buvis-gems[dot]``
 dot status
 ~~~~~~~~~~
 
-Show staged and unstaged changes in your dotfiles repo. Uses ``git status
---porcelain`` and labels each file as ``staged`` or ``unstaged``.
+Hides (re-encrypts) modified secrets, then shows staged and unstaged changes
+in your dotfiles repo. Uses ``git status --porcelain`` and labels each file
+as ``staged`` or ``unstaged``.
 
 .. code-block:: bash
 
