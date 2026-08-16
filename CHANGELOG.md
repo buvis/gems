@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **pybase**: `atomic_write_text` / `atomic_write_bytes` — new public helpers in `buvis.pybase.filesystem` for crash-safe (tempfile + fsync + `os.replace`) writes.
-- **bim**: `doc` gains a `claim_max_age_minutes` setting (default 60). An ingest claim left behind by a run that died without cleaning up is treated as abandoned once it passes that age, so re-running the document proceeds instead of reporting it as a duplicate forever.
+- **bim**: `doc` gains a `claim_max_age_minutes` setting (default 60, a whole number of minutes, rejects zero or less). An ingest claim left behind by a run that died without cleaning up is treated as abandoned once it passes that age, so re-running the document proceeds instead of reporting it as a duplicate forever. The reclaim is a compare-and-delete that never removes a live claim another run legitimately took over in the meantime, and it tolerates a corrupt or unreadable stored `claimed_at` timestamp (including one stored as a BLOB) by treating the claim as abandoned instead of crashing the run.
 
 ### Security
 
@@ -30,12 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pybase**: updater state is now written atomically, so an interrupted update can no longer leave the shared state JSON torn.
 - **bim**: `doc promote` no longer overwrites an already-filed document and its zettel when a second document resolves to the same canonical filename — it files the newcomer under the next free name, and fails without writing anything if no free name is available.
 - **bim**: `doc promote` reports a filesystem failure while picking the filed name (read-only vault, permissions, disk full) as a plain error message instead of crashing with a stack trace.
-- **bim**: `doc ingest` no longer reports a document that is still awaiting triage review as already filed — the duplicate sidecar now says the document is awaiting review in `_triage/`, and the recorded dedup entry names it as pending rather than as an archived filename.
-- **bim**: reclaiming an abandoned `doc ingest` claim can no longer delete a live claim that another run legitimately took over in the meantime, so two runs cannot end up processing the same document at once.
-- **bim**: `doc` rejects a `claim_max_age_minutes` of zero or less instead of silently accepting it and treating every claim as abandoned, which disabled ingest mutual exclusion entirely.
-- **bim**: `doc ingest` survives a corrupt `claimed_at` timestamp in its state database — the untrustworthy claim is taken over rather than crashing the run with a stack trace or parking the document forever.
 - **bim**: interrupting a `doc ingest` with Ctrl-C no longer parks the document permanently. The claim is released on every exit path, so a re-run proceeds instead of reporting the document as a duplicate that never gets filed.
-- **bim**: a document filed through `doc` triage and then `doc promote` is now recognised as a duplicate when the same source arrives again (a re-download or re-export), instead of re-running the whole pipeline and filing a second archive copy under an incremented name.
+- **bim**: a document filed through `doc` triage and then `doc promote` is now recognised as a duplicate when the same source arrives again (a re-download or re-export), instead of re-running the whole pipeline and filing a second archive copy under an incremented name. While a document still awaits triage review in `_triage/`, a resent copy is now recognised as a duplicate too, with the duplicate sidecar and the recorded dedup entry naming it as pending review rather than as an already-filed document.
 
 ## [0.12.6] - 2026-08-06
 

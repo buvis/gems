@@ -74,6 +74,10 @@ if TYPE_CHECKING:
 
 __all__ = ["IngestOutcome", "Pipeline", "PipelineServices"]
 
+# Sentinel `extraction_method` for a `processed` row stamped while the
+# document still waits in `_triage/` for human review, not yet filed.
+_PENDING_TRIAGE_EXTRACTION_METHOD = "pending-triage"
+
 
 class IngestOutcome(str, Enum):
     """Three terminal pipeline outcomes recorded in ``CommandResult.metadata``."""
@@ -636,7 +640,7 @@ class Pipeline:
                 issuer_slug=proposal_slug,
                 doc_type=doc_type_for_filename,
                 processed_at=datetime.now(timezone.utc),
-                extraction_method="pending-triage",
+                extraction_method=_PENDING_TRIAGE_EXTRACTION_METHOD,
             )
         )
 
@@ -653,7 +657,7 @@ class Pipeline:
 
     def _write_duplicate_sidecar(self, staging_path: Path, existing_row: ProcessedRow) -> None:
         sidecar_path = staging_path.with_suffix(staging_path.suffix + ".duplicate.yml")
-        if existing_row.extraction_method == "pending-triage":
+        if existing_row.extraction_method == _PENDING_TRIAGE_EXTRACTION_METHOD:
             comment = "# duplicate detected — this PDF's sha256 matches a document awaiting review in _triage/\n"
         else:
             comment = "# duplicate detected — this PDF's sha256 already maps to a filed document\n"

@@ -322,8 +322,9 @@ Outcomes (printed to console and recorded in ``state.db``):
 - **triaged** — confidence too low or required field missing. The PDF lands
   in ``<business_root>/_triage/`` with a ``.proposed.yml`` sidecar awaiting
   human review.
-- **duplicate** — sha256 already mapped to a filed document. A
-  ``.duplicate.yml`` sidecar is written next to the staged input.
+- **duplicate** — sha256 already mapped to a document that is either filed or
+  still parked in ``_triage/`` awaiting review. A ``.duplicate.yml`` sidecar
+  is written next to the staged input, naming which of the two applies.
 
 Zettel v1 shape
 ~~~~~~~~~~~~~~~

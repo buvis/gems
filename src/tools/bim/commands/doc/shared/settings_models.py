@@ -161,6 +161,9 @@ class DocSettings(BaseModel):
     zettel: ZettelSettings = ZettelSettings()
     # A claim older than this many minutes counts as abandoned (its worker died
     # without releasing it) and can be taken over by a fresh ingest attempt.
-    # A zero or fractional window makes every claim stale the instant it is
-    # written, so ingest mutual exclusion would silently disappear.
+    # The window must be a whole number of minutes greater than zero: the
+    # `int` annotation rejects a fractional value, and `gt=0` rejects zero and
+    # negatives, because a zero-or-negative window would make every claim
+    # stale the instant it is written and ingest mutual exclusion would
+    # silently disappear.
     claim_max_age_minutes: int = Field(default=60, gt=0)
