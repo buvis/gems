@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import datetime
-from decimal import Decimal
+import queue
+from decimal import Decimal, DivisionUndefined, InvalidOperation
 from unittest.mock import MagicMock, patch
 
 from buvis.pybase.result import CommandResult
@@ -299,3 +300,45 @@ class TestCommandTransactions:
 
         assert result.success is False
         assert "transactions must be newest-first; row 3 breaks order" in result.error
+
+    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
+    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
+    def test_reader_overdraft_names_account_in_error(
+        self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock
+    ) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = queue.Empty()
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "Acme" in result.error
+
+    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
+    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
+    def test_reader_zero_amount_division_names_account_in_error(
+        self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock
+    ) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = DivisionUndefined()
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "Acme" in result.error
+
+    @patch("fctracker.commands.transactions.transactions.TransactionsReader")
+    @patch("fctracker.commands.transactions.transactions.TransactionsDirScanner")
+    def test_reader_malformed_amount_cell_names_account_in_error(
+        self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock
+    ) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = InvalidOperation()
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert result.success is False
+        assert "Acme" in result.error
