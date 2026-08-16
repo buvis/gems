@@ -9,7 +9,7 @@ __all__ = ["StatusBar"]
 
 
 class StatusBar(Static):
-    """Header bar showing branch name, ahead/behind, and secret count."""
+    """Header bar showing branch name, ahead/behind, secret count, and any hide-secrets error."""
 
     def __init__(
         self,
