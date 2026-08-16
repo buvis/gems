@@ -1,10 +1,24 @@
 from __future__ import annotations
 
+import queue
+from decimal import Decimal, InvalidOperation
 from unittest.mock import MagicMock, patch
 
+import pytest
 from buvis.pybase.result import CommandResult
 from fctracker.commands.balance.balance import CommandBalance
 from fctracker.settings import ForeignCurrencyConfig, LocalCurrencyConfig
+
+
+def _has_meaningful_cause(error: str) -> bool:
+    """True only if the text after error's last colon has >=3 alphabetic chars.
+
+    Guards against a blank cause such as
+    "error processing transactions for account 'Acme': " (trailing space,
+    no message) - the exact defect that shipped in the sibling command.
+    """
+    tail = error.rsplit(":", 1)[-1].strip(" '\"")
+    return sum(ch.isalpha() for ch in tail) >= 3
 
 
 class TestCommandBalance:
@@ -90,3 +104,78 @@ class TestCommandBalance:
 
         assert result.success is False
         assert "data file missing" in result.error
+
+    @patch("fctracker.commands.balance.balance.TransactionsReader")
+    @patch("fctracker.commands.balance.balance.TransactionsDirScanner")
+    def test_reader_order_violation(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = ValueError(
+            "transactions must be newest-first; row 3 breaks order"
+        )
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert isinstance(result, CommandResult)
+        assert result.success is False
+        assert result.error
+        assert "Acme" in result.error
+        assert _has_meaningful_cause(result.error)
+        assert "<class '" not in result.error
+
+    def test_meaningful_cause_guard_rejects_blank_cause(self) -> None:
+        # Direct proof the guard catches the exact blank-cause defect that
+        # shipped in the sibling command: a trailing colon with no message.
+        assert _has_meaningful_cause("error processing transactions for account 'Acme': ") is False
+
+    @patch("fctracker.commands.balance.balance.TransactionsReader")
+    @patch("fctracker.commands.balance.balance.TransactionsDirScanner")
+    def test_reader_overdraft(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        mock_reader_cls.return_value.get_transactions.side_effect = queue.Empty()
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert isinstance(result, CommandResult)
+        assert result.success is False
+        assert result.error
+        assert "Acme" in result.error
+        assert _has_meaningful_cause(result.error)
+        assert "<class '" not in result.error
+
+    @patch("fctracker.commands.balance.balance.TransactionsReader")
+    @patch("fctracker.commands.balance.balance.TransactionsDirScanner")
+    def test_reader_malformed_amount_cell(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        with pytest.raises(InvalidOperation) as exc_info:
+            Decimal("abc")
+        mock_reader_cls.return_value.get_transactions.side_effect = exc_info.value
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert isinstance(result, CommandResult)
+        assert result.success is False
+        assert result.error
+        assert "Acme" in result.error
+        assert _has_meaningful_cause(result.error)
+        assert "<class '" not in result.error
+
+    @patch("fctracker.commands.balance.balance.TransactionsReader")
+    @patch("fctracker.commands.balance.balance.TransactionsDirScanner")
+    def test_reader_zero_amount_division(self, mock_scanner_cls: MagicMock, mock_reader_cls: MagicMock) -> None:
+        mock_scanner_cls.return_value.accounts = {"Acme": ["EUR"]}
+        with pytest.raises(InvalidOperation) as exc_info:
+            Decimal("0") / Decimal("0")
+        mock_reader_cls.return_value.get_transactions.side_effect = exc_info.value
+
+        cmd = self._make_cmd()
+        result = cmd.execute()
+
+        assert isinstance(result, CommandResult)
+        assert result.success is False
+        assert result.error
+        assert "Acme" in result.error
+        assert _has_meaningful_cause(result.error)
+        assert "<class '" not in result.error
