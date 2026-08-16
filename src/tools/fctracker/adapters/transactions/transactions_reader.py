@@ -18,38 +18,64 @@ class TransactionsReader:
         )
         self.account = account
 
+    def _read_rows(self) -> tuple[list[dict[str, str]], list[str]]:
+        try:
+            with open(self.file_path, encoding="utf-8-sig", newline="") as csvfile:
+                reader = csv.DictReader(csvfile, skipinitialspace=True)
+
+                rows: list[dict[str, str]] = []
+
+                for row in reader:
+                    rows.insert(0, row)
+
+                return rows, list(reader.fieldnames) if reader.fieldnames else []
+        except UnicodeDecodeError:
+            raise ValueError(f"{self.file_path}: file is not valid UTF-8") from None
+
+    def _validate_columns(self, fieldnames: list[str]) -> None:
+        for column in ("date", "amount"):
+            if column not in fieldnames:
+                raise ValueError(f"{self.file_path}: missing required column '{column}'")
+
+    def _validate_rows(self, rows: list[dict[str, str]]) -> None:
+        for index, row in enumerate(rows):
+            for column in ("date", "amount"):
+                if row[column] is None:
+                    data_row = len(rows) - index
+                    raise ValueError(f"{self.file_path}: row {data_row} is missing a value for '{column}'")
+
     def get_transactions(self) -> None:
-        with open(self.file_path) as csvfile:
-            reader = csv.DictReader(csvfile, skipinitialspace=True)
+        rows, fieldnames = self._read_rows()
+        self._validate_columns(fieldnames)
+        self._validate_rows(rows)
 
-            rows: list[dict[str, str]] = []
+        dates = [datetime.strptime(row["date"], "%Y-%m-%d") for row in rows]
 
-            for row in reader:
-                rows.insert(0, row)
+        for index in range(1, len(dates)):
+            if dates[index] < dates[index - 1]:
+                data_row = len(rows) - index + 1
+                raise ValueError(
+                    f"{self.file_path}: transactions must be newest-first; data row {data_row} breaks order"
+                )
 
-            dates = [datetime.strptime(row["date"], "%Y-%m-%d") for row in rows]
+        for row, date in zip(rows, dates, strict=True):
+            try:
+                amount = Decimal(row["amount"])
+            except InvalidOperation:
+                raise ValueError(f"invalid transaction amount '{row['amount']}'") from None
 
-            for index in range(1, len(dates)):
-                if dates[index] < dates[index - 1]:
-                    data_row = len(rows) - index + 1
-                    raise ValueError(
-                        f"{self.file_path}: transactions must be newest-first; data row {data_row} breaks order"
-                    )
+            if amount == 0:
+                raise ValueError("transaction amount is zero")
 
-            for row, date in zip(rows, dates, strict=True):
+            if amount > 0:
                 try:
-                    amount = Decimal(row["amount"])
+                    rate = Decimal(f"{row['rate']}")
                 except InvalidOperation:
-                    raise ValueError(f"invalid transaction amount '{row['amount']}'") from None
-
-                if amount == 0:
-                    raise ValueError("transaction amount is zero")
-
-                if amount > 0:
-                    self.account.deposit(date=date, amount=amount, rate=Decimal(f"{row['rate']}"))
-                else:
-                    self.account.withdraw(
-                        date=date,
-                        amount=amount * -1,
-                        description=row["description"],
-                    )
+                    raise ValueError(f"invalid transaction rate '{row['rate']}'") from None
+                self.account.deposit(date=date, amount=amount, rate=rate)
+            else:
+                self.account.withdraw(
+                    date=date,
+                    amount=amount * -1,
+                    description=row["description"],
+                )

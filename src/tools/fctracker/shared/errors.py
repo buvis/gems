@@ -29,6 +29,10 @@ def describe_transaction_error(account_name: str, exc: Exception) -> str:
     elif isinstance(exc, InvalidOperation):
         conditions = exc.args[0] if exc.args else []
         if DivisionUndefined in conditions:
+            # TransactionsReader now rejects a zero amount with a ValueError
+            # before Account.withdraw() can divide by it, so this branch is
+            # unreachable from that call site. Kept as defense-in-depth for
+            # any other caller of Account.withdraw()/deposit().
             cause = "transaction amount is zero"
         else:
             cause = "malformed or undefined transaction amount"
