@@ -157,7 +157,7 @@ class Pipeline:
         # Step 1: dedup (read-only fast path)
         dedup = self._state_db.dedup(sha)
         if dedup.is_duplicate and dedup.existing_row is not None:
-            self._write_duplicate_sidecar(params.staging_path, dedup.existing_row.canonical_filename)
+            self._write_duplicate_sidecar(params.staging_path, dedup.existing_row)
             return CommandResult(
                 success=True,
                 metadata={
@@ -632,7 +632,7 @@ class Pipeline:
         self._state_db.record_processed(
             ProcessedRow(
                 sha256=ctx.sha,
-                canonical_filename=basename,
+                canonical_filename=f"_triage/{basename} (pending review)",
                 issuer_slug=proposal_slug,
                 doc_type=doc_type_for_filename,
                 processed_at=datetime.now(timezone.utc),
@@ -651,12 +651,13 @@ class Pipeline:
             },
         )
 
-    def _write_duplicate_sidecar(self, staging_path: Path, existing_canonical: str) -> None:
+    def _write_duplicate_sidecar(self, staging_path: Path, existing_row: ProcessedRow) -> None:
         sidecar_path = staging_path.with_suffix(staging_path.suffix + ".duplicate.yml")
-        content = (
-            "# duplicate detected — this PDF's sha256 already maps to a filed document\n"
-            f"existing_canonical_filename: {existing_canonical}\n"
-        )
+        if existing_row.extraction_method == "pending-triage":
+            comment = "# duplicate detected — this PDF's sha256 matches a document awaiting review in _triage/\n"
+        else:
+            comment = "# duplicate detected — this PDF's sha256 already maps to a filed document\n"
+        content = comment + f"existing_canonical_filename: {existing_row.canonical_filename}\n"
         atomic_write_text(sidecar_path, content)
 
     def _build_source_metadata(self, params: IngestParams) -> SourceMetadata:

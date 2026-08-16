@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pybase**: updater state is now written atomically, so an interrupted update can no longer leave the shared state JSON torn.
 - **bim**: `doc promote` no longer overwrites an already-filed document and its zettel when a second document resolves to the same canonical filename — it files the newcomer under the next free name, and fails without writing anything if no free name is available.
 - **bim**: `doc promote` reports a filesystem failure while picking the filed name (read-only vault, permissions, disk full) as a plain error message instead of crashing with a stack trace.
+- **bim**: `doc ingest` no longer reports a document that is still awaiting triage review as already filed — the duplicate sidecar now says the document is awaiting review in `_triage/`, and the recorded dedup entry names it as pending rather than as an archived filename.
 
 ## [0.12.6] - 2026-08-06
 
