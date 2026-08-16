@@ -6,7 +6,7 @@ import os
 from importlib.metadata import PackageNotFoundError, version as pkg_version
 from typing import TYPE_CHECKING
 
-import click
+from buvis.pybase.adapters import console
 from packaging.version import Version
 
 from .checker import check_for_update, fetch_latest_version
@@ -71,31 +71,28 @@ def force_update(settings: GlobalSettings) -> int:
     try:
         current = pkg_version(_PACKAGE)
     except PackageNotFoundError:
-        click.echo("buvis-gems is not installed in this environment.", err=True)
+        console.failure("buvis-gems is not installed in this environment.")
         append_log(DEFAULT_STATE_DIR, "error", "Force update aborted: buvis-gems not installed")
         return 1
 
     latest = fetch_latest_version()
     if latest is None:
-        click.echo("Could not reach PyPI to check for updates.", err=True)
+        console.failure("Could not reach PyPI to check for updates.")
         append_log(DEFAULT_STATE_DIR, "error", "Force update aborted: PyPI unreachable")
         return 1
 
     if Version(latest) <= Version(current):
-        click.echo(f"buvis-gems {current} is up to date.")
+        console.success(f"buvis-gems {current} is up to date.")
         append_log(DEFAULT_STATE_DIR, "info", f"Force update: buvis-gems {current} is up to date")
         return 0
 
     installer = detect_installer(override=settings.installer)
     if installer.upgrade_command is None:
-        click.echo(
+        console.failure(
             f"buvis-gems {latest} is available (current: {current}), "
-            "but the installer could not be detected automatically.\n"
-            "Upgrade manually with one of:",
-            err=True,
+            "but the installer could not be detected automatically. Upgrade manually with one of:",
+            details="\n".join(_MANUAL_UPGRADE_COMMANDS),
         )
-        for cmd in _MANUAL_UPGRADE_COMMANDS:
-            click.echo(f"  {cmd}", err=True)
         append_log(
             DEFAULT_STATE_DIR,
             "error",

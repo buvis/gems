@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pybase**: the updater now reports a re-exec failure after a successful upgrade and exits with status 1, instead of exiting 0 silently and leaving the user unaware the restart failed.
 - **pybase**: a user-initiated `--update` upgrade is no longer killed after 120 seconds; it now runs for up to 30 minutes before being reported as timed out.
 - **zettel**: `find_all` no longer silently drops a note that fails to parse — it returns the remaining notes and prints one warning naming the file(s) that failed. The Python fallback now isolates an unparseable note and reports it instead of crashing the whole scan, and the parse errors the Rust scanner already returned are no longer discarded by the caller.
+- **pybase**: updater messages (`--update`, interactive upgrade) now print through the console adapter's styled success/failure/info output on stdout, instead of `click.echo`, some of it previously on stderr.
 
 ## [0.12.6] - 2026-08-06
 
