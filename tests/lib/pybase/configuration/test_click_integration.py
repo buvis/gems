@@ -693,6 +693,26 @@ class TestAutoUpdateHook:
         assert len(executed) == 1
         assert result.exit_code == 0
 
+    @patch("buvis.pybase.updater.check_and_update", side_effect=SystemExit(1))
+    def test_update_system_exit_escapes_suppression_and_skips_command(
+        self, mock_update: MagicMock, runner: CliRunner
+    ) -> None:
+        """A SystemExit from check_and_update is not swallowed by contextlib.suppress(Exception):
+        the CLI exits with that status and the command body never runs."""
+        executed = []
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            executed.append(True)
+
+        result = runner.invoke(cmd, [])
+
+        assert mock_update.called
+        assert result.exit_code == 1
+        assert executed == []
+
     @patch("buvis.pybase.updater.check_and_update")
     def test_check_runs_for_plain_invocation(self, mock_update: MagicMock, runner: CliRunner) -> None:
         """check_and_update fires for a normal command invocation."""

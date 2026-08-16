@@ -65,6 +65,7 @@ class TestRunUpdateKnownInstaller:
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
             patch("buvis.pybase.updater.executor.os") as mock_os,
             patch("buvis.pybase.updater.executor.sys") as mock_sys,
+            patch("buvis.pybase.updater.executor.console") as mock_console,
         ):
             mock_sub.run.return_value = MagicMock(returncode=0)
             mock_sys.argv = ["bim", "list"]
@@ -72,6 +73,7 @@ class TestRunUpdateKnownInstaller:
             run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
 
         mock_os.execvp.assert_called_once_with("bim", ["bim", "list"])
+        mock_console.panic.assert_not_called()
 
     def test_nothing_printed_to_stderr(self, state_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
         with (
@@ -242,82 +244,30 @@ class TestRunUpdateFailure:
 
 
 class TestRunUpdateExecvpFailure:
-    def test_exits_with_status_one_on_execvp_os_error(self, state_dir: Path) -> None:
+    def test_execvp_os_error_exits_one_and_reports_restart_failed(
+        self, state_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A real re-exec failure must terminate the process with status 1, print the
+        user-facing failure text, and log the same text at level "error" — exercised
+        against the real console adapter, not a mock that supplies its own SystemExit."""
         with (
             patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
             patch("buvis.pybase.updater.executor.os") as mock_os,
             patch("buvis.pybase.updater.executor.sys") as mock_sys,
-            patch("buvis.pybase.updater.executor.console") as mock_console,
-            patch("buvis.pybase.updater.executor.append_log"),
-        ):
-            mock_sub.run.return_value = MagicMock(returncode=0)
-            mock_os.execvp.side_effect = OSError("No such file or directory")
-            mock_sys.argv = ["bim", "list"]
-            mock_console.panic.side_effect = SystemExit(1)
-
-            with pytest.raises(SystemExit) as exc_info:
-                run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
-
-        assert exc_info.value.code == 1
-
-    def test_emits_error_message_via_console_panic_on_execvp_os_error(self, state_dir: Path) -> None:
-        with (
-            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
-            patch("buvis.pybase.updater.executor.os") as mock_os,
-            patch("buvis.pybase.updater.executor.sys") as mock_sys,
-            patch("buvis.pybase.updater.executor.console") as mock_console,
-            patch("buvis.pybase.updater.executor.append_log"),
-        ):
-            mock_sub.run.return_value = MagicMock(returncode=0)
-            mock_os.execvp.side_effect = OSError("No such file or directory")
-            mock_sys.argv = ["bim", "list"]
-            mock_console.panic.side_effect = SystemExit(1)
-
-            with pytest.raises(SystemExit):
-                run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
-
-        mock_console.panic.assert_called_once()
-        args, kwargs = mock_console.panic.call_args
-        message = args[0] if args else kwargs["message"]
-        assert isinstance(message, str)
-        assert message.strip() != ""
-
-    def test_logs_restart_failed_before_exiting_on_execvp_os_error(self, state_dir: Path) -> None:
-        with (
-            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
-            patch("buvis.pybase.updater.executor.os") as mock_os,
-            patch("buvis.pybase.updater.executor.sys") as mock_sys,
-            patch("buvis.pybase.updater.executor.console") as mock_console,
             patch("buvis.pybase.updater.executor.append_log") as mock_log,
         ):
             mock_sub.run.return_value = MagicMock(returncode=0)
             mock_os.execvp.side_effect = OSError("No such file or directory")
             mock_sys.argv = ["bim", "list"]
-            mock_console.panic.side_effect = SystemExit(1)
 
-            with pytest.raises(SystemExit):
+            with pytest.raises(SystemExit) as exc_info:
                 run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
 
-        mock_log.assert_any_call(
-            state_dir,
-            "error",
-            "Restart failed: No such file or directory. Update applied; please re-run the command.",
-        )
-
-    def test_success_path_calls_execvp_and_does_not_touch_console_panic(self, state_dir: Path) -> None:
-        with (
-            patch("buvis.pybase.updater.executor.subprocess") as mock_sub,
-            patch("buvis.pybase.updater.executor.os") as mock_os,
-            patch("buvis.pybase.updater.executor.sys") as mock_sys,
-            patch("buvis.pybase.updater.executor.console") as mock_console,
-        ):
-            mock_sub.run.return_value = MagicMock(returncode=0)
-            mock_sys.argv = ["bim", "list"]
-
-            run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
-
-        mock_os.execvp.assert_called_once_with("bim", ["bim", "list"])
-        mock_console.panic.assert_not_called()
+        assert exc_info.value.code == 1
+        message = "Restart failed: No such file or directory. Update applied; please re-run the command."
+        printed = " ".join(capsys.readouterr().out.split())
+        assert message in printed
+        mock_log.assert_any_call(state_dir, "error", message)
 
 
 class TestRunUpdateInteractive:
@@ -404,8 +354,12 @@ class TestRunUpdateInteractive:
         automatic path's 120s bound, so it is not killed mid-upgrade on a slow network."""
 
         def fake_subprocess_run(*args: object, **kwargs: object) -> MagicMock:
-            # Simulates a slow upgrade that would exceed the automatic path's 120s bound
-            # but still completes successfully within the interactive path's own timeout.
+            # A real slow upgrade would still be running past the automatic path's 120s
+            # bound; simulate that by raising the real timeout error at or below it, and
+            # only succeeding once the caller waits longer than that.
+            timeout = kwargs.get("timeout")
+            if timeout is not None and timeout <= 120:
+                raise subprocess.TimeoutExpired(cmd=args[0], timeout=timeout)
             return MagicMock(returncode=0)
 
         with (
@@ -418,9 +372,6 @@ class TestRunUpdateInteractive:
 
         assert result == 0
         mock_os.execvp.assert_not_called()
-        call = mock_sub.run.call_args_list[0]
-        assert call.kwargs.get("timeout") == 1800
-        assert call.kwargs.get("timeout") != 120
 
 
 class TestRunUpdateUnknownInstaller:
