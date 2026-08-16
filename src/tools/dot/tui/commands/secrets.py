@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import shlex
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
@@ -26,22 +24,13 @@ class SecretEntry:
     status: str
 
 
-def _git_secret_available(git_ops: DotGitService) -> bool:
-    return git_ops.shell.is_command_available("git-secret")
-
-
 def list_secrets(git_ops: DotGitService) -> list[SecretEntry]:
-    if not _git_secret_available(git_ops):
+    if not git_ops.is_secret_tool_available():
         return []
 
-    err, out = git_ops.shell.exe("cfg secret list", git_ops.wd)
-    if err or not out.strip():
-        return []
-
-    root = Path(git_ops.dotfiles_root)
+    root = git_ops.wd
     entries: list[SecretEntry] = []
-    for line in out.strip().splitlines():
-        p = line.strip()
+    for p in git_ops.list_secrets():
         if not p:
             continue
         if (root / p).exists():
@@ -53,43 +42,28 @@ def list_secrets(git_ops: DotGitService) -> list[SecretEntry]:
 
 
 def register_secret(git_ops: DotGitService, path: str) -> CommandResult:
-    if not _git_secret_available(git_ops):
+    if not git_ops.is_secret_tool_available():
         return CommandResult(success=False, error="git-secret not installed")
 
-    err, _out = git_ops.shell.exe(f"cfg secret add {shlex.quote(path)}", git_ops.wd)
-    if err:
-        return CommandResult(success=False, error=err)
-    return CommandResult(success=True)
+    return git_ops.register_secret(path)
 
 
 def unregister_secret(git_ops: DotGitService, path: str) -> CommandResult:
-    if not _git_secret_available(git_ops):
+    if not git_ops.is_secret_tool_available():
         return CommandResult(success=False, error="git-secret not installed")
 
-    err, _out = git_ops.shell.exe(f"cfg secret remove {shlex.quote(path)}", git_ops.wd)
-    if err:
-        return CommandResult(success=False, error=err)
-    return CommandResult(success=True)
+    return git_ops.unregister_secret(path)
 
 
 def reveal_all(git_ops: DotGitService, passphrase: str | None = None) -> CommandResult:
-    if not _git_secret_available(git_ops):
+    if not git_ops.is_secret_tool_available():
         return CommandResult(success=False, error="git-secret not installed")
 
-    cmd = "cfg secret reveal -f"
-    if passphrase:
-        cmd += f" -p {shlex.quote(passphrase)}"
-    err, _out = git_ops.shell.exe(cmd, git_ops.wd)
-    if err:
-        return CommandResult(success=False, error=err)
-    return CommandResult(success=True)
+    return git_ops.reveal_secrets(passphrase)
 
 
 def hide_all(git_ops: DotGitService) -> CommandResult:
-    if not _git_secret_available(git_ops):
+    if not git_ops.is_secret_tool_available():
         return CommandResult(success=False, error="git-secret not installed")
 
-    err, _out = git_ops.shell.exe("cfg secret hide", git_ops.wd)
-    if err:
-        return CommandResult(success=False, error=err)
-    return CommandResult(success=True)
+    return git_ops.hide_secrets()
