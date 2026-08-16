@@ -113,6 +113,32 @@ class TestFindAllPythonFallback:
         zettels = repo.find_all(str(tmp_path))
         assert zettels == []
 
+    @patch(
+        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository._HAS_RUST",
+        False,
+    )
+    @patch(
+        "buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository.console",
+    )
+    def test_find_all_skips_malformed_yaml_frontmatter_and_warns_once(
+        self, mock_console: MagicMock, tmp_path: Path
+    ) -> None:
+        good = tmp_path / "good.md"
+        good.write_text(MINIMAL_ZETTEL, encoding="utf-8")
+        bad = tmp_path / "bad.md"
+        bad.write_text(
+            "---\ntitle: [unclosed\ntype: note\n---\n\n## Content\n\nBody.\n",
+            encoding="utf-8",
+        )
+
+        repo = MarkdownZettelRepository()
+        zettels = repo.find_all(str(tmp_path))
+
+        assert len(zettels) == 1
+        assert zettels[0].get_data().metadata.get("title") == "Test"
+        mock_console.warning.assert_called_once()
+        assert "bad.md" in mock_console.warning.call_args[0][0]
+
 
 # Invalid UTF-8 bytes: a failure genuinely isolated by both the Rust and
 # Python-fallback backends (unlike malformed YAML frontmatter, which Rust
