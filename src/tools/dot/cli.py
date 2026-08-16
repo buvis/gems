@@ -10,6 +10,10 @@ from buvis.pybase.configuration import buvis_options, get_settings
 from dot.settings import DotSettings
 
 
+def _dotfiles_root() -> str:
+    return os.environ.get("DOTFILES_ROOT", str(Path.home()))
+
+
 def _launch_tui(theme: str = "textual-dark", *, confirm_revert: bool = True) -> None:
     try:
         from dot.tui.app import DotApp
@@ -17,8 +21,7 @@ def _launch_tui(theme: str = "textual-dark", *, confirm_revert: bool = True) -> 
         click.echo("dot TUI requires the 'dot' extra: pip install buvis-gems[dot]")
         raise SystemExit(1)
 
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    DotApp(dotfiles_root=dotfiles_root, theme=theme, confirm_revert=confirm_revert).run()
+    DotApp(dotfiles_root=_dotfiles_root(), theme=theme, confirm_revert=confirm_revert).run()
 
 
 @click.group(invoke_without_command=True, help="CLI for bare repo dotfiles")
@@ -42,8 +45,7 @@ def status() -> None:
     from dot.commands.status.status import CommandStatus
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    cmd = CommandStatus(shell=shell, dotfiles_root=dotfiles_root)
+    cmd = CommandStatus(shell=shell, dotfiles_root=_dotfiles_root())
     result = cmd.execute()
     console.report_result(
         result,
@@ -63,8 +65,7 @@ def add(ctx: click.Context, file_path: str | None = None) -> None:
     from dot.commands.add.add import CommandAdd
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    cmd = CommandAdd(shell=shell, dotfiles_root=dotfiles_root, file_path=resolved_path)
+    cmd = CommandAdd(shell=shell, dotfiles_root=_dotfiles_root(), file_path=resolved_path)
     console.report_result(cmd.execute())
 
 
@@ -74,8 +75,7 @@ def encrypt(file_path: str) -> None:
     from dot.commands.encrypt.encrypt import CommandEncrypt
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    console.report_result(CommandEncrypt(shell=shell, dotfiles_root=dotfiles_root, file_path=file_path).execute())
+    console.report_result(CommandEncrypt(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
 
 
 @cli.command("rm", help="Remove file from tracking (keeps file on disk)")
@@ -84,8 +84,7 @@ def rm(file_path: str) -> None:
     from dot.commands.rm.rm import CommandRm
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    console.report_result(CommandRm(shell=shell, dotfiles_root=dotfiles_root, file_path=file_path).execute())
+    console.report_result(CommandRm(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
 
 
 @cli.command("delete", help="Delete file from tracking and disk")
@@ -94,8 +93,7 @@ def delete(file_path: str) -> None:
     from dot.commands.delete.delete import CommandDelete
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    console.report_result(CommandDelete(shell=shell, dotfiles_root=dotfiles_root, file_path=file_path).execute())
+    console.report_result(CommandDelete(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
 
 
 @cli.command("pull", help="Pull dotfiles and update submodules")
@@ -103,12 +101,11 @@ def pull() -> None:
     from dot.commands.pull.pull import CommandPull
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
 
     if shell.is_command_available("git-secret"):
         console.info("GPG passphrase required to decrypt secret files")
 
-    console.report_result(CommandPull(shell=shell, dotfiles_root=dotfiles_root).execute())
+    console.report_result(CommandPull(shell=shell, dotfiles_root=_dotfiles_root()).execute())
 
 
 @cli.command("commit", help="Commit dotfiles changes")
@@ -117,8 +114,7 @@ def commit(message: str) -> None:
     from dot.commands.commit.commit import CommandCommit
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    console.report_result(CommandCommit(shell=shell, dotfiles_root=dotfiles_root, message=message).execute())
+    console.report_result(CommandCommit(shell=shell, dotfiles_root=_dotfiles_root(), message=message).execute())
 
 
 @cli.command(
@@ -140,8 +136,7 @@ def unstage(file_path: str | None = None) -> None:
     from dot.commands.unstage.unstage import CommandUnstage
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    console.report_result(CommandUnstage(shell=shell, dotfiles_root=dotfiles_root, file_path=file_path).execute())
+    console.report_result(CommandUnstage(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
 
 
 @cli.command("push", help="Push dotfiles to remote")
@@ -149,8 +144,7 @@ def push() -> None:
     from dot.commands.push.push import CommandPush
 
     shell = ShellAdapter(suppress_logging=True)
-    dotfiles_root = os.environ.get("DOTFILES_ROOT", str(Path.home()))
-    console.report_result(CommandPush(shell=shell, dotfiles_root=dotfiles_root).execute())
+    console.report_result(CommandPush(shell=shell, dotfiles_root=_dotfiles_root()).execute())
 
 
 if __name__ == "__main__":
