@@ -57,7 +57,7 @@ class TestBimDocIngest:
         pipeline_mock.run.return_value = cmd_result
 
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
             patch("bim.dependencies.get_pipeline", return_value=pipeline_mock),
             patch("bim.dependencies.get_repo", return_value=MagicMock()),
@@ -79,7 +79,7 @@ class TestBimDocIngest:
         pipeline_mock.run.return_value = cmd_result
 
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
             patch("bim.dependencies.get_pipeline", return_value=pipeline_mock),
             patch("bim.dependencies.get_repo", return_value=MagicMock()),
@@ -103,7 +103,7 @@ class TestBimDocIngest:
         pipeline_mock.run.return_value = cmd_result
 
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
             patch("bim.dependencies.get_pipeline", return_value=pipeline_mock),
             patch("bim.dependencies.get_repo", return_value=MagicMock()),
@@ -121,7 +121,7 @@ class TestBimDocIngest:
             raise MissingDependency("ocrmypdf not found")
 
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=_raise),
         ):
             result = runner.invoke(cli, ["doc", "ingest", str(pdf)], catch_exceptions=True)
@@ -146,7 +146,7 @@ class TestBimDocIngest:
             return cmd
 
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
             patch("bim.dependencies.get_pipeline", return_value=pipeline_mock),
             patch("bim.dependencies.get_repo", return_value=MagicMock()),
@@ -189,7 +189,7 @@ class TestBimDocIngestStrictFlag:
         pipeline_mock = MagicMock()
         pipeline_mock.run.return_value = cmd_result
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
             patch("bim.dependencies.get_pipeline", return_value=pipeline_mock),
             patch("bim.dependencies.get_repo", return_value=MagicMock()),

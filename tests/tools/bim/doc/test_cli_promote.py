@@ -42,7 +42,7 @@ def _staged_yml(tmp_path: Path) -> Path:
 def _patches_for_promote(settings: BimSettings) -> list:
     """Patch every doc-subsystem factory that the promote handler resolves."""
     return [
-        patch("bim.cli.get_settings", return_value=settings),
+        patch("bim.doc_cli.get_settings", return_value=settings),
         patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
         patch(
             "bim.dependencies.get_issuer_registry",
@@ -108,7 +108,7 @@ class TestBimDocPromote:
             raise MissingDependency("ollama not reachable")
 
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=_raise),
         ):
             result = runner.invoke(cli, ["doc", "promote", str(yml)], catch_exceptions=True)
@@ -126,7 +126,7 @@ class TestBimDocPromoteStrictFlag:
         cmd_mock = MagicMock()
         cmd_mock.execute.return_value = cmd_result
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
             patch(
                 "bim.dependencies.get_issuer_registry",

@@ -85,7 +85,7 @@ def _legacy_report() -> AuditReport:
 def _patches_for_audit(settings: BimSettings, services_mock: MagicMock) -> list:
     """Patch every doc-subsystem factory the audit handler resolves."""
     return [
-        patch("bim.cli.get_settings", return_value=settings),
+        patch("bim.doc_cli.get_settings", return_value=settings),
         patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
         patch("bim.dependencies.get_audit_services", return_value=services_mock),
     ]
@@ -198,7 +198,7 @@ class TestBimDocAudit:
     def test_doc_audit_panics_when_doc_section_missing(self, runner: CliRunner, tmp_path: Path) -> None:
         settings = _bim_settings_without_doc(tmp_path)
 
-        with patch("bim.cli.get_settings", return_value=settings):
+        with patch("bim.doc_cli.get_settings", return_value=settings):
             result = runner.invoke(cli, ["doc", "audit"], catch_exceptions=True)
 
         assert result.exit_code != 0 or "[doc] section missing" in result.output
@@ -210,7 +210,7 @@ class TestBimDocAudit:
             raise MissingDependency("ocrmypdf not found")
 
         with (
-            patch("bim.cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
             patch("bim.dependencies.get_health_checker", return_value=_raise),
         ):
             result = runner.invoke(cli, ["doc", "audit"], catch_exceptions=True)
