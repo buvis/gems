@@ -116,7 +116,8 @@ export interface ZettelData {
 
 export async function execQuery(name: string): Promise<ExecResult> {
 	const res = await fetch(`${BASE}/queries/${encodeURIComponent(name)}/exec`, {
-		method: 'POST'
+		method: 'POST',
+		headers: { 'X-Buvis-Token': TOKEN }
 	});
 	if (!res.ok) throw new Error(`Query failed: ${res.statusText}`);
 	return res.json();
@@ -125,7 +126,7 @@ export async function execQuery(name: string): Promise<ExecResult> {
 export async function execAdhoc(spec: Record<string, unknown>): Promise<ExecResult> {
 	const res = await fetch(`${BASE}/queries/_adhoc`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'X-Buvis-Token': TOKEN },
 		body: JSON.stringify({ spec })
 	});
 	if (!res.ok) throw new Error(`Adhoc query failed: ${res.statusText}`);
