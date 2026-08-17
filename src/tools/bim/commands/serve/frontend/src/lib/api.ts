@@ -11,22 +11,24 @@ export interface ResultEnvelope {
 }
 
 async function unwrapEnvelope(res: Response, label: string): Promise<ResultEnvelope> {
+	const fallback = `${label} failed: ${res.status} ${res.statusText}`;
 	let body: unknown;
 	try {
 		body = await res.json();
 	} catch {
-		throw new Error(`${label} failed: ${res.status} ${res.statusText}`);
+		throw new Error(fallback);
 	}
-	if (body && typeof body === 'object' && 'success' in body) {
+	const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
+	if (record && 'success' in record) {
 		const envelope = body as ResultEnvelope;
-		if (!envelope.success) throw new Error(envelope.error ?? `${label} failed: ${res.statusText}`);
+		if (!envelope.success) throw new Error(envelope.error ?? fallback);
 		return envelope;
 	}
-	if (body && typeof body === 'object' && 'detail' in body) {
-		const detail = (body as { detail: unknown }).detail;
+	if (record && 'detail' in record) {
+		const detail = record.detail;
 		throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
 	}
-	throw new Error(`${label} failed: ${res.status} ${res.statusText}`);
+	throw new Error(fallback);
 }
 
 export async function fetchQueries(): Promise<Record<string, string>> {
