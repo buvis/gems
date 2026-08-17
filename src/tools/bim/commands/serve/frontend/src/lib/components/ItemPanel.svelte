@@ -64,16 +64,29 @@
 
 	async function handleFieldChange(field: string, value: unknown, target = 'metadata') {
 		if (!filePath) return;
-		await patchZettel(filePath, field, value, target);
-		await loadZettel(filePath);
-		onrefresh?.();
+		loadError = null;
+		try {
+			await patchZettel(filePath, field, value, target);
+			await loadZettel(filePath);
+			onrefresh?.();
+		} catch (e) {
+			// PropertyField calls this fire-and-forget, so a re-throw would only
+			// become an unhandled rejection; the panel error is the report.
+			loadError = String(e);
+		}
 	}
 
 	async function handleSectionSave(heading: string, body: string) {
 		if (!filePath) return;
-		await patchZettel(filePath, heading, body, 'section');
-		await loadZettel(filePath);
-		onrefresh?.();
+		loadError = null;
+		try {
+			await patchZettel(filePath, heading, body, 'section');
+			await loadZettel(filePath);
+			onrefresh?.();
+		} catch (e) {
+			loadError = String(e);
+			throw e;
+		}
 	}
 
 	function getFieldValue(field: string): unknown {

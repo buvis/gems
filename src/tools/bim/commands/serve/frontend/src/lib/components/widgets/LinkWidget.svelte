@@ -7,16 +7,28 @@
 	}
 	let { value, filePath }: Props = $props();
 
+	let openError = $state<string | null>(null);
+
 	const display = $derived(String(value ?? ''));
 
-	function handleClick(e: MouseEvent) {
+	async function handleClick(e: MouseEvent) {
 		e.preventDefault();
-		if (filePath) openFile(filePath);
+		if (filePath) {
+			openError = null;
+			try {
+				await openFile(filePath);
+			} catch (err) {
+				openError = String(err);
+			}
+		}
 	}
 </script>
 
 {#if filePath}
 	<button class="link-cell" onclick={handleClick} title={filePath}>{display}</button>
+	{#if openError}
+		<span class="link-error" title={openError}>{openError}</span>
+	{/if}
 {:else}
 	<span>{display}</span>
 {/if}
@@ -34,5 +46,10 @@
 	}
 	.link-cell:hover {
 		text-decoration: underline;
+	}
+	.link-error {
+		color: var(--danger);
+		font-size: 0.85em;
+		margin-left: 0.5rem;
 	}
 </style>

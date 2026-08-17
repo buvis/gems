@@ -4,7 +4,7 @@
 	interface Props {
 		content: string;
 		editable?: boolean;
-		onsave?: (content: string) => void;
+		onsave?: (content: string) => void | Promise<void>;
 	}
 	let { content, editable = false, onsave }: Props = $props();
 
@@ -19,11 +19,16 @@
 		editText = content;
 	}
 
-	function save() {
-		editing = false;
+	async function save() {
 		if (editText !== content) {
-			onsave?.(editText);
+			try {
+				await onsave?.(editText);
+			} catch {
+				// Stay open so the edit is not lost; the parent panel shows the reason.
+				return;
+			}
 		}
+		editing = false;
 	}
 
 	function cancel() {
