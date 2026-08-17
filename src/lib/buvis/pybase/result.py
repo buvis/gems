@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import PurePath
 from typing import Any
@@ -48,3 +49,20 @@ class CommandResult:
             "warnings": self.warnings,
             "metadata": _json_safe(self.metadata),
         }
+
+
+def notify_result(result: CommandResult, notify: Callable[..., None]) -> None:
+    """Report a command result through a Textual-style notify callback.
+
+    Args:
+        result: Command result to report.
+        notify: Callable accepting ``(message, *, severity)``, e.g. Textual's
+            ``App.notify``.
+    """
+    for warning in result.warnings:
+        notify(warning, severity="warning")
+    if result.success:
+        if result.output:
+            notify(result.output, severity="information")
+    else:
+        notify(result.error or "Failed", severity="error")

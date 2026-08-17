@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import CreateZettelUseCase
+from buvis.pybase.result import CommandResult, notify_result
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate
 from textual import on, work
@@ -167,17 +167,34 @@ class CreateNoteApp(App[None]):
             return
         answers = self._gather_answers()
 
-        use_case = CreateZettelUseCase(
-            self.path_zettelkasten,
-            get_repo(),
-            hook_runner=get_hook_runner(),
+        for q, _ in self._question_widgets:
+            if q.required and not answers.get(q.key):
+                notify_result(
+                    CommandResult(success=False, error=f"Missing required answer: {q.key}"),
+                    self.notify,
+                )
+                return
+
+        extra_answers = {q.key: answers[q.key] for q, _ in self._question_widgets if answers.get(q.key)}
+
+        from bim.commands.create_note.create_note import CommandCreateNote
+        from bim.params.create_note import CreateNoteParams
+
+        params = CreateNoteParams(
+            zettel_type=self._current_template.name,
+            title=answers["title"],
+            tags=answers["tags"] or None,
+            extra_answers=extra_answers,
         )
-        try:
-            path = use_case.execute(self._current_template, answers)
-        except FileExistsError as e:
-            self.notify(str(e), severity="error")
-        else:
-            self.notify(f"Created {path}", severity="information")
+        result = CommandCreateNote(
+            path_zettelkasten=self.path_zettelkasten,
+            params=params,
+            repo=get_repo(),
+            templates=self.templates,
+            hook_runner=get_hook_runner(),
+        ).execute()
+        notify_result(result, self.notify)
+        if result.success:
             self.exit()
 
     @on(Button.Pressed, "#cancel-btn")
