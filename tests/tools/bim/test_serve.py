@@ -371,6 +371,60 @@ class TestServeZettels:
         assert body["output"] == "Updated note.md"
         assert body["metadata"] == {"updated_count": 1}
 
+    def test_patch_zettel_real_repository_persists_metadata_change(
+        self, client: TestClient, tmp_path: Path, minimal_zettel: str
+    ) -> None:
+        """No CommandEditNote mock, no repository mock: drives the route through the
+        real MarkdownZettelRepository / UpdateZettelUseCase and asserts the file on
+        disk actually changed, proving PATCH delegates to a real persisted update."""
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text(minimal_zettel, encoding="utf-8")
+
+        response = client.patch(
+            f"/api/zettels/{real_file}",
+            json={"field": "title", "value": "New Title"},
+            headers={"X-Buvis-Token": "test-token"},
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+
+        updated = real_file.read_text(encoding="utf-8")
+        assert "title: New Title" in updated
+        assert "type: note" in updated
+        assert "alpha" in updated
+        assert "beta" in updated
+        assert "processed: false" in updated
+        assert "publish: false" in updated
+        assert "Some body text." in updated
+
+    def test_patch_zettel_real_repository_persists_section_change(
+        self, client: TestClient, tmp_path: Path, minimal_zettel: str
+    ) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text(minimal_zettel, encoding="utf-8")
+
+        # The parser folds body content under a section keyed on the title
+        # ("# Original Title"), not the literal "## Content" heading in the
+        # fixture, so that's the heading a section-target edit must address.
+        response = client.patch(
+            f"/api/zettels/{real_file}",
+            json={"field": "# Original Title", "value": "New body text.", "target": "section"},
+            headers={"X-Buvis-Token": "test-token"},
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+
+        updated = real_file.read_text(encoding="utf-8")
+        assert "New body text." in updated
+        assert "Some body text." not in updated
+        assert "title: Original Title" in updated
+
     def test_patch_zettel_missing_returns_404(self, client: TestClient, tmp_path: Path) -> None:
         client.app.state.buvis_token = "test-token"
         missing_file = tmp_path / "zettels" / "missing.md"
