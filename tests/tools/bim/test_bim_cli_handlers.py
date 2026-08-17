@@ -19,7 +19,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.success") as mock_success,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -32,7 +32,7 @@ class TestFormatHandlerOutputBranches:
             result = runner.invoke(cli, ["format", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.success.assert_called_once_with("Formatted note written to /tmp/out.md")
+            mock_success.assert_called_once_with("Formatted note written to /tmp/out.md")
 
     def test_format_diff_output(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -42,7 +42,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.print_side_by_side") as mock_print_side_by_side,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -56,7 +56,7 @@ class TestFormatHandlerOutputBranches:
             result = runner.invoke(cli, ["format", str(note), "--diff"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.print_side_by_side.assert_called_once_with(
+            mock_print_side_by_side.assert_called_once_with(
                 "Original",
                 "original text",
                 "Formatted",
@@ -73,7 +73,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.print") as mock_print,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -87,7 +87,7 @@ class TestFormatHandlerOutputBranches:
             result = runner.invoke(cli, ["format", str(note), "--highlight"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.print.assert_called_once_with("formatted text", mode="markdown_with_frontmatter")
+            mock_print.assert_called_once_with("formatted text", mode="markdown_with_frontmatter")
 
     def test_format_raw_output(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -97,7 +97,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.print") as mock_print,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -111,7 +111,7 @@ class TestFormatHandlerOutputBranches:
             result = runner.invoke(cli, ["format", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.print.assert_called_once_with("formatted text", mode="raw")
+            mock_print.assert_called_once_with("formatted text", mode="raw")
 
     def test_format_formatted_count(self, runner: CliRunner, tmp_path: Path) -> None:
         a = tmp_path / "a.md"
@@ -123,7 +123,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.success") as mock_success,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -136,7 +136,7 @@ class TestFormatHandlerOutputBranches:
             result = runner.invoke(cli, ["format", str(a), str(b)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.success.assert_called_once_with("Formatted 2 files")
+            mock_success.assert_called_once_with("Formatted 2 files")
 
     def test_format_failure(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -146,7 +146,8 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.failure") as mock_failure,
+            patch("bim.note_read_cli.console.warning") as mock_warning,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -160,8 +161,8 @@ class TestFormatHandlerOutputBranches:
             result = runner.invoke(cli, ["format", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Parse error")
-            mock_console.warning.assert_called_once_with("warn1")
+            mock_failure.assert_called_once_with("Parse error")
+            mock_warning.assert_called_once_with("warn1")
 
     def test_format_no_paths_no_query(self, runner: CliRunner) -> None:
         with patch("bim.shared.query_paths.console") as mock_console:
@@ -181,7 +182,8 @@ class TestSyncHandlerBranches:
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.success") as mock_success,
+            patch("bim.note_read_cli.console.warning") as mock_warning,
         ):
             mock_settings.return_value = MagicMock(adapters={"jira": {}})
             mock_get_repo.return_value = MagicMock()
@@ -192,8 +194,8 @@ class TestSyncHandlerBranches:
             result = runner.invoke(cli, ["sync", str(note), "-t", "jira"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.success.assert_called_once_with("Synced 1")
-            mock_console.warning.assert_called_once_with("w1")
+            mock_success.assert_called_once_with("Synced 1")
+            mock_warning.assert_called_once_with("w1")
 
     def test_sync_failure(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -204,7 +206,7 @@ class TestSyncHandlerBranches:
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.failure") as mock_failure,
         ):
             mock_settings.return_value = MagicMock(adapters={"jira": {}})
             mock_get_repo.return_value = MagicMock()
@@ -215,7 +217,7 @@ class TestSyncHandlerBranches:
             result = runner.invoke(cli, ["sync", str(note), "-t", "jira"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Sync error")
+            mock_failure.assert_called_once_with("Sync error")
 
     def test_sync_not_supported(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -226,7 +228,7 @@ class TestSyncHandlerBranches:
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.panic") as mock_panic,
         ):
             mock_settings.return_value = MagicMock(adapters={})
             mock_get_repo.return_value = MagicMock()
@@ -236,7 +238,7 @@ class TestSyncHandlerBranches:
             result = runner.invoke(cli, ["sync", str(note), "-t", "github"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.panic.assert_called_once_with("Sync target 'github' not supported")
+            mock_panic.assert_called_once_with("Sync target 'github' not supported")
 
     def test_sync_value_error(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -247,7 +249,7 @@ class TestSyncHandlerBranches:
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.panic") as mock_panic,
         ):
             mock_settings.return_value = MagicMock(adapters={})
             mock_get_repo.return_value = MagicMock()
@@ -257,7 +259,7 @@ class TestSyncHandlerBranches:
             result = runner.invoke(cli, ["sync", str(note), "-t", "jira"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.panic.assert_called_once_with("bad config")
+            mock_panic.assert_called_once_with("bad config")
 
     def test_sync_batch_confirm_denied(self, runner: CliRunner, tmp_path: Path) -> None:
         a = tmp_path / "a.md"
@@ -522,7 +524,7 @@ class TestShowHandlerBranches:
             patch("bim.commands.show_note.show_note.CommandShowNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.print") as mock_print,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -532,7 +534,7 @@ class TestShowHandlerBranches:
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.print.assert_called_once_with("rendered content", mode="raw")
+            mock_print.assert_called_once_with("rendered content", mode="raw")
 
     def test_show_failure(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -542,7 +544,7 @@ class TestShowHandlerBranches:
             patch("bim.commands.show_note.show_note.CommandShowNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.console.failure") as mock_failure,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -552,7 +554,7 @@ class TestShowHandlerBranches:
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Show error")
+            mock_failure.assert_called_once_with("Show error")
 
 
 class TestResolvePathsBranches:

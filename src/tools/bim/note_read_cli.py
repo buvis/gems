@@ -7,6 +7,7 @@ from typing import Any
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import apply_generated_options, get_settings
+from buvis.pybase.result import CommandResult
 
 from bim.params.format_note import FormatNoteParams
 from bim.params.query import QueryParams
@@ -56,31 +57,30 @@ def format_note(
         repo=get_repo(),
         formatter=get_formatter(),
     )
+
+    def _report_format_success(result: CommandResult) -> None:
+        if result.metadata.get("written_to"):
+            console.success(f"Formatted note written to {result.metadata['written_to']}")
+        elif result.output:
+            original = result.metadata.get("original")
+            if params.diff and original and original != result.output:
+                console.print_side_by_side(
+                    "Original",
+                    original,
+                    "Formatted",
+                    result.output,
+                    mode_left="raw",
+                    mode_right="markdown_with_frontmatter",
+                )
+            elif params.highlight:
+                console.print(result.output, mode="markdown_with_frontmatter")
+            else:
+                console.print(result.output, mode="raw")
+        elif result.metadata.get("formatted_count"):
+            console.success(f"Formatted {result.metadata['formatted_count']} files")
+
     result = cmd.execute()
-    for w in result.warnings:
-        console.warning(w)
-    if not result.success:
-        console.failure(result.error or "Format failed")
-        return
-    if result.metadata.get("written_to"):
-        console.success(f"Formatted note written to {result.metadata['written_to']}")
-    elif result.output:
-        original = result.metadata.get("original")
-        if params.diff and original and original != result.output:
-            console.print_side_by_side(
-                "Original",
-                original,
-                "Formatted",
-                result.output,
-                mode_left="raw",
-                mode_right="markdown_with_frontmatter",
-            )
-        elif params.highlight:
-            console.print(result.output, mode="markdown_with_frontmatter")
-        else:
-            console.print(result.output, mode="raw")
-    elif result.metadata.get("formatted_count"):
-        console.success(f"Formatted {result.metadata['formatted_count']} files")
+    console.report_result(result, on_success=_report_format_success, failure_msg="Format failed")
 
 
 @click.command("sync", help="Synchronize note(s) with external system")
@@ -122,13 +122,7 @@ def sync_note(
             formatter=get_formatter(),
         )
         result = cmd.execute()
-        for w in result.warnings:
-            console.warning(w)
-        if result.success:
-            if result.output:
-                console.success(result.output)
-        else:
-            console.failure(result.error or "Sync failed")
+        console.report_result(result, failure_msg="Sync failed")
     except (ValueError, FileNotFoundError) as exc:
         console.panic(str(exc))
         return
@@ -239,10 +233,8 @@ def show_note(
     params = ShowNoteParams(paths=resolved)
     cmd = CommandShowNote(params=params, repo=get_repo(), formatter=get_formatter())
     result = cmd.execute()
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.print(result.output, mode="raw")
-    else:
-        console.failure(result.error or "Show failed")
+    console.report_result(
+        result,
+        on_success=lambda r: console.print(r.output, mode="raw") if r.output else None,
+        failure_msg="Show failed",
+    )
