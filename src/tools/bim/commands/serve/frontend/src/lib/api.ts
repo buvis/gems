@@ -1,6 +1,21 @@
 const BASE = '/api';
 const TOKEN = (window as unknown as { __BUVIS_TOKEN__?: string }).__BUVIS_TOKEN__ ?? '';
 
+export interface ResultEnvelope {
+	success: boolean;
+	output: string | null;
+	error: string | null;
+	info: string[];
+	warnings: string[];
+	metadata: Record<string, unknown>;
+}
+
+async function unwrapEnvelope(res: Response, label: string): Promise<ResultEnvelope> {
+	const body = (await res.json()) as ResultEnvelope;
+	if (!body.success) throw new Error(body.error ?? `${label} failed: ${res.statusText}`);
+	return body;
+}
+
 export async function fetchQueries(): Promise<Record<string, string>> {
 	const res = await fetch(`${BASE}/queries`);
 	const data = await res.json();
@@ -113,7 +128,7 @@ export async function patchZettel(
 		headers: { 'Content-Type': 'application/json', 'X-Buvis-Token': TOKEN },
 		body: JSON.stringify({ field, value, target })
 	});
-	if (!res.ok) throw new Error(`Patch failed: ${res.statusText}`);
+	await unwrapEnvelope(res, 'Patch');
 }
 
 export async function fetchZettel(filePath: string): Promise<ZettelData> {
@@ -127,14 +142,13 @@ export async function execAction(
 	filePath: string,
 	args: Record<string, unknown>,
 	row: Record<string, unknown>
-): Promise<Record<string, unknown>> {
+): Promise<ResultEnvelope> {
 	const res = await fetch(`${BASE}/actions/${encodeURIComponent(name)}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', 'X-Buvis-Token': TOKEN },
 		body: JSON.stringify({ file_path: filePath, args, row })
 	});
-	if (!res.ok) throw new Error(`Action failed: ${res.statusText}`);
-	return res.json();
+	return unwrapEnvelope(res, 'Action');
 }
 
 export async function openFile(filePath: string): Promise<void> {
@@ -143,5 +157,5 @@ export async function openFile(filePath: string): Promise<void> {
 		headers: { 'Content-Type': 'application/json', 'X-Buvis-Token': TOKEN },
 		body: JSON.stringify({ path: filePath })
 	});
-	if (!res.ok) throw new Error(`Open failed: ${res.statusText}`);
+	await unwrapEnvelope(res, 'Open');
 }
