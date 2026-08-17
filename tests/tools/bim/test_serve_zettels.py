@@ -170,6 +170,75 @@ class TestServeZettels:
         assert "Some body text." not in updated
         assert "title: Original Title" in updated
 
+    def test_patch_route_and_patch_action_persist_identical_metadata_change(
+        self, client: TestClient, tmp_path: Path, minimal_zettel: str
+    ) -> None:
+        """PATCH /api/zettels/{path} and POST /api/actions/patch must run the same
+        field/value/target through the same underlying command: driving both against
+        identical starting files must leave identical files on disk, proving the two
+        entry points cannot silently diverge."""
+        client.app.state.buvis_token = "test-token"
+        route_file = tmp_path / "zettels" / "route_note.md"
+        action_file = tmp_path / "zettels" / "action_note.md"
+        route_file.write_text(minimal_zettel, encoding="utf-8")
+        action_file.write_text(minimal_zettel, encoding="utf-8")
+
+        route_response = client.patch(
+            f"/api/zettels/{route_file}",
+            json={"field": "title", "value": "New Title"},
+            headers={"X-Buvis-Token": "test-token"},
+        )
+        action_response = client.post(
+            "/api/actions/patch",
+            json={"file_path": str(action_file), "args": {"field": "title", "value": "New Title"}},
+            headers={"X-Buvis-Token": "test-token"},
+        )
+
+        assert route_response.status_code == 200
+        assert action_response.status_code == 200
+        assert route_response.json()["success"] is True
+        assert action_response.json()["success"] is True
+
+        route_content = route_file.read_text(encoding="utf-8")
+        action_content = action_file.read_text(encoding="utf-8")
+        assert route_content == action_content
+        assert "title: New Title" in route_content
+
+    def test_patch_route_and_patch_action_persist_identical_section_change(
+        self, client: TestClient, tmp_path: Path, minimal_zettel: str
+    ) -> None:
+        """Same parity guarantee as the metadata case, but for target: "section",
+        since section edits take a different branch inside the use case than
+        metadata edits do."""
+        client.app.state.buvis_token = "test-token"
+        route_file = tmp_path / "zettels" / "route_note.md"
+        action_file = tmp_path / "zettels" / "action_note.md"
+        route_file.write_text(minimal_zettel, encoding="utf-8")
+        action_file.write_text(minimal_zettel, encoding="utf-8")
+        body = {"field": "# Original Title", "value": "New body text.", "target": "section"}
+
+        route_response = client.patch(
+            f"/api/zettels/{route_file}",
+            json=body,
+            headers={"X-Buvis-Token": "test-token"},
+        )
+        action_response = client.post(
+            "/api/actions/patch",
+            json={"file_path": str(action_file), "args": body},
+            headers={"X-Buvis-Token": "test-token"},
+        )
+
+        assert route_response.status_code == 200
+        assert action_response.status_code == 200
+        assert route_response.json()["success"] is True
+        assert action_response.json()["success"] is True
+
+        route_content = route_file.read_text(encoding="utf-8")
+        action_content = action_file.read_text(encoding="utf-8")
+        assert route_content == action_content
+        assert "New body text." in route_content
+        assert "Some body text." not in route_content
+
     def test_patch_zettel_missing_returns_404(self, client: TestClient, tmp_path: Path) -> None:
         client.app.state.buvis_token = "test-token"
         missing_file = tmp_path / "zettels" / "missing.md"
