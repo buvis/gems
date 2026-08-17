@@ -19,7 +19,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -42,7 +42,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -73,7 +73,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -97,7 +97,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -123,7 +123,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -146,7 +146,7 @@ class TestFormatHandlerOutputBranches:
             patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -177,11 +177,11 @@ class TestSyncHandlerBranches:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(adapters={"jira": {}})
             mock_get_repo.return_value = MagicMock()
@@ -200,11 +200,11 @@ class TestSyncHandlerBranches:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(adapters={"jira": {}})
             mock_get_repo.return_value = MagicMock()
@@ -222,11 +222,11 @@ class TestSyncHandlerBranches:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(adapters={})
             mock_get_repo.return_value = MagicMock()
@@ -243,11 +243,11 @@ class TestSyncHandlerBranches:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(adapters={})
             mock_get_repo.return_value = MagicMock()
@@ -266,8 +266,8 @@ class TestSyncHandlerBranches:
         b.write_text("# B")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.console") as mock_console,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
@@ -363,12 +363,12 @@ class TestArchiveHandlerBranches:
 class TestQueryHandlerBranches:
     def test_query_no_results(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.dependencies.parse_query_string") as mock_parse,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_archive="/tmp/archive")
             spec = MagicMock()
@@ -518,7 +518,7 @@ class TestShowHandlerBranches:
             patch("bim.commands.show_note.show_note.CommandShowNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -538,7 +538,7 @@ class TestShowHandlerBranches:
             patch("bim.commands.show_note.show_note.CommandShowNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()

@@ -306,7 +306,7 @@ class TestSyncCommand:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
@@ -416,7 +416,7 @@ class TestQueryCommand:
         archive_dir = tmp_path / "archive"
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.dependencies.resolve_query_file") as mock_resolve,
             patch("bim.dependencies.parse_query_file") as mock_parse,
             patch("bim.dependencies.get_repo") as mock_get_repo,
@@ -486,7 +486,7 @@ class TestQueryCommand:
         archive_dir = tmp_path / "archive"
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.dependencies.parse_query_string") as mock_parse,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_evaluator") as mock_get_evaluator,

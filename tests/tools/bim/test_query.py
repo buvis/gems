@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
-from bim.cli import query
+from bim.note_read_cli import query
 from bim.params.query import QueryParams
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
@@ -20,7 +20,7 @@ class TestQueryCli:
         with (
             patch("bim.commands.query.query.BUNDLED_QUERY_DIR", bundled_dir),
             patch("bim.dependencies.list_query_files") as mock_list,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_read_cli.console") as mock_console,
         ):
             mock_list.return_value = queries
             result = runner.invoke(query, ["--list"], catch_exceptions=False)
@@ -32,7 +32,7 @@ class TestQueryCli:
 
     def test_query_file_executes_command(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.dependencies.resolve_query_file") as mock_resolve,
             patch("bim.dependencies.parse_query_file") as mock_parse,
             patch("bim.dependencies.get_repo") as mock_get_repo,
@@ -103,7 +103,7 @@ class TestQueryCli:
 
     def test_query_inline_yaml_executes_command(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.dependencies.parse_query_string") as mock_parse,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_evaluator") as mock_get_evaluator,
@@ -168,8 +168,8 @@ class TestQueryCli:
 
     def test_query_without_args_reports_error(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.console") as mock_console,
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_read_cli.console") as mock_console,
+            patch("bim.note_read_cli.get_settings") as mock_settings,
             patch("bim.commands.query.query.CommandQuery") as mock_cmd,
         ):
             mock_settings.return_value = MagicMock()
