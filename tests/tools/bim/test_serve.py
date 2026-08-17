@@ -14,7 +14,6 @@ from bim.commands.serve._app import create_app
 from bim.commands.serve.serve import CommandServe
 from buvis.pybase.adapters import console
 from buvis.pybase.result import CommandResult
-from pytest_mock import MockerFixture
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.testclient import TestClient
 
@@ -348,30 +347,18 @@ class TestServeZettels:
         assert response.status_code == 401
         mock_get_repo.assert_not_called()
 
-    def test_patch_zettel_metadata(self, client: TestClient, tmp_path: Path) -> None:
+    def test_patch_zettel_success_returns_200_envelope(self, client: TestClient, tmp_path: Path) -> None:
         client.app.state.buvis_token = "test-token"
         real_file = tmp_path / "zettels" / "note.md"
         real_file.write_text("placeholder", encoding="utf-8")
 
-        data = SimpleNamespace(
-            metadata={},
-            reference={},
-            sections=[],
-            file_path=str(real_file),
-        )
-        zettel = MagicMock()
-        zettel.get_data.return_value = data
-        repo = MagicMock()
-        repo.find_by_location.return_value = zettel
-        formatter = MagicMock()
-        use_case = MagicMock()
-        use_case.execute.return_value = "formatted"
+        with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(
+                success=True,
+                output="Updated note.md",
+                metadata={"updated_count": 1},
+            )
 
-        with (
-            patch("bim.commands.serve._routes.get_repo", return_value=repo),
-            patch("bim.commands.serve._routes.get_formatter", return_value=formatter),
-            patch("bim.commands.serve._routes.PrintZettelUseCase", return_value=use_case) as mock_use_case_cls,
-        ):
             response = client.patch(
                 f"/api/zettels/{real_file}",
                 json={"field": "title", "value": "New Title"},
@@ -379,51 +366,47 @@ class TestServeZettels:
             )
 
         assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
-        assert data.metadata["title"] == "New Title"
-        mock_use_case_cls.assert_called_once_with(formatter)
-        use_case.execute.assert_called_once_with(data)
-        assert real_file.read_text(encoding="utf-8") == "formatted"
+        body = response.json()
+        assert body["success"] is True
+        assert body["output"] == "Updated note.md"
+        assert body["metadata"] == {"updated_count": 1}
 
-    def test_patch_zettel_write_failure_leaves_original_untouched(
-        self, client: TestClient, tmp_path: Path, mocker: MockerFixture
-    ) -> None:
+    def test_patch_zettel_missing_returns_404(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        missing_file = tmp_path / "zettels" / "missing.md"
+
+        with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_command:
+            response = client.patch(
+                f"/api/zettels/{missing_file}",
+                json={"field": "title", "value": "New Title"},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 404
+        assert "File not found" in response.json()["detail"]
+        mock_command.assert_not_called()
+
+    def test_patch_zettel_failure_returns_422_envelope(self, client: TestClient, tmp_path: Path) -> None:
         client.app.state.buvis_token = "test-token"
         real_file = tmp_path / "zettels" / "note.md"
-        real_file.write_text("original content", encoding="utf-8")
+        real_file.write_text("placeholder", encoding="utf-8")
 
-        data = SimpleNamespace(
-            metadata={},
-            reference={},
-            sections=[],
-            file_path=str(real_file),
-        )
-        zettel = MagicMock()
-        zettel.get_data.return_value = data
-        repo = MagicMock()
-        repo.find_by_location.return_value = zettel
-        formatter = MagicMock()
-        use_case = MagicMock()
-        use_case.execute.return_value = "formatted"
+        with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(
+                success=False,
+                error="No changes provided",
+            )
 
-        mocker.patch(
-            "buvis.pybase.filesystem.atomic_write.os.replace",
-            side_effect=OSError("disk full"),
-        )
-
-        with (
-            patch("bim.commands.serve._routes.get_repo", return_value=repo),
-            patch("bim.commands.serve._routes.get_formatter", return_value=formatter),
-            patch("bim.commands.serve._routes.PrintZettelUseCase", return_value=use_case),
-            pytest.raises(OSError),
-        ):
-            client.patch(
+            response = client.patch(
                 f"/api/zettels/{real_file}",
                 json={"field": "title", "value": "New Title"},
                 headers={"X-Buvis-Token": "test-token"},
             )
 
-        assert real_file.read_text(encoding="utf-8") == "original content"
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "No changes provided"
 
     def test_get_zettel_missing_returns_404(self, client: TestClient, tmp_path: Path) -> None:
         file_path = tmp_path / "zettels" / "missing.md"
@@ -467,6 +450,57 @@ class TestServeActions:
 
         assert response.status_code == 403
         mock_get_repo.assert_not_called()
+
+    def test_patch_action_success_returns_200(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(
+                success=True,
+                output="Updated note.md",
+                metadata={"updated_count": 1},
+            )
+
+            response = client.post(
+                "/api/actions/patch",
+                json={
+                    "file_path": str(real_file),
+                    "args": {"field": "title", "value": "New Title"},
+                    "row": {},
+                },
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_patch_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.edit_note.edit_note.CommandEditNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(
+                success=False,
+                error="No changes provided",
+            )
+
+            response = client.post(
+                "/api/actions/patch",
+                json={
+                    "file_path": str(real_file),
+                    "args": {"field": "title", "value": "New Title"},
+                    "row": {},
+                },
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "No changes provided"
 
     def test_sync_note_action_outside_vault_returns_403(self, client: TestClient) -> None:
         client.app.state.buvis_token = "test-token"
