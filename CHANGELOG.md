@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: `doc` gains a `claim_max_age_minutes` setting (default 60, a whole number of minutes, rejects zero or less). An ingest claim left behind by a run that died without cleaning up is treated as abandoned once it passes that age, so re-running the document proceeds instead of reporting it as a duplicate forever. The reclaim is a compare-and-delete that never removes a live claim another run legitimately took over in the meantime, and it tolerates a corrupt or unreadable stored `claimed_at` timestamp (including one stored as a BLOB) by treating the claim as abandoned instead of crashing the run.
 - **bim**: `doc ingest` now recognises a resent copy of a document that is still awaiting triage review in `_triage/` as a duplicate, instead of re-running the whole pipeline on it. The duplicate sidecar and the recorded dedup entry name it as pending review rather than as an already-filed document.
 
+### Changed
+
+- **bim**: `serve` action and PATCH endpoints now answer with the command's own result envelope and a matching HTTP status — 200 when it succeeded, 422 when it failed — instead of always answering 200 with a hand-built `{"status": "error"}` body. Anything reading these endpoints sees the real outcome, including the warnings the old shape dropped.
+
 ### Security
 
 - **bim**: `serve` confines every request-derived filesystem path to the configured vault and archive directories, so its API can no longer read, overwrite, delete, open, or import files outside them. Paths outside the vault are rejected with 403.
@@ -22,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: the WebUI now shows the real reason an action failed instead of reporting it as done — a failed archive, delete, format, sync, import, create, or open surfaces the server's own error text.
+- **bim**: the TUI now reports a failed create, edit, archive, delete, or format as an error notification instead of showing nothing, or a success-looking message, when the command failed.
+- **bim**: creating a note from the TUI now runs the same required-answer validation and default-filling as `bim create` does, so a blank required answer is rejected instead of producing a note with empty fields.
 - **fctracker**: transactions are now rejected with a clear error when the CSV is not newest-first, instead of being silently processed in the wrong order and reporting wrong cost basis and rates. The error now names the offending row by the data row number as it appears in the file (header excluded, first data row = 1), instead of an internal reversed-list index that pointed at the wrong row.
 - **fctracker**: an overdrawn account, a zero-amount withdrawal, a malformed amount cell, or a non-newest-first CSV now returns a friendly error naming the account, instead of crashing with a raw traceback (`balance`) or a blank/garbled cause (`transactions`). A malformed amount cell now names the offending value and a zero-amount cell says so explicitly, instead of both collapsing into the same generic message.
 - **fctracker**: a structurally broken CSV — a ragged/short row, a missing `date`, `amount`, `rate`, or `description` column, or a malformed `rate` cell — now returns a friendly error naming the account, file, and offending row or column, instead of crashing with a raw `TypeError`/`KeyError` traceback. A malformed `rate` cell now names the offending value and says `rate`, instead of being reported as a malformed amount. A ragged row missing only its `rate` cell is now reported as a missing value rather than as a malformed one. A CSV with a UTF-8 BOM header is now read correctly instead of failing on a missing `date` column, and a non-UTF-8 file now names the file and says it is not valid UTF-8 instead of a bare codec message.
