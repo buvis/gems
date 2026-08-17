@@ -36,7 +36,7 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState
     target = args.get("target", "metadata")
     changes = {args["field"]: args["value"]}
     UpdateZettelUseCase(repo).execute(zettel, changes, target)
-    return {"status": "ok"}
+    return CommandResult(success=True).to_dict()
 
 
 async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, Any]:
