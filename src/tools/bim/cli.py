@@ -18,6 +18,7 @@ from bim.params.delete_note import DeleteNoteParams
 from bim.params.edit_note import EditNoteParams
 from bim.params.format_note import FormatNoteParams
 from bim.params.query import QueryParams
+from bim.serve_cli import register_serve_command
 from bim.settings import BimSettings
 from bim.shared.query_paths import resolve_paths
 
@@ -517,33 +518,7 @@ def delete_note(
         console.failure(result.error or "Delete failed")
 
 
-@cli.command("serve", help="Start web dashboard")
-@click.option("-p", "--port", default=8000, type=int)
-@click.option("-H", "--host", default="127.0.0.1")
-@click.option("--no-browser", is_flag=True, default=False)
-@click.pass_context
-def serve(
-    ctx: click.Context,
-    port: int,
-    host: str,
-    *,
-    no_browser: bool,
-) -> None:
-    from bim.commands.serve.serve import CommandServe
-    from bim.params.serve import ServeParams
-
-    settings = get_settings(ctx, BimSettings)
-    params = ServeParams(
-        default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
-        archive_directory=str(Path(settings.path_archive).expanduser().resolve()),
-        host=host,
-        port=port,
-        no_browser=no_browser,
-    )
-    cmd = CommandServe(params=params)
-    cmd.execute()
-
-
+register_serve_command(cli)
 register_doc_group(cli)
 
 
