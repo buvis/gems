@@ -101,7 +101,7 @@ class TestDeleteCommand:
         with (
             patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.cli.console.confirm", return_value=True) as mock_confirm,
+            patch("bim.note_write_cli.console.confirm", return_value=True) as mock_confirm,
         ):
             mock_get_repo.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -128,7 +128,7 @@ class TestImportCommand:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.shared.import_helpers.interactive_import") as mock_interactive,
         ):
             settings = MagicMock(path_zettelkasten=str(tmp_path))
@@ -144,7 +144,7 @@ class TestImportCommand:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
@@ -182,7 +182,7 @@ class TestImportCommand:
         b.write_text("# B")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
@@ -219,7 +219,7 @@ class TestImportCommand:
         a.write_text("# A")
         b.write_text("# B")
 
-        with patch("bim.cli.get_settings") as mock_settings:
+        with patch("bim.note_write_cli.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
 
             result = runner.invoke(
@@ -364,7 +364,7 @@ class TestImportInteractiveHelpers:
 class TestCreateCommand:
     def test_create_scripted(self, runner, tmp_path):
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_templates") as mock_get_templates,

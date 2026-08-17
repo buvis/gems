@@ -289,11 +289,11 @@ class TestImportHandlerBranches:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
             mock_get_repo.return_value = MagicMock()
@@ -318,10 +318,10 @@ class TestArchiveHandlerBranches:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.archive_note.archive_note.CommandArchiveNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),
@@ -341,10 +341,10 @@ class TestArchiveHandlerBranches:
         note.write_text("# Test")
 
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.archive_note.archive_note.CommandArchiveNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),
@@ -392,7 +392,7 @@ class TestCreateHandlerBranches:
     def test_create_list_templates(self, runner: CliRunner) -> None:
         with (
             patch("bim.dependencies.get_templates") as mock_get_templates,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_get_templates.return_value = {"note": MagicMock(), "project": MagicMock()}
 
@@ -403,12 +403,12 @@ class TestCreateHandlerBranches:
 
     def test_create_failure(self, runner: CliRunner, tmp_path: Path) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_templates") as mock_get_templates,
             patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
             mock_get_repo.return_value = MagicMock()
@@ -428,12 +428,12 @@ class TestCreateHandlerBranches:
 
     def test_create_file_not_found(self, runner: CliRunner, tmp_path: Path) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_templates") as mock_get_templates,
             patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
             mock_get_repo.return_value = MagicMock()
@@ -459,7 +459,7 @@ class TestDeleteHandlerBranches:
         with (
             patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -478,7 +478,7 @@ class TestDeleteHandlerBranches:
         with (
             patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_get_repo.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -496,7 +496,7 @@ class TestDeleteHandlerBranches:
         with (
             patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
             patch("bim.shared.query_paths.resolve_query_paths") as mock_resolve,
         ):
             mock_get_repo.return_value = MagicMock()

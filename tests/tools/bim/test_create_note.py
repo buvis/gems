@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
-from bim.cli import create_note
 from bim.commands.create_note.create_note import CommandCreateNote
+from bim.note_write_cli import create_note
 from bim.params.create_note import CreateNoteParams
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
@@ -14,7 +14,7 @@ class TestCreateNoteCli:
     def test_list_templates(self, runner: CliRunner) -> None:
         with (
             patch("bim.dependencies.get_templates") as mock_templates,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_templates.return_value = ["beta", "alpha"]
             result = runner.invoke(create_note, ["--list"], catch_exceptions=False)
@@ -26,7 +26,7 @@ class TestCreateNoteCli:
 
     def test_create_note_with_type_and_title(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_templates") as mock_get_templates,
@@ -62,7 +62,7 @@ class TestCreateNoteCli:
 
     def test_create_note_tags_and_answers(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_templates") as mock_get_templates,
@@ -109,7 +109,7 @@ class TestCreateNoteCli:
 
     def test_create_note_without_type_or_title_launches_tui(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.tui.create_note.CreateNoteApp") as mock_app,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
@@ -132,9 +132,9 @@ class TestCreateNoteCli:
 
     def test_execute_file_not_found_calls_panic(self, runner: CliRunner) -> None:
         with (
-            patch("bim.cli.get_settings") as mock_settings,
+            patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
-            patch("bim.cli.console") as mock_console,
+            patch("bim.note_write_cli.console") as mock_console,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_templates") as mock_get_templates,
             patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
