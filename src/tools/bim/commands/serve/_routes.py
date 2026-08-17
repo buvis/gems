@@ -5,9 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.result import CommandResult
-from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,7 +17,6 @@ from bim.commands.serve._security import confine_path, require_token
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import (
     get_evaluator,
-    get_formatter,
     get_repo,
     list_query_files,
     parse_query_file,
@@ -163,27 +160,17 @@ async def patch_zettel(
     body: PatchBody,
     request: Request,
     _: None = Depends(require_token),
-) -> dict[str, str]:
+) -> JSONResponse:
     fp = confine_path(file_path, request.app.state)
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
-    repo = get_repo()
-    zettel = repo.find_by_location(str(fp))
-    data = zettel.get_data()
+    from bim.commands.edit_note.edit_note import CommandEditNote
+    from bim.params.edit_note import EditNoteParams
 
-    if body.target == "section":
-        from bim.commands.shared.sections import replace_section
-
-        replace_section(data, body.field, body.value)
-    elif body.target == "reference":
-        data.reference[body.field] = body.value
-    else:
-        data.metadata[body.field] = body.value
-
-    formatted = PrintZettelUseCase(get_formatter()).execute(data)
-    atomic_write_text(fp, formatted)
-    return {"status": "ok"}
+    params = EditNoteParams(paths=[fp], changes={body.field: body.value}, target=body.target)
+    result = CommandEditNote(params=params, repo=get_repo()).execute()
+    return _envelope_response(result.to_dict())
 
 
 @router.get("/zettels/{file_path:path}")

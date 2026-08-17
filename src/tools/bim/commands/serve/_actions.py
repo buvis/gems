@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.result import CommandResult
-from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 
 from bim.commands.serve._security import AppState, confine_path
 from bim.commands.shared.os_open import open_in_os
@@ -28,15 +27,16 @@ def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, A
     return resolved
 
 
-async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, Any]:
     fp = confine_path(file_path, app_state)
-    repo = get_repo()
-    zettel = repo.find_by_location(str(fp))
+    from bim.commands.edit_note.edit_note import CommandEditNote
+    from bim.params.edit_note import EditNoteParams
 
     target = args.get("target", "metadata")
     changes = {args["field"]: args["value"]}
-    UpdateZettelUseCase(repo).execute(zettel, changes, target)
-    return CommandResult(success=True).to_dict()
+    params = EditNoteParams(paths=[fp], changes=changes, target=target)
+    result = CommandEditNote(params=params, repo=get_repo()).execute()
+    return result.to_dict()
 
 
 async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, Any]:
