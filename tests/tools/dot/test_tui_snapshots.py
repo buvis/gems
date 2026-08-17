@@ -54,7 +54,7 @@ def _mock_git_ops_with_content() -> MagicMock:
     ops = MagicMock()
     staged = _many_file_entries("staged", 15, "M ")
     unstaged = _many_file_entries("unstaged", 18, " M")
-    ops.status.return_value = staged + unstaged
+    ops.status.return_value = (staged + unstaged, None)
     ops.branch_info.return_value = BranchInfo(
         name="feature/snapshot-tests",
         ahead=3,
