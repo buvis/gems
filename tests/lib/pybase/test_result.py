@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
-from buvis.pybase.result import CommandResult, _json_safe
+from buvis.pybase.result import CommandResult, _json_safe, notify_result
+
+
+def _notify_stub() -> tuple[list[tuple[str, str]], Callable[..., None]]:
+    """Build a list-collecting stand-in for Textual's `notify` callable."""
+    calls: list[tuple[str, str]] = []
+
+    def notify(message: str, *, severity: str = "information") -> None:
+        calls.append((message, severity))
+
+    return calls, notify
 
 
 class TestCommandResult:
@@ -71,3 +82,64 @@ class TestJsonSafe:
             "items": ["a", {"child": "b"}],
             "tuple": ["c"],
         }
+
+
+class TestNotifyResult:
+    def test_success_with_output_notifies_information(self) -> None:
+        calls, notify = _notify_stub()
+        result = CommandResult(success=True, output="Created note.md")
+
+        notify_result(result, notify)
+
+        assert calls == [("Created note.md", "information")]
+
+    def test_success_without_output_notifies_nothing(self) -> None:
+        calls, notify = _notify_stub()
+        result = CommandResult(success=True)
+
+        notify_result(result, notify)
+
+        assert calls == []
+
+    def test_failure_with_error_notifies_error_severity(self) -> None:
+        calls, notify = _notify_stub()
+        result = CommandResult(success=False, error="Missing required answer: type")
+
+        notify_result(result, notify)
+
+        assert calls == [("Missing required answer: type", "error")]
+
+    def test_failure_without_error_falls_back_to_default_message(self) -> None:
+        calls, notify = _notify_stub()
+        result = CommandResult(success=False)
+
+        notify_result(result, notify)
+
+        assert calls == [("Failed", "error")]
+
+    def test_warnings_notify_before_success_output(self) -> None:
+        calls, notify = _notify_stub()
+        result = CommandResult(success=True, output="ok", warnings=["heads up"])
+
+        notify_result(result, notify)
+
+        assert calls == [("heads up", "warning"), ("ok", "information")]
+
+    def test_warnings_notify_alongside_failure(self) -> None:
+        calls, notify = _notify_stub()
+        result = CommandResult(success=False, error="bad", warnings=["heads up"])
+
+        notify_result(result, notify)
+
+        assert calls == [("heads up", "warning"), ("bad", "error")]
+
+    def test_multiple_warnings_each_notify_independently(self) -> None:
+        calls, notify = _notify_stub()
+        result = CommandResult(success=True, warnings=["first warning", "second warning"])
+
+        notify_result(result, notify)
+
+        assert calls == [
+            ("first warning", "warning"),
+            ("second warning", "warning"),
+        ]
