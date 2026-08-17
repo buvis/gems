@@ -13,6 +13,7 @@ pytest.importorskip("httpx")
 from bim.commands.serve._app import create_app
 from bim.commands.serve.serve import CommandServe
 from buvis.pybase.adapters import console
+from buvis.pybase.result import CommandResult
 from pytest_mock import MockerFixture
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.testclient import TestClient
@@ -574,6 +575,243 @@ class TestServeActions:
         assert response.status_code == 200
         mock_open_in_os.assert_called_once_with(real_file.resolve())
 
+    def test_open_action_success_returns_full_envelope(self, client: TestClient, tmp_path: Path) -> None:
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.serve._actions.open_in_os"):
+            response = client.post(
+                "/api/actions/open",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "success": True,
+            "output": None,
+            "error": None,
+            "info": [],
+            "warnings": [],
+            "metadata": {},
+        }
+
+    def test_sync_note_action_success_returns_200(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, output="synced")
+
+            response = client.post(
+                "/api/actions/sync_note",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_sync_note_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=False, error="sync failed")
+
+            response = client.post(
+                "/api/actions/sync_note",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "sync failed"
+
+    def test_create_note_action_success_returns_200(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, output="created")
+
+            response = client.post(
+                "/api/actions/create_note",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_create_note_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=False, error="create failed")
+
+            response = client.post(
+                "/api/actions/create_note",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "create failed"
+
+    def test_archive_action_success_returns_200(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.archive_note.archive_note.CommandArchiveNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, output="archived")
+
+            response = client.post(
+                "/api/actions/archive",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_archive_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.archive_note.archive_note.CommandArchiveNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=False, error="archive failed")
+
+            response = client.post(
+                "/api/actions/archive",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "archive failed"
+
+    def test_delete_action_success_returns_200(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, output="deleted")
+
+            response = client.post(
+                "/api/actions/delete",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_delete_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=False, error="delete failed")
+
+            response = client.post(
+                "/api/actions/delete",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "delete failed"
+
+    def test_format_action_success_returns_200(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, output="formatted")
+
+            response = client.post(
+                "/api/actions/format",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_format_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.format_note.format_note.CommandFormatNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=False, error="format failed")
+
+            response = client.post(
+                "/api/actions/format",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "format failed"
+
+    def test_import_action_success_returns_200(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.import_note.import_note.CommandImportNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, output="imported")
+
+            response = client.post(
+                "/api/actions/import",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_import_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.import_note.import_note.CommandImportNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=False, error="import failed")
+
+            response = client.post(
+                "/api/actions/import",
+                json={"file_path": str(real_file), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 422
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"] == "import failed"
+
 
 class TestServeErrors:
     def test_unknown_action_returns_404(self, client: TestClient) -> None:
@@ -631,6 +869,27 @@ class TestServeOpen:
 
         assert response.status_code == 200
         mock_open_in_os.assert_called_once_with(real_file.resolve())
+
+    def test_open_file_success_returns_full_envelope(self, client: TestClient, tmp_path: Path) -> None:
+        real_file = tmp_path / "zettels" / "note.md"
+        real_file.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.serve._routes.open_in_os"):
+            response = client.post(
+                "/api/open",
+                json={"path": str(real_file)},
+                headers={"X-Buvis-Token": client.app.state.buvis_token},
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "success": True,
+            "output": None,
+            "error": None,
+            "info": [],
+            "warnings": [],
+            "metadata": {},
+        }
 
 
 class TestServeTrustedHost:
