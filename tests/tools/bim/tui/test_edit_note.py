@@ -136,6 +136,80 @@ class TestEditNoteApp:
             await pilot.press("escape")
             await pilot.pause()
 
+    @pytest.mark.anyio
+    async def test_save_failure_notifies_error_severity(self, mocker):
+        fake_data = _fake_zettel_data()
+        mocker.patch(
+            "bim.tui.edit_note.get_repo"
+        ).return_value.find_by_location.return_value.get_data.return_value = fake_data
+        mocker.patch("bim.dependencies.get_repo")
+        mocker.patch("bim.tui.edit_note.get_formatter").return_value = MagicMock()
+        mocker.patch("bim.tui.edit_note.PrintZettelUseCase").return_value.execute.return_value = "preview"
+        mock_command = mocker.patch("bim.commands.edit_note.edit_note.CommandEditNote")
+        mock_command.return_value.execute.return_value = CommandResult(success=False, error="No changes provided")
+
+        app = EditNoteApp(Path("/tmp/test.md"))
+        async with app.run_test(size=(100, 50)) as pilot:
+            await pilot.pause()
+            notify_mock = mocker.patch.object(app, "notify")
+            title = app.query_one("#edit-title", Input)
+            title.value = "Changed Title"
+            await pilot.pause()
+            await pilot.click("#save-btn")
+            await pilot.pause()
+
+        notify_mock.assert_any_call("No changes provided", severity="error")
+
+    @pytest.mark.anyio
+    async def test_save_success_notifies_information_severity(self, mocker):
+        fake_data = _fake_zettel_data()
+        mocker.patch(
+            "bim.tui.edit_note.get_repo"
+        ).return_value.find_by_location.return_value.get_data.return_value = fake_data
+        mocker.patch("bim.dependencies.get_repo")
+        mocker.patch("bim.tui.edit_note.get_formatter").return_value = MagicMock()
+        mocker.patch("bim.tui.edit_note.PrintZettelUseCase").return_value.execute.return_value = "preview"
+        mock_command = mocker.patch("bim.commands.edit_note.edit_note.CommandEditNote")
+        mock_command.return_value.execute.return_value = CommandResult(success=True, output="Updated test.md")
+
+        app = EditNoteApp(Path("/tmp/test.md"))
+        async with app.run_test(size=(100, 50)) as pilot:
+            await pilot.pause()
+            notify_mock = mocker.patch.object(app, "notify")
+            title = app.query_one("#edit-title", Input)
+            title.value = "Changed Title"
+            await pilot.pause()
+            await pilot.click("#save-btn")
+            await pilot.pause()
+
+        notify_mock.assert_any_call("Updated test.md", severity="information")
+
+    @pytest.mark.anyio
+    async def test_save_warning_notifies_warning_severity(self, mocker):
+        fake_data = _fake_zettel_data()
+        mocker.patch(
+            "bim.tui.edit_note.get_repo"
+        ).return_value.find_by_location.return_value.get_data.return_value = fake_data
+        mocker.patch("bim.dependencies.get_repo")
+        mocker.patch("bim.tui.edit_note.get_formatter").return_value = MagicMock()
+        mocker.patch("bim.tui.edit_note.PrintZettelUseCase").return_value.execute.return_value = "preview"
+        mock_command = mocker.patch("bim.commands.edit_note.edit_note.CommandEditNote")
+        mock_command.return_value.execute.return_value = CommandResult(
+            success=True, warnings=["stale.md doesn't exist"]
+        )
+
+        app = EditNoteApp(Path("/tmp/test.md"))
+        async with app.run_test(size=(100, 50)) as pilot:
+            await pilot.pause()
+            notify_mock = mocker.patch.object(app, "notify")
+            title = app.query_one("#edit-title", Input)
+            title.value = "Changed Title"
+            await pilot.pause()
+            await pilot.click("#save-btn")
+            await pilot.pause()
+
+        notify_mock.assert_any_call("stale.md doesn't exist", severity="warning")
+
 
 class TestEditScreen:
     @pytest.mark.anyio
