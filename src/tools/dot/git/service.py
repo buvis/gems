@@ -366,7 +366,7 @@ class DotGitService:
             err, _out = self.shell.exe(f"cfg secret remove {shlex.quote(path)}", self.wd)
             if err:
                 return CommandResult(success=False, error=f"Failed to remove from git-secret: {err}")
-            err, _out = self.shell.exe(f"cfg rm --cached {shlex.quote(path + '.secret')}", self.wd)
+            err, _out = self.shell.exe(f"cfg rm --cached --ignore-unmatch {shlex.quote(path + '.secret')}", self.wd)
             if err:
                 return CommandResult(
                     success=False,

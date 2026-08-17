@@ -1401,7 +1401,7 @@ class TestDotGitServiceRm:
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
             "cfg secret remove .ssh/config",
-            "cfg rm --cached .ssh/config.secret",
+            "cfg rm --cached --ignore-unmatch .ssh/config.secret",
             "cfg add .gitsecret/",
         ]
         assert [str(c[0][1]) for c in shell.exe.call_args_list] == ["/home/user/dotfiles"] * 4
@@ -1423,7 +1423,7 @@ class TestDotGitServiceRm:
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
             "cfg secret remove 'my secret.txt'",
-            "cfg rm --cached 'my secret.txt.secret'",
+            "cfg rm --cached --ignore-unmatch 'my secret.txt.secret'",
             "cfg add .gitsecret/",
         ]
 
@@ -1443,7 +1443,7 @@ class TestDotGitServiceRm:
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
             """cfg secret remove 'it'"'"'s.txt'""",
-            """cfg rm --cached 'it'"'"'s.txt.secret'""",
+            """cfg rm --cached --ignore-unmatch 'it'"'"'s.txt.secret'""",
             "cfg add .gitsecret/",
         ]
 
@@ -1464,7 +1464,7 @@ class TestDotGitServiceRm:
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
             "cfg secret remove .ssh/config",
-            "cfg rm --cached .ssh/config.secret",
+            "cfg rm --cached --ignore-unmatch .ssh/config.secret",
             "cfg add .gitsecret/",
         ]
 
@@ -1507,17 +1507,39 @@ class TestDotGitServiceRm:
         shell.exe.side_effect = [
             ("", ".ssh/config\n"),  # cfg secret list
             ("", ""),  # cfg secret remove ok
-            ("error: pathspec '.ssh/config.secret' did not match", ""),  # cfg rm --cached <path>.secret fails
+            # A genuine untrack failure. A missing ciphertext is no longer one of these:
+            # --ignore-unmatch makes an absent pathspec exit 0.
+            ("fatal: unable to write new index file", ""),  # cfg rm --cached <path>.secret fails
         ]
 
         result = git_service.rm(".ssh/config")
 
         assert result.success is False
         assert result.error is not None
-        assert "error: pathspec '.ssh/config.secret' did not match" in result.error
+        assert "fatal: unable to write new index file" in result.error
         assert "already" in result.error
         assert "mapping" in result.error
         assert "cfg checkout -- .gitsecret/" in result.error
+
+    def test_ciphertext_untrack_tolerates_never_committed_ciphertext(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        """A `.secret` that was never committed must not fail the removal.
+
+        `cfg rm --cached` exits 128 on a pathspec that is not in the index, so the
+        untrack carries `--ignore-unmatch` to treat "already absent" as done.
+        """
+        shell.exe.side_effect = [
+            ("", ".ssh/config\n"),  # cfg secret list
+            ("", ""),  # cfg secret remove
+            ("", ""),  # cfg rm --cached --ignore-unmatch <path>.secret
+            ("", ""),  # cfg add .gitsecret/
+        ]
+
+        result = git_service.rm(".ssh/config")
+
+        assert result.success is True
+        assert "--ignore-unmatch" in shell.exe.call_args_list[2][0][0]
 
     def test_staging_gitsecret_failure_is_only_a_warning(self, git_service: DotGitService, shell: MagicMock) -> None:
         shell.exe.side_effect = [
