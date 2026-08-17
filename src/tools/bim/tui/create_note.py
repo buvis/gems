@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from buvis.pybase.result import CommandResult, notify_result
+from buvis.pybase.result import notify_result
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.domain.templates import Question, ZettelTemplate
 from textual import on, work
@@ -166,14 +166,6 @@ class CreateNoteApp(App[None]):
         if not self._current_template:
             return
         answers = self._gather_answers()
-
-        for q, _ in self._question_widgets:
-            if q.required and not answers.get(q.key):
-                notify_result(
-                    CommandResult(success=False, error=f"Missing required answer: {q.key}"),
-                    self.notify,
-                )
-                return
 
         extra_answers = {q.key: answers[q.key] for q, _ in self._question_widgets if answers.get(q.key)}
 
