@@ -319,6 +319,41 @@ bim<span class="w"> </span>serve<span class="w"> </span>--no-browser
 <li><p><code class="docutils literal notranslate"><span class="pre">-H,</span> <span class="pre">--host</span> <span class="pre">TEXT</span></code> — host (default: 127.0.0.1)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--no-browser</span></code> — don’t auto-open browser</p></li>
 </ul>
+<section id="security">
+<h4>Security<a class="headerlink" href="#security" title="Link to this heading"></a></h4>
+<p>The dashboard exposes your vault over HTTP, so it is locked down three ways:</p>
+<p><strong>Path confinement.</strong> Every filesystem path the API receives is resolved and
+must land under the configured zettelkasten directory or the archive
+directory. Anything else is rejected with <code class="docutils literal notranslate"><span class="pre">403</span></code>, including traversal and
+symlinks that point out of the vault.</p>
+<p><strong>Auth token.</strong> Each run mints a random token and requires it as the
+<code class="docutils literal notranslate"><span class="pre">X-Buvis-Token</span></code> header on the mutating and query-executing routes (patch,
+open, the action endpoints, and the query <code class="docutils literal notranslate"><span class="pre">exec</span></code> routes). Read-only <code class="docutils literal notranslate"><span class="pre">GET</span></code>
+routes are not token-gated. When the server is bound to a loopback host the
+token is injected into the served page, so the web UI authenticates itself
+with no setup.</p>
+<p><strong>Host allowlist.</strong> On a loopback bind the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header must be
+<code class="docutils literal notranslate"><span class="pre">localhost</span></code>, <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>, or <code class="docutils literal notranslate"><span class="pre">::1</span></code>. A request with any other <code class="docutils literal notranslate"><span class="pre">Host</span></code>
+gets <code class="docutils literal notranslate"><span class="pre">400</span></code>, which is what stops a web page you visit from reaching the
+server by DNS rebinding.</p>
+</section>
+<section id="exposing-it-on-the-lan">
+<h4>Exposing it on the LAN<a class="headerlink" href="#exposing-it-on-the-lan" title="Link to this heading"></a></h4>
+<p><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">serve</span> <span class="pre">-H</span> <span class="pre">0.0.0.0</span></code> publishes the dashboard to every host that can reach
+the port, and weakens two of the protections above:</p>
+<ul class="simple">
+<li><p><strong>Reads are unauthenticated.</strong> The <code class="docutils literal notranslate"><span class="pre">GET</span></code> routes carry no token, so anyone
+who can reach the port can read your notes.</p></li>
+<li><p><strong>The Host allowlist is disabled</strong> (it cannot be derived from a wildcard
+bind), so rebinding protection does not apply.</p></li>
+<li><p><strong>Writes still require the token, and the token is not in the page.</strong> It is
+printed to the console you started the server from; pass it as
+<code class="docutils literal notranslate"><span class="pre">X-Buvis-Token</span></code> to make authenticated requests. The web UI served over the
+LAN can therefore read but not write.</p></li>
+</ul>
+<p>The command prints a warning saying as much on every non-loopback bind. Use it
+only on a network you trust.</p>
+</section>
 </section>
 </section>
 <section id="bim-doc">
@@ -334,8 +369,11 @@ layout and indexes each one with a Zettelkasten note, OCR’d and structured.</p
 </ul>
 <p>Configuration lives under <code class="docutils literal notranslate"><span class="pre">[doc]</span></code> in the bim config (see <code class="docutils literal notranslate"><span class="pre">DocSettings</span></code>
 for the full schema): <code class="docutils literal notranslate"><span class="pre">paths.business_root</span></code>, <code class="docutils literal notranslate"><span class="pre">paths.vault_root</span></code>,
-<code class="docutils literal notranslate"><span class="pre">paths.state_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">paths.issuers_file</span></code>, plus <code class="docutils literal notranslate"><span class="pre">ocr</span></code>, <code class="docutils literal notranslate"><span class="pre">classifier</span></code>,
-and <code class="docutils literal notranslate"><span class="pre">zettel</span></code> blocks.</p>
+<code class="docutils literal notranslate"><span class="pre">paths.state_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">paths.issuers_file</span></code>, <code class="docutils literal notranslate"><span class="pre">claim_max_age_minutes</span></code>, plus
+<code class="docutils literal notranslate"><span class="pre">ocr</span></code>, <code class="docutils literal notranslate"><span class="pre">classifier</span></code>, and <code class="docutils literal notranslate"><span class="pre">zettel</span></code> blocks.</p>
+<p><code class="docutils literal notranslate"><span class="pre">claim_max_age_minutes</span></code> (default <code class="docutils literal notranslate"><span class="pre">60</span></code>) sets how long a claim on a document
+stays live: an older one is treated as abandoned and a fresh ingest attempt
+takes it over.</p>
 <section id="bim-doc-ingest">
 <h3>bim doc ingest<a class="headerlink" href="#bim-doc-ingest" title="Link to this heading"></a></h3>
 <p>Run the ingest pipeline against a single staged PDF. The eight steps -
@@ -366,8 +404,9 @@ and zettel written to <code class="docutils literal notranslate"><span class="pr
 <li><p><strong>triaged</strong> — confidence too low or required field missing. The PDF lands
 in <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code> with a <code class="docutils literal notranslate"><span class="pre">.proposed.yml</span></code> sidecar awaiting
 human review.</p></li>
-<li><p><strong>duplicate</strong> — sha256 already mapped to a filed document. A
-<code class="docutils literal notranslate"><span class="pre">.duplicate.yml</span></code> sidecar is written next to the staged input.</p></li>
+<li><p><strong>duplicate</strong> — sha256 already mapped to a document that is either filed or
+still parked in <code class="docutils literal notranslate"><span class="pre">_triage/</span></code> awaiting review. A <code class="docutils literal notranslate"><span class="pre">.duplicate.yml</span></code> sidecar
+is written next to the staged input, naming which of the two applies.</p></li>
 </ul>
 </section>
 <section id="zettel-v1-shape">
@@ -446,6 +485,18 @@ code is 0 on failure to match the rest of the bim CLI.</p></li>
 </ul>
 <p>The proposal must have <code class="docutils literal notranslate"><span class="pre">approved:</span> <span class="pre">true</span></code> and a slug present in the issuer
 registry (or <code class="docutils literal notranslate"><span class="pre">register_issuer:</span> <span class="pre">true</span></code> to add a new issuer entry under flock).</p>
+<section id="name-collisions">
+<h4>Name collisions<a class="headerlink" href="#name-collisions" title="Link to this heading"></a></h4>
+<p>The canonical name normally encodes the document’s own date with a zeroed
+time (<code class="docutils literal notranslate"><span class="pre">YYYYMMDD000000</span></code>). When that name is already taken — another
+document from the same issuer with the same date and title/number — promote
+does <strong>not</strong> overwrite the filed document. It advances the seconds field by
+one and retries, so the filed name’s seconds can differ from the document
+date (<code class="docutils literal notranslate"><span class="pre">…000001</span></code>, <code class="docutils literal notranslate"><span class="pre">…000002</span></code>, and so on). The zettel’s <code class="docutils literal notranslate"><span class="pre">id</span></code> carries the
+same advanced timestamp as its filename.</p>
+<p>If 60 consecutive names are taken, promote fails and writes nothing: the
+PDF is not moved, no zettel is created, and the proposal is left in place.</p>
+</section>
 </section>
 <section id="retry-behaviour">
 <h3>Retry behaviour<a class="headerlink" href="#retry-behaviour" title="Link to this heading"></a></h3>

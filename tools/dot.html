@@ -175,7 +175,7 @@ dot<span class="w"> </span>tui<span class="w">                     </span><span 
 <li><p><code class="docutils literal notranslate"><span class="pre">b</span></code> - open file browser (browse untracked files, add to tracking)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">S</span></code> (shift+s) - open secrets panel (manage git-secret files)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">e</span></code> - quick encrypt (register focused file with git-secret)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> (in file panes) - refresh all panes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> (in file panes) - hide (re-encrypt) modified secrets, then refresh all panes</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">q</span></code> - quit</p></li>
 </ul>
 <p><strong>Browse view</strong> (<code class="docutils literal notranslate"><span class="pre">b</span></code>):</p>
@@ -200,8 +200,9 @@ dot<span class="w"> </span>tui<span class="w">                     </span><span 
 </section>
 <section id="dot-status">
 <h3>dot status<a class="headerlink" href="#dot-status" title="Link to this heading"></a></h3>
-<p>Show staged and unstaged changes in your dotfiles repo. Uses <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span>
-<span class="pre">--porcelain</span></code> and labels each file as <code class="docutils literal notranslate"><span class="pre">staged</span></code> or <code class="docutils literal notranslate"><span class="pre">unstaged</span></code>.</p>
+<p>Hides (re-encrypts) modified secrets, then shows staged and unstaged changes
+in your dotfiles repo. Uses <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span> <span class="pre">--porcelain</span></code> and labels each file
+as <code class="docutils literal notranslate"><span class="pre">staged</span></code> or <code class="docutils literal notranslate"><span class="pre">unstaged</span></code>.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>status
 </pre></div>
 </div>
@@ -243,11 +244,14 @@ dot<span class="w"> </span>unstage<span class="w"> </span>.bashrc<span class="w"
 </section>
 <section id="dot-rm">
 <h3>dot rm<a class="headerlink" href="#dot-rm" title="Link to this heading"></a></h3>
-<p>Remove a file from dotfiles tracking, keeping the file on disk. For encrypted
-files, goes through full git-secret removal (untrack, clean <code class="docutils literal notranslate"><span class="pre">.gitignore</span></code>,
-delete plaintext).</p>
+<p>Remove a file from dotfiles tracking, keeping the file on disk. <code class="docutils literal notranslate"><span class="pre">rm</span></code> untracks;
+<code class="docutils literal notranslate"><span class="pre">delete</span></code> is the command that removes a file from disk.</p>
+<p>For encrypted files, <code class="docutils literal notranslate"><span class="pre">rm</span></code> unregisters the file from git-secret and untracks the
+committed <code class="docutils literal notranslate"><span class="pre">&lt;file&gt;.secret</span></code> ciphertext. The decrypted plaintext stays on disk and
+keeps its <code class="docutils literal notranslate"><span class="pre">.gitignore</span></code> entry, so the cleartext secret is not offered for staging
+by the next <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code>. Cleaning up that ignore entry belongs to <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">delete</span></code>.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>rm<span class="w"> </span>.bashrc<span class="w">                  </span><span class="c1"># stop tracking (file stays on disk)</span>
-dot<span class="w"> </span>rm<span class="w"> </span>.config/secrets.yaml<span class="w">     </span><span class="c1"># unregister encrypted file</span>
+dot<span class="w"> </span>rm<span class="w"> </span>.config/secrets.yaml<span class="w">     </span><span class="c1"># unregister encrypted file (plaintext kept)</span>
 </pre></div>
 </div>
 </section>

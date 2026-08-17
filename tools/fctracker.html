@@ -62,6 +62,7 @@
 <li class="toctree-l3"><a class="reference internal" href="dot.html">dot</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">fctracker</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#transaction-files">Transaction files</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
 </ul>
 </li>
@@ -161,6 +162,38 @@
 <span class="w">    </span><span class="nt">precision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 </pre></div>
 </div>
+</section>
+<section id="transaction-files">
+<h2>Transaction files<a class="headerlink" href="#transaction-files" title="Link to this heading"></a></h2>
+<p>Each account/currency pair is one CSV under <code class="docutils literal notranslate"><span class="pre">transactions_dir</span></code>, named
+<code class="docutils literal notranslate"><span class="pre">&lt;account&gt;/&lt;currency&gt;.csv</span></code> in lower case — for example
+<code class="docutils literal notranslate"><span class="pre">~/finance/transactions/savings/eur.csv</span></code>.</p>
+<p>The file has four columns: <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">amount</span></code>, <code class="docutils literal notranslate"><span class="pre">rate</span></code>, <code class="docutils literal notranslate"><span class="pre">description</span></code>.
+Dates are <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span></code>. A positive <code class="docutils literal notranslate"><span class="pre">amount</span></code> is a deposit and needs a
+<code class="docutils literal notranslate"><span class="pre">rate</span></code>; a negative <code class="docutils literal notranslate"><span class="pre">amount</span></code> is a withdrawal, whose rate is derived from the
+deposits it consumes. An amount of zero is rejected.</p>
+<p><strong>Rows must be newest first.</strong> The newest transaction goes at the TOP of the
+file, directly under the header, and the oldest at the bottom:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>date,amount,rate,description
+2024-03-01,-50.00,,Amazon purchase
+2024-02-01,200.00,25.10,
+2024-01-15,100.00,25.50,
+</pre></div>
+</div>
+<p>This order is not cosmetic. fctracker matches withdrawals against deposits
+first-in-first-out to compute cost basis, so reading the rows in the wrong order
+would consume the wrong deposits and report wrong local cost and rates.</p>
+<p>If the dates are not newest-first, the command fails with an error naming the
+file and the offending row, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">transactions</span> <span class="n">must</span> <span class="n">be</span> <span class="n">newest</span><span class="o">-</span><span class="n">first</span><span class="p">;</span> <span class="n">data</span> <span class="n">row</span> <span class="mi">4</span> <span class="n">breaks</span> <span class="n">order</span>
+</pre></div>
+</div>
+<p>Row numbers count data rows only — the header is not row 1. Nothing is computed
+when a file is rejected, so a mis-ordered ledger can never produce wrong numbers.</p>
+<p>Appending new transactions to the END of the file is therefore rejected rather
+than silently miscomputed. Add new rows at the top instead.</p>
+<p>Files are read as UTF-8; a byte-order mark, which spreadsheets often add on
+export, is accepted.</p>
 </section>
 <section id="commands">
 <h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
