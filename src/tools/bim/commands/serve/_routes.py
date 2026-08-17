@@ -10,7 +10,8 @@ from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
@@ -29,6 +30,10 @@ from bim.dependencies import (
 router = APIRouter()
 
 BUNDLED_QUERY_DIR = Path(__file__).parents[1] / "query"
+
+
+def _envelope_response(result_dict: dict[str, Any]) -> JSONResponse:
+    return JSONResponse(content=result_dict, status_code=200 if result_dict["success"] else 422)
 
 
 def _get_directory(request: Request) -> str:
@@ -207,14 +212,12 @@ async def open_file(
     body: OpenBody,
     request: Request,
     _: None = Depends(require_token),
-) -> dict[str, Any]:
+) -> JSONResponse:
     fp = confine_path(body.path, request.app.state)
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {body.path}")
-
     open_in_os(fp)
-
-    return CommandResult(success=True).to_dict()
+    return _envelope_response(CommandResult(success=True).to_dict())
 
 
 class ActionBody(BaseModel):
@@ -228,14 +231,11 @@ async def exec_action(
     action_name: str,
     body: ActionBody,
     request: Request,
-    response: Response,
     _: None = Depends(require_token),
-) -> dict[str, Any]:
+) -> JSONResponse:
     handler = ACTION_HANDLERS.get(action_name)
     if not handler:
         raise HTTPException(status_code=404, detail=f"Unknown action: {action_name}")
     resolved_args = _resolve_templates(body.args, body.row)
-    result = await handler(body.file_path, resolved_args, request.app.state)
-    if not result.success:
-        response.status_code = 422
-    return result.to_dict()
+    result_dict = await handler(body.file_path, resolved_args, request.app.state)
+    return _envelope_response(result_dict)
