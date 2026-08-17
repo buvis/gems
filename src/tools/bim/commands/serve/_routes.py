@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from buvis.pybase.filesystem import atomic_write_text
+from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from buvis.pybase.zettel.application.use_cases.query_zettels_use_case import QueryZettelsUseCase
 from buvis.pybase.zettel.domain.value_objects.property_schema import BUILTIN_SCHEMA
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
@@ -206,14 +207,14 @@ async def open_file(
     body: OpenBody,
     request: Request,
     _: None = Depends(require_token),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     fp = confine_path(body.path, request.app.state)
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {body.path}")
 
     open_in_os(fp)
 
-    return {"status": "ok"}
+    return CommandResult(success=True).to_dict()
 
 
 class ActionBody(BaseModel):
@@ -227,10 +228,14 @@ async def exec_action(
     action_name: str,
     body: ActionBody,
     request: Request,
+    response: Response,
     _: None = Depends(require_token),
-) -> dict[str, str]:
+) -> dict[str, Any]:
     handler = ACTION_HANDLERS.get(action_name)
     if not handler:
         raise HTTPException(status_code=404, detail=f"Unknown action: {action_name}")
     resolved_args = _resolve_templates(body.args, body.row)
-    return await handler(body.file_path, resolved_args, request.app.state)
+    result = await handler(body.file_path, resolved_args, request.app.state)
+    if not result.success:
+        response.status_code = 422
+    return result.to_dict()

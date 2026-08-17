@@ -5,6 +5,7 @@ from collections.abc import Callable, Coroutine
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.result import CommandResult
 from buvis.pybase.zettel.application.use_cases.update_zettel_use_case import UpdateZettelUseCase
 
 from bim.commands.serve._security import AppState, confine_path
@@ -27,7 +28,7 @@ def _resolve_templates(args: dict[str, Any], row: dict[str, Any]) -> dict[str, A
     return resolved
 
 
-async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     fp = confine_path(file_path, app_state)
     repo = get_repo()
     zettel = repo.find_by_location(str(fp))
@@ -35,10 +36,10 @@ async def handle_patch(file_path: str, args: dict[str, Any], app_state: AppState
     target = args.get("target", "metadata")
     changes = {args["field"]: args["value"]}
     UpdateZettelUseCase(repo).execute(zettel, changes, target)
-    return {"status": "ok"}
+    return CommandResult(success=True)
 
 
-async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     fp = confine_path(file_path, app_state)
     from bim.commands.sync_note.sync_note import CommandSyncNote
     from bim.dependencies import get_formatter, get_repo
@@ -53,13 +54,10 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
         repo=get_repo(),
         formatter=get_formatter(),
     )
-    result = cmd.execute()
-    if not result.success:
-        return {"status": "error", "message": result.error or "Sync failed"}
-    return {"status": "ok"}
+    return cmd.execute()
 
 
-async def handle_create_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_create_note(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     from bim.commands.create_note.create_note import CommandCreateNote
     from bim.dependencies import get_hook_runner, get_repo, get_templates
     from bim.params.create_note import CreateNoteParams
@@ -78,13 +76,10 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
         templates=get_templates(),
         hook_runner=get_hook_runner(),
     )
-    result = cmd.execute()
-    if not result.success:
-        return {"status": "error", "message": result.error or "Create failed"}
-    return {"status": "ok"}
+    return cmd.execute()
 
 
-async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     fp = confine_path(file_path, app_state)
     from bim.commands.archive_note.archive_note import CommandArchiveNote
     from bim.params.archive_note import ArchiveNoteParams
@@ -98,19 +93,16 @@ async def handle_archive(file_path: str, args: dict[str, Any], app_state: AppSta
         path_zettelkasten=zettelkasten_dir,
         repo=get_repo(),
     )
-    result = cmd.execute()
-    if not result.success:
-        return {"status": "error", "message": result.error or "Archive failed"}
-    return {"status": "ok"}
+    return cmd.execute()
 
 
-async def handle_open(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_open(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     fp = confine_path(file_path, app_state)
     open_in_os(fp)
-    return {"status": "ok"}
+    return CommandResult(success=True)
 
 
-async def handle_format(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_format(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     from bim.commands.format_note.format_note import CommandFormatNote
     from bim.dependencies import get_formatter, get_repo
     from bim.params.format_note import FormatNoteParams
@@ -122,26 +114,20 @@ async def handle_format(file_path: str, args: dict[str, Any], app_state: AppStat
         repo=get_repo(),
         formatter=get_formatter(),
     )
-    result = cmd.execute()
-    if not result.success:
-        return {"status": "error", "message": result.error or "Formatting failed"}
-    return {"status": "ok"}
+    return cmd.execute()
 
 
-async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_delete(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     fp = confine_path(file_path, app_state)
     from bim.commands.delete_note.delete_note import CommandDeleteNote
     from bim.params.delete_note import DeleteNoteParams
 
     params = DeleteNoteParams(paths=[fp])
     cmd = CommandDeleteNote(params=params, repo=get_repo())
-    result = cmd.execute()
-    if not result.success:
-        return {"status": "error", "message": result.error or "Delete failed"}
-    return {"status": "ok"}
+    return cmd.execute()
 
 
-async def handle_import(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, str]:
+async def handle_import(file_path: str, args: dict[str, Any], app_state: AppState) -> CommandResult:
     fp = confine_path(file_path, app_state)
     from bim.commands.import_note.import_note import CommandImportNote
     from bim.dependencies import get_formatter, get_repo
@@ -162,13 +148,10 @@ async def handle_import(file_path: str, args: dict[str, Any], app_state: AppStat
         repo=get_repo(),
         formatter=get_formatter(),
     )
-    result = cmd.execute()
-    if not result.success:
-        return {"status": "error", "message": result.error or "Import failed"}
-    return {"status": "ok"}
+    return cmd.execute()
 
 
-ActionHandler = Callable[[str, dict[str, Any], AppState], Coroutine[Any, Any, dict[str, str]]]
+ActionHandler = Callable[[str, dict[str, Any], AppState], Coroutine[Any, Any, CommandResult]]
 
 ACTION_HANDLERS: dict[str, ActionHandler] = {
     "patch": handle_patch,
