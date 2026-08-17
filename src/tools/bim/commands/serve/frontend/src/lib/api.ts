@@ -21,7 +21,7 @@ async function unwrapEnvelope(res: Response, label: string): Promise<ResultEnvel
 	const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
 	if (record && 'success' in record) {
 		const envelope = body as ResultEnvelope;
-		if (!envelope.success) throw new Error(envelope.error ?? fallback);
+		if (!(res.ok && record.success === true)) throw new Error(envelope.error ?? fallback);
 		return envelope;
 	}
 	if (record && 'detail' in record) {

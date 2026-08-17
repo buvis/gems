@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates
+from bim.commands.serve._actions import ACTION_HANDLERS, _resolve_templates, handle_patch
 from bim.commands.serve._security import confine_path, require_token
 from bim.commands.shared.os_open import open_in_os
 from bim.dependencies import (
@@ -165,12 +165,10 @@ async def patch_zettel(
     if not fp.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
 
-    from bim.commands.edit_note.edit_note import CommandEditNote
-    from bim.params.edit_note import EditNoteParams
-
-    params = EditNoteParams(paths=[fp], changes={body.field: body.value}, target=body.target)
-    result = CommandEditNote(params=params, repo=get_repo()).execute()
-    return _envelope_response(result.to_dict())
+    result_dict = await handle_patch(
+        file_path, {"field": body.field, "value": body.value, "target": body.target}, request.app.state
+    )
+    return _envelope_response(result_dict)
 
 
 @router.get("/zettels/{file_path:path}")

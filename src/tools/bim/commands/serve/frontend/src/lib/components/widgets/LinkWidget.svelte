@@ -27,7 +27,7 @@
 {#if filePath}
 	<button class="link-cell" onclick={handleClick} title={filePath}>{display}</button>
 	{#if openError}
-		<span class="link-error" title={openError}>{openError}</span>
+		<span class="link-error" role="alert" title={openError}>{openError}</span>
 	{/if}
 {:else}
 	<span>{display}</span>

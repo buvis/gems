@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **bim**: the WebUI now shows the real reason an action failed instead of reporting it as done — a failed archive, delete, format, sync, import, create, or open surfaces the server's own error text.
+- **bim**: the WebUI now treats an error HTTP response as a failure even when its body claims success, so a save can no longer appear to succeed on a 4xx/5xx reply. It also announces a failed "open" to screen readers instead of showing the error only visually.
 - **bim**: the TUI now reports a failed create, edit, archive, delete, or format as an error notification instead of showing nothing, or a success-looking message, when the command failed.
 - **bim**: creating a note from the TUI now runs the same required-answer validation and default-filling as `bim create` does, so a blank required answer is rejected instead of producing a note with empty fields.
 - **fctracker**: transactions are now rejected with a clear error when the CSV is not newest-first, instead of being silently processed in the wrong order and reporting wrong cost basis and rates. The error now names the offending row by the data row number as it appears in the file (header excluded, first data row = 1), instead of an internal reversed-list index that pointed at the wrong row.
