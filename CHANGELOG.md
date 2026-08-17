@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-17
+
 ### Added
 
 - **pybase**: `atomic_write_text` / `atomic_write_bytes` — new public helpers in `buvis.pybase.filesystem` for crash-safe (tempfile + fsync + `os.replace`) writes.
@@ -447,7 +449,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.12.6...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.13.0...HEAD
+[0.13.0]: https://github.com/buvis/gems/compare/gems-v0.12.6...gems-v0.13.0
 [0.12.6]: https://github.com/buvis/gems/compare/gems-v0.12.5...gems-v0.12.6
 [0.12.5]: https://github.com/buvis/gems/compare/gems-v0.12.4...gems-v0.12.5
 [0.12.4]: https://github.com/buvis/gems/compare/gems-v0.12.3...gems-v0.12.4
