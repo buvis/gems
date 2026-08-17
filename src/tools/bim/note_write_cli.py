@@ -72,13 +72,7 @@ def import_note(
         formatter=get_formatter(),
     )
     result = cmd.execute()
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Import failed")
+    console.report_result(result, failure_msg="Import failed")
 
 
 @click.command("create", help="Create a new zettel from template")
@@ -134,12 +128,11 @@ def create_note(
             console.panic(str(exc))
             return
         result = cmd.execute()
-        for w in result.warnings:
-            console.warning(w)
-        if result.success:
-            console.success(result.output or "Created")
-        else:
-            console.failure(result.error or "Create failed")
+        console.report_result(
+            result,
+            on_success=lambda r: console.success(r.output or "Created"),
+            failure_msg="Create failed",
+        )
         return
 
     from bim.tui.create_note import CreateNoteApp
@@ -198,13 +191,7 @@ def edit_note(
     params = EditNoteParams(paths=resolved, changes=changes, **kwargs)
     cmd = CommandEditNote(params=params, repo=get_repo())
     result = cmd.execute()
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Edit failed")
+    console.report_result(result, failure_msg="Edit failed")
 
 
 @click.command("archive", help="Archive zettel(s): set processed + move to archive dir")
@@ -237,13 +224,7 @@ def archive_note(
         repo=get_repo(),
     )
     result = cmd.execute()
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        if result.output:
-            console.success(result.output)
-    else:
-        console.failure(result.error or "Archive failed")
+    console.report_result(result, failure_msg="Archive failed")
 
 
 @click.command("delete", help="Permanently delete zettel(s)")
@@ -281,11 +262,12 @@ def delete_note(
     params = DeleteNoteParams(paths=confirmed_paths, **kwargs)
     cmd = CommandDeleteNote(params=params, repo=get_repo())
     result = cmd.execute()
-    for w in result.warnings:
-        console.warning(w)
-    if result.success:
-        count = result.metadata.get("deleted_count", 0)
-        if count:
-            console.success(f"Deleted {count} zettel(s)")
-    else:
-        console.failure(result.error or "Delete failed")
+    console.report_result(
+        result,
+        on_success=lambda r: (
+            console.success(f"Deleted {r.metadata.get('deleted_count', 0)} zettel(s)")
+            if r.metadata.get("deleted_count")
+            else None
+        ),
+        failure_msg="Delete failed",
+    )

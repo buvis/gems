@@ -293,7 +293,8 @@ class TestImportHandlerBranches:
             patch("bim.commands.import_note.import_note.CommandImportNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
-            patch("bim.note_write_cli.console") as mock_console,
+            patch("bim.note_write_cli.console.warning") as mock_warning,
+            patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
             mock_get_repo.return_value = MagicMock()
@@ -308,8 +309,8 @@ class TestImportHandlerBranches:
             )
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Import failed")
-            mock_console.warning.assert_called_once_with("w1")
+            mock_failure.assert_called_once_with("Import failed")
+            mock_warning.assert_called_once_with("w1")
 
 
 class TestArchiveHandlerBranches:
@@ -321,7 +322,7 @@ class TestArchiveHandlerBranches:
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.archive_note.archive_note.CommandArchiveNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.note_write_cli.console") as mock_console,
+            patch("bim.note_write_cli.console.success") as mock_success,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),
@@ -334,7 +335,7 @@ class TestArchiveHandlerBranches:
             result = runner.invoke(cli, ["archive", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.success.assert_called_once_with("Archived 1")
+            mock_success.assert_called_once_with("Archived 1")
 
     def test_archive_failure(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -344,7 +345,7 @@ class TestArchiveHandlerBranches:
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.archive_note.archive_note.CommandArchiveNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.note_write_cli.console") as mock_console,
+            patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
             mock_settings.return_value = MagicMock(
                 path_zettelkasten=str(tmp_path),
@@ -357,7 +358,7 @@ class TestArchiveHandlerBranches:
             result = runner.invoke(cli, ["archive", str(note)], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Archive error")
+            mock_failure.assert_called_once_with("Archive error")
 
 
 class TestQueryHandlerBranches:
@@ -408,7 +409,8 @@ class TestCreateHandlerBranches:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_templates") as mock_get_templates,
             patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
-            patch("bim.note_write_cli.console") as mock_console,
+            patch("bim.note_write_cli.console.warning") as mock_warning,
+            patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
             mock_get_repo.return_value = MagicMock()
@@ -424,7 +426,8 @@ class TestCreateHandlerBranches:
             )
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Template error")
+            mock_failure.assert_called_once_with("Template error")
+            mock_warning.assert_called_once_with("w1")
 
     def test_create_file_not_found(self, runner: CliRunner, tmp_path: Path) -> None:
         with (
@@ -459,7 +462,8 @@ class TestDeleteHandlerBranches:
         with (
             patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.note_write_cli.console") as mock_console,
+            patch("bim.note_write_cli.console.warning") as mock_warning,
+            patch("bim.note_write_cli.console.success") as mock_success,
         ):
             mock_get_repo.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -468,8 +472,8 @@ class TestDeleteHandlerBranches:
             result = runner.invoke(cli, ["delete", str(note), "--force"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.success.assert_called_once_with("Deleted 3 zettel(s)")
-            mock_console.warning.assert_called_once_with("w1")
+            mock_success.assert_called_once_with("Deleted 3 zettel(s)")
+            mock_warning.assert_called_once_with("w1")
 
     def test_delete_failure(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
@@ -478,7 +482,7 @@ class TestDeleteHandlerBranches:
         with (
             patch("bim.commands.delete_note.delete_note.CommandDeleteNote") as mock_cmd,
             patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.note_write_cli.console") as mock_console,
+            patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
             mock_get_repo.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -487,7 +491,7 @@ class TestDeleteHandlerBranches:
             result = runner.invoke(cli, ["delete", str(note), "--force"], catch_exceptions=False)
 
             assert result.exit_code == 0
-            mock_console.failure.assert_called_once_with("Delete error")
+            mock_failure.assert_called_once_with("Delete error")
 
     def test_delete_batch_confirm_denied(self, runner: CliRunner, tmp_path: Path) -> None:
         note = tmp_path / "note.md"
