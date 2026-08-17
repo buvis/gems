@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.result import notify_result
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Horizontal, VerticalScroll
@@ -150,15 +151,10 @@ class QueryTuiApp(App[None]):
             repo=get_repo(),
         )
         result = cmd.execute()
-        for w in result.warnings:
-            self.notify(w)
+        notify_result(result, self.notify)
         if result.success:
-            if result.output:
-                self.notify(result.output)
             self._rows = [r for r in self._rows if r.get("file_path") != fp]
             self._populate(self._rows)
-        else:
-            self.notify(result.error or "Archive failed")
 
     def action_show(self) -> None:
         table = self.query_one(DataTable)
@@ -200,15 +196,12 @@ class QueryTuiApp(App[None]):
         params = DeleteNoteParams(paths=[Path(fp)])
         cmd = CommandDeleteNote(params=params, repo=get_repo())
         result = cmd.execute()
-        for w in result.warnings:
-            self.notify(w)
+        notify_result(result, self.notify)
         if result.success:
             if result.metadata.get("deleted_count", 0):
                 self.notify(f"Deleted {Path(fp).name}")
             self._rows = [r for r in self._rows if r.get("file_path") != fp]
             self._populate(self._rows)
-        else:
-            self.notify(result.error or "Deletion failed")
 
     def action_format(self) -> None:
         table = self.query_one(DataTable)
@@ -232,8 +225,8 @@ class QueryTuiApp(App[None]):
             formatter=get_formatter(),
         )
         result = cmd.execute()
+        notify_result(result, self.notify)
         if not result.success:
-            self.notify(result.error or "Formatting failed")
             return
         self.notify(f"Formatted {Path(fp).name}")
 
@@ -440,15 +433,10 @@ class KanbanTuiApp(App[None]):
             repo=get_repo(),
         )
         result = cmd.execute()
-        for w in result.warnings:
-            self.notify(w)
+        notify_result(result, self.notify)
         if result.success:
-            if result.output:
-                self.notify(result.output)
             self._rows = [r for r in self._rows if r.get("file_path") != fp]
             self._rebuild_lanes(self._rows)
-        else:
-            self.notify(result.error or "Archive failed")
 
     def action_show(self) -> None:
         row = self._focused_row()
@@ -484,15 +472,12 @@ class KanbanTuiApp(App[None]):
         params = DeleteNoteParams(paths=[Path(fp)])
         cmd = CommandDeleteNote(params=params, repo=get_repo())
         result = cmd.execute()
-        for w in result.warnings:
-            self.notify(w)
+        notify_result(result, self.notify)
         if result.success:
             if result.metadata.get("deleted_count", 0):
                 self.notify(f"Deleted {Path(fp).name}")
             self._rows = [r for r in self._rows if r.get("file_path") != fp]
             self._rebuild_lanes(self._rows)
-        else:
-            self.notify(result.error or "Deletion failed")
 
     def action_format(self) -> None:
         row = self._focused_row()
@@ -513,8 +498,8 @@ class KanbanTuiApp(App[None]):
             formatter=get_formatter(),
         )
         result = cmd.execute()
+        notify_result(result, self.notify)
         if not result.success:
-            self.notify(result.error or "Formatting failed")
             return
         self.notify(f"Formatted {Path(fp).name}")
 

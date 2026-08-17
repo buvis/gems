@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from buvis.pybase.result import notify_result
 from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 from textual import on
 from textual.app import App, ComposeResult
@@ -195,7 +196,8 @@ class EditScreen(ModalScreen[dict[str, Any] | None]):
             from bim.params.edit_note import EditNoteParams
 
             params = EditNoteParams(paths=[self._path], changes=changes)
-            CommandEditNote(params=params, repo=get_repo()).execute()
+            result = CommandEditNote(params=params, repo=get_repo()).execute()
+            notify_result(result, self.app.notify)
         self.dismiss({"file_path": str(self._path)})
 
     @on(Button.Pressed, "#cancel-btn")
