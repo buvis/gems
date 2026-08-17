@@ -133,8 +133,7 @@ class EditNoteApp(App[None]):
 
             params = EditNoteParams(paths=[self._path], changes=changes)
             result = CommandEditNote(params=params, repo=get_repo()).execute()
-            msg = result.output or "No changes"
-            self.notify(msg)
+            notify_result(result, self.notify)
         self.exit()
 
     @on(Button.Pressed, "#cancel-btn")
