@@ -175,7 +175,7 @@
 <p>Adapters differ in how they return results: shell wrappers yield <cite>(stderr, stdout)</cite> for post-processing, while <cite>UvToolManager</cite> terminates the process as part of its flow.</p>
 <section id="return-convention">
 <h3><a class="toc-backref" href="#id3" role="doc-backlink">Return Convention</a><a class="headerlink" href="#return-convention" title="Link to this heading"></a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stderr</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">exe</span><span class="p">(</span><span class="s2">&quot;command&quot;</span><span class="p">,</span> <span class="n">working_dir</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stderr</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">exe</span><span class="p">(</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">working_dir</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">stderr</span><span class="p">:</span>
     <span class="c1"># Handle error</span>
 <span class="c1"># Process stdout</span>
@@ -329,7 +329,7 @@ If the command fails, it logs both stdout and stderr.</p>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConsoleAdapter</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">console</span> <span class="o">=</span> <span class="n">ConsoleAdapter</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">console</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;Operation completed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">console</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">"Operation completed"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Checkmark, warning, and failure flows reuse the
@@ -499,12 +499,12 @@ uses half the console width to keep columns balanced.</p>
 </dl>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">console</span><span class="o">.</span><span class="n">print_side_by_side</span><span class="p">(</span>
-<span class="gp">... </span>    <span class="n">title_left</span><span class="o">=</span><span class="s2">&quot;Config&quot;</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">text_left</span><span class="o">=</span><span class="s2">&quot;name: buvis</span><span class="se">\n</span><span class="s2">---</span><span class="se">\n</span><span class="s2"># details&quot;</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">title_right</span><span class="o">=</span><span class="s2">&quot;Result&quot;</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">text_right</span><span class="o">=</span><span class="s2">&quot;Success&quot;</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">mode_left</span><span class="o">=</span><span class="s2">&quot;markdown_with_frontmatter&quot;</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">mode_right</span><span class="o">=</span><span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">title_left</span><span class="o">=</span><span class="s2">"Config"</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">text_left</span><span class="o">=</span><span class="s2">"name: buvis</span><span class="se">\n</span><span class="s2">---</span><span class="se">\n</span><span class="s2"># details"</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">title_right</span><span class="o">=</span><span class="s2">"Result"</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">text_right</span><span class="o">=</span><span class="s2">"Success"</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">mode_left</span><span class="o">=</span><span class="s2">"markdown_with_frontmatter"</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">mode_right</span><span class="o">=</span><span class="s2">"raw"</span><span class="p">,</span>
 <span class="gp">... </span><span class="p">)</span>
 </pre></div>
 </div>
@@ -630,7 +630,7 @@ handler and level on exit.</p>
 </dl>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">logging_to_console</span><span class="p">():</span>
-<span class="gp">... </span>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Hello Rich&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Hello Rich"</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -749,14 +749,14 @@ cleans the tool cache and retries once.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">settings</span> <span class="o">=</span> <span class="n">JiraSettings</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="s2">&quot;https://jira&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">settings</span> <span class="o">=</span> <span class="n">JiraSettings</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="s2">"https://jira"</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">"abc123"</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">jira</span> <span class="o">=</span> <span class="n">JiraAdapter</span><span class="p">(</span><span class="n">settings</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">issue</span> <span class="o">=</span> <span class="n">JiraIssueDTO</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">created</span> <span class="o">=</span> <span class="n">jira</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">issue</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">link</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">jira</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">jira</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;project = PROJ ORDER BY created DESC&quot;</span><span class="p">,</span> <span class="n">max_results</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">jira</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;Start Progress&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">jira</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">"project = PROJ ORDER BY created DESC"</span><span class="p">,</span> <span class="n">max_results</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jira</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">"Start Progress"</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="py method">
@@ -1146,11 +1146,11 @@ on import when <code class="docutils literal notranslate"><span class="pre">os.n
 
 <span class="n">adapter</span> <span class="o">=</span> <span class="n">OutlookLocalAdapter</span><span class="p">()</span>
 <span class="n">adapter</span><span class="o">.</span><span class="n">create_timeblock</span><span class="p">({</span>
-    <span class="s2">&quot;subject&quot;</span><span class="p">:</span> <span class="s2">&quot;Check-in&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;body&quot;</span><span class="p">:</span> <span class="s2">&quot;Daily sync&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
-    <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="s2">&quot;Desk&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;categories&quot;</span><span class="p">:</span> <span class="s2">&quot;Work&quot;</span>
+    <span class="s2">"subject"</span><span class="p">:</span> <span class="s2">"Check-in"</span><span class="p">,</span>
+    <span class="s2">"body"</span><span class="p">:</span> <span class="s2">"Daily sync"</span><span class="p">,</span>
+    <span class="s2">"duration"</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="s2">"location"</span><span class="p">:</span> <span class="s2">"Desk"</span><span class="p">,</span>
+    <span class="s2">"categories"</span><span class="p">:</span> <span class="s2">"Work"</span>
 <span class="p">})</span>
 </pre></div>
 </div>
@@ -1165,13 +1165,13 @@ on import when <code class="docutils literal notranslate"><span class="pre">os.n
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ShellAdapter</span>
 
 <span class="n">shell</span> <span class="o">=</span> <span class="n">ShellAdapter</span><span class="p">()</span>
-<span class="n">shell</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;lint&quot;</span><span class="p">,</span> <span class="s2">&quot;poetry run lint&quot;</span><span class="p">)</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">shell</span><span class="o">.</span><span class="n">is_command_available</span><span class="p">(</span><span class="s2">&quot;git&quot;</span><span class="p">):</span>
-    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;git is required for this workflow&quot;</span><span class="p">)</span>
+<span class="n">shell</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">"lint"</span><span class="p">,</span> <span class="s2">"poetry run lint"</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">shell</span><span class="o">.</span><span class="n">is_command_available</span><span class="p">(</span><span class="s2">"git"</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">"git is required for this workflow"</span><span class="p">)</span>
 
-<span class="n">stderr</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">shell</span><span class="o">.</span><span class="n">exe</span><span class="p">(</span><span class="s2">&quot;lint&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">))</span>
+<span class="n">stderr</span><span class="p">,</span> <span class="n">stdout</span> <span class="o">=</span> <span class="n">shell</span><span class="o">.</span><span class="n">exe</span><span class="p">(</span><span class="s2">"lint"</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"src"</span><span class="p">))</span>
 <span class="k">if</span> <span class="n">stderr</span><span class="p">:</span>
-    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lint failed: </span><span class="si">{</span><span class="n">stderr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"lint failed: </span><span class="si">{</span><span class="n">stderr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">stdout</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1180,12 +1180,12 @@ on import when <code class="docutils literal notranslate"><span class="pre">os.n
 <h4>ConsoleAdapter Example<a class="headerlink" href="#consoleadapter-example" title="Link to this heading"></a></h4>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters.console.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">console</span>
 
-<span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="s2">&quot;Deploying service&quot;</span><span class="p">):</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;Gathering assets&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">console</span><span class="o">.</span><span class="n">confirm</span><span class="p">(</span><span class="s2">&quot;Continue deployment?&quot;</span><span class="p">):</span>
-        <span class="n">console</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="s2">&quot;Deployment aborted by user&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="s2">"Deploying service"</span><span class="p">):</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">"Gathering assets"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">console</span><span class="o">.</span><span class="n">confirm</span><span class="p">(</span><span class="s2">"Continue deployment?"</span><span class="p">):</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="s2">"Deployment aborted by user"</span><span class="p">)</span>
         <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">console</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;Deployment finished&quot;</span><span class="p">)</span>
+<span class="n">console</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">"Deployment finished"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -1199,24 +1199,24 @@ on import when <code class="docutils literal notranslate"><span class="pre">os.n
 <span class="n">cfg</span> <span class="o">=</span> <span class="n">MyConfig</span><span class="p">()</span>  <span class="c1"># supplies server, token, and optional proxy</span>
 <span class="n">jira</span> <span class="o">=</span> <span class="n">JiraAdapter</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 <span class="n">issue</span> <span class="o">=</span> <span class="n">JiraIssueDTO</span><span class="p">(</span>
-    <span class="n">project</span><span class="o">=</span><span class="s2">&quot;BUV&quot;</span><span class="p">,</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Document new adapter patterns&quot;</span><span class="p">,</span>
-    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Describe adapter usage in docs&quot;</span><span class="p">,</span>
-    <span class="n">issue_type</span><span class="o">=</span><span class="s2">&quot;Task&quot;</span><span class="p">,</span>
-    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;docs&quot;</span><span class="p">,</span> <span class="s2">&quot;pybase&quot;</span><span class="p">],</span>
-    <span class="n">priority</span><span class="o">=</span><span class="s2">&quot;Medium&quot;</span><span class="p">,</span>
-    <span class="n">ticket</span><span class="o">=</span><span class="s2">&quot;BUV-123&quot;</span><span class="p">,</span>
-    <span class="n">feature</span><span class="o">=</span><span class="s2">&quot;adapter-workflows&quot;</span><span class="p">,</span>
-    <span class="n">assignee</span><span class="o">=</span><span class="s2">&quot;alice&quot;</span><span class="p">,</span>
-    <span class="n">reporter</span><span class="o">=</span><span class="s2">&quot;bob&quot;</span><span class="p">,</span>
-    <span class="n">team</span><span class="o">=</span><span class="s2">&quot;platform&quot;</span><span class="p">,</span>
-    <span class="n">region</span><span class="o">=</span><span class="s2">&quot;emea&quot;</span><span class="p">,</span>
+    <span class="n">project</span><span class="o">=</span><span class="s2">"BUV"</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">"Document new adapter patterns"</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">"Describe adapter usage in docs"</span><span class="p">,</span>
+    <span class="n">issue_type</span><span class="o">=</span><span class="s2">"Task"</span><span class="p">,</span>
+    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">"docs"</span><span class="p">,</span> <span class="s2">"pybase"</span><span class="p">],</span>
+    <span class="n">priority</span><span class="o">=</span><span class="s2">"Medium"</span><span class="p">,</span>
+    <span class="n">ticket</span><span class="o">=</span><span class="s2">"BUV-123"</span><span class="p">,</span>
+    <span class="n">feature</span><span class="o">=</span><span class="s2">"adapter-workflows"</span><span class="p">,</span>
+    <span class="n">assignee</span><span class="o">=</span><span class="s2">"alice"</span><span class="p">,</span>
+    <span class="n">reporter</span><span class="o">=</span><span class="s2">"bob"</span><span class="p">,</span>
+    <span class="n">team</span><span class="o">=</span><span class="s2">"platform"</span><span class="p">,</span>
+    <span class="n">region</span><span class="o">=</span><span class="s2">"emea"</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="n">created</span> <span class="o">=</span> <span class="n">jira</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">issue</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Issue created: </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">link</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Issue created: </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">link</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">except</span> <span class="n">JIRAError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;JIRA API error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"JIRA API error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">raise</span>
 </pre></div>
 </div>
@@ -1238,15 +1238,15 @@ on import when <code class="docutils literal notranslate"><span class="pre">os.n
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">UvToolManager</span>
 
-<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/project&quot;</span><span class="p">)</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"/project"</span><span class="p">)</span>
 <span class="c1"># Directory layout:</span>
 <span class="c1"># /project</span>
 <span class="c1"># ├── bin/</span>
 <span class="c1"># └── src/</span>
 <span class="c1">#     └── my_tool/</span>
 <span class="n">UvToolManager</span><span class="o">.</span><span class="n">install_all</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
-<span class="n">UvToolManager</span><span class="o">.</span><span class="n">install_tool</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;src&quot;</span> <span class="o">/</span> <span class="s2">&quot;my_tool&quot;</span><span class="p">)</span>
-<span class="n">UvToolManager</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;bin&quot;</span> <span class="o">/</span> <span class="s2">&quot;my-tool&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;--help&quot;</span><span class="p">])</span>  <span class="c1"># exits on completion</span>
+<span class="n">UvToolManager</span><span class="o">.</span><span class="n">install_tool</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">"src"</span> <span class="o">/</span> <span class="s2">"my_tool"</span><span class="p">)</span>
+<span class="n">UvToolManager</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">"bin"</span> <span class="o">/</span> <span class="s2">"my-tool"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"--help"</span><span class="p">])</span>  <span class="c1"># exits on completion</span>
 </pre></div>
 </div>
 </section>

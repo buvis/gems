@@ -146,8 +146,8 @@ truncated target.</p>
 
 <span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>
 
-<span class="n">creation_dt</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_creation_datetime</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;pyproject.toml&quot;</span><span class="p">)</span>
-<span class="n">first_commit</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_first_commit_datetime</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;pyproject.toml&quot;</span><span class="p">)</span>
+<span class="n">creation_dt</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_creation_datetime</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">"pyproject.toml"</span><span class="p">)</span>
+<span class="n">first_commit</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_first_commit_datetime</span><span class="p">(</span><span class="n">project_root</span> <span class="o">/</span> <span class="s2">"pyproject.toml"</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">creation_dt</span><span class="p">,</span> <span class="n">first_commit</span><span class="p">)</span>
 </pre></div>
@@ -155,7 +155,7 @@ truncated target.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">atomic_write_text</span>
 
-<span class="n">atomic_write_text</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;notes.md&quot;</span><span class="p">),</span> <span class="s2">&quot;# Notes</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">atomic_write_text</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"notes.md"</span><span class="p">),</span> <span class="s2">"# Notes</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -174,7 +174,7 @@ the first commit datetime in a Git repository. Creation-time resolution is
 platform specific (Windows uses <cite>st_ctime</cite> while Unix systems prefer
 <cite>st_birthtime</cite> with a fallback to modification time).</p>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_creation_datetime</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;example.txt&quot;</span><span class="p">))</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_creation_datetime</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"example.txt"</span><span class="p">))</span>
 <span class="go">datetime(2024, 7, 8, 12, 34, tzinfo=...)</span>
 </pre></div>
 </div>
@@ -253,17 +253,17 @@ non-git working trees.</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.filesystem</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileMetadataReader</span>
 
 <span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>
-<span class="n">config_file</span> <span class="o">=</span> <span class="n">project_root</span> <span class="o">/</span> <span class="s2">&quot;pyproject.toml&quot;</span>
+<span class="n">config_file</span> <span class="o">=</span> <span class="n">project_root</span> <span class="o">/</span> <span class="s2">"pyproject.toml"</span>
 
 <span class="n">created</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_creation_datetime</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">config_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> born at </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">config_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> born at </span><span class="si">{</span><span class="n">created</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="n">first_commit</span> <span class="o">=</span> <span class="n">FileMetadataReader</span><span class="o">.</span><span class="n">get_first_commit_datetime</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">first_commit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">config_file</span><span class="si">}</span><span class="s2"> lives outside a Git repository; commit metadata unavailable.&quot;</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">config_file</span><span class="si">}</span><span class="s2"> lives outside a Git repository; commit metadata unavailable."</span>
     <span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;First commit touching </span><span class="si">{</span><span class="n">config_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> occurred on </span><span class="si">{</span><span class="n">first_commit</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"First commit touching </span><span class="si">{</span><span class="n">config_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> occurred on </span><span class="si">{</span><span class="n">first_commit</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

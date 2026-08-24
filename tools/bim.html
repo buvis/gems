@@ -156,13 +156,13 @@ Jira sync, and a web dashboard.</p>
 bim<span class="w"> </span>create
 
 <span class="c1"># specify type and title directly</span>
-bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>project<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;Redesign homepage&quot;</span><span class="w"> </span>--tags<span class="w"> </span><span class="s2">&quot;web,design&quot;</span>
+bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>project<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Redesign homepage"</span><span class="w"> </span>--tags<span class="w"> </span><span class="s2">"web,design"</span>
 
 <span class="c1"># list available templates</span>
 bim<span class="w"> </span>create<span class="w"> </span>-l
 
 <span class="c1"># pre-fill template answers</span>
-bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>meeting<span class="w"> </span>-a<span class="w"> </span><span class="s2">&quot;attendees=Alice,Bob&quot;</span><span class="w"> </span>-a<span class="w"> </span><span class="s2">&quot;date=2025-01-15&quot;</span>
+bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>meeting<span class="w"> </span>-a<span class="w"> </span><span class="s2">"attendees=Alice,Bob"</span><span class="w"> </span>-a<span class="w"> </span><span class="s2">"date=2025-01-15"</span>
 </pre></div>
 </div>
 <p>Options:</p>
@@ -178,14 +178,14 @@ bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </sp
 <h3>bim query<a class="headerlink" href="#bim-query" title="Link to this heading"></a></h3>
 <p>Query zettels with a YAML filter/sort/output spec.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># inline query: first 5 zettels</span>
-bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{output: {limit: 5}}&#39;</span>
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">'{output: {limit: 5}}'</span>
 
 <span class="c1"># filter by type, pick columns</span>
-bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{</span>
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">'{</span>
 <span class="s1">  columns: [{field: title}, {field: tags}],</span>
 <span class="s1">  filter: {field: type, op: eq, value: project},</span>
 <span class="s1">  output: {format: table}</span>
-<span class="s1">}&#39;</span>
+<span class="s1">}'</span>
 
 <span class="c1"># load saved query from file</span>
 bim<span class="w"> </span>query<span class="w"> </span>-f<span class="w"> </span>my-query
@@ -194,10 +194,10 @@ bim<span class="w"> </span>query<span class="w"> </span>-f<span class="w"> </spa
 bim<span class="w"> </span>query<span class="w"> </span>-l
 
 <span class="c1"># pick result with fzf, open in nvim</span>
-bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{filter: {field: type, op: eq, value: note}}&#39;</span><span class="w"> </span>-e
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">'{filter: {field: type, op: eq, value: note}}'</span><span class="w"> </span>-e
 
 <span class="c1"># interactive TUI</span>
-bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;{output: {limit: 20}}&#39;</span><span class="w"> </span>--tui
+bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </span><span class="s1">'{output: {limit: 20}}'</span><span class="w"> </span>--tui
 </pre></div>
 </div>
 <p>Options:</p>
@@ -216,7 +216,7 @@ for a comprehensive reference with filter operators, calculated columns, lookups
 <h3>bim import<a class="headerlink" href="#bim-import" title="Link to this heading"></a></h3>
 <p>Import a markdown file into the zettelkasten.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>import<span class="w"> </span>~/Downloads/meeting-notes.md
-bim<span class="w"> </span>import<span class="w"> </span>~/Downloads/draft.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">&quot;imported,review&quot;</span><span class="w"> </span>--force<span class="w"> </span>--remove-original
+bim<span class="w"> </span>import<span class="w"> </span>~/Downloads/draft.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">"imported,review"</span><span class="w"> </span>--force<span class="w"> </span>--remove-original
 </pre></div>
 </div>
 <p>Options:</p>
@@ -233,10 +233,10 @@ If ollama is unreachable, tag suggestion is skipped with a warning.</p>
 <section id="bim-edit">
 <h3>bim edit<a class="headerlink" href="#bim-edit" title="Link to this heading"></a></h3>
 <p>Modify zettel metadata in-place.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;Better title&quot;</span>
-bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">&quot;updated,important&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Better title"</span>
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">"updated,important"</span>
 bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--processed
-bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;priority=high&quot;</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;reviewer=alice&quot;</span>
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-s<span class="w"> </span><span class="s2">"priority=high"</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"reviewer=alice"</span>
 </pre></div>
 </div>
 <p>Options:</p>
@@ -430,7 +430,7 @@ doc-currency: CZK
 doc-language: cs
 ingested-at: 2026-05-04 14:30:15+02:00
 ingest-source: email
-file-path: &quot;[Open file](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)&quot;
+file-path: "[Open file](file:///Users/bob/Library/Mobile%20Documents/com~apple~CloudDocs/Business/cez-as/20210311083422-cez-as-7102105594.invoice.pdf)"
 file-sha256: 3f4a8c2b91e7d5a6b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182
 ocr-engine: tesseract
 ocr-mean-confidence: 0.91
@@ -553,23 +553,23 @@ records exactly which rule produced its metadata.</p></li>
 <span class="w">        </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
 <span class="w">        </span><span class="nt">partial</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="w">        </span><span class="nt">match</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">ocr_contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;IČ:</span><span class="nv"> </span><span class="s">45274649&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;Faktura&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">          </span><span class="nt">ocr_matches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;Faktura</span><span class="nv"> </span><span class="s">č\\.\\s*(\\d{10})&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">ocr_contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"IČ:</span><span class="nv"> </span><span class="s">45274649"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"Faktura"</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">ocr_matches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"Faktura</span><span class="nv"> </span><span class="s">č\\.\\s*(\\d{10})"</span><span class="p p-Indicator">]</span>
 <span class="w">        </span><span class="nt">extract</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">doc_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">invoice</span>
 <span class="w">          </span><span class="nt">doc_number</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_match</span>
-<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Faktura</span><span class="nv"> </span><span class="s">č\\.\\s*(\\d{10})&quot;</span>
+<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">"Faktura</span><span class="nv"> </span><span class="s">č\\.\\s*(\\d{10})"</span>
 <span class="w">            </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">          </span><span class="nt">doc_date</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_match</span>
-<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Datum</span><span class="nv"> </span><span class="s">vystavení:\\s*(\\d{2}\\.\\d{2}\\.\\d{4})&quot;</span>
+<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">"Datum</span><span class="nv"> </span><span class="s">vystavení:\\s*(\\d{2}\\.\\d{2}\\.\\d{4})"</span>
 <span class="w">            </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">            </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;%d.%m.%Y&quot;</span>
+<span class="w">            </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">"%d.%m.%Y"</span>
 <span class="w">            </span><span class="nt">transform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parse_date</span>
 <span class="w">          </span><span class="nt">doc_amount</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_match</span>
-<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Celkem</span><span class="nv"> </span><span class="s">k</span><span class="nv"> </span><span class="s">úhradě:\\s*([\\d\\s]+),\\d{2}\\s*Kč&quot;</span>
+<span class="w">            </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">"Celkem</span><span class="nv"> </span><span class="s">k</span><span class="nv"> </span><span class="s">úhradě:\\s*([\\d\\s]+),\\d{2}\\s*Kč"</span>
 <span class="w">            </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">            </span><span class="nt">transform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">strip_whitespace_to_int</span>
 <span class="w">          </span><span class="nt">doc_currency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CZK</span>
@@ -578,7 +578,7 @@ records exactly which rule produced its metadata.</p></li>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cez-fingerprint</span>
 <span class="w">        </span><span class="nt">partial</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">        </span><span class="nt">match</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">ocr_contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;IČ:</span><span class="nv"> </span><span class="s">45274649&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">ocr_contains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"IČ:</span><span class="nv"> </span><span class="s">45274649"</span><span class="p p-Indicator">]</span>
 <span class="w">        </span><span class="nt">extract</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">issuer_slug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cez-as</span>
 <span class="w">          </span><span class="nt">issuer_display</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ČEZ a.s.</span>

@@ -162,11 +162,11 @@ phrases or file paths.</p></li>
 <h2><a class="toc-backref" href="#id2" role="doc-backlink">Quick Start</a><a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.formatting</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringOperator</span>
 
-<span class="n">slug</span> <span class="o">=</span> <span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">&quot;BUVIS-CLI Utilities&quot;</span><span class="p">)</span>
-<span class="n">camel</span> <span class="o">=</span> <span class="n">StringOperator</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s2">&quot;cli_utilities&quot;</span><span class="p">)</span>
+<span class="n">slug</span> <span class="o">=</span> <span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">"BUVIS-CLI Utilities"</span><span class="p">)</span>
+<span class="n">camel</span> <span class="o">=</span> <span class="n">StringOperator</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s2">"cli_utilities"</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>   <span class="c1"># =&gt; &quot;buvis-cli-utilities&quot;</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">camel</span><span class="p">)</span>  <span class="c1"># =&gt; &quot;CliUtilities&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>   <span class="c1"># =&gt; "buvis-cli-utilities"</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">camel</span><span class="p">)</span>  <span class="c1"># =&gt; "CliUtilities"</span>
 </pre></div>
 </div>
 </section>
@@ -191,8 +191,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">as_graphql_field_name</span><span class="p">(</span><span class="s2">&quot;first_name&quot;</span><span class="p">)</span>
-<span class="go">&#39;FirstName&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">as_graphql_field_name</span><span class="p">(</span><span class="s2">"first_name"</span><span class="p">)</span>
+<span class="go">'FirstName'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -210,8 +210,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">as_note_field_name</span><span class="p">(</span><span class="s2">&quot;Note Title&quot;</span><span class="p">)</span>
-<span class="go">&#39;note-title&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">as_note_field_name</span><span class="p">(</span><span class="s2">"Note Title"</span><span class="p">)</span>
+<span class="go">'note-title'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -229,8 +229,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s2">&quot;first_name&quot;</span><span class="p">)</span>
-<span class="go">&#39;FirstName&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s2">"first_name"</span><span class="p">)</span>
+<span class="go">'FirstName'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -248,8 +248,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">collapse</span><span class="p">(</span><span class="s2">&quot;  foo   bar &quot;</span><span class="p">)</span>
-<span class="go">&#39;foo bar&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">collapse</span><span class="p">(</span><span class="s2">"  foo   bar "</span><span class="p">)</span>
+<span class="go">'foo bar'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -267,8 +267,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">humanize</span><span class="p">(</span><span class="s2">&quot;first_name&quot;</span><span class="p">)</span>
-<span class="go">&#39;First name&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">humanize</span><span class="p">(</span><span class="s2">"first_name"</span><span class="p">)</span>
+<span class="go">'First name'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -286,8 +286,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s2">&quot;mouse&quot;</span><span class="p">)</span>
-<span class="go">&#39;mice&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s2">"mouse"</span><span class="p">)</span>
+<span class="go">'mice'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -308,8 +308,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">prepend</span><span class="p">(</span><span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="s2">&quot;pre-&quot;</span><span class="p">)</span>
-<span class="go">&#39;pre-bar&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">prepend</span><span class="p">(</span><span class="s2">"bar"</span><span class="p">,</span> <span class="s2">"pre-"</span><span class="p">)</span>
+<span class="go">'pre-bar'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -332,11 +332,11 @@ phrases or file paths.</p></li>
 </dl>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">replace_abbreviations</span><span class="p">(</span>
-<span class="gp">... </span>    <span class="s2">&quot;Send an API request&quot;</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="p">[{</span><span class="s2">&quot;API&quot;</span><span class="p">:</span> <span class="s2">&quot;Application Programming Interface&lt;&lt;Application Programming Interface&gt;&gt;&quot;</span><span class="p">}],</span>
+<span class="gp">... </span>    <span class="s2">"Send an API request"</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">[{</span><span class="s2">"API"</span><span class="p">:</span> <span class="s2">"Application Programming Interface&lt;&lt;Application Programming Interface&gt;&gt;"</span><span class="p">}],</span>
 <span class="gp">... </span>    <span class="n">level</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
 <span class="gp">... </span><span class="p">)</span>
-<span class="go">&#39;Send an Application Programming Interface (API) request&#39;</span>
+<span class="go">'Send an Application Programming Interface (API) request'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -358,8 +358,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">shorten</span><span class="p">(</span><span class="s2">&quot;short&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-<span class="go">&#39;short&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">shorten</span><span class="p">(</span><span class="s2">"short"</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="go">'short'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -377,8 +377,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s2">&quot;mice&quot;</span><span class="p">)</span>
-<span class="go">&#39;mouse&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s2">"mice"</span><span class="p">)</span>
+<span class="go">'mouse'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -396,8 +396,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">&quot;Foo Bar!&quot;</span><span class="p">)</span>
-<span class="go">&#39;foo-bar&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">"Foo Bar!"</span><span class="p">)</span>
+<span class="go">'foo-bar'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -433,8 +433,8 @@ phrases or file paths.</p></li>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">underscore</span><span class="p">(</span><span class="s2">&quot;FirstName&quot;</span><span class="p">)</span>
-<span class="go">&#39;first_name&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">underscore</span><span class="p">(</span><span class="s2">"FirstName"</span><span class="p">)</span>
+<span class="go">'first_name'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -465,8 +465,8 @@ field naming conventions.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">as_graphql_field_name</span><span class="p">(</span><span class="s1">&#39;some_value&#39;</span><span class="p">)</span>
-<span class="go">&#39;SomeValue&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">as_graphql_field_name</span><span class="p">(</span><span class="s1">'some_value'</span><span class="p">)</span>
+<span class="go">'SomeValue'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -484,8 +484,8 @@ field naming conventions.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">as_note_field_name</span><span class="p">(</span><span class="s1">&#39;SomeValue&#39;</span><span class="p">)</span>
-<span class="go">&#39;some-value&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">as_note_field_name</span><span class="p">(</span><span class="s1">'SomeValue'</span><span class="p">)</span>
+<span class="go">'some-value'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -503,8 +503,8 @@ field naming conventions.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s1">&#39;some-name&#39;</span><span class="p">)</span>
-<span class="go">&#39;SomeName&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">camelize</span><span class="p">(</span><span class="s1">'some-name'</span><span class="p">)</span>
+<span class="go">'SomeName'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -522,8 +522,8 @@ field naming conventions.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">humanize</span><span class="p">(</span><span class="s1">&#39;some_value&#39;</span><span class="p">)</span>
-<span class="go">&#39;Some value&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">humanize</span><span class="p">(</span><span class="s1">'some_value'</span><span class="p">)</span>
+<span class="go">'Some value'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -541,8 +541,8 @@ field naming conventions.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">underscore</span><span class="p">(</span><span class="s1">&#39;SomeValue&#39;</span><span class="p">)</span>
-<span class="go">&#39;some_value&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringCaseTools</span><span class="o">.</span><span class="n">underscore</span><span class="p">(</span><span class="s1">'SomeValue'</span><span class="p">)</span>
+<span class="go">'some_value'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -569,10 +569,10 @@ Wraps inflection library with domain-specific exceptions.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s1">&#39;minutes&#39;</span><span class="p">)</span>
-<span class="go">&#39;minutes&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">)</span>
-<span class="go">&#39;cats&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s1">'minutes'</span><span class="p">)</span>
+<span class="go">'minutes'</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">pluralize</span><span class="p">(</span><span class="s1">'cat'</span><span class="p">)</span>
+<span class="go">'cats'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -590,10 +590,10 @@ Wraps inflection library with domain-specific exceptions.</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s1">&#39;minutes&#39;</span><span class="p">)</span>
-<span class="go">&#39;minutes&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s1">&#39;dogs&#39;</span><span class="p">)</span>
-<span class="go">&#39;dog&#39;</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s1">'minutes'</span><span class="p">)</span>
+<span class="go">'minutes'</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">WordLevelTools</span><span class="o">.</span><span class="n">singularize</span><span class="p">(</span><span class="s1">'dogs'</span><span class="p">)</span>
+<span class="go">'dog'</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -627,8 +627,8 @@ long form delimited by <code class="docutils literal notranslate"><span class="p
 </dd>
 </dl>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Abbr</span><span class="o">.</span><span class="n">replace_abbreviations</span><span class="p">(</span><span class="s2">&quot;Use the API&quot;</span><span class="p">,</span> <span class="p">[{</span><span class="s2">&quot;API&quot;</span><span class="p">:</span> <span class="s2">&quot;App&quot;</span><span class="p">}],</span> <span class="mi">1</span><span class="p">)</span>
-<span class="go">&#39;Use the App&#39;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Abbr</span><span class="o">.</span><span class="n">replace_abbreviations</span><span class="p">(</span><span class="s2">"Use the API"</span><span class="p">,</span> <span class="p">[{</span><span class="s2">"API"</span><span class="p">:</span> <span class="s2">"App"</span><span class="p">}],</span> <span class="mi">1</span><span class="p">)</span>
+<span class="go">'Use the App'</span>
 </pre></div>
 </div>
 </dd></dl>
