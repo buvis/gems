@@ -141,15 +141,19 @@ class ConfigurationLoader:
             tool_name: Optional tool name for tool-specific configs.
 
         Returns:
-            Ordered list of candidate paths per location (lowest to highest priority):
-            config.yaml, buvis.yaml, buvis-{tool}.yaml.
+            Ordered list of candidate paths per location (lowest to highest
+            priority within a location): config.yaml, config.local.yaml,
+            buvis.yaml, buvis.local.yaml, buvis-{tool}.yaml,
+            buvis-{tool}.local.yaml. Each ``*.local.yaml`` machine-local twin sits
+            immediately after (higher priority than) its shared file. See
+            :meth:`find_config_files_ranked` for a clean low-to-high ordering.
         """
         candidates: list[Path] = []
+        stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
         for base in paths:
-            candidates.append(base / "config.yaml")
-            candidates.append(base / "buvis.yaml")
-            if tool_name:
-                candidates.append(base / f"buvis-{tool_name}.yaml")
+            for stem in stems:
+                candidates.append(base / f"{stem}.yaml")
+                candidates.append(base / f"{stem}.local.yaml")
         return candidates
 
     @staticmethod
@@ -223,7 +227,16 @@ class ConfigurationLoader:
             config_dir: Explicit config directory override (bypasses env lookup).
 
         Returns:
-            list[Path]: Config file paths ordered from highest to lowest priority.
+            list[Path]: Existing config files as candidates. NOTE: this list is
+            NOT a single monotonic priority ranking. Directories are ordered
+            highest-priority-first ($BUVIS_CONFIG_DIR, then ~/.config/buvis, then
+            cwd), but WITHIN each directory the stems are ordered lowest-first
+            (config.yaml < buvis.yaml < buvis-{tool}.yaml, per
+            _get_candidate_files). The result is therefore mixed-order. Callers
+            that need a clean precedence order (e.g. to feed merge_configs, where
+            later wins) MUST sort explicitly by (directory rank, stem rank) — a
+            blind reversed() of this list inverts precedence both across
+            directories and across stems within a directory.
         """
         paths = ConfigurationLoader._get_search_paths(config_dir)
         candidates = ConfigurationLoader._get_candidate_files(paths, tool_name)
@@ -242,6 +255,55 @@ class ConfigurationLoader:
                 continue
 
         return result
+
+    @staticmethod
+    def find_config_files_ranked(tool_name: str | None = None, *, config_dir: str | None = None) -> list[Path]:
+        """Find existing config files in LOW-to-HIGH priority order.
+
+        Unlike :meth:`find_config_files` (whose raw output is mixed-order — see
+        its docstring), this returns the discovered files sorted so that later
+        entries have higher precedence. Feed the result directly to
+        :meth:`merge_configs` (where later wins) without reversing.
+
+        Precedence, lowest first: cwd < ~/.config/buvis < $BUVIS_CONFIG_DIR
+        across directories, and config.yaml < config.local.yaml < buvis.yaml <
+        buvis.local.yaml < buvis-{tool}.yaml < buvis-{tool}.local.yaml within each
+        directory (each machine-local ``*.local.yaml`` twin outranks its shared
+        file).
+
+        Args:
+            tool_name: Optional tool identifier for the ``buvis-{tool}.yaml`` slot.
+            config_dir: Explicit config directory override (bypasses env lookup).
+
+        Returns:
+            list[Path]: Existing, safe config files, lowest priority first.
+        """
+        paths = ConfigurationLoader._get_search_paths(config_dir)
+        base_stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
+        # Interleave each stem with its .local twin so the twin gets a higher
+        # stem_rank (wins) than its shared file.
+        stems = [s for stem in base_stems for s in (stem, f"{stem}.local")]
+
+        # dir_rank: 0 = highest-priority dir (paths[0]); stem_rank: 0 = lowest stem.
+        # LOW-to-HIGH sort key: higher dir_rank (lower priority) first, then lower
+        # stem_rank first -> ascending on (-dir_rank, stem_rank).
+        ranked: list[tuple[int, int, Path]] = []
+        for dir_rank, base in enumerate(paths):
+            for stem_rank, stem in enumerate(stems):
+                candidate = base / f"{stem}.yaml"
+                try:
+                    if not candidate.is_file():
+                        continue
+                    if not ConfigurationLoader._is_safe_path(candidate, paths):
+                        logger.warning("Skipping unsafe config path: %s", candidate)
+                        continue
+                    ranked.append((-dir_rank, stem_rank, candidate.resolve()))
+                except PermissionError:
+                    logger.debug("Permission denied: %s", candidate)
+                    continue
+
+        ranked.sort(key=lambda item: (item[0], item[1]))
+        return [path for _, _, path in ranked]
 
     @staticmethod
     def merge_configs(*configs: dict[str, Any]) -> dict[str, Any]:
