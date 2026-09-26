@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from .exceptions import MissingEnvVarError
+from .exceptions import ConfigurationError, MissingEnvVarError
 
 logger = logging.getLogger(__name__)
 
@@ -49,18 +49,103 @@ def _substitute(content: str) -> tuple[str, list[str]]:
     return result, missing
 
 
+def _split_directive(key: str) -> tuple[str, str]:
+    """Split a merge key into its base name and directive suffix.
+
+    Args:
+        key: A config key, optionally suffixed with ``+`` (append) or ``-``
+            (remove).
+
+    Returns:
+        Tuple of (base_key, directive) where directive is ``"+"``, ``"-"``, or
+        ``""`` for a plain key. A bare ``"+"`` / ``"-"`` key (empty base) is
+        treated as plain — there is no list to target.
+    """
+    if len(key) > 1 and key[-1] in ("+", "-"):
+        return key[:-1], key[-1]
+    return key, ""
+
+
+def _apply_list_directives(
+    target: dict[str, Any],
+    base: str,
+    appends: list[Any],
+    removes: list[Any],
+) -> None:
+    """Apply accumulated ``+``/``-`` directives for one base key in one layer.
+
+    Appends run before removes so that a layer which both adds and removes the
+    same token nets to removed (removal wins). Append is order-preserving with
+    dedup against the existing list.
+
+    Args:
+        target: Merged dict being built (mutated in place).
+        base: Base key the directives target.
+        appends: Items collected from ``base+`` in this layer.
+        removes: Items collected from ``base-`` in this layer.
+
+    Raises:
+        ConfigurationError: If ``base`` already exists and is not a list.
+    """
+    current = target.get(base)
+    if current is None:
+        current = []
+    elif not isinstance(current, list):
+        msg = f"Merge directive on key '{base}' requires a list value, but '{base}' is {type(current).__name__}."
+        raise ConfigurationError(msg)
+
+    merged = list(current)
+    for item in appends:
+        if item not in merged:
+            merged.append(item)
+    for item in removes:
+        while item in merged:
+            merged.remove(item)
+
+    target[base] = merged
+
+
 def _deep_merge(target: dict[str, Any], source: dict[str, Any]) -> None:
     """Recursively merge source into target.
+
+    Plain keys replace (dicts recurse, everything else overwrites), unchanged
+    from the original behaviour. Keys suffixed ``+`` / ``-`` are data-level
+    directives on list-valued keys: ``key+`` appends to ``key`` (order-preserving,
+    dedup) and ``key-`` removes from it. Within one ``source`` layer a plain
+    ``key`` resets the accumulated list first, then same-layer ``+``/``-`` apply
+    (``+`` before ``-``). Directive keys are stripped from ``target``; consumers
+    see only plain keys.
 
     Args:
         target: Dict to merge into (mutated in place).
         source: Dict to merge from.
+
+    Raises:
+        ConfigurationError: If a ``+``/``-`` directive targets a non-list key.
     """
+    # First pass: plain keys (replace/recurse), unchanged semantics. A plain key
+    # also resets any accumulated list, so it must land before same-layer
+    # directives.
+    pending: dict[str, tuple[list[Any], list[Any]]] = {}
     for k, v in source.items():
-        if k in target and isinstance(target[k], dict) and isinstance(v, dict):
-            _deep_merge(target[k], v)
+        base, directive = _split_directive(k)
+        if directive == "":
+            if k in target and isinstance(target[k], dict) and isinstance(v, dict):
+                _deep_merge(target[k], v)
+            else:
+                target[k] = v
+            continue
+        items = list(v) if isinstance(v, list) else [v]
+        appends, removes = pending.setdefault(base, ([], []))
+        if directive == "+":
+            appends.extend(items)
         else:
-            target[k] = v
+            removes.extend(items)
+
+    # Second pass: apply collected directives against the (now plain-key-updated)
+    # target.
+    for base, (appends, removes) in pending.items():
+        _apply_list_directives(target, base, appends, removes)
 
 
 class ConfigurationLoader:
@@ -306,16 +391,40 @@ class ConfigurationLoader:
         return [path for _, _, path in ranked]
 
     @staticmethod
-    def merge_configs(*configs: dict[str, Any]) -> dict[str, Any]:
+    def merge_configs(
+        *configs: dict[str, Any],
+        known_keys: set[str] | None = None,
+    ) -> dict[str, Any]:
         """Deep merge dicts. Later values override earlier.
+
+        Nested dicts merge recursively; plain non-dict values replace. Keys
+        suffixed ``+`` / ``-`` are list directives resolved by :func:`_deep_merge`
+        (append / remove), stripped from the result.
 
         Args:
             configs: Dicts to merge, in order of increasing priority.
+            known_keys: Optional set of expected base key names. When given, a
+                directive (``key+`` / ``key-``) targeting a base key absent from
+                this set logs a warning — a cheap typo guard (e.g. ``exclude+``
+                missing the ``s``). Omitting it disables the check.
 
         Returns:
-            New dict with all configs merged. Nested dicts merge recursively;
-            non-dict values replace.
+            New dict with all configs merged.
+
+        Raises:
+            ConfigurationError: If a directive targets a non-list key.
         """
+        if known_keys is not None:
+            for cfg in configs:
+                for key in cfg:
+                    base, directive = _split_directive(key)
+                    if directive and base not in known_keys:
+                        logger.warning(
+                            "Config merge directive '%s' targets unknown key '%s' (known: %s) — possible typo",
+                            key,
+                            base,
+                            sorted(known_keys),
+                        )
         result: dict[str, Any] = {}
         for cfg in configs:
             _deep_merge(result, cfg)

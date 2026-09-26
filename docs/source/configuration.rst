@@ -359,8 +359,65 @@ Substitution is applied automatically by ``ConfigResolver`` when it loads YAML:
     resolver = ConfigResolver()
     settings = resolver.resolve(PhotoSettings)
 
-Environment Variables
----------------------
+List Merge Directives (``key+`` / ``key-``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, when config layers merge, a **list value in a higher-priority layer
+replaces the lower one wholesale** — a machine-local file that wants to add one
+entry to a shared list has to re-list the whole thing. Directive keys let a layer
+*add to* or *remove from* a list instead:
+
+- ``key+`` — append the value (a list) to ``key``, order-preserving, skipping
+  items already present (dedup). If ``key`` does not exist yet, ``key+`` seeds it.
+- ``key-`` — remove each item in the value from ``key``; absent items are a silent
+  no-op.
+- ``key`` (plain) — replace, exactly as before. A plain ``key`` in a later layer
+  **resets** the accumulated list (append/remove history discarded), an explicit
+  "start over from here" escape hatch.
+
+.. code-block:: yaml
+
+    # layer 1 — gem/tool default (lowest priority)
+    excludes: [node_modules, __pycache__, .venv]
+
+    # layer 2 — user-wide (~/.config/buvis), higher priority: ADD, don't replace
+    excludes+: [.terraform, .gradle]
+
+    # layer 3 — machine-local (*.local.yaml), higher still: ADD one, CANCEL a default
+    excludes+: [.cache]
+    excludes-: [.venv]
+
+Resolved ``excludes``:
+``[node_modules, __pycache__, .terraform, .gradle, .cache]`` — order preserved,
+``.venv`` cancelled, duplicates collapsed.
+
+**Rules and constraints:**
+
+- Directives apply to **list-valued keys only**. A ``key+`` / ``key-`` over a
+  scalar or dict base raises :class:`~buvis.pybase.configuration.ConfigurationError`
+  — never a silent coercion.
+- Within one layer, ``+`` applies **before** ``-`` (a layer that both adds and
+  removes the same token nets to removed — removal wins, so a machine can
+  hard-cancel). This is order-independent of where the keys sit in the file.
+- Directives are **stripped** from the merged output: consumers and Pydantic
+  models (including strict ``extra="forbid"`` models) see only the plain ``key``.
+- Directives accumulate in the loader's low-to-high precedence order, so a
+  higher-priority layer's ``+`` / ``-`` sees the lower layers already folded in.
+
+A trailing ``+`` / ``-`` is easy to fat-finger (``exclude+`` vs ``excludes+``),
+and a stray directive silently seeds a new key. Pass ``known_keys`` to
+``merge_configs`` to warn on a directive that targets an unexpected base key:
+
+.. code-block:: python
+
+    from buvis.pybase.configuration.loader import ConfigurationLoader
+
+    ConfigurationLoader.merge_configs(
+        gem_defaults, user_config, machine_config,
+        known_keys={"excludes"},  # 'exclude+' would log a warning
+    )
+
+
 
 The ``GlobalSettings`` base class uses the ``BUVIS_`` prefix in
 SCREAMING_SNAKE_CASE. Override ``env_prefix`` on your settings class (as shown
