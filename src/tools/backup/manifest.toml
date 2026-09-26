@@ -1,0 +1,16 @@
+[tool]
+name = "backup"
+display_name = "Backup"
+module_name = "backup"
+description = "Config-driven backup archiver"
+category = "system"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.requirements]
+python = ">=3.11"
+extras = []

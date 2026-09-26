@@ -1,0 +1,66 @@
+# Bundled default backup configuration.
+#
+# Reproduces the behaviour of the former `/Users/bob/.local/bin/backup-git`
+# bash script: tar `~/git/src` into a timestamped, chmod 600
+# `~/.local/backup/git-src-<stamp>.tar.gz`, dropping reproducible artifacts.
+#
+# This is the lowest-priority layer. User-wide and machine-local config layers
+# add or trim the global `excludes` list with the `excludes+` / `excludes-`
+# directives (PRD 00080) — no need to re-list the defaults:
+#
+#   # ~/.config/buvis/buvis-backup.yaml — archive this box's Rust target dirs
+#   excludes-: [target]
+#   # add a personal scratch dir everywhere
+#   excludes+: [scratch-notes]
+
+# Reproducible artifacts — safe to drop, can be regenerated. Matched as
+# gitignore-style basename globs against each path component during the walk.
+excludes:
+  # JS / TS
+  - node_modules
+  - .next
+  - .nuxt
+  - .svelte-kit
+  - .turbo
+  - .parcel-cache
+  - .eslintcache
+  - .npm
+  - .yarn/cache
+  - .yarn/install-state.gz
+  - .pnpm-store
+  - .docusaurus
+  # Python
+  - __pycache__
+  - .venv
+  - venv
+  - .pytest_cache
+  - .mypy_cache
+  - .ruff_cache
+  - .ropeproject
+  - .tox
+  - "*.egg-info"
+  - "*.pyc"
+  # Rust
+  - target
+  # Java / JVM
+  - .gradle
+  # Generic build output
+  - dist
+  - build
+  - out
+  - coverage
+  - .cache
+  - .direnv
+  # OS cruft
+  - .DS_Store
+  - Thumbs.db
+
+instances:
+  git-src:
+    use: tar-archive
+    order: 10
+    with:
+      source: ${HOME}/git/src
+      # `%…` codes are strftime-expanded at archive time, reproducing the
+      # wrapped script's `date +%Y%m%d-%H%M%S` stamp.
+      out: ${HOME}/.local/backup/git-src-%Y%m%d-%H%M%S.tar.gz
