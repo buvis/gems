@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import subprocess
 
-from sysup.commands.pip.pip import CommandPip
+from sysup.capabilities.pip import PipOutdated
 
 
-class TestCommandPip:
+class TestPipOutdated:
     @staticmethod
     def _result(
         args: list[str],
@@ -20,7 +20,7 @@ class TestCommandPip:
     def _patch_no_mise(mocker) -> None:
         """Resolve python3 from PATH, no mise available."""
         mocker.patch(
-            "sysup.commands.pip.pip.shutil.which",
+            "sysup.capabilities.pip.shutil.which",
             side_effect=lambda name: "/mock/python" if name == "python3" else None,
         )
 
@@ -29,7 +29,7 @@ class TestCommandPip:
 
     def test_all_packages_updated(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
@@ -41,7 +41,7 @@ class TestCommandPip:
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "beta"]),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert any(s.label == "pip (python3)" and s.success for s in steps)
         assert any(s.label == "alpha (python3)" and s.success for s in steps)
@@ -62,10 +62,10 @@ class TestCommandPip:
             ],
         )
         mocker.patch(
-            "sysup.commands.pip.pip.shutil.which",
+            "sysup.capabilities.pip.shutil.which",
             side_effect=lambda name: "/mock/mise" if name == "mise" else None,
         )
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._result(["/mock/mise", "ls", "--json", "python"], stdout=mise_json),
             self._result([pythons["3.12.13"], "-m", "pip", "--version"], stdout="pip 26.0"),
@@ -76,7 +76,7 @@ class TestCommandPip:
             self._result([pythons["3.14.6"], "-m", "pip", "list", "--outdated", "--format=json"], stdout="[]"),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         labels = [s.label for s in steps]
         assert "pip (3.12.13)" in labels
@@ -91,10 +91,10 @@ class TestCommandPip:
         (bin_dir / "python3").touch()
         mise_json = json.dumps([{"version": "3.14.6", "install_path": str(tmp_path / "3.14.6")}])
         mocker.patch(
-            "sysup.commands.pip.pip.shutil.which",
+            "sysup.capabilities.pip.shutil.which",
             side_effect=lambda name: "/mock/mise" if name == "mise" else None,
         )
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._result(["/mock/mise", "ls", "--json", "python"], stdout=mise_json),
             self._result(
@@ -104,7 +104,7 @@ class TestCommandPip:
             ),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert len(steps) == 1
         assert steps[0].success is False
@@ -112,10 +112,10 @@ class TestCommandPip:
         assert mock_run.call_count == 2
 
     def test_no_interpreter_found(self, mocker) -> None:
-        mocker.patch("sysup.commands.pip.pip.shutil.which", return_value=None)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mocker.patch("sysup.capabilities.pip.shutil.which", return_value=None)
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert len(steps) == 1
         assert steps[0].success is False
@@ -124,10 +124,10 @@ class TestCommandPip:
 
     def test_mise_ls_failure_falls_back_to_path_python(self, mocker) -> None:
         mocker.patch(
-            "sysup.commands.pip.pip.shutil.which",
+            "sysup.capabilities.pip.shutil.which",
             side_effect=lambda name: {"mise": "/mock/mise", "python3": "/mock/python"}.get(name),
         )
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._result(["/mock/mise", "ls", "--json", "python"], returncode=1, stderr="mise broken"),
             self._probe(),
@@ -135,17 +135,17 @@ class TestCommandPip:
             self._result(["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"], stdout="[]"),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert any(s.label == "pip (python3)" and s.success for s in steps)
 
     def test_mise_entry_without_python_falls_back(self, mocker, tmp_path) -> None:
         mise_json = json.dumps([{"version": "3.14.6", "install_path": str(tmp_path / "missing")}])
         mocker.patch(
-            "sysup.commands.pip.pip.shutil.which",
+            "sysup.capabilities.pip.shutil.which",
             side_effect=lambda name: {"mise": "/mock/mise", "python3": "/mock/python"}.get(name),
         )
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._result(["/mock/mise", "ls", "--json", "python"], stdout=mise_json),
             self._probe(),
@@ -153,49 +153,42 @@ class TestCommandPip:
             self._result(["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"], stdout="[]"),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert any(s.label == "pip (python3)" and s.success for s in steps)
 
     def test_pip_upgrade_fails(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"], returncode=1, stderr="nope"),
-            self._result(
-                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
-                stdout="[]",
-            ),
+            self._result(["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"], stdout="[]"),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         pip_step = next(s for s in steps if s.label == "pip (python3)")
         assert pip_step.success is False
         assert "nope" in pip_step.message
-        # Still continues to check outdated
         assert len(steps) >= 2
 
     def test_no_outdated_packages(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
-            self._result(
-                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
-                stdout="[]",
-            ),
+            self._result(["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"], stdout="[]"),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert any(s.label == "pip packages (python3)" and s.success and "no outdated" in s.message for s in steps)
 
     def test_outdated_check_fails(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
@@ -206,14 +199,14 @@ class TestCommandPip:
             ),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert any(s.label == "pip outdated (python3)" and not s.success for s in steps)
         assert mock_run.call_count == 3
 
     def test_individual_package_fails(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
@@ -225,7 +218,7 @@ class TestCommandPip:
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "beta"]),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         alpha = next(s for s in steps if s.label == "alpha (python3)")
         assert alpha.success is False
@@ -234,24 +227,21 @@ class TestCommandPip:
 
     def test_malformed_json(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
-            self._result(
-                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
-                stdout="not-json",
-            ),
+            self._result(["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"], stdout="not-json"),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         assert any(s.label == "pip outdated (python3)" and not s.success and "parse" in s.message for s in steps)
 
     def test_uses_discovered_interpreter(self, mocker) -> None:
         """Regression: never pip against sys.executable (sysup's venv has no pip)."""
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
@@ -262,24 +252,21 @@ class TestCommandPip:
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "alpha"]),
         ]
 
-        CommandPip().execute()
+        list(PipOutdated().run())
 
         for call_item in mock_run.call_args_list:
             assert call_item.args[0][0] == "/mock/python"
 
     def test_pip_upgrade_fails_empty_stderr(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"], returncode=1, stderr=""),
-            self._result(
-                ["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"],
-                stdout="[]",
-            ),
+            self._result(["/mock/python", "-m", "pip", "list", "--outdated", "--format=json"], stdout="[]"),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         pip_step = next(s for s in steps if s.label == "pip (python3)")
         assert pip_step.success is False
@@ -287,7 +274,7 @@ class TestCommandPip:
 
     def test_outdated_check_fails_empty_stderr(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
@@ -298,7 +285,7 @@ class TestCommandPip:
             ),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         outdated_step = next(s for s in steps if s.label == "pip outdated (python3)")
         assert outdated_step.success is False
@@ -306,7 +293,7 @@ class TestCommandPip:
 
     def test_skips_invalid_package_names(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
@@ -317,7 +304,7 @@ class TestCommandPip:
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "good"]),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         labels = [s.label for s in steps]
         assert "good (python3)" in labels
@@ -325,7 +312,7 @@ class TestCommandPip:
 
     def test_individual_package_fails_empty_stderr(self, mocker) -> None:
         self._patch_no_mise(mocker)
-        mock_run = mocker.patch("sysup.commands.pip.pip.subprocess.run")
+        mock_run = mocker.patch("sysup.capabilities.pip.subprocess.run")
         mock_run.side_effect = [
             self._probe(),
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "pip"]),
@@ -336,8 +323,11 @@ class TestCommandPip:
             self._result(["/mock/python", "-m", "pip", "install", "--upgrade", "broken"], returncode=1, stderr=""),
         ]
 
-        steps = CommandPip().execute()
+        steps = list(PipOutdated().run())
 
         broken = next(s for s in steps if s.label == "broken (python3)")
         assert broken.success is False
         assert "unknown error" in broken.message
+
+    def test_inputs_empty(self) -> None:
+        assert dict(PipOutdated().inputs) == {}

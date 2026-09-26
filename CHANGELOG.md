@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **sysup**: updaters are now defined in configuration (`buvis-sysup.yaml` in the buvis config stack), not code. Entries are a flat map keyed by name, deep-merged over a bundled default, so a machine can add, reorder, or disable (`enabled: false`) an updater without editing Python. A sibling `buvis-sysup.local.yaml` (never `dot add`ed) overrides shared values per machine. Each entry is either a `run` entry (a list of argv arrays, no shell) or a `use` entry naming a built-in capability (`helm-repo-update`, `nvim-mason`, `pip-outdated`, `sudo-prime`) with optional `with:` inputs. `sysup --list` prints the resolved plan for the host and `sysup --dry-run` shows what would run without running it.
+
+### Changed
+
+- **sysup**: the `mac`, `pip`, `nvim`, and `wsl` subcommands (and their `sys.platform` guards) are removed. `sysup` with no argument now runs every updater whose `when` guard matches the host, in order; `--only <names>` and `--tag <t>` narrow the run. With no user config the behaviour is unchanged — on macOS `sysup` runs the former `sysup mac` steps (brew → npm-check → pip → uv → helm → mise, mise last) and on Linux the former `sysup wsl` steps (apt → snap), now host-selected by each entry's `when` instead of a subcommand.
+
 ## [0.13.0] - 2026-08-17
 
 ### Added

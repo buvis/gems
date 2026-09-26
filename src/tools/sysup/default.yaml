@@ -1,0 +1,69 @@
+# Bundled default sysup configuration.
+#
+# Reproduces the behaviour of the former `sysup mac` and `sysup wsl`
+# subcommands, host-selected via each entry's `when`. It is the lowest-priority
+# layer: any `buvis-sysup.yaml` (or its machine-local `.local.yaml` twin) in the
+# config stack deep-merges on top by key, so a machine can add, reorder, or
+# disable (`enabled: false`) an entry without redefining this base.
+
+commands:
+  # --- macOS (former `sysup mac`) -----------------------------------------
+  brew:
+    order: 10
+    when: { os: darwin, check: brew }
+    steps:
+      - [brew, update]
+      - [brew, upgrade]
+      - [brew, cleanup]
+
+  npm-check:
+    order: 20
+    when: { os: darwin, check: npm-check }
+    interactive: true
+    steps:
+      - [npm-check, -gu]
+
+  python-packages:
+    order: 30
+    when: { os: darwin }
+    use: pip-outdated
+
+  uv:
+    order: 40
+    when: { os: darwin, check: uv }
+    steps:
+      - [uv, tool, upgrade, --all]
+
+  helm:
+    order: 50
+    when: { os: darwin, check: helm }
+    use: helm-repo-update
+
+  # `mise upgrade` deletes replaced tool-version dirs that the inherited PATH
+  # still points at, so it must run after every other tool lookup — hence the
+  # highest `order` among the macOS entries.
+  mise:
+    order: 60
+    when: { os: darwin, check: mise }
+    steps:
+      - [mise, upgrade]
+
+  # --- WSL / Linux (former `sysup wsl`) -----------------------------------
+  apt:
+    order: 10
+    when: { os: linux, check: apt }
+    steps:
+      - [sudo, apt, update]
+      - [sudo, apt, upgrade, -y]
+      - [sudo, apt, autoremove, -y]
+
+  snap:
+    order: 20
+    when: { os: linux, check: snap }
+    steps:
+      - [sudo, snap, refresh]
+
+# Session-level capabilities that run before any command. sudo priming caches
+# credentials up front so brew casks don't prompt mid-run (former mac behaviour).
+prime:
+  - sudo-prime
