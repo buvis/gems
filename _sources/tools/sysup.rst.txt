@@ -3,75 +3,137 @@
 sysup
 =====
 
-System update tools. Run platform-specific package and tooling updates.
+Configurable, dotfiles-shareable system updater. ``sysup`` runs every updater
+that applies to the current host, in order. What runs is defined in
+configuration, not code, so adding, removing, or reordering a simple updater is
+a config edit rather than a release.
 
-Commands
---------
-
-sysup mac
-~~~~~~~~~
-
-Run macOS system and tooling updates. Only available on macOS.
-
-Steps run in order: brew, npm-check, pip, uv tools, helm repos, and mise
-last — mise upgrade deletes replaced tool version directories that the
-shell's PATH still points at, so it must not run before the other lookups.
-
-The run caches sudo credentials first (one upfront password prompt, kept
-fresh in the background) so brew cask installs don't stop for a password
-mid-flight. Declining the prompt is fine; steps that need sudo will then
-prompt on their own as before.
-
-The helm step updates repos only when ``helm repo list`` shows at least
-one; an empty list reports a clean skip instead of helm's "no repositories
-found" error.
+Usage
+-----
 
 .. code-block:: bash
 
-    sysup mac
+    sysup                     # run every applicable updater, in order
+    sysup --only brew,helm    # run only these entries (comma list or repeated)
+    sysup --tag python        # run only entries carrying this tag
+    sysup --list              # print the resolved plan for this host, run nothing
+    sysup --dry-run           # show what would run without running it
 
-sysup pip
-~~~~~~~~~
+Applicability is decided per entry by its ``when`` guard (OS + a binary that
+must exist), so there are no platform subcommands: a macOS-only entry simply
+carries ``when.os: darwin`` and is skipped on other hosts.
 
-Upgrade pip and outdated packages in every mise-managed Python (falls back
-to the ``python3`` on PATH when mise is absent). Interpreters without pip,
-such as uv-built venvs, are reported and skipped.
+Configuration
+-------------
 
-.. code-block:: bash
+Updaters live in ``buvis-sysup.yaml`` in the buvis config stack
+(``$BUVIS_CONFIG_DIR`` → ``~/.config/buvis`` → cwd), deep-merged over a bundled
+default. The updater collection is a **flat map keyed by name**, so a machine
+layer adds an entry with a new key and overrides a field of an existing entry
+by that key — no list-append syntax, and every base key survives unless
+explicitly disabled.
 
-    sysup pip
+.. code-block:: yaml
 
-sysup wsl
-~~~~~~~~~~
+    # buvis-sysup.yaml
+    commands:
+      brew:
+        order: 10                       # entries run in ascending order
+        when: { os: darwin, check: brew }
+        steps:                          # run entry: argv arrays, early-abort
+          - [brew, update]
+          - [brew, upgrade]
+          - [brew, cleanup]
 
-Run WSL/Linux package updates. Only available on Linux.
+      npm-check:
+        order: 20
+        when: { check: npm-check }
+        interactive: true               # inherit stdio instead of capturing
+        steps: [[npm-check, -gu]]
 
-.. code-block:: bash
+      python-packages:
+        order: 30
+        use: pip-outdated               # use entry: a named built-in capability
 
-    sysup wsl
+      nvim:
+        order: 50
+        when: { check: nvim }
+        use: nvim-mason
+        with: { timeout: 600 }          # capability inputs
 
-sysup nvim
-~~~~~~~~~~
+    prime:                              # session capabilities run first
+      - sudo-prime
 
-Update Neovim plugins, mason tools, and treesitter parsers headlessly.
+Per-entry envelope
+~~~~~~~~~~~~~~~~~~~
 
-Runs three steps in order:
+Every entry is exactly one of a ``run`` entry (``steps``: a list of argv arrays,
+executed in order with early-abort, no shell) or a ``use`` entry (``use``: a
+named built-in capability, with optional ``with`` inputs). Common fields:
 
-1. ``Lazy! sync`` to update lazy.nvim plugins.
-2. ``MasonToolsUpdateSync`` to install and update mason packages (blocking).
-3. ``TSUpdateSync`` to update nvim-treesitter parsers.
+============================  ==============================================================
+Field                         Meaning
+============================  ==============================================================
+``order``                     integer; entries run ascending (default 100)
+``enabled``                   set ``false`` to disable a merged/bundled entry (default true)
+``when.os``                   ``darwin`` / ``linux`` / ``win32``; skipped on a non-match
+``when.check``                binary name; skipped (reported) if ``shutil.which`` misses it
+``interactive``               inherit stdio instead of capturing (default false)
+``timeout``                   seconds; ``null`` = no timeout
+``continue_on_error``         if true, a failed step does not abort the entry (default false)
+``tags``                      list of strings for ``--tag`` filtering
+============================  ==============================================================
 
-Requires a Neovim config using lazy.nvim, mason.nvim, mason-tool-installer.nvim,
-and nvim-treesitter. Safe to run during dotfiles bootstrap.
+Only ``$${VAR}`` / ``${VAR}`` substitution applies to ``steps`` values (from the
+config loader); there is no shell, so no other expansion happens. Use
+``$${VAR}`` to pass a literal ``${VAR}`` through.
 
-.. code-block:: bash
+Built-in capabilities
+~~~~~~~~~~~~~~~~~~~~~~~
 
-    sysup nvim
+The stateful updaters that config cannot express as plain argv ship as
+code-owned capabilities, referenced by name:
 
-The mason step reports per-tool status. After ``MasonToolsUpdateSync`` finishes,
-it checks every name in ``mason-tool-installer``'s ``ensure_installed`` list
-against ``mason-registry``. If any expected tool is not installed, the step
-fails with the tool names and a tail of ``mason.log`` (last ~200 lines, capped
-at 8 KiB) so the underlying install error is visible. If ``mason-registry`` or
-``mason-tool-installer`` cannot be loaded, the step succeeds with an
-``INCONCLUSIVE`` note rather than failing.
+============================  ================================================================
+Capability                    Behaviour / inputs
+============================  ================================================================
+``helm-repo-update``          ``helm repo update`` guarded by an empty-repo-list check
+``nvim-mason``                headless Mason update probe; input ``timeout`` (default 600)
+``pip-outdated``              per-interpreter (mise-managed, else PATH ``python3``) pip upgrade
+``sudo-prime``                caches sudo credentials with a background refresher (``prime:``)
+============================  ================================================================
+
+An unknown capability name, or an unknown ``with`` input, is a config error
+reported clearly on load — never a stack trace.
+
+Sharing across machines
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The buvis config stack is itself managed by ``dot``. Track ``buvis-sysup.yaml``
+(``dot add``) to share your updater set across machines. For a value that must
+live on **one** machine only, put it in a sibling ``buvis-sysup.local.yaml`` and
+**do not** ``dot add`` it: the loader gives ``*.local.yaml`` a higher priority
+than its shared twin, so it overrides per-key while staying untracked.
+
+.. code-block:: yaml
+
+    # buvis-sysup.local.yaml  (machine-local, never `dot add`ed)
+    commands:
+      helm:
+        enabled: false        # this box has no helm repos — skip it here only
+      work-vpn:
+        order: 5
+        steps: [[sudo, work-vpn-refresh]]
+
+Because ``*.local.yaml`` is deliberately untracked, it is not backed up by the
+dotfiles repo; keep a separate backup of anything only it holds.
+
+Migration from the subcommands
+-------------------------------
+
+The former ``sysup mac`` / ``sysup pip`` / ``sysup nvim`` / ``sysup wsl``
+subcommands are **removed**. With no user config, plain ``sysup`` reproduces
+what ``sysup mac`` did on macOS (brew → npm-check → pip → uv → helm → mise, mise
+last) and what ``sysup wsl`` did on Linux (apt → snap), host-selected via
+``when``. Replace ``sysup mac`` with ``sysup``; to run a subset use ``--only``
+or ``--tag`` (e.g. ``sysup --only nvim`` in place of the old ``sysup nvim``).

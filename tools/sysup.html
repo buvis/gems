@@ -72,7 +72,9 @@
 <li class="toctree-l3"><a class="reference internal" href="puc.html">puc</a></li>
 <li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">sysup</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#migration-from-the-subcommands">Migration from the subcommands</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
@@ -115,64 +117,159 @@
              
   <section id="sysup">
 <span id="tool-sysup"></span><h1>sysup<a class="headerlink" href="#sysup" title="Link to this heading"></a></h1>
-<p>System update tools. Run platform-specific package and tooling updates.</p>
-<section id="commands">
-<h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
-<section id="sysup-mac">
-<h3>sysup mac<a class="headerlink" href="#sysup-mac" title="Link to this heading"></a></h3>
-<p>Run macOS system and tooling updates. Only available on macOS.</p>
-<p>Steps run in order: brew, npm-check, pip, uv tools, helm repos, and mise
-last — mise upgrade deletes replaced tool version directories that the
-shell’s PATH still points at, so it must not run before the other lookups.</p>
-<p>The run caches sudo credentials first (one upfront password prompt, kept
-fresh in the background) so brew cask installs don’t stop for a password
-mid-flight. Declining the prompt is fine; steps that need sudo will then
-prompt on their own as before.</p>
-<p>The helm step updates repos only when <code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">repo</span> <span class="pre">list</span></code> shows at least
-one; an empty list reports a clean skip instead of helm’s “no repositories
-found” error.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>mac
+<p>Configurable, dotfiles-shareable system updater. <code class="docutils literal notranslate"><span class="pre">sysup</span></code> runs every updater
+that applies to the current host, in order. What runs is defined in
+configuration, not code, so adding, removing, or reordering a simple updater is
+a config edit rather than a release.</p>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w">                     </span><span class="c1"># run every applicable updater, in order</span>
+sysup<span class="w"> </span>--only<span class="w"> </span>brew,helm<span class="w">    </span><span class="c1"># run only these entries (comma list or repeated)</span>
+sysup<span class="w"> </span>--tag<span class="w"> </span>python<span class="w">        </span><span class="c1"># run only entries carrying this tag</span>
+sysup<span class="w"> </span>--list<span class="w">              </span><span class="c1"># print the resolved plan for this host, run nothing</span>
+sysup<span class="w"> </span>--dry-run<span class="w">           </span><span class="c1"># show what would run without running it</span>
 </pre></div>
 </div>
+<p>Applicability is decided per entry by its <code class="docutils literal notranslate"><span class="pre">when</span></code> guard (OS + a binary that
+must exist), so there are no platform subcommands: a macOS-only entry simply
+carries <code class="docutils literal notranslate"><span class="pre">when.os:</span> <span class="pre">darwin</span></code> and is skipped on other hosts.</p>
 </section>
-<section id="sysup-pip">
-<h3>sysup pip<a class="headerlink" href="#sysup-pip" title="Link to this heading"></a></h3>
-<p>Upgrade pip and outdated packages in every mise-managed Python (falls back
-to the <code class="docutils literal notranslate"><span class="pre">python3</span></code> on PATH when mise is absent). Interpreters without pip,
-such as uv-built venvs, are reported and skipped.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>pip
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p>Updaters live in <code class="docutils literal notranslate"><span class="pre">buvis-sysup.yaml</span></code> in the buvis config stack
+(<code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR</span></code> → <code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span></code> → cwd), deep-merged over a bundled
+default. The updater collection is a <strong>flat map keyed by name</strong>, so a machine
+layer adds an entry with a new key and overrides a field of an existing entry
+by that key — no list-append syntax, and every base key survives unless
+explicitly disabled.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-sysup.yaml</span>
+<span class="nt">commands</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">brew</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w">                       </span><span class="c1"># entries run in ascending order</span>
+<span class="w">    </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> os</span><span class="p">:</span><span class="w"> </span><span class="nv">darwin</span><span class="p p-Indicator">,</span><span class="nt"> check</span><span class="p">:</span><span class="w"> </span><span class="nv">brew</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">                          </span><span class="c1"># run entry: argv arrays, early-abort</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">update</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">upgrade</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cleanup</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="nt">npm-check</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">    </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> check</span><span class="p">:</span><span class="w"> </span><span class="nv">npm-check</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">interactive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># inherit stdio instead of capturing</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">npm-check</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-gu</span><span class="p p-Indicator">]]</span>
+
+<span class="w">  </span><span class="nt">python-packages</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">    </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip-outdated</span><span class="w">               </span><span class="c1"># use entry: a named built-in capability</span>
+
+<span class="w">  </span><span class="nt">nvim</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">    </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> check</span><span class="p">:</span><span class="w"> </span><span class="nv">nvim</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvim-mason</span>
+<span class="w">    </span><span class="nt">with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> timeout</span><span class="p">:</span><span class="w"> </span><span class="nv">600</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">          </span><span class="c1"># capability inputs</span>
+
+<span class="nt">prime</span><span class="p">:</span><span class="w">                              </span><span class="c1"># session capabilities run first</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sudo-prime</span>
 </pre></div>
 </div>
+<section id="per-entry-envelope">
+<h3>Per-entry envelope<a class="headerlink" href="#per-entry-envelope" title="Link to this heading"></a></h3>
+<p>Every entry is exactly one of a <code class="docutils literal notranslate"><span class="pre">run</span></code> entry (<code class="docutils literal notranslate"><span class="pre">steps</span></code>: a list of argv arrays,
+executed in order with early-abort, no shell) or a <code class="docutils literal notranslate"><span class="pre">use</span></code> entry (<code class="docutils literal notranslate"><span class="pre">use</span></code>: a
+named built-in capability, with optional <code class="docutils literal notranslate"><span class="pre">with</span></code> inputs). Common fields:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">order</span></code></p></td>
+<td><p>integer; entries run ascending (default 100)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
+<td><p>set <code class="docutils literal notranslate"><span class="pre">false</span></code> to disable a merged/bundled entry (default true)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">when.os</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">darwin</span></code> / <code class="docutils literal notranslate"><span class="pre">linux</span></code> / <code class="docutils literal notranslate"><span class="pre">win32</span></code>; skipped on a non-match</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">when.check</span></code></p></td>
+<td><p>binary name; skipped (reported) if <code class="docutils literal notranslate"><span class="pre">shutil.which</span></code> misses it</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">interactive</span></code></p></td>
+<td><p>inherit stdio instead of capturing (default false)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timeout</span></code></p></td>
+<td><p>seconds; <code class="docutils literal notranslate"><span class="pre">null</span></code> = no timeout</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">continue_on_error</span></code></p></td>
+<td><p>if true, a failed step does not abort the entry (default false)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tags</span></code></p></td>
+<td><p>list of strings for <code class="docutils literal notranslate"><span class="pre">--tag</span></code> filtering</p></td>
+</tr>
+</tbody>
+</table>
+<p>Only <code class="docutils literal notranslate"><span class="pre">$${VAR}</span></code> / <code class="docutils literal notranslate"><span class="pre">${VAR}</span></code> substitution applies to <code class="docutils literal notranslate"><span class="pre">steps</span></code> values (from the
+config loader); there is no shell, so no other expansion happens. Use
+<code class="docutils literal notranslate"><span class="pre">$${VAR}</span></code> to pass a literal <code class="docutils literal notranslate"><span class="pre">${VAR}</span></code> through.</p>
 </section>
-<section id="sysup-wsl">
-<h3>sysup wsl<a class="headerlink" href="#sysup-wsl" title="Link to this heading"></a></h3>
-<p>Run WSL/Linux package updates. Only available on Linux.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>wsl
+<section id="built-in-capabilities">
+<h3>Built-in capabilities<a class="headerlink" href="#built-in-capabilities" title="Link to this heading"></a></h3>
+<p>The stateful updaters that config cannot express as plain argv ship as
+code-owned capabilities, referenced by name:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Capability</p></th>
+<th class="head"><p>Behaviour / inputs</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">helm-repo-update</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">helm</span> <span class="pre">repo</span> <span class="pre">update</span></code> guarded by an empty-repo-list check</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">nvim-mason</span></code></p></td>
+<td><p>headless Mason update probe; input <code class="docutils literal notranslate"><span class="pre">timeout</span></code> (default 600)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pip-outdated</span></code></p></td>
+<td><p>per-interpreter (mise-managed, else PATH <code class="docutils literal notranslate"><span class="pre">python3</span></code>) pip upgrade</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sudo-prime</span></code></p></td>
+<td><p>caches sudo credentials with a background refresher (<code class="docutils literal notranslate"><span class="pre">prime:</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+<p>An unknown capability name, or an unknown <code class="docutils literal notranslate"><span class="pre">with</span></code> input, is a config error
+reported clearly on load — never a stack trace.</p>
+</section>
+<section id="sharing-across-machines">
+<h3>Sharing across machines<a class="headerlink" href="#sharing-across-machines" title="Link to this heading"></a></h3>
+<p>The buvis config stack is itself managed by <code class="docutils literal notranslate"><span class="pre">dot</span></code>. Track <code class="docutils literal notranslate"><span class="pre">buvis-sysup.yaml</span></code>
+(<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code>) to share your updater set across machines. For a value that must
+live on <strong>one</strong> machine only, put it in a sibling <code class="docutils literal notranslate"><span class="pre">buvis-sysup.local.yaml</span></code> and
+<strong>do not</strong> <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code> it: the loader gives <code class="docutils literal notranslate"><span class="pre">*.local.yaml</span></code> a higher priority
+than its shared twin, so it overrides per-key while staying untracked.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-sysup.local.yaml  (machine-local, never `dot add`ed)</span>
+<span class="nt">commands</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">helm</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">        </span><span class="c1"># this box has no helm repos — skip it here only</span>
+<span class="w">  </span><span class="nt">work-vpn</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">sudo</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">work-vpn-refresh</span><span class="p p-Indicator">]]</span>
 </pre></div>
 </div>
+<p>Because <code class="docutils literal notranslate"><span class="pre">*.local.yaml</span></code> is deliberately untracked, it is not backed up by the
+dotfiles repo; keep a separate backup of anything only it holds.</p>
 </section>
-<section id="sysup-nvim">
-<h3>sysup nvim<a class="headerlink" href="#sysup-nvim" title="Link to this heading"></a></h3>
-<p>Update Neovim plugins, mason tools, and treesitter parsers headlessly.</p>
-<p>Runs three steps in order:</p>
-<ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">Lazy!</span> <span class="pre">sync</span></code> to update lazy.nvim plugins.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">MasonToolsUpdateSync</span></code> to install and update mason packages (blocking).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">TSUpdateSync</span></code> to update nvim-treesitter parsers.</p></li>
-</ol>
-<p>Requires a Neovim config using lazy.nvim, mason.nvim, mason-tool-installer.nvim,
-and nvim-treesitter. Safe to run during dotfiles bootstrap.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sysup<span class="w"> </span>nvim
-</pre></div>
-</div>
-<p>The mason step reports per-tool status. After <code class="docutils literal notranslate"><span class="pre">MasonToolsUpdateSync</span></code> finishes,
-it checks every name in <code class="docutils literal notranslate"><span class="pre">mason-tool-installer</span></code>’s <code class="docutils literal notranslate"><span class="pre">ensure_installed</span></code> list
-against <code class="docutils literal notranslate"><span class="pre">mason-registry</span></code>. If any expected tool is not installed, the step
-fails with the tool names and a tail of <code class="docutils literal notranslate"><span class="pre">mason.log</span></code> (last ~200 lines, capped
-at 8 KiB) so the underlying install error is visible. If <code class="docutils literal notranslate"><span class="pre">mason-registry</span></code> or
-<code class="docutils literal notranslate"><span class="pre">mason-tool-installer</span></code> cannot be loaded, the step succeeds with an
-<code class="docutils literal notranslate"><span class="pre">INCONCLUSIVE</span></code> note rather than failing.</p>
 </section>
+<section id="migration-from-the-subcommands">
+<h2>Migration from the subcommands<a class="headerlink" href="#migration-from-the-subcommands" title="Link to this heading"></a></h2>
+<p>The former <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">mac</span></code> / <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">pip</span></code> / <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">nvim</span></code> / <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">wsl</span></code>
+subcommands are <strong>removed</strong>. With no user config, plain <code class="docutils literal notranslate"><span class="pre">sysup</span></code> reproduces
+what <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">mac</span></code> did on macOS (brew → npm-check → pip → uv → helm → mise, mise
+last) and what <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">wsl</span></code> did on Linux (apt → snap), host-selected via
+<code class="docutils literal notranslate"><span class="pre">when</span></code>. Replace <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">mac</span></code> with <code class="docutils literal notranslate"><span class="pre">sysup</span></code>; to run a subset use <code class="docutils literal notranslate"><span class="pre">--only</span></code>
+or <code class="docutils literal notranslate"><span class="pre">--tag</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">--only</span> <span class="pre">nvim</span></code> in place of the old <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">nvim</span></code>).</p>
 </section>
 </section>
 
