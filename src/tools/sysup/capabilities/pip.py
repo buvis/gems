@@ -4,8 +4,14 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from sysup.commands.step_result import StepResult
+from sysup.step_result import StepResult
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
+__all__ = ["PipOutdated"]
 
 
 def _find_interpreters() -> list[tuple[str, str]]:
@@ -45,18 +51,27 @@ def _find_interpreters() -> list[tuple[str, str]]:
     return [("python3", python3)] if python3 else []
 
 
-class CommandPip:
-    def execute(self: CommandPip) -> list[StepResult]:
+class PipOutdated:
+    """Per-interpreter outdated-package discovery and upgrade.
+
+    Targets every mise-managed python (falling back to PATH's python3), upgrades
+    pip, then upgrades each outdated package individually.
+    """
+
+    @property
+    def inputs(self: PipOutdated) -> Mapping[str, object]:
+        return {}
+
+    def run(self: PipOutdated, **kwargs: object) -> Iterator[StepResult]:  # noqa: ARG002
         interpreters = _find_interpreters()
         if not interpreters:
-            return [StepResult("pip", success=False, message="no python interpreter found, skipping")]
+            yield StepResult("pip", success=False, message="no python interpreter found, skipping")
+            return
 
-        steps: list[StepResult] = []
         for name, python in interpreters:
-            steps.extend(self._update_interpreter(name, python))
-        return steps
+            yield from self._update_interpreter(name, python)
 
-    def _update_interpreter(self: CommandPip, name: str, python: str) -> list[StepResult]:
+    def _update_interpreter(self: PipOutdated, name: str, python: str) -> list[StepResult]:
         steps: list[StepResult] = []
 
         probe = subprocess.run(
@@ -123,7 +138,7 @@ class CommandPip:
         return steps
 
     def _update_packages(
-        self: CommandPip,
+        self: PipOutdated,
         name: str,
         python: str,
         outdated_packages: list[dict[str, object]],
