@@ -183,8 +183,8 @@ class ConfigResolver:
             logger.debug("Using config_dir override: %s", config_dir)
         if config_path is not None:
             return _load_yaml_config(config_path)
-        discovered_files = self.loader.find_config_files(tool_name, config_dir=config_dir)
-        loaded_configs = [self.loader.load_yaml(path) for path in reversed(discovered_files)]
+        discovered_files = self.loader.find_config_files_ranked(tool_name, config_dir=config_dir)
+        loaded_configs = [self.loader.load_yaml(path) for path in discovered_files]
         return self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
 
     @staticmethod
