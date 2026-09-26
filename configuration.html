@@ -63,9 +63,9 @@
 <li class="toctree-l3"><a class="reference internal" href="#file-locations">File Locations</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#file-format">File Format</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#environment-variable-substitution">Environment Variable Substitution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#list-merge-directives-key-key">List Merge Directives (<code class="docutils literal notranslate"><span class="pre">key+</span></code> / <code class="docutils literal notranslate"><span class="pre">key-</span></code>)</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ollama-integration">Ollama Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-settings-classes">Custom Settings Classes</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#globalsettings-vs-toolsettings">GlobalSettings vs ToolSettings</a></li>
@@ -219,9 +219,9 @@ automatic precedence handling across multiple sources.</p>
 <li><p><a class="reference internal" href="#file-locations" id="id14">File Locations</a></p></li>
 <li><p><a class="reference internal" href="#file-format" id="id15">File Format</a></p></li>
 <li><p><a class="reference internal" href="#environment-variable-substitution" id="id16">Environment Variable Substitution</a></p></li>
+<li><p><a class="reference internal" href="#list-merge-directives-key-key" id="id17">List Merge Directives (<code class="docutils literal notranslate"><span class="pre">key+</span></code> / <code class="docutils literal notranslate"><span class="pre">key-</span></code>)</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#environment-variables" id="id17">Environment Variables</a></p></li>
 <li><p><a class="reference internal" href="#ollama-integration" id="id18">Ollama Integration</a></p></li>
 <li><p><a class="reference internal" href="#custom-settings-classes" id="id19">Custom Settings Classes</a></p>
 <ul>
@@ -574,9 +574,59 @@ options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
 </pre></div>
 </div>
 </section>
-</section>
-<section id="environment-variables">
-<h2><a class="toc-backref" href="#id17" role="doc-backlink">Environment Variables</a><a class="headerlink" href="#environment-variables" title="Link to this heading"></a></h2>
+<section id="list-merge-directives-key-key">
+<h3><a class="toc-backref" href="#id17" role="doc-backlink">List Merge Directives (<code class="docutils literal notranslate"><span class="pre">key+</span></code> / <code class="docutils literal notranslate"><span class="pre">key-</span></code>)</a><a class="headerlink" href="#list-merge-directives-key-key" title="Link to this heading"></a></h3>
+<p>By default, when config layers merge, a <strong>list value in a higher-priority layer
+replaces the lower one wholesale</strong> — a machine-local file that wants to add one
+entry to a shared list has to re-list the whole thing. Directive keys let a layer
+<em>add to</em> or <em>remove from</em> a list instead:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">key+</span></code> — append the value (a list) to <code class="docutils literal notranslate"><span class="pre">key</span></code>, order-preserving, skipping
+items already present (dedup). If <code class="docutils literal notranslate"><span class="pre">key</span></code> does not exist yet, <code class="docutils literal notranslate"><span class="pre">key+</span></code> seeds it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">key-</span></code> — remove each item in the value from <code class="docutils literal notranslate"><span class="pre">key</span></code>; absent items are a silent
+no-op.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">key</span></code> (plain) — replace, exactly as before. A plain <code class="docutils literal notranslate"><span class="pre">key</span></code> in a later layer
+<strong>resets</strong> the accumulated list (append/remove history discarded), an explicit
+“start over from here” escape hatch.</p></li>
+</ul>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># layer 1 — gem/tool default (lowest priority)</span>
+<span class="nt">excludes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">node_modules</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">__pycache__</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">.venv</span><span class="p p-Indicator">]</span>
+
+<span class="c1"># layer 2 — user-wide (~/.config/buvis), higher priority: ADD, don't replace</span>
+<span class="nt">excludes+</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.terraform</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">.gradle</span><span class="p p-Indicator">]</span>
+
+<span class="c1"># layer 3 — machine-local (*.local.yaml), higher still: ADD one, CANCEL a default</span>
+<span class="nt">excludes+</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.cache</span><span class="p p-Indicator">]</span>
+<span class="nt">excludes-</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.venv</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>Resolved <code class="docutils literal notranslate"><span class="pre">excludes</span></code>:
+<code class="docutils literal notranslate"><span class="pre">[node_modules,</span> <span class="pre">__pycache__,</span> <span class="pre">.terraform,</span> <span class="pre">.gradle,</span> <span class="pre">.cache]</span></code> — order preserved,
+<code class="docutils literal notranslate"><span class="pre">.venv</span></code> cancelled, duplicates collapsed.</p>
+<p><strong>Rules and constraints:</strong></p>
+<ul class="simple">
+<li><p>Directives apply to <strong>list-valued keys only</strong>. A <code class="docutils literal notranslate"><span class="pre">key+</span></code> / <code class="docutils literal notranslate"><span class="pre">key-</span></code> over a
+scalar or dict base raises <a class="reference internal" href="#buvis.pybase.configuration.ConfigurationError" title="buvis.pybase.configuration.ConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConfigurationError</span></code></a>
+— never a silent coercion.</p></li>
+<li><p>Within one layer, <code class="docutils literal notranslate"><span class="pre">+</span></code> applies <strong>before</strong> <code class="docutils literal notranslate"><span class="pre">-</span></code> (a layer that both adds and
+removes the same token nets to removed — removal wins, so a machine can
+hard-cancel). This is order-independent of where the keys sit in the file.</p></li>
+<li><p>Directives are <strong>stripped</strong> from the merged output: consumers and Pydantic
+models (including strict <code class="docutils literal notranslate"><span class="pre">extra=&quot;forbid&quot;</span></code> models) see only the plain <code class="docutils literal notranslate"><span class="pre">key</span></code>.</p></li>
+<li><p>Directives accumulate in the loader’s low-to-high precedence order, so a
+higher-priority layer’s <code class="docutils literal notranslate"><span class="pre">+</span></code> / <code class="docutils literal notranslate"><span class="pre">-</span></code> sees the lower layers already folded in.</p></li>
+</ul>
+<p>A trailing <code class="docutils literal notranslate"><span class="pre">+</span></code> / <code class="docutils literal notranslate"><span class="pre">-</span></code> is easy to fat-finger (<code class="docutils literal notranslate"><span class="pre">exclude+</span></code> vs <code class="docutils literal notranslate"><span class="pre">excludes+</span></code>),
+and a stray directive silently seeds a new key. Pass <code class="docutils literal notranslate"><span class="pre">known_keys</span></code> to
+<code class="docutils literal notranslate"><span class="pre">merge_configs</span></code> to warn on a directive that targets an unexpected base key:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigurationLoader</span>
+
+<span class="n">ConfigurationLoader</span><span class="o">.</span><span class="n">merge_configs</span><span class="p">(</span>
+    <span class="n">gem_defaults</span><span class="p">,</span> <span class="n">user_config</span><span class="p">,</span> <span class="n">machine_config</span><span class="p">,</span>
+    <span class="n">known_keys</span><span class="o">=</span><span class="p">{</span><span class="s2">"excludes"</span><span class="p">},</span>  <span class="c1"># 'exclude+' would log a warning</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <p>The <code class="docutils literal notranslate"><span class="pre">GlobalSettings</span></code> base class uses the <code class="docutils literal notranslate"><span class="pre">BUVIS_</span></code> prefix in
 SCREAMING_SNAKE_CASE. Override <code class="docutils literal notranslate"><span class="pre">env_prefix</span></code> on your settings class (as shown
 in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</span></code> above) to scope variables per tool:</p>
@@ -590,6 +640,7 @@ in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</s
 <span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_PHOTO__MUSIC__BITRATE</span><span class="o">=</span><span class="m">256</span>
 </pre></div>
 </div>
+</section>
 </section>
 <section id="ollama-integration">
 <h2><a class="toc-backref" href="#id18" role="doc-backlink">Ollama Integration</a><a class="headerlink" href="#ollama-integration" title="Link to this heading"></a></h2>
