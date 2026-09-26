@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **sysup**: the `mac`, `pip`, `nvim`, and `wsl` subcommands (and their `sys.platform` guards) are removed. `sysup` with no argument now runs every updater whose `when` guard matches the host, in order; `--only <names>` and `--tag <t>` narrow the run. With no user config the behaviour is unchanged — on macOS `sysup` runs the former `sysup mac` steps (brew → npm-check → pip → uv → helm → mise, mise last) and on Linux the former `sysup wsl` steps (apt → snap), now host-selected by each entry's `when` instead of a subcommand.
+- **sysup**: the `mac`, `pip`, `nvim`, and `wsl` subcommands (and their `sys.platform` guards) are removed. `sysup` with no argument now runs every updater whose `when` guard matches the host, in order; `--only <names>` and `--tag <t>` narrow the run. With no user config the behaviour is unchanged — on macOS `sysup` runs the former `sysup mac` steps (brew → npm-check → pip → uv → helm → mise, mise last among the tool managers) and on Linux the former `sysup wsl` steps (apt → snap), now host-selected by each entry's `when` instead of a subcommand. The former standalone `sysup nvim` (headless Mason update) is also restored to the default plan as a cross-platform `use: nvim-mason` entry that runs after mise wherever nvim resolves.
 
 ## [0.13.0] - 2026-08-17
 

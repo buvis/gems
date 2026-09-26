@@ -48,6 +48,16 @@ commands:
     steps:
       - [mise, upgrade]
 
+  # --- Cross-platform (former standalone `sysup nvim`) --------------------
+  # The old `sysup nvim` subcommand had no platform guard — it ran wherever
+  # nvim resolved. `order: 70` keeps it after `mise upgrade` (and after every
+  # macOS tool lookup), so a version-manager churn that replaces the nvim
+  # binary happens before the headless Mason update spawns it.
+  nvim:
+    order: 70
+    when: { check: nvim }
+    use: nvim-mason
+
   # --- WSL / Linux (former `sysup wsl`) -----------------------------------
   apt:
     order: 10

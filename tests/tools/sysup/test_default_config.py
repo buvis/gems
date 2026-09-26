@@ -14,16 +14,29 @@ def _plan_names(platform: str, mocker) -> list[str]:
 
 class TestDefaultConfigEquivalence:
     def test_darwin_plan_matches_old_sysup_mac(self, mocker) -> None:
-        """Zero-config darwin plan == today's `sysup mac`: brew, npm-check, pip
-        (python-packages), uv, helm, mise — in that order, mise last."""
+        """Zero-config darwin plan == today's `sysup mac` plus the former
+        standalone `sysup nvim`: brew, npm-check, pip (python-packages), uv,
+        helm, mise — mise last among the tool managers — then nvim (mason)."""
         names = _plan_names("darwin", mocker)
-        assert names == ["brew", "npm-check", "python-packages", "uv", "helm", "mise"]
-        assert names[-1] == "mise"
+        assert names == ["brew", "npm-check", "python-packages", "uv", "helm", "mise", "nvim"]
+        assert names.index("mise") < names.index("nvim")
 
     def test_linux_plan_matches_old_sysup_wsl(self, mocker) -> None:
-        """Zero-config linux plan == today's `sysup wsl`: apt then snap."""
+        """Zero-config linux plan == today's `sysup wsl` (apt then snap) plus the
+        former standalone `sysup nvim`, which had no platform guard."""
         names = _plan_names("linux", mocker)
-        assert names == ["apt", "snap"]
+        assert names == ["apt", "snap", "nvim"]
+
+    def test_nvim_is_a_cross_platform_mason_capability(self, mocker) -> None:
+        """The former standalone `sysup nvim` is restored as a `use: nvim-mason`
+        entry with no `os` guard (only `check: nvim`), so it applies on any host
+        where nvim resolves — matching the old subcommand's behaviour."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        nvim = cfg.commands["nvim"]
+        assert nvim.use == "nvim-mason"
+        assert nvim.when.os is None
+        assert nvim.when.check == "nvim"
 
     def test_darwin_does_not_include_linux_entries(self, mocker) -> None:
         names = _plan_names("darwin", mocker)
