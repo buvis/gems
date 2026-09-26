@@ -72,3 +72,9 @@ src/tools/bim/commands/serve/frontend/node_modules/
 src/tools/bim/commands/serve/frontend/build/
 src/tools/bim/commands/serve/frontend/.svelte-kit/
 src/tools/bim/commands/serve/static/
+
+# KiroCrew / kiro-cli local state — ignore all except shared steering/specs
+# (.kiro/* not .kiro/, so git still descends and the negations below take effect)
+.kiro/*
+!.kiro/steering/
+!.kiro/specs/
