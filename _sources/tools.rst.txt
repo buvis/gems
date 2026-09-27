@@ -4,7 +4,7 @@ CLI Tools
 Installation
 ------------
 
-The base install registers all 16 CLIs but only pulls core dependencies.
+The base install registers all 17 CLIs but only pulls core dependencies.
 Tools that need extra packages will tell you what to install if the dep is missing.
 
 .. code-block:: bash
@@ -26,6 +26,9 @@ Overview
    * - Command
      - Extra
      - Description
+   * - :doc:`backup <tools/backup>`
+     -
+     - Config-driven tar archiver (git-src backup)
    * - :doc:`bim <tools/bim>`
      - ``bim``
      - BUVIS InfoMesh — Zettelkasten management with Jira integration
@@ -115,6 +118,7 @@ See :doc:`configuration` for how to create custom settings classes and YAML conf
    :caption: Tool Reference:
    :hidden:
 
+   tools/backup
    tools/bim
    tools/dot
    tools/fctracker
