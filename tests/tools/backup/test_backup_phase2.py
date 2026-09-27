@@ -181,7 +181,7 @@ class TestSystemTarEngine:
 
         class _Failed:
             returncode = 2
-            stderr = "tar: bogus flag\n"
+            stderr = b"tar: bogus flag\n"
 
         with patch("backup.capabilities.tar_archive.subprocess.run", return_value=_Failed()):
             result = _run_engine(source, out, "system-tar")
@@ -189,6 +189,86 @@ class TestSystemTarEngine:
         assert out.exists()
         assert "used python engine" in result.message
         assert "src/repoA/main.rs" in _archive_members(out)
+
+    def test_newline_in_filename_does_not_inject_and_engines_agree(self, tmp_path: Path) -> None:
+        """Finding 1: a filename containing a newline must not split the tar
+        filelist into an extra (potentially outside/absolute) entry. Both engines
+        must produce the identical member set with no spurious member."""
+        source = tmp_path / "src"
+        source.mkdir(parents=True)
+        (source / "repoA").mkdir()
+        (source / "repoA" / "main.rs").write_text("x", encoding="utf-8")
+        evil_name = "line1\nline2.txt"
+        (source / "repoA" / evil_name).write_text("payload", encoding="utf-8")
+        # a sibling that a newline-split "/etc/passwd"-style injection could grab
+        outside = tmp_path / "outside-secret.txt"
+        outside.write_text("do not archive me", encoding="utf-8")
+
+        py_out = tmp_path / "py.tar.gz"
+        sys_out = tmp_path / "sys.tar.gz"
+        assert _run_engine(source, py_out, "python-tarfile").success is True
+        assert _run_engine(source, sys_out, "system-tar").success is True
+        py_members = _archive_members(py_out)
+        sys_members = _archive_members(sys_out)
+
+        assert sys_members == py_members
+        assert f"src/repoA/{evil_name}" in sys_members
+        assert not any("outside-secret" in m for m in sys_members)
+        # no spurious member from a newline split
+        assert not any(m in {"line1", "line2.txt", "src/repoA/line1"} for m in sys_members)
+
+
+class TestEngineValidation:
+    def test_unknown_engine_rejected_without_archiving(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"repoA/main.rs": "x"})
+        out = tmp_path / "out.tar.gz"
+        results = list(
+            TarArchive().run(
+                label="git-src",
+                source=str(source),
+                out=str(out),
+                excludes=[],
+                engine="system_tar",  # typo — must be rejected, not silently python
+                dry_run=False,
+            ),
+        )
+        assert len(results) == 1
+        assert results[0].success is False
+        assert "unknown engine 'system_tar'" in results[0].message
+        assert not out.exists()
+
+    def test_unknown_engine_rejected_in_dry_run(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"repoA/main.rs": "x"})
+        results = list(
+            TarArchive().run(
+                label="git-src",
+                source=str(source),
+                out=str(tmp_path / "out.tar.gz"),
+                excludes=[],
+                engine="bogus",
+                dry_run=True,
+            ),
+        )
+        assert len(results) == 1
+        assert results[0].success is False
+        assert "unknown engine 'bogus'" in results[0].message
+
+
+class TestTotalBytesMeaning:
+    def test_real_run_total_bytes_is_input_bytes(self, tmp_path: Path) -> None:
+        """Finding 4: ArchiveMeta.total_bytes is INPUT bytes in a real run, not
+        the compressed on-disk size."""
+        source = tmp_path / "src"
+        _tree(source, {"a.txt": "hello", "b.txt": "world!!"})
+        out = tmp_path / "out.tar.gz"
+        result = _run_engine(source, out, "python-tarfile")
+        input_bytes = len("hello") + len("world!!")
+        assert result.total_bytes == input_bytes
+        # the compressed size is reported in the message, and differs from input
+        assert f"{input_bytes} bytes in" in result.message
+        assert f"{out.stat().st_size} bytes on disk" in result.message
 
 
 class TestV1Regression:

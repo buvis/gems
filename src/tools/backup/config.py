@@ -3,7 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from buvis.pybase.configuration import ConfigurationLoader
+from buvis.pybase.configuration import (
+    ConfigurationError,
+    ConfigurationLoader,
+    MissingEnvVarError,
+)
 from buvis.pybase.result import FatalError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -100,15 +104,25 @@ def load_config(config_dir: str | None = None) -> BackupConfig:
     and finally checked for unknown capability names / inputs.
 
     Raises:
-        FatalError: on invalid YAML schema, an unknown capability, or an unknown
-            ``with:`` input.
+        FatalError: on malformed YAML in a config file, a merge/directive error,
+            a missing required env var, an invalid schema, an unknown capability,
+            or an unknown ``with:`` input — every failure the CLI's ``FatalError``
+            handler can render, never a raw traceback.
     """
     layers: list[dict[str, object]] = [_load_default()]
     ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked("backup", config_dir=config_dir)
     for path in ranked_files:
-        layers.append(ConfigurationLoader.load_yaml(path))
+        try:
+            layers.append(ConfigurationLoader.load_yaml(path))
+        except (yaml.YAMLError, MissingEnvVarError) as exc:
+            msg = f"failed to load config file {path}: {exc}"
+            raise FatalError(msg) from exc
 
-    merged = ConfigurationLoader.merge_configs(*layers, known_keys={"excludes"})
+    try:
+        merged = ConfigurationLoader.merge_configs(*layers, known_keys={"excludes"})
+    except (ConfigurationError, yaml.YAMLError, MissingEnvVarError) as exc:
+        msg = f"failed to merge backup configuration: {exc}"
+        raise FatalError(msg) from exc
 
     try:
         cfg = BackupConfig.model_validate(merged)

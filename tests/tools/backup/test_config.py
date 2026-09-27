@@ -114,6 +114,20 @@ class TestLoadConfigValidation:
         with pytest.raises(FatalError, match="invalid backup configuration"):
             load_config()
 
+    def test_malformed_yaml_raises_fatal_not_yamlerror(self, tmp_path: Path) -> None:
+        """Finding 6: a syntactically broken YAML config file is translated to
+        FatalError (the CLI catches only that), never a raw yaml.YAMLError."""
+        import yaml
+
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        # unterminated flow mapping -> yaml.safe_load raises yaml.YAMLError
+        _write(cfg_dir / "buvis-backup.yaml", "instances: {oops: \n  broken: [1, 2\n")
+        with pytest.raises(FatalError) as exc_info:
+            load_config(config_dir=str(cfg_dir))
+        assert not isinstance(exc_info.value, yaml.YAMLError)
+        assert str(cfg_dir / "buvis-backup.yaml") in str(exc_info.value)
+
 
 class TestApplicableInstances:
     def test_sorted_by_order_then_name(self) -> None:

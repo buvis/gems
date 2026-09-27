@@ -136,4 +136,4 @@ subcommands are **removed**. With no user config, plain ``sysup`` reproduces
 what ``sysup mac`` did on macOS (brew → npm-check → pip → uv → helm → mise, mise
 last) and what ``sysup wsl`` did on Linux (apt → snap), host-selected via
 ``when``. Replace ``sysup mac`` with ``sysup``; to run a subset use ``--only``
-or ``--tag`` (e.g. ``sysup --only nvim`` in place of the old ``sysup nvim``).
+or ``--tag`` (e.g. ``sysup --only brew`` to run just Homebrew).

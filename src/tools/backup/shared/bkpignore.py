@@ -21,12 +21,15 @@ class BkpignoreRules:
 
     ``adds`` are bare lines (extra excludes for this subtree); ``unignores`` are
     ``!pattern`` lines (cancel an inherited global default for this subtree).
-    Both are gitignore-style basename globs, matched against a single path
-    component (never a slash-bearing path) in v1.
+    ``sequence`` is the ordered ``(pattern, is_unignore)`` view of the same
+    lines in FILE order, so that a later line can override an earlier one within
+    the same file (gitignore precedence). All are gitignore-style basename globs,
+    matched against a single path component (never a slash-bearing path) in v1.
     """
 
     adds: tuple[str, ...] = ()
     unignores: tuple[str, ...] = ()
+    sequence: tuple[tuple[str, bool], ...] = ()
 
 
 def parse_bkpignore(text: str) -> BkpignoreRules:
@@ -35,16 +38,18 @@ def parse_bkpignore(text: str) -> BkpignoreRules:
     Gitignore-style: blank lines and ``#`` comments are ignored, surrounding
     whitespace is stripped, a leading ``!`` marks an un-ignore, and a leading
     ``\\!`` escapes a literal ``!``. Later duplicate lines are de-duplicated
-    while preserving first-seen order.
+    while preserving first-seen order. ``sequence`` preserves the interleaved
+    add/un-ignore order so a later line overrides an earlier one.
 
     Args:
         text: Raw ``.bkpignore`` file content.
 
     Returns:
-        The parsed add and un-ignore patterns.
+        The parsed add and un-ignore patterns, plus their ordered view.
     """
     adds: list[str] = []
     unignores: list[str] = []
+    sequence: list[tuple[str, bool]] = []
     for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
@@ -53,70 +58,93 @@ def parse_bkpignore(text: str) -> BkpignoreRules:
             pattern = line[1:].strip()
             if pattern and pattern not in unignores:
                 unignores.append(pattern)
+                sequence.append((pattern, True))
             continue
         if line.startswith("\\!"):
             line = line[1:]
         if line not in adds:
             adds.append(line)
-    return BkpignoreRules(adds=tuple(adds), unignores=tuple(unignores))
+            sequence.append((line, False))
+    return BkpignoreRules(adds=tuple(adds), unignores=tuple(unignores), sequence=tuple(sequence))
 
 
 @dataclass(frozen=True)
 class ExcludeState:
     """The exclude decision context in force at one point of the walk.
 
-    ``excludes`` is the active set of basename patterns that exclude a matching
-    path; ``unignores`` is the set of patterns that re-include an otherwise
-    excluded path. Both are accumulated top-down: a ``.bkpignore`` found in a
-    directory layers its rules onto the state inherited from ancestors, and that
-    layered state applies to that directory's subtree ONLY — which is what makes
-    ``!target`` path-scoped. ``applied`` records every rule that has been layered
-    on during the walk, for dry-run reporting.
+    ``base_excludes`` is the global basename/relpath exclude set (post
+    ``excludes+`` / ``excludes-``); it is the lowest-precedence layer and never
+    changes as the walk descends. ``rules`` is an ORDERED tuple of
+    ``(pattern, is_unignore)`` accumulated top-down: each ``.bkpignore`` found in
+    a directory appends its own rules onto the state inherited from ancestors,
+    and that layered state applies to that directory's subtree ONLY — which is
+    what makes ``!target`` path-scoped.
+
+    Precedence follows gitignore: the LAST-layered ``.bkpignore`` rule matching a
+    name wins, so a descendant layer overrides an ancestor and, within one file,
+    a later line overrides an earlier one. Only when no ``.bkpignore`` rule
+    matches does the base global exclude set decide — so an ancestor ``!target``
+    still wins over the global default, while a descendant plain ``target``
+    re-excludes what that ancestor un-ignored. ``applied`` records every rule
+    layered on during the walk (first-seen order), for dry-run reporting.
     """
 
-    excludes: frozenset[str] = frozenset()
-    unignores: frozenset[str] = frozenset()
+    base_excludes: frozenset[str] = frozenset()
+    rules: tuple[tuple[str, bool], ...] = field(default=())
     applied: tuple[str, ...] = field(default=())
 
     def layer(self: ExcludeState, rules: BkpignoreRules) -> ExcludeState:
         """Return a new state with ``rules`` layered on top of this one.
 
-        Adds extend the active excludes; un-ignores extend the active
-        un-ignores. The result applies to the current directory's subtree only —
-        the caller passes the parent's state down and never mutates it.
+        Adds append exclude rules; un-ignores append un-ignore rules — both after
+        the inherited rules, so a descendant (or later-in-file) rule outranks an
+        ancestor one on reverse-order evaluation. The result applies to the
+        current directory's subtree only — the caller passes the parent's state
+        down and never mutates it.
         """
         if not rules.adds and not rules.unignores:
             return self
+        layered = list(self.rules)
         applied = list(self.applied)
-        for pattern in rules.adds:
-            applied.append(f"+{pattern}")
-        for pattern in rules.unignores:
-            applied.append(f"!{pattern}")
+        # Prefer the file-order sequence (so a later line overrides an earlier
+        # one); fall back to adds-then-unignores for directly-constructed rules.
+        ordered = rules.sequence or (
+            *((pattern, False) for pattern in rules.adds),
+            *((pattern, True) for pattern in rules.unignores),
+        )
+        for pattern, is_unignore in ordered:
+            layered.append((pattern, is_unignore))
+            entry = f"{'!' if is_unignore else '+'}{pattern}"
+            if entry not in applied:
+                applied.append(entry)
         return replace(
             self,
-            excludes=self.excludes | frozenset(rules.adds),
-            unignores=self.unignores | frozenset(rules.unignores),
+            rules=tuple(layered),
             applied=tuple(applied),
         )
 
     def is_excluded(self: ExcludeState, name: str, relpath: str | None = None) -> bool:
         """Decide whether a path is excluded here.
 
-        A path is excluded when it matches an active exclude pattern AND no
-        active un-ignore pattern cancels it. Un-ignore wins over exclude, so a
-        subtree whose ``.bkpignore`` says ``!target`` keeps its ``target/`` even
-        though ``target`` is a global default.
+        ``.bkpignore`` rules are evaluated most-recent-first (reverse layering
+        order): the first rule that matches the name decides — an un-ignore ->
+        not excluded, a plain exclude -> excluded. This makes a descendant layer
+        (or a later line in one file) override an ancestor, per gitignore. When
+        no ``.bkpignore`` rule matches, the base global exclude set decides, so
+        an ancestor ``!target`` still keeps ``target/`` against the global
+        default while a descendant plain ``target`` re-excludes it.
 
         ``name`` is the path's own component (basename); ``relpath`` is its path
-        relative to the source root, in POSIX form. A pattern is matched against
-        ``relpath`` when it contains a ``/`` (so a global ``.yarn/cache`` scopes
-        to that sub-path, matching the wrapped script's ``tar --exclude``), and
-        against ``name`` otherwise. ``.bkpignore`` patterns are basename-only in
-        v1, so un-ignore is evaluated against ``name``.
+        relative to the source root, in POSIX form. A base exclude pattern is
+        matched against ``relpath`` when it contains a ``/`` (so a global
+        ``.yarn/cache`` scopes to that sub-path, matching the wrapped script's
+        ``tar --exclude``), and against ``name`` otherwise. ``.bkpignore``
+        patterns are basename-only in v1, so they match against ``name``.
         """
-        if any(fnmatch.fnmatch(name, pattern) for pattern in self.unignores):
-            return False
-        for pattern in self.excludes:
+        for pattern, is_unignore in reversed(self.rules):
+            if fnmatch.fnmatch(name, pattern):
+                return not is_unignore
+        for pattern in self.base_excludes:
             target = relpath if ("/" in pattern and relpath is not None) else name
             if target is not None and fnmatch.fnmatch(target, pattern):
                 return True
@@ -169,7 +197,7 @@ def resolve_state_for_path(source: Path, base_state: ExcludeState, target: Path)
     try:
         relative = anchor.relative_to(source)
     except ValueError:
-        return state_for_directory(source, base_state)
+        return base_state
 
     state = state_for_directory(source, base_state)
     current = source

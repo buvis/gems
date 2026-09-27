@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **sysup**: the `mac`, `pip`, `nvim`, and `wsl` subcommands (and their `sys.platform` guards) are removed. `sysup` with no argument now runs every updater whose `when` guard matches the host, in order; `--only <names>` and `--tag <t>` narrow the run. With no user config the behaviour is unchanged — on macOS `sysup` runs the former `sysup mac` steps (brew → npm-check → pip → uv → helm → mise, mise last among the tool managers) and on Linux the former `sysup wsl` steps (apt → snap), now host-selected by each entry's `when` instead of a subcommand. The former standalone `sysup nvim` (headless Mason update) is also restored to the default plan as a cross-platform `use: nvim-mason` entry that runs after mise wherever nvim resolves.
 
+### Fixed
+
+- **backup**: the `system-tar` engine now passes the include list to `tar` NUL-delimited (`--null -T -`), so a filename containing a newline can no longer split into an extra line and inject an outside or absolute path into the archive. Both engines now produce identical member sets for such names.
+- **backup**: `.bkpignore` rules now follow gitignore precedence — a descendant directory's rule overrides an ancestor's, so a repo that re-includes `target/` with `!target` can still exclude a nested `target/` again, and a later line within one `.bkpignore` beats an earlier one. Previously an ancestor un-ignore won permanently.
+- **backup**: an unknown `tar-archive` `engine` value is now rejected with a clear error instead of silently falling back to the Python engine (so a typo like `system_tar` no longer looks like it succeeded).
+- **backup**: a dry-run and a real run now report the same `total_bytes` (uncompressed input bytes); the compressed on-disk size appears only in the step message, no longer overloading the same field with two meanings.
+- **backup**: the `system-tar` engine now `fsync`s its temporary archive before the atomic replace, matching the Python engine's durability guarantee.
+- **backup**: malformed YAML, a merge/directive error, or a missing required env var in a config file now surfaces as a clean fatal error naming the file, instead of an uncaught traceback.
+- **backup**: `--show-excludes --for <path>` no longer applies the source-root `.bkpignore` to a path outside the instance source; such a path now resolves to the global excludes only.
+
 ## [0.13.0] - 2026-08-17
 
 ### Added

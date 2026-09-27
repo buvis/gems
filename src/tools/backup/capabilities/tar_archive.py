@@ -84,11 +84,19 @@ class TarArchive:
         source = Path(source_raw).expanduser()
         out = Path(_expand_stamp(out_raw)).expanduser()
 
+        if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
+            yield StepResult(
+                label,
+                success=False,
+                message=f"unknown engine '{engine}'; expected {_ENGINE_PYTHON} or {_ENGINE_SYSTEM_TAR}",
+            )
+            return
+
         if not source.is_dir():
             yield StepResult(label, success=False, message=f"source not found: {source}")
             return
 
-        base_state = ExcludeState(excludes=frozenset(excludes))
+        base_state = ExcludeState(base_excludes=frozenset(excludes))
         walk = _walk_tree(source, base_state)
 
         if dry_run:
@@ -126,8 +134,10 @@ class TarArchive:
         return StepResult(
             label,
             success=True,
-            message=f"archived {walk.file_count} files -> {out} ({size} bytes){note}",
-            archive=ArchiveMeta(out_path=str(out), file_count=walk.file_count, total_bytes=size),
+            message=(
+                f"archived {walk.file_count} files -> {out} ({walk.total_bytes} bytes in, {size} bytes on disk){note}"
+            ),
+            archive=ArchiveMeta(out_path=str(out), file_count=walk.file_count, total_bytes=walk.total_bytes),
         )
 
 
@@ -211,20 +221,22 @@ def _write_archive(out: Path, source: Path, files: Iterable[Path]) -> None:
 
 
 def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) -> str | None:
-    """Archive ``files`` via system ``tar -T filelist``, atomically, ``chmod 600``.
+    """Archive ``files`` via system ``tar --null -T -``, atomically, ``chmod 600``.
 
     Python still owns selection: ``files`` is the exact include list the walk
-    produced (so ``.bkpignore`` path-scoping is preserved). The paths are written
-    to a temp filelist relative to ``source.parent`` and handed to
-    ``tar -C <source.parent> -czf <tmp> -T <filelist>`` — both BSD (macOS) and
-    GNU ``tar`` read a newline-separated list from ``-T``. The gzip output lands
-    in a sibling temp file, is ``chmod 600``ed, then ``os.replace``d into ``out``,
-    preserving the Python engine's atomicity guarantee.
+    produced (so ``.bkpignore`` path-scoping is preserved). The paths, relative
+    to ``source.parent``, are joined with NUL bytes and streamed to
+    ``tar -C <source.parent> --null -T - -czf <tmp>`` on stdin. NUL delimiting
+    (both GNU tar and macOS bsdtar support ``--null``) means a filename
+    containing a newline can never split into an extra ``-T`` line and inject an
+    outside/absolute path. The gzip output lands in a sibling temp file, is
+    ``fsync``ed and ``chmod 600``ed, then ``os.replace``d into ``out``,
+    preserving the Python engine's atomicity and durability guarantee.
 
     Returns:
         ``None`` when the archive was written successfully; otherwise a short
         reason string so the caller can fall back to the Python engine and note
-        why. A partial temp archive or filelist is always cleaned up.
+        why. A partial temp archive is always cleaned up.
     """
     tar_bin = shutil.which("tar")
     if tar_bin is None:
@@ -234,35 +246,37 @@ def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) ->
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
     os.close(fd)
     tmp_path = Path(tmp_name)
-    list_fd, list_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".filelist", dir=str(out.parent))
-    list_path = Path(list_name)
+    # NUL-delimited list on stdin: a NUL cannot occur in a POSIX path component,
+    # so no filename (even one containing a newline) can inject an extra entry.
+    filelist = b"".join(os.fsencode(file_path.relative_to(arcbase)) + b"\0" for file_path in files)
     try:
-        with os.fdopen(list_fd, "w", encoding="utf-8") as handle:
-            for file_path in files:
-                handle.write(str(file_path.relative_to(arcbase)))
-                handle.write("\n")
         # bsdtar (macOS) otherwise stores AppleDouble (``._name``) metadata
         # members that the Python engine never produces; COPYFILE_DISABLE
         # suppresses them and is a no-op for GNU tar on Linux.
         env = {**os.environ, "COPYFILE_DISABLE": "1"}
         completed = subprocess.run(
-            [tar_bin, "-C", str(arcbase), "-czf", str(tmp_path), "-T", str(list_path)],
+            [tar_bin, "-C", str(arcbase), "--null", "-czf", str(tmp_path), "-T", "-"],
+            input=filelist,
             capture_output=True,
-            text=True,
             check=False,
             env=env,
         )
         if completed.returncode != 0:
-            stderr = completed.stderr.strip().splitlines()
+            stderr = completed.stderr.decode("utf-8", "replace").strip().splitlines()
             detail = stderr[-1] if stderr else f"exit {completed.returncode}"
             return f"tar exited {completed.returncode}: {detail}"
+        # Match the Python engine's durability: fsync the finished temp archive
+        # before atomically swapping it into place.
+        archive_fd = os.open(str(tmp_path), os.O_RDONLY)
+        try:
+            os.fsync(archive_fd)
+        finally:
+            os.close(archive_fd)
         os.chmod(tmp_path, _ARCHIVE_MODE)
         os.replace(tmp_path, out)
     except OSError as exc:
         return f"tar invocation failed: {exc}"
     finally:
-        with contextlib.suppress(OSError):
-            list_path.unlink(missing_ok=True)
         with contextlib.suppress(OSError):
             tmp_path.unlink(missing_ok=True)
     return None

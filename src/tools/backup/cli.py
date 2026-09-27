@@ -88,7 +88,7 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> None
 
     source = Path(source_raw).expanduser()
     target = Path(for_path).expanduser()
-    base_state = ExcludeState(excludes=frozenset(cfg.excludes))
+    base_state = ExcludeState(base_excludes=frozenset(cfg.excludes))
     state = resolve_state_for_path(source, base_state, target)
 
     console.info(f".bkpignore rules effective under {target}:")
