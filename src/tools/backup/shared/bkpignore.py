@@ -37,9 +37,10 @@ def parse_bkpignore(text: str) -> BkpignoreRules:
 
     Gitignore-style: blank lines and ``#`` comments are ignored, surrounding
     whitespace is stripped, a leading ``!`` marks an un-ignore, and a leading
-    ``\\!`` escapes a literal ``!``. Later duplicate lines are de-duplicated
-    while preserving first-seen order. ``sequence`` preserves the interleaved
-    add/un-ignore order so a later line overrides an earlier one.
+    ``\\!`` escapes a literal ``!``. The ``adds`` / ``unignores`` views are
+    de-duplicated (first-seen order), but ``sequence`` preserves EVERY parsed
+    occurrence in file order — so a pattern repeated after its opposite (e.g.
+    ``target`` then ``!target`` then ``target``) still lets the last line win.
 
     Args:
         text: Raw ``.bkpignore`` file content.
@@ -56,15 +57,17 @@ def parse_bkpignore(text: str) -> BkpignoreRules:
             continue
         if line.startswith("!"):
             pattern = line[1:].strip()
-            if pattern and pattern not in unignores:
+            if not pattern:
+                continue
+            if pattern not in unignores:
                 unignores.append(pattern)
-                sequence.append((pattern, True))
+            sequence.append((pattern, True))
             continue
         if line.startswith("\\!"):
             line = line[1:]
         if line not in adds:
             adds.append(line)
-            sequence.append((line, False))
+        sequence.append((line, False))
     return BkpignoreRules(adds=tuple(adds), unignores=tuple(unignores), sequence=tuple(sequence))
 
 

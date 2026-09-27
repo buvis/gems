@@ -107,6 +107,18 @@ class TestExcludeStatePrecedence:
         state_rev = ExcludeState().layer(rules_rev)
         assert state_rev.is_excluded("target") is False
 
+    def test_pattern_repeated_after_its_opposite_last_wins(self) -> None:
+        # regression: `target`, `!target`, `target` — dedup must not drop the
+        # final add from `sequence`; the last line (plain add) wins.
+        rules = parse_bkpignore("target\n!target\ntarget\n")
+        assert rules.sequence == (("target", False), ("target", True), ("target", False))
+        state = ExcludeState().layer(rules)
+        assert state.is_excluded("target") is True
+        # and the mirror: ending on `!target` un-ignores.
+        rules_unignore_last = parse_bkpignore("!target\ntarget\n!target\n")
+        state2 = ExcludeState(base_excludes=frozenset({"target"})).layer(rules_unignore_last)
+        assert state2.is_excluded("target") is False
+
 
 class TestResolveStateForPath:
     """Finding 7: a --for target outside source returns base_state unchanged."""
