@@ -197,13 +197,20 @@ def resolve_state_for_path(source: Path, base_state: ExcludeState, target: Path)
         The exclude state in force at ``target``.
     """
     anchor = target if target.is_dir() else target.parent
+    # Resolve BOTH paths before the containment check: a lexical
+    # ``anchor.relative_to(source)`` would let a ``source/link`` symlink pointing
+    # outside ``source`` pass, and then read ``.bkpignore`` files OUTSIDE the
+    # source tree. Resolving collapses the symlink so an out-of-tree anchor
+    # raises ValueError below and falls back to ``base_state``.
+    source_resolved = source.resolve()
+    anchor_resolved = anchor.resolve()
     try:
-        relative = anchor.relative_to(source)
+        relative = anchor_resolved.relative_to(source_resolved)
     except ValueError:
         return base_state
 
-    state = state_for_directory(source, base_state)
-    current = source
+    state = state_for_directory(source_resolved, base_state)
+    current = source_resolved
     for part in relative.parts:
         current = current / part
         state = state_for_directory(current, state)

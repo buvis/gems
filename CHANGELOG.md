@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **backup**: the `system-tar` engine now `fsync`s its temporary archive before the atomic replace, matching the Python engine's durability guarantee.
 - **backup**: malformed YAML, a merge/directive error, or a missing required env var in a config file now surfaces as a clean fatal error naming the file, instead of an uncaught traceback.
 - **backup**: `--show-excludes --for <path>` no longer applies the source-root `.bkpignore` to a path outside the instance source; such a path now resolves to the global excludes only.
+- **backup**: the bundled default config now expands `${HOME}` (it is loaded through the same environment-substituting loader as user config), so the zero-config `backup` no longer looks for a literal `${HOME}/git/src` and reports "source not found".
+- **backup**: `backup` now exits non-zero when any archive step fails (missing source, invalid engine, permission error, or a caught archive exception), after still rendering every step — so cron and other automation no longer treat an incomplete backup as success.
+- **backup**: an `out` path inside the backup `source` is now rejected before walking, so a repeated run can no longer embed the previous archive into the new one and grow recursively.
+- **backup**: an unreadable directory in the source tree now fails the backup instead of being silently omitted from an otherwise "successful" archive (`os.walk` errors and per-file `stat` errors propagate to a failed step).
+- **backup**: `.bkpignore` discovery now resolves symlinks before its in-source containment check, so a symlink inside the source pointing outside it can no longer cause `.bkpignore` files outside the source tree to be read and applied.
+- **backup**: `--for` supplied without `--show-excludes` is now rejected instead of being silently ignored while a backup runs, so a read-only inspection attempt can no longer create an archive unexpectedly.
 
 ## [0.13.0] - 2026-08-17
 

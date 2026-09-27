@@ -23,9 +23,20 @@ def _report_step(step: StepResult) -> None:
         console.failure(step.message or f"{step.label} failed")
 
 
-def _report_steps(steps: Iterable[StepResult]) -> None:
+def _report_steps(steps: Iterable[StepResult]) -> bool:
+    """Render every step (success and failure) and report whether any failed.
+
+    All steps are rendered before the caller acts on the return, so the user
+    sees every failure — the CLI must not stop at the first one. Returns ``True``
+    when at least one step failed, so the CLI layer can exit nonzero (a cron job
+    treating an incomplete backup as success is the bug this closes).
+    """
+    any_failed = False
     for step in steps:
         _report_step(step)
+        if not step.success:
+            any_failed = True
+    return any_failed
 
 
 def _parse_only(only: tuple[str, ...]) -> set[str]:
@@ -153,6 +164,19 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
     from backup.config import applicable_instances, load_config
     from backup.runner import Runner
 
+    # --for only qualifies --show-excludes' read-only inspection; supplied alone
+    # it used to be silently ignored while a real backup RAN. Reject it up front.
+    if for_path and not show_excludes:
+        console.failure("--for requires --show-excludes")
+        raise SystemExit(1)
+
+    # NOTE (deferred, finding 4114829192): backup's load_config() searches the
+    # default config locations independently of buvis_options' --config/--config-dir,
+    # so `backup --config FILE` resolves BackupSettings from FILE yet still runs the
+    # default backup plan. Honoring --config/--config-dir here would need the resolved
+    # path forwarded via ctx.obj by the SHARED buvis_options wrapper in src/lib/, which
+    # affects every tool — out of scope for this PR, tracked as its own PRD. Do NOT
+    # wire it in by touching src/lib/.
     try:
         cfg = load_config()
     except FatalError as exc:
@@ -184,9 +208,15 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
         plan = [(name, _apply_overrides(instance, source, out))]
 
     try:
-        _report_steps(Runner(cfg, dry_run=dry_run).run(plan))
+        # Render ALL steps first (so the user sees every failure), THEN exit
+        # nonzero if any failed — so cron never treats an incomplete backup as
+        # success. Do not stop at the first failure.
+        any_failed = _report_steps(Runner(cfg, dry_run=dry_run).run(plan))
     except FatalError as exc:
         console.panic(str(exc))
+        return
+    if any_failed:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -86,11 +86,18 @@ def _load_default() -> dict[str, object]:
     the wrong path entry. ``default.yaml`` always ships beside this module in the
     wheel (hatch packages the whole ``backup`` directory), so its own directory
     is the unambiguous anchor.
+
+    Loaded through :meth:`ConfigurationLoader.load_yaml` — the SAME
+    env-substituting loader the user layers use — so ``${HOME}`` (and the
+    ``${VAR:-default}`` / ``$${VAR}`` escape forms) in the bundled defaults
+    expand identically to user config. ``Path.expanduser`` only expands ``~``, so
+    a raw ``yaml.safe_load`` would leave the zero-config source as a literal
+    ``${HOME}/git/src``. ``load_yaml`` raises ``MissingEnvVarError`` /
+    ``yaml.YAMLError`` for a missing required var / bad YAML; ``load_config``
+    wraps those to :class:`FatalError`, and returns ``{}`` for an empty file.
     """
     resource = Path(__file__).with_name(_DEFAULT_CONFIG_RESOURCE)
-    text = resource.read_text(encoding="utf-8")
-    data = yaml.safe_load(text)
-    return data if isinstance(data, dict) else {}
+    return ConfigurationLoader.load_yaml(resource)
 
 
 def load_config(config_dir: str | None = None) -> BackupConfig:
@@ -109,7 +116,12 @@ def load_config(config_dir: str | None = None) -> BackupConfig:
             or an unknown ``with:`` input — every failure the CLI's ``FatalError``
             handler can render, never a raw traceback.
     """
-    layers: list[dict[str, object]] = [_load_default()]
+    layers: list[dict[str, object]] = []
+    try:
+        layers.append(_load_default())
+    except (yaml.YAMLError, MissingEnvVarError) as exc:
+        msg = f"failed to load bundled default configuration: {exc}"
+        raise FatalError(msg) from exc
     ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked("backup", config_dir=config_dir)
     for path in ranked_files:
         try:

@@ -147,3 +147,40 @@ class TestResolveStateForPath:
         state = resolve_state_for_path(source, base_state, source / "repoA")
         assert "!target" in state.applied
         assert state.is_excluded("target") is False
+
+
+class TestResolveStateSymlinkEscape:
+    """FIX G: a source/link symlink pointing outside source must NOT let
+    .bkpignore files OUTSIDE the source tree be read (lexical relative_to bug)."""
+
+    def test_symlink_out_of_source_does_not_apply_outside_bkpignore(self, tmp_path) -> None:
+        source = tmp_path / "src"
+        source.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        # an outside dir carrying a .bkpignore that must NEVER apply
+        (outside / ".bkpignore").write_text("!target\n", encoding="utf-8")
+        link = source / "link"
+        link.symlink_to(outside, target_is_directory=True)
+
+        base_state = ExcludeState(base_excludes=frozenset({"target"}))
+        state = resolve_state_for_path(source, base_state, link)
+
+        # resolved containment rejects the escaped anchor -> base_state, so the
+        # outside .bkpignore's `!target` is NOT applied and target stays excluded.
+        assert state == base_state
+        assert state.applied == ()
+        assert state.is_excluded("target") is True
+
+    def test_symlink_pointing_into_source_still_layers(self, tmp_path) -> None:
+        # a symlink that resolves back INSIDE source must still layer normally.
+        source = tmp_path / "src"
+        (source / "real").mkdir(parents=True)
+        (source / "real" / ".bkpignore").write_text("!target\n", encoding="utf-8")
+        link = source / "alias"
+        link.symlink_to(source / "real", target_is_directory=True)
+
+        base_state = ExcludeState(base_excludes=frozenset({"target"}))
+        state = resolve_state_for_path(source, base_state, link)
+        assert "!target" in state.applied
+        assert state.is_excluded("target") is False

@@ -143,3 +143,71 @@ class TestBackupCliErrors:
             result = runner.invoke(cli, [])
         assert "bad config" in result.output
         assert "Traceback" not in result.output
+
+
+class TestBackupCliExitCode:
+    """FIX B: a failed step must make the process exit nonzero (cron must not
+    treat an incomplete backup as success), while every step is still rendered."""
+
+    def test_failing_step_exits_nonzero_but_renders_all(self, runner) -> None:
+        cfg = _cfg({"a": {"use": "tar-archive"}, "b": {"use": "tar-archive"}})
+        plan = [("a", cfg.instances["a"]), ("b", cfg.instances["b"])]
+        with (
+            patch("backup.config.load_config", return_value=cfg),
+            patch("backup.config.applicable_instances", return_value=plan),
+            patch(
+                "backup.runner.Runner.run",
+                return_value=iter(
+                    [
+                        StepResult("a", False, "a failed: source not found"),
+                        StepResult("b", True, "archived 2 files -> /x"),
+                    ],
+                ),
+            ),
+        ):
+            result = runner.invoke(cli, [])
+        assert result.exit_code != 0
+        # both steps rendered — the failure did not short-circuit the success line
+        assert "a failed" in result.output
+        assert "archived 2 files" in result.output
+
+    def test_all_success_exits_zero(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})
+        with (
+            patch("backup.config.load_config", return_value=cfg),
+            patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
+            patch(
+                "backup.runner.Runner.run",
+                return_value=iter([StepResult("git-src", True, "archived 3 files -> /x")]),
+            ),
+        ):
+            result = runner.invoke(cli, [])
+        assert result.exit_code == 0
+
+
+class TestBackupCliForGuard:
+    """FIX H: --for is meaningful only with --show-excludes; alone it must not
+    run a backup and must report the misuse."""
+
+    def test_for_without_show_excludes_does_not_run_and_reports(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})
+        with (
+            patch("backup.config.load_config", return_value=cfg),
+            patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
+            patch("backup.runner.Runner.run") as mock_run,
+        ):
+            result = runner.invoke(cli, ["--for", "/some/path"])
+        assert result.exit_code != 0
+        assert "--for requires --show-excludes" in result.output
+        assert mock_run.call_count == 0
+
+    def test_show_excludes_with_for_still_works(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive", "with": {"source": "/x", "out": "/o.tgz"}}})
+        with (
+            patch("backup.config.load_config", return_value=cfg),
+            patch("backup.runner.Runner.run") as mock_run,
+        ):
+            result = runner.invoke(cli, ["--show-excludes", "git-src", "--for", "/x/sub"])
+        assert result.exit_code == 0
+        assert "--for requires --show-excludes" not in result.output
+        assert mock_run.call_count == 0

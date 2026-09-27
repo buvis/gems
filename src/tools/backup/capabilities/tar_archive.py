@@ -96,6 +96,11 @@ class TarArchive:
             yield StepResult(label, success=False, message=f"source not found: {source}")
             return
 
+        containment = _reject_out_inside_source(label, source, out)
+        if containment is not None:
+            yield containment
+            return
+
         base_state = ExcludeState(base_excludes=frozenset(excludes))
         walk = _walk_tree(source, base_state)
 
@@ -141,6 +146,28 @@ class TarArchive:
         )
 
 
+def _reject_out_inside_source(label: str, source: Path, out: Path) -> StepResult | None:
+    """Reject an ``out`` path that lands inside the ``source`` tree.
+
+    An ``out`` under ``source`` makes each run re-archive the previous run's
+    archive (unbounded recursive growth). ``out`` may not exist yet, so its
+    PARENT is resolved (which does exist — a stamp only expands the basename) and
+    the name rejoined, giving a real absolute path to test for containment
+    against the resolved source. Returns a failed :class:`StepResult` when ``out``
+    is inside ``source`` (the caller yields it and returns before walking),
+    otherwise ``None``.
+    """
+    source_resolved = source.resolve()
+    out_resolved = out.parent.resolve() / out.name
+    if out_resolved == source_resolved or source_resolved in out_resolved.parents:
+        return StepResult(
+            label,
+            success=False,
+            message=(f"out path {out} is inside source {source}; choose an out path outside the backup source"),
+        )
+    return None
+
+
 def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
     """Walk ``source`` top-down, applying global excludes + path-scoped ``.bkpignore``.
 
@@ -152,7 +179,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
     total_bytes = 0
     states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
 
-    for dirpath, dirnames, filenames in os.walk(source):
+    for dirpath, dirnames, filenames in os.walk(source, onerror=_raise_walk_error):
         state = states[dirpath]
 
         kept_dirs: list[str] = []
@@ -175,10 +202,22 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             if not file_path.is_file() or file_path.is_symlink():
                 continue
             files.append(file_path)
-            with contextlib.suppress(OSError):
-                total_bytes += file_path.stat().st_size
+            # No suppression: a file we selected but cannot stat is a real error
+            # for an archiver, not a 0-byte undercount. The runner turns the
+            # propagated OSError into a failed step.
+            total_bytes += file_path.stat().st_size
 
     return WalkResult(files=files, total_bytes=total_bytes, applied=_collect_applied(states))
+
+
+def _raise_walk_error(error: OSError) -> None:
+    """``os.walk`` ``onerror`` callback that re-raises a directory-scan error.
+
+    Without it ``os.walk`` silently swallows an unreadable subtree, yielding a
+    partial archive reported as success. Re-raising lets the runner's
+    ``except Exception -> StepResult(success=False)`` turn it into a failed step.
+    """
+    raise error
 
 
 def _collect_applied(states: dict[str, ExcludeState]) -> list[str]:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import stat
 import tarfile
 from pathlib import Path
@@ -196,3 +197,122 @@ class TestAtomicWrite:
         assert not out.exists()
         leftovers = list(tmp_path.glob("out.tar.gz*"))
         assert leftovers == [], f"partial file(s) left behind: {leftovers}"
+
+
+class TestOutInsideSource:
+    """FIX C: an out path inside the source tree would re-archive the previous
+    archive on the next run (recursive growth); reject it before walking."""
+
+    def test_out_inside_source_fails_no_archive(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"a.txt": "x"})
+        out = source / "backup" / "out.tar.gz"  # inside source
+        result = _run(source, out, [])
+        assert result.success is False
+        assert "inside source" in result.message
+        assert not out.exists()
+
+    def test_out_equal_to_source_fails(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"a.txt": "x"})
+        result = _run(source, source, [])
+        assert result.success is False
+        assert "inside source" in result.message
+
+    def test_out_outside_source_succeeds(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"a.txt": "x"})
+        out = tmp_path / "out.tar.gz"  # sibling of source, outside it
+        result = _run(source, out, [])
+        assert result.success is True
+        assert out.exists()
+
+    def test_stamped_out_inside_source_fails(self, tmp_path: Path) -> None:
+        # the stamp expands the basename only; containment is on the parent.
+        source = tmp_path / "src"
+        _tree(source, {"a.txt": "x"})
+        out = source / "git-src-%Y%m%d.tar.gz"
+        result = _run(source, out, [])
+        assert result.success is False
+        assert "inside source" in result.message
+
+
+class TestWalkOnError:
+    """FIX D: an unreadable subtree must fail the step, not be silently skipped
+    into a partial archive reported as success."""
+
+    def test_unreadable_subdir_fails_step(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"ok/a.txt": "x", "locked/secret.txt": "y"})
+        locked = source / "locked"
+        os.chmod(locked, 0o000)
+        try:
+            # If chmod does not actually block scanning (e.g. running as root),
+            # the premise of this test is void — skip rather than false-pass.
+            if os.access(locked, os.R_OK | os.X_OK) or (hasattr(os, "geteuid") and os.geteuid() == 0):
+                pytest.skip("chmod 000 does not restrict access here (likely root)")
+            out = tmp_path / "out.tar.gz"
+            # The capability propagates the OSError (os.walk onerror re-raises and
+            # the walk no longer papers over scan errors); the Runner's
+            # `except Exception -> StepResult(success=False)` turns it into a
+            # failed step. The load-bearing guarantee is that the walk does NOT
+            # silently produce a partial archive reported as success.
+            with pytest.raises(OSError):
+                list(
+                    TarArchive().run(
+                        label="git-src",
+                        source=str(source),
+                        out=str(out),
+                        excludes=[],
+                        dry_run=False,
+                    ),
+                )
+            assert not out.exists()
+        finally:
+            os.chmod(locked, 0o700)
+
+    def test_runner_turns_walk_error_into_failed_step(self, tmp_path: Path) -> None:
+        # End-to-end: through the Runner, a walk error becomes a failed StepResult
+        # (interface-agnostic — no exception escapes the runner layer).
+        from backup.config import BackupConfig
+        from backup.runner import Runner
+
+        source = tmp_path / "src"
+        _tree(source, {"ok/a.txt": "x", "locked/secret.txt": "y"})
+        locked = source / "locked"
+        os.chmod(locked, 0o000)
+        try:
+            if os.access(locked, os.R_OK | os.X_OK) or (hasattr(os, "geteuid") and os.geteuid() == 0):
+                pytest.skip("chmod 000 does not restrict access here (likely root)")
+            out = tmp_path / "out.tar.gz"
+            cfg = BackupConfig.model_validate(
+                {"instances": {"git-src": {"use": "tar-archive", "with": {"source": str(source), "out": str(out)}}}},
+            )
+            results = list(Runner(cfg).run([("git-src", cfg.instances["git-src"])]))
+            assert len(results) == 1
+            assert results[0].success is False
+            assert not out.exists()
+        finally:
+            os.chmod(locked, 0o700)
+
+
+class TestStatErrorsPropagate:
+    """FIX E: a selected file that cannot be stat()'d is a real error, not a
+    silent 0-byte undercount — the suppress is removed."""
+
+    def test_happy_path_sums_input_bytes(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"a.txt": "hello", "b.txt": "world!!"})
+        result = _run(source, tmp_path / "out.tar.gz", [], dry_run=True)
+        assert result.total_bytes == len("hello") + len("world!!")
+
+    def test_suppress_removed_from_walk(self) -> None:
+        source_text = (
+            Path(__file__).resolve().parents[3] / "src" / "tools" / "backup" / "capabilities" / "tar_archive.py"
+        ).read_text(encoding="utf-8")
+        # the stat() in the walk must no longer be wrapped in contextlib.suppress
+        walk_start = source_text.index("def _walk_tree(")
+        walk_end = source_text.index("def _raise_walk_error(")
+        walk_body = source_text[walk_start:walk_end]
+        assert "file_path.stat().st_size" in walk_body
+        assert "contextlib.suppress" not in walk_body

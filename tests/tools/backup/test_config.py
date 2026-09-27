@@ -54,6 +54,37 @@ class TestLoadConfigDefault:
         # the wrapped backup-git script ships exactly 32 --exclude patterns
         assert len(cfg.excludes) == 32
 
+    def test_default_source_expands_home_not_literal(self, mocker, tmp_path: Path) -> None:
+        """FIX A: the bundled default.yaml's ``${HOME}/git/src`` must be loaded
+        through the env-substituting loader so it expands to the real home dir,
+        not left as a literal ``${HOME}`` (which would be an unusable source)."""
+        home = tmp_path / "home"
+        home.mkdir()
+        mocker.patch("backup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        mocker.patch.dict("os.environ", {"HOME": str(home)}, clear=False)
+        cfg = load_config()
+        source = cfg.instances["git-src"].with_["source"]
+        assert isinstance(source, str)
+        assert "${HOME}" not in source
+        assert source == f"{home}/git/src"
+        out = cfg.instances["git-src"].with_["out"]
+        assert isinstance(out, str)
+        assert "${HOME}" not in out
+        assert out.startswith(f"{home}/.local/backup/")
+
+    def test_home_unset_raises_fatal_not_missing_env_var(self, mocker) -> None:
+        """FIX F: with HOME unset, default.yaml's ``${HOME}`` becomes a missing
+        required var; load_config must translate it to FatalError (the CLI
+        catches only that), never leak a raw MissingEnvVarError."""
+        from buvis.pybase.configuration import MissingEnvVarError
+
+        mocker.patch("backup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        mocker.patch.dict("os.environ", {}, clear=True)
+        with pytest.raises(FatalError) as exc_info:
+            load_config()
+        assert not isinstance(exc_info.value, MissingEnvVarError)
+        assert "bundled default configuration" in str(exc_info.value)
+
 
 class TestExcludeLayering:
     def test_excludes_plus_adds_without_relisting(self, mocker, tmp_path: Path) -> None:
