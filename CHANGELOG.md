@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pidash**: the autopilot-dashboard TUI is retired from gems (tool, tests, docs page, console script, `pidash` extra and its membership in `all`, pytest marker). Its function moved to `tracon` in the buvis home repo, next to the autopilot state schema it reads; no gems-side replacement ships.
 - **pybase**: the unused `UvAdapter` / `UvToolManager` uv adapter is removed (superseded by the updater subsystem); it had no production or out-of-repo consumers.
 - **pybase**: the `configuration/examples` sample settings (`MusicSettings`, `PhotoSettings`) are removed; they were consumed only by their own tests.
-- **pybase**: the dead `StringOperator` surface is pruned to its four live helpers — `slugify`, `prepend`, `humanize`, `as_graphql_field_name`, and all word-level singularize/pluralize helpers had no production callers and are gone. The `suggest_tags` Ollama client moved out of `formatting` into `bim` (`bim/shared/suggest_tags.py`), its only consumer, so the bottom-layer formatting package no longer imports `console` or `urllib`.
+- **pybase**: the dead `StringOperator` surface is pruned — `slugify`, `prepend`, `humanize`, `as_graphql_field_name`, and all word-level singularize/pluralize helpers had no production callers and are gone. The six live helpers (`collapse`, `shorten`, `underscore`, `as_note_field_name`, `camelize`, `replace_abbreviations`) are kept. The `suggest_tags` Ollama client moved out of `formatting` into `bim` (`bim/shared/suggest_tags.py`), its only consumer, so the bottom-layer formatting package no longer imports `console` or `urllib`.
 
 ### Fixed
 
