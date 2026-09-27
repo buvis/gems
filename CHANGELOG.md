@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **pybase**: `--config FILE` / `--config-dir DIR` now select both the settings source and the tool's own config plan. The `buvis_options` wrapper publishes the resolved selection on the Click context (additive — existing readers are untouched), and `ConfigurationLoader.find_config_files_ranked` accepts an explicit `config_path` as the highest-priority layer, so a tool's `load_config` can honour the same source its settings came from.
+- **backup**: `backup --config FILE` now runs the backup plan from FILE (and `--config-dir DIR` discovers it under DIR), instead of resolving `BackupSettings` from the selection while silently running the default plan.
+- **sysup**: `sysup --config FILE` / `--config-dir DIR` now likewise select the updater plan, not just the settings, closing the same latent split.
 - **backup**: the `system-tar` engine now passes the include list to `tar` NUL-delimited (`--null -T -`), so a filename containing a newline can no longer split into an extra line and inject an outside or absolute path into the archive. Both engines now produce identical member sets for such names.
 - **backup**: `.bkpignore` rules now follow gitignore precedence — a descendant directory's rule overrides an ancestor's, so a repo that re-includes `target/` with `!target` can still exclude a nested `target/` again, and a later line within one `.bkpignore` beats an earlier one. Previously an ancestor un-ignore won permanently.
 - **backup**: an unknown `tar-archive` `engine` value is now rejected with a clear error instead of silently falling back to the Python engine (so a typo like `system_tar` no longer looks like it succeeded).

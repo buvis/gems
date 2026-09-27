@@ -279,3 +279,73 @@ class TestOnlyUnknownExitCode:
         ):
             result = runner.invoke(cli, ["--list", "--only", "typo"])
         assert result.exit_code != 0
+
+
+class TestBackupConfigSelectionThreaded:
+    """`backup --config FILE` / `--config-dir DIR` load the PLAN from that selection (PRD 00084).
+
+    These drive the REAL load_config (not the patched stub the other tests use)
+    so the ctx.obj -> load_config -> find_config_files_ranked threading is
+    exercised end to end. Discovery is isolated via BUVIS_CONFIG_DIR + HOME so
+    the ambient environment cannot leak a real user config into the assertion.
+    """
+
+    def _isolate(self, tmp_path, monkeypatch) -> None:
+        # Point discovery at an EMPTY dir and a fake HOME with no cwd config, so
+        # only the bundled default + our explicit selection contribute.
+        empty = tmp_path / "empty-config-dir"
+        empty.mkdir()
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(empty))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        monkeypatch.chdir(tmp_path / "empty-config-dir")
+
+    def test_config_file_supplies_the_plan(self, runner, tmp_path, monkeypatch) -> None:
+        """--config FILE introduces an instance the default plan does not have."""
+        self._isolate(tmp_path, monkeypatch)
+        cfg_file = tmp_path / "override.yaml"
+        cfg_file.write_text(
+            "instances:\n"
+            "  fixture-only:\n"
+            "    use: tar-archive\n"
+            "    order: 5\n"
+            "    with:\n"
+            "      source: /tmp/x\n"
+            "      out: /tmp/x.tar.gz\n"
+        )
+
+        result = runner.invoke(cli, ["--config", str(cfg_file), "--list"])
+
+        assert result.exit_code == 0, result.output
+        # The fixture's instance is present — only the explicit file could add it.
+        assert "fixture-only" in result.output
+
+    def test_config_dir_supplies_the_plan(self, runner, tmp_path, monkeypatch) -> None:
+        """--config-dir DIR discovers a buvis-backup.yaml with a distinct instance."""
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        monkeypatch.chdir(tmp_path)
+        cfg_dir = tmp_path / "cfgdir"
+        cfg_dir.mkdir()
+        (cfg_dir / "buvis-backup.yaml").write_text(
+            "instances:\n"
+            "  from-dir:\n"
+            "    use: tar-archive\n"
+            "    order: 7\n"
+            "    with:\n"
+            "      source: /tmp/y\n"
+            "      out: /tmp/y.tar.gz\n"
+        )
+
+        result = runner.invoke(cli, ["--config-dir", str(cfg_dir), "--list"])
+
+        assert result.exit_code == 0, result.output
+        assert "from-dir" in result.output
+
+    def test_no_selection_uses_default_plan(self, runner, tmp_path, monkeypatch) -> None:
+        """Without --config/--config-dir the bundled default plan (git-src) is used."""
+        self._isolate(tmp_path, monkeypatch)
+
+        result = runner.invoke(cli, ["--list"])
+
+        assert result.exit_code == 0, result.output
+        assert "git-src" in result.output
+        assert "fixture-only" not in result.output

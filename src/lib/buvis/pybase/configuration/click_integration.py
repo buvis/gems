@@ -300,6 +300,13 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             if settings_class is GlobalSettings:
                 ctx.obj["settings"] = settings
 
+            # Publish the raw --config / --config-dir selection so a tool's own
+            # config loader can honour the same source the settings were resolved
+            # from. Additive: existing readers key off the settings entries above
+            # and are untouched. Both are None when the flag was not given.
+            ctx.obj["config_dir"] = config_dir
+            ctx.obj["config_path"] = config
+
             return ctx.invoke(f, *args, **kwargs)
 
         _buvis_callbacks.add(wrapper)

@@ -342,7 +342,12 @@ class ConfigurationLoader:
         return result
 
     @staticmethod
-    def find_config_files_ranked(tool_name: str | None = None, *, config_dir: str | None = None) -> list[Path]:
+    def find_config_files_ranked(
+        tool_name: str | None = None,
+        *,
+        config_dir: str | None = None,
+        config_path: str | Path | None = None,
+    ) -> list[Path]:
         """Find existing config files in LOW-to-HIGH priority order.
 
         Unlike :meth:`find_config_files` (whose raw output is mixed-order — see
@@ -354,11 +359,18 @@ class ConfigurationLoader:
         across directories, and config.yaml < config.local.yaml < buvis.yaml <
         buvis.local.yaml < buvis-{tool}.yaml < buvis-{tool}.local.yaml within each
         directory (each machine-local ``*.local.yaml`` twin outranks its shared
-        file).
+        file). An explicit ``config_path`` (from ``--config FILE``) is appended
+        LAST — the single highest-priority layer, above every discovered file —
+        matching the documented CLI > env > YAML > defaults precedence.
 
         Args:
             tool_name: Optional tool identifier for the ``buvis-{tool}.yaml`` slot.
             config_dir: Explicit config directory override (bypasses env lookup).
+            config_path: Explicit config FILE (from ``--config``). When given and
+                readable, appended as the highest-priority layer. A path that is
+                not an existing file is skipped (Click's ``--config`` already
+                validates existence; a direct caller passing a missing file gets
+                the discovered layers unchanged rather than an error here).
 
         Returns:
             list[Path]: Existing, safe config files, lowest priority first.
@@ -388,7 +400,22 @@ class ConfigurationLoader:
                     continue
 
         ranked.sort(key=lambda item: (item[0], item[1]))
-        return [path for _, _, path in ranked]
+        result = [path for _, _, path in ranked]
+
+        # An explicit --config FILE is the single highest-priority layer: append
+        # it last (low-to-high), after every discovered file, and de-dup so it is
+        # not listed twice if discovery already found it. A non-file is skipped.
+        if config_path is not None:
+            explicit = Path(config_path).expanduser()
+            try:
+                if explicit.is_file():
+                    resolved = explicit.resolve()
+                    result = [p for p in result if p != resolved]
+                    result.append(resolved)
+            except OSError:
+                logger.debug("Cannot stat explicit config path: %s", explicit)
+
+        return result
 
     @staticmethod
     def merge_configs(

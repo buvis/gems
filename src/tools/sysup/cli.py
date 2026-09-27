@@ -54,7 +54,7 @@ def _describe(name: str, command: SysupCommand) -> str:
 @buvis_options(settings_class=SysupSettings)
 @click.pass_context
 def cli(
-    ctx: click.Context,  # noqa: ARG001
+    ctx: click.Context,
     only: tuple[str, ...],
     tags: tuple[str, ...],
     list_plan: bool,
@@ -63,8 +63,11 @@ def cli(
     from sysup.config import applicable_commands, load_config
     from sysup.runner import Runner
 
+    # Honour the same --config / --config-dir the buvis_options wrapper resolved
+    # settings from, so the plan and SysupSettings come from ONE source (PRD 00084).
+    obj = ctx.obj or {}
     try:
-        cfg = load_config()
+        cfg = load_config(config_dir=obj.get("config_dir"), config_path=obj.get("config_path"))
     except FatalError as exc:
         console.panic(str(exc))
         return

@@ -184,7 +184,7 @@ def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_
 @buvis_options(settings_class=BackupSettings)
 @click.pass_context
 def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
-    ctx: click.Context,  # noqa: ARG001
+    ctx: click.Context,
     only: tuple[str, ...],
     tags: tuple[str, ...],
     list_plan: bool,
@@ -202,15 +202,17 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
         console.failure("--for requires --show-excludes")
         raise SystemExit(1)
 
-    # NOTE (deferred, finding 4114829192): backup's load_config() searches the
-    # default config locations independently of buvis_options' --config/--config-dir,
-    # so `backup --config FILE` resolves BackupSettings from FILE yet still runs the
-    # default backup plan. Honoring --config/--config-dir here would need the resolved
-    # path forwarded via ctx.obj by the SHARED buvis_options wrapper in src/lib/, which
-    # affects every tool — out of scope for this PR, tracked as its own PRD. Do NOT
-    # wire it in by touching src/lib/.
+    # Honour the same --config / --config-dir the buvis_options wrapper resolved
+    # settings from, so the backup PLAN and BackupSettings come from ONE source.
+    # The wrapper publishes the raw selection on ctx.obj (None when unset); pass
+    # it through so `backup --config FILE` runs the plan from FILE and
+    # `--config-dir DIR` discovers it under DIR. (PRD 00084 closed the split that
+    # was deferred from PR #179.)
+    obj = ctx.obj or {}
+    config_dir = obj.get("config_dir")
+    config_path = obj.get("config_path")
     try:
-        cfg = load_config()
+        cfg = load_config(config_dir=config_dir, config_path=config_path)
     except FatalError as exc:
         console.panic(str(exc))
         return

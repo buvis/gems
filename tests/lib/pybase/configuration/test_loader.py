@@ -724,3 +724,56 @@ class TestFindConfigFilesLogging:
 
         assert result == []
         assert "Permission denied" in caplog.text
+
+    def test_explicit_config_path_is_highest_priority(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An explicit config_path is appended LAST — the single highest-priority layer (PRD 00084)."""
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        (tmp_path / "buvis-sysup.yaml").write_text("k: discovered\n")
+        explicit = tmp_path / "elsewhere" / "override.yaml"
+        explicit.parent.mkdir()
+        explicit.write_text("k: explicit\n")
+
+        ranked = ConfigurationLoader.find_config_files_ranked(tool_name="sysup", config_path=str(explicit))
+
+        # Explicit file is last (highest), so merge_configs (later wins) yields it.
+        assert ranked[-1] == explicit.resolve()
+        merged = ConfigurationLoader.merge_configs(*[ConfigurationLoader.load_yaml(p) for p in ranked])
+        assert merged["k"] == "explicit"
+
+    def test_none_config_path_unchanged(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """config_path=None (default) leaves discovery behaviour identical — existing callers unaffected."""
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        (tmp_path / "buvis-sysup.yaml").write_text("k: discovered\n")
+
+        with_none = ConfigurationLoader.find_config_files_ranked(tool_name="sysup", config_path=None)
+        without = ConfigurationLoader.find_config_files_ranked(tool_name="sysup")
+
+        assert with_none == without
+
+    def test_explicit_config_path_dedups_when_also_discovered(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A file that is both discovered and passed explicitly appears once, at the top."""
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        shared = tmp_path / "buvis-sysup.yaml"
+        shared.write_text("k: v\n")
+
+        ranked = ConfigurationLoader.find_config_files_ranked(tool_name="sysup", config_path=str(shared))
+
+        assert ranked.count(shared.resolve()) == 1
+        assert ranked[-1] == shared.resolve()
+
+    def test_explicit_missing_config_path_skipped(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A config_path that is not an existing file is skipped, discovery unchanged."""
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        (tmp_path / "buvis-sysup.yaml").write_text("k: discovered\n")
+
+        ranked = ConfigurationLoader.find_config_files_ranked(
+            tool_name="sysup", config_path=str(tmp_path / "does-not-exist.yaml")
+        )
+
+        assert ranked == ConfigurationLoader.find_config_files_ranked(tool_name="sysup")

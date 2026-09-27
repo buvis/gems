@@ -201,6 +201,12 @@ Add configuration to any Click command:
 This adds ``--debug``, ``--log-level``, ``--config-dir``, and ``--config``
 options. Values resolve from CLI > ENV > YAML > defaults.
 
+``--config FILE`` and ``--config-dir DIR`` select both the settings source and,
+for tools that load their own YAML plan (e.g. ``backup``, ``sysup``), the tool's
+config plan — the wrapper publishes the selection on the Click context and the
+tool's ``load_config`` honours it, so the settings and the plan always come from
+the same source.
+
 For tool-specific settings, see `Downstream Project Integration`_ or
 `Custom Settings Classes`_.
 
