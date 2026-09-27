@@ -33,12 +33,10 @@ src/
     ├── dot/                    # dotfiles manager
     ├── fctracker/              # foreign currency tracker
     ├── fren/                   # file renamer toolkit
-    ├── hello_world/            # sample template
     ├── morph/                  # file conversion toolkit
     ├── muc/                    # music collection tools
     ├── netscan/                # network scanning tools
     ├── outlookctl/             # Outlook CLI
-    ├── pidash/                 # autopilot progress dashboard (TUI)
     ├── pinger/                 # ICMP ping utilities
     ├── puc/                    # photo utility collection
     ├── readerctl/              # Readwise Reader CLI
@@ -186,7 +184,7 @@ uv tool install buvis-gems[all]         # everything
 uv tool upgrade buvis-gems              # update
 ```
 
-Extras: `bim`, `bim-web`, `doc`, `dot`, `fren`, `hello-world`, `morph`, `muc`, `pinger`, `readerctl`, `all`
+Extras: `bim`, `bim-web`, `doc`, `dot`, `fren`, `morph`, `muc`, `pinger`, `readerctl`, `all`
 
 ## Release
 

@@ -40,45 +40,12 @@ class TestShorten:
         assert result == "abcd...hij"
 
 
-class TestSlugify:
-    @pytest.mark.parametrize(
-        ("input_", "expected"),
-        [
-            ("Hello", "hello"),
-            ("hello world", "hello-world"),
-            ("hello@world", "hello-world"),
-            ("hello---world", "hello-world"),
-            ("hello   world", "hello-world"),
-            ("hello_world", "hello-world"),
-            ("Foo Bar", "foo-bar"),
-        ],
-    )
-    def test_slugify(self, input_: str, expected: str) -> None:
-        assert StringOperator.slugify(input_) == expected
-
-
-class TestPrepend:
-    @pytest.mark.parametrize(
-        ("text", "prefix", "expected"),
-        [
-            ("bar", "pre-", "pre-bar"),
-            ("pre-bar", "pre-", "pre-bar"),
-            ("", "pre-", "pre-"),
-            ("bar", "", "bar"),
-        ],
-    )
-    def test_prepend(self, text: str, prefix: str, expected: str) -> None:
-        assert StringOperator.prepend(text, prefix) == expected
-
-
 class TestStringCaseDelegation:
     @pytest.mark.parametrize(
         ("method", "mock_path", "input_", "return_value"),
         [
-            ("humanize", "StringCaseTools.humanize", "first_name", "Humanized"),
             ("underscore", "StringCaseTools.underscore", "FirstName", "first_name"),
             ("as_note_field_name", "StringCaseTools.as_note_field_name", "NoteName", "note-name"),
-            ("as_graphql_field_name", "StringCaseTools.as_graphql_field_name", "note_name", "NoteName"),
             ("camelize", "StringCaseTools.camelize", "first_name", "FirstName"),
         ],
     )
@@ -87,28 +54,6 @@ class TestStringCaseDelegation:
         with patch(full_path, return_value=return_value) as mock:
             assert getattr(StringOperator, method)(input_) == return_value
             mock.assert_called_once_with(input_)
-
-
-class TestPluralize:
-    def test_regular_word(self) -> None:
-        assert StringOperator.pluralize("cat") == "cats"
-
-    def test_irregular_word(self) -> None:
-        assert StringOperator.pluralize("mouse") == "mice"
-
-    def test_minutes_exception(self) -> None:
-        assert StringOperator.pluralize("minutes") == "minutes"
-
-
-class TestSingularize:
-    def test_regular_word(self) -> None:
-        assert StringOperator.singularize("cats") == "cat"
-
-    def test_irregular_word(self) -> None:
-        assert StringOperator.singularize("mice") == "mouse"
-
-    def test_minutes_exception(self) -> None:
-        assert StringOperator.singularize("minutes") == "minutes"
 
 
 class TestReplaceAbbreviationsDelegation:

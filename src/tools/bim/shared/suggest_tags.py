@@ -7,7 +7,7 @@ import urllib.request
 from buvis.pybase.adapters import console
 
 
-def suggest_tags(text: str, model: str, url: str) -> list[str]:
+def suggest_tags(text: str, model: str, url: str = "http://localhost:11434") -> list[str]:
     """Suggest tags for note text via ollama API.
 
     Args:

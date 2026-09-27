@@ -124,16 +124,16 @@ def _confirm_import(original_content: str, formatted_content: str) -> bool:
 
 
 def _suggest_tags(note: Any, markdown_content: str, ollama_model: str, ollama_url: str) -> str:
-    from buvis.pybase.formatting import StringOperator
     from buvis.pybase.zettel.application.use_cases.print_zettel_use_case import PrintZettelUseCase
 
     from bim.dependencies import get_formatter
+    from bim.shared.suggest_tags import suggest_tags
 
     console.nl()
     console.warning("There are no tags in this note. Suggesting via ollama...")
     console.nl()
     new_tags = []
-    suggested = StringOperator.suggest_tags(
+    suggested = suggest_tags(
         markdown_content,
         ollama_model,
         ollama_url,

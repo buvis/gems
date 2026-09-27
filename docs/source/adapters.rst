@@ -12,11 +12,10 @@ Overview
 
 - Wrap subprocess calls, COM automation, or REST APIs.
 - `ShellAdapter.exe()` returns (stderr, stdout) tuples for standard shell operations.
-- `UvToolManager.run()` exits the process directly after execution.
 - Handle platform-specific differences internally.
 - Log operations via the standard logging module.
 
-Adapters differ in how they return results: shell wrappers yield `(stderr, stdout)` for post-processing, while `UvToolManager` terminates the process as part of its flow.
+Adapters wrap subprocess calls, COM automation, or REST APIs behind consistent Python interfaces; shell wrappers yield `(stderr, stdout)` for post-processing.
 
 Return Convention
 ~~~~~~~~~~~~~~~~~
@@ -41,9 +40,6 @@ Choosing the Right Adapter
    * - Scenario
      - Adapter
      - Rationale
-   * - New projects, fast installs
-     - UvAdapter / UvToolManager
-     - uv is faster than Poetry, better for CI/CD
    * - Running arbitrary shell commands
      - ShellAdapter
      - Handles aliases, env vars, logging
@@ -97,24 +93,6 @@ Rich console output wrapper for styled terminal messages.
 `console` singleton instance exposes the adapter for quick access.
 
 .. autofunction:: buvis.pybase.adapters.logging_to_console
-
-UvAdapter
-~~~~~~~~~
-Fast Python package manager integration with auto-installation.
-
-.. autoclass:: buvis.pybase.adapters.UvAdapter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-UvToolManager
-~~~~~~~~~~~~~
-Manage and run CLI tools installed via uv.
-
-.. autoclass:: buvis.pybase.adapters.UvToolManager
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 JiraAdapter
 ~~~~~~~~~~~
@@ -235,35 +213,4 @@ Ensure configuration exposes ``server`` and ``token`` before instantiating the a
     except JIRAError as e:
         print(f"JIRA API error: {e.status_code} - {e.text}")
         raise
-
-UvAdapter Example
-^^^^^^^^^^^^^^^^^
-
-.. code-block:: python
-
-    from buvis.pybase.adapters import UvAdapter
-
-    # Ensure uv is installed and PATH is configured
-    UvAdapter.ensure_uv()
-    # uv is now available for subprocess calls
-    # Use UvToolManager for running uv-managed tools
-
-UvToolManager Example
-^^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: python
-
-    from pathlib import Path
-
-    from buvis.pybase.adapters import UvToolManager
-
-    project_root = Path("/project")
-    # Directory layout:
-    # /project
-    # ├── bin/
-    # └── src/
-    #     └── my_tool/
-    UvToolManager.install_all(project_root)
-    UvToolManager.install_tool(project_root / "src" / "my_tool")
-    UvToolManager.run(project_root / "bin" / "my-tool", ["--help"])  # exits on completion
 

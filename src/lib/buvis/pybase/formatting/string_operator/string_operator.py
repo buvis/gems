@@ -1,26 +1,21 @@
 """Main StringOperator facade class for string manipulation.
-Provides unified interface delegating to StringCaseTools, WordLevelTools, and Abbr helpers.
+Provides unified interface delegating to StringCaseTools and Abbr helpers.
 
 Example:
-    >>> StringOperator.slugify("Foo Bar")
-    'foo-bar'
     >>> StringOperator.camelize("foo_bar")
     'FooBar'
 """
 
 from __future__ import annotations
 
-import re
-
 from buvis.pybase.formatting.string_operator.abbr import Abbr, AbbreviationInput
 from buvis.pybase.formatting.string_operator.string_case_tools import StringCaseTools
-from buvis.pybase.formatting.string_operator.word_level_tools import WordLevelTools
 
 
 class StringOperator:
     """Facade class providing unified string manipulation operations.
 
-    All methods are static. Delegates to StringCaseTools, WordLevelTools, Abbr.
+    All methods are static. Delegates to StringCaseTools and Abbr.
     """
 
     @staticmethod
@@ -57,111 +52,6 @@ class StringOperator:
         return text
 
     @staticmethod
-    def prepend(text: str, prepend_text: str) -> str:
-        """Prepend a prefix when the text does not already start with it.
-
-        Args:
-            text: Target text.
-            prepend_text: Prefix to add when missing.
-        Returns:
-            The original text if the prefix exists, otherwise the prefixed text.
-        Example:
-            >>> StringOperator.prepend("bar", "pre-")
-            'pre-bar'
-        """
-        if text.startswith(prepend_text):
-            return text
-
-        return f"{prepend_text}{text}"
-
-    @staticmethod
-    def slugify(text: str) -> str:
-        """Create a URL-safe slug from the given text.
-
-        Args:
-            text: Input text to convert.
-        Returns:
-            A lowercase slug with unsafe characters replaced by hyphens.
-        Example:
-            >>> StringOperator.slugify("Foo Bar!")
-            'foo-bar'
-        """
-        text = str(text)
-        unsafe = [
-            '"',
-            "#",
-            "$",
-            "%",
-            "&",
-            "+",
-            ",",
-            "/",
-            ":",
-            ";",
-            "=",
-            "?",
-            "@",
-            "[",
-            "\\",
-            "]",
-            "^",
-            "`",
-            "{",
-            "|",
-            "}",
-            "~",
-            "'",
-            "_",
-        ]
-        text = text.translate({ord(char): "-" for char in unsafe})
-        text = "-".join(text.split())
-        text = re.sub("-{2,}", "-", text)
-
-        return text.lower()
-
-    @staticmethod
-    def singularize(text: str) -> str:
-        """Return the singular form of the provided text.
-
-        Args:
-            text: Word to singularize.
-        Returns:
-            Singularized form of the word.
-        Example:
-            >>> StringOperator.singularize("mice")
-            'mouse'
-        """
-        return WordLevelTools.singularize(text)
-
-    @staticmethod
-    def pluralize(text: str) -> str:
-        """Return the plural form of the provided text.
-
-        Args:
-            text: Word to pluralize.
-        Returns:
-            Pluralized form of the word.
-        Example:
-            >>> StringOperator.pluralize("mouse")
-            'mice'
-        """
-        return WordLevelTools.pluralize(text)
-
-    @staticmethod
-    def humanize(text: str) -> str:
-        """Make an identifier more readable for humans.
-
-        Args:
-            text: Identifier in snake_case or camelCase.
-        Returns:
-            A human-readable string with spaces and capitalization.
-        Example:
-            >>> StringOperator.humanize("first_name")
-            'First name'
-        """
-        return StringCaseTools.humanize(text)
-
-    @staticmethod
     def underscore(text: str) -> str:
         """Convert text to snake_case.
 
@@ -188,20 +78,6 @@ class StringOperator:
             'note-title'
         """
         return StringCaseTools.as_note_field_name(text)
-
-    @staticmethod
-    def as_graphql_field_name(text: str) -> str:
-        """Convert text to a GraphQL-friendly PascalCase field name.
-
-        Args:
-            text: Text to normalize.
-        Returns:
-            A PascalCase representation suitable for GraphQL schemas.
-        Example:
-            >>> StringOperator.as_graphql_field_name("first_name")
-            'FirstName'
-        """
-        return StringCaseTools.as_graphql_field_name(text)
 
     @staticmethod
     def camelize(text: str) -> str:
@@ -240,18 +116,3 @@ class StringOperator:
             'Send an Application Programming Interface (API) request'
         """
         return Abbr.replace_abbreviations(text, abbreviations, level)
-
-    @staticmethod
-    def suggest_tags(text: str, model: str, url: str = "http://localhost:11434") -> list[str]:
-        """Suggest tags for text via ollama API.
-
-        Args:
-            text: Text to analyze for tag candidates.
-            model: Ollama model name (e.g. "llama3.2:3b").
-            url: Ollama base URL.
-        Returns:
-            A list of suggested tag strings, or empty list on error.
-        """
-        from buvis.pybase.formatting.string_operator.suggest_tags import suggest_tags
-
-        return suggest_tags(text, model, url)
