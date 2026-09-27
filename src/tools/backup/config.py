@@ -28,6 +28,31 @@ _DEFAULT_CONFIG_RESOURCE = "default.yaml"
 _BACKUP_TOP_LEVEL_KEYS = frozenset({"instances", "excludes"})
 
 
+def _is_backup_specific(path: Path) -> bool:
+    """Whether ``path`` is a backup-specific config file (``buvis-backup*.yaml``).
+
+    A backup-specific file should carry only backup's own keys, so an unknown
+    top-level key in it is a typo. A shared file (``config.yaml`` / ``buvis.yaml``)
+    legitimately carries other tools' + global keys and is not checked.
+    """
+    return path.name.startswith("buvis-backup")
+
+
+def _unknown_top_level_keys(data: dict[str, object]) -> set[str]:
+    """Return top-level keys in ``data`` that are not backup's.
+
+    A list key may carry a ``+`` / ``-`` directive suffix (``excludes+`` /
+    ``excludes-``, PRD 00080), so the suffix is stripped before the membership
+    check. Non-mapping documents contribute nothing.
+    """
+    unknown: set[str] = set()
+    for key in data:
+        base = key[:-1] if key.endswith(("+", "-")) else key
+        if base not in _BACKUP_TOP_LEVEL_KEYS:
+            unknown.add(key)
+    return unknown
+
+
 class BackupInstance(BaseModel):
     """One configured backup capability instance.
 
@@ -130,10 +155,25 @@ def load_config(config_dir: str | None = None) -> BackupConfig:
     ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked("backup", config_dir=config_dir)
     for path in ranked_files:
         try:
-            layers.append(ConfigurationLoader.load_yaml(path))
+            data = ConfigurationLoader.load_yaml(path)
         except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
             msg = f"failed to load config file {path}: {exc}"
             raise FatalError(msg) from exc
+        # A backup-SPECIFIC file (buvis-backup*.yaml) should carry only backup's
+        # keys, so an unknown top-level key there is a typo (instnaces:, exclude:)
+        # to reject — the projection below would otherwise silently drop it and
+        # run the bundled plan. A SHARED file (config.yaml / buvis.yaml) legitimately
+        # carries other tools' + global keys, so its extras are tolerated.
+        if _is_backup_specific(path):
+            unknown = _unknown_top_level_keys(data)
+            if unknown:
+                allowed = ", ".join(sorted(_BACKUP_TOP_LEVEL_KEYS))
+                msg = (
+                    f"unknown key(s) in {path}: {', '.join(sorted(unknown))}; "
+                    f"backup config accepts only: {allowed} (with +/- directive suffixes on list keys)"
+                )
+                raise FatalError(msg)
+        layers.append(data)
 
     try:
         merged = ConfigurationLoader.merge_configs(*layers, known_keys={"excludes"})
@@ -144,9 +184,10 @@ def load_config(config_dir: str | None = None) -> BackupConfig:
     # find_config_files_ranked also returns the SHARED config.yaml / buvis.yaml
     # layers, whose global fields (debug, log_level, ...) are not backup's. Project
     # the merged document onto backup's own top-level keys before validation, so a
-    # standard global config no longer trips BackupConfig's extra="forbid". A typo
-    # in a backup key still surfaces: an unknown key nested under instances/excludes
-    # is caught by the per-instance extra="forbid" and _validate_capabilities.
+    # standard global config no longer trips BackupConfig's extra="forbid". Typos in
+    # a backup-SPECIFIC file are already rejected above; a typo nested under
+    # instances/excludes is caught by the per-instance extra="forbid" and
+    # _validate_capabilities.
     backup_config = {key: value for key, value in merged.items() if key in _BACKUP_TOP_LEVEL_KEYS}
 
     try:

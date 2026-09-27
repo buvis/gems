@@ -213,3 +213,32 @@ class TestSharedConfigIgnoresGlobalFields:
         assert "extra-dir" in cfg.excludes
         # a global field did not leak into the backup config
         assert not hasattr(cfg, "debug")
+
+
+class TestBackupSpecificTypoGuard:
+    """A typo in a backup-specific file (buvis-backup*.yaml) is rejected, even
+    though shared global fields are tolerated — the projection must not silently
+    drop a misspelled backup key and run the bundled plan."""
+
+    def test_typo_in_backup_specific_file_is_rejected(self, tmp_path: Path) -> None:
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        _write(cfg_dir / "buvis-backup.yaml", "instnaces:\n  x: {use: tar-archive}\n")
+        with pytest.raises(FatalError) as exc_info:
+            load_config(config_dir=str(cfg_dir))
+        assert "instnaces" in str(exc_info.value)
+
+    def test_misspelled_exclude_in_backup_file_is_rejected(self, tmp_path: Path) -> None:
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        _write(cfg_dir / "buvis-backup.yaml", "exclude: [foo]\n")  # should be 'excludes'
+        with pytest.raises(FatalError) as exc_info:
+            load_config(config_dir=str(cfg_dir))
+        assert "exclude" in str(exc_info.value)
+
+    def test_valid_backup_specific_excludes_directive_accepted(self, tmp_path: Path) -> None:
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        _write(cfg_dir / "buvis-backup.yaml", "excludes+: [scratch]\n")
+        cfg = load_config(config_dir=str(cfg_dir))
+        assert "scratch" in cfg.excludes
