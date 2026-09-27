@@ -435,6 +435,11 @@ The loader searches for both <code class="docutils literal notranslate"><span cl
 </div>
 <p>This adds <code class="docutils literal notranslate"><span class="pre">--debug</span></code>, <code class="docutils literal notranslate"><span class="pre">--log-level</span></code>, <code class="docutils literal notranslate"><span class="pre">--config-dir</span></code>, and <code class="docutils literal notranslate"><span class="pre">--config</span></code>
 options. Values resolve from CLI &gt; ENV &gt; YAML &gt; defaults.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">FILE</span></code> and <code class="docutils literal notranslate"><span class="pre">--config-dir</span> <span class="pre">DIR</span></code> select both the settings source and,
+for tools that load their own YAML plan (e.g. <code class="docutils literal notranslate"><span class="pre">backup</span></code>, <code class="docutils literal notranslate"><span class="pre">sysup</span></code>), the tool’s
+config plan — the wrapper publishes the selection on the Click context and the
+tool’s <code class="docutils literal notranslate"><span class="pre">load_config</span></code> honours it, so the settings and the plan always come from
+the same source.</p>
 <p>For tool-specific settings, see <a class="reference internal" href="#downstream-project-integration">Downstream Project Integration</a> or
 <a class="reference internal" href="#custom-settings-classes">Custom Settings Classes</a>.</p>
 </section>
