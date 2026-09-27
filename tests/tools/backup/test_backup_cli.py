@@ -91,7 +91,9 @@ class TestBackupCliRun:
             patch("backup.runner.Runner.run", return_value=iter([])),
         ):
             result = runner.invoke(cli, ["--only", "nope"])
-        assert result.exit_code == 0
+        # an unknown --only name now fails the run (was exit 0): a mistyped
+        # selector must not let a scheduled backup silently do nothing.
+        assert result.exit_code != 0
         assert "unknown instance 'nope'" in result.output
 
 
@@ -211,3 +213,69 @@ class TestBackupCliForGuard:
         assert result.exit_code == 0
         assert "--for requires --show-excludes" not in result.output
         assert mock_run.call_count == 0
+
+
+class TestShowExcludesExitCode:
+    """A terminal validation failure in --show-excludes must exit nonzero, so a
+    typo is distinguishable from a successful inspection to a script."""
+
+    def test_unknown_instance_exits_nonzero(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})
+        with patch("backup.config.load_config", return_value=cfg):
+            result = runner.invoke(cli, ["--show-excludes", "typo"])
+        assert result.exit_code != 0
+        assert "unknown instance 'typo'" in result.output
+
+    def test_instance_without_source_exits_nonzero(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})  # no with.source
+        with patch("backup.config.load_config", return_value=cfg):
+            result = runner.invoke(cli, ["--show-excludes", "git-src", "--for", "/x"])
+        assert result.exit_code != 0
+        assert "no source configured" in result.output
+
+    def test_known_instance_exits_zero(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})
+        with patch("backup.config.load_config", return_value=cfg):
+            result = runner.invoke(cli, ["--show-excludes", "git-src"])
+        assert result.exit_code == 0
+
+
+class TestOnlyUnknownExitCode:
+    """An unknown --only name (typo) must fail the run, so a scheduled backup
+    can't silently do nothing (or less) after a mistyped selector."""
+
+    def test_all_unknown_only_exits_nonzero_and_runs_nothing(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})
+        with (
+            patch("backup.config.load_config", return_value=cfg),
+            patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
+            patch("backup.runner.Runner.run", return_value=iter([])) as mock_run,
+        ):
+            result = runner.invoke(cli, ["--only", "typo"])
+        assert result.exit_code != 0
+        assert "unknown instance 'typo'" in result.output
+        # empty plan -> Runner.run gets an empty list, produces no steps
+        assert mock_run.call_count == 1
+
+    def test_partial_unknown_only_still_runs_valid_but_exits_nonzero(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})
+        plan = [("git-src", cfg.instances["git-src"])]
+        with (
+            patch("backup.config.load_config", return_value=cfg),
+            patch("backup.config.applicable_instances", return_value=plan),
+            patch("backup.runner.Runner.run", return_value=iter([StepResult("git-src", True, "archived 1 -> /x")])),
+        ):
+            result = runner.invoke(cli, ["--only", "git-src,typo"])
+        assert result.exit_code != 0
+        assert "archived 1" in result.output  # valid one still ran
+        assert "unknown instance 'typo'" in result.output
+
+    def test_list_with_unknown_only_exits_nonzero(self, runner) -> None:
+        cfg = _cfg({"git-src": {"use": "tar-archive"}})
+        plan = [("git-src", cfg.instances["git-src"])]
+        with (
+            patch("backup.config.load_config", return_value=cfg),
+            patch("backup.config.applicable_instances", return_value=plan),
+        ):
+            result = runner.invoke(cli, ["--list", "--only", "typo"])
+        assert result.exit_code != 0

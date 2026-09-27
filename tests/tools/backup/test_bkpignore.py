@@ -184,3 +184,32 @@ class TestResolveStateSymlinkEscape:
         state = resolve_state_for_path(source, base_state, link)
         assert "!target" in state.applied
         assert state.is_excluded("target") is False
+
+
+class TestResolveStatePruning:
+    """The introspection resolver must match the archive walk's pruning: it must
+    not read a .bkpignore under a directory the walk would never descend into."""
+
+    def test_excluded_dir_on_path_is_not_layered(self, tmp_path) -> None:
+        # global excludes contain `target`; a .bkpignore INSIDE target would be
+        # read by a naive resolver, but the archive walk prunes `target` before
+        # descending, so its rules must NOT appear.
+        source = tmp_path / "src"
+        (source / "target").mkdir(parents=True)
+        (source / "target" / ".bkpignore").write_text("!secret\n", encoding="utf-8")
+        base_state = ExcludeState(base_excludes=frozenset({"target"}))
+        state = resolve_state_for_path(source, base_state, source / "target")
+        # pruned at the target boundary -> no target/.bkpignore rule layered
+        assert state.applied == ()
+        assert "!secret" not in state.applied
+        # and target itself is still excluded by the global default
+        assert state.is_excluded("target") is True
+
+    def test_unexcluded_dir_on_path_is_layered(self, tmp_path) -> None:
+        # a non-excluded directory on the path IS descended and its .bkpignore read.
+        source = tmp_path / "src"
+        (source / "repo").mkdir(parents=True)
+        (source / "repo" / ".bkpignore").write_text("!target\n", encoding="utf-8")
+        base_state = ExcludeState(base_excludes=frozenset({"target"}))
+        state = resolve_state_for_path(source, base_state, source / "repo")
+        assert "!target" in state.applied

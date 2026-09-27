@@ -91,7 +91,9 @@ class TestSourceOutOverride:
             patch("backup.runner.Runner.run") as mock_run,
         ):
             result = runner.invoke(cli, ["--source", "/some/dir"])
-        assert result.exit_code == 0
+        # a usage error (override with != 1 selected instance) now exits nonzero
+        # (was exit 0): the misuse must not be indistinguishable from success.
+        assert result.exit_code != 0
         assert "exactly one selected instance" in result.output
         assert mock_run.call_count == 0
 

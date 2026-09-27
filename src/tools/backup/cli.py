@@ -66,7 +66,7 @@ def _apply_overrides(instance: BackupInstance, source: str, out: str) -> BackupI
     return instance.model_copy(update={"with_": merged})
 
 
-def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> None:
+def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> bool:
     """Print the resolved exclude set for ``instance_name`` under ``--for`` path.
 
     Renders the global exclude set (already post-``excludes+`` / ``excludes-``)
@@ -74,6 +74,11 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> None
     rules effective under that path — resolved with the same layering the
     archive walk uses. Writes no archive. Without ``--for`` prints the global
     set only and notes that path-dependent ``.bkpignore`` rules are omitted.
+
+    Returns ``True`` on a terminal validation failure (unknown instance, or an
+    instance with no source) so the CLI layer can exit nonzero — a typo like
+    ``backup --show-excludes typo`` must not look like a successful inspection
+    to a script.
     """
     from pathlib import Path
 
@@ -82,7 +87,7 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> None
     instance = cfg.instances.get(instance_name)
     if instance is None:
         console.failure(f"unknown instance '{instance_name}'")
-        return
+        return True
 
     console.info(f"resolved global excludes for '{instance_name}':")
     for pattern in sorted(cfg.excludes):
@@ -90,12 +95,12 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> None
 
     if not for_path:
         console.info("(.bkpignore rules omitted — path-dependent; pass --for <path> to resolve them)")
-        return
+        return False
 
     source_raw = instance.with_.get("source")
     if not isinstance(source_raw, str) or not source_raw:
         console.failure(f"instance '{instance_name}' has no source configured")
-        return
+        return True
 
     source = Path(source_raw).expanduser()
     target = Path(for_path).expanduser()
@@ -108,6 +113,7 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> None
             console.info(f"  {rule}")
     else:
         console.info("  none")
+    return False
 
 
 def _select_plan(
@@ -115,14 +121,23 @@ def _select_plan(
     plan: list[tuple[str, BackupInstance]],
     only: tuple[str, ...],
     tags: tuple[str, ...],
-) -> list[tuple[str, BackupInstance]]:
-    """Narrow ``plan`` by ``--only`` names and ``--tag`` tags, reporting skips via console."""
+) -> tuple[list[tuple[str, BackupInstance]], bool]:
+    """Narrow ``plan`` by ``--only`` names and ``--tag`` tags, reporting skips via console.
+
+    Returns the narrowed plan plus a flag that is ``True`` when any requested
+    ``--only`` name was unknown to the config. Valid names still run (the caller
+    executes whatever survived), but the flag lets the CLI exit nonzero so a typo
+    that leaves an empty or reduced plan cannot make a scheduled backup silently
+    do nothing (or less) while reporting success.
+    """
+    had_unknown = False
     only_names = _parse_only(only)
     if only_names:
         selected_names = {name for name, _ in plan}
         for requested in sorted(only_names):
             if requested not in cfg.instances:
                 console.failure(f"unknown instance '{requested}', skipping")
+                had_unknown = True
             elif requested not in selected_names:
                 console.info(f"'{requested}' is disabled, skipping")
         plan = [(name, instance) for name, instance in plan if name in only_names]
@@ -131,7 +146,25 @@ def _select_plan(
         wanted = set(tags)
         plan = [(name, instance) for name, instance in plan if wanted & set(instance.tags)]
 
-    return plan
+    return plan, had_unknown
+
+
+def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_run: bool) -> bool:
+    """Run the selected plan, rendering every step; return whether any failed.
+
+    Rendering all steps before returning means the user sees every failure (the
+    CLI must not stop at the first). Returns ``True`` if any step failed so the
+    caller can exit nonzero — a cron job treating an incomplete backup as success
+    is the bug this closes. A ``FatalError`` from the runner is surfaced via
+    ``console.panic`` (which exits).
+    """
+    from backup.runner import Runner
+
+    try:
+        return _report_steps(Runner(cfg, dry_run=dry_run).run(plan))
+    except FatalError as exc:
+        console.panic(str(exc))
+        return True  # unreachable: panic exits, but keeps the type honest
 
 
 @click.command(help="Run configured backup archives")
@@ -162,7 +195,6 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
     for_path: str,
 ) -> None:
     from backup.config import applicable_instances, load_config
-    from backup.runner import Runner
 
     # --for only qualifies --show-excludes' read-only inspection; supplied alone
     # it used to be silently ignored while a real backup RAN. Reject it up front.
@@ -184,18 +216,22 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
         return
 
     if show_excludes:
-        _show_excludes(cfg, show_excludes, for_path)
+        failed = _show_excludes(cfg, show_excludes, for_path)
+        if failed:
+            raise SystemExit(1)
         return
 
     plan = applicable_instances(cfg)
-    plan = _select_plan(cfg, plan, only, tags)
+    plan, unknown_only = _select_plan(cfg, plan, only, tags)
 
     if list_plan:
         if not plan:
             console.info("no configured instances")
-            return
-        for name, instance in plan:
-            console.info(_describe(name, instance))
+        else:
+            for name, instance in plan:
+                console.info(_describe(name, instance))
+        if unknown_only:
+            raise SystemExit(1)
         return
 
     if source or out:
@@ -203,19 +239,14 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
             console.failure(
                 f"--source/--out require exactly one selected instance (via --only); {len(plan)} selected",
             )
-            return
+            raise SystemExit(1)
         name, instance = plan[0]
         plan = [(name, _apply_overrides(instance, source, out))]
 
-    try:
-        # Render ALL steps first (so the user sees every failure), THEN exit
-        # nonzero if any failed — so cron never treats an incomplete backup as
-        # success. Do not stop at the first failure.
-        any_failed = _report_steps(Runner(cfg, dry_run=dry_run).run(plan))
-    except FatalError as exc:
-        console.panic(str(exc))
-        return
-    if any_failed:
+    any_failed = _run_plan(cfg, plan, dry_run=dry_run)
+    # An unknown --only name (typo) must also fail the run, so a scheduled
+    # backup can't silently do nothing (or less) after a mistyped selector.
+    if any_failed or unknown_only:
         raise SystemExit(1)
 
 

@@ -184,7 +184,10 @@ def resolve_state_for_path(source: Path, base_state: ExcludeState, target: Path)
     directory of ``target``, using the SAME :func:`state_for_directory` /
     :meth:`ExcludeState.layer` semantics the archive walk uses — so the rules
     ``--show-excludes --for <path>`` reports are exactly those that would fire
-    when ``target``'s subtree is archived. A ``target`` outside ``source``
+    when ``target``'s subtree is archived — including PRUNING: if a directory on
+    the path is excluded by the state in force at its parent, the archive walk
+    never descends into it or reads its ``.bkpignore``, so this resolver stops
+    layering at that boundary too. A ``target`` outside ``source``
     contributes no path layers and returns ``base_state``.
 
     Args:
@@ -212,6 +215,14 @@ def resolve_state_for_path(source: Path, base_state: ExcludeState, target: Path)
     state = state_for_directory(source_resolved, base_state)
     current = source_resolved
     for part in relative.parts:
-        current = current / part
+        child = current / part
+        # Match the archive walk, which decides pruning with the PARENT's state
+        # before descending: if the current state excludes this directory, the
+        # walk never reads its ``.bkpignore``, so introspection must not either.
+        # Stop layering here and report the state as it stood at the boundary.
+        relpath = child.relative_to(source_resolved).as_posix()
+        if state.is_excluded(part, relpath):
+            return state
+        current = child
         state = state_for_directory(current, state)
     return state

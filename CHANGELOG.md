@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **backup**: an unreadable directory in the source tree now fails the backup instead of being silently omitted from an otherwise "successful" archive (`os.walk` errors and per-file `stat` errors propagate to a failed step).
 - **backup**: `.bkpignore` discovery now resolves symlinks before its in-source containment check, so a symlink inside the source pointing outside it can no longer cause `.bkpignore` files outside the source tree to be read and applied.
 - **backup**: `--for` supplied without `--show-excludes` is now rejected instead of being silently ignored while a backup runs, so a read-only inspection attempt can no longer create an archive unexpectedly.
+- **backup**: `--show-excludes` with an unknown instance (or an instance with no configured source) now exits non-zero instead of 0, so a typo is distinguishable from a successful inspection.
+- **backup**: an unknown `--only` name now makes the run exit non-zero (valid names still run), so a mistyped selector can no longer let a scheduled backup silently do nothing; the `--source`/`--out` "exactly one instance" usage error also now exits non-zero.
+- **backup**: `--show-excludes --for <path>` no longer reports `.bkpignore` rules from a directory the archive walk would prune (an excluded directory on the path), so introspection matches what the backup actually archives.
 
 ## [0.13.0] - 2026-08-17
 
