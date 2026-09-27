@@ -87,7 +87,13 @@ class TarArchive:
             yield StepResult(label, success=False, message="no out path configured")
             return
 
-        source = Path(source_raw).expanduser()
+        # Normalize `.`/`..` LEXICALLY (os.path.normpath, not resolve()) before
+        # walking: a source like `parent/child/..` would otherwise be walked as
+        # given and produce member names like `..` / `../child` (an unsafe
+        # archive that also breaks the documented source-name prefix). normpath
+        # collapses the segments without following symlinks, so the
+        # symlink-confinement guarantee is untouched.
+        source = Path(os.path.normpath(Path(source_raw).expanduser()))
         out = Path(_expand_stamp(out_raw)).expanduser()
 
         if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):

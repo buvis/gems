@@ -22,6 +22,11 @@ __all__ = [
 
 _DEFAULT_CONFIG_RESOURCE = "default.yaml"
 
+# Backup's own top-level config keys. The shared config stack (config.yaml /
+# buvis.yaml) carries other tools' and global fields; only these are projected
+# into BackupConfig, whose extra="forbid" would otherwise reject them.
+_BACKUP_TOP_LEVEL_KEYS = frozenset({"instances", "excludes"})
+
 
 class BackupInstance(BaseModel):
     """One configured backup capability instance.
@@ -136,8 +141,16 @@ def load_config(config_dir: str | None = None) -> BackupConfig:
         msg = f"failed to merge backup configuration: {exc}"
         raise FatalError(msg) from exc
 
+    # find_config_files_ranked also returns the SHARED config.yaml / buvis.yaml
+    # layers, whose global fields (debug, log_level, ...) are not backup's. Project
+    # the merged document onto backup's own top-level keys before validation, so a
+    # standard global config no longer trips BackupConfig's extra="forbid". A typo
+    # in a backup key still surfaces: an unknown key nested under instances/excludes
+    # is caught by the per-instance extra="forbid" and _validate_capabilities.
+    backup_config = {key: value for key, value in merged.items() if key in _BACKUP_TOP_LEVEL_KEYS}
+
     try:
-        cfg = BackupConfig.model_validate(merged)
+        cfg = BackupConfig.model_validate(backup_config)
     except ValidationError as exc:
         msg = f"invalid backup configuration: {exc}"
         raise FatalError(msg) from exc

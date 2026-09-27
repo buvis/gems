@@ -433,3 +433,23 @@ class TestDirectoriesPreserved:
         members = self._members(out)
         assert any(name.endswith("src") or name == "src" for name in members)
         assert res.file_count == 0
+
+
+class TestSourceNormalization:
+    """A source containing `.`/`..` is normalized lexically before walking, so
+    it cannot produce unsafe `..`-prefixed archive member names."""
+
+    def test_dotdot_source_produces_safe_member_names(self, tmp_path: Path) -> None:
+        import tarfile
+
+        (tmp_path / "parent" / "child").mkdir(parents=True)
+        (tmp_path / "parent" / "child" / "f.txt").write_text("x", encoding="utf-8")
+        # source = parent/child/.. -> normalizes to parent
+        source = tmp_path / "parent" / "child" / ".."
+        out = tmp_path / "o.tar.gz"
+        result = next(iter(TarArchive().run(label="t", source=str(source), out=str(out))))
+        assert result.success
+        with tarfile.open(out) as tar:
+            names = [m.name for m in tar.getmembers()]
+        assert not any(n == ".." or n.startswith("../") for n in names)
+        assert any(n.endswith("parent") or n == "parent" for n in names)

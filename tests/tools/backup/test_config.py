@@ -190,3 +190,26 @@ class TestApplicableInstances:
             {"instances": {"x": {"use": "tar-archive", "enabled": False}}},
         )
         assert applicable_instances(cfg) == []
+
+
+class TestSharedConfigIgnoresGlobalFields:
+    """A shared config.yaml / buvis.yaml carries global fields (debug, log_level)
+    that are not backup's; they must be ignored, not trip BackupConfig's
+    extra='forbid', while backup-specific keys (excludes+) still apply."""
+
+    def test_generic_global_fields_ignored(self, tmp_path: Path) -> None:
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        _write(
+            cfg_dir / "buvis.yaml",
+            """
+            debug: true
+            log_level: info
+            excludes+: [extra-dir]
+            """,
+        )
+        cfg = load_config(config_dir=str(cfg_dir))
+        # loads without error; the backup-specific excludes+ directive still applied
+        assert "extra-dir" in cfg.excludes
+        # a global field did not leak into the backup config
+        assert not hasattr(cfg, "debug")
