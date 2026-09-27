@@ -30,8 +30,10 @@ _ENGINE_SYSTEM_TAR = "system-tar"
 class WalkResult:
     """The outcome of walking + filtering a source tree, before any archive.
 
-    ``files`` are the surviving regular files as absolute paths in walk order;
-    ``file_count`` and ``total_bytes`` summarise them; ``applied`` lists the
+    ``files`` are the surviving entries as absolute paths in walk order —
+    regular files first, then symlinks (each archived as the link itself, not
+    followed, matching the former tar backup); ``file_count`` and ``total_bytes``
+    summarise them (a symlink contributes 0 input bytes); ``applied`` lists the
     ``.bkpignore`` rules that fired anywhere in the tree (for dry-run reporting).
     """
 
@@ -176,6 +178,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
     pruned from further descent; surviving regular files are collected.
     """
     files: list[Path] = []
+    symlinks: list[Path] = []
     total_bytes = 0
     states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
 
@@ -188,12 +191,14 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             relpath = os.path.relpath(child, source).replace(os.sep, "/")
             if state.is_excluded(dirname, relpath):
                 continue
-            # Skip a directory symlink BEFORE reading its .bkpignore: os.walk
-            # (followlinks=False) will not descend it, but state_for_directory
-            # would still read <link>/.bkpignore — which may point outside the
-            # source tree. Not adding it to kept_dirs also stops os.walk
-            # recursing into it.
+            # A directory symlink: os.walk (followlinks=False) will not descend
+            # it, and we must NOT read <link>/.bkpignore (it may point outside
+            # the source tree) — so it stays out of kept_dirs. But the link
+            # ITSELF is archived as a non-recursive symlink member, so restoring
+            # preserves it (the former tar backup kept symlinks). tarfile /
+            # system tar store a symlink as a link without following it.
             if os.path.islink(child):
+                symlinks.append(Path(child))
                 continue
             states[child] = state_for_directory(Path(child), state)
             kept_dirs.append(dirname)
@@ -206,7 +211,13 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             relpath = os.path.relpath(file_path, source).replace(os.sep, "/")
             if state.is_excluded(filename, relpath):
                 continue
-            if not file_path.is_file() or file_path.is_symlink():
+            # Archive a symlink as the link itself (not its target), matching the
+            # former tar backup — but never stat() it (that follows the link and
+            # a broken link would raise); a link contributes 0 input bytes.
+            if file_path.is_symlink():
+                symlinks.append(file_path)
+                continue
+            if not file_path.is_file():
                 continue
             files.append(file_path)
             # No suppression: a file we selected but cannot stat is a real error
@@ -214,7 +225,11 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             # propagated OSError into a failed step.
             total_bytes += file_path.stat().st_size
 
-    return WalkResult(files=files, total_bytes=total_bytes, applied=_collect_applied(states))
+    return WalkResult(
+        files=[*files, *symlinks],
+        total_bytes=total_bytes,
+        applied=_collect_applied(states),
+    )
 
 
 def _raise_walk_error(error: OSError) -> None:

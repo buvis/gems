@@ -338,3 +338,54 @@ class TestWalkSymlinkConfinement:
         # the outside .bkpignore's rule must not appear in applied rules
         assert "!node_modules" not in (result.message or "")
         assert result.success is True
+
+
+class TestSymlinksPreserved:
+    """Symlinks are archived as the link itself (not followed), matching the
+    former tar backup; a directory symlink is still not descended."""
+
+    def _members(self, path: Path) -> dict[str, object]:
+        import tarfile
+
+        with tarfile.open(path) as tar:
+            return {m.name: m for m in tar.getmembers()}
+
+    def test_file_and_dir_symlinks_archived_as_links(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        (source / "repo").mkdir(parents=True)
+        (source / "repo" / "main.py").write_text("x", encoding="utf-8")
+        (source / "realdir").mkdir()
+        (source / "realdir" / "inner.txt").write_text("y", encoding="utf-8")
+        (source / "flink").symlink_to(source / "repo" / "main.py")
+        (source / "dlink").symlink_to(source / "realdir", target_is_directory=True)
+
+        py_out = tmp_path / "py.tar.gz"
+        sys_out = tmp_path / "sys.tar.gz"
+        assert next(iter(TarArchive().run(label="t", source=str(source), out=str(py_out), excludes=[]))).success
+        assert next(
+            iter(TarArchive().run(label="t", source=str(source), out=str(sys_out), excludes=[], engine="system-tar")),
+        ).success
+
+        for out in (py_out, sys_out):
+            members = self._members(out)
+            flink = next(m for name, m in members.items() if name.endswith("/flink"))
+            dlink = next(m for name, m in members.items() if name.endswith("/dlink"))
+            assert flink.issym(), f"{out}: flink should be a symlink member"
+            assert dlink.issym(), f"{out}: dlink should be a symlink member"
+            # a directory symlink is NOT descended: dlink/inner.txt must be absent
+            assert not any(name.endswith("dlink/inner.txt") for name in members), f"{out}: descended dir symlink"
+
+    def test_dir_symlink_target_bkpignore_not_read(self, tmp_path: Path) -> None:
+        # a dir symlink pointing outside source must not have its .bkpignore read
+        source = tmp_path / "src"
+        source.mkdir()
+        (source / "keep.txt").write_text("x", encoding="utf-8")
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / ".bkpignore").write_text("!node_modules\n", encoding="utf-8")
+        (source / "link").symlink_to(outside, target_is_directory=True)
+        out = tmp_path / "o.tar.gz"
+        result = next(
+            iter(TarArchive().run(label="t", source=str(source), out=str(out), excludes=[], dry_run=True)),
+        )
+        assert "!node_modules" not in (result.message or "")
