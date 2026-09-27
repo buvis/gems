@@ -20,7 +20,6 @@ Commands:
     eval "$(_DOT_COMPLETE=bash_source dot)"
     eval "$(_FCTRACKER_COMPLETE=bash_source fctracker)"
     eval "$(_FREN_COMPLETE=bash_source fren)"
-    eval "$(_HELLO_WORLD_COMPLETE=bash_source hello-world)"
     eval "$(_MORPH_COMPLETE=bash_source morph)"
     eval "$(_MUC_COMPLETE=bash_source muc)"
     eval "$(_NETSCAN_COMPLETE=bash_source netscan)"
@@ -49,7 +48,6 @@ Commands:
     eval "$(_DOT_COMPLETE=zsh_source dot)"
     eval "$(_FCTRACKER_COMPLETE=zsh_source fctracker)"
     eval "$(_FREN_COMPLETE=zsh_source fren)"
-    eval "$(_HELLO_WORLD_COMPLETE=zsh_source hello-world)"
     eval "$(_MORPH_COMPLETE=zsh_source morph)"
     eval "$(_MUC_COMPLETE=zsh_source muc)"
     eval "$(_NETSCAN_COMPLETE=zsh_source netscan)"
@@ -78,7 +76,6 @@ Commands:
     _DOT_COMPLETE=fish_source dot | source
     _FCTRACKER_COMPLETE=fish_source fctracker | source
     _FREN_COMPLETE=fish_source fren | source
-    _HELLO_WORLD_COMPLETE=fish_source hello-world | source
     _MORPH_COMPLETE=fish_source morph | source
     _MUC_COMPLETE=fish_source muc | source
     _NETSCAN_COMPLETE=fish_source netscan | source

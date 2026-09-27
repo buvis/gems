@@ -280,10 +280,10 @@ class TestRequireImport:
 
     def test_custom_tool_name(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
         with pytest.raises(SystemExit) as exc_info:
-            console_adapter.require_import("hello-world", tool_name="hello_world")
+            console_adapter.require_import("morph", tool_name="morph")
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
-        assert "hello_world requires the 'hello-world' extra" in captured.out
+        assert "morph requires the 'morph' extra" in captured.out
 
 
 class TestValidatePath:

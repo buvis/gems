@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **sysup**: the `mac`, `pip`, `nvim`, and `wsl` subcommands (and their `sys.platform` guards) are removed. `sysup` with no argument now runs every updater whose `when` guard matches the host, in order; `--only <names>` and `--tag <t>` narrow the run. With no user config the behaviour is unchanged — on macOS `sysup` runs the former `sysup mac` steps (brew → npm-check → pip → uv → helm → mise, mise last among the tool managers) and on Linux the former `sysup wsl` steps (apt → snap), now host-selected by each entry's `when` instead of a subcommand. The former standalone `sysup nvim` (headless Mason update) is also restored to the default plan as a cross-platform `use: nvim-mason` entry that runs after mise wherever nvim resolves.
 
+### Removed
+
+- **hello-world**: the sample `hello-world` tool is gone, and with it the `hello-world` console script and the `hello-world` optional-dependency extra (`pyfiglet`). New tools are scaffolded from `dev/bin/scaffold.py`, which never depended on it.
+- **pidash**: the autopilot-dashboard TUI is retired from gems (tool, tests, docs page, console script, `pidash` extra and its membership in `all`, pytest marker). Its function moved to `tracon` in the buvis home repo, next to the autopilot state schema it reads; no gems-side replacement ships.
+- **pybase**: the unused `UvAdapter` / `UvToolManager` uv adapter is removed (superseded by the updater subsystem); it had no production or out-of-repo consumers.
+- **pybase**: the `configuration/examples` sample settings (`MusicSettings`, `PhotoSettings`) are removed; they were consumed only by their own tests.
+- **pybase**: the dead `StringOperator` surface is pruned to its four live helpers — `slugify`, `prepend`, `humanize`, `as_graphql_field_name`, and all word-level singularize/pluralize helpers had no production callers and are gone. The `suggest_tags` Ollama client moved out of `formatting` into `bim` (`bim/shared/suggest_tags.py`), its only consumer, so the bottom-layer formatting package no longer imports `console` or `urllib`.
+
 ### Fixed
 
 - **pybase**: `--config FILE` / `--config-dir DIR` now select both the settings source and the tool's own config plan. The `buvis_options` wrapper publishes the resolved selection on the Click context (additive — existing readers are untouched), and `ConfigurationLoader.find_config_files_ranked` accepts an explicit `config_path`. An explicit `--config FILE` is exclusive — it is the sole config layer and directory discovery is skipped, matching the settings resolver so a tool's plan and its settings resolve from the same single file (a discovered user config no longer leaks into the plan under `--config`).

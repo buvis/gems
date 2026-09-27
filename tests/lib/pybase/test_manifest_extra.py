@@ -14,7 +14,7 @@ class TestDiscoverToolsInstalled:
             [tool]
             name = "hello"
             display_name = "Hello"
-            module_name = "hello_world"
+            module_name = "muc"
             description = "Hello world tool"
             category = "sample"
         """)
@@ -30,7 +30,7 @@ class TestDiscoverToolsInstalled:
             mock_as_file.return_value.__enter__ = MagicMock(return_value=toml_path)
             mock_as_file.return_value.__exit__ = MagicMock(return_value=False)
 
-            manifests = discover_tools_installed(["hello_world"])
+            manifests = discover_tools_installed(["muc"])
 
         assert len(manifests) == 1
         assert manifests[0].name == "hello"

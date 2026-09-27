@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from inflection import camelize as infl_camelize, humanize as infl_humanize, underscore as infl_underscore
+from inflection import camelize as infl_camelize, underscore as infl_underscore
 
 
 class StringCaseTools:
@@ -12,22 +12,6 @@ class StringCaseTools:
     conventions. Wraps the inflection library with BUVIS-specific
     field naming conventions.
     """
-
-    @staticmethod
-    def humanize(text: str) -> str:
-        """Turn an identifier into a human-readable phrase.
-
-        Args:
-            text: Lowercase string or identifier to make human readable.
-
-        Returns:
-            Human-readable string with spaces and capitalized words.
-
-        Example:
-            >>> StringCaseTools.humanize('some_value')
-            'Some value'
-        """
-        return infl_humanize(text)
 
     @staticmethod
     def underscore(text: str) -> str:
@@ -60,22 +44,6 @@ class StringCaseTools:
             'some-value'
         """
         return StringCaseTools.underscore(text).replace("_", "-").lower()
-
-    @staticmethod
-    def as_graphql_field_name(text: str) -> str:
-        """Convert a string to a GraphQL-style field name (PascalCase).
-
-        Args:
-            text: Text to convert into PascalCase.
-
-        Returns:
-            PascalCase string suitable for GraphQL fields.
-
-        Example:
-            >>> StringCaseTools.as_graphql_field_name('some_value')
-            'SomeValue'
-        """
-        return StringCaseTools.camelize(text)
 
     @staticmethod
     def camelize(text: str) -> str:

@@ -12,14 +12,6 @@ def __getattr__(name: str) -> type:
         from .shell.shell import ShellAdapter
 
         return ShellAdapter
-    if name == "UvAdapter":
-        from .uv.uv import UvAdapter
-
-        return UvAdapter
-    if name == "UvToolManager":
-        from .uv.uv_tool import UvToolManager
-
-        return UvToolManager
     if name == "OutlookLocalAdapter":
         import os
 
@@ -33,8 +25,6 @@ def __getattr__(name: str) -> type:
 __all__ = [
     "JiraAdapter",
     "ShellAdapter",
-    "UvAdapter",
-    "UvToolManager",
     "console",
     "logging_to_console",
 ]

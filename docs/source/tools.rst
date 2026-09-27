@@ -4,7 +4,7 @@ CLI Tools
 Installation
 ------------
 
-The base install registers all 17 CLIs but only pulls core dependencies.
+The base install registers all 15 CLIs but only pulls core dependencies.
 Tools that need extra packages will tell you what to install if the dep is missing.
 
 .. code-block:: bash
@@ -14,7 +14,7 @@ Tools that need extra packages will tell you what to install if the dep is missi
     uv tool install buvis-gems[bim,muc]     # combine extras
     uv tool install buvis-gems[all]         # everything
 
-Available extras: ``bim``, ``bim-web``, ``fren``, ``hello-world``, ``morph``, ``muc``, ``pidash``, ``pinger``, ``readerctl``, ``all``.
+Available extras: ``bim``, ``bim-web``, ``fren``, ``morph``, ``muc``, ``pinger``, ``readerctl``, ``all``.
 
 Overview
 --------
@@ -41,9 +41,6 @@ Overview
    * - :doc:`fren <tools/fren>`
      - ``fren``
      - File renamer toolkit
-   * - :doc:`hello-world <tools/hello-world>`
-     - ``hello-world``
-     - Sample script template
    * - :doc:`morph <tools/morph>`
      - ``morph``
      - File conversion toolkit
@@ -56,9 +53,6 @@ Overview
    * - :doc:`outlookctl <tools/outlookctl>`
      -
      - Outlook calendar CLI (Windows)
-   * - :doc:`pidash <tools/pidash>`
-     - ``pidash``
-     - Autopilot PRD cycle dashboard (TUI)
    * - :doc:`pinger <tools/pinger>`
      - ``pinger``
      - ICMP ping utilities
@@ -123,12 +117,10 @@ See :doc:`configuration` for how to create custom settings classes and YAML conf
    tools/dot
    tools/fctracker
    tools/fren
-   tools/hello-world
    tools/morph
    tools/muc
    tools/netscan
    tools/outlookctl
-   tools/pidash
    tools/pinger
    tools/puc
    tools/readerctl
