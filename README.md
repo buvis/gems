@@ -67,7 +67,7 @@ pipx upgrade buvis-gems
 mise upgrade pipx:buvis-gems
 ```
 
-All 14 CLIs (`bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netscan`, `outlookctl`, `pinger`, `puc`, `readerctl`, `sysup`, `vuc`, `zseq`) are always installed. Extras add optional dependencies some tools need:
+All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netscan`, `outlookctl`, `pinger`, `puc`, `readerctl`, `sysup`, `vuc`, `zseq`) are always installed. Extras add optional dependencies some tools need:
 
 | Extra | Dep | Tool |
 |-------|-----|------|
@@ -86,10 +86,11 @@ All 14 CLIs (`bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netscan`, `outl
 
 **Library** (`src/lib/buvis/pybase/`) — shared adapters, CLI scaffolding, configuration, filesystem and formatting utilities, plus the zettel subsystem (domain logic, Jira integration, and a Rust extension via PyO3 for performance-critical parsing).
 
-**Tools** (`src/tools/`) — 14 Click-based CLIs built on the library:
+**Tools** (`src/tools/`) — 15 Click-based CLIs built on the library:
 
 | Tool | Purpose |
 |------|---------|
+| backup | Config-driven tar archiver (git-src backup) |
 | bim | BUVIS InfoMesh (zettel integration) |
 | dot | Dotfiles manager |
 | fctracker | Foreign currency account tracker |
