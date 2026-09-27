@@ -130,15 +130,25 @@ def _load_default() -> dict[str, object]:
     return ConfigurationLoader.load_yaml(resource)
 
 
-def load_config(config_dir: str | None = None) -> BackupConfig:
+def load_config(config_dir: str | None = None, config_path: str | None = None) -> BackupConfig:
     """Merge the bundled default with user config files and validate.
 
     Layers, lowest priority first: the bundled ``default.yaml``, then the user
     files returned by :meth:`ConfigurationLoader.find_config_files_ranked`
-    (already low-to-high — never reverse it). Merged via
-    :meth:`ConfigurationLoader.merge_configs` (later wins, ``excludes+`` /
-    ``excludes-`` directives applied), validated against :class:`BackupConfig`,
-    and finally checked for unknown capability names / inputs.
+    (already low-to-high — never reverse it). An explicit ``config_path`` (from
+    ``--config FILE``) is the single highest-priority layer, above every
+    discovered file. Merged via :meth:`ConfigurationLoader.merge_configs` (later
+    wins, ``excludes+`` / ``excludes-`` directives applied), validated against
+    :class:`BackupConfig`, and finally checked for unknown capability names /
+    inputs.
+
+    Args:
+        config_dir: Explicit config directory (from ``--config-dir``), threaded
+            from the CLI so the tool plan is discovered under the SAME directory
+            the settings were resolved from.
+        config_path: Explicit config file (from ``--config``), threaded from the
+            CLI so ``backup --config FILE`` runs the plan from FILE rather than
+            the default locations.
 
     Raises:
         FatalError: on malformed YAML in a config file, a merge/directive error,
@@ -152,7 +162,9 @@ def load_config(config_dir: str | None = None) -> BackupConfig:
     except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
         msg = f"failed to load bundled default configuration: {exc}"
         raise FatalError(msg) from exc
-    ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked("backup", config_dir=config_dir)
+    ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked(
+        "backup", config_dir=config_dir, config_path=config_path
+    )
     for path in ranked_files:
         try:
             data = ConfigurationLoader.load_yaml(path)

@@ -116,22 +116,32 @@ def _load_default() -> dict[str, object]:
     return data if isinstance(data, dict) else {}
 
 
-def load_config(config_dir: str | None = None) -> SysupConfig:
+def load_config(config_dir: str | None = None, config_path: str | None = None) -> SysupConfig:
     """Merge the bundled default with user config files and validate.
 
     Layers, lowest priority first: the bundled ``default.yaml``, then the user
     files returned by :meth:`ConfigurationLoader.find_config_files_ranked`
-    (already low-to-high — never reverse it). Merged via
+    (already low-to-high — never reverse it). An explicit ``config_path`` (from
+    ``--config FILE``) is the single highest-priority layer. Merged via
     :meth:`ConfigurationLoader.merge_configs` (later wins), validated against
     :class:`SysupConfig`, and finally checked for unknown capability names /
     inputs against the registry.
+
+    Args:
+        config_dir: Explicit config directory (from ``--config-dir``), threaded
+            from the CLI so the plan is discovered under the SAME directory the
+            settings were resolved from.
+        config_path: Explicit config file (from ``--config``), so
+            ``sysup --config FILE`` runs the plan from FILE.
 
     Raises:
         FatalError: on invalid YAML schema, an unknown capability, or an unknown
             ``with:`` input.
     """
     layers: list[dict[str, object]] = [_load_default()]
-    ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked("sysup", config_dir=config_dir)
+    ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked(
+        "sysup", config_dir=config_dir, config_path=config_path
+    )
     for path in ranked_files:
         layers.append(ConfigurationLoader.load_yaml(path))
 

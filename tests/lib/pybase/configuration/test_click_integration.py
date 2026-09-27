@@ -1082,3 +1082,73 @@ class TestUpdateFlag:
 
         mock_force.assert_not_called()
         mock_passive.assert_called_once()
+
+
+class TestBuvisOptionsConfigSelectionPublished:
+    """buvis_options publishes the raw --config / --config-dir selection on ctx.obj (PRD 00084)."""
+
+    def test_config_and_config_dir_none_when_absent(self, runner: CliRunner) -> None:
+        """Both keys exist and are None when neither flag is given."""
+        captured: list[dict[str, object]] = []
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            captured.append(dict(ctx.obj))
+
+        result = runner.invoke(cmd, [])
+
+        assert result.exit_code == 0
+        assert captured[0]["config_dir"] is None
+        assert captured[0]["config_path"] is None
+
+    def test_config_path_published_from_flag(self, runner: CliRunner, tmp_path: Path) -> None:
+        """--config FILE is published verbatim (resolved) on ctx.obj['config_path']."""
+        cfg_file = tmp_path / "custom.yaml"
+        cfg_file.write_text("debug: true\n")
+        captured: list[dict[str, object]] = []
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            captured.append(dict(ctx.obj))
+
+        result = runner.invoke(cmd, ["--config", str(cfg_file)])
+
+        assert result.exit_code == 0
+        # click.Path(resolve_path=True) resolves the value before the wrapper sees it.
+        assert captured[0]["config_path"] == str(cfg_file.resolve())
+        assert captured[0]["config_dir"] is None
+
+    def test_config_dir_published_from_flag(self, runner: CliRunner, tmp_path: Path) -> None:
+        """--config-dir DIR is published on ctx.obj['config_dir']."""
+        captured: list[dict[str, object]] = []
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            captured.append(dict(ctx.obj))
+
+        result = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
+
+        assert result.exit_code == 0
+        assert captured[0]["config_dir"] == str(tmp_path.resolve())
+        assert captured[0]["config_path"] is None
+
+    def test_settings_entries_still_present(self, runner: CliRunner) -> None:
+        """Publishing the selection is additive — the settings entries are untouched."""
+        captured: list[dict[str, object]] = []
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            captured.append(dict(ctx.obj))
+
+        result = runner.invoke(cmd, [])
+
+        assert result.exit_code == 0
+        assert isinstance(captured[0]["settings"], GlobalSettings)
