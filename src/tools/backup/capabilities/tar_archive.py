@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import contextlib
 import os
+import shutil
+import subprocess
 import tarfile
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from backup.shared.bkpignore import BKPIGNORE_FILENAME, ExcludeState, parse_bkpignore
+from backup.shared.bkpignore import (
+    BKPIGNORE_FILENAME,
+    ExcludeState,
+    state_for_directory,
+)
 from backup.step_result import ArchiveMeta, StepResult
 
 if TYPE_CHECKING:
@@ -17,6 +23,8 @@ if TYPE_CHECKING:
 __all__ = ["TarArchive", "WalkResult"]
 
 _ARCHIVE_MODE = 0o600
+_ENGINE_PYTHON = "python-tarfile"
+_ENGINE_SYSTEM_TAR = "system-tar"
 
 
 class WalkResult:
@@ -56,12 +64,13 @@ class TarArchive:
 
     @property
     def inputs(self: TarArchive) -> Mapping[str, object]:
-        return {"source": "", "out": ""}
+        return {"source": "", "out": "", "engine": _ENGINE_PYTHON}
 
     def run(self: TarArchive, **kwargs: object) -> Iterator[StepResult]:
         label = _require_str(kwargs, "label", default="tar-archive")
         source_raw = _require_str(kwargs, "source")
         out_raw = _require_str(kwargs, "out")
+        engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON) or _ENGINE_PYTHON
         excludes = _as_str_tuple(kwargs.get("excludes", ()))
         dry_run = bool(kwargs.get("dry_run", False))
 
@@ -86,7 +95,7 @@ class TarArchive:
             yield self._dry_run_result(label, out, walk)
             return
 
-        yield self._archive_result(label, source, out, walk)
+        yield self._archive_result(label, source, out, walk, engine)
 
     @staticmethod
     def _dry_run_result(label: str, out: Path, walk: WalkResult) -> StepResult:
@@ -103,14 +112,21 @@ class TarArchive:
         )
 
     @staticmethod
-    def _archive_result(label: str, source: Path, out: Path, walk: WalkResult) -> StepResult:
+    def _archive_result(label: str, source: Path, out: Path, walk: WalkResult, engine: str) -> StepResult:
         out.parent.mkdir(parents=True, exist_ok=True)
-        _write_archive(out, source, walk.files)
+        note = ""
+        if engine == _ENGINE_SYSTEM_TAR:
+            fallback = _write_archive_system_tar(out, source, walk.files)
+            if fallback is not None:
+                _write_archive(out, source, walk.files)
+                note = f" (system-tar unavailable: {fallback}; used python engine)"
+        else:
+            _write_archive(out, source, walk.files)
         size = out.stat().st_size
         return StepResult(
             label,
             success=True,
-            message=f"archived {walk.file_count} files -> {out} ({size} bytes)",
+            message=f"archived {walk.file_count} files -> {out} ({size} bytes){note}",
             archive=ArchiveMeta(out_path=str(out), file_count=walk.file_count, total_bytes=size),
         )
 
@@ -124,7 +140,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
     """
     files: list[Path] = []
     total_bytes = 0
-    states: dict[str, ExcludeState] = {str(source): _state_for(source, base_state)}
+    states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
 
     for dirpath, dirnames, filenames in os.walk(source):
         state = states[dirpath]
@@ -135,7 +151,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             relpath = os.path.relpath(child, source).replace(os.sep, "/")
             if state.is_excluded(dirname, relpath):
                 continue
-            states[child] = _state_for(Path(child), state)
+            states[child] = state_for_directory(Path(child), state)
             kept_dirs.append(dirname)
         dirnames[:] = kept_dirs
 
@@ -153,15 +169,6 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
                 total_bytes += file_path.stat().st_size
 
     return WalkResult(files=files, total_bytes=total_bytes, applied=_collect_applied(states))
-
-
-def _state_for(directory: Path, parent_state: ExcludeState) -> ExcludeState:
-    """Return the exclude state for ``directory`` — parent state plus its ``.bkpignore``."""
-    bkpignore = directory / BKPIGNORE_FILENAME
-    if bkpignore.is_file():
-        rules = parse_bkpignore(bkpignore.read_text(encoding="utf-8"))
-        return parent_state.layer(rules)
-    return parent_state
 
 
 def _collect_applied(states: dict[str, ExcludeState]) -> list[str]:
@@ -201,6 +208,64 @@ def _write_archive(out: Path, source: Path, files: Iterable[Path]) -> None:
         with contextlib.suppress(OSError):
             tmp_path.unlink(missing_ok=True)
         raise
+
+
+def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) -> str | None:
+    """Archive ``files`` via system ``tar -T filelist``, atomically, ``chmod 600``.
+
+    Python still owns selection: ``files`` is the exact include list the walk
+    produced (so ``.bkpignore`` path-scoping is preserved). The paths are written
+    to a temp filelist relative to ``source.parent`` and handed to
+    ``tar -C <source.parent> -czf <tmp> -T <filelist>`` — both BSD (macOS) and
+    GNU ``tar`` read a newline-separated list from ``-T``. The gzip output lands
+    in a sibling temp file, is ``chmod 600``ed, then ``os.replace``d into ``out``,
+    preserving the Python engine's atomicity guarantee.
+
+    Returns:
+        ``None`` when the archive was written successfully; otherwise a short
+        reason string so the caller can fall back to the Python engine and note
+        why. A partial temp archive or filelist is always cleaned up.
+    """
+    tar_bin = shutil.which("tar")
+    if tar_bin is None:
+        return "tar not found on PATH"
+
+    arcbase = source.parent
+    fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    list_fd, list_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".filelist", dir=str(out.parent))
+    list_path = Path(list_name)
+    try:
+        with os.fdopen(list_fd, "w", encoding="utf-8") as handle:
+            for file_path in files:
+                handle.write(str(file_path.relative_to(arcbase)))
+                handle.write("\n")
+        # bsdtar (macOS) otherwise stores AppleDouble (``._name``) metadata
+        # members that the Python engine never produces; COPYFILE_DISABLE
+        # suppresses them and is a no-op for GNU tar on Linux.
+        env = {**os.environ, "COPYFILE_DISABLE": "1"}
+        completed = subprocess.run(
+            [tar_bin, "-C", str(arcbase), "-czf", str(tmp_path), "-T", str(list_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+        if completed.returncode != 0:
+            stderr = completed.stderr.strip().splitlines()
+            detail = stderr[-1] if stderr else f"exit {completed.returncode}"
+            return f"tar exited {completed.returncode}: {detail}"
+        os.chmod(tmp_path, _ARCHIVE_MODE)
+        os.replace(tmp_path, out)
+    except OSError as exc:
+        return f"tar invocation failed: {exc}"
+    finally:
+        with contextlib.suppress(OSError):
+            list_path.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            tmp_path.unlink(missing_ok=True)
+    return None
 
 
 def _require_str(kwargs: Mapping[str, object], key: str, *, default: str = "") -> str:

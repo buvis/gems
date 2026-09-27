@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import fnmatch
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 
-__all__ = ["BkpignoreRules", "ExcludeState", "parse_bkpignore"]
+__all__ = [
+    "BkpignoreRules",
+    "ExcludeState",
+    "parse_bkpignore",
+    "resolve_state_for_path",
+    "state_for_directory",
+]
 
 BKPIGNORE_FILENAME = ".bkpignore"
 
@@ -114,3 +121,59 @@ class ExcludeState:
             if target is not None and fnmatch.fnmatch(target, pattern):
                 return True
         return False
+
+
+def state_for_directory(directory: Path, parent_state: ExcludeState) -> ExcludeState:
+    """Return the exclude state for ``directory`` — parent state plus its ``.bkpignore``.
+
+    Reads the directory's own ``.bkpignore`` (if any) and layers its rules onto
+    the state inherited from ancestors. The single place the walk and the
+    ``--show-excludes`` introspection agree on how one directory's rules apply,
+    so the two never drift.
+
+    Args:
+        directory: The directory whose ``.bkpignore`` (if present) is layered.
+        parent_state: The exclude state inherited from the directory's ancestors.
+
+    Returns:
+        The layered state for ``directory``'s subtree, or ``parent_state``
+        unchanged when the directory carries no ``.bkpignore``.
+    """
+    bkpignore = directory / BKPIGNORE_FILENAME
+    if bkpignore.is_file():
+        rules = parse_bkpignore(bkpignore.read_text(encoding="utf-8"))
+        return parent_state.layer(rules)
+    return parent_state
+
+
+def resolve_state_for_path(source: Path, base_state: ExcludeState, target: Path) -> ExcludeState:
+    """Resolve the exclude state effective at ``target`` under ``source``.
+
+    Layers each ``.bkpignore`` walking from ``source`` down to and including the
+    directory of ``target``, using the SAME :func:`state_for_directory` /
+    :meth:`ExcludeState.layer` semantics the archive walk uses — so the rules
+    ``--show-excludes --for <path>`` reports are exactly those that would fire
+    when ``target``'s subtree is archived. A ``target`` outside ``source``
+    contributes no path layers and returns ``base_state``.
+
+    Args:
+        source: The instance source root.
+        base_state: The global exclude state (post-``excludes+``/``excludes-``).
+        target: The path whose effective ``.bkpignore`` layering is resolved;
+            when it names a file, its containing directory is used.
+
+    Returns:
+        The exclude state in force at ``target``.
+    """
+    anchor = target if target.is_dir() else target.parent
+    try:
+        relative = anchor.relative_to(source)
+    except ValueError:
+        return state_for_directory(source, base_state)
+
+    state = state_for_directory(source, base_state)
+    current = source
+    for part in relative.parts:
+        current = current / part
+        state = state_for_directory(current, state)
+    return state
