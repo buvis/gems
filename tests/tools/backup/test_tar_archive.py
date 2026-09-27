@@ -316,3 +316,25 @@ class TestStatErrorsPropagate:
         walk_body = source_text[walk_start:walk_end]
         assert "file_path.stat().st_size" in walk_body
         assert "contextlib.suppress" not in walk_body
+
+
+class TestWalkSymlinkConfinement:
+    """A directory symlink under source must not have its .bkpignore read, and
+    the walk must not descend it (os.walk followlinks=False + explicit skip)."""
+
+    def test_dir_symlink_bkpignore_not_read(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        (source / "repo").mkdir(parents=True)
+        (source / "repo" / "main.py").write_text("x", encoding="utf-8")
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / ".bkpignore").write_text("!node_modules\n", encoding="utf-8")
+        (outside / "leak.txt").write_text("secret", encoding="utf-8")
+        (source / "link").symlink_to(outside, target_is_directory=True)
+        out = tmp_path / "out.tar.gz"
+        result = next(
+            iter(TarArchive().run(label="t", source=str(source), out=str(out), excludes=[], dry_run=True)),
+        )
+        # the outside .bkpignore's rule must not appear in applied rules
+        assert "!node_modules" not in (result.message or "")
+        assert result.success is True

@@ -159,6 +159,17 @@ class TestLoadConfigValidation:
         assert not isinstance(exc_info.value, yaml.YAMLError)
         assert str(cfg_dir / "buvis-backup.yaml") in str(exc_info.value)
 
+    def test_non_utf8_config_raises_fatal_not_unicode_error(self, tmp_path: Path) -> None:
+        """A non-UTF-8 user config surfaces as FatalError, not a raw UnicodeError."""
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        # invalid UTF-8 bytes -> read_text(encoding="utf-8") raises UnicodeDecodeError
+        (cfg_dir / "buvis-backup.yaml").write_bytes(b"instances:\n  \xff\xfe bad bytes\n")
+        with pytest.raises(FatalError) as exc_info:
+            load_config(config_dir=str(cfg_dir))
+        assert not isinstance(exc_info.value, UnicodeError)
+        assert str(cfg_dir / "buvis-backup.yaml") in str(exc_info.value)
+
 
 class TestApplicableInstances:
     def test_sorted_by_order_then_name(self) -> None:

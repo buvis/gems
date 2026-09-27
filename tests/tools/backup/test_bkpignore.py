@@ -213,3 +213,34 @@ class TestResolveStatePruning:
         base_state = ExcludeState(base_excludes=frozenset({"target"}))
         state = resolve_state_for_path(source, base_state, source / "repo")
         assert "!target" in state.applied
+
+
+class TestStateForDirectorySymlinkIgnore:
+    """A symlinked .bkpignore (pointing outside source) must not be read."""
+
+    def test_symlinked_bkpignore_is_not_applied(self, tmp_path) -> None:
+        from backup.shared.bkpignore import state_for_directory
+
+        source = tmp_path / "src"
+        source.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "external.bkpignore").write_text("!target\n", encoding="utf-8")
+        # a .bkpignore symlink inside source pointing at the external file
+        (source / ".bkpignore").symlink_to(outside / "external.bkpignore")
+        base_state = ExcludeState(base_excludes=frozenset({"target"}))
+        state = state_for_directory(source, base_state)
+        # the symlinked ignore file is rejected -> no rule layered
+        assert state.applied == ()
+        assert state.is_excluded("target") is True
+
+    def test_regular_bkpignore_still_applied(self, tmp_path) -> None:
+        from backup.shared.bkpignore import state_for_directory
+
+        source = tmp_path / "src"
+        source.mkdir()
+        (source / ".bkpignore").write_text("!target\n", encoding="utf-8")
+        base_state = ExcludeState(base_excludes=frozenset({"target"}))
+        state = state_for_directory(source, base_state)
+        assert "!target" in state.applied
+        assert state.is_excluded("target") is False

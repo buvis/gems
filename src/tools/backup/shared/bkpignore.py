@@ -171,7 +171,10 @@ def state_for_directory(directory: Path, parent_state: ExcludeState) -> ExcludeS
         unchanged when the directory carries no ``.bkpignore``.
     """
     bkpignore = directory / BKPIGNORE_FILENAME
-    if bkpignore.is_file():
+    # is_file() follows symlinks, so a `.bkpignore` symlink inside the source
+    # could point outside it and have that external file read and applied.
+    # Require a regular, non-symlink file to preserve in-source confinement.
+    if bkpignore.is_file() and not bkpignore.is_symlink():
         rules = parse_bkpignore(bkpignore.read_text(encoding="utf-8"))
         return parent_state.layer(rules)
     return parent_state

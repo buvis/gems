@@ -119,14 +119,14 @@ def load_config(config_dir: str | None = None) -> BackupConfig:
     layers: list[dict[str, object]] = []
     try:
         layers.append(_load_default())
-    except (yaml.YAMLError, MissingEnvVarError) as exc:
+    except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
         msg = f"failed to load bundled default configuration: {exc}"
         raise FatalError(msg) from exc
     ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked("backup", config_dir=config_dir)
     for path in ranked_files:
         try:
             layers.append(ConfigurationLoader.load_yaml(path))
-        except (yaml.YAMLError, MissingEnvVarError) as exc:
+        except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
             msg = f"failed to load config file {path}: {exc}"
             raise FatalError(msg) from exc
 

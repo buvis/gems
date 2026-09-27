@@ -188,6 +188,13 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             relpath = os.path.relpath(child, source).replace(os.sep, "/")
             if state.is_excluded(dirname, relpath):
                 continue
+            # Skip a directory symlink BEFORE reading its .bkpignore: os.walk
+            # (followlinks=False) will not descend it, but state_for_directory
+            # would still read <link>/.bkpignore — which may point outside the
+            # source tree. Not adding it to kept_dirs also stops os.walk
+            # recursing into it.
+            if os.path.islink(child):
+                continue
             states[child] = state_for_directory(Path(child), state)
             kept_dirs.append(dirname)
         dirnames[:] = kept_dirs
