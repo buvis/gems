@@ -359,22 +359,38 @@ class ConfigurationLoader:
         across directories, and config.yaml < config.local.yaml < buvis.yaml <
         buvis.local.yaml < buvis-{tool}.yaml < buvis-{tool}.local.yaml within each
         directory (each machine-local ``*.local.yaml`` twin outranks its shared
-        file). An explicit ``config_path`` (from ``--config FILE``) is appended
-        LAST — the single highest-priority layer, above every discovered file —
-        matching the documented CLI > env > YAML > defaults precedence.
+        file). An explicit ``config_path`` (from ``--config FILE``) is EXCLUSIVE:
+        when given and readable it is the sole layer, and discovery is skipped
+        entirely — matching :meth:`ConfigResolver._load_yaml`, so a tool's plan
+        and its settings resolve from the same single file (no discovered layer
+        leaks under the explicit selection).
 
         Args:
             tool_name: Optional tool identifier for the ``buvis-{tool}.yaml`` slot.
             config_dir: Explicit config directory override (bypasses env lookup).
             config_path: Explicit config FILE (from ``--config``). When given and
-                readable, appended as the highest-priority layer. A path that is
-                not an existing file is skipped (Click's ``--config`` already
-                validates existence; a direct caller passing a missing file gets
-                the discovered layers unchanged rather than an error here).
+                readable it is EXCLUSIVE — the returned list is exactly that one
+                file and discovery is skipped, matching the settings resolver so
+                plan and settings share one source. A path that is not an
+                existing file is skipped (Click's ``--config`` already validates
+                existence; a direct caller passing a missing file falls back to
+                the discovered layers rather than an error here).
 
         Returns:
             list[Path]: Existing, safe config files, lowest priority first.
         """
+        # An explicit --config FILE is EXCLUSIVE: when readable it is the sole
+        # layer and discovery is skipped, matching ConfigResolver._load_yaml so a
+        # tool's plan and settings resolve from the same single file. A non-file
+        # falls through to discovery (Click already validates --config existence).
+        if config_path is not None:
+            explicit = Path(config_path).expanduser()
+            try:
+                if explicit.is_file():
+                    return [explicit.resolve()]
+            except OSError:
+                logger.debug("Cannot stat explicit config path: %s", explicit)
+
         paths = ConfigurationLoader._get_search_paths(config_dir)
         base_stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
         # Interleave each stem with its .local twin so the twin gets a higher
@@ -400,22 +416,7 @@ class ConfigurationLoader:
                     continue
 
         ranked.sort(key=lambda item: (item[0], item[1]))
-        result = [path for _, _, path in ranked]
-
-        # An explicit --config FILE is the single highest-priority layer: append
-        # it last (low-to-high), after every discovered file, and de-dup so it is
-        # not listed twice if discovery already found it. A non-file is skipped.
-        if config_path is not None:
-            explicit = Path(config_path).expanduser()
-            try:
-                if explicit.is_file():
-                    resolved = explicit.resolve()
-                    result = [p for p in result if p != resolved]
-                    result.append(resolved)
-            except OSError:
-                logger.debug("Cannot stat explicit config path: %s", explicit)
-
-        return result
+        return [path for _, _, path in ranked]
 
     @staticmethod
     def merge_configs(

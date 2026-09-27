@@ -176,3 +176,38 @@ class TestSysupCliErrors:
             result = runner.invoke(cli, [])
         assert "nvim not found" in result.output
         assert "Traceback" not in result.output
+
+
+class TestSysupCliConfigForwarding:
+    """The --config / --config-dir selection reaches load_config (PRD 00084, review #181)."""
+
+    def test_config_and_config_dir_forwarded_to_load_config(self, runner, tmp_path) -> None:
+        cfg = _cfg({"brew": {"steps": [["brew", "update"]]}})
+        cfg_file = tmp_path / "buvis-sysup.yaml"
+        cfg_file.write_text("commands:\n  brew:\n    steps:\n      - [brew, update]\n")
+        with (
+            patch("sysup.config.load_config", return_value=cfg) as mock_load,
+            patch("sysup.config.applicable_commands", return_value=[("brew", cfg.commands["brew"])]),
+            patch("sysup.runner.Runner.run", return_value=iter([StepResult("brew", True, "ok")])),
+        ):
+            result = runner.invoke(cli, ["--config", str(cfg_file), "--config-dir", str(tmp_path)])
+        assert result.exit_code == 0
+        mock_load.assert_called_once()
+        _, kwargs = mock_load.call_args
+        # Both the file and the dir the wrapper resolved settings from are forwarded,
+        # so a regression dropping either arg fails here (the reviewer's concern).
+        assert kwargs["config_path"] == str(cfg_file.resolve())
+        assert kwargs["config_dir"] == str(tmp_path.resolve())
+
+    def test_no_selection_forwards_none(self, runner) -> None:
+        cfg = _cfg({"brew": {"steps": [["brew", "update"]]}})
+        with (
+            patch("sysup.config.load_config", return_value=cfg) as mock_load,
+            patch("sysup.config.applicable_commands", return_value=[("brew", cfg.commands["brew"])]),
+            patch("sysup.runner.Runner.run", return_value=iter([StepResult("brew", True, "ok")])),
+        ):
+            result = runner.invoke(cli, [])
+        assert result.exit_code == 0
+        _, kwargs = mock_load.call_args
+        assert kwargs["config_path"] is None
+        assert kwargs["config_dir"] is None

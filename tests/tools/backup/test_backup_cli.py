@@ -319,6 +319,46 @@ class TestBackupConfigSelectionThreaded:
         # The fixture's instance is present — only the explicit file could add it.
         assert "fixture-only" in result.output
 
+    def test_config_file_hides_discovered_user_config(self, runner, tmp_path, monkeypatch) -> None:
+        """--config FILE is EXCLUSIVE of DISCOVERED user files: a buvis-backup.yaml in the
+        config dir must NOT merge under an explicit --config, or settings (FILE-only) and
+        the plan would diverge — the settings/plan split review #181 flagged. The bundled
+        default baseline still applies (that is the zero-config design, not a discovered file).
+        """
+        empty = tmp_path / "cfgdir"
+        empty.mkdir()
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(empty))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        monkeypatch.chdir(empty)
+        # A DISCOVERED user config with its own instance — would leak in under the
+        # old append semantics; must not, now that config_path is exclusive.
+        (empty / "buvis-backup.yaml").write_text(
+            "instances:\n"
+            "  discovered-leak:\n"
+            "    use: tar-archive\n"
+            "    order: 8\n"
+            "    with:\n"
+            "      source: /tmp/z\n"
+            "      out: /tmp/z.tar.gz\n"
+        )
+        cfg_file = tmp_path / "override.yaml"
+        cfg_file.write_text(
+            "instances:\n"
+            "  fixture-only:\n"
+            "    use: tar-archive\n"
+            "    order: 5\n"
+            "    with:\n"
+            "      source: /tmp/x\n"
+            "      out: /tmp/x.tar.gz\n"
+        )
+
+        result = runner.invoke(cli, ["--config", str(cfg_file), "--list"])
+
+        assert result.exit_code == 0, result.output
+        assert "fixture-only" in result.output
+        # The discovered user config does NOT contribute under --config FILE.
+        assert "discovered-leak" not in result.output
+
     def test_config_dir_supplies_the_plan(self, runner, tmp_path, monkeypatch) -> None:
         """--config-dir DIR discovers a buvis-backup.yaml with a distinct instance."""
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
