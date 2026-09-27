@@ -389,3 +389,47 @@ class TestSymlinksPreserved:
             iter(TarArchive().run(label="t", source=str(source), out=str(out), excludes=[], dry_run=True)),
         )
         assert "!node_modules" not in (result.message or "")
+
+
+class TestDirectoriesPreserved:
+    """Directories (including empty ones and the source root) are archived as
+    non-recursive members, matching the former `tar -C ... source`; file_count
+    still counts only regular files."""
+
+    def _members(self, path: Path) -> dict[str, bool]:
+        import tarfile
+
+        with tarfile.open(path) as tar:
+            return {m.name: m.isdir() for m in tar.getmembers()}
+
+    def test_empty_dir_and_root_preserved_both_engines(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        (source / "repo").mkdir(parents=True)
+        (source / "repo" / "main.py").write_text("x", encoding="utf-8")
+        (source / "emptydir").mkdir()
+
+        py_out = tmp_path / "py.tar.gz"
+        sys_out = tmp_path / "sys.tar.gz"
+        py_res = next(iter(TarArchive().run(label="t", source=str(source), out=str(py_out), excludes=[])))
+        assert next(
+            iter(TarArchive().run(label="t", source=str(source), out=str(sys_out), excludes=[], engine="system-tar")),
+        ).success
+
+        assert self._members(py_out) == self._members(sys_out)
+        for out in (py_out, sys_out):
+            members = self._members(out)
+            assert any(name.endswith("/emptydir") and is_dir for name, is_dir in members.items())
+            assert any(name.endswith("/src") or name == "src" for name in members)  # source root
+            assert any(name.endswith("repo/main.py") for name in members)
+        # file_count counts only the one regular file, not dirs
+        assert py_res.file_count == 1
+
+    def test_empty_source_tree_still_archives_root(self, tmp_path: Path) -> None:
+        source = tmp_path / "src"
+        source.mkdir()  # completely empty
+        out = tmp_path / "o.tar.gz"
+        res = next(iter(TarArchive().run(label="t", source=str(source), out=str(out))))
+        assert res.success
+        members = self._members(out)
+        assert any(name.endswith("src") or name == "src" for name in members)
+        assert res.file_count == 0

@@ -30,10 +30,12 @@ _ENGINE_SYSTEM_TAR = "system-tar"
 class WalkResult:
     """The outcome of walking + filtering a source tree, before any archive.
 
-    ``files`` are the surviving entries as absolute paths in walk order —
-    regular files first, then symlinks (each archived as the link itself, not
-    followed, matching the former tar backup); ``file_count`` and ``total_bytes``
-    summarise them (a symlink contributes 0 input bytes); ``applied`` lists the
+    ``files`` is the ordered list of archive MEMBERS as absolute paths:
+    surviving directories first (parent-first, so a restore recreates the tree
+    including empty dirs), then regular files, then symlinks (each archived as
+    the link itself, not followed, matching the former tar backup). ``file_count``
+    counts only the regular files (not dirs or symlinks) and ``total_bytes`` sums
+    their input sizes (a symlink/dir contributes 0). ``applied`` lists the
     ``.bkpignore`` rules that fired anywhere in the tree (for dry-run reporting).
     """
 
@@ -42,14 +44,16 @@ class WalkResult:
         files: list[Path],
         total_bytes: int,
         applied: list[str],
+        file_count: int,
     ) -> None:
         self.files = files
         self.total_bytes = total_bytes
         self.applied = applied
+        self._file_count = file_count
 
     @property
     def file_count(self: WalkResult) -> int:
-        return len(self.files)
+        return self._file_count
 
 
 class TarArchive:
@@ -179,11 +183,18 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
     """
     files: list[Path] = []
     symlinks: list[Path] = []
+    dirs: list[Path] = []
     total_bytes = 0
     states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
 
     for dirpath, dirnames, filenames in os.walk(source, onerror=_raise_walk_error):
         state = states[dirpath]
+
+        # Record this surviving directory (the source root, then every descended
+        # kept subdir) so it is archived non-recursively — otherwise an empty
+        # directory, and an empty source tree's own `src/` entry, would vanish on
+        # restore, unlike the former `tar -C ... source`.
+        dirs.append(Path(dirpath))
 
         kept_dirs: list[str] = []
         for dirname in dirnames:
@@ -226,9 +237,10 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             total_bytes += file_path.stat().st_size
 
     return WalkResult(
-        files=[*files, *symlinks],
+        files=[*dirs, *files, *symlinks],
         total_bytes=total_bytes,
         applied=_collect_applied(states),
+        file_count=len(files),
     )
 
 
@@ -285,9 +297,13 @@ def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) ->
     """Archive ``files`` via system ``tar --null -T -``, atomically, ``chmod 600``.
 
     Python still owns selection: ``files`` is the exact include list the walk
-    produced (so ``.bkpignore`` path-scoping is preserved). The paths, relative
+    produced (surviving directories, files, and symlinks — so ``.bkpignore``
+    path-scoping and empty-directory preservation hold). The paths, relative
     to ``source.parent``, are joined with NUL bytes and streamed to
-    ``tar -C <source.parent> --null -T - -czf <tmp>`` on stdin. NUL delimiting
+    ``tar -C <source.parent> --no-recursion --null -T - -czf <tmp>`` on stdin.
+    ``--no-recursion`` keeps the filtered list authoritative — a listed directory
+    is archived as a bare entry, not re-expanded (which would re-add contents the
+    walk excluded). NUL delimiting
     (both GNU tar and macOS bsdtar support ``--null``) means a filename
     containing a newline can never split into an extra ``-T`` line and inject an
     outside/absolute path. The gzip output lands in a sibling temp file, is
@@ -316,7 +332,7 @@ def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) ->
         # suppresses them and is a no-op for GNU tar on Linux.
         env = {**os.environ, "COPYFILE_DISABLE": "1"}
         completed = subprocess.run(
-            [tar_bin, "-C", str(arcbase), "--null", "-czf", str(tmp_path), "-T", "-"],
+            [tar_bin, "-C", str(arcbase), "--no-recursion", "--null", "-czf", str(tmp_path), "-T", "-"],
             input=filelist,
             capture_output=True,
             check=False,
