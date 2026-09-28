@@ -1,0 +1,1 @@
+var e=`postup-portfolio-done`,t=!1,n=()=>t,r=()=>{try{return new Set(JSON.parse(localStorage.getItem(e)??`[]`))}catch{return t=!0,new Set}},i=n=>{try{localStorage.setItem(e,JSON.stringify([...n]))}catch{t=!0}};function a(e){let t=r(),n=new Set([...t].filter(t=>e.has(t)));return n.size!==t.size&&i(n),n}export{i,r as n,a as r,n as t};

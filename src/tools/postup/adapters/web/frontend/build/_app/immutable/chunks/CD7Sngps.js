@@ -1,0 +1,1 @@
+var e={schema_version:1,summary:`Portfolio moved forward this week.`,repos:{"buvis/gems":{epics:[{title:`X`,summary:`shipped`,shas:[`abc1234`]}]}},todos:[{id:`buvis/gems:judgment:resume-abc`,repo:`buvis/gems`,kind:`judgment`,urgency:`now`,action:`Resume the parked PRD`,why:`dirty for days`}]};export{e as default};
