@@ -1824,16 +1824,14 @@ class TestDotGitServiceEncryptAndStage:
         assert result.success is True
         assert result.output == ".ssh/config encrypted and staged"
         assert [c[0][0] for c in shell.exe.call_args_list] == [
-            "cfg secret add .ssh/config",
+            "cfg secret add -- .ssh/config",
             "cfg secret hide -m",
-            "cfg add .ssh/config.secret .gitsecret/ .gitignore",
+            "cfg add -- .ssh/config.secret .gitsecret/ .gitignore",
         ]
         assert [str(c[0][1]) for c in shell.exe.call_args_list] == ["/home/user/dotfiles"] * 3
 
-    def test_path_with_embedded_quote_is_passed_through_verbatim(
-        self, git_service: DotGitService, shell: MagicMock
-    ) -> None:
-        # ported verbatim from CommandEncrypt: the path is interpolated unquoted
+    def test_path_with_embedded_quote_is_shell_escaped(self, git_service: DotGitService, shell: MagicMock) -> None:
+        # was previously interpolated unquoted (ported from CommandEncrypt); now quoted.
         shell.exe.return_value = ("", "")
 
         result = git_service.encrypt_and_stage("it's.txt")
@@ -1841,9 +1839,23 @@ class TestDotGitServiceEncryptAndStage:
         assert result.success is True
         assert result.output == "it's.txt encrypted and staged"
         assert [c[0][0] for c in shell.exe.call_args_list] == [
-            "cfg secret add it's.txt",
+            """cfg secret add -- 'it'"'"'s.txt'""",
             "cfg secret hide -m",
-            "cfg add it's.txt.secret .gitsecret/ .gitignore",
+            """cfg add -- 'it'"'"'s.txt.secret' .gitsecret/ .gitignore""",
+        ]
+
+    def test_leading_dash_path_is_guarded_as_pathspec(self, git_service: DotGitService, shell: MagicMock) -> None:
+        # `--` before the path stops a leading-dash filename (-c, -f) being read
+        # as an option by git-secret's add and by `git add`.
+        shell.exe.return_value = ("", "")
+
+        result = git_service.encrypt_and_stage("-c")
+
+        assert result.success is True
+        assert [c[0][0] for c in shell.exe.call_args_list] == [
+            "cfg secret add -- -c",
+            "cfg secret hide -m",
+            "cfg add -- -c.secret .gitsecret/ .gitignore",
         ]
 
     def test_does_not_gate_on_git_secret_availability(self, git_service: DotGitService, shell: MagicMock) -> None:

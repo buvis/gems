@@ -442,13 +442,16 @@ class DotGitService:
         Returns:
             The outcome of the encrypt sequence.
         """
-        err, _out = self.shell.exe(f"cfg secret add {path}", self.wd)
+        err, _out = self.shell.exe(f"cfg secret add -- {shlex.quote(path)}", self.wd)
         if err:
             return CommandResult(success=False, error=f"Failed to register file: {err}")
         err, _out = self.shell.exe("cfg secret hide -m", self.wd)
         if err:
             return CommandResult(success=False, error=f"Failed to encrypt: {err}")
-        err, _out = self.shell.exe(f"cfg add {path}.secret .gitsecret/ .gitignore", self.wd)
+        err, _out = self.shell.exe(
+            f"cfg add -- {shlex.quote(path + '.secret')} .gitsecret/ .gitignore",
+            self.wd,
+        )
         if err:
             return CommandResult(success=False, error=f"Failed to stage: {err}")
         return CommandResult(success=True, output=f"{path} encrypted and staged")
