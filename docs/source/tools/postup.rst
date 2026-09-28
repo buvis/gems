@@ -9,9 +9,9 @@ contracts that the other postup interfaces consume. It runs fully without any
 LLM.
 
 This page documents PRD A (the gem scaffold and deterministic collector),
-PRD B (optional LLM enrichment via the ``claude`` CLI), and PRD F (the terminal
-standup surfaces — the text brief and the Textual TUI). The web UI lands in a
-later PRD.
+PRD B (optional LLM enrichment via the ``claude`` CLI), PRD F (the terminal
+standup surfaces — the text brief and the Textual TUI), and PRD E (the
+``postup serve`` web UI).
 
 Usage
 -----
@@ -187,6 +187,47 @@ rather than a traceback. Its layout is gated by Textual snapshot tests that run
 only on the canonical CI env (Linux + Python 3.12) and are auto-skipped
 elsewhere; regenerate baselines via the ``update-snapshots`` GitHub workflow.
 
+Web UI
+------
+
+``postup serve`` starts a FastAPI web server that delivers the SvelteKit brief
+UI over localhost — the only web delivery path for postup. It serves the
+committed production build and the live payload data, and pushes refreshes over
+Server-Sent Events so an open browser updates without a manual reload.
+
+.. code-block:: bash
+
+    postup serve                 # bind 127.0.0.1:8000, open the browser
+    postup serve -p 9000         # a different port
+    postup serve -H 0.0.0.0      # bind a non-loopback interface (see below)
+    postup serve --no-browser    # do not open the browser on start
+
+Behaviour:
+
+- **Serves the last collected data until refreshed** — starting the server does
+  **not** auto-run a collect (no startup latency, no surprise network calls).
+  A never-collected ``out_dir`` renders the UI's explicit *empty portfolio*
+  state rather than erroring. Use the in-UI **collect** / **enrich** triggers,
+  or run the CLI commands, to populate or refresh the data; the browser picks up
+  the change over SSE.
+- **Triggers run the same command classes as the CLI** — the UI's collect and
+  enrich buttons drive ``CommandCollect`` / ``CommandEnrich`` through the
+  composition root (one action, one implementation), and report the
+  ``CommandResult`` message. A trigger sent while a run is already active is
+  rejected with an *already running* status rather than starting a second run.
+- **Confinement** (the 00042 posture) — the server binds localhost by default,
+  installs ``TrustedHostMiddleware`` (a foreign ``Host`` header is rejected),
+  guards the mutating trigger routes with a per-process auth token (injected
+  into the page on loopback), and resolves every request-derived filesystem
+  path under ``out_dir`` before reading it. Binding a non-loopback host
+  (``-H 0.0.0.0``) widens the allowed hosts and prints the auth token to the
+  console with a warning that any host reaching the port can read the data
+  without it.
+
+``postup serve`` needs the ``postup-web`` extra (fastapi / uvicorn /
+watchfiles). When it is absent the command reports a standardized install hint
+(``uv tool install buvis-gems[postup-web]``) rather than a traceback.
+
 
 - An authenticated ``gh`` CLI for forge data. Its absence degrades per
   repository into ``errors`` rather than failing the run.
@@ -196,4 +237,6 @@ elsewhere; regenerate baselines via the ``update-snapshots`` GitHub workflow.
 - No extra needed for ``postup collect`` and the text brief — they run on the
   core-only ``buvis-gems`` install with zero tool-specific dependencies. The
   ``postup`` extra (Textual) is required **only** for ``postup tui``:
-  ``uv tool install buvis-gems[postup]``.
+  ``uv tool install buvis-gems[postup]``. The ``postup-web`` extra (fastapi /
+  uvicorn / watchfiles) is required **only** for ``postup serve``:
+  ``uv tool install buvis-gems[postup-web]``.

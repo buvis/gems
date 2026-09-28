@@ -71,26 +71,48 @@ class RustBuildHook(BuildHookInterface):
                             )
                         break
 
+    # Each tool that ships a SvelteKit frontend, as
+    # (frontend_dir_relpath, static_dir_relpath_or_None):
+    #   * bim builds on demand and copies build/ -> a sibling static/ that the
+    #     wheel packages (its build/ is gitignored).
+    #   * postup COMMITS its build/ and serves it in place (PRD 00065/00067), so
+    #     it has no static/ copy — a release rebuild just refreshes build/.
+    _FRONTENDS = (
+        (
+            ("src", "tools", "bim", "commands", "serve", "frontend"),
+            ("src", "tools", "bim", "commands", "serve", "static"),
+        ),
+        (
+            ("src", "tools", "postup", "adapters", "web", "frontend"),
+            None,
+        ),
+    )
+
     def _build_frontend(self) -> None:
         if os.environ.get("BUVIS_SKIP_FRONTEND"):
-            return
-
-        root = Path(self.root)
-        frontend_dir = root / "src" / "tools" / "bim" / "commands" / "serve" / "frontend"
-        static_dir = root / "src" / "tools" / "bim" / "commands" / "serve" / "static"
-
-        if not frontend_dir.is_dir() or not (frontend_dir / "package.json").is_file():
             return
 
         npm = shutil.which("npm")
         if not npm:
             return
 
-        subprocess.run([npm, "ci"], check=True, cwd=str(frontend_dir))  # noqa: S603
-        subprocess.run([npm, "run", "build"], check=True, cwd=str(frontend_dir))  # noqa: S603
+        root = Path(self.root)
+        for frontend_parts, static_parts in self._FRONTENDS:
+            frontend_dir = root.joinpath(*frontend_parts)
+            static_dir = root.joinpath(*static_parts) if static_parts else None
+            self._build_one_frontend(npm, frontend_dir, static_dir)
+
+    def _build_one_frontend(self, npm: str, frontend_dir: Path, static_dir: Path | None) -> None:
+        if not frontend_dir.is_dir() or not (frontend_dir / "package.json").is_file():
+            return
+
+        subprocess.run([npm, "ci"], check=True, cwd=str(frontend_dir))
+        subprocess.run([npm, "run", "build"], check=True, cwd=str(frontend_dir))
 
         build_dir = frontend_dir / "build"
-        if build_dir.is_dir():
+        # ``static_dir is None`` means the build is served in place (postup); a
+        # sibling copy is only made for tools that gitignore their build/ (bim).
+        if static_dir is not None and build_dir.is_dir():
             if static_dir.exists():
                 shutil.rmtree(static_dir)
             shutil.copytree(build_dir, static_dir)
