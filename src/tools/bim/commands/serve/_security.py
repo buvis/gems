@@ -10,6 +10,7 @@ from __future__ import annotations
 import secrets
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from buvis.pybase.adapters import console
 from fastapi import FastAPI, HTTPException, Request
@@ -25,6 +26,15 @@ class AppState:
 
     default_directory: str
     archive_directory: str | None
+    # The ``<business_root>/_triage/`` directory (PRD 00057). Doc triage
+    # proposals live here, under business_root, which is NOT the zettel vault —
+    # so it must be added to the confine_path allow-list explicitly for the
+    # triage_approve action to resolve a proposal path. None when the tool has
+    # no [doc] config (the doc actions are then unavailable).
+    business_triage_root: str | None = None
+    # Full doc settings, needed by the doc-action handlers to build command
+    # services via the composition root. None when [doc] is not configured.
+    doc_settings: Any = None
 
 
 def confine_path(file_path: str, app_state: AppState) -> Path:
@@ -47,6 +57,8 @@ def confine_path(file_path: str, app_state: AppState) -> Path:
     allowed_roots = [Path(app_state.default_directory).expanduser().resolve()]
     if app_state.archive_directory:
         allowed_roots.append(Path(app_state.archive_directory).expanduser().resolve())
+    if app_state.business_triage_root:
+        allowed_roots.append(Path(app_state.business_triage_root).expanduser().resolve())
 
     try:
         resolved = Path(file_path).expanduser().resolve()

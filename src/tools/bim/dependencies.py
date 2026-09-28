@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from bim.commands.doc.shared.settings_models import DocSettings
     from bim.commands.doc.shared.state_db import StateDB
     from bim.commands.doc.shared.zettel_writer import ZettelWriter
+    from bim.commands.doc.triage.triage import TriageApproveServices, TriageListServices
 
 
 def get_repo(*, extensions: list[str] | None = None) -> ZettelRepository:
@@ -294,3 +295,31 @@ def get_migrate_services(settings: DocSettings) -> MigrateServices:
         vault_root=settings.paths.vault_root,
         vault_documents_subdir=settings.paths.vault_documents_subdir,
     )
+
+
+def get_triage_list_services(settings: DocSettings) -> TriageListServices:
+    """Bundle inputs for ``CommandTriageList`` (just the business root)."""
+    from bim.commands.doc.triage.triage import TriageListServices
+
+    return TriageListServices(business_root=settings.paths.business_root)
+
+
+def get_triage_approve_services(settings: DocSettings, repo: ZettelRepository) -> TriageApproveServices:
+    """Bundle inputs for ``CommandTriageApprove``.
+
+    Reuses the same ``PromoteServices`` wiring as ``bim doc promote`` so the
+    approve path drives the one collision-safe promote implementation.
+    """
+    from bim.commands.doc.promote.promote import PromoteServices
+    from bim.commands.doc.triage.triage import TriageApproveServices
+
+    bundle = get_issuer_registry(settings)
+    promote_services = PromoteServices(
+        registry=bundle.registry,
+        registry_path=bundle.registry_path,
+        lock_path=bundle.lock_path,
+        state_db=get_state_db(settings),
+        ocr_runner=get_ocr_runner(settings),
+        zettel_writer=get_zettel_writer(settings, repo),
+    )
+    return TriageApproveServices(settings=settings, promote_services=promote_services)

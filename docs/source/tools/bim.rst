@@ -321,7 +321,9 @@ Outcomes (printed to console and recorded in ``state.db``):
   (per-issuer subfolder; the vault layout mirrors the business root).
 - **triaged** — confidence too low or required field missing. The PDF lands
   in ``<business_root>/_triage/`` with a ``.proposed.yml`` sidecar awaiting
-  human review.
+  human review. Review the queue with ``bim doc triage`` and approve+file a
+  proposal with ``bim doc triage --approve`` (see below) — no hand-editing of
+  the YAML is needed.
 - **duplicate** — sha256 already mapped to a document that is either filed or
   still parked in ``_triage/`` awaiting review. A ``.duplicate.yml`` sidecar
   is written next to the staged input, naming which of the two applies.
@@ -408,6 +410,9 @@ Options:
 
 The proposal must have ``approved: true`` and a slug present in the issuer
 registry (or ``register_issuer: true`` to add a new issuer entry under flock).
+Prefer ``bim doc triage --approve`` (below), which sets ``approved: true`` and
+promotes in one step; ``bim doc promote`` remains for an already-approved
+proposal or a scripted pipeline.
 
 Name collisions
 ^^^^^^^^^^^^^^^
@@ -584,6 +589,40 @@ triage with a ``rule_conflict: <id1> vs <id2>`` reason.
 
 **Authoring workflow:** write rule → ``rules validate`` → ``rules test``
 on a sample → ``rules backtest`` to verify no cross-folder hits → deploy.
+
+bim doc triage
+~~~~~~~~~~~~~~
+
+Review the triage queue and approve proposals without hand-editing YAML.
+
+``bim doc triage`` (no argument) lists every pending ``*.proposed.yml`` under
+``<business_root>/_triage/``, one line per proposal with its path, issuer,
+doc type, date and triage reasons — the fields a reviewer needs to decide.
+
+.. code-block:: bash
+
+    bim doc triage                          # list pending proposals
+    bim doc triage --approve <id-or-path>   # approve + file one proposal
+
+``--approve`` takes either a full ``*.proposed.yml`` path or a bare id /
+basename resolved under ``<business_root>/_triage/`` (the ``.proposed.yml``
+suffix is appended when absent). It sets ``approved: true`` on the proposal
+and then promotes it through the same collision-safe path as ``bim doc
+promote`` — so approving is now one command instead of "open the YAML, set
+``approved: true``, save, then run ``bim doc promote``". A proposal that
+still fails promote validation (unknown issuer, missing title/number) reports
+the error and leaves the file in place.
+
+All-interface parity
+^^^^^^^^^^^^^^^^^^^^^
+
+Both verbs are registered in the ``bim serve`` action registry
+(``triage_list`` and ``triage_approve``) and are invocable through the
+generic ``POST /api/actions/{name}`` route, so the WebUI drives the same
+command classes as the CLI. ``triage_approve`` resolves its proposal path
+under the request-confinement allow-list, which now includes
+``<business_root>/_triage/`` in addition to the vault and archive roots; a
+path outside every allowed root is refused with HTTP 403.
 
 bim doc migrate-layout
 ~~~~~~~~~~~~~~~~~~~~~~~

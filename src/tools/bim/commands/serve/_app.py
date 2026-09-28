@@ -18,10 +18,14 @@ def create_app(
     default_directory: str,
     archive_directory: str | None = None,
     host: str = "127.0.0.1",
+    business_triage_root: str | None = None,
+    doc_settings: object = None,
 ) -> FastAPI:
     app = FastAPI(title="bim dashboard")
     app.state.default_directory = default_directory
     app.state.archive_directory = archive_directory
+    app.state.business_triage_root = business_triage_root
+    app.state.doc_settings = doc_settings
 
     install_security(app, host)
 

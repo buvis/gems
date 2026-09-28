@@ -157,6 +157,37 @@ async def handle_import(file_path: str, args: dict[str, Any], app_state: AppStat
     return result.to_dict()
 
 
+async def handle_triage_list(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, Any]:
+    """List pending triage proposals. ``file_path`` is unused (lists the dir)."""
+    if app_state.doc_settings is None:
+        return CommandResult(success=False, error="[doc] section not configured; triage is unavailable").to_dict()
+    from bim.commands.doc.triage.triage import CommandTriageList
+    from bim.dependencies import get_triage_list_services
+    from bim.params.doc_triage import TriageListParams
+
+    cmd = CommandTriageList(
+        services=get_triage_list_services(app_state.doc_settings),
+        params=TriageListParams(),
+    )
+    return cmd.execute().to_dict()
+
+
+async def handle_triage_approve(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, Any]:
+    """Approve+promote a triage proposal named by ``file_path`` (confined)."""
+    if app_state.doc_settings is None:
+        return CommandResult(success=False, error="[doc] section not configured; triage is unavailable").to_dict()
+    fp = confine_path(file_path, app_state)
+    from bim.commands.doc.triage.triage import CommandTriageApprove
+    from bim.dependencies import get_repo, get_triage_approve_services
+    from bim.params.doc_triage import TriageApproveParams
+
+    cmd = CommandTriageApprove(
+        services=get_triage_approve_services(app_state.doc_settings, get_repo()),
+        params=TriageApproveParams(proposed_yml_path=fp),
+    )
+    return cmd.execute().to_dict()
+
+
 ActionHandler = Callable[[str, dict[str, Any], AppState], Coroutine[Any, Any, dict[str, Any]]]
 
 ACTION_HANDLERS: dict[str, ActionHandler] = {
@@ -168,4 +199,6 @@ ACTION_HANDLERS: dict[str, ActionHandler] = {
     "delete": handle_delete,
     "format": handle_format,
     "import": handle_import,
+    "triage_list": handle_triage_list,
+    "triage_approve": handle_triage_approve,
 }

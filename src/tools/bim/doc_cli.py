@@ -242,6 +242,76 @@ def doc_migrate_layout(ctx: click.Context, *, apply_changes: bool) -> None:
     console.success(result.output or "migrate-layout done")
 
 
+@doc.command("triage", help="List pending triage proposals, or approve+promote one with --approve")
+@click.option(
+    "--approve",
+    "approve_target",
+    default=None,
+    metavar="ID-OR-PATH",
+    help="Approve and promote the named proposal (a .proposed.yml path, or an id/basename under _triage/).",
+)
+@click.pass_context
+def doc_triage(ctx: click.Context, approve_target: str | None) -> None:
+    settings = get_settings(ctx, BimSettings)
+    if settings.doc is None:
+        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        return
+
+    try:
+        from bim.commands.doc.shared.health import MissingDependency
+        from bim.commands.doc.triage.triage import CommandTriageApprove, CommandTriageList
+        from bim.dependencies import (
+            get_health_checker,
+            get_repo,
+            get_triage_approve_services,
+            get_triage_list_services,
+        )
+        from bim.params.doc_triage import TriageApproveParams, TriageListParams
+    except ImportError:
+        console.require_import("doc")
+        return
+
+    try:
+        get_health_checker()(settings.doc)
+    except MissingDependency as exc:
+        console.panic(str(exc))
+        return
+
+    if approve_target is None:
+        cmd = CommandTriageList(services=get_triage_list_services(settings.doc), params=TriageListParams())
+        result = cmd.execute()
+        if not result.success:
+            console.failure(result.error or "triage list failed")
+            return
+        for line in result.info:
+            console.info(line)
+        for w in result.warnings:
+            console.warning(w)
+        console.success(result.output or "triage list done")
+        return
+
+    proposal_path = _resolve_triage_target(approve_target, settings.doc.paths.business_root)
+    approve_cmd = CommandTriageApprove(
+        services=get_triage_approve_services(settings.doc, get_repo()),
+        params=TriageApproveParams(proposed_yml_path=proposal_path),
+    )
+    _report_doc_result(approve_cmd.execute(), default_failure="triage approve failed")
+
+
+def _resolve_triage_target(target: str, business_root: Path) -> Path:
+    """Resolve an ``--approve`` argument to a proposal path.
+
+    Accepts an existing filesystem path, or an id/basename that names a file
+    under ``<business_root>/_triage/``. When only an id is given, the
+    ``.proposed.yml`` suffix is appended if absent.
+    """
+    as_path = Path(target).expanduser()
+    if as_path.is_file():
+        return as_path
+    name = target if target.endswith(".proposed.yml") else f"{target}.proposed.yml"
+    return business_root / "_triage" / name
+
+
 def _report_doc_result(result: CommandResult, *, default_failure: str, strict: bool = False) -> None:
     """Map a doc-subsystem ``CommandResult`` to console output.
 
