@@ -74,6 +74,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#file-contracts">File contracts</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#per-repository-signals">Per-repository signals</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#enrichment">Enrichment</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#requirements">Requirements</a></li>
 </ul>
 </li>
@@ -123,13 +124,15 @@
 the state of every repository in your portfolio into typed, versioned file
 contracts that the other postup interfaces consume. It runs fully without any
 LLM.</p>
-<p>This page documents PRD A: the gem scaffold and the deterministic collector.
-Enrichment, the web UI, the TUI, and the text brief land in later PRDs.</p>
+<p>This page documents PRD A (the gem scaffold and deterministic collector) and
+PRD B (optional LLM enrichment via the <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI). The web UI, the TUI, and
+the text brief land in later PRDs.</p>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>postup<span class="w"> </span>collect<span class="w">               </span><span class="c1"># collect every configured repo, fetch first</span>
 postup<span class="w"> </span>collect<span class="w"> </span>--no-fetch<span class="w">    </span><span class="c1"># skip 'git fetch' (fast path, offline-ish)</span>
 postup<span class="w"> </span>collect<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">     </span><span class="c1"># narrow the commit window (default 60)</span>
+postup<span class="w"> </span>enrich<span class="w">                </span><span class="c1"># optional: add narrative/epics/todos via claude</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> discovers repositories, gathers their signals in parallel,
@@ -138,6 +141,8 @@ data cannot be gathered (<code class="docutils literal notranslate"><span class=
 state) degrades into that repository’s <code class="docutils literal notranslate"><span class="pre">errors</span></code> list and a console warning —
 the run never crashes and always exits successfully as long as at least one
 repository was discovered.</p>
+<p><code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">enrich</span></code> is an optional second step that turns the collected data into
+a model-authored <code class="docutils literal notranslate"><span class="pre">epics.json</span></code>. It is described under <em>Enrichment</em> below.</p>
 </section>
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
@@ -149,7 +154,7 @@ variables, and CLI flags (CLI &gt; env &gt; YAML &gt; defaults).</p>
 <span class="nt">excludes</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/git/src/github.com/me/scratch</span><span class="w">   </span><span class="c1"># repository paths to skip</span>
 <span class="nt">out_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.local/share/postup</span><span class="w">        </span><span class="c1"># where the contracts are written</span>
-<span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                           </span><span class="c1"># optional Claude model (later PRD)</span>
+<span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                           </span><span class="c1"># optional Claude model for enrich</span>
 </pre></div>
 </div>
 <table class="docutils align-default">
@@ -172,7 +177,8 @@ descending into it.</p></td>
 dir <code class="docutils literal notranslate"><span class="pre">~/.local/share/postup</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">model</span></code></p></td>
-<td><p>Optional Claude model name, carried for the enrichment PRD.</p></td>
+<td><p>Optional Claude model name for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">enrich</span></code>. Unset uses the
+<code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI’s own default model.</p></td>
 </tr>
 </tbody>
 </table>
@@ -220,12 +226,52 @@ recency, local working-tree state (branch / dirty / ahead-behind / stashes),
 and portfolio-external PRs (review-requested and authored) via an authenticated
 <code class="docutils literal notranslate"><span class="pre">gh</span></code> CLI plus local <code class="docutils literal notranslate"><span class="pre">git</span></code>.</p>
 </section>
+<section id="enrichment">
+<h2>Enrichment<a class="headerlink" href="#enrichment" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">enrich</span></code> is a strictly optional step that shells out to the <code class="docutils literal notranslate"><span class="pre">claude</span></code>
+CLI to add the model-authored portion of the brief — a manager-voice narrative
+summary, per-repository epics grouping commits by theme, and a handful of
+judgment todos — writing them to <code class="docutils literal notranslate"><span class="pre">epics.json</span></code> beside the collected contracts.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>postup<span class="w"> </span>enrich<span class="w">    </span><span class="c1"># reads data.json + commits-digest.md, writes epics.json</span>
+</pre></div>
+</div>
+<p>Behaviour:</p>
+<ul class="simple">
+<li><p><strong>Availability</strong> is detected before any prompt is built. When <code class="docutils literal notranslate"><span class="pre">claude</span></code> is on
+<code class="docutils literal notranslate"><span class="pre">PATH</span></code> the run announces which mode and model it will use; when it is absent
+the run <strong>warns that quality suffers, continues, and exits successfully</strong> —
+enrichment never blocks the deterministic brief.</p></li>
+<li><p><strong>Model</strong> — the <code class="docutils literal notranslate"><span class="pre">model</span></code> setting is passed to <code class="docutils literal notranslate"><span class="pre">claude</span></code> only when set;
+otherwise the <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI’s own default model is used. postup never pins a
+model.</p></li>
+<li><p><strong>Validation</strong> — the model’s JSON is validated against the epics schema, and
+every epic commit SHA is cross-checked against the collected commit set so a
+hallucinated reference is rejected, not written. On a parse or validation
+failure the command retries <strong>exactly once</strong> with the errors appended to the
+prompt; a second failure warns and continues <strong>without writing a partial
+file</strong>.</p></li>
+<li><p><strong>Stable ids</strong> — each judgment todo’s id is derived deterministically from its
+repository and action, so done-state tracking survives re-enrichment.</p></li>
+<li><p><strong>Stale-input guard</strong> — a missing <code class="docutils literal notranslate"><span class="pre">data.json</span></code> is the one hard failure: the
+command reports that you must run <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> first.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">epics.json</span></code> carries its own <code class="docutils literal notranslate"><span class="pre">schema_version</span></code>, a <code class="docutils literal notranslate"><span class="pre">summary</span></code> string, a
+<code class="docutils literal notranslate"><span class="pre">repos</span></code> map of per-repo epics (each with a <code class="docutils literal notranslate"><span class="pre">title</span></code>, <code class="docutils literal notranslate"><span class="pre">summary</span></code>, and exact
+<code class="docutils literal notranslate"><span class="pre">shas</span></code>), and a <code class="docutils literal notranslate"><span class="pre">todos</span></code> list (<code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">repo</span></code>, <code class="docutils literal notranslate"><span class="pre">urgency</span></code>, <code class="docutils literal notranslate"><span class="pre">action</span></code>,
+<code class="docutils literal notranslate"><span class="pre">why</span></code>, plus optional <code class="docutils literal notranslate"><span class="pre">importance</span></code> and <code class="docutils literal notranslate"><span class="pre">effort</span></code>). It is written atomically
+alongside the collector’s contracts. No cloud AI SDK and no extra Python
+dependency are involved — the <code class="docutils literal notranslate"><span class="pre">claude</span></code> binary on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> is the entire LLM
+integration.</p>
+</section>
 <section id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">git</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p></li>
 <li><p>An authenticated <code class="docutils literal notranslate"><span class="pre">gh</span></code> CLI for forge data. Its absence degrades per
 repository into <code class="docutils literal notranslate"><span class="pre">errors</span></code> rather than failing the run.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">enrich</span></code> only. Its absence makes
+enrichment a no-op warning — <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> and every deterministic
+surface are unaffected.</p></li>
 <li><p>No extra install needed — <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> runs on the core-only
 <code class="docutils literal notranslate"><span class="pre">buvis-gems</span></code> install with zero tool-specific dependencies.</p></li>
 </ul>

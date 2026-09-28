@@ -8,8 +8,9 @@ the state of every repository in your portfolio into typed, versioned file
 contracts that the other postup interfaces consume. It runs fully without any
 LLM.
 
-This page documents PRD A: the gem scaffold and the deterministic collector.
-Enrichment, the web UI, the TUI, and the text brief land in later PRDs.
+This page documents PRD A (the gem scaffold and deterministic collector) and
+PRD B (optional LLM enrichment via the ``claude`` CLI). The web UI, the TUI, and
+the text brief land in later PRDs.
 
 Usage
 -----
@@ -19,6 +20,7 @@ Usage
     postup collect               # collect every configured repo, fetch first
     postup collect --no-fetch    # skip 'git fetch' (fast path, offline-ish)
     postup collect --days 30     # narrow the commit window (default 60)
+    postup enrich                # optional: add narrative/epics/todos via claude
 
 ``postup collect`` discovers repositories, gathers their signals in parallel,
 and writes four file contracts under the output directory. A repository whose
@@ -26,6 +28,9 @@ data cannot be gathered (``gh`` unauthenticated, a network hiccup, an odd repo
 state) degrades into that repository's ``errors`` list and a console warning —
 the run never crashes and always exits successfully as long as at least one
 repository was discovered.
+
+``postup enrich`` is an optional second step that turns the collected data into
+a model-authored ``epics.json``. It is described under *Enrichment* below.
 
 Configuration
 -------------
@@ -41,7 +46,7 @@ variables, and CLI flags (CLI > env > YAML > defaults).
     excludes:
       - ~/git/src/github.com/me/scratch   # repository paths to skip
     out_dir: ~/.local/share/postup        # where the contracts are written
-    model: null                           # optional Claude model (later PRD)
+    model: null                           # optional Claude model for enrich
 
 ============  ==================================================================
 Setting       Meaning
@@ -52,7 +57,8 @@ Setting       Meaning
 ``excludes``  Absolute repository paths dropped from the discovered set.
 ``out_dir``   Output directory for the file contracts. Defaults to the XDG data
               dir ``~/.local/share/postup``.
-``model``     Optional Claude model name, carried for the enrichment PRD.
+``model``     Optional Claude model name for ``postup enrich``. Unset uses the
+              ``claude`` CLI's own default model.
 ============  ==================================================================
 
 Repository discovery uses these roots directly — there is no dependency on
@@ -89,11 +95,54 @@ recency, local working-tree state (branch / dirty / ahead-behind / stashes),
 and portfolio-external PRs (review-requested and authored) via an authenticated
 ``gh`` CLI plus local ``git``.
 
+Enrichment
+----------
+
+``postup enrich`` is a strictly optional step that shells out to the ``claude``
+CLI to add the model-authored portion of the brief — a manager-voice narrative
+summary, per-repository epics grouping commits by theme, and a handful of
+judgment todos — writing them to ``epics.json`` beside the collected contracts.
+
+.. code-block:: bash
+
+    postup enrich    # reads data.json + commits-digest.md, writes epics.json
+
+Behaviour:
+
+- **Availability** is detected before any prompt is built. When ``claude`` is on
+  ``PATH`` the run announces which mode and model it will use; when it is absent
+  the run **warns that quality suffers, continues, and exits successfully** —
+  enrichment never blocks the deterministic brief.
+- **Model** — the ``model`` setting is passed to ``claude`` only when set;
+  otherwise the ``claude`` CLI's own default model is used. postup never pins a
+  model.
+- **Validation** — the model's JSON is validated against the epics schema, and
+  every epic commit SHA is cross-checked against the collected commit set so a
+  hallucinated reference is rejected, not written. On a parse or validation
+  failure the command retries **exactly once** with the errors appended to the
+  prompt; a second failure warns and continues **without writing a partial
+  file**.
+- **Stable ids** — each judgment todo's id is derived deterministically from its
+  repository and action, so done-state tracking survives re-enrichment.
+- **Stale-input guard** — a missing ``data.json`` is the one hard failure: the
+  command reports that you must run ``postup collect`` first.
+
+``epics.json`` carries its own ``schema_version``, a ``summary`` string, a
+``repos`` map of per-repo epics (each with a ``title``, ``summary``, and exact
+``shas``), and a ``todos`` list (``id``, ``repo``, ``urgency``, ``action``,
+``why``, plus optional ``importance`` and ``effort``). It is written atomically
+alongside the collector's contracts. No cloud AI SDK and no extra Python
+dependency are involved — the ``claude`` binary on ``PATH`` is the entire LLM
+integration.
+
 Requirements
 ------------
 
 - ``git`` on ``PATH``.
 - An authenticated ``gh`` CLI for forge data. Its absence degrades per
   repository into ``errors`` rather than failing the run.
+- The ``claude`` CLI on ``PATH`` for ``postup enrich`` only. Its absence makes
+  enrichment a no-op warning — ``postup collect`` and every deterministic
+  surface are unaffected.
 - No extra install needed — ``postup collect`` runs on the core-only
   ``buvis-gems`` install with zero tool-specific dependencies.
