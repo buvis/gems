@@ -75,7 +75,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#file-contracts">File contracts</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#per-repository-signals">Per-repository signals</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#enrichment">Enrichment</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#requirements">Requirements</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#terminal-standup">Terminal standup</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
@@ -124,15 +124,19 @@
 the state of every repository in your portfolio into typed, versioned file
 contracts that the other postup interfaces consume. It runs fully without any
 LLM.</p>
-<p>This page documents PRD A (the gem scaffold and deterministic collector) and
-PRD B (optional LLM enrichment via the <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI). The web UI, the TUI, and
-the text brief land in later PRDs.</p>
+<p>This page documents PRD A (the gem scaffold and deterministic collector),
+PRD B (optional LLM enrichment via the <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI), and PRD F (the terminal
+standup surfaces — the text brief and the Textual TUI). The web UI lands in a
+later PRD.</p>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>postup<span class="w"> </span>collect<span class="w">               </span><span class="c1"># collect every configured repo, fetch first</span>
 postup<span class="w"> </span>collect<span class="w"> </span>--no-fetch<span class="w">    </span><span class="c1"># skip 'git fetch' (fast path, offline-ish)</span>
 postup<span class="w"> </span>collect<span class="w"> </span>--days<span class="w"> </span><span class="m">30</span><span class="w">     </span><span class="c1"># narrow the commit window (default 60)</span>
 postup<span class="w"> </span>enrich<span class="w">                </span><span class="c1"># optional: add narrative/epics/todos via claude</span>
+postup<span class="w">                       </span><span class="c1"># print the text standup (bare = brief)</span>
+postup<span class="w"> </span>brief<span class="w">                 </span><span class="c1"># print the text standup (explicit)</span>
+postup<span class="w"> </span>tui<span class="w">                   </span><span class="c1"># open the interactive Textual standup</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> discovers repositories, gathers their signals in parallel,
@@ -263,18 +267,57 @@ alongside the collector’s contracts. No cloud AI SDK and no extra Python
 dependency are involved — the <code class="docutils literal notranslate"><span class="pre">claude</span></code> binary on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> is the entire LLM
 integration.</p>
 </section>
-<section id="requirements">
-<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
+<section id="terminal-standup">
+<h2>Terminal standup<a class="headerlink" href="#terminal-standup" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">postup</span></code> renders a deterministic terminal standup on two surfaces — a plain
+text brief and an interactive Textual TUI — both driven by <strong>one</strong> Python derive
+layer (<code class="docutils literal notranslate"><span class="pre">postup.domain.derive</span></code>), so the CLI and TUI show identical facts for the
+same data (the all-interface rule). The derive layer is pure and UI-free: it
+imports neither Textual nor Click, reads only the file contracts, and never
+raises on missing inputs.</p>
+<section id="text-brief-the-default">
+<h3>Text brief (the default)<a class="headerlink" href="#text-brief-the-default" title="Link to this heading"></a></h3>
+<p>Bare <code class="docutils literal notranslate"><span class="pre">postup</span></code> (and the explicit <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">brief</span></code>) print the standup from the
+latest <code class="docutils literal notranslate"><span class="pre">data.json</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>postup<span class="w">            </span><span class="c1"># bare postup == the text brief</span>
+postup<span class="w"> </span>brief<span class="w">      </span><span class="c1"># the same surface, explicit</span>
+</pre></div>
+</div>
+<p>The brief shows a ranked <strong>attention queue</strong> (failing CI, security alerts, open
+PRs, long-dirty checkouts, idle WIP PRDs, and portfolio-external review
+requests), <strong>mechanical todos</strong> derived deterministically from the signals (cut
+a release, fix failing CI, prune merged branches), a <strong>per-repo summary</strong> row,
+and the <strong>since-last diff</strong> against the previous run. Judgment todos and the
+narrative summary appear only when <code class="docutils literal notranslate"><span class="pre">epics.json</span></code> exists (i.e. after
+<code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">enrich</span></code>); otherwise a one-line <em>not enriched</em> cue is shown. This path
+imports <strong>no Textual</strong> and runs on the core-only install — enforced by an
+import-isolation test, not convention. A missing <code class="docutils literal notranslate"><span class="pre">data.json</span></code> prints a friendly
+<em>run postup collect first</em> message, never a traceback.</p>
+</section>
+<section id="textual-tui">
+<h3>Textual TUI<a class="headerlink" href="#textual-tui" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">tui</span></code> opens the interactive standup — attention queue, todos, and repo
+list — as a read-only view over the <strong>same</strong> derive output as the text brief:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>postup<span class="w"> </span>tui<span class="w">        </span><span class="c1"># requires the 'postup' extra (Textual)</span>
+</pre></div>
+</div>
+<p>The TUI needs the <code class="docutils literal notranslate"><span class="pre">postup</span></code> extra (Textual). When it is absent the command
+reports a standardized install hint (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[postup]</span></code>)
+rather than a traceback. Its layout is gated by Textual snapshot tests that run
+only on the canonical CI env (Linux + Python 3.12) and are auto-skipped
+elsewhere; regenerate baselines via the <code class="docutils literal notranslate"><span class="pre">update-snapshots</span></code> GitHub workflow.</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">git</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p></li>
 <li><p>An authenticated <code class="docutils literal notranslate"><span class="pre">gh</span></code> CLI for forge data. Its absence degrades per
 repository into <code class="docutils literal notranslate"><span class="pre">errors</span></code> rather than failing the run.</p></li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">enrich</span></code> only. Its absence makes
 enrichment a no-op warning — <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> and every deterministic
 surface are unaffected.</p></li>
-<li><p>No extra install needed — <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> runs on the core-only
-<code class="docutils literal notranslate"><span class="pre">buvis-gems</span></code> install with zero tool-specific dependencies.</p></li>
+<li><p>No extra needed for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> and the text brief — they run on the
+core-only <code class="docutils literal notranslate"><span class="pre">buvis-gems</span></code> install with zero tool-specific dependencies. The
+<code class="docutils literal notranslate"><span class="pre">postup</span></code> extra (Textual) is required <strong>only</strong> for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">tui</span></code>:
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[postup]</span></code>.</p></li>
 </ul>
+</section>
 </section>
 </section>
 
