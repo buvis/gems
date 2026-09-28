@@ -184,7 +184,7 @@ uv tool install buvis-gems[all]         # everything
 uv tool upgrade buvis-gems              # update
 ```
 
-Extras: `bim`, `bim-web`, `doc`, `dot`, `fren`, `morph`, `muc`, `pinger`, `readerctl`, `all`
+Extras: `bim`, `bim-web`, `doc`, `dot`, `fren`, `morph`, `muc`, `pinger`, `postup`, `postup-web`, `readerctl`, `all`
 
 ## Release
 

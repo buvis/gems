@@ -87,5 +87,24 @@ def tui(ctx: click.Context) -> None:
     console.report_result(result)
 
 
+@cli.command("serve", help="Start the web dashboard (requires the 'postup-web' extra).")
+@click.option("-p", "--port", default=8000, show_default=True, type=int, help="Port to listen on.")
+@click.option("-H", "--host", default="127.0.0.1", show_default=True, help="Interface to bind to.")
+@click.option("--no-browser", is_flag=True, default=False, help="Do not open the browser on start.")
+@click.pass_context
+def serve(ctx: click.Context, port: int, host: str, *, no_browser: bool) -> None:
+    """Serve the portfolio web UI; a missing web extra yields install guidance."""
+    from postup.commands.serve.serve import MISSING_EXTRA_ERROR, CommandServe
+    from postup.params.serve import ServeParams
+
+    settings = get_settings(ctx, PostupSettings)
+    params = ServeParams(host=host, port=port, no_browser=no_browser)
+    result = CommandServe(settings, params).execute()
+    if not result.success and result.error == MISSING_EXTRA_ERROR:
+        console.require_import("postup-web", tool_name="postup serve")
+        return
+    console.report_result(result)
+
+
 if __name__ == "__main__":
     cli()
