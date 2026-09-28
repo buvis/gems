@@ -13,6 +13,14 @@ from postup.domain.contracts import (
     load_portfolio_data,
     write_outputs,
 )
+from postup.domain.derive import (
+    AttentionItem,
+    RepoSummary,
+    SinceLast,
+    Todo,
+    ViewModel,
+    load_view_model,
+)
 from postup.domain.discovery import discover_repos
 from postup.domain.epics import (
     EPICS_SCHEMA_VERSION,
@@ -34,6 +42,7 @@ from postup.domain.repofiles import (
 __all__ = [
     "EPICS_SCHEMA_VERSION",
     "SCHEMA_VERSION",
+    "AttentionItem",
     "Epic",
     "EpicsPayload",
     "EpicsValidationError",
@@ -41,10 +50,15 @@ __all__ = [
     "PortfolioData",
     "RepoData",
     "RepoEpics",
+    "RepoSummary",
     "SchemaVersionError",
+    "SinceLast",
+    "Todo",
+    "ViewModel",
     "build_prompt",
     "discover_repos",
     "load_portfolio_data",
+    "load_view_model",
     "read_brush_last_run",
     "read_changelog_unreleased",
     "read_prd_pipeline",

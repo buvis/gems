@@ -8,9 +8,10 @@ the state of every repository in your portfolio into typed, versioned file
 contracts that the other postup interfaces consume. It runs fully without any
 LLM.
 
-This page documents PRD A (the gem scaffold and deterministic collector) and
-PRD B (optional LLM enrichment via the ``claude`` CLI). The web UI, the TUI, and
-the text brief land in later PRDs.
+This page documents PRD A (the gem scaffold and deterministic collector),
+PRD B (optional LLM enrichment via the ``claude`` CLI), and PRD F (the terminal
+standup surfaces — the text brief and the Textual TUI). The web UI lands in a
+later PRD.
 
 Usage
 -----
@@ -21,6 +22,9 @@ Usage
     postup collect --no-fetch    # skip 'git fetch' (fast path, offline-ish)
     postup collect --days 30     # narrow the commit window (default 60)
     postup enrich                # optional: add narrative/epics/todos via claude
+    postup                       # print the text standup (bare = brief)
+    postup brief                 # print the text standup (explicit)
+    postup tui                   # open the interactive Textual standup
 
 ``postup collect`` discovers repositories, gathers their signals in parallel,
 and writes four file contracts under the output directory. A repository whose
@@ -135,14 +139,61 @@ alongside the collector's contracts. No cloud AI SDK and no extra Python
 dependency are involved — the ``claude`` binary on ``PATH`` is the entire LLM
 integration.
 
-Requirements
-------------
+Terminal standup
+----------------
 
-- ``git`` on ``PATH``.
+``postup`` renders a deterministic terminal standup on two surfaces — a plain
+text brief and an interactive Textual TUI — both driven by **one** Python derive
+layer (``postup.domain.derive``), so the CLI and TUI show identical facts for the
+same data (the all-interface rule). The derive layer is pure and UI-free: it
+imports neither Textual nor Click, reads only the file contracts, and never
+raises on missing inputs.
+
+Text brief (the default)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Bare ``postup`` (and the explicit ``postup brief``) print the standup from the
+latest ``data.json``:
+
+.. code-block:: bash
+
+    postup            # bare postup == the text brief
+    postup brief      # the same surface, explicit
+
+The brief shows a ranked **attention queue** (failing CI, security alerts, open
+PRs, long-dirty checkouts, idle WIP PRDs, and portfolio-external review
+requests), **mechanical todos** derived deterministically from the signals (cut
+a release, fix failing CI, prune merged branches), a **per-repo summary** row,
+and the **since-last diff** against the previous run. Judgment todos and the
+narrative summary appear only when ``epics.json`` exists (i.e. after
+``postup enrich``); otherwise a one-line *not enriched* cue is shown. This path
+imports **no Textual** and runs on the core-only install — enforced by an
+import-isolation test, not convention. A missing ``data.json`` prints a friendly
+*run postup collect first* message, never a traceback.
+
+Textual TUI
+~~~~~~~~~~~
+
+``postup tui`` opens the interactive standup — attention queue, todos, and repo
+list — as a read-only view over the **same** derive output as the text brief:
+
+.. code-block:: bash
+
+    postup tui        # requires the 'postup' extra (Textual)
+
+The TUI needs the ``postup`` extra (Textual). When it is absent the command
+reports a standardized install hint (``uv tool install buvis-gems[postup]``)
+rather than a traceback. Its layout is gated by Textual snapshot tests that run
+only on the canonical CI env (Linux + Python 3.12) and are auto-skipped
+elsewhere; regenerate baselines via the ``update-snapshots`` GitHub workflow.
+
+
 - An authenticated ``gh`` CLI for forge data. Its absence degrades per
   repository into ``errors`` rather than failing the run.
 - The ``claude`` CLI on ``PATH`` for ``postup enrich`` only. Its absence makes
   enrichment a no-op warning — ``postup collect`` and every deterministic
   surface are unaffected.
-- No extra install needed — ``postup collect`` runs on the core-only
-  ``buvis-gems`` install with zero tool-specific dependencies.
+- No extra needed for ``postup collect`` and the text brief — they run on the
+  core-only ``buvis-gems`` install with zero tool-specific dependencies. The
+  ``postup`` extra (Textual) is required **only** for ``postup tui``:
+  ``uv tool install buvis-gems[postup]``.
