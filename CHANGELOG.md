@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **dot**: the diff pane's viewport math (hunk→line-offset map, index/line/selection clamping, and scroll-reveal target) is extracted into a pure `DiffLayout` model (`dot.tui.widgets.diff_layout`, no Textual dependency); `DiffView` is now a thin renderer that asks `DiffLayout` where things are and holds no inline offset arithmetic. Behaviour is unchanged — the coordinate math is now unit-tested without a TUI, covering every edge that previously shipped as a scroll/offset bug (headerless diff, single hunk, reveal past the last hunk, clamp at both ends, empty diff).
 - **sysup**: the `mac`, `pip`, `nvim`, and `wsl` subcommands (and their `sys.platform` guards) are removed. `sysup` with no argument now runs every updater whose `when` guard matches the host, in order; `--only <names>` and `--tag <t>` narrow the run. With no user config the behaviour is unchanged — on macOS `sysup` runs the former `sysup mac` steps (brew → npm-check → pip → uv → helm → mise, mise last among the tool managers) and on Linux the former `sysup wsl` steps (apt → snap), now host-selected by each entry's `when` instead of a subcommand. The former standalone `sysup nvim` (headless Mason update) is also restored to the default plan as a cross-platform `use: nvim-mason` entry that runs after mise wherever nvim resolves.
 
 ### Removed
