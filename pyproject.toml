@@ -47,6 +47,7 @@ morph = "morph.cli:cli"
 muc = "muc.cli:cli"
 netscan = "netscan.cli:cli"
 outlookctl = "outlookctl.cli:cli"
+postup = "postup.adapters.cli:cli"
 puc = "puc.cli:cli"
 pinger = "pinger.cli:cli"
 readerctl = "readerctl.cli:cli"
@@ -76,6 +77,7 @@ packages = [
   "src/tools/muc",
   "src/tools/netscan",
   "src/tools/outlookctl",
+  "src/tools/postup",
   "src/tools/puc",
   "src/tools/pinger",
   "src/tools/readerctl",
@@ -103,6 +105,7 @@ markers = [
     "netscan: netscan tests",
     "outlookctl: outlookctl tests",
     "pinger: pinger tests",
+    "postup: postup tests",
     "puc: puc tests",
     "readerctl: readerctl tests",
     "sysup: sysup tests",

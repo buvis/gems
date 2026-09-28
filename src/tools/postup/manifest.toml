@@ -1,0 +1,19 @@
+[tool]
+name = "postup"
+display_name = "Postup"
+module_name = "postup"
+description = "POrtfolio STandUP"
+category = "productivity"
+
+[tool.interfaces]
+cli = true
+rest = true
+tui = true
+web = true
+
+[tool.commands]
+collect = "Collect portfolio state from local repos into versioned file contracts"
+
+[tool.requirements]
+python = ">=3.11"
+extras = []
