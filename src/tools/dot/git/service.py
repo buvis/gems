@@ -475,7 +475,7 @@ class DotGitService:
         Returns:
             The outcome of the register command.
         """
-        err, _out = self.shell.exe(f"cfg secret add {shlex.quote(path)}", self.wd)
+        err, _out = self.shell.exe(f"cfg secret add -- {shlex.quote(path)}", self.wd)
         if err:
             return CommandResult(success=False, error=err)
         return CommandResult(success=True)
@@ -489,7 +489,7 @@ class DotGitService:
         Returns:
             The outcome of the unregister command.
         """
-        err, _out = self.shell.exe(f"cfg secret remove {shlex.quote(path)}", self.wd)
+        err, _out = self.shell.exe(f"cfg secret remove -- {shlex.quote(path)}", self.wd)
         if err:
             return CommandResult(success=False, error=err)
         return CommandResult(success=True)

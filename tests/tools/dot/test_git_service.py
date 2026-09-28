@@ -1959,7 +1959,7 @@ class TestDotGitServiceRegisterSecret:
         result = git_service.register_secret("my secrets.txt")
 
         assert result.success is True
-        assert shell.exe.call_args[0][0] == "cfg secret add 'my secrets.txt'"
+        assert shell.exe.call_args[0][0] == "cfg secret add -- 'my secrets.txt'"
         assert str(shell.exe.call_args[0][1]) == "/home/user/dotfiles"
 
     def test_path_with_embedded_quote_is_shell_escaped(self, git_service: DotGitService, shell: MagicMock) -> None:
@@ -1968,7 +1968,17 @@ class TestDotGitServiceRegisterSecret:
         result = git_service.register_secret("it's.txt")
 
         assert result.success is True
-        assert shell.exe.call_args[0][0] == """cfg secret add 'it'"'"'s.txt'"""
+        assert shell.exe.call_args[0][0] == """cfg secret add -- 'it'"'"'s.txt'"""
+
+    def test_leading_dash_path_is_guarded_as_pathspec(self, git_service: DotGitService, shell: MagicMock) -> None:
+        # `--` before the path stops git-secret's getopts from reading a
+        # leading-dash filename (e.g. `-c`, `-f`) as an option.
+        shell.exe.return_value = ("", "")
+
+        result = git_service.register_secret("-c")
+
+        assert result.success is True
+        assert shell.exe.call_args[0][0] == "cfg secret add -- -c"
 
     @pytest.mark.parametrize(
         "error",
@@ -1991,7 +2001,7 @@ class TestDotGitServiceUnregisterSecret:
         result = git_service.unregister_secret("my secrets.txt")
 
         assert result.success is True
-        assert shell.exe.call_args[0][0] == "cfg secret remove 'my secrets.txt'"
+        assert shell.exe.call_args[0][0] == "cfg secret remove -- 'my secrets.txt'"
         assert str(shell.exe.call_args[0][1]) == "/home/user/dotfiles"
 
     def test_path_with_embedded_quote_is_shell_escaped(self, git_service: DotGitService, shell: MagicMock) -> None:
@@ -2000,7 +2010,17 @@ class TestDotGitServiceUnregisterSecret:
         result = git_service.unregister_secret("it's.txt")
 
         assert result.success is True
-        assert shell.exe.call_args[0][0] == """cfg secret remove 'it'"'"'s.txt'"""
+        assert shell.exe.call_args[0][0] == """cfg secret remove -- 'it'"'"'s.txt'"""
+
+    def test_leading_dash_path_is_guarded_as_pathspec(self, git_service: DotGitService, shell: MagicMock) -> None:
+        # `--` before the path stops git-secret's getopts from reading a
+        # leading-dash filename (e.g. `-c`, `-f`) as an option.
+        shell.exe.return_value = ("", "")
+
+        result = git_service.unregister_secret("-c")
+
+        assert result.success is True
+        assert shell.exe.call_args[0][0] == "cfg secret remove -- -c"
 
     @pytest.mark.parametrize(
         "error",
