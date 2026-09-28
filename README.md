@@ -116,7 +116,8 @@ filed zettel. `bim doc audit` is read-only: it walks `<business_root>/`
 and writes a structured JSON report under `<state_dir>/audit/` covering
 missing or orphan zettels, sha-256 mismatches, OCR/hash adapter failures,
 rule-registry validity and freshness, plus a `legacy_layout_zettels`
-list (zettels still at the pre-v1 flat path, the input contract for the
-forthcoming migration command). See the [Sphinx docs](https://buvis.github.io/gems/)
-for the full JSON schema.
+list (zettels still at the pre-v1 flat path). `bim doc migrate-layout`
+consumes that list and moves each zettel into its per-issuer subfolder
+(dry-run by default; `--apply` performs the moves). See the
+[Sphinx docs](https://buvis.github.io/gems/) for the full JSON schema.
 

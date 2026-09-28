@@ -48,7 +48,18 @@ class CommandAudit:
     services: AuditServices
     now_provider: NowProvider | None = None
 
-    def execute(self) -> CommandResult:
+    def execute(self, *, write_report: bool = True) -> CommandResult:
+        """Run the audit and return a :class:`CommandResult`.
+
+        Args:
+            write_report: When True (default) the report is persisted to
+                ``<state_dir>/audit/<safe-iso>.json`` and ``report_path`` is
+                set in the metadata. When False the audit is pure/read-only —
+                nothing is written and ``report_path`` is None. Callers that
+                only need the in-memory report (e.g. planning a migration on a
+                dry run) pass ``write_report=False`` so building the report
+                does not mutate ``state_dir``.
+        """
         now: NowProvider = self.now_provider if self.now_provider is not None else (lambda: datetime.now(timezone.utc))
         auditor = Auditor(
             state_db=self.services.state_db,
@@ -66,21 +77,23 @@ class CommandAudit:
         except OSError as exc:
             return CommandResult(success=False, error=f"audit failed: {exc}")
 
-        try:
-            json_path = write_json_report(report, self.services.state_dir)
-        except OSError as exc:
-            return CommandResult(
-                success=False,
-                error=f"audit ran but JSON report write failed: {exc}",
-                metadata={"report": report},
-            )
+        report_path: str | None = None
+        if write_report:
+            try:
+                report_path = str(write_json_report(report, self.services.state_dir))
+            except OSError as exc:
+                return CommandResult(
+                    success=False,
+                    error=f"audit ran but JSON report write failed: {exc}",
+                    metadata={"report": report},
+                )
 
         validation_errors = [f for f in report.rule_findings if f.code in VALIDATION_ERROR_CODES]
         return CommandResult(
             success=True,
             metadata={
                 "report": report,
-                "report_path": str(json_path),
+                "report_path": report_path,
                 "walked_pdf_count": report.walked_pdf_count,
                 "clean_pdf_count": report.clean_pdf_count,
                 "legacy_layout_count": len(report.legacy_layout_zettels),

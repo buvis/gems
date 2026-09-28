@@ -30,12 +30,18 @@ def serve(
     from bim.params.serve import ServeParams
 
     settings = get_settings(ctx, BimSettings)
+    doc_settings = settings.doc
+    business_triage_root = (
+        str((doc_settings.paths.business_root / "_triage").expanduser()) if doc_settings is not None else None
+    )
     params = ServeParams(
         default_directory=str(Path(settings.path_zettelkasten).expanduser().resolve()),
         archive_directory=str(Path(settings.path_archive).expanduser().resolve()),
         host=host,
         port=port,
         no_browser=no_browser,
+        business_triage_root=business_triage_root,
+        doc_settings=doc_settings,
     )
     cmd = CommandServe(params=params)
     cmd.execute()

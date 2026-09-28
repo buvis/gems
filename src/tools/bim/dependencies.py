@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.value_objects.query_spec import QuerySpec
 
     from bim.commands.doc.audit.audit import AuditServices
+    from bim.commands.doc.migrate.migrate_layout import MigrateServices
     from bim.commands.doc.shared.classifier import Classifier
     from bim.commands.doc.shared.extractor import Extractor
     from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from bim.commands.doc.shared.settings_models import DocSettings
     from bim.commands.doc.shared.state_db import StateDB
     from bim.commands.doc.shared.zettel_writer import ZettelWriter
+    from bim.commands.doc.triage.triage import TriageApproveServices, TriageListServices
 
 
 def get_repo(*, extensions: list[str] | None = None) -> ZettelRepository:
@@ -272,3 +274,62 @@ def get_audit_services(settings: DocSettings) -> AuditServices:
         ocr_quality_reader=_ocr_quality_reader,
         hash_reader=sha256_file,
     )
+
+
+def get_migrate_services(settings: DocSettings) -> MigrateServices:
+    """Run a fresh, read-only audit and bundle ``legacy_layout_zettels``.
+
+    ``bim doc migrate-layout`` needs the current legacy list; deriving it from
+    a fresh audit (rather than trusting a possibly-stale on-disk JSON report)
+    keeps the migration plan honest against what is on disk right now. Reuses
+    the same ``AuditServices`` wiring as ``bim doc audit``, but runs with
+    ``write_report=False`` so merely building the migration plan (including on
+    the default dry run) does not mutate ``<state_dir>/audit/``.
+
+    Raises:
+        RuntimeError: When the audit itself fails (no report produced). The
+            caller surfaces this rather than silently planning an empty
+            migration and reporting a misleading "0 moves" success.
+    """
+    from bim.commands.doc.audit.audit import CommandAudit
+    from bim.commands.doc.migrate.migrate_layout import MigrateServices
+
+    audit_result = CommandAudit(services=get_audit_services(settings)).execute(write_report=False)
+    report = audit_result.metadata.get("report")
+    if not audit_result.success or report is None:
+        raise RuntimeError(
+            f"migrate-layout could not read the legacy list: audit failed ({audit_result.error or 'no report'})"
+        )
+    return MigrateServices(
+        legacy_zettels=tuple(report.legacy_layout_zettels),
+        vault_root=settings.paths.vault_root,
+        vault_documents_subdir=settings.paths.vault_documents_subdir,
+    )
+
+
+def get_triage_list_services(settings: DocSettings) -> TriageListServices:
+    """Bundle inputs for ``CommandTriageList`` (just the business root)."""
+    from bim.commands.doc.triage.triage import TriageListServices
+
+    return TriageListServices(business_root=settings.paths.business_root)
+
+
+def get_triage_approve_services(settings: DocSettings, repo: ZettelRepository) -> TriageApproveServices:
+    """Bundle inputs for ``CommandTriageApprove``.
+
+    Reuses the same ``PromoteServices`` wiring as ``bim doc promote`` so the
+    approve path drives the one collision-safe promote implementation.
+    """
+    from bim.commands.doc.promote.promote import PromoteServices
+    from bim.commands.doc.triage.triage import TriageApproveServices
+
+    bundle = get_issuer_registry(settings)
+    promote_services = PromoteServices(
+        registry=bundle.registry,
+        registry_path=bundle.registry_path,
+        lock_path=bundle.lock_path,
+        state_db=get_state_db(settings),
+        ocr_runner=get_ocr_runner(settings),
+        zettel_writer=get_zettel_writer(settings, repo),
+    )
+    return TriageApproveServices(settings=settings, promote_services=promote_services)

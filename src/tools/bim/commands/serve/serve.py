@@ -16,6 +16,8 @@ class CommandServe:
             self.params.default_directory,
             self.params.archive_directory,
             host=self.params.host,
+            business_triage_root=self.params.business_triage_root,
+            doc_settings=self.params.doc_settings,
         )
 
         if not self.params.no_browser:
