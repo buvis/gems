@@ -9,6 +9,7 @@ from textual.message import Message
 from textual.widget import Widget
 
 from dot.tui.patch import Hunk, parse_diff
+from dot.tui.widgets.diff_layout import DiffLayout
 
 __all__ = ["DiffView"]
 
@@ -65,6 +66,7 @@ class DiffView(Widget, can_focus=True):
         super().__init__(name=name, id=id, classes=classes)
         self._diff_text: str = ""
         self._hunks: list[Hunk] = []
+        self._layout: DiffLayout = DiffLayout.from_diff("", [])
         self._focused_hunk: int = 0
         self._staged: bool = False
         self._line_select_mode: bool = False
@@ -97,9 +99,8 @@ class DiffView(Widget, can_focus=True):
         if state.focused_hunk < len(self._hunks):
             self._focused_hunk = state.focused_hunk
             hunk = self._hunks[self._focused_hunk]
-            max_line = len(hunk.lines) - 1 if hunk.lines else 0
-            self._line_cursor = min(state.line_cursor, max_line)
-            self._selected_lines = {i for i in state.selected_lines if i <= max_line}
+            self._line_cursor = self._layout.clamp_line(self._focused_hunk, state.line_cursor)
+            self._selected_lines = set(self._layout.clamp_selected_lines(self._focused_hunk, state.selected_lines))
             self._line_select_mode = state.line_select_mode and bool(hunk.lines)
 
     def update_diff(self, diff_text: str, *, staged: bool = False, path: str = "") -> None:
@@ -108,6 +109,7 @@ class DiffView(Widget, can_focus=True):
         self._diff_text = diff_text
         self._staged = staged
         self._hunks = parse_diff(diff_text)
+        self._layout = DiffLayout.from_diff(diff_text, self._hunks)
         self._focused_hunk = 0
         self._exit_line_select()
         self._current_path = path
@@ -165,36 +167,25 @@ class DiffView(Widget, can_focus=True):
 
     def _file_header_line_count(self) -> int:
         """Count rendered lines before the first hunk header."""
-        count = 0
-        for line in self._diff_text.split("\n"):
-            if line.startswith("@@"):
-                break
-            count += 1
-        return count
+        return self._layout.file_header_lines
 
     def _hunk_line_offset(self, hunk_idx: int) -> int:
         """Compute the rendered line offset of the given hunk header."""
-        offset = self._file_header_line_count()
-        for i in range(hunk_idx):
-            offset += 1 + len(self._hunks[i].lines)  # header + content lines
-        return offset
+        return self._layout.offset_of(hunk_idx)
 
     def _scroll_to_hunk(self) -> None:
         """Scroll to keep the focused hunk visible."""
         if not self._hunks:
             return
-        line = self._hunk_line_offset(self._focused_hunk)
-        # Last hunk targets bottom so long diffs are reachable; initial load (hunk 0) targets header.
-        if self._focused_hunk > 0 and self._focused_hunk == len(self._hunks) - 1:
-            line += len(self._hunks[self._focused_hunk].lines)
-        self.scroll_to_region(Region(0, line, 1, 1), animate=False)
+        region = self._layout.hunk_reveal(self._focused_hunk)
+        self.scroll_to_region(Region(0, region.y, 1, region.height), animate=False)
 
     def _scroll_to_line(self) -> None:
         """Scroll to keep the current line cursor visible."""
         if not self._hunks:
             return
-        line = self._hunk_line_offset(self._focused_hunk) + 1 + self._line_cursor
-        self.scroll_to_region(Region(0, line, 1, 1), animate=False)
+        region = self._layout.line_reveal(self._focused_hunk, self._line_cursor)
+        self.scroll_to_region(Region(0, region.y, 1, region.height), animate=False)
 
     def _changed_line_indices(self) -> list[int]:
         """Return indices of changed lines (+/-) in the focused hunk."""
