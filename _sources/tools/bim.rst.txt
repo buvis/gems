@@ -321,7 +321,9 @@ Outcomes (printed to console and recorded in ``state.db``):
   (per-issuer subfolder; the vault layout mirrors the business root).
 - **triaged** — confidence too low or required field missing. The PDF lands
   in ``<business_root>/_triage/`` with a ``.proposed.yml`` sidecar awaiting
-  human review.
+  human review. Review the queue with ``bim doc triage`` and approve+file a
+  proposal with ``bim doc triage --approve`` (see below) — no hand-editing of
+  the YAML is needed.
 - **duplicate** — sha256 already mapped to a document that is either filed or
   still parked in ``_triage/`` awaiting review. A ``.duplicate.yml`` sidecar
   is written next to the staged input, naming which of the two applies.
@@ -408,6 +410,9 @@ Options:
 
 The proposal must have ``approved: true`` and a slug present in the issuer
 registry (or ``register_issuer: true`` to add a new issuer entry under flock).
+Prefer ``bim doc triage --approve`` (below), which sets ``approved: true`` and
+promotes in one step; ``bim doc promote`` remains for an already-approved
+proposal or a scripted pipeline.
 
 Name collisions
 ^^^^^^^^^^^^^^^
@@ -585,6 +590,77 @@ triage with a ``rule_conflict: <id1> vs <id2>`` reason.
 **Authoring workflow:** write rule → ``rules validate`` → ``rules test``
 on a sample → ``rules backtest`` to verify no cross-folder hits → deploy.
 
+bim doc triage
+~~~~~~~~~~~~~~
+
+Review the triage queue and approve proposals without hand-editing YAML.
+
+``bim doc triage`` (no argument) lists every pending ``*.proposed.yml`` under
+``<business_root>/_triage/``, one line per proposal with its path, issuer,
+doc type, date and triage reasons — the fields a reviewer needs to decide.
+
+.. code-block:: bash
+
+    bim doc triage                          # list pending proposals
+    bim doc triage --approve <id-or-path>   # approve + file one proposal
+
+``--approve`` takes either a full ``*.proposed.yml`` path or a bare id /
+basename resolved under ``<business_root>/_triage/`` (the ``.proposed.yml``
+suffix is appended when absent). It sets ``approved: true`` on the proposal
+and then promotes it through the same collision-safe path as ``bim doc
+promote`` — so approving is now one command instead of "open the YAML, set
+``approved: true``, save, then run ``bim doc promote``". A proposal that
+still fails promote validation (unknown issuer, missing title/number) reports
+the error and leaves the file in place.
+
+All-interface parity
+^^^^^^^^^^^^^^^^^^^^^
+
+Both verbs are registered in the ``bim serve`` action registry
+(``triage_list`` and ``triage_approve``) and are invocable through the
+generic ``POST /api/actions/{name}`` route, so the WebUI drives the same
+command classes as the CLI. ``triage_approve`` resolves its proposal path
+under the request-confinement allow-list, which now includes
+``<business_root>/_triage/`` in addition to the vault and archive roots; a
+path outside every allowed root is refused with HTTP 403.
+
+bim doc migrate-layout
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Migrate legacy flat-layout zettels reported by ``bim doc audit`` into their
+per-issuer subfolder. For each entry in the audit's ``legacy_layout_zettels``
+list, the command moves ``<vault>/<doc-subdir>/<basename>.md`` to
+``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``, where the issuer slug is
+read from the zettel's own ``file-path`` link (the directory holding the
+paired PDF). The zettel content — including the ``file-path`` link — is
+preserved byte-for-byte, so the PDF link stays valid.
+
+.. code-block:: bash
+
+    bim doc migrate-layout            # dry run: prints the plan, changes nothing
+    bim doc migrate-layout --apply    # performs the moves
+
+Options:
+
+- ``--apply`` — perform the moves. Without it the command is a **dry run**
+  (the default): it prints each planned ``source -> target`` and touches
+  nothing on disk.
+
+Behaviour:
+
+- **Dry-run by default.** Nothing is moved unless ``--apply`` is passed.
+- **Atomic per file.** Each zettel is written to its per-issuer target via
+  the atomic-write helper (tempfile + fsync + replace), then the legacy file
+  is removed — never a truncate-in-place.
+- **Skip and report, never partial.** A legacy zettel whose frontmatter is
+  unparseable, whose ``file-path`` is missing so the issuer slug cannot be
+  derived, or whose per-issuer target already exists, is skipped and reported
+  as a warning; the run continues with the rest. No file is ever left half
+  migrated.
+
+After a successful ``--apply``, re-running ``bim doc audit`` shows the
+migrated zettels are no longer in ``legacy_layout_zettels``.
+
 bim doc audit
 ~~~~~~~~~~~~~
 
@@ -678,7 +754,7 @@ stdout plus a structured JSON report at
 * ``legacy_layout_zettels`` — absolute paths of zettels found at the v0
   flat path ``<vault>/<doc-subdir>/<basename>.md`` rather than the v1
   per-issuer path ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``.
-  This array is the input for a future legacy-zettel migration command.
+  This array is the input for ``bim doc migrate-layout`` (below).
 * ``rule_findings`` — registry-loadability errors, priority conflicts,
   and stale-rule warnings.
 * ``issuer_inboxes`` — per-issuer ``inbox/`` directories with unprocessed

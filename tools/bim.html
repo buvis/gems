@@ -402,7 +402,9 @@ and zettel written to <code class="docutils literal notranslate"><span class="pr
 (per-issuer subfolder; the vault layout mirrors the business root).</p></li>
 <li><p><strong>triaged</strong> — confidence too low or required field missing. The PDF lands
 in <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code> with a <code class="docutils literal notranslate"><span class="pre">.proposed.yml</span></code> sidecar awaiting
-human review.</p></li>
+human review. Review the queue with <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">triage</span></code> and approve+file a
+proposal with <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">triage</span> <span class="pre">--approve</span></code> (see below) — no hand-editing of
+the YAML is needed.</p></li>
 <li><p><strong>duplicate</strong> — sha256 already mapped to a document that is either filed or
 still parked in <code class="docutils literal notranslate"><span class="pre">_triage/</span></code> awaiting review. A <code class="docutils literal notranslate"><span class="pre">.duplicate.yml</span></code> sidecar
 is written next to the staged input, naming which of the two applies.</p></li>
@@ -483,7 +485,10 @@ whose sibling <code class="docutils literal notranslate"><span class="pre">&lt;b
 code is 0 on failure to match the rest of the bim CLI.</p></li>
 </ul>
 <p>The proposal must have <code class="docutils literal notranslate"><span class="pre">approved:</span> <span class="pre">true</span></code> and a slug present in the issuer
-registry (or <code class="docutils literal notranslate"><span class="pre">register_issuer:</span> <span class="pre">true</span></code> to add a new issuer entry under flock).</p>
+registry (or <code class="docutils literal notranslate"><span class="pre">register_issuer:</span> <span class="pre">true</span></code> to add a new issuer entry under flock).
+Prefer <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">triage</span> <span class="pre">--approve</span></code> (below), which sets <code class="docutils literal notranslate"><span class="pre">approved:</span> <span class="pre">true</span></code> and
+promotes in one step; <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">promote</span></code> remains for an already-approved
+proposal or a scripted pipeline.</p>
 <section id="name-collisions">
 <h4>Name collisions<a class="headerlink" href="#name-collisions" title="Link to this heading"></a></h4>
 <p>The canonical name normally encodes the document’s own date with a zeroed
@@ -650,6 +655,69 @@ most dangerous failure mode.</p>
 <p><strong>Authoring workflow:</strong> write rule → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">validate</span></code> → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">test</span></code>
 on a sample → <code class="docutils literal notranslate"><span class="pre">rules</span> <span class="pre">backtest</span></code> to verify no cross-folder hits → deploy.</p>
 </section>
+<section id="bim-doc-triage">
+<h3>bim doc triage<a class="headerlink" href="#bim-doc-triage" title="Link to this heading"></a></h3>
+<p>Review the triage queue and approve proposals without hand-editing YAML.</p>
+<p><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">triage</span></code> (no argument) lists every pending <code class="docutils literal notranslate"><span class="pre">*.proposed.yml</span></code> under
+<code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code>, one line per proposal with its path, issuer,
+doc type, date and triage reasons — the fields a reviewer needs to decide.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>doc<span class="w"> </span>triage<span class="w">                          </span><span class="c1"># list pending proposals</span>
+bim<span class="w"> </span>doc<span class="w"> </span>triage<span class="w"> </span>--approve<span class="w"> </span>&lt;id-or-path&gt;<span class="w">   </span><span class="c1"># approve + file one proposal</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--approve</span></code> takes either a full <code class="docutils literal notranslate"><span class="pre">*.proposed.yml</span></code> path or a bare id /
+basename resolved under <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code> (the <code class="docutils literal notranslate"><span class="pre">.proposed.yml</span></code>
+suffix is appended when absent). It sets <code class="docutils literal notranslate"><span class="pre">approved:</span> <span class="pre">true</span></code> on the proposal
+and then promotes it through the same collision-safe path as <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span>
+<span class="pre">promote</span></code> — so approving is now one command instead of “open the YAML, set
+<code class="docutils literal notranslate"><span class="pre">approved:</span> <span class="pre">true</span></code>, save, then run <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">promote</span></code>”. A proposal that
+still fails promote validation (unknown issuer, missing title/number) reports
+the error and leaves the file in place.</p>
+<section id="all-interface-parity">
+<h4>All-interface parity<a class="headerlink" href="#all-interface-parity" title="Link to this heading"></a></h4>
+<p>Both verbs are registered in the <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">serve</span></code> action registry
+(<code class="docutils literal notranslate"><span class="pre">triage_list</span></code> and <code class="docutils literal notranslate"><span class="pre">triage_approve</span></code>) and are invocable through the
+generic <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/actions/{name}</span></code> route, so the WebUI drives the same
+command classes as the CLI. <code class="docutils literal notranslate"><span class="pre">triage_approve</span></code> resolves its proposal path
+under the request-confinement allow-list, which now includes
+<code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code> in addition to the vault and archive roots; a
+path outside every allowed root is refused with HTTP 403.</p>
+</section>
+</section>
+<section id="bim-doc-migrate-layout">
+<h3>bim doc migrate-layout<a class="headerlink" href="#bim-doc-migrate-layout" title="Link to this heading"></a></h3>
+<p>Migrate legacy flat-layout zettels reported by <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">audit</span></code> into their
+per-issuer subfolder. For each entry in the audit’s <code class="docutils literal notranslate"><span class="pre">legacy_layout_zettels</span></code>
+list, the command moves <code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/&lt;doc-subdir&gt;/&lt;basename&gt;.md</span></code> to
+<code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/&lt;doc-subdir&gt;/&lt;issuer-slug&gt;/&lt;basename&gt;.md</span></code>, where the issuer slug is
+read from the zettel’s own <code class="docutils literal notranslate"><span class="pre">file-path</span></code> link (the directory holding the
+paired PDF). The zettel content — including the <code class="docutils literal notranslate"><span class="pre">file-path</span></code> link — is
+preserved byte-for-byte, so the PDF link stays valid.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>doc<span class="w"> </span>migrate-layout<span class="w">            </span><span class="c1"># dry run: prints the plan, changes nothing</span>
+bim<span class="w"> </span>doc<span class="w"> </span>migrate-layout<span class="w"> </span>--apply<span class="w">    </span><span class="c1"># performs the moves</span>
+</pre></div>
+</div>
+<p>Options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--apply</span></code> — perform the moves. Without it the command is a <strong>dry run</strong>
+(the default): it prints each planned <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">-&gt;</span> <span class="pre">target</span></code> and touches
+nothing on disk.</p></li>
+</ul>
+<p>Behaviour:</p>
+<ul class="simple">
+<li><p><strong>Dry-run by default.</strong> Nothing is moved unless <code class="docutils literal notranslate"><span class="pre">--apply</span></code> is passed.</p></li>
+<li><p><strong>Atomic per file.</strong> Each zettel is written to its per-issuer target via
+the atomic-write helper (tempfile + fsync + replace), then the legacy file
+is removed — never a truncate-in-place.</p></li>
+<li><p><strong>Skip and report, never partial.</strong> A legacy zettel whose frontmatter is
+unparseable, whose <code class="docutils literal notranslate"><span class="pre">file-path</span></code> is missing so the issuer slug cannot be
+derived, or whose per-issuer target already exists, is skipped and reported
+as a warning; the run continues with the rest. No file is ever left half
+migrated.</p></li>
+</ul>
+<p>After a successful <code class="docutils literal notranslate"><span class="pre">--apply</span></code>, re-running <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">audit</span></code> shows the
+migrated zettels are no longer in <code class="docutils literal notranslate"><span class="pre">legacy_layout_zettels</span></code>.</p>
+</section>
 <section id="bim-doc-audit">
 <h3>bim doc audit<a class="headerlink" href="#bim-doc-audit" title="Link to this heading"></a></h3>
 <p>Read-only walk of the Business folder; reports drift between filed PDFs and
@@ -754,7 +822,7 @@ failures), <code class="docutils literal notranslate"><span class="pre">issuer_s
 <li><p><code class="docutils literal notranslate"><span class="pre">legacy_layout_zettels</span></code> — absolute paths of zettels found at the v0
 flat path <code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/&lt;doc-subdir&gt;/&lt;basename&gt;.md</span></code> rather than the v1
 per-issuer path <code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/&lt;doc-subdir&gt;/&lt;issuer-slug&gt;/&lt;basename&gt;.md</span></code>.
-This array is the input for a future legacy-zettel migration command.</p></li>
+This array is the input for <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">doc</span> <span class="pre">migrate-layout</span></code> (below).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">rule_findings</span></code> — registry-loadability errors, priority conflicts,
 and stale-rule warnings.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">issuer_inboxes</span></code> — per-issuer <code class="docutils literal notranslate"><span class="pre">inbox/</span></code> directories with unprocessed
