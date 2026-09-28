@@ -1345,7 +1345,7 @@ class TestDotGitServiceRm:
 
         assert result.success is True
         assert result.output == ".bashrc removed from tracking"
-        assert shell.exe.call_args_list[1][0][0] == "cfg rm --cached .bashrc"
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm --cached -- .bashrc"
 
     def test_path_with_embedded_quote_is_shell_escaped(self, git_service: DotGitService, shell: MagicMock) -> None:
         shell.exe.side_effect = [
@@ -1356,7 +1356,7 @@ class TestDotGitServiceRm:
         result = git_service.rm("it's.txt")
 
         assert result.success is True
-        assert shell.exe.call_args_list[1][0][0] == """cfg rm --cached 'it'"'"'s.txt'"""
+        assert shell.exe.call_args_list[1][0][0] == """cfg rm --cached -- 'it'"'"'s.txt'"""
 
     @pytest.mark.parametrize(
         "error",
@@ -1400,8 +1400,8 @@ class TestDotGitServiceRm:
         assert result.output == ".ssh/config removed from git-secret, plaintext kept on disk"
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
-            "cfg secret remove .ssh/config",
-            "cfg rm --cached --ignore-unmatch .ssh/config.secret",
+            "cfg secret remove -- .ssh/config",
+            "cfg rm --cached --ignore-unmatch -- .ssh/config.secret",
             "cfg add .gitsecret/",
         ]
         assert [str(c[0][1]) for c in shell.exe.call_args_list] == ["/home/user/dotfiles"] * 4
@@ -1422,8 +1422,8 @@ class TestDotGitServiceRm:
         assert result.output == "my secret.txt removed from git-secret, plaintext kept on disk"
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
-            "cfg secret remove 'my secret.txt'",
-            "cfg rm --cached --ignore-unmatch 'my secret.txt.secret'",
+            "cfg secret remove -- 'my secret.txt'",
+            "cfg rm --cached --ignore-unmatch -- 'my secret.txt.secret'",
             "cfg add .gitsecret/",
         ]
 
@@ -1442,8 +1442,8 @@ class TestDotGitServiceRm:
         assert result.success is True
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
-            """cfg secret remove 'it'"'"'s.txt'""",
-            """cfg rm --cached --ignore-unmatch 'it'"'"'s.txt.secret'""",
+            """cfg secret remove -- 'it'"'"'s.txt'""",
+            """cfg rm --cached --ignore-unmatch -- 'it'"'"'s.txt.secret'""",
             "cfg add .gitsecret/",
         ]
 
@@ -1463,8 +1463,8 @@ class TestDotGitServiceRm:
         assert result.output == ".ssh/config removed from git-secret, plaintext kept on disk"
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
-            "cfg secret remove .ssh/config",
-            "cfg rm --cached --ignore-unmatch .ssh/config.secret",
+            "cfg secret remove -- .ssh/config",
+            "cfg rm --cached --ignore-unmatch -- .ssh/config.secret",
             "cfg add .gitsecret/",
         ]
 
@@ -1477,7 +1477,7 @@ class TestDotGitServiceRm:
         result = git_service.rm(".ssh/config")
 
         assert result.output == ".ssh/config removed from tracking"
-        assert shell.exe.call_args_list[1][0][0] == "cfg rm --cached .ssh/config"
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm --cached -- .ssh/config"
 
     @pytest.mark.parametrize(
         "error",
@@ -1599,8 +1599,10 @@ class TestDotGitServiceDelete:
 
         assert result.success is True
         assert result.output == "my file.txt deleted from dotfiles"
-        # ported verbatim from CommandDelete: the pathspec is passed unquoted
-        assert shell.exe.call_args_list[1][0][0] == "cfg rm my file.txt"
+        # PRD 00078: the pathspec is now shlex.quoted with a `--` end-of-options guard.
+        # The old assertion here expected `cfg rm my file.txt` — unquoted — which split
+        # on the space into two pathspecs and let a leading-dash name be read as a flag.
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm -- 'my file.txt'"
         assert [str(c[0][1]) for c in shell.exe.call_args_list] == ["/home/user/dotfiles"] * 2
 
     def test_partial_line_match_is_not_treated_as_encrypted(self, git_service: DotGitService, shell: MagicMock) -> None:
@@ -1613,7 +1615,7 @@ class TestDotGitServiceDelete:
 
         assert result.success is True
         assert result.output == ".ssh/config deleted from dotfiles"
-        assert shell.exe.call_args_list[1][0][0] == "cfg rm .ssh/config"
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm -- .ssh/config"
 
     @pytest.mark.parametrize(
         "error",
@@ -1649,7 +1651,7 @@ class TestDotGitServiceDelete:
         assert result.success is True
         assert result.output == "secret.conf deleted from dotfiles"
         assert any("error: no keys available" in w for w in result.warnings)
-        assert shell.exe.call_args_list[1][0][0] == "cfg rm secret.conf"
+        assert shell.exe.call_args_list[1][0][0] == "cfg rm -- secret.conf"
 
     def test_encrypted_file_is_unregistered_and_erased_from_disk(self, shell: MagicMock, tmp_path: Path) -> None:
         plaintext = tmp_path / "secret.conf"
@@ -1667,7 +1669,7 @@ class TestDotGitServiceDelete:
         assert not plaintext.exists()
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
-            "cfg secret remove -c secret.conf",
+            "cfg secret remove -c -- secret.conf",
         ]
         assert [str(c[0][1]) for c in shell.exe.call_args_list] == [str(tmp_path), str(tmp_path)]
 
@@ -1689,7 +1691,7 @@ class TestDotGitServiceDelete:
         assert not plaintext.exists()
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
-            "cfg secret remove -c my secret.txt",
+            "cfg secret remove -c -- 'my secret.txt'",
         ]
 
     def test_encrypted_file_with_no_plaintext_on_disk_still_succeeds(self, shell: MagicMock, tmp_path: Path) -> None:
@@ -1743,7 +1745,7 @@ class TestDotGitServiceDelete:
         assert not plaintext.exists()
         assert [c[0][0] for c in shell.exe.call_args_list] == [
             "cfg secret list",
-            "cfg secret remove -c secret.conf",
+            "cfg secret remove -c -- secret.conf",
         ]
 
     def test_gitignore_lines_that_merely_contain_the_path_survive_removal(

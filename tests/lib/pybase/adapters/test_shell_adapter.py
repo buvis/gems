@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -235,12 +236,23 @@ class TestShellAdapterExe:
 
     @patch("subprocess.run")
     @patch.dict(os.environ, {"TEST_VAR": "test_value"})
-    def test_exe_expands_env_vars(
+    def test_exe_does_not_expand_env_vars_in_caller_text(
         self,
         mock_run: Mock,
         shell_adapter: ShellAdapter,
     ) -> None:
-        """Test that exe expands environment variables before execution."""
+        """A ``$VAR`` in caller-supplied command text is passed through LITERALLY.
+
+        The previous assertion here required ``exe("echo $TEST_VAR")`` to reach the
+        shell as ``echo test_value`` — i.e. ShellAdapter ran ``os.path.expandvars``
+        over the WHOLE command. That was the security bug PRD 00078 fixes: it is
+        quote-unaware, so it expanded ``$VAR`` *inside* the single quotes that
+        ``shlex.quote`` had added at the call site, defeating quoting everywhere and
+        enabling injection (a filename ``my$EVIL file`` with a crafted ``EVIL`` would
+        execute). Env-var expansion now happens ONLY inside a registered alias body
+        (see ``test_exe_expands_env_vars_in_alias_body``), never over caller text, so
+        the command must reach the shell byte-for-byte as given.
+        """
         mock_result = Mock()
         mock_result.stdout = ""
         mock_result.stderr = ""
@@ -249,9 +261,33 @@ class TestShellAdapterExe:
 
         shell_adapter.exe("echo $TEST_VAR", None)
 
-        # Check that the expanded command was passed to subprocess.run
         call_args = mock_run.call_args
-        assert call_args[0][0] == "echo test_value"
+        assert call_args[0][0] == "echo $TEST_VAR"
+
+    @patch("subprocess.run")
+    @patch.dict(os.environ, {"TEST_VAR": "test_value"})
+    def test_exe_expands_env_vars_in_alias_body(
+        self,
+        mock_run: Mock,
+        shell_adapter: ShellAdapter,
+    ) -> None:
+        """Env vars in the ALIAS BODY still expand; caller text after it does not.
+
+        This is the one legitimate use of expansion (e.g. dot's ``cfg`` alias whose
+        body carries ``${DOTFILES_ROOT}``). The alias body expands; a ``$OTHER`` in
+        the caller-supplied remainder is left literal.
+        """
+        mock_result = Mock()
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        mock_result.returncode = 0
+        mock_run.return_value = mock_result
+
+        shell_adapter.alias("cfg", "git --dir=${TEST_VAR}")
+        shell_adapter.exe("cfg add $OTHER", None)
+
+        call_args = mock_run.call_args
+        assert call_args[0][0] == "git --dir=test_value add $OTHER"
 
     @patch("subprocess.run")
     @patch("buvis.pybase.adapters.shell.shell.console")
@@ -498,3 +534,54 @@ class TestShellAdapterIntegration:
         # Should only expand 'a' to 'b', not chain to 'c'
         result = shell_adapter._expand_alias("a")
         assert result == "b"
+
+
+class TestShellAdapterQuotingHolds:
+    """End-to-end quoting/injection regression tests (PRD 00078).
+
+    These drive the REAL ShellAdapter through a real ``/bin/sh`` — no ``subprocess``
+    mock — because the earlier suite mocked the adapter and re-derived the expected
+    command with ``shlex.quote`` itself, so it could never catch the whole-command
+    ``expandvars`` that expanded ``$VAR`` back inside the quotes. Here the shell's own
+    behaviour is the oracle.
+    """
+
+    def test_dollar_var_in_quoted_arg_is_literal(
+        self,
+        shell_adapter_no_logging: ShellAdapter,
+    ) -> None:
+        """A ``$VAR`` inside a ``shlex.quote``d argument is NOT expanded."""
+        evil = "my$TEST_INJECT file"
+        with patch.dict(os.environ, {"TEST_INJECT": "PWNED"}):
+            err, out = shell_adapter_no_logging.exe(f"printf %s {shlex.quote(evil)}", None)
+        assert err == ""
+        assert out == evil  # literal, not "myPWNED file"
+
+    def test_command_substitution_in_quoted_arg_does_not_execute(
+        self,
+        shell_adapter_no_logging: ShellAdapter,
+        tmp_path: Path,
+    ) -> None:
+        """A ``$(...)`` / ``;`` payload in a quoted arg is data, never executed.
+
+        Proven by a side effect: the payload would ``touch`` a sentinel file if the
+        shell ran it. The file must not appear, and the argument must reach ``printf``
+        as its exact literal self.
+        """
+        sentinel = tmp_path / "pwned"
+        evil = f"x'; touch {sentinel}; :'$(touch {sentinel})"
+        err, out = shell_adapter_no_logging.exe(f"printf %s {shlex.quote(evil)}", None)
+        assert err == ""
+        assert out == evil  # passed through verbatim
+        assert not sentinel.exists()  # nothing was executed
+
+    def test_alias_body_env_var_still_expands_end_to_end(
+        self,
+        shell_adapter_no_logging: ShellAdapter,
+    ) -> None:
+        """The one legitimate expansion — the alias body — still works through /bin/sh."""
+        with patch.dict(os.environ, {"DOTFILES_ROOT": "/tmp/dotfiles"}):
+            shell_adapter_no_logging.alias("cfg", "printf %s ${DOTFILES_ROOT}")
+            err, out = shell_adapter_no_logging.exe("cfg", None)
+        assert err == ""
+        assert out == "/tmp/dotfiles"
