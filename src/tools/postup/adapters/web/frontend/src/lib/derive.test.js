@@ -16,8 +16,14 @@ import {
 	allTodos,
 	quickWins,
 	sinceLast,
+	diffSinceLast,
+	trendSeries,
+	attentionHorizon,
 	safeUrl,
-	aggregate
+	aggregate,
+	weeklyBins,
+	weekStart,
+	monthLabels
 } from './derive.js';
 
 const day = (d) => new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
@@ -270,5 +276,123 @@ describe('safeUrl sanitization', () => {
 			null
 		);
 		expect(hostileManual.find((t) => t.id === 'o/r:judgment:hostile').url).toBeUndefined();
+	});
+});
+
+// PRD 00066 Phase 0: temporal derive functions (diff / trend / horizon).
+
+describe('diffSinceLast (PRD 00066 named diff)', () => {
+	it('is the PRD-named alias for sinceLast semantics', () => {
+		const prevRepo = { ...repo, local: { ...repo.local, dirty: 0 } };
+		const prev = { generated_at: '2026-09-27T00:00:00+00:00', repos: [prevRepo] };
+		expect(diffSinceLast([repo], prev)).toEqual(sinceLast([repo], prev));
+	});
+
+	it('reports movers, cleared and added against the previous snapshot', () => {
+		const prevRepo = { ...repo, local: { ...repo.local, dirty: 0 } };
+		const diff = diffSinceLast([repo], {
+			generated_at: '2026-09-27T00:00:00+00:00',
+			repos: [prevRepo]
+		});
+		expect(diff.at).toBe('2026-09-27T00:00:00+00:00');
+		expect(diff.added).toBeGreaterThanOrEqual(1); // dirty todo is new this run
+		expect(diff.movers[0].d).toBeGreaterThan(0); // gems got worse
+	});
+
+	it('returns null when there is no previous snapshot (first run)', () => {
+		expect(diffSinceLast([repo], null)).toBeNull();
+		expect(diffSinceLast([repo], undefined)).toBeNull();
+		expect(diffSinceLast([repo], {})).toBeNull();
+	});
+});
+
+describe('trendSeries (PRD 00066 sparkline series)', () => {
+	const line = (at, open, extra = {}) => ({
+		at,
+		skipped: 0,
+		repos: { 'buvis/gems': { i: open, p: 0, a: 0, f: 0 } },
+		...extra
+	});
+
+	it('sums open items (issues+prs+alerts+failing CI) per run', () => {
+		const series = trendSeries([
+			{ at: 't1', skipped: 0, repos: { 'a/b': { i: 1, p: 2, a: 0, f: 0 }, 'c/d': { i: 0, p: 0, a: 1, f: 1 } } }
+		]);
+		expect(series).toHaveLength(1);
+		expect(series[0].open).toBe(5); // 1+2 + 1+1
+		expect(series[0].incomplete).toBe(false);
+	});
+
+	it('marks a run incomplete when any repo errored or a repo was skipped', () => {
+		const errored = trendSeries([{ at: 't', skipped: 0, repos: { 'a/b': { i: 0, p: 0, a: 0, f: 0, e: 1 } } }]);
+		expect(errored[0].incomplete).toBe(true);
+		const skipped = trendSeries([{ at: 't', skipped: 2, repos: { 'a/b': { i: 0, p: 0, a: 0, f: 0 } } }]);
+		expect(skipped[0].incomplete).toBe(true);
+	});
+
+	it('renders a single history line as one point, not an error', () => {
+		const series = trendSeries([line('only', 3)]);
+		expect(series).toHaveLength(1);
+		expect(series[0].open).toBe(3);
+	});
+
+	it('degrades to an empty series for absent or empty history', () => {
+		expect(trendSeries(null)).toEqual([]);
+		expect(trendSeries(undefined)).toEqual([]);
+		expect(trendSeries([])).toEqual([]);
+	});
+
+	it('tolerates a line with a missing repos map', () => {
+		expect(trendSeries([{ at: 't', skipped: 0 }])[0].open).toBe(0);
+	});
+});
+
+describe('attentionHorizon (PRD 00066 Brief horizon queue)', () => {
+	// A repo with no brush_last_run always scores (never-brushed), so a
+	// genuinely-quiet repo needs a recent brush date.
+	const quietRepo = (owner, name) => ({ owner, name, brush_last_run: day(1) });
+
+	it('ranks repos that need attention by descending score, dropping the quiet ones', () => {
+		const horizon = attentionHorizon([repo, quietRepo('q', 'calm')]);
+		expect(horizon.map((x) => `${x.r.owner}/${x.r.name}`)).toEqual(['o/r']);
+		expect(horizon[0].score).toBeGreaterThan(0);
+		expect(Array.isArray(horizon[0].reasons)).toBe(true);
+		expect(horizon[0].sev).toBeDefined();
+	});
+
+	it('is stable-sorted so equal scores keep slug order', () => {
+		const a = { owner: 'a', name: 'one', brush_last_run: day(1), security: [{ severity: 'high', title: 't', url: '' }] };
+		const b = { owner: 'b', name: 'two', brush_last_run: day(1), security: [{ severity: 'high', title: 't', url: '' }] };
+		const horizon = attentionHorizon([b, a]);
+		expect(horizon.map((x) => x.r.owner)).toEqual(['a', 'b']);
+	});
+
+	it('returns an empty horizon for an all-quiet portfolio', () => {
+		expect(attentionHorizon([quietRepo('x', 'y')])).toEqual([]);
+		expect(attentionHorizon([])).toEqual([]);
+	});
+});
+
+describe('commit-heat helpers (Activity view)', () => {
+	const day = (d) => new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+
+	it('bins commits into weekly columns across the window', () => {
+		const bins = weeklyBins([{ date: day(1) }, { date: day(2) }, { date: day(9) }], 21);
+		expect(bins).toHaveLength(3); // ceil(21/7)
+		expect(bins.reduce((a, b) => a + b, 0)).toBe(3);
+		expect(bins[bins.length - 1]).toBe(2); // this week
+	});
+
+	it('ignores commits older than the window and handles no commits', () => {
+		expect(weeklyBins([{ date: day(999) }], 14).reduce((a, b) => a + b, 0)).toBe(0);
+		expect(weeklyBins(undefined, 14).reduce((a, b) => a + b, 0)).toBe(0);
+	});
+
+	it('labels a week-start column and produces a sparse month axis', () => {
+		expect(typeof weekStart(0, 60)).toBe('string');
+		const labels = monthLabels(Math.ceil(60 / 7), 60);
+		expect(labels).toHaveLength(Math.ceil(60 / 7));
+		// first column always carries a month name; repeats blank out
+		expect(labels[0]).not.toBe('');
 	});
 });

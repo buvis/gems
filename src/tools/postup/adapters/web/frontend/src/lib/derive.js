@@ -157,6 +157,27 @@ export function weeklyBins(commits, sinceDays) {
 	return bins;
 }
 
+// Human label for the start of weekly-bin column `i` (Activity commit heat).
+export const weekStart = (i, sinceDays) =>
+	new Date(Date.now() - sinceDays * DAY + i * 7 * DAY).toLocaleDateString('en', {
+		month: 'short',
+		day: 'numeric'
+	});
+
+// Sparse month axis for the weekly-bin grid: a month name only where it changes
+// from the previous column, '' elsewhere (Activity commit heat).
+export function monthLabels(ncols, sinceDays) {
+	let prev = '';
+	return Array.from({ length: ncols }, (_, i) => {
+		const m = new Date(Date.now() - sinceDays * DAY + i * 7 * DAY).toLocaleDateString('en', {
+			month: 'short'
+		});
+		const label = m === prev ? '' : m;
+		prev = m;
+		return label;
+	});
+}
+
 // Fixed slot per org (alphabetical), never reassigned by filtering.
 export function orgSlots(repos) {
 	const orgs = [...new Set(repos.map((r) => r.org))].sort();
@@ -516,6 +537,46 @@ export function sinceLast(repos, prev) {
 		added: [...nowIds].filter((id) => !prevIds.has(id)).length,
 		cleared: [...prevIds].filter((id) => !nowIds.has(id)).length
 	};
+}
+
+// PRD 00066 named diff. `sinceLast` already computes the SPA's tested
+// since-last structure ({ at, movers, added, cleared }); this is the PRD's
+// named entry point for it, so the Brief/Repos views bind to the PRD contract
+// while the ported implementation stays in one place. First run (no prev)
+// returns null so the caller renders without diff markers.
+export const diffSinceLast = (repos, prev) => sinceLast(repos, prev);
+
+// Portfolio trend from history.jsonl lines (PRD 00066 sparkline series).
+// Each line is the collector's `history_counts` wrapper:
+//   { at, skipped, repos: { "owner/name": { c,i,p,a,f,d,ah,b,w,s,u, e? } } }
+// `open` is the count of open items (issues + prs + alerts + failing CI) that
+// run; `incomplete` flags a run that cannot be trusted as a real data point —
+// a repo was skipped, or a repo row carries the `e` error marker. A single
+// history line yields a single point (the Sparkline renders it as a dot), never
+// an error.
+export const trendSeries = (history) =>
+	(history ?? []).map((h) => ({
+		at: h.at,
+		open: Object.values(h.repos ?? {}).reduce(
+			(s, c) => s + (c.i ?? 0) + (c.p ?? 0) + (c.a ?? 0) + (c.f ?? 0),
+			0
+		),
+		incomplete: (h.skipped ?? 0) > 0 || Object.values(h.repos ?? {}).some((c) => c.e)
+	}));
+
+// The attention horizon the Brief presents (PRD 00066): every repo that needs
+// you, scored and ranked highest-first, each carrying its transparent reasons
+// and worst severity. Ranking lives in `attention` (ported in 00065) — this
+// only projects and orders it. Quiet repos (score 0) drop out. Ties break by
+// slug so the order is stable across runs.
+export function attentionHorizon(repos) {
+	return (repos ?? [])
+		.map((r) => {
+			const { score, reasons } = attention(r);
+			return { r, score, reasons, sev: reasons.length ? worstSev(reasons) : 'good' };
+		})
+		.filter((x) => x.score > 0)
+		.toSorted((a, b) => b.score - a.score || slug(a.r).localeCompare(slug(b.r)));
 }
 
 export function epicsFor(repo, epics) {

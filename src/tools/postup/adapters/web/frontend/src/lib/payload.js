@@ -10,8 +10,9 @@
 //     soft into the needs-collect state.
 //
 // The shape returned matches the Python `PortfolioData` contract (data.json)
-// plus optional `epics` (epics.json) and `prev` (data-prev.json), so the shared
-// JS/Python derive-parity fixture is the same payload on both sides.
+// plus optional `epics` (epics.json), `prev` (data-prev.json), and `history`
+// (parsed history.jsonl lines), so the shared JS/Python derive-parity fixture
+// is the same payload on both sides.
 
 /**
  * @typedef {object} Payload
@@ -22,6 +23,7 @@
  * @property {string} generated_at - ISO-8601 collection timestamp
  * @property {object|null} epics - parsed epics.json, or null when not enriched
  * @property {object|null} prev - the previous data.json snapshot, or null
+ * @property {object[]} history - parsed history.jsonl lines (may be empty)
  */
 
 /**
@@ -35,13 +37,38 @@
 const EMPTY = Object.freeze({ needsCollect: true, enriched: false, payload: null, error: null });
 
 /**
- * Normalise a raw data.json + optional epics/prev into a PayloadState.
+ * Parse the newline-delimited history.jsonl body into structured line objects.
+ * Never throws: a blank body yields []; a torn/garbage line is skipped rather
+ * than failing the whole load (mirrors the collector's `_load_history`
+ * tolerance). Only the most recent `cap` lines are kept.
+ * @param {string|null} text raw history.jsonl content.
+ * @param {number} [cap] max (most recent) lines to keep.
+ * @returns {object[]}
+ */
+export function parseHistory(text, cap = 60) {
+	if (typeof text !== 'string' || !text.trim()) return [];
+	const out = [];
+	for (const line of text.split('\n')) {
+		const s = line.trim();
+		if (!s) continue;
+		try {
+			out.push(JSON.parse(s));
+		} catch {
+			// torn tail or corrupt line — skip it, keep the rest
+		}
+	}
+	return out.length > cap ? out.slice(out.length - cap) : out;
+}
+
+/**
+ * Normalise a raw data.json + optional epics/prev/history into a PayloadState.
  * @param {object|null} data parsed data.json (Python PortfolioData shape).
  * @param {object|null} epics parsed epics.json, or null.
  * @param {object|null} prev parsed data-prev.json, or null.
+ * @param {object[]} [history] parsed history.jsonl lines, or [].
  * @returns {PayloadState}
  */
-export function toState(data, epics = null, prev = null) {
+export function toState(data, epics = null, prev = null, history = []) {
 	if (!data || !Array.isArray(data.repos)) {
 		return { ...EMPTY };
 	}
@@ -55,7 +82,8 @@ export function toState(data, epics = null, prev = null) {
 			since_days: data.since_days ?? 60,
 			generated_at: data.generated_at ?? '',
 			epics: epics ?? null,
-			prev: prev ?? null
+			prev: prev ?? null,
+			history: Array.isArray(history) ? history : []
 		},
 		error: null
 	};
@@ -92,7 +120,20 @@ async function loadFixtures() {
 		} catch {
 			epics = null; // enrichment absent — deterministic subset
 		}
-		return toState(data, epics, null);
+		let prev = null;
+		try {
+			prev = (await import('../fixtures/data-prev.json')).default;
+		} catch {
+			prev = null; // first run — no rotated snapshot yet
+		}
+		let history = [];
+		try {
+			const raw = (await import('../fixtures/history.jsonl?raw')).default;
+			history = parseHistory(raw);
+		} catch {
+			history = []; // no history yet — sparkline simply won't render
+		}
+		return toState(data, epics, prev, history);
 	} catch {
 		return { ...EMPTY };
 	}
@@ -129,5 +170,12 @@ async function loadFromApi(fetchImpl) {
 	} catch {
 		prev = null;
 	}
-	return toState(data, epics, prev);
+	let history = [];
+	try {
+		const res = await fetchImpl('/api/history');
+		if (res.ok) history = parseHistory(await res.text());
+	} catch {
+		history = [];
+	}
+	return toState(data, epics, prev, history);
 }

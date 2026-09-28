@@ -3,7 +3,7 @@
 	import { setContext } from 'svelte';
 	import { page } from '$app/state';
 	import { loadPayload } from '$lib/payload.js';
-	import { allTodos, slug, ago } from '$lib/derive.js';
+	import { allTodos, quadrant, aggregate, slug, ago } from '$lib/derive.js';
 	import { pruneDone, isStorageBlocked } from '$lib/done.js';
 
 	let { children } = $props();
@@ -38,16 +38,30 @@
 	const repos = $derived(state.payload?.repos ?? []);
 	const epics = $derived(state.payload?.epics ?? null);
 	const external = $derived(state.payload?.external ?? null);
+	const sinceDays = $derived(state.payload?.since_days ?? 60);
 	const todos = $derived(
 		state.payload ? allTodos(repos, epics, external) : []
 	);
+	const agg = $derived(aggregate(repos, sinceDays));
 
 	const TABS = [
 		{ href: '/', id: 'brief', label: 'Brief' },
 		{ href: '/todos', id: 'todos', label: 'Todos' },
-		{ href: '/repos', id: 'repos', label: 'Repos' }
+		{ href: '/matrix', id: 'matrix', label: 'Matrix' },
+		{ href: '/repos', id: 'repos', label: 'Repos' },
+		{ href: '/activity', id: 'activity', label: 'Activity' },
+		{ href: '/work', id: 'work', label: 'Work' },
+		{ href: '/prds', id: 'prds', label: 'PRDs' }
 	];
-	const counts = $derived({ brief: null, todos: todos.length, repos: repos.length });
+	const counts = $derived({
+		brief: null,
+		todos: todos.length,
+		matrix: todos.filter((t) => quadrant(t) === 'do').length,
+		repos: repos.length,
+		activity: agg.commits,
+		work: agg.prs + agg.issues,
+		prds: agg.backlog + agg.wip
+	});
 	const activePath = $derived(page.url.pathname);
 </script>
 
