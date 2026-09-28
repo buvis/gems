@@ -36,5 +36,16 @@ def collect(ctx: click.Context, *, no_fetch: bool, days: int) -> None:
     console.report_result(result)
 
 
+@cli.command("enrich", help="Enrich the collected data into epics.json via the claude CLI (optional).")
+@click.pass_context
+def enrich(ctx: click.Context) -> None:
+    """Build the enrichment prompt, invoke claude, and write epics.json."""
+    from postup.commands.enrich.enrich import CommandEnrich
+
+    settings = get_settings(ctx, PostupSettings)
+    result = CommandEnrich(settings).execute()
+    console.report_result(result)
+
+
 if __name__ == "__main__":
     cli()
