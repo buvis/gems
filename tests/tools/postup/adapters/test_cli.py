@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import re
+
 from click.testing import CliRunner
 from postup.adapters.cli import cli
+
+
+def _flat(text: str) -> str:
+    """Collapse all whitespace so console line-wrapping can't break a match."""
+    return re.sub(r"\s+", " ", text)
 
 
 class TestCli:
@@ -37,7 +44,7 @@ class TestCli:
         monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
         result = CliRunner().invoke(cli, [])
         assert result.exit_code == 0
-        assert "postup collect" in result.output
+        assert "postup collect" in _flat(result.output)
 
     def test_collect_runs_and_reports(self, tmp_path, mocker, monkeypatch):
         # No roots configured -> command returns failure, CLI renders it without crashing.
@@ -45,4 +52,4 @@ class TestCli:
         monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
         result = CliRunner().invoke(cli, ["collect", "--no-fetch"])
         assert result.exit_code == 0
-        assert "no repositories" in result.output
+        assert "no repositories" in _flat(result.output)

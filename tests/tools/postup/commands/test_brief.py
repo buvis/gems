@@ -7,6 +7,7 @@ default surface, so exercising it must not import Textual.
 from __future__ import annotations
 
 import json
+import re
 import sys
 
 from click.testing import CliRunner
@@ -14,6 +15,11 @@ from postup.commands.brief.brief import CommandBrief, render_brief
 from postup.domain.contracts import CIRun, Commit, PortfolioData, PullRequest, RepoData, write_outputs
 from postup.domain.derive import load_view_model
 from postup.settings import PostupSettings
+
+
+def _flat(text: str) -> str:
+    """Collapse all whitespace so console line-wrapping can't break a match."""
+    return re.sub(r"\s+", " ", text)
 
 
 def _seed(out_dir, *, enriched: bool = False) -> None:
@@ -107,7 +113,7 @@ class TestImportIsolation:
 
         result = CliRunner().invoke(cli, [])  # bare postup -> brief
         assert result.exit_code == 0
-        assert "Portfolio standup" in result.output
+        assert "Portfolio standup" in _flat(result.output)
         assert "textual" not in sys.modules, "bare `postup` must not import textual"
 
     def test_brief_subcommand_does_not_import_textual(self, tmp_path, monkeypatch):
