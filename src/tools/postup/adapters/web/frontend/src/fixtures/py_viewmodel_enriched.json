@@ -1,0 +1,109 @@
+{
+  "needs_collect": false,
+  "enriched": true,
+  "generated_at": "2026-09-28T10:00:00+00:00",
+  "summary": "Portfolio moved forward this week.",
+  "attention": [
+    {
+      "repo": "buvis/gems",
+      "urgency": "now",
+      "headline": "1 failing CI workflow(s)",
+      "kind": "ci"
+    },
+    {
+      "repo": "buvis/gems",
+      "urgency": "now",
+      "headline": "1 open security alert(s)",
+      "kind": "security"
+    },
+    {
+      "repo": "buvis/gems",
+      "urgency": "soon",
+      "headline": "1 open PR(s) awaiting attention",
+      "kind": "review"
+    },
+    {
+      "repo": "buvis/gems",
+      "urgency": "soon",
+      "headline": "4 file(s) dirty for 9d",
+      "kind": "dirty"
+    },
+    {
+      "repo": "other/thing",
+      "urgency": "soon",
+      "headline": "review requested: #77 please review",
+      "kind": "external-review"
+    },
+    {
+      "repo": "buvis/gems",
+      "urgency": "later",
+      "headline": "WIP PRD idle 30d: stalled",
+      "kind": "wip-idle"
+    }
+  ],
+  "todos": [
+    {
+      "repo": "buvis/gems",
+      "action": "fix failing CI",
+      "why": "the default branch has a failing workflow",
+      "kind": "mechanical",
+      "urgency": "now"
+    },
+    {
+      "repo": "buvis/gems",
+      "action": "cut a release",
+      "why": "12 unreleased commit(s) with a CHANGELOG entry",
+      "kind": "mechanical",
+      "urgency": "soon"
+    },
+    {
+      "repo": "buvis/gems",
+      "action": "prune merged branches",
+      "why": "1 merged stray branch(es)",
+      "kind": "mechanical",
+      "urgency": "later"
+    },
+    {
+      "repo": "buvis/gems",
+      "action": "Resume the parked PRD",
+      "why": "dirty for days",
+      "kind": "judgment",
+      "urgency": "now"
+    }
+  ],
+  "repos": [
+    {
+      "repo": "buvis/docs",
+      "commits": 3,
+      "open_prs": 0,
+      "open_issues": 0,
+      "failing_ci": 0,
+      "alerts": 0,
+      "unreleased": 0,
+      "dirty": 0,
+      "errors": []
+    },
+    {
+      "repo": "buvis/gems",
+      "commits": 42,
+      "open_prs": 2,
+      "open_issues": 1,
+      "failing_ci": 1,
+      "alerts": 1,
+      "unreleased": 12,
+      "dirty": 4,
+      "errors": []
+    }
+  ],
+  "since_last": {
+    "has_prev": false,
+    "commits": 0,
+    "open_prs": 0,
+    "open_issues": 0,
+    "alerts": 0,
+    "failing_ci": 0,
+    "new_repos": [],
+    "gone_repos": []
+  },
+  "errors": []
+}

@@ -73,6 +73,15 @@ src/tools/bim/commands/serve/frontend/build/
 src/tools/bim/commands/serve/frontend/.svelte-kit/
 src/tools/bim/commands/serve/static/
 
+# postup frontend (PRD 00065): unlike bim (which builds on-demand and ignores
+# its build/), postup COMMITS its production build so the future `postup serve`
+# (00067) can ship it without a node toolchain. So build/ is intentionally NOT
+# ignored here — only the dev-only trees are. The negation re-includes it past
+# the global `build/` packaging rule above.
+src/tools/postup/adapters/web/frontend/node_modules/
+src/tools/postup/adapters/web/frontend/.svelte-kit/
+!src/tools/postup/adapters/web/frontend/build/
+
 # KiroCrew / kiro-cli local state — ignore all except shared steering/specs
 # (.kiro/* not .kiro/, so git still descends and the negations below take effect)
 .kiro/*
