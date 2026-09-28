@@ -1,12 +1,21 @@
 <script>
 	import { getContext } from 'svelte';
-	import { slug, ciFailing, attention } from '$lib/derive.js';
+	import { slug, ciFailing, attention, diffSinceLast } from '$lib/derive.js';
 
 	const portfolio = getContext('portfolio');
 	const payload = $derived(portfolio.state.payload);
 	const repos = $derived(payload?.repos ?? []);
+	const prev = $derived(payload?.prev ?? null);
 
 	const scored = $derived(new Map(repos.map((r) => [slug(r), attention(r)])));
+
+	// Since-last score movement per repo (PRD 00066): map slug -> delta from the
+	// diff against the rotated prev snapshot. Empty when there is no prev (first
+	// run), so no repo shows a diff badge — exactly the no-prev behaviour.
+	const deltas = $derived.by(() => {
+		const d = diffSinceLast(repos, prev);
+		return new Map((d?.movers ?? []).map((m) => [slug(m.r), m.d]));
+	});
 
 	let search = $state('');
 	let sort = $state('attention');
@@ -42,7 +51,13 @@
 		{@const wip = (r.local?.dirty ?? 0) + (r.local?.ahead ?? 0) > 0}
 		<article class="card">
 			<div class="head">
-				<b>{slug(r)}</b>
+				<a class="cname" href="/repo/{slug(r)}"><b>{slug(r)}</b></a>
+				{#if deltas.has(slug(r))}
+					{@const d = deltas.get(slug(r))}
+					<span class="delta {d > 0 ? 'sev-critical' : 'sev-good'}" title="attention score change since last brief">
+						{d > 0 ? '▲' : '▼'} {Math.abs(d)}
+					</span>
+				{/if}
 				{#if sc.score > 0}<span class="scorelbl">{sc.score}</span>{/if}
 			</div>
 			{#if r.description}<p class="desc">{r.description}</p>{/if}
@@ -122,6 +137,17 @@
 	}
 	.head b {
 		font-size: 15px;
+	}
+	.cname {
+		text-decoration: none;
+		color: var(--ink);
+	}
+	.cname:hover {
+		color: var(--accent);
+	}
+	.delta {
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
 	}
 	.scorelbl {
 		margin-left: auto;

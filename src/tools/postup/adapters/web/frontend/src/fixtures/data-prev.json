@@ -1,0 +1,123 @@
+{
+ "schema_version": 1,
+ "generated_at": "2026-09-27T10:00:00+00:00",
+ "since_days": 60,
+ "repos": [
+  {
+   "path": "/repos/gems",
+   "owner": "buvis",
+   "name": "gems",
+   "default_branch": null,
+   "description": "",
+   "language": "",
+   "stars": 0,
+   "commit_count": 38,
+   "commits": [
+    {
+     "sha": "old0001",
+     "date": "2026-09-14",
+     "author": "bob",
+     "subject": "feat: prior"
+    }
+   ],
+   "releases": [],
+   "last_tag": null,
+   "unreleased_commits": 8,
+   "issues": [
+    {
+     "number": 9,
+     "title": "bug",
+     "created": null,
+     "labels": []
+    }
+   ],
+   "prs": [
+    {
+     "number": 1,
+     "title": "feat: y",
+     "author": "bob",
+     "created": null,
+     "draft": false,
+     "review": "",
+     "checks": "",
+     "labels": []
+    }
+   ],
+   "ci": [
+    {
+     "workflow": "test",
+     "status": "completed",
+     "conclusion": "success",
+     "url": "u",
+     "date": null
+    }
+   ],
+   "security": [],
+   "branches": {
+    "stray": [
+     {
+      "name": "old",
+      "date": "2026-01-01",
+      "merged": true
+     }
+    ],
+    "worktrees": []
+   },
+   "prds": {
+    "backlog": [
+     "a"
+    ],
+    "wip": [
+     {
+      "title": "stalled",
+      "idle_days": 23
+     }
+    ],
+    "done_count": 3
+   },
+   "changelog_unreleased": true,
+   "brush_last_run": null,
+   "local": {
+    "branch": "master",
+    "dirty": 0,
+    "dirty_since_days": 0,
+    "ahead": 0,
+    "behind": 0,
+    "stashes": 0
+   },
+   "skipped": null,
+   "errors": []
+  },
+  {
+   "path": "/repos/docs",
+   "owner": "buvis",
+   "name": "docs",
+   "default_branch": null,
+   "description": "",
+   "language": "",
+   "stars": 0,
+   "commit_count": 3,
+   "commits": [],
+   "releases": [],
+   "last_tag": null,
+   "unreleased_commits": null,
+   "issues": [],
+   "prs": [],
+   "ci": [],
+   "security": [],
+   "branches": null,
+   "prds": null,
+   "changelog_unreleased": null,
+   "brush_last_run": null,
+   "local": null,
+   "skipped": null,
+   "errors": []
+  }
+ ],
+ "skipped": [],
+ "external": {
+  "review_requested": [],
+  "authored": [],
+  "error": null
+ }
+}

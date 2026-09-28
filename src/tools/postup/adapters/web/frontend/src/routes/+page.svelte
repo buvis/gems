@@ -8,9 +8,14 @@
 		allTodos,
 		quickWins,
 		epicsFor,
+		diffSinceLast,
+		trendSeries,
+		ago,
 		safeUrl
 	} from '$lib/derive.js';
 	import { loadDone } from '$lib/done.js';
+	import Horizon from './_components/Horizon.svelte';
+	import Sparkline from './_components/Sparkline.svelte';
 
 	const portfolio = getContext('portfolio');
 	const payload = $derived(portfolio.state.payload);
@@ -21,6 +26,8 @@
 	const external = $derived(payload?.external ?? null);
 	const sinceDays = $derived(payload?.since_days ?? 60);
 	const skipped = $derived(payload?.skipped ?? []);
+	const prev = $derived(payload?.prev ?? null);
+	const history = $derived(payload?.history ?? []);
 
 	const scored = $derived(new Map(repos.map((r) => [slug(r), attention(r)])));
 	const agg = $derived(aggregate(repos, sinceDays));
@@ -33,6 +40,12 @@
 	const fires = $derived(queue.filter((x) => worstSev(x.reasons) === 'critical'));
 	const paragraphs = $derived((epics.summary ?? '').split(/\n\n+/).filter(Boolean));
 	const wins = $derived(quickWins(allTodos(repos, epics, external), loadDone()));
+
+	// Temporal features (PRD 00066): since-last diff against the rotated prev
+	// snapshot (null on first run -> no diff markers), and the portfolio trend
+	// from complete history runs (a single point still renders, as a dot).
+	const delta = $derived(diffSinceLast(repos, prev));
+	const trend = $derived(trendSeries(history).filter((h) => !h.incomplete));
 
 	// Deterministic stat row — always available, LLM or not.
 	const STATS = $derived([
@@ -99,6 +112,36 @@
 			</ul>
 		{/if}
 	</section>
+
+	<section class="glass">
+		<h2>Attention horizon</h2>
+		<Horizon {repos} />
+	</section>
+
+	{#if delta}
+		<section class="glass">
+			<h2>Since last brief</h2>
+			<p class="delta">
+				vs {ago(delta.at)}:
+				<b class="sev-good">{delta.cleared} cleared</b> ·
+				<b class:sev-serious={delta.added > 0}>{delta.added} new</b>
+			</p>
+			{#each delta.movers.slice(0, 3) as m (slug(m.r))}
+				<a class="mover" href="/repo/{slug(m.r)}">
+					<b class={m.d > 0 ? 'sev-critical' : 'sev-good'}>{m.d > 0 ? '▲' : '▼'} {Math.abs(m.d)}</b>
+					{slug(m.r)}
+				</a>
+			{/each}
+			{#if trend.length >= 1}
+				<div class="trend">
+					<Sparkline values={trend.map((h) => h.open)} w={300} h={22} />
+					<span class="tlab">
+						{#if trend.length === 1}open items (one brief so far){:else}open items across {trend.length} briefs{/if}
+					</span>
+				</div>
+			{/if}
+		</section>
+	{/if}
 
 	<section class="glass">
 		<h2>The story</h2>
@@ -240,5 +283,28 @@
 		margin: 8px 0 0;
 		font-size: 12px;
 		color: var(--ink-2);
+	}
+	.delta {
+		margin: 0 0 8px;
+		font-size: 13px;
+	}
+	.mover {
+		display: block;
+		width: 100%;
+		padding: 3px 0;
+		text-decoration: none;
+		color: var(--ink);
+		font-size: 13px;
+	}
+	.mover:hover {
+		color: var(--accent);
+	}
+	.trend {
+		margin-top: 8px;
+	}
+	.tlab {
+		display: block;
+		color: var(--muted);
+		font-size: 11px;
 	}
 </style>

@@ -1,8 +1,9 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import { svelteTesting } from '@testing-library/svelte/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [sveltekit(), svelteTesting()],
 	server: {
 		proxy: {
 			'/api': 'http://127.0.0.1:8000'
@@ -10,7 +11,10 @@ export default defineConfig({
 	},
 	test: {
 		// The logic layer (derive, payload, done) is framework-free and runs in
-		// node; svelte component tests would need a DOM env added per-file.
+		// node. PRD 00066 adds per-view Svelte component tests, which mount real
+		// components and so need a DOM — each of those files opts into jsdom with a
+		// `// @vitest-environment jsdom` docblock at its top. Everything else stays
+		// in the fast node env, preserving the 00065 default.
 		environment: 'node',
 		include: ['src/**/*.{test,spec}.{js,ts}'],
 		coverage: {
