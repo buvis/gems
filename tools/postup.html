@@ -76,6 +76,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#per-repository-signals">Per-repository signals</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#enrichment">Enrichment</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#terminal-standup">Terminal standup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#web-ui">Web UI</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
@@ -125,9 +126,9 @@ the state of every repository in your portfolio into typed, versioned file
 contracts that the other postup interfaces consume. It runs fully without any
 LLM.</p>
 <p>This page documents PRD A (the gem scaffold and deterministic collector),
-PRD B (optional LLM enrichment via the <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI), and PRD F (the terminal
-standup surfaces — the text brief and the Textual TUI). The web UI lands in a
-later PRD.</p>
+PRD B (optional LLM enrichment via the <code class="docutils literal notranslate"><span class="pre">claude</span></code> CLI), PRD F (the terminal
+standup surfaces — the text brief and the Textual TUI), and PRD E (the
+<code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">serve</span></code> web UI).</p>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>postup<span class="w"> </span>collect<span class="w">               </span><span class="c1"># collect every configured repo, fetch first</span>
@@ -306,6 +307,45 @@ reports a standardized install hint (<code class="docutils literal notranslate">
 rather than a traceback. Its layout is gated by Textual snapshot tests that run
 only on the canonical CI env (Linux + Python 3.12) and are auto-skipped
 elsewhere; regenerate baselines via the <code class="docutils literal notranslate"><span class="pre">update-snapshots</span></code> GitHub workflow.</p>
+</section>
+</section>
+<section id="web-ui">
+<h2>Web UI<a class="headerlink" href="#web-ui" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">serve</span></code> starts a FastAPI web server that delivers the SvelteKit brief
+UI over localhost — the only web delivery path for postup. It serves the
+committed production build and the live payload data, and pushes refreshes over
+Server-Sent Events so an open browser updates without a manual reload.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>postup<span class="w"> </span>serve<span class="w">                 </span><span class="c1"># bind 127.0.0.1:8000, open the browser</span>
+postup<span class="w"> </span>serve<span class="w"> </span>-p<span class="w"> </span><span class="m">9000</span><span class="w">         </span><span class="c1"># a different port</span>
+postup<span class="w"> </span>serve<span class="w"> </span>-H<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w">      </span><span class="c1"># bind a non-loopback interface (see below)</span>
+postup<span class="w"> </span>serve<span class="w"> </span>--no-browser<span class="w">    </span><span class="c1"># do not open the browser on start</span>
+</pre></div>
+</div>
+<p>Behaviour:</p>
+<ul class="simple">
+<li><p><strong>Serves the last collected data until refreshed</strong> — starting the server does
+<strong>not</strong> auto-run a collect (no startup latency, no surprise network calls).
+A never-collected <code class="docutils literal notranslate"><span class="pre">out_dir</span></code> renders the UI’s explicit <em>empty portfolio</em>
+state rather than erroring. Use the in-UI <strong>collect</strong> / <strong>enrich</strong> triggers,
+or run the CLI commands, to populate or refresh the data; the browser picks up
+the change over SSE.</p></li>
+<li><p><strong>Triggers run the same command classes as the CLI</strong> — the UI’s collect and
+enrich buttons drive <code class="docutils literal notranslate"><span class="pre">CommandCollect</span></code> / <code class="docutils literal notranslate"><span class="pre">CommandEnrich</span></code> through the
+composition root (one action, one implementation), and report the
+<code class="docutils literal notranslate"><span class="pre">CommandResult</span></code> message. A trigger sent while a run is already active is
+rejected with an <em>already running</em> status rather than starting a second run.</p></li>
+<li><p><strong>Confinement</strong> (the 00042 posture) — the server binds localhost by default,
+installs <code class="docutils literal notranslate"><span class="pre">TrustedHostMiddleware</span></code> (a foreign <code class="docutils literal notranslate"><span class="pre">Host</span></code> header is rejected),
+guards the mutating trigger routes with a per-process auth token (injected
+into the page on loopback), and resolves every request-derived filesystem
+path under <code class="docutils literal notranslate"><span class="pre">out_dir</span></code> before reading it. Binding a non-loopback host
+(<code class="docutils literal notranslate"><span class="pre">-H</span> <span class="pre">0.0.0.0</span></code>) widens the allowed hosts and prints the auth token to the
+console with a warning that any host reaching the port can read the data
+without it.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">serve</span></code> needs the <code class="docutils literal notranslate"><span class="pre">postup-web</span></code> extra (fastapi / uvicorn /
+watchfiles). When it is absent the command reports a standardized install hint
+(<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[postup-web]</span></code>) rather than a traceback.</p>
 <ul class="simple">
 <li><p>An authenticated <code class="docutils literal notranslate"><span class="pre">gh</span></code> CLI for forge data. Its absence degrades per
 repository into <code class="docutils literal notranslate"><span class="pre">errors</span></code> rather than failing the run.</p></li>
@@ -315,9 +355,10 @@ surface are unaffected.</p></li>
 <li><p>No extra needed for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">collect</span></code> and the text brief — they run on the
 core-only <code class="docutils literal notranslate"><span class="pre">buvis-gems</span></code> install with zero tool-specific dependencies. The
 <code class="docutils literal notranslate"><span class="pre">postup</span></code> extra (Textual) is required <strong>only</strong> for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">tui</span></code>:
-<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[postup]</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[postup]</span></code>. The <code class="docutils literal notranslate"><span class="pre">postup-web</span></code> extra (fastapi /
+uvicorn / watchfiles) is required <strong>only</strong> for <code class="docutils literal notranslate"><span class="pre">postup</span> <span class="pre">serve</span></code>:
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">buvis-gems[postup-web]</span></code>.</p></li>
 </ul>
-</section>
 </section>
 </section>
 
