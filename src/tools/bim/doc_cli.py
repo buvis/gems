@@ -199,6 +199,49 @@ def doc_audit(ctx: click.Context) -> None:
 register_rules_subcommands(doc)
 
 
+@doc.command("migrate-layout", help="Migrate legacy flat-layout zettels into per-issuer subfolders")
+@click.option(
+    "--apply",
+    "apply_changes",
+    is_flag=True,
+    default=False,
+    help="Perform the moves. Without this flag the command is a dry run (prints the plan, changes nothing).",
+)
+@click.pass_context
+def doc_migrate_layout(ctx: click.Context, *, apply_changes: bool) -> None:
+    settings = get_settings(ctx, BimSettings)
+    if settings.doc is None:
+        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        return
+
+    try:
+        from bim.commands.doc.migrate.migrate_layout import CommandMigrateLayout
+        from bim.commands.doc.shared.health import MissingDependency
+        from bim.dependencies import get_health_checker, get_migrate_services
+    except ImportError:
+        console.require_import("doc")
+        return
+
+    try:
+        get_health_checker()(settings.doc)
+    except MissingDependency as exc:
+        console.panic(str(exc))
+        return
+
+    services = get_migrate_services(settings.doc)
+    cmd = CommandMigrateLayout(services=services, dry_run=not apply_changes)
+    result = cmd.execute()
+
+    if not result.success:
+        console.failure(result.error or "migrate-layout failed")
+        return
+    for line in result.info:
+        console.info(line)
+    for w in result.warnings:
+        console.warning(w)
+    console.success(result.output or "migrate-layout done")
+
+
 def _report_doc_result(result: CommandResult, *, default_failure: str, strict: bool = False) -> None:
     """Map a doc-subsystem ``CommandResult`` to console output.
 

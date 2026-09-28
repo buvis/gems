@@ -585,6 +585,43 @@ triage with a ``rule_conflict: <id1> vs <id2>`` reason.
 **Authoring workflow:** write rule → ``rules validate`` → ``rules test``
 on a sample → ``rules backtest`` to verify no cross-folder hits → deploy.
 
+bim doc migrate-layout
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Migrate legacy flat-layout zettels reported by ``bim doc audit`` into their
+per-issuer subfolder. For each entry in the audit's ``legacy_layout_zettels``
+list, the command moves ``<vault>/<doc-subdir>/<basename>.md`` to
+``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``, where the issuer slug is
+read from the zettel's own ``file-path`` link (the directory holding the
+paired PDF). The zettel content — including the ``file-path`` link — is
+preserved byte-for-byte, so the PDF link stays valid.
+
+.. code-block:: bash
+
+    bim doc migrate-layout            # dry run: prints the plan, changes nothing
+    bim doc migrate-layout --apply    # performs the moves
+
+Options:
+
+- ``--apply`` — perform the moves. Without it the command is a **dry run**
+  (the default): it prints each planned ``source -> target`` and touches
+  nothing on disk.
+
+Behaviour:
+
+- **Dry-run by default.** Nothing is moved unless ``--apply`` is passed.
+- **Atomic per file.** Each zettel is written to its per-issuer target via
+  the atomic-write helper (tempfile + fsync + replace), then the legacy file
+  is removed — never a truncate-in-place.
+- **Skip and report, never partial.** A legacy zettel whose frontmatter is
+  unparseable, whose ``file-path`` is missing so the issuer slug cannot be
+  derived, or whose per-issuer target already exists, is skipped and reported
+  as a warning; the run continues with the rest. No file is ever left half
+  migrated.
+
+After a successful ``--apply``, re-running ``bim doc audit`` shows the
+migrated zettels are no longer in ``legacy_layout_zettels``.
+
 bim doc audit
 ~~~~~~~~~~~~~
 
@@ -678,7 +715,7 @@ stdout plus a structured JSON report at
 * ``legacy_layout_zettels`` — absolute paths of zettels found at the v0
   flat path ``<vault>/<doc-subdir>/<basename>.md`` rather than the v1
   per-issuer path ``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``.
-  This array is the input for a future legacy-zettel migration command.
+  This array is the input for ``bim doc migrate-layout`` (below).
 * ``rule_findings`` — registry-loadability errors, priority conflicts,
   and stale-rule warnings.
 * ``issuer_inboxes`` — per-issuer ``inbox/`` directories with unprocessed

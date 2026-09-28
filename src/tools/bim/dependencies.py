@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from buvis.pybase.zettel.domain.value_objects.query_spec import QuerySpec
 
     from bim.commands.doc.audit.audit import AuditServices
+    from bim.commands.doc.migrate.migrate_layout import MigrateServices
     from bim.commands.doc.shared.classifier import Classifier
     from bim.commands.doc.shared.extractor import Extractor
     from bim.commands.doc.shared.issuers import IssuerRegistry
@@ -271,4 +272,25 @@ def get_audit_services(settings: DocSettings) -> AuditServices:
         low_confidence_threshold=settings.ocr.low_confidence_threshold,
         ocr_quality_reader=_ocr_quality_reader,
         hash_reader=sha256_file,
+    )
+
+
+def get_migrate_services(settings: DocSettings) -> MigrateServices:
+    """Run a fresh audit and bundle its ``legacy_layout_zettels`` for migration.
+
+    ``bim doc migrate-layout`` needs the current legacy list; deriving it from
+    a fresh audit (rather than trusting a possibly-stale on-disk JSON report)
+    keeps the migration plan honest against what is on disk right now. Reuses
+    the same ``AuditServices`` wiring as ``bim doc audit``.
+    """
+    from bim.commands.doc.audit.audit import CommandAudit
+    from bim.commands.doc.migrate.migrate_layout import MigrateServices
+
+    audit_result = CommandAudit(services=get_audit_services(settings)).execute()
+    report = audit_result.metadata.get("report")
+    legacy = tuple(report.legacy_layout_zettels) if report is not None else ()
+    return MigrateServices(
+        legacy_zettels=legacy,
+        vault_root=settings.paths.vault_root,
+        vault_documents_subdir=settings.paths.vault_documents_subdir,
     )
