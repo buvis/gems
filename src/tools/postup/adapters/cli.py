@@ -16,11 +16,24 @@ from postup.settings import PostupSettings
 __all__ = ["cli"]
 
 
-@click.group(help="POrtfolio STandUP — collect and render portfolio state.")
+@click.group(
+    help="POrtfolio STandUP — collect and render portfolio state.",
+    invoke_without_command=True,
+)
 @buvis_options(settings_class=PostupSettings)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
+    # Bare `postup` (no subcommand) runs the text brief — the default surface.
+    # This path pulls in only the pure derive layer, never Textual.
+    if ctx.invoked_subcommand is None:
+        from postup.commands.brief.brief import CommandBrief
+
+        settings = get_settings(ctx, PostupSettings)
+        result = CommandBrief(settings).execute()
+        if result.success and result.metadata.get("text"):
+            console.print(str(result.metadata["text"]), mode="raw")
+        console.report_result(result)
 
 
 @cli.command("collect", help="Collect portfolio state into the versioned file contracts.")
@@ -44,6 +57,33 @@ def enrich(ctx: click.Context) -> None:
 
     settings = get_settings(ctx, PostupSettings)
     result = CommandEnrich(settings).execute()
+    console.report_result(result)
+
+
+@cli.command("brief", help="Print the deterministic text standup from the latest data.json.")
+@click.pass_context
+def brief(ctx: click.Context) -> None:
+    """Render the text standup (the same surface as bare ``postup``)."""
+    from postup.commands.brief.brief import CommandBrief
+
+    settings = get_settings(ctx, PostupSettings)
+    result = CommandBrief(settings).execute()
+    if result.success and result.metadata.get("text"):
+        console.print(str(result.metadata["text"]), mode="raw")
+    console.report_result(result)
+
+
+@cli.command("tui", help="Open the interactive Textual standup (requires the 'postup' extra).")
+@click.pass_context
+def tui(ctx: click.Context) -> None:
+    """Launch the Textual standup; a missing extra yields install guidance."""
+    settings = get_settings(ctx, PostupSettings)
+    try:
+        from postup.commands.tui.tui import CommandTui
+    except ImportError:
+        console.require_import("postup")
+        return
+    result = CommandTui(settings).execute()
     console.report_result(result)
 
 
