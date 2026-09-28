@@ -51,7 +51,6 @@ class ShellAdapter:
             (error_message, empty string).
         """
         expanded_command = self._expand_alias(command)
-        expanded_command = self._expand_environment_variables(expanded_command)
 
         cwd = Path(working_dir) if working_dir and Path(working_dir).is_dir() else Path.cwd()
 
@@ -81,7 +80,6 @@ class ShellAdapter:
         working_dir: Path | None,
     ) -> None:
         expanded_command = self._expand_alias(command)
-        expanded_command = self._expand_environment_variables(expanded_command)
 
         cwd = Path(working_dir) if working_dir and Path(working_dir).is_dir() else Path.cwd()
 
@@ -109,27 +107,40 @@ class ShellAdapter:
         return shutil.which(command) is not None
 
     def _expand_alias(self: ShellAdapter, command: str) -> str:
-        """Expand aliases in the command string.
+        """Expand an aliased prefix, substituting env vars in the alias body only.
+
+        Only the alias *body* (the registered command an alias maps to) is passed
+        through environment-variable expansion. Caller-supplied text — including the
+        arguments that follow the alias — is left byte-for-byte intact, so a value a
+        caller has already quoted with :func:`shlex.quote` survives to the shell
+        unchanged. Expanding the whole command instead would reach inside those quotes
+        and re-interpret ``$VAR`` in caller data, defeating the quoting and allowing
+        command injection.
 
         Args:
-            command: The command string potentially containing aliases.
+            command: The command string potentially beginning with an alias.
 
         Returns:
-            The command string with any aliases expanded.
+            The command with a leading alias replaced by its env-expanded body; the
+            original string when no alias matches.
         """
         for alias, cmd in self.aliases.items():
             if command.startswith(alias):
-                return command.replace(alias, cmd, 1)
+                return command.replace(alias, self._expand_environment_variables(cmd), 1)
         return command
 
     def _expand_environment_variables(self: ShellAdapter, command: str) -> str:
-        """Expand environment variables in the command string.
+        """Expand environment variables in an alias body.
+
+        Applied only to a registered alias body via :meth:`_expand_alias`, never to a
+        whole caller-supplied command, so it cannot expand ``$VAR`` inside quoting a
+        caller added.
 
         Args:
-            command: The command string potentially containing environment variables in ${VAR} format.
+            command: The alias body, potentially containing ``${VAR}`` references.
 
         Returns:
-            The command string with environment variables expanded.
+            The body with environment variables expanded.
         """
         return os.path.expandvars(command)
 
