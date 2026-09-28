@@ -69,6 +69,7 @@
 <li class="toctree-l3"><a class="reference internal" href="tools/outlookctl.html">outlookctl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tools/pinger.html">pinger</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tools/puc.html">puc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/postup.html">postup</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tools/readerctl.html">readerctl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tools/sysup.html">sysup</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tools/vuc.html">vuc</a></li>
@@ -112,7 +113,7 @@
 <h1>CLI Tools<a class="headerlink" href="#cli-tools" title="Link to this heading"></a></h1>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
-<p>The base install registers all 15 CLIs but only pulls core dependencies.
+<p>The base install registers all 16 CLIs but only pulls core dependencies.
 Tools that need extra packages will tell you what to install if the dep is missing.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>buvis-gems<span class="w">              </span><span class="c1"># core CLIs</span>
 uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>buvis-gems<span class="o">[</span>bim<span class="o">]</span><span class="w">         </span><span class="c1"># + jira</span>
@@ -181,19 +182,23 @@ uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </
 <td></td>
 <td><p>Photo utility collection</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="tools/readerctl.html"><span class="doc">readerctl</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="tools/postup.html"><span class="doc">postup</span></a></p></td>
+<td></td>
+<td><p>Portfolio standup — collect portfolio state into versioned contracts</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="tools/readerctl.html"><span class="doc">readerctl</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">readerctl</span></code></p></td>
 <td><p>Readwise Reader CLI</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="tools/sysup.html"><span class="doc">sysup</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="tools/sysup.html"><span class="doc">sysup</span></a></p></td>
 <td></td>
 <td><p>System update tools</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="tools/vuc.html"><span class="doc">vuc</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="tools/vuc.html"><span class="doc">vuc</span></a></p></td>
 <td></td>
 <td><p>Video utility collection</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="tools/zseq.html"><span class="doc">zseq</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="tools/zseq.html"><span class="doc">zseq</span></a></p></td>
 <td></td>
 <td><p>Zettelsequence file naming utilities</p></td>
 </tr>

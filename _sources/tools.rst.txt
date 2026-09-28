@@ -4,7 +4,7 @@ CLI Tools
 Installation
 ------------
 
-The base install registers all 15 CLIs but only pulls core dependencies.
+The base install registers all 16 CLIs but only pulls core dependencies.
 Tools that need extra packages will tell you what to install if the dep is missing.
 
 .. code-block:: bash
@@ -59,6 +59,9 @@ Overview
    * - :doc:`puc <tools/puc>`
      -
      - Photo utility collection
+   * - :doc:`postup <tools/postup>`
+     -
+     - Portfolio standup — collect portfolio state into versioned contracts
    * - :doc:`readerctl <tools/readerctl>`
      - ``readerctl``
      - Readwise Reader CLI
@@ -123,6 +126,7 @@ See :doc:`configuration` for how to create custom settings classes and YAML conf
    tools/outlookctl
    tools/pinger
    tools/puc
+   tools/postup
    tools/readerctl
    tools/sysup
    tools/vuc
