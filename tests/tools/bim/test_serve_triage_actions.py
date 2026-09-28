@@ -137,3 +137,20 @@ class TestTriageApproveAction:
             )
         assert resp.status_code == 403
         mk.assert_not_called()
+
+    def test_proposal_in_vault_but_outside_triage_returns_403(self, doc_client: TestClient, tmp_path: Path) -> None:
+        """A .proposed.yml inside the vault (an allowed confine_path root) but
+        NOT under <business_root>/_triage/ must still be rejected: the broad
+        allow-list is not enough — the approve handler narrows to _triage/."""
+        vault = tmp_path / "zettels"
+        rogue = vault / "rogue.pdf.proposed.yml"
+        rogue.write_text("approved: true\n", encoding="utf-8")
+        with patch("bim.commands.doc.triage.triage.CommandTriageApprove") as mk:
+            resp = doc_client.post(
+                "/api/actions/triage_approve",
+                json={"file_path": str(rogue), "args": {}, "row": {}},
+                headers={"X-Buvis-Token": _TOKEN},
+            )
+        assert resp.status_code == 403
+        assert "triage" in resp.json()["detail"]
+        mk.assert_not_called()

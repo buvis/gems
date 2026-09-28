@@ -3,34 +3,38 @@
 ``bim doc audit`` reports ``legacy_layout_zettels``: document zettels still
 at the pre-v1 flat path (``<vault>/<doc-subdir>/<basename>.md``) instead of
 the per-issuer path (``<vault>/<doc-subdir>/<issuer-slug>/<basename>.md``).
-This command consumes that list and, for each entry, moves the zettel into
-its per-issuer subfolder and rewrites the ``file-path`` frontmatter link so
-the PDF link stays valid.
+This command consumes that list and moves each such zettel into its
+per-issuer subfolder. The file's content — including the ``file-path``
+frontmatter link — is **preserved byte-for-byte**: that link already points
+at the PDF's per-issuer location, so nothing in the zettel needs rewriting;
+only the ``.md`` file itself moves.
 
 Design invariants:
 
-- **Dry-run by default.** ``params.dry_run`` (default True) computes the plan
-  and touches nothing. ``--apply`` performs the move+rewrite.
-- **Atomic per file.** The rewritten zettel is written to its per-issuer
-  target via :func:`atomic_write_text`, then the legacy file is unlinked —
-  never a truncate-in-place. A crash leaves either the old file or the new
-  file whole, never a partial one.
+- **Dry-run by default.** ``dry_run`` (default True) computes the plan and
+  touches nothing. ``--apply`` performs the moves.
+- **Crash-atomic, no-clobber move.** Each move is ``os.link(source, target)``
+  followed by ``source.unlink()``. ``os.link`` is a single atomic syscall
+  that refuses to overwrite an existing target (no-clobber), and a crash
+  between the two steps leaves two hardlinks to the same inode — identical
+  content, no data loss — never a partial file.
 - **Skip and report, never partial.** A legacy zettel whose frontmatter is
-  unparseable, or whose per-issuer target cannot be derived, or whose target
-  already exists, is skipped and reported; the run continues with the rest.
+  unparseable, whose per-issuer target cannot be derived, or whose target
+  already exists is skipped and reported; the run continues with the rest.
+  Every filesystem error becomes a reported skip — ``_apply`` never raises.
 
 The command returns a :class:`CommandResult`; the CLI layer renders it.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
-from buvis.pybase.filesystem import atomic_write_text
 from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.shared.naming import SLUG_REGEX
@@ -78,7 +82,6 @@ class _Resolution:
 
     plan: MigratePlanItem | None = None
     skip: MigrateSkip | None = None
-    rewritten_content: str = ""
 
 
 @dataclass
@@ -107,7 +110,7 @@ class CommandMigrateLayout:
             planned.append(plan)
             if self.dry_run:
                 continue
-            apply_skip = self._apply(plan, resolution.rewritten_content)
+            apply_skip = self._apply(plan)
             if apply_skip is not None:
                 skipped.append(apply_skip)
             else:
@@ -121,7 +124,7 @@ class CommandMigrateLayout:
         parsed = self._read_frontmatter(source)
         if isinstance(parsed, str):
             return _Resolution(skip=MigrateSkip(source, parsed))
-        raw_text, data = parsed
+        data = parsed
 
         file_path_value = data.get("file-path")
         if not isinstance(file_path_value, str) or not file_path_value:
@@ -136,14 +139,11 @@ class CommandMigrateLayout:
         if skip_reason is not None:
             return _Resolution(skip=MigrateSkip(source, skip_reason))
 
-        return _Resolution(
-            plan=MigratePlanItem(source=source, target=target, issuer_slug=issuer_slug),
-            rewritten_content=raw_text,
-        )
+        return _Resolution(plan=MigratePlanItem(source=source, target=target, issuer_slug=issuer_slug))
 
     @staticmethod
-    def _read_frontmatter(source: Path) -> tuple[str, dict[str, object]] | str:
-        """Return ``(raw_text, frontmatter_dict)`` or an error string to skip on."""
+    def _read_frontmatter(source: Path) -> dict[str, object] | str:
+        """Return the parsed frontmatter mapping, or an error string to skip on."""
         if not source.is_file():
             return "legacy zettel not found on disk"
         try:
@@ -159,7 +159,7 @@ class CommandMigrateLayout:
             return f"unparseable frontmatter: {exc}"
         if not isinstance(data, dict):
             return "frontmatter is not a mapping"
-        return (raw_text, data)
+        return data
 
     @staticmethod
     def _target_skip_reason(source: Path, target: Path) -> str | None:
@@ -190,25 +190,40 @@ class CommandMigrateLayout:
 
     # --------- apply ---------
 
-    def _apply(self, plan: MigratePlanItem, content: str) -> MigrateSkip | None:
-        """Atomically write the zettel to its per-issuer target and drop the old.
+    def _apply(self, plan: MigratePlanItem) -> MigrateSkip | None:
+        """Crash-atomically move the zettel into its per-issuer target.
 
-        The ``file-path`` frontmatter link is unchanged: it already points at
-        the PDF's per-issuer location, so only the zettel file itself moves.
+        The zettel content is preserved byte-for-byte (the ``file-path`` link
+        already points at the PDF's per-issuer location, so only the file
+        moves), and source and target share the vault filesystem — so the move
+        is a hardlink + unlink rather than a copy:
+
+        - ``os.link(source, target)`` is a single atomic syscall that FAILS
+          (``FileExistsError``) if the target already exists, giving a
+          no-clobber guarantee even against a concurrent run that created the
+          target after the earlier ``_target_skip_reason`` check.
+        - A crash between the link and the unlink leaves two hardlinks to the
+          *same inode* — identical content, no data loss — and a re-run's
+          exists-guard then skips it. There is no window in which data is lost
+          or a partial file exists.
+
         Returns a :class:`MigrateSkip` on filesystem error, else ``None``.
+        This method never raises — every OS error becomes a reported skip.
         """
         try:
             plan.target.parent.mkdir(parents=True, exist_ok=True)
-            atomic_write_text(plan.target, content)
+            os.link(plan.source, plan.target)
+        except FileExistsError:
+            return MigrateSkip(plan.source, f"per-issuer target already exists: {plan.target}")
         except OSError as exc:
-            return MigrateSkip(plan.source, f"write failed: {exc}")
+            return MigrateSkip(plan.source, f"move failed: {exc}")
         try:
             plan.source.unlink()
         except OSError as exc:
-            # The new file is already written; remove it so we don't leave a
-            # duplicate zettel behind, then report the failure.
-            plan.target.unlink(missing_ok=True)
-            return MigrateSkip(plan.source, f"could not remove legacy file: {exc}")
+            # The target hardlink is already in place (same inode as source),
+            # so no data is lost; report that the legacy link could not be
+            # removed and leave both in place for a re-run to reconcile.
+            return MigrateSkip(plan.source, f"moved but could not remove legacy file: {exc}")
         return None
 
     # --------- result ---------

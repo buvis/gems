@@ -277,21 +277,31 @@ def get_audit_services(settings: DocSettings) -> AuditServices:
 
 
 def get_migrate_services(settings: DocSettings) -> MigrateServices:
-    """Run a fresh audit and bundle its ``legacy_layout_zettels`` for migration.
+    """Run a fresh, read-only audit and bundle ``legacy_layout_zettels``.
 
     ``bim doc migrate-layout`` needs the current legacy list; deriving it from
     a fresh audit (rather than trusting a possibly-stale on-disk JSON report)
     keeps the migration plan honest against what is on disk right now. Reuses
-    the same ``AuditServices`` wiring as ``bim doc audit``.
+    the same ``AuditServices`` wiring as ``bim doc audit``, but runs with
+    ``write_report=False`` so merely building the migration plan (including on
+    the default dry run) does not mutate ``<state_dir>/audit/``.
+
+    Raises:
+        RuntimeError: When the audit itself fails (no report produced). The
+            caller surfaces this rather than silently planning an empty
+            migration and reporting a misleading "0 moves" success.
     """
     from bim.commands.doc.audit.audit import CommandAudit
     from bim.commands.doc.migrate.migrate_layout import MigrateServices
 
-    audit_result = CommandAudit(services=get_audit_services(settings)).execute()
+    audit_result = CommandAudit(services=get_audit_services(settings)).execute(write_report=False)
     report = audit_result.metadata.get("report")
-    legacy = tuple(report.legacy_layout_zettels) if report is not None else ()
+    if not audit_result.success or report is None:
+        raise RuntimeError(
+            f"migrate-layout could not read the legacy list: audit failed ({audit_result.error or 'no report'})"
+        )
     return MigrateServices(
-        legacy_zettels=legacy,
+        legacy_zettels=tuple(report.legacy_layout_zettels),
         vault_root=settings.paths.vault_root,
         vault_documents_subdir=settings.paths.vault_documents_subdir,
     )

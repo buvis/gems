@@ -228,7 +228,11 @@ def doc_migrate_layout(ctx: click.Context, *, apply_changes: bool) -> None:
         console.panic(str(exc))
         return
 
-    services = get_migrate_services(settings.doc)
+    try:
+        services = get_migrate_services(settings.doc)
+    except RuntimeError as exc:
+        console.failure(str(exc))
+        return
     cmd = CommandMigrateLayout(services=services, dry_run=not apply_changes)
     result = cmd.execute()
 

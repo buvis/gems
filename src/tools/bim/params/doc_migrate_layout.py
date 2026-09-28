@@ -7,7 +7,8 @@ class MigrateLayoutParams(BaseModel):
     """Parameters for the ``bim doc migrate-layout`` command.
 
     Migrates legacy flat-layout document zettels into their per-issuer
-    subfolder and rewrites the frontmatter to the v1 shape.
+    subfolder, preserving each file's content (including the ``file-path``
+    frontmatter link) byte-for-byte — only the file moves.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")

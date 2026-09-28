@@ -115,6 +115,22 @@ class TestBimDocMigrateLayout:
             result = runner.invoke(cli, ["doc", "migrate-layout"], catch_exceptions=True)
         assert result.exit_code != 0 or "[doc] section missing" in result.output
 
+    def test_surfaces_audit_failure(self, runner: CliRunner, tmp_path: Path) -> None:
+        """When get_migrate_services raises (audit failed), the CLI reports the
+        failure instead of a misleading 'dry-run: 0 would migrate' success."""
+        settings = _bim_settings_with_doc(tmp_path)
+        with (
+            patch("bim.doc_cli.get_settings", return_value=settings),
+            patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
+            patch(
+                "bim.dependencies.get_migrate_services",
+                side_effect=RuntimeError("migrate-layout could not read the legacy list: audit failed (io error)"),
+            ),
+        ):
+            result = runner.invoke(cli, ["doc", "migrate-layout"], catch_exceptions=False)
+        assert "audit failed" in result.output
+        assert "dry-run" not in result.output
+
 
 class TestMigrateLayoutClearsAudit:
     """After apply, a fresh audit no longer reports the migrated zettel as legacy."""
