@@ -14,6 +14,17 @@ from postup.domain.contracts import (
     write_outputs,
 )
 from postup.domain.discovery import discover_repos
+from postup.domain.epics import (
+    EPICS_SCHEMA_VERSION,
+    Epic,
+    EpicsPayload,
+    EpicsValidationError,
+    JudgmentTodo,
+    RepoEpics,
+    stable_todo_id,
+    validate_epics,
+)
+from postup.domain.prompt import build_prompt
 from postup.domain.repofiles import (
     read_brush_last_run,
     read_changelog_unreleased,
@@ -21,14 +32,23 @@ from postup.domain.repofiles import (
 )
 
 __all__ = [
+    "EPICS_SCHEMA_VERSION",
     "SCHEMA_VERSION",
+    "Epic",
+    "EpicsPayload",
+    "EpicsValidationError",
+    "JudgmentTodo",
     "PortfolioData",
     "RepoData",
+    "RepoEpics",
     "SchemaVersionError",
+    "build_prompt",
     "discover_repos",
     "load_portfolio_data",
     "read_brush_last_run",
     "read_changelog_unreleased",
     "read_prd_pipeline",
+    "stable_todo_id",
+    "validate_epics",
     "write_outputs",
 ]

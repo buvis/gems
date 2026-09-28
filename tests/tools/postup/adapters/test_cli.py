@@ -16,6 +16,11 @@ class TestCli:
         assert "--no-fetch" in result.output
         assert "--days" in result.output
 
+    def test_enrich_registered(self):
+        result = CliRunner().invoke(cli, ["enrich", "--help"])
+        assert result.exit_code == 0
+        assert "epics.json" in result.output
+
     def test_collect_runs_and_reports(self, tmp_path, mocker, monkeypatch):
         # No roots configured -> command returns failure, CLI renders it without crashing.
         monkeypatch.delenv("BUVIS_POSTUP_ROOTS", raising=False)
