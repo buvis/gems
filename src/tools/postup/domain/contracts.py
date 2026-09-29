@@ -202,6 +202,7 @@ class RepoData(_Model):
     prds: PrdPipeline | None = None
     changelog_unreleased: bool | None = None
     brush_last_run: str | None = None
+    purge_last_run: str | None = None
     local: LocalState | None = None
     skipped: str | None = None
     errors: list[str] = Field(default_factory=list)
