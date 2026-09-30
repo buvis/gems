@@ -414,6 +414,17 @@ def _mechanical_todos(data: PortfolioData) -> tuple[Todo, ...]:
                         urgency="later",
                     ),
                 )
+        brushed = _days_since(repo.brush_last_run)
+        if brushed is None or brushed >= _BRUSH_CADENCE_DAYS:
+            todos.append(
+                Todo(
+                    repo=slug,
+                    action="run the brush audit",
+                    why=("never brushed" if brushed is None else f"last brushed {brushed}d ago"),
+                    kind="mechanical",
+                    urgency="later",
+                ),
+            )
         purged = _days_since(repo.purge_last_run)
         if purged is None or purged >= _PURGE_CADENCE_DAYS:
             todos.append(

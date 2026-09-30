@@ -47,6 +47,7 @@ def _repo(  # a fixture builder mirrors the wide RepoData contract
     changelog_unreleased: bool | None = None,
     unreleased_commits: int | None = None,
     local: LocalState | None = None,
+    brush_last_run: str | None = None,
     purge_last_run: str | None = None,
     errors: list[str] | None = None,
 ) -> RepoData:
@@ -65,6 +66,7 @@ def _repo(  # a fixture builder mirrors the wide RepoData contract
         changelog_unreleased=changelog_unreleased,
         unreleased_commits=unreleased_commits,
         local=local,
+        brush_last_run=brush_last_run,
         purge_last_run=purge_last_run,
         errors=errors or [],
     )
@@ -255,6 +257,35 @@ class TestPortfolioErrors:
 def _day_ago(days: int) -> str:
     """Return the ISO calendar day ``days`` days before now (UTC)."""
     return (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+
+class TestBrushCadenceNag:
+    def _brush_todo(self, tmp_path, brush_last_run):
+        portfolio = PortfolioData(
+            generated_at="t",
+            since_days=60,
+            repos=[_repo("solo", brush_last_run=brush_last_run)],
+        )
+        write_outputs(portfolio, tmp_path)
+        vm = load_view_model(tmp_path)
+        return next((t for t in vm.todos if t.action == "run the brush audit"), None)
+
+    def test_never_brushed_raises_nag(self, tmp_path):
+        todo = self._brush_todo(tmp_path, None)
+        assert todo is not None
+        assert todo.why == "never brushed"
+        assert todo.kind == "mechanical"
+
+    def test_past_threshold_raises_nag(self, tmp_path):
+        # 30 days ago == _BRUSH_CADENCE_DAYS -> overdue, nag raised.
+        todo = self._brush_todo(tmp_path, _day_ago(30))
+        assert todo is not None
+        assert "brushed 30d ago" in todo.why
+
+    def test_within_threshold_does_not_raise_nag(self, tmp_path):
+        # 29 days ago < _BRUSH_CADENCE_DAYS -> within cadence, no nag.
+        todo = self._brush_todo(tmp_path, _day_ago(29))
+        assert todo is None
 
 
 class TestPurgeCadenceNag:
