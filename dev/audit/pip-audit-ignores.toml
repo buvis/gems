@@ -1,0 +1,34 @@
+# pip-audit ignore audit
+#
+# The single source of truth for every CVE the dependency-audit step is allowed
+# to ignore. It replaces anonymous inline `--ignore-vuln <CVE>` flags in
+# .github/workflows/test.yml: the flags passed to pip-audit are generated from
+# this file by `dev/bin/check_audit_ignores.py`, so an ignore cannot exist
+# without a dated, justified entry here.
+#
+# The same script is a guard: it runs pip-audit against the resolved tree and
+# FAILS the lint job when any CVE listed here now has a fix available in the
+# resolved environment (a suppression that has gone stale). That forces the fix
+# — upgrade, not ignore — and prevents the suppress-and-forget posture.
+#
+# Every entry MUST supply all four fields:
+#   cve             the vulnerability id, exactly as pip-audit reports it
+#   package         the affected package (for humans; the guard matches on cve)
+#   reason          why it is genuinely unfixable right now (no fix released,
+#                   or the fix is a breaking major with no upgrade path yet)
+#   date_added      ISO date the suppression was added, for staleness review
+#
+# Example (do NOT leave commented-out entries active — this is illustration only):
+#
+#   [[ignore]]
+#   cve = "CVE-0000-00000"
+#   package = "somepkg"
+#   reason = "no fix released upstream; tracked in <issue/PRD>"
+#   date_added = "2026-01-01"
+#
+# There are currently ZERO ignored CVEs. Both vulnerabilities that previously
+# required suppression (CVE-2026-4539 pygments, CVE-2026-49265 oauthlib) were
+# resolved by upgrading (see PRD 00086). Keep this list empty unless a CVE is
+# provably unfixable, and record why here so the next person can re-evaluate.
+
+ignore = []
