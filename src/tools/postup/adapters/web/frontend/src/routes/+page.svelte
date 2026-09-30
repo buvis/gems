@@ -28,6 +28,7 @@
 	const skipped = $derived(payload?.skipped ?? []);
 	const prev = $derived(payload?.prev ?? null);
 	const history = $derived(payload?.history ?? []);
+	const metaShare = $derived(payload?.meta_share ?? null);
 
 	const scored = $derived(new Map(repos.map((r) => [slug(r), attention(r)])));
 	const agg = $derived(aggregate(repos, sinceDays));
@@ -75,6 +76,22 @@
 				<strong class="sev-warning">{skipped.length}</strong> not collected:
 				{skipped.map((r) => `${r.owner}/${r.name}`).join(', ')}
 			</p>
+		{/if}
+	</section>
+
+	<section class="glass">
+		<h2>Meta budget</h2>
+		{#if metaShare && metaShare.available}
+			{@const over = metaShare.over_ceiling}
+			<p class="metabudget">
+				<b class={over ? 'sev-critical' : 'sev-good'} data-testid="meta-pct">{Math.round(metaShare.meta_pct)}%</b>
+				<span class="metaof">of ${metaShare.total_usd.toFixed(2)} · {metaShare.window_days}d</span>
+				<span class="metastate {over ? 'sev-critical' : 'sev-good'}">
+					{over ? `over ${Math.round(metaShare.ceiling_pct)}% ceiling` : 'within ceiling'}
+				</span>
+			</p>
+		{:else}
+			<p class="calm metana" data-testid="meta-na">meta n/a</p>
 		{/if}
 	</section>
 
@@ -246,6 +263,26 @@
 	.calm {
 		color: var(--good);
 		font-weight: 650;
+	}
+	.metabudget {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		margin: 0;
+		font-size: 15px;
+	}
+	.metabudget b {
+		font-size: 22px;
+		font-variant-numeric: tabular-nums;
+	}
+	.metaof {
+		color: var(--ink-2);
+		font-size: 13px;
+	}
+	.metastate {
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 	.burn {
 		list-style: none;

@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Literal
 from buvis.pybase.filesystem import atomic_write_text
 from pydantic import BaseModel, ConfigDict, Field
 
+from postup.domain.meta_share import MetaShare
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -29,6 +31,7 @@ __all__ = [
     "ExternalPr",
     "Issue",
     "LocalState",
+    "MetaShare",
     "PortfolioData",
     "PrdPipeline",
     "PullRequest",
@@ -220,6 +223,9 @@ class PortfolioData(_Model):
         skipped: Repositories dropped before collection (non-github remote,
             unreadable) with a reason.
         external: PRs involving the user outside the portfolio.
+        meta_share: Trailing-window meta-budget share of spend, or ``None`` when
+            not computed for this snapshot (older ``data.json`` files predate the
+            field; it is optional and additive, so they still load).
     """
 
     schema_version: int = SCHEMA_VERSION
@@ -228,6 +234,7 @@ class PortfolioData(_Model):
     repos: list[RepoData] = Field(default_factory=list)
     skipped: list[RepoData] = Field(default_factory=list)
     external: ExternalPRs = Field(default_factory=ExternalPRs)
+    meta_share: MetaShare | None = None
 
 
 def _digest_markdown(repos: list[RepoData]) -> str:

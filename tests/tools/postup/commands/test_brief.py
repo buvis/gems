@@ -14,6 +14,7 @@ from click.testing import CliRunner
 from postup.commands.brief.brief import CommandBrief, render_brief
 from postup.domain.contracts import CIRun, Commit, PortfolioData, PullRequest, RepoData, write_outputs
 from postup.domain.derive import load_view_model
+from postup.domain.meta_share import MetaShare
 from postup.settings import PostupSettings
 
 
@@ -94,6 +95,57 @@ class TestRendering:
         assert "judgment:" in rendered
         assert "Ship it" in rendered
         assert "not enriched" not in rendered
+
+
+class TestMetaBudgetTile:
+    def test_shows_pct_total_and_ok_state_under_ceiling(self, tmp_path):
+        out = tmp_path / "out"
+        _seed(out)
+        vm = load_view_model(out)
+        meta = MetaShare(
+            available=True,
+            meta_pct=27.0,
+            total_usd=123.45,
+            meta_usd=33.33,
+            window_days=30,
+            ceiling_pct=30.0,
+            over_ceiling=False,
+        )
+        rendered = render_brief(vm, meta)
+        flat = _flat(rendered)
+        assert "Meta budget: 27% of $123.45 (30d)" in flat
+        assert "ok" in flat
+        assert "over ceiling" not in flat
+
+    def test_shows_over_ceiling_state_at_or_above(self, tmp_path):
+        out = tmp_path / "out"
+        _seed(out)
+        vm = load_view_model(out)
+        meta = MetaShare(
+            available=True,
+            meta_pct=30.0,
+            total_usd=100.0,
+            meta_usd=30.0,
+            window_days=30,
+            ceiling_pct=30.0,
+            over_ceiling=True,
+        )
+        rendered = render_brief(vm, meta)
+        assert "over ceiling" in _flat(rendered)
+
+    def test_renders_na_when_unavailable(self, tmp_path):
+        out = tmp_path / "out"
+        _seed(out)
+        vm = load_view_model(out)
+        rendered = render_brief(vm, MetaShare(available=False))
+        assert "Meta budget: n/a" in _flat(rendered)
+
+    def test_omits_tile_when_meta_is_none(self, tmp_path):
+        out = tmp_path / "out"
+        _seed(out)
+        vm = load_view_model(out)
+        rendered = render_brief(vm, None)
+        assert "Meta budget" not in rendered
 
 
 class TestImportIsolation:

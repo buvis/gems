@@ -21,6 +21,7 @@
  * @property {object} external - portfolio-external PRs
  * @property {number} since_days - the commit window in days
  * @property {string} generated_at - ISO-8601 collection timestamp
+ * @property {object|null} meta_share - the meta-budget share snapshot, or null
  * @property {object|null} epics - parsed epics.json, or null when not enriched
  * @property {object|null} prev - the previous data.json snapshot, or null
  * @property {object[]} history - parsed history.jsonl lines (may be empty)
@@ -81,6 +82,7 @@ export function toState(data, epics = null, prev = null, history = []) {
 			external: data.external ?? null,
 			since_days: data.since_days ?? 60,
 			generated_at: data.generated_at ?? '',
+			meta_share: data.meta_share ?? null,
 			epics: epics ?? null,
 			prev: prev ?? null,
 			history: Array.isArray(history) ? history : []
