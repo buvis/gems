@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from postup.domain.contracts import SchemaVersionError, load_portfolio_data
@@ -47,6 +48,7 @@ _CI_FAIL_STATES = frozenset({"failure", "timed_out", "startup_failure"})
 _DIRTY_ATTENTION_DAYS = 7
 _IDLE_WIP_ATTENTION_DAYS = 14
 _BRUSH_CADENCE_DAYS = 30
+_PURGE_CADENCE_DAYS = 30
 
 # Attention urgency ranks — lower sorts first.
 _URGENCY_RANK = {"now": 0, "soon": 1, "later": 2}
@@ -250,6 +252,26 @@ def _failing_ci(repo: RepoData) -> int:
     return sum(1 for run in repo.ci if (run.conclusion or "") in _CI_FAIL_STATES)
 
 
+def _days_since(iso_day: str | None) -> int | None:
+    """Return whole days since an ``YYYY-MM-DD`` day, or ``None`` when unparseable.
+
+    Args:
+        iso_day: An ISO calendar day (``YYYY-MM-DD``), or ``None``.
+
+    Returns:
+        Whole days elapsed since that day (clamped at 0), or ``None`` when the
+        input is ``None`` or does not parse as an ISO day.
+    """
+    if not iso_day:
+        return None
+    try:
+        parsed = datetime.strptime(iso_day, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    days = (datetime.now(timezone.utc) - parsed).days
+    return max(0, days)
+
+
 def _repo_summaries(data: PortfolioData) -> tuple[RepoSummary, ...]:
     """Build the per-repo summary rows, sorted by ``owner/name``."""
     rows = [
@@ -392,6 +414,17 @@ def _mechanical_todos(data: PortfolioData) -> tuple[Todo, ...]:
                         urgency="later",
                     ),
                 )
+        purged = _days_since(repo.purge_last_run)
+        if purged is None or purged >= _PURGE_CADENCE_DAYS:
+            todos.append(
+                Todo(
+                    repo=slug,
+                    action="purge the trash dir",
+                    why=("never purged" if purged is None else f"trash last purged {purged}d ago"),
+                    kind="mechanical",
+                    urgency="later",
+                ),
+            )
     return tuple(
         sorted(todos, key=lambda t: (_URGENCY_RANK.get(t.urgency, 9), t.repo, t.action)),
     )

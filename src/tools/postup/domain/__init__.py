@@ -37,6 +37,7 @@ from postup.domain.repofiles import (
     read_brush_last_run,
     read_changelog_unreleased,
     read_prd_pipeline,
+    read_purge_last_run,
 )
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     "read_brush_last_run",
     "read_changelog_unreleased",
     "read_prd_pipeline",
+    "read_purge_last_run",
     "stable_todo_id",
     "validate_epics",
     "write_outputs",

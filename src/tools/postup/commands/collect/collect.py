@@ -24,6 +24,7 @@ from postup.domain.repofiles import (
     read_brush_last_run,
     read_changelog_unreleased,
     read_prd_pipeline,
+    read_purge_last_run,
 )
 
 if TYPE_CHECKING:
@@ -171,6 +172,7 @@ class CommandCollect:
             ("prds", lambda: read_prd_pipeline(path)),
             ("changelog_unreleased", lambda: read_changelog_unreleased(path)),
             ("brush_last_run", lambda: read_brush_last_run(path)),
+            ("purge_last_run", lambda: read_purge_last_run(path)),
         ):
             try:
                 updates[key] = reader()
