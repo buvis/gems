@@ -66,6 +66,15 @@ dev = ["maturin>=1.7,<2", "pip-audit>=2.7.3,<3", "pre-commit>=4.5.1,<5", "ruff>=
 test = ["pytest>=9.0.3,<10", "pytest-mock>=3.15.1,<4", "pytest-cov>=7,<8", "pytest-textual-snapshot>=1,<2", "mypy>=2.3,<3", "types-PyYAML>=6,<7", "types-requests>=2,<3", "types-fpdf2>=2,<3", "httpx>=0.27,<1"]
 docs = ["sphinx>=8,<10", "sphinx-rtd-theme>=3.0.2,<4"]
 
+[tool.uv]
+# Security floor for transitive dependencies. oauthlib is pulled in purely
+# transitively (jira -> requests-oauthlib -> oauthlib); CVE-2026-49265 is fixed
+# in oauthlib 4.0.0, whose only breaking changes are OAuth2 provider-side and
+# unused by gems (JiraAdapter uses server+token auth, not any OAuth flow).
+# See dev/local/prds .../00086. The dated ignore audit lives in
+# dev/audit/pip-audit-ignores.toml, guarded by dev/bin/check_audit_ignores.py.
+constraint-dependencies = ["oauthlib>=4.0.0"]
+
 [tool.hatch.build.targets.wheel]
 artifacts = ["*.so", "*.pyd"]
 packages = [
