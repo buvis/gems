@@ -32,6 +32,7 @@ from postup.domain.epics import (
     stable_todo_id,
     validate_epics,
 )
+from postup.domain.meta_share import META_CEILING_PCT, MetaShare, collect as collect_meta_share
 from postup.domain.prompt import build_prompt
 from postup.domain.repofiles import (
     read_brush_last_run,
@@ -42,12 +43,14 @@ from postup.domain.repofiles import (
 
 __all__ = [
     "EPICS_SCHEMA_VERSION",
+    "META_CEILING_PCT",
     "SCHEMA_VERSION",
     "AttentionItem",
     "Epic",
     "EpicsPayload",
     "EpicsValidationError",
     "JudgmentTodo",
+    "MetaShare",
     "PortfolioData",
     "RepoData",
     "RepoEpics",
@@ -57,6 +60,7 @@ __all__ = [
     "Todo",
     "ViewModel",
     "build_prompt",
+    "collect_meta_share",
     "discover_repos",
     "load_portfolio_data",
     "load_view_model",

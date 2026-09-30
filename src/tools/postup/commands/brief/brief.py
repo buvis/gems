@@ -20,9 +20,11 @@ from typing import TYPE_CHECKING
 from buvis.pybase.result import CommandResult
 
 from postup.domain.derive import load_view_model
+from postup.domain.meta_share import collect as collect_meta_share
 
 if TYPE_CHECKING:
     from postup.domain.derive import ViewModel
+    from postup.domain.meta_share import MetaShare
     from postup.settings import PostupSettings
 
 __all__ = ["CommandBrief", "render_brief"]
@@ -58,7 +60,11 @@ class CommandBrief:
                 error=f"no data.json in {out_dir} — run 'postup collect' first",
             )
 
-        text = render_brief(vm)
+        # The meta-budget share is a LIVE read of the cost ledger, not a
+        # collected snapshot, so the text brief computes it fresh at render time.
+        # An absent/empty ledger yields the n/a state (never raises).
+        meta = collect_meta_share()
+        text = render_brief(vm, meta)
         return CommandResult(
             success=True,
             output=f"rendered brief for {len(vm.repos)} repo(s)" + ("" if vm.enriched else " (not enriched)"),
@@ -72,14 +78,17 @@ class CommandBrief:
         )
 
 
-def render_brief(vm: ViewModel) -> str:
+def render_brief(vm: ViewModel, meta: MetaShare | None = None) -> str:
     """Render a view-model into the deterministic plain-text standup.
 
-    Pure and UI-free: takes the view-model and returns a string, so the exact
-    output can be asserted in a unit test without a console.
+    Pure and UI-free: takes the view-model (and the optional meta-budget share)
+    and returns a string, so the exact output can be asserted in a unit test
+    without a console.
 
     Args:
         vm: The derived view-model.
+        meta: The trailing-window meta-budget share, or ``None`` to omit the
+            tile. When present but unavailable, the tile renders ``meta n/a``.
 
     Returns:
         The standup as a newline-joined string.
@@ -91,6 +100,7 @@ def render_brief(vm: ViewModel) -> str:
     elif not vm.enriched:
         lines += ["(not enriched — run 'postup enrich' for narrative and judgment todos)", ""]
 
+    lines += _meta_budget_section(meta)
     lines += _attention_section(vm)
     lines += _todos_section(vm)
     lines += _repos_section(vm)
@@ -98,6 +108,28 @@ def render_brief(vm: ViewModel) -> str:
     lines += _errors_section(vm)
 
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _meta_budget_section(meta: MetaShare | None) -> list[str]:
+    """Render the meta-budget tile: share of spend with an inclusive-ceiling state.
+
+    Omitted entirely when ``meta`` is ``None`` (the caller chose not to compute
+    it). Renders ``Meta budget: n/a`` when the ledger held no priced session for
+    the window, ``over ceiling``/``ok`` otherwise. The state word is the text
+    surface's equivalent of the web tile's red/green.
+    """
+    if meta is None:
+        return []
+    if not meta.available:
+        return ["Meta budget: n/a (no cost data for the window)", ""]
+    state = "over ceiling" if meta.over_ceiling else "ok"
+    return [
+        (
+            f"Meta budget: {meta.meta_pct:.0f}% of ${meta.total_usd:.2f} "
+            f"({meta.window_days}d) — {state} [ceiling {meta.ceiling_pct:.0f}%]"
+        ),
+        "",
+    ]
 
 
 def _indent(rows: list[str]) -> list[str]:

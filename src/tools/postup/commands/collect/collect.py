@@ -20,6 +20,7 @@ from postup.adapters.gh import GhAdapter, GhError
 from postup.adapters.gitrepo import GitError, GitRepoAdapter
 from postup.domain.contracts import ExternalPRs, PortfolioData, RepoData, write_outputs
 from postup.domain.discovery import discover_repos
+from postup.domain.meta_share import collect as collect_meta_share
 from postup.domain.repofiles import (
     read_brush_last_run,
     read_changelog_unreleased,
@@ -83,6 +84,10 @@ class CommandCollect:
             repos=repos,
             skipped=skipped,
             external=self._collect_external(known),
+            # Snapshot the meta-budget share into data.json so the web surface
+            # (which reads the collected contract, not the live ledger) can show
+            # the tile. An absent/empty ledger yields the n/a state, never raises.
+            meta_share=collect_meta_share(),
         )
 
         out_dir = self.settings.resolved_out_dir

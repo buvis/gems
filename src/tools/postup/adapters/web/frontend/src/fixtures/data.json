@@ -137,6 +137,15 @@
   }
  ],
  "skipped": [],
+ "meta_share": {
+  "available": true,
+  "meta_pct": 27.0,
+  "total_usd": 123.45,
+  "meta_usd": 33.33,
+  "window_days": 30,
+  "ceiling_pct": 30.0,
+  "over_ceiling": false
+ },
  "external": {
   "review_requested": [
    {
