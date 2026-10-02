@@ -41,6 +41,9 @@ Overview
    * - :doc:`fren <tools/fren>`
      - ``fren``
      - File renamer toolkit
+   * - :doc:`klyreon <tools/klyreon>`
+     -
+     - Autonomous Memex-Zettelkasten (spec engine, vault, git layer)
    * - :doc:`morph <tools/morph>`
      - ``morph``
      - File conversion toolkit
@@ -120,6 +123,7 @@ See :doc:`configuration` for how to create custom settings classes and YAML conf
    tools/dot
    tools/fctracker
    tools/fren
+   tools/klyreon
    tools/morph
    tools/muc
    tools/netscan
