@@ -28,6 +28,8 @@ class PostupSettings(GlobalSettings):
     Attributes:
         roots: Directories scanned for git repositories.
         excludes: Repository paths dropped from the discovered set.
+        meta_repos: Claude-tooling repo roots whose sessions count as meta
+            (in addition to ``~/.claude``) for the meta-budget attribution.
         out_dir: Directory the file contracts are written to.
         model: Optional Claude model name (consumed by the enrich command in a
             later PRD; carried here so the settings contract is stable).
@@ -43,6 +45,7 @@ class PostupSettings(GlobalSettings):
 
     roots: list[str] = []
     excludes: list[str] = []
+    meta_repos: list[str] = []
     out_dir: str = ""
     model: str | None = None
 

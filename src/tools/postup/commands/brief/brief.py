@@ -15,6 +15,7 @@ metadata — the CLI adapter renders it. No console/Click/Textual import here.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
@@ -63,7 +64,9 @@ class CommandBrief:
         # The meta-budget share is a LIVE read of the cost ledger, not a
         # collected snapshot, so the text brief computes it fresh at render time.
         # An absent/empty ledger yields the n/a state (never raises).
-        meta = collect_meta_share()
+        meta = collect_meta_share(
+            meta_repos=[Path(p).expanduser() for p in self.settings.meta_repos],
+        )
         text = render_brief(vm, meta)
         return CommandResult(
             success=True,

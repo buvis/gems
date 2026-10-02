@@ -87,7 +87,9 @@ class CommandCollect:
             # Snapshot the meta-budget share into data.json so the web surface
             # (which reads the collected contract, not the live ledger) can show
             # the tile. An absent/empty ledger yields the n/a state, never raises.
-            meta_share=collect_meta_share(),
+            meta_share=collect_meta_share(
+                meta_repos=[Path(p).expanduser() for p in self.settings.meta_repos],
+            ),
         )
 
         out_dir = self.settings.resolved_out_dir

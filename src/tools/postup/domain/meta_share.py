@@ -30,7 +30,8 @@ decodes to ``/Users/bob/.claude``). The collector globs
 ``<projects_dir>/*/<sid>.jsonl``, decodes the parent directory back to a cwd, and
 classifies:
 
-* cwd under ``~/.claude`` (the meta root)   -> **META**
+* cwd under ``~/.claude`` (the meta root) OR under any configured meta-repo
+  root (``meta_repos``, default none)       -> **META**
 * any other cwd                             -> **PRODUCT**
 * no transcript found for the sid           -> **PRODUCT**
 
@@ -189,14 +190,15 @@ def _encode_cwd(cwd: Path) -> str:
     return str(cwd.resolve()).replace("/", "-").replace(".", "-")
 
 
-def _is_meta_sid(sid: str, projects_dir: Path, meta_prefix: str) -> bool:
+def _is_meta_sid(sid: str, projects_dir: Path, meta_prefixes: set[str]) -> bool:
     """Classify one sid as meta by matching its transcript dir in encoded space.
 
     Globs ``<projects_dir>/*/<sid>.jsonl``; for each match, tests whether the
     parent directory name (Claude's ``/``->``-`` encoding of the session cwd)
-    equals ``meta_prefix`` or begins with ``meta_prefix + "-"`` — i.e. the cwd is
-    at or under the meta root. A sid with no findable transcript is **not** meta
-    (counts as product), so meta is never inflated.
+    equals ANY prefix in ``meta_prefixes`` or begins with ``prefix + "-"`` — i.e.
+    the cwd is at or under the meta root or any configured meta-repo root. A sid
+    with no findable transcript is **not** meta (counts as product), so meta is
+    never inflated.
     """
     try:
         matches = list(projects_dir.glob(f"*/{sid}.jsonl"))
@@ -204,17 +206,18 @@ def _is_meta_sid(sid: str, projects_dir: Path, meta_prefix: str) -> bool:
         return False
     for match in matches:
         name = match.parent.name
-        if name == meta_prefix or name.startswith(meta_prefix + "-"):
+        if any(name == prefix or name.startswith(prefix + "-") for prefix in meta_prefixes):
             return True
     return False
 
 
-def collect(
+def collect(  # noqa: PLR0913  # all keyword-only config-override seams for a pure collector
     window_days: int = 30,
     *,
     ledger_dir: Path | None = None,
     projects_dir: Path | None = None,
     meta_root: Path | None = None,
+    meta_repos: list[Path] | None = None,
     ceiling_pct: float = META_CEILING_PCT,
 ) -> MetaShare:
     """Compute the trailing-window meta-budget share from the cost ledger.
@@ -234,6 +237,10 @@ def collect(
         meta_root: The directory whose sessions count as meta; a decoded session
             cwd at or under it is meta. Defaults to ``~/.claude``. Overridable so
             tests classify against a fixture root, never the real home.
+        meta_repos: Additional repo roots whose sessions also count as meta
+            (Claude-tooling repos). A session whose cwd is at or under any of
+            these — in addition to ``meta_root`` — is meta. Defaults to none, so
+            the behaviour is exactly ``meta_root`` alone.
         ceiling_pct: Policy ceiling in percent (inclusive); at or above is over.
 
     Returns:
@@ -242,7 +249,8 @@ def collect(
     """
     ledger = (ledger_dir or _default_ledger_dir()) / "costs.jsonl"
     projects = projects_dir or _default_projects_dir()
-    meta_prefix = _encode_cwd(meta_root or _meta_root())
+    meta_prefixes = {_encode_cwd(meta_root or _meta_root())}
+    meta_prefixes |= {_encode_cwd(repo) for repo in (meta_repos or [])}
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
     rows = _read_rows(ledger, cutoff)
@@ -252,7 +260,7 @@ def collect(
     if not spend or total <= 0:
         return MetaShare(available=False, window_days=window_days, ceiling_pct=ceiling_pct)
 
-    meta = sum(cost for sid, cost in spend.items() if _is_meta_sid(sid, projects, meta_prefix))
+    meta = sum(cost for sid, cost in spend.items() if _is_meta_sid(sid, projects, meta_prefixes))
     meta_pct = meta / total * 100.0
     return MetaShare(
         available=True,
