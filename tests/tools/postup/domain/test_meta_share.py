@@ -267,6 +267,131 @@ class TestCeiling:
         assert share.over_ceiling is False
 
 
+class TestConfiguredMetaRepos:
+    """Config-driven ``meta_repos`` allowlist (PRD 00087).
+
+    A session whose transcript cwd is at or under any configured meta-repo root
+    counts as meta, in addition to ``~/.claude``. Default (``[]`` / omitted)
+    preserves the exact pre-config behaviour.
+    """
+
+    def test_configured_repo_counts_as_meta(self, tmp_path):
+        """(a) a session under a configured meta-repo is attributed meta."""
+        now = datetime.now(timezone.utc)
+        meta_cwd = tmp_path / "home" / ".claude"
+        tooling_repo = tmp_path / "git" / "buvis" / "claude-tooling"
+        _write_ledger(tmp_path / "metrics", [_row("tool1", 4.0, now)])
+        _seed_transcript(tmp_path / "projects", "tool1", tooling_repo)
+
+        share = collect(
+            ledger_dir=tmp_path / "metrics",
+            projects_dir=tmp_path / "projects",
+            meta_root=meta_cwd,
+            meta_repos=[tooling_repo],
+        )
+        assert share.available is True
+        assert share.meta_usd == 4.0
+        assert share.total_usd == 4.0
+        assert share.meta_pct == pytest.approx(100.0)
+
+    def test_claude_home_still_meta_with_config(self, tmp_path):
+        """(b) ~/.claude remains meta even when meta_repos is configured."""
+        now = datetime.now(timezone.utc)
+        meta_cwd = tmp_path / "home" / ".claude"
+        tooling_repo = tmp_path / "git" / "buvis" / "claude-tooling"
+        _write_ledger(tmp_path / "metrics", [_row("home1", 5.0, now)])
+        _seed_transcript(tmp_path / "projects", "home1", meta_cwd)
+
+        share = collect(
+            ledger_dir=tmp_path / "metrics",
+            projects_dir=tmp_path / "projects",
+            meta_root=meta_cwd,
+            meta_repos=[tooling_repo],
+        )
+        assert share.meta_usd == 5.0
+        assert share.total_usd == 5.0
+        assert share.meta_pct == pytest.approx(100.0)
+
+    def test_unlisted_repo_counts_as_product(self, tmp_path):
+        """(c) a session under an UNLISTED repo stays product."""
+        now = datetime.now(timezone.utc)
+        meta_cwd = tmp_path / "home" / ".claude"
+        tooling_repo = tmp_path / "git" / "buvis" / "claude-tooling"
+        unlisted_repo = tmp_path / "git" / "buvis" / "gems"
+        _write_ledger(
+            tmp_path / "metrics",
+            [_row("tool1", 4.0, now), _row("prod1", 6.0, now)],
+        )
+        _seed_transcript(tmp_path / "projects", "tool1", tooling_repo)
+        _seed_transcript(tmp_path / "projects", "prod1", unlisted_repo)
+
+        share = collect(
+            ledger_dir=tmp_path / "metrics",
+            projects_dir=tmp_path / "projects",
+            meta_root=meta_cwd,
+            meta_repos=[tooling_repo],
+        )
+        # tool1 ($4) meta via config; prod1 ($6) unlisted -> product.
+        assert share.meta_usd == 4.0
+        assert share.total_usd == 10.0
+        assert share.meta_pct == pytest.approx(40.0)
+
+    def test_empty_meta_repos_matches_non_config_result(self, tmp_path):
+        """(d) meta_repos=[] / omitted is identical to the non-config path.
+
+        Reproduces :meth:`TestAttribution.test_mixed_reproduces_known_pct` (one
+        meta $2, one product $6 -> 25%) and asserts passing ``meta_repos=[]`` and
+        omitting it entirely both yield the same back-compatible result.
+        """
+        now = datetime.now(timezone.utc)
+        meta_cwd = tmp_path / "home" / ".claude"
+        product_cwd = tmp_path / "git" / "buvis" / "gems"
+        _write_ledger(
+            tmp_path / "metrics",
+            [_row("meta1", 2.0, now), _row("prod1", 6.0, now)],
+        )
+        _seed_transcript(tmp_path / "projects", "meta1", meta_cwd)
+        _seed_transcript(tmp_path / "projects", "prod1", product_cwd)
+
+        kwargs = {
+            "ledger_dir": tmp_path / "metrics",
+            "projects_dir": tmp_path / "projects",
+            "meta_root": meta_cwd,
+        }
+        omitted = collect(**kwargs)
+        explicit_empty = collect(**kwargs, meta_repos=[])
+
+        for share in (omitted, explicit_empty):
+            assert share.total_usd == 8.0
+            assert share.meta_usd == 2.0
+            assert share.meta_pct == pytest.approx(25.0)
+        assert explicit_empty == omitted
+
+    def test_dotted_configured_repo_encodes_and_matches(self, tmp_path):
+        """(e) a configured repo path containing a dot encodes/matches correctly.
+
+        A real Claude-tooling checkout path like
+        ``.../github.com/buvis/agent-skills`` has a dot in ``github.com`` that
+        the encoder must rewrite to ``-`` on BOTH sides, exactly like ``.claude``
+        — otherwise the prefix never matches the transcript dir name.
+        """
+        now = datetime.now(timezone.utc)
+        meta_cwd = tmp_path / "home" / ".claude"
+        dotted_repo = tmp_path / "git" / "src" / "github.com" / "buvis" / "agent-skills"
+        _write_ledger(tmp_path / "metrics", [_row("skill1", 3.0, now)])
+        _seed_transcript(tmp_path / "projects", "skill1", dotted_repo)
+
+        share = collect(
+            ledger_dir=tmp_path / "metrics",
+            projects_dir=tmp_path / "projects",
+            meta_root=meta_cwd,
+            meta_repos=[dotted_repo],
+        )
+        assert share.meta_usd == 3.0
+        assert share.total_usd == 3.0
+        assert share.meta_pct == pytest.approx(100.0)
+
+
 class TestWindowFilter:
     def test_window_filter_excludes_old_rows(self, tmp_path):
         now = datetime.now(timezone.utc)
