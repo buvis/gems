@@ -56,12 +56,13 @@ class TestInit:
     ) -> None:
         root = tmp_path / "vault"
         klyreon_env(root)
-        # Stop git's upward work-tree discovery at tmp_path so the vault is
-        # genuinely "not inside a git work tree" regardless of where the test
-        # runner places tmp_path. On CI, pytest's basetemp lives under the
-        # checkout's git tree, so without this ceiling git reports the vault as
-        # inside a work tree and the warning never fires.
-        monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
+        # Force the "not a git work tree" branch deterministically. We cannot
+        # rely on tmp_path being outside a git tree: CI runners place pytest's
+        # basetemp under the checkout's git work tree (and /tmp is a symlink on
+        # some runners, so GIT_CEILING_DIRECTORIES is not reliably honored), in
+        # which case git's upward discovery reports the vault as inside a work
+        # tree and the warning never fires. Stub the check at its import site.
+        monkeypatch.setattr("klyreon.commands.init.is_git_vault", lambda _root: False)
         res = runner.invoke(cli, ["init", str(root)])
         assert res.exit_code == 0
         assert "not inside a git work tree" in res.output
