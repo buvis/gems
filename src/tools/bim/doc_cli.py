@@ -184,16 +184,12 @@ def doc_audit(ctx: click.Context) -> None:
     cmd = CommandAudit(services=services)
     result = cmd.execute()
 
-    if not result.success:
-        console.failure(result.error or "audit failed")
-        return
+    def _report_audit_success(r: CommandResult) -> None:
+        report = r.metadata["report"]
+        render_stdout(report, console)
+        console.success(f"Report: {r.metadata['report_path']}")
 
-    for w in result.warnings:
-        console.warning(w)
-
-    report = result.metadata["report"]
-    render_stdout(report, console)
-    console.success(f"Report: {result.metadata['report_path']}")
+    console.report_result(result, on_success=_report_audit_success, failure_msg="audit failed")
 
 
 register_rules_subcommands(doc)
