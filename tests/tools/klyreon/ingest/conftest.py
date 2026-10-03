@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import subprocess
+import tempfile
+from collections.abc import Generator
 from pathlib import Path
 from types import ModuleType
 
@@ -61,3 +64,57 @@ def conflict_vault(tmp_path: Path) -> Path:
     for sub in ("sources", "wiki/notes", "wiki/trails"):
         (root / sub).mkdir(parents=True, exist_ok=True)
     return root
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=True)
+
+
+def _git_operable(base: Path) -> bool:
+    """Return True when 'git init' succeeds under ``base`` (some sandboxes deny it)."""
+    probe = base / "git-probe"
+    try:
+        probe.mkdir(parents=True, exist_ok=True)
+        completed = subprocess.run(
+            ["git", "-C", str(probe), "init", "-q"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    finally:
+        shutil.rmtree(probe, ignore_errors=True)
+    return completed.returncode == 0
+
+
+@pytest.fixture
+def git_vault(tmp_path: Path) -> Generator[Path, None, None]:
+    """A git-initialised empty vault skeleton with one seed commit.
+
+    pytest's tmp_path can live under a sandbox-restricted root where ``git init``
+    is denied (exit 128); prefer it (CI), fall back to ``/tmp``, else skip -- the
+    same pattern 00074's git tests use.
+    """
+    base: Path | None = None
+    for candidate in (tmp_path, Path("/tmp")):
+        if _git_operable(candidate):
+            base = Path(tempfile.mkdtemp(prefix="klyreon-ingest-git-", dir=str(candidate)))
+            break
+    if base is None:
+        pytest.skip("no git-operable temp directory available in this environment")
+
+    root = base / "vault"
+    for sub in ("sources/2026-05", "wiki/notes", "wiki/mocs", "wiki/trails"):
+        (root / sub).mkdir(parents=True)
+    _git(root, "init", "-q")
+    _git(root, "config", "user.name", "Human Owner")
+    _git(root, "config", "user.email", "human@example.com")
+    _git(root, "config", "commit.gpgsign", "false")
+    (root / "README.md").write_text("seed\n", encoding="utf-8")
+    _git(root, "add", "README.md")
+    _git(root, "commit", "-q", "-m", "seed")
+    try:
+        yield root
+    finally:
+        shutil.rmtree(base, ignore_errors=True)

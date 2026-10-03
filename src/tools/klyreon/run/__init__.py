@@ -8,5 +8,6 @@ from ``klyreon.run`` regardless of which module owns a symbol.
 from __future__ import annotations
 
 from klyreon.run.lock import LockBusyError, vault_lock
+from klyreon.run.staging import Staging, StagingError, staging_root
 
-__all__ = ["LockBusyError", "vault_lock"]
+__all__ = ["LockBusyError", "Staging", "StagingError", "staging_root", "vault_lock"]

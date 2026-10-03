@@ -43,7 +43,7 @@ __all__ = [
     "known_backends",
 ]
 
-_BUILTIN_STATIC = frozenset({"stub"})
+_BUILTIN_STATIC = frozenset({"claude", "stub"})
 
 
 def known_backends() -> frozenset[str]:
@@ -55,18 +55,21 @@ def get_backend(name: str, *, model: str | None = None, timeout_cushion: int = 3
     """Construct the backend adapter registered under ``name``.
 
     Args:
-        name: ``stub`` today; ``claude`` is wired in Phase 1 when its adapter
-            lands, and kiro/copilot later.
-        model: Passed to a real adapter as ``--model`` when set; ignored by the
-            stub.
+        name: ``claude`` or ``stub``; kiro/copilot land later without touching
+            the pipeline.
+        model: Passed to the claude adapter as ``--model`` when set; ignored by
+            the stub.
         timeout_cushion: Seconds added to the per-source timeout for the
-            subprocess hard kill (real adapters only).
+            subprocess hard kill (claude adapter only).
 
     Raises:
         BackendError: when ``name`` is not a known backend.
     """
-    _ = (model, timeout_cushion)  # consumed by real adapters wired in Phase 1
     if name == "stub":
         return StubBackend()
+    if name == "claude":
+        from klyreon.backends.claude import ClaudeBackend
+
+        return ClaudeBackend(model=model, timeout_cushion=timeout_cushion)
     msg = f"unknown backend {name!r}; known backends are {sorted(known_backends())}"
     raise BackendError(BackendReason.EXIT, msg)
