@@ -44,6 +44,22 @@ class AssetOffer:
     confirm: Callable[[str], bool] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ScheduleOffer:
+    """How ``init`` should handle the scheduler-install offer.
+
+    ``install`` forces install without prompting; otherwise, on a real TTY and
+    not ``no_input``, ``confirm`` is asked once. ``no_input`` or a non-TTY skips
+    the offer and prints the follow-up command. No autonomous run reaches this.
+    """
+
+    install: bool = False
+    at: str = "03:00"
+    no_input: bool = False
+    is_tty: bool = False
+    confirm: Callable[[str], bool] | None = None
+
+
 class CommandInit:
     """Create ``<root>/sources``, ``<root>/wiki/{notes,mocs,trails}``, a voice
     starter, and the klyreon config pointing at ``<root>``.
@@ -53,10 +69,18 @@ class CommandInit:
     ``git init``; warns when the root is not a git work tree.
     """
 
-    def __init__(self, path: Path, *, force: bool = False, offer: AssetOffer | None = None) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        force: bool = False,
+        offer: AssetOffer | None = None,
+        schedule_offer: ScheduleOffer | None = None,
+    ) -> None:
         self.root = path.expanduser().resolve()
         self.force = force
         self.offer = offer or AssetOffer()
+        self.schedule_offer = schedule_offer or ScheduleOffer()
 
     def execute(self) -> CommandResult:
         info: list[str] = []
@@ -94,6 +118,7 @@ class CommandInit:
             )
 
         self._offer_assets(info, warnings)
+        self._offer_schedule(info, warnings)
 
         return CommandResult(
             success=True,
@@ -130,6 +155,32 @@ class CommandInit:
         info += [f"asset written: {p}" for p in report.written]
         info += [f"asset current: {p}" for p in report.current]
         warnings += [f"backed up your edit of {orig} to {backup}" for orig, backup in report.displaced]
+
+    def _offer_schedule(self, info: list[str], warnings: list[str]) -> None:
+        """Offer to install the maintenance schedule as part of setup.
+
+        ``--schedule`` installs without prompting. Otherwise, on a real TTY and
+        not ``--no-input``, prompt once. With ``--no-input`` or no TTY, skip and
+        print the follow-up command. No autonomous run reaches this path.
+        """
+        offer = self.schedule_offer
+        wants = offer.install
+        if not wants:
+            if offer.no_input or not offer.is_tty or offer.confirm is None:
+                info.append("skipped scheduler; run 'klyreon schedule install' to automate maintenance")
+                return
+            wants = offer.confirm("Install the daily maintenance schedule?")
+
+        if not wants:
+            return
+
+        from klyreon.commands.schedule import CommandScheduleInstall
+
+        result = CommandScheduleInstall(at=offer.at).execute()
+        if result.success:
+            info.append(f"schedule: {result.output}")
+        else:
+            warnings.append(f"schedule install skipped: {result.error}")
 
     def _write_config(self, info: list[str], warnings: list[str]) -> CommandResult | None:
         cfg = config_path()

@@ -89,11 +89,24 @@ def _resolve_root_or_panic() -> Path:
     help="Install this operator's asset pack without prompting (repeatable).",
 )
 @click.option("--no-input", "no_input", is_flag=True, default=False, help="Skip the interactive asset-install offer.")
+@click.option(
+    "--schedule", "schedule", is_flag=True, default=False, help="Install the maintenance schedule without prompting."
+)
+@click.option("--at", "schedule_at", default="03:00", help="Scheduled daily time HH:MM (default 03:00).")
 @click.pass_context
-def init(ctx: click.Context, path: Path | None, *, force: bool, operators: tuple[str, ...], no_input: bool) -> None:
+def init(
+    ctx: click.Context,
+    path: Path | None,
+    *,
+    force: bool,
+    operators: tuple[str, ...],
+    no_input: bool,
+    schedule: bool,
+    schedule_at: str,
+) -> None:
     import sys
 
-    from klyreon.commands.init import AssetOffer, CommandInit
+    from klyreon.commands.init import AssetOffer, CommandInit, ScheduleOffer
 
     target = path if path is not None else Path.cwd()
     is_tty = sys.stdin.isatty()
@@ -103,7 +116,14 @@ def init(ctx: click.Context, path: Path | None, *, force: bool, operators: tuple
         is_tty=is_tty,
         confirm=console.confirm,
     )
-    result = CommandInit(target, force=force, offer=offer).execute()
+    schedule_offer = ScheduleOffer(
+        install=schedule,
+        at=schedule_at,
+        no_input=no_input,
+        is_tty=is_tty,
+        confirm=console.confirm,
+    )
+    result = CommandInit(target, force=force, offer=offer, schedule_offer=schedule_offer).execute()
     console.report_result(result)
     if not result.success:
         ctx.exit(1)
@@ -212,8 +232,77 @@ def status(ctx: click.Context) -> None:
 
     root = _resolve_root_or_panic()
     settings = get_settings(ctx, KlyreonSettings)
-    result = CommandStatus(root, maintenance_window_days=settings.maintenance_window_days, check_assets=True).execute()
+    result = CommandStatus(
+        root,
+        maintenance_window_days=settings.maintenance_window_days,
+        prune_window_days=settings.prune_window_days,
+        pruning_enabled=settings.pruning_enabled,
+        check_assets=True,
+    ).execute()
     console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    if not result.success:
+        ctx.exit(1)
+
+
+@cli.command("maintain", help="Run the autonomous maintenance sweep (deterministic, no LLM call)")
+@click.option(
+    "--dry-run", "dry_run", is_flag=True, default=False, help="Report every transition and candidate; write nothing."
+)
+@click.pass_context
+def maintain(ctx: click.Context, *, dry_run: bool) -> None:
+    from klyreon.commands.maintain import CommandMaintain
+    from klyreon.vault.git import GitIdentity
+
+    root = _resolve_root_or_panic()
+    settings = get_settings(ctx, KlyreonSettings)
+    result = CommandMaintain(
+        root,
+        max_body_lines=settings.max_zettel_body_lines,
+        prune_window_days=settings.prune_window_days,
+        pruning_enabled=settings.pruning_enabled,
+        dry_run=dry_run,
+        identity=GitIdentity(name=settings.git_identity_name, email=settings.git_identity_email),
+    ).execute()
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    if not result.success:
+        ctx.exit(1)
+
+
+@cli.group("schedule", help="Install, inspect, and remove the daily maintenance schedule")
+def schedule() -> None:
+    """The external trigger: launchd on macOS, cron on Linux."""
+
+
+@schedule.command("install", help="Write the platform scheduler artifact (re-runnable)")
+@click.option("--at", "at", default="03:00", help="Daily time HH:MM (default 03:00).")
+@click.pass_context
+def schedule_install(ctx: click.Context, at: str) -> None:
+    from klyreon.commands.schedule import CommandScheduleInstall
+
+    result = CommandScheduleInstall(at=at).execute()
+    console.report_result(result)
+    if not result.success:
+        ctx.exit(1)
+
+
+@schedule.command("status", help="Show whether the schedule is present, loaded, and unmodified")
+@click.pass_context
+def schedule_status(ctx: click.Context) -> None:
+    from klyreon.commands.schedule import CommandScheduleStatus
+
+    result = CommandScheduleStatus().execute()
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    if not result.success:
+        ctx.exit(1)
+
+
+@schedule.command("uninstall", help="Remove the scheduler artifact and the manifest entry")
+@click.pass_context
+def schedule_uninstall(ctx: click.Context) -> None:
+    from klyreon.commands.schedule import CommandScheduleUninstall
+
+    result = CommandScheduleUninstall().execute()
+    console.report_result(result)
     if not result.success:
         ctx.exit(1)
 

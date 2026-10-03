@@ -23,16 +23,20 @@ class CommandStatus:
     git status, and the maintenance-staleness line.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - CLI-mirroring knobs, each with a configured default
         self,
         root: Path,
         *,
         maintenance_window_days: int = 7,
+        prune_window_days: int = 365,
+        pruning_enabled: bool = False,
         now: dt.datetime | None = None,
         check_assets: bool = False,
     ) -> None:
         self.root = root
         self.maintenance_window_days = maintenance_window_days
+        self.prune_window_days = prune_window_days
+        self.pruning_enabled = pruning_enabled
         self.now = now
         self.check_assets = check_assets
 
@@ -74,6 +78,9 @@ class CommandStatus:
 
         self._warn_assets_behind(warnings)
 
+        prune_count = self._prune_candidate_count()
+        deletion = "enabled" if self.pruning_enabled else "report-only"
+
         lines = [
             f"vault: {self.root}",
             f"zettels: {total_zettels}  sources: {total_sources} (pending inbox: {pending_sources})",
@@ -81,6 +88,7 @@ class CommandStatus:
             f"assent: {self._fmt(assent_counts)}",
             f"mean links/zettel: {mean_links}",
             f"aporia zettels: {aporia}  open disagreement doubts: {open_disagreements}",
+            f"prune candidates: {prune_count} (deletion {deletion})",
             git_line,
             staleness,
         ]
@@ -97,8 +105,19 @@ class CommandStatus:
                 "mean_links": mean_links,
                 "aporia": aporia,
                 "open_disagreements": open_disagreements,
+                "prune_candidates": prune_count,
+                "pruning_enabled": self.pruning_enabled,
             },
         )
+
+    def _prune_candidate_count(self) -> int:
+        """Count prune candidates on demand from the vault (same rule as maintain)."""
+        from klyreon.maintain.graph import VaultGraph
+        from klyreon.maintain.prune import find_candidates
+
+        now = self.now or dt.datetime.now().astimezone()
+        graph = VaultGraph.build(self.root)
+        return len(find_candidates(graph, window_days=self.prune_window_days, now=now))
 
     @staticmethod
     def _fmt(counter: Counter[str]) -> str:
