@@ -23,10 +23,18 @@ class CommandStatus:
     git status, and the maintenance-staleness line.
     """
 
-    def __init__(self, root: Path, *, maintenance_window_days: int = 7, now: dt.datetime | None = None) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        maintenance_window_days: int = 7,
+        now: dt.datetime | None = None,
+        check_assets: bool = False,
+    ) -> None:
         self.root = root
         self.maintenance_window_days = maintenance_window_days
         self.now = now
+        self.check_assets = check_assets
 
     def execute(self) -> CommandResult:
         notes_dir = self.root / "wiki" / "notes"
@@ -63,6 +71,8 @@ class CommandStatus:
         mean_links = round(total_links / total_zettels, 2) if total_zettels else 0.0
         git_line = "git: tracked" if is_git_vault(self.root) else "git: NOT a git work tree"
         staleness = self._staleness_line()
+
+        self._warn_assets_behind(warnings)
 
         lines = [
             f"vault: {self.root}",
@@ -107,6 +117,31 @@ class CommandStatus:
             if "archive" not in md.relative_to(sources_dir).parts:
                 pending += 1
         return total, pending
+
+    def _warn_assets_behind(self, warnings: list[str]) -> None:
+        """Append exactly one warning when any installed asset is behind the CLI.
+
+        Off unless ``check_assets`` is set: the asset check belongs to the health
+        dashboard, not to every command invocation. A broken manifest never
+        breaks the dashboard -- the warning is simply skipped.
+        """
+        if not self.check_assets:
+            return
+        try:
+            from klyreon.assets import installer
+            from klyreon.assets.manifest import ManifestError
+
+            try:
+                behind = [s for s in installer.status() if s.behind_cli]
+            except ManifestError:
+                return
+        except ImportError:
+            return
+        if behind:
+            operators = ", ".join(sorted({s.operator for s in behind}))
+            warnings.append(
+                f"installed assets are behind this klyreon ({operators}): run 'klyreon assets refresh' to update them",
+            )
 
     def _staleness_line(self) -> str:
         now = self.now or dt.datetime.now().astimezone()

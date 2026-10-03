@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
@@ -27,6 +29,21 @@ Klyreon's ingest renders source material into this voice.
 """
 
 
+@dataclass(frozen=True, slots=True)
+class AssetOffer:
+    """How ``init`` should handle the operator asset-install offer.
+
+    ``operators`` names packs to install without prompting; otherwise, on a real
+    TTY and not ``no_input``, ``confirm`` is asked per operator. ``no_input`` or
+    a non-TTY skips the offer entirely.
+    """
+
+    operators: list[str] = field(default_factory=list)
+    no_input: bool = False
+    is_tty: bool = False
+    confirm: Callable[[str], bool] | None = None
+
+
 class CommandInit:
     """Create ``<root>/sources``, ``<root>/wiki/{notes,mocs,trails}``, a voice
     starter, and the klyreon config pointing at ``<root>``.
@@ -36,9 +53,10 @@ class CommandInit:
     ``git init``; warns when the root is not a git work tree.
     """
 
-    def __init__(self, path: Path, *, force: bool = False) -> None:
+    def __init__(self, path: Path, *, force: bool = False, offer: AssetOffer | None = None) -> None:
         self.root = path.expanduser().resolve()
         self.force = force
+        self.offer = offer or AssetOffer()
 
     def execute(self) -> CommandResult:
         info: list[str] = []
@@ -75,12 +93,43 @@ class CommandInit:
                 "will be refused until you run 'git init' there yourself; klyreon never creates the repo.",
             )
 
+        self._offer_assets(info, warnings)
+
         return CommandResult(
             success=True,
             output=f"vault ready at {self.root}",
             info=info,
             warnings=warnings,
         )
+
+    def _offer_assets(self, info: list[str], warnings: list[str]) -> None:
+        """Install the asset packs the user asked for, or offer them on a TTY.
+
+        ``--operator`` installs those packs without prompting. Otherwise, on a
+        real TTY and not ``--no-input``, prompt per operator. With ``--no-input``
+        or no TTY, skip the offer and print how to run ``klyreon assets install``.
+        No autonomous run ever reaches this: ``init`` is interactive setup.
+        """
+        from klyreon.assets import installer
+        from klyreon.assets.registry import known_operator_names
+
+        offer = self.offer
+        chosen = list(offer.operators)
+        if not chosen:
+            if offer.no_input or not offer.is_tty or offer.confirm is None:
+                info.append("skipped operator assets; run 'klyreon assets install --operator <name>' to add them")
+                return
+            for operator in known_operator_names():
+                if offer.confirm(f"Install the {operator} asset pack?"):
+                    chosen.append(operator)
+
+        if not chosen:
+            return
+
+        report = installer.install(chosen)
+        info += [f"asset written: {p}" for p in report.written]
+        info += [f"asset current: {p}" for p in report.current]
+        warnings += [f"backed up your edit of {orig} to {backup}" for orig, backup in report.displaced]
 
     def _write_config(self, info: list[str], warnings: list[str]) -> CommandResult | None:
         cfg = config_path()
