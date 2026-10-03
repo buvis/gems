@@ -115,7 +115,7 @@ Maps of Content (MOCs) live under `wiki/mocs/` and use kebab-case slugs as filen
 
 A trail is the journal of one autonomous run: every ingest and maintain run writes exactly one, recording sources ingested, zettels created, each conflict and the shape it resolved into, promotions, and prune candidates or prunes. Roadmap query sessions will write the same shape.
 
-The internal format of MOC and trail files is deliberately not specified here yet; it is an open item for Klyreon's design. This spec governs their location, filename rules, and (for trails) the run-journal purpose above.
+The frontmatter contract for MOC and trail files is defined in section 3.3; their body is left free. This spec governs their location, filename rules, their frontmatter (section 3.3), and (for trails) the run-journal purpose above.
 
 ### 3.2 Source document filenames
 
@@ -138,6 +138,23 @@ The filename is chosen at capture time and SHOULD remain readable. It usually in
 Source documents live under `sources/YYYY-MM/` initially. Ingest is archive-first: it resolves the archive path up front, every derived zettel cites `sources/archive/YYYY-MM/...` from birth, and the physical move lands in the same atomic commit as the zettels. "Archived" therefore means "ingest committed", not "approved by a human". A failed ingest applies nothing: the source stays in `sources/YYYY-MM/` and no zettel references it.
 
 Resolved (discovery Q15/Q16): archive-first ingest. Because zettels cite the archive path from birth and the move is atomic with them, no committed vault state contains a dangling source path, and the validator stays strict with no two-location fallback.
+
+### 3.3 Auxiliary files (MOCs and trails)
+
+MOC files (`wiki/mocs/`) and trail files (`wiki/trails/`) are **auxiliary files**: they are neither source documents nor zettels. They organize and journal the vault rather than hold ingested content or an atomic idea, so they do not carry the `type` field (whose two vocabularies, section 6, belong to the two species) and they never carry the concept dimensions (`concept-type`, `assent`, `lifecycle`, `claims`, `doubts`).
+
+An auxiliary file's frontmatter has exactly these required fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Same as the filename without `.md`. For a MOC: the kebab-case slug (`architecture`, `self`). For a trail: `YYYYMMDDHHmmSS` (14 digits, section 3.1). Never changes. |
+| `title` | string | Declarative title. MUST match the H1 exactly, as in section 11.1. |
+| `created` | ISO 8601 datetime | Creation timestamp with timezone offset. For a trail, the date/time components MUST match the `id` field exactly, as for zettels (section 3.1). |
+| `kind` | enum | The auxiliary kind: `moc` or `trail`. This field stands in place of `type`; an auxiliary file carries `kind` and no `type`, and the two species carry `type` and no `kind`. |
+
+The common optional fields (`updated`, `tags`; section 5.2) are permitted. `publish` follows the same tool-only-sets-`false` rule (section 5.2). The cross-reference fields (`sources`, `links`, `mocs`, `delivered-as`) are not part of the auxiliary contract and are not validated on auxiliary files. Unknown keys are tolerated and preserved exactly as for the two species (section 14).
+
+The body is free. A MOC body is the user's arrangement of links into "rooms"; a trail body is the run journal described in section 3.1 (sources ingested, zettels created, each conflict and the shape it resolved into, promotions, prune candidates). Because 3.3 fixes only the frontmatter contract, the trail journal's sections can grow without another spec edit.
 
 ## 4. Overall layout
 

@@ -45,6 +45,7 @@ bim = "bim.cli:cli"
 dot = "dot.cli:cli"
 fctracker = "fctracker.cli:cli"
 fren = "fren.cli:cli"
+klyreon = "klyreon.cli:cli"
 morph = "morph.cli:cli"
 muc = "muc.cli:cli"
 netscan = "netscan.cli:cli"
@@ -84,6 +85,7 @@ packages = [
   "src/tools/dot",
   "src/tools/fctracker",
   "src/tools/fren",
+  "src/tools/klyreon",
   "src/tools/morph",
   "src/tools/muc",
   "src/tools/netscan",
@@ -110,6 +112,7 @@ markers = [
     "dot: dot tests",
     "fctracker: fctracker tests",
     "fren: fren tests",
+    "klyreon: klyreon tests",
     "lib: library tests",
     "morph: morph tests",
     "muc: muc tests",
