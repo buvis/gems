@@ -1,0 +1,260 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>klyreon &mdash; buvis-gems  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="morph" href="morph.html" />
+    <link rel="prev" title="fren" href="fren.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            buvis-gems
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Library:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html#api-reference">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../formatting.html">Formatting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filesystem.html">Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adapters.html">Adapters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../zettel.html">Zettel</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CLI Tools:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tools.html">CLI Tools</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#common-options">Common Options</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../tools.html#extending-tools">Extending Tools</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="backup.html">backup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bim.html">bim</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dot.html">dot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fctracker.html">fctracker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fren.html">fren</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">klyreon</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#the-vault-root">The vault root</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="morph.html">morph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muc.html">muc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="netscan.html">netscan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="outlookctl.html">outlookctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="puc.html">puc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="postup.html">postup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sysup.html">sysup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../completions.html">Shell Completions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development.html">Development</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">buvis-gems</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
+      <li class="breadcrumb-item active">klyreon</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tools/klyreon.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="klyreon">
+<span id="tool-klyreon"></span><h1>klyreon<a class="headerlink" href="#klyreon" title="Link to this heading"></a></h1>
+<p>Autonomous Memex-Zettelkasten. <code class="docutils literal notranslate"><span class="pre">klyreon</span></code> is the gem that reads, writes, and
+validates the Klyreon vault format (the normative format spec lives at
+<code class="docutils literal notranslate"><span class="pre">docs/reference/klyreon/zettel-format-specification.md</span></code>), finds and creates
+the vault, and commits machine writes under a dedicated identity so authorship
+stays detectable. It runs on the core install — no extra.</p>
+<p>This first release (PRD 00074) ships the spec engine, the vault contract, the
+git layer, and five commands. Ingest, operator assets, and the autonomous
+maintain loop land in later PRDs.</p>
+<section id="the-vault-root">
+<h2>The vault root<a class="headerlink" href="#the-vault-root" title="Link to this heading"></a></h2>
+<p>Every path inside a zettel or source document is relative to a <strong>root</strong>. klyreon
+resolves the root as:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">$KLYREON_ROOT</span></code> (wins outright — used for test isolation), else</p></li>
+<li><p>the <code class="docutils literal notranslate"><span class="pre">root</span></code> key in <code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/klyreon/config.yaml</span></code> (falling back to
+<code class="docutils literal notranslate"><span class="pre">~/.config/klyreon/config.yaml</span></code>).</p></li>
+</ol>
+<p>A relative root, a missing root directory, or a missing config file fails loudly
+and creates nothing. Paths containing <code class="docutils literal notranslate"><span class="pre">..</span></code> or escaping the root are rejected.</p>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 20.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">backend</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">claude</span></code></p></td>
+<td><p>LLM backend for later autonomous PRDs.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">model</span></code></p></td>
+<td><p>(unset)</p></td>
+<td><p>Optional model override.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_sources_per_run</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">5</span></code></p></td>
+<td><p>Ingest cap (PRD B).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">source_timeout_seconds</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">900</span></code></p></td>
+<td><p>Per-source ingest timeout (PRD B).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_zettel_body_lines</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">60</span></code></p></td>
+<td><p>Oversized-body lint threshold.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">maintenance_window_days</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">7</span></code></p></td>
+<td><p>Staleness window for the maintenance warning.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pruning_enabled</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Whether pruning deletes (PRD D).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">prune_window_days</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">365</span></code></p></td>
+<td><p>Prune candidate window (PRD D).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">git_identity_name</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">klyreon</span></code></p></td>
+<td><p>Author name on machine commits.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">git_identity_email</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">klyreon&#64;localhost</span></code></p></td>
+<td><p>Author email on machine commits.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Settings layer CLI &gt; env (<code class="docutils literal notranslate"><span class="pre">BUVIS_KLYREON_*</span></code>) &gt; YAML config &gt; defaults. The
+vault root is <strong>not</strong> a setting — it lives in klyreon’s own config file so every
+tool finds the vault the same way.</p>
+</section>
+<section id="commands">
+<h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>klyreon<span class="w"> </span>init<span class="w"> </span><span class="o">[</span>PATH<span class="o">]</span><span class="w">                      </span><span class="c1"># create the vault skeleton + config</span>
+klyreon<span class="w"> </span>init<span class="w"> </span>.<span class="w"> </span>--force<span class="w">                   </span><span class="c1"># repoint an existing config here</span>
+klyreon<span class="w"> </span>new<span class="w"> </span>--title<span class="w"> </span><span class="s2">"A thesis"</span><span class="w"> </span>--type<span class="w"> </span>note<span class="w"> </span>--concept-type<span class="w"> </span>thesis
+klyreon<span class="w"> </span>new<span class="w"> </span>--title<span class="w"> </span><span class="s2">"ripgrep tip"</span><span class="w"> </span>--type<span class="w"> </span>snippet
+klyreon<span class="w"> </span>validate<span class="w">                         </span><span class="c1"># exit 1 on any error, 0 when clean</span>
+klyreon<span class="w"> </span>validate<span class="w"> </span>--json<span class="w">                  </span><span class="c1"># machine-readable report (stdout)</span>
+klyreon<span class="w"> </span>export-claims<span class="w">                     </span><span class="c1"># claim index JSON to stdout</span>
+klyreon<span class="w"> </span>export-claims<span class="w"> </span>--out<span class="w"> </span>~/claims.json<span class="w"> </span><span class="c1"># refused if under the vault root</span>
+klyreon<span class="w"> </span>status<span class="w">                           </span><span class="c1"># vault dashboard, computed on demand</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">init</span></code> is idempotent and never runs <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">init</span></code>; it warns when the root is
+not a git work tree.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span></code> allocates a collision-free 14-digit id; a concept zettel gets
+<code class="docutils literal notranslate"><span class="pre">assent:</span> <span class="pre">tentative</span></code>, <code class="docutils literal notranslate"><span class="pre">lifecycle:</span> <span class="pre">fleeting</span></code>, <code class="docutils literal notranslate"><span class="pre">processed:</span> <span class="pre">false</span></code> and a
+starter claim; a utility zettel gets none of those.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate</span></code> runs every mechanical check (file-level + graph-level, including
+the transitive-relation cycle check).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">export-claims</span></code> includes claims on <code class="docutils literal notranslate"><span class="pre">assent:</span> <span class="pre">rejected</span></code> zettels, labelled.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">status</span></code> warns when maintenance is stale (every command does).</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="fren.html" class="btn btn-neutral float-left" title="fren" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="morph.html" class="btn btn-neutral float-right" title="morph" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2026, Tomáš Bouška.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
