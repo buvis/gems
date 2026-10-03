@@ -68,6 +68,9 @@
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#operator-assets">Operator assets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#maintenance">Maintenance</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pruning">Pruning</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#scheduler">Scheduler</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="morph.html">morph</a></li>
@@ -124,9 +127,11 @@ validates the Klyreon vault format (the normative format spec lives at
 <code class="docutils literal notranslate"><span class="pre">docs/reference/klyreon/zettel-format-specification.md</span></code>), finds and creates
 the vault, and commits machine writes under a dedicated identity so authorship
 stays detectable. It runs on the core install — no extra.</p>
-<p>This first release (PRD 00074) ships the spec engine, the vault contract, the
-git layer, and five commands. Ingest, operator assets, and the autonomous
-maintain loop land in later PRDs.</p>
+<p>This first release (PRD 00074) shipped the spec engine, the vault contract, the
+git layer, and five commands. Ingest (PRD 00075), operator assets (PRD 00076),
+and the autonomous maintain loop plus the scheduler (PRD 00077) complete the
+chain — a source dropped into <code class="docutils literal notranslate"><span class="pre">sources/</span></code> becomes committed, cross-linked,
+promoted knowledge with no human in the path.</p>
 <section id="the-vault-root">
 <h2>The vault root<a class="headerlink" href="#the-vault-root" title="Link to this heading"></a></h2>
 <p>Every path inside a zettel or source document is relative to a <strong>root</strong>. klyreon
@@ -286,6 +291,106 @@ is skipped and the <code class="docutils literal notranslate"><span class="pre">
 <p>Backup files accumulate in the operator’s directory as the deliberate price of
 never destroying an edit; <code class="docutils literal notranslate"><span class="pre">assets</span> <span class="pre">status</span></code> names every file it would displace so
 you can clear old backups yourself.</p>
+</section>
+<section id="maintenance">
+<h2>Maintenance<a class="headerlink" href="#maintenance" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">klyreon</span> <span class="pre">maintain</span></code> is the autonomous, cron-safe sweep over the whole vault. It
+is <strong>deterministic — it makes no LLM call</strong> — so it runs in a vault with no
+operator CLI installed and costs nothing per run. It refuses in a non-git vault
+(the autonomy gate), takes the single-instance lock, and runs in a fixed order:</p>
+<ol class="arabic simple">
+<li><p><strong>Lint</strong> — every mechanical check (the same ones <code class="docutils literal notranslate"><span class="pre">validate</span></code> runs),
+reported in the trail and <strong>never auto-fixed</strong>. The fixes are semantic and
+belong to a human or to ingest; lint findings do not block the transitions
+below, but any lint <em>error</em> makes the command exit 1.</p></li>
+<li><p><strong>Lifecycle promotion</strong> — <code class="docutils literal notranslate"><span class="pre">fleeting</span></code> → <code class="docutils literal notranslate"><span class="pre">literature</span></code> once a zettel cites a
+source and carries a link in either direction; <code class="docutils literal notranslate"><span class="pre">literature</span></code> → <code class="docutils literal notranslate"><span class="pre">evergreen</span></code>
+once two distinct source documents back it (counted across its own
+<code class="docutils literal notranslate"><span class="pre">sources</span></code> plus the <code class="docutils literal notranslate"><span class="pre">sources</span></code> of every zettel that <code class="docutils literal notranslate"><span class="pre">supports</span></code> it). One
+step per sweep; a promotion never resets <code class="docutils literal notranslate"><span class="pre">processed</span></code>.</p></li>
+<li><p><strong>Assent transitions</strong> — <code class="docutils literal notranslate"><span class="pre">tentative</span></code> → <code class="docutils literal notranslate"><span class="pre">accepted</span></code> once two or more
+distinct source documents <strong>other than its own</strong> corroborate it. An open
+<code class="docutils literal notranslate"><span class="pre">disagreement</span></code> doubt on the zettel, or one anywhere naming it as a
+<code class="docutils literal notranslate"><span class="pre">target</span></code>, holds it. <code class="docutils literal notranslate"><span class="pre">maintain</span></code> never writes <code class="docutils literal notranslate"><span class="pre">rejected</span></code>.</p></li>
+<li><p><strong>MOC membership sync</strong> — each MOC’s <code class="docutils literal notranslate"><span class="pre">&lt;!--</span> <span class="pre">klyreon:members</span> <span class="pre">--&gt;</span></code> block is
+reconciled to the zettels that actually anchor to it: a new anchor is added,
+a dropped or deleted member is removed. Only the marked block is rewritten,
+so human prose around it survives. A MOC named by a zettel but absent from
+disk is a lint finding, not a create — <code class="docutils literal notranslate"><span class="pre">maintain</span></code> never authors MOCs.</p></li>
+<li><p><strong>Prune detection</strong> — see below.</p></li>
+</ol>
+<p>Each transition is its own scoped commit, so an interrupted sweep leaves every
+applied zettel committed and the re-run finishes the rest, always <code class="docutils literal notranslate"><span class="pre">validate</span></code>-
+clean. The run writes one <code class="docutils literal notranslate"><span class="pre">kind:</span> <span class="pre">trail</span></code>, <code class="docutils literal notranslate"><span class="pre">run:</span> <span class="pre">maintain</span></code> journal and stamps
+<code class="docutils literal notranslate"><span class="pre">last_maintain</span></code> into state (which drives the staleness warning every command
+emits).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>klyreon<span class="w"> </span>maintain<span class="w">            </span><span class="c1"># run the sweep; exit 1 if lint found errors</span>
+klyreon<span class="w"> </span>maintain<span class="w"> </span>--dry-run<span class="w">  </span><span class="c1"># report every transition and candidate; write NOTHING</span>
+</pre></div>
+</div>
+<p>Running <code class="docutils literal notranslate"><span class="pre">maintain</span></code> twice in a row makes no change on the second pass (every
+rule is a function of vault state).</p>
+</section>
+<section id="pruning">
+<h2>Pruning<a class="headerlink" href="#pruning" title="Link to this heading"></a></h2>
+<p>Pruning is overload control, <strong>off until you ask for it</strong>. A prune candidate is
+a <code class="docutils literal notranslate"><span class="pre">lifecycle:</span> <span class="pre">fleeting</span></code> zettel with no inbound and no outbound links, no
+corroboration, <code class="docutils literal notranslate"><span class="pre">assent</span></code> other than <code class="docutils literal notranslate"><span class="pre">rejected</span></code>, an empty <code class="docutils literal notranslate"><span class="pre">delivered-as</span></code>,
+and an <code class="docutils literal notranslate"><span class="pre">updated</span></code> (or <code class="docutils literal notranslate"><span class="pre">created</span></code>) older than <code class="docutils literal notranslate"><span class="pre">prune_window_days</span></code> (default
+365). The two exemptions are deliberate: a <code class="docutils literal notranslate"><span class="pre">rejected</span></code> zettel is the record of
+what was considered and refused, and a <code class="docutils literal notranslate"><span class="pre">delivered-as</span></code> zettel backs work that
+already shipped.</p>
+<p>Detection <strong>always runs</strong>: the candidate count appears in <code class="docutils literal notranslate"><span class="pre">klyreon</span> <span class="pre">status</span></code> on
+every check, so the backlog stays loud rather than silently growing. Deletion
+happens only when <code class="docutils literal notranslate"><span class="pre">pruning_enabled:</span> <span class="pre">true</span></code>. With it on, each candidate is
+deleted together with every inbound <code class="docutils literal notranslate"><span class="pre">links</span></code> entry, every <code class="docutils literal notranslate"><span class="pre">doubts[].target</span></code>
+naming it, and its MOC membership — all in <strong>one commit</strong>, so no run ever leaves
+a dangling reference. git history is the archive, which is why the non-git
+refusal matters most here. <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> reports the same list either way.</p>
+</section>
+<section id="scheduler">
+<h2>Scheduler<a class="headerlink" href="#scheduler" title="Link to this heading"></a></h2>
+<p>There is no daemon; the schedule is the external trigger. <code class="docutils literal notranslate"><span class="pre">klyreon</span> <span class="pre">schedule</span></code>
+writes, inspects, and removes the platform scheduler artifact and records it in
+the manifest (<code class="docutils literal notranslate"><span class="pre">kind:</span> <span class="pre">schedule</span></code>).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>klyreon<span class="w"> </span>schedule<span class="w"> </span>install<span class="w">              </span><span class="c1"># write the platform artifact (daily 03:00)</span>
+klyreon<span class="w"> </span>schedule<span class="w"> </span>install<span class="w"> </span>--at<span class="w"> </span><span class="m">05</span>:30<span class="w">   </span><span class="c1"># at a specific time</span>
+klyreon<span class="w"> </span>schedule<span class="w"> </span>status<span class="w">               </span><span class="c1"># present / loaded / hash-matched + last run</span>
+klyreon<span class="w"> </span>schedule<span class="w"> </span>uninstall<span class="w">            </span><span class="c1"># remove the artifact and the manifest entry</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>On <strong>macOS</strong> it writes <code class="docutils literal notranslate"><span class="pre">~/Library/LaunchAgents/net.buvis.klyreon.plist</span></code> with
+label <code class="docutils literal notranslate"><span class="pre">net.buvis.klyreon</span></code> and bootstraps it with
+<code class="docutils literal notranslate"><span class="pre">launchctl</span> <span class="pre">bootstrap</span> <span class="pre">gui/&lt;uid&gt;</span></code>.</p></li>
+<li><p>On <strong>Linux</strong> it writes one crontab line marked <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">klyreon-managed</span></code>.</p></li>
+<li><p>An unsupported platform (e.g. Windows) fails with the manual equivalent named,
+writing nothing.</p></li>
+</ul>
+<p>The scheduled command is <code class="docutils literal notranslate"><span class="pre">/bin/sh</span> <span class="pre">-c</span> <span class="pre">'&lt;klyreon&gt;</span> <span class="pre">ingest;</span> <span class="pre">&lt;klyreon&gt;</span> <span class="pre">maintain'</span></code> —
+a <strong>semicolon, not</strong> <code class="docutils literal notranslate"><span class="pre">&amp;&amp;</span></code>, so a failed source never stops the maintenance
+pass. Both artifacts carry an explicit <code class="docutils literal notranslate"><span class="pre">PATH</span></code> captured at install time,
+because neither cron nor launchd inherits a login shell’s <code class="docutils literal notranslate"><span class="pre">PATH</span></code>; this is the
+trap that silently breaks scheduled runs. Install is <strong>re-runnable</strong> — it boots
+out its own label (or strips its own marked crontab lines) before writing, so a
+reinstalled binary or a changed time is one re-run — and it never touches the
+vault, so it works before <code class="docutils literal notranslate"><span class="pre">init</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">schedule</span> <span class="pre">status</span></code> reports the loaded state (<code class="docutils literal notranslate"><span class="pre">launchctl</span> <span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">crontab</span>
+<span class="pre">-l</span></code>) rather than assuming install worked, and a <strong>hash mismatch</strong> means you
+edited the artifact: status says so instead of silently rewriting it. A missing
+artifact with a live manifest entry is reported, not treated as an error.</p>
+<p><code class="docutils literal notranslate"><span class="pre">klyreon</span> <span class="pre">init</span></code> offers the schedule as part of setup: pass <code class="docutils literal notranslate"><span class="pre">--schedule</span></code> to
+install without prompting (with <code class="docutils literal notranslate"><span class="pre">--at</span> <span class="pre">HH:MM</span></code> for the time), answer the prompt
+on an interactive terminal, or — with <code class="docutils literal notranslate"><span class="pre">--no-input</span></code> or no TTY — have the offer
+skipped and the <code class="docutils literal notranslate"><span class="pre">klyreon</span> <span class="pre">schedule</span> <span class="pre">install</span></code> command printed for later. No
+autonomous run ever reaches that interactive path.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Discovery’s literal criterion 4 — a live cron run of at least seven days on
+the real vault — is a <strong>post-merge soak you run after</strong> <code class="docutils literal notranslate"><span class="pre">schedule</span> <span class="pre">install</span></code>,
+not a CI gate. CI exercises the whole loop against a fixture corpus with the
+stub backend.</p>
+</div>
 </section>
 </section>
 
