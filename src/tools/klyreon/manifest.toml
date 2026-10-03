@@ -15,6 +15,7 @@ web = false
 init = "Create the vault skeleton and the config that points at it"
 new = "Create one spec-valid zettel with a unique ID"
 validate = "Run every mechanical check over the whole vault"
+ingest = "Ingest source documents into interrogated zettels"
 export-claims = "Emit the claim index as JSON"
 status = "Print the vault dashboard"
 

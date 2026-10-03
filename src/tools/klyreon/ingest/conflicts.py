@@ -79,9 +79,16 @@ def _add_doubt(doc: Document, *, claim: str | None, target_to: str, target_claim
 
 
 def _touch_content(doc: Document, now: dt.datetime) -> None:
-    """A content change: reset processed and bump updated (spec 7.7)."""
+    """A content change: reset processed and bump updated (spec 7.7).
+
+    A prior human ``reviewed`` timestamp no longer attests to the changed
+    content, so it is dropped: leaving it would be older than ``updated`` and
+    the validator (correctly) reports that as a stale review. Dropping it keeps
+    the vault ``validate``-clean while still signalling ``processed: false``.
+    """
     doc.frontmatter["processed"] = False
     doc.frontmatter["updated"] = now.isoformat()
+    doc.frontmatter.pop("reviewed", None)
 
 
 def _load_existing(root: Path, rel_path: str, cache: dict[str, Document]) -> Document:

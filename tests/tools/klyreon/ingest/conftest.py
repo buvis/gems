@@ -118,3 +118,58 @@ def git_vault(tmp_path: Path) -> Generator[Path, None, None]:
         yield root
     finally:
         shutil.rmtree(base, ignore_errors=True)
+
+
+def _git_base(tmp_path: Path) -> Path | None:
+    for candidate in (tmp_path, Path("/tmp")):
+        if _git_operable(candidate):
+            return Path(tempfile.mkdtemp(prefix="klyreon-ingest-git-", dir=str(candidate)))
+    return None
+
+
+def _init_git(root: Path) -> None:
+    _git(root, "init", "-q")
+    _git(root, "config", "user.name", "Human Owner")
+    _git(root, "config", "user.email", "human@example.com")
+    _git(root, "config", "commit.gpgsign", "false")
+
+
+@pytest.fixture
+def git_happy_vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
+    """A git vault seeded with the four happy-path sources + an architecture MOC."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    base = _git_base(tmp_path)
+    if base is None:
+        pytest.skip("no git-operable temp directory available in this environment")
+    root = base / "vault"
+    for sub in ("sources", "wiki/notes", "wiki/mocs", "wiki/trails"):
+        (root / sub).mkdir(parents=True)
+    shutil.copytree(HAPPY_SOURCES, root / "sources", dirs_exist_ok=True)
+    shutil.copy(INGEST_FIXTURES / "architecture-moc.md", root / "wiki" / "mocs" / "architecture.md")
+    _init_git(root)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "seed vault")
+    try:
+        yield root
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
+
+@pytest.fixture
+def git_conflict_vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
+    """A git vault = the conflict baseline (accepted + rejected zettels, epistemics MOC)."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    base = _git_base(tmp_path)
+    if base is None:
+        pytest.skip("no git-operable temp directory available in this environment")
+    root = base / "vault"
+    shutil.copytree(CONFLICT_VAULT, root)
+    for sub in ("sources/2026-05", "wiki/notes", "wiki/trails"):
+        (root / sub).mkdir(parents=True, exist_ok=True)
+    _init_git(root)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "seed conflict vault")
+    try:
+        yield root
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
