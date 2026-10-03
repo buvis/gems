@@ -170,6 +170,41 @@ def export_claims(ctx: click.Context, out: Path | None) -> None:
         ctx.exit(1)
 
 
+@cli.command("ingest", help="Ingest source documents into interrogated zettels")
+@click.argument("path", required=False, type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--backend", "backend_name", default=None, help="Backend to use (default: configured).")
+@click.option("--max-sources", "max_sources", default=None, type=int, help="Cap sources this run.")
+@click.option("--timeout", "timeout", default=None, type=int, help="Per-source wall-clock seconds.")
+@click.option("--dry-run", "dry_run", is_flag=True, default=False, help="Run the backend and report without applying.")
+@click.pass_context
+def ingest(
+    ctx: click.Context,
+    path: Path | None,
+    *,
+    backend_name: str | None,
+    max_sources: int | None,
+    timeout: int | None,
+    dry_run: bool,
+) -> None:
+    from klyreon.commands.ingest import CommandIngest
+
+    root = _resolve_root_or_panic()
+    settings = get_settings(ctx, KlyreonSettings)
+    result = CommandIngest(
+        root,
+        path=path,
+        backend_name=backend_name or settings.backend,
+        model=settings.model,
+        max_sources=max_sources if max_sources is not None else settings.max_sources_per_run,
+        timeout=timeout if timeout is not None else settings.source_timeout_seconds,
+        max_body_lines=settings.max_zettel_body_lines,
+        dry_run=dry_run,
+    ).execute()
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    if not result.success:
+        ctx.exit(1)
+
+
 @cli.command("status", help="Print the vault dashboard")
 @click.pass_context
 def status(ctx: click.Context) -> None:
