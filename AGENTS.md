@@ -49,11 +49,16 @@ tests/
 │   ├── zettel/
 │   └── zettel_integrations/
 └── tools/                      # CLI tool tests
-dev/
-└── bin/
+tools/                          # Dev command shims (on PATH via mise) + helpers
+├── release                     # public shim → mise `release` task
+└── lib/                        # helpers, invoked by path (NOT on PATH)
+    ├── release                 # release impl: bump+tag+push
     ├── pin_deps.py             # pin deps from uv.lock for publishing
-    ├── release                 # bump+tag+push
-    └── scaffold.py             # scaffold a new tool
+    ├── scaffold.py             # scaffold a new tool
+    ├── check_audit_ignores.py  # pip-audit suppression guard (+ audit/ config)
+    ├── check_tool_wiring.py    # pre-commit tool-wiring check
+    ├── parity_brief_portfolio.py
+    └── gen_zettel_writer_fixtures.py
 ```
 
 **Key patterns:**
@@ -154,7 +159,7 @@ def create(ctx):
 
 ## Invariants (evolution guardrails)
 
-These encode the failure classes surfaced by the 2026-07-09 evolution assessment (`docs/dev/project-management/audit-results/evolution-assessment-2026-07-09.md`). Each is either **HOLDS** (enforce it) or a **GAP** (a tracked PRD is closing it — write new code to the target state, not the current one).
+These encode the failure classes surfaced by the 2026-07-09 evolution assessment (`docs/dev/project-management/reviews/evolution-assessment-2026-07-09.md`). Each is either **HOLDS** (enforce it) or a **GAP** (a tracked PRD is closing it — write new code to the target state, not the current one).
 
 - **Atomic persistence** — never persist a note, state file, or config with a bare `Path.write_text`/`open(...,"w")`. Use `pybase.filesystem.atomic_write` (tempfile + fsync + `os.replace`). Truncate-then-write loses data on crash/ENOSPC. *HOLDS for the library and note/updater write paths (00041) — keep it, except `ConfigWriter.write` (`configuration/config_writer.py`), which still does a bare `write_text` — deliberately out of scope for 00041. GAP → pidash was closed by retiring pidash (00071); autopilot-state durability now lives in the buvis home repo (tracon/statectl), not gems.*
 - **Confine request-derived paths** — any filesystem path built from an HTTP request / external input must be `resolve()`d and asserted under an allowed root before read/write/delete/open. Network-facing servers must have auth + `TrustedHostMiddleware`. *HOLDS (00042) — bim serve confines request paths via `confine_path` (403 outside the vault/archive roots), mints a startup token required as `X-Buvis-Token`, installs `TrustedHostMiddleware`, and warns on a non-loopback bind (`commands/serve/_security.py`). Keep it.*
@@ -197,7 +202,7 @@ release local                          # build .devN wheel + install locally
 release --dry-run [--pre rc1] [patch]  # preview without changes
 ```
 
-`mise` adds `dev/bin` to PATH. Tags with `rc` in the name publish to TestPyPI; stable tags go to PyPI. Manual workflow dispatch defaults to TestPyPI.
+`mise` adds `tools` to PATH (shims; `tools/lib` holds the implementations). Tags with `rc` in the name publish to TestPyPI; stable tags go to PyPI. Manual workflow dispatch defaults to TestPyPI.
 
 **First-time setup** (already done for buvis-gems):
 - test.pypi.org: add trusted publisher (owner: `buvis`, repo: `gems`, workflow: `publish.yml`, env: `testpypi`)

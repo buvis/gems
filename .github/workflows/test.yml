@@ -92,13 +92,13 @@ jobs:
         run: uv sync --all-extras --group test --group dev
 
       - name: Audit dependencies
-        # Ignored CVEs (if any) come from dev/audit/pip-audit-ignores.toml, not
-        # anonymous inline flags. check_audit_ignores.py also fails the build if
+        # Ignored CVEs (if any) come from tools/lib/audit/pip-audit-ignores.toml,
+        # not anonymous inline flags. check_audit_ignores.py also fails the build if
         # an ignored CVE has since gained a fix in the resolved tree (PRD 00086).
         run: |
-          IGNORE_FLAGS="$(uv run python dev/bin/check_audit_ignores.py --print-ignore-flags)"
+          IGNORE_FLAGS="$(uv run python tools/lib/check_audit_ignores.py --print-ignore-flags)"
           uv run pip-audit --skip-editable $IGNORE_FLAGS
-          uv run python dev/bin/check_audit_ignores.py
+          uv run python tools/lib/check_audit_ignores.py
 
       - name: Lint & format check
         run: |

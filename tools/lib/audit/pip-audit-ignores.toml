@@ -3,7 +3,7 @@
 # The single source of truth for every CVE the dependency-audit step is allowed
 # to ignore. It replaces anonymous inline `--ignore-vuln <CVE>` flags in
 # .github/workflows/test.yml: the flags passed to pip-audit are generated from
-# this file by `dev/bin/check_audit_ignores.py`, so an ignore cannot exist
+# this file by `tools/lib/check_audit_ignores.py`, so an ignore cannot exist
 # without a dated, justified entry here.
 #
 # The same script is a guard: it runs pip-audit against the resolved tree and

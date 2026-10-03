@@ -1,0 +1,7 @@
+#!/bin/sh
+# Public command shim: anchors execution to this repo and forwards to the mise
+# `release` task (implemented in tools/lib/release). Contains no workflow logic.
+set -eu
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_root"
+exec mise run release -- "$@"

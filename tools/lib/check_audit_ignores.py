@@ -1,6 +1,6 @@
 """Guard against stale pip-audit suppressions.
 
-`dev/audit/pip-audit-ignores.toml` is the single source of truth for every CVE
+`tools/lib/audit/pip-audit-ignores.toml` is the single source of truth for every CVE
 the dependency-audit step is allowed to ignore. This script has two jobs, both
 deterministic (no LLM):
 
@@ -113,7 +113,7 @@ def _run_pip_audit() -> list[dict]:
 
 
 def _default_config_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "dev" / "audit" / "pip-audit-ignores.toml"
+    return Path(__file__).resolve().parent / "audit" / "pip-audit-ignores.toml"
 
 
 def main(argv: list[str] | None = None) -> int:

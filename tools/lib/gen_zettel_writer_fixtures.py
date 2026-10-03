@@ -4,7 +4,7 @@ Produces 8 expected zettel outputs under
 ``tests/tools/bim/doc/fixtures/zettel_writer/``, one per combination of
 optional ``doc_number`` / ``doc_amount`` / ``doc_language`` presence.
 
-Run from project root: ``uv run python dev/bin/gen_zettel_writer_fixtures.py``
+Run from project root: ``uv run python tools/lib/gen_zettel_writer_fixtures.py``
 
 The fixture inputs mirror the constants used in
 ``tests/tools/bim/doc/test_zettel_writer.py`` so the regenerated values are

@@ -73,7 +73,7 @@ docs = ["sphinx>=8,<10", "sphinx-rtd-theme>=3.0.2,<4"]
 # in oauthlib 4.0.0, whose only breaking changes are OAuth2 provider-side and
 # unused by gems (JiraAdapter uses server+token auth, not any OAuth flow).
 # See dev/local/prds .../00086. The dated ignore audit lives in
-# dev/audit/pip-audit-ignores.toml, guarded by dev/bin/check_audit_ignores.py.
+# tools/lib/audit/pip-audit-ignores.toml, guarded by tools/lib/check_audit_ignores.py.
 constraint-dependencies = ["oauthlib>=4.0.0"]
 
 [tool.hatch.build.targets.wheel]
