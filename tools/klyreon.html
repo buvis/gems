@@ -67,6 +67,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#the-vault-root">The vault root</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#operator-assets">Operator assets</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="morph.html">morph</a></li>
@@ -221,8 +222,70 @@ starter claim; a utility zettel gets none of those.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">validate</span></code> runs every mechanical check (file-level + graph-level, including
 the transitive-relation cycle check).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">export-claims</span></code> includes claims on <code class="docutils literal notranslate"><span class="pre">assent:</span> <span class="pre">rejected</span></code> zettels, labelled.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">status</span></code> warns when maintenance is stale (every command does).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">status</span></code> warns when maintenance is stale (every command does), and warns once
+when any installed operator asset pack is behind the running CLI.</p></li>
 </ul>
+</section>
+<section id="operator-assets">
+<h2>Operator assets<a class="headerlink" href="#operator-assets" title="Link to this heading"></a></h2>
+<p>An <strong>operator</strong> is a tool you drive the vault through (today: <code class="docutils literal notranslate"><span class="pre">claude</span></code>, i.e.
+an interactive Claude Code session). Each operator reads from its own home
+directory, so klyreon ships an <strong>asset pack</strong> — the knowledge an interactive
+session needs to not write files klyreon rejects — and installs it there. The
+pack points at <code class="docutils literal notranslate"><span class="pre">docs/reference/klyreon/zettel-format-specification.md</span></code> as the
+normative format reference rather than restating it.</p>
+<p>klyreon’s own autonomous loop never reads an installed asset pack: the loop’s
+prompts ship inside the package. Assets exist only for the human-driven,
+interactive side of the same operator.</p>
+<p>What is installed, and where:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 80.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Operator</p></th>
+<th class="head"><p>Install root</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">claude</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">$CLAUDE_CONFIG_DIR</span></code> if set, else <code class="docutils literal notranslate"><span class="pre">~/.claude</span></code> — the pack lands at
+<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/skills/klyreon/SKILL.md</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Everything klyreon installs outside the vault is tracked in a manifest at
+<code class="docutils literal notranslate"><span class="pre">$XDG_STATE_HOME/klyreon/manifest.json</span></code> (each entry records the operator,
+absolute path, content hash, and the klyreon version that wrote it). The
+manifest is written atomically; an unknown <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> is rejected loudly
+rather than guessed at, and a missing manifest simply means nothing is installed.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>klyreon<span class="w"> </span>assets<span class="w"> </span>install<span class="w"> </span>--operator<span class="w"> </span>claude<span class="w">   </span><span class="c1"># install (or refresh) the claude pack</span>
+klyreon<span class="w"> </span>assets<span class="w"> </span>install<span class="w">                     </span><span class="c1"># refresh every operator already installed</span>
+klyreon<span class="w"> </span>assets<span class="w"> </span>status<span class="w">                      </span><span class="c1"># per file: operator, path, version, drift</span>
+klyreon<span class="w"> </span>assets<span class="w"> </span>refresh<span class="w">                     </span><span class="c1"># re-install every operator in the manifest</span>
+klyreon<span class="w"> </span>assets<span class="w"> </span>uninstall<span class="w"> </span>--operator<span class="w"> </span>claude<span class="w"> </span><span class="c1"># remove klyreon's files; keep edited ones</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>install</strong> is re-runnable and never touches the vault, so it works before
+<code class="docutils literal notranslate"><span class="pre">init</span></code> and after. A file whose content you have edited since klyreon wrote it
+(or a pre-existing file klyreon did not install) is copied to
+<code class="docutils literal notranslate"><span class="pre">&lt;file&gt;.klyreon-backup-YYYYMMDDHHmmSS</span></code> before the shipped version is written,
+and the displaced path is reported. An unchanged, current file is left alone.</p></li>
+<li><p><strong>status</strong> flags a file whose hash drifted (a refresh will back it up) and one
+whose recorded version is behind the running CLI.</p></li>
+<li><p><strong>uninstall</strong> removes a file whose hash still matches the manifest, keeps a
+file you edited (and says so — a human edit is never reverted by automation),
+drops the manifest entries either way, and removes only directories it emptied.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">klyreon</span> <span class="pre">init</span></code> offers the install as part of setup: pass <code class="docutils literal notranslate"><span class="pre">--operator</span> <span class="pre">claude</span></code>
+(repeatable) to install without prompting, <code class="docutils literal notranslate"><span class="pre">--no-input</span></code> to skip the offer, or
+answer the per-operator prompt on an interactive terminal. With no TTY the offer
+is skipped and the <code class="docutils literal notranslate"><span class="pre">klyreon</span> <span class="pre">assets</span> <span class="pre">install</span></code> command is printed for later.</p>
+<p>Backup files accumulate in the operator’s directory as the deliberate price of
+never destroying an edit; <code class="docutils literal notranslate"><span class="pre">assets</span> <span class="pre">status</span></code> names every file it would displace so
+you can clear old backups yourself.</p>
 </section>
 </section>
 

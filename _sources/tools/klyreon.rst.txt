@@ -94,4 +94,65 @@ Commands
 - ``validate`` runs every mechanical check (file-level + graph-level, including
   the transitive-relation cycle check).
 - ``export-claims`` includes claims on ``assent: rejected`` zettels, labelled.
-- ``status`` warns when maintenance is stale (every command does).
+- ``status`` warns when maintenance is stale (every command does), and warns once
+  when any installed operator asset pack is behind the running CLI.
+
+Operator assets
+---------------
+
+An **operator** is a tool you drive the vault through (today: ``claude``, i.e.
+an interactive Claude Code session). Each operator reads from its own home
+directory, so klyreon ships an **asset pack** — the knowledge an interactive
+session needs to not write files klyreon rejects — and installs it there. The
+pack points at ``docs/reference/klyreon/zettel-format-specification.md`` as the
+normative format reference rather than restating it.
+
+klyreon's own autonomous loop never reads an installed asset pack: the loop's
+prompts ship inside the package. Assets exist only for the human-driven,
+interactive side of the same operator.
+
+What is installed, and where:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - Operator
+     - Install root
+   * - ``claude``
+     - ``$CLAUDE_CONFIG_DIR`` if set, else ``~/.claude`` — the pack lands at
+       ``<root>/skills/klyreon/SKILL.md``.
+
+Everything klyreon installs outside the vault is tracked in a manifest at
+``$XDG_STATE_HOME/klyreon/manifest.json`` (each entry records the operator,
+absolute path, content hash, and the klyreon version that wrote it). The
+manifest is written atomically; an unknown ``schema_version`` is rejected loudly
+rather than guessed at, and a missing manifest simply means nothing is installed.
+
+.. code-block:: bash
+
+    klyreon assets install --operator claude   # install (or refresh) the claude pack
+    klyreon assets install                     # refresh every operator already installed
+    klyreon assets status                      # per file: operator, path, version, drift
+    klyreon assets refresh                     # re-install every operator in the manifest
+    klyreon assets uninstall --operator claude # remove klyreon's files; keep edited ones
+
+- **install** is re-runnable and never touches the vault, so it works before
+  ``init`` and after. A file whose content you have edited since klyreon wrote it
+  (or a pre-existing file klyreon did not install) is copied to
+  ``<file>.klyreon-backup-YYYYMMDDHHmmSS`` before the shipped version is written,
+  and the displaced path is reported. An unchanged, current file is left alone.
+- **status** flags a file whose hash drifted (a refresh will back it up) and one
+  whose recorded version is behind the running CLI.
+- **uninstall** removes a file whose hash still matches the manifest, keeps a
+  file you edited (and says so — a human edit is never reverted by automation),
+  drops the manifest entries either way, and removes only directories it emptied.
+
+``klyreon init`` offers the install as part of setup: pass ``--operator claude``
+(repeatable) to install without prompting, ``--no-input`` to skip the offer, or
+answer the per-operator prompt on an interactive terminal. With no TTY the offer
+is skipped and the ``klyreon assets install`` command is printed for later.
+
+Backup files accumulate in the operator's directory as the deliberate price of
+never destroying an edit; ``assets status`` names every file it would displace so
+you can clear old backups yourself.
