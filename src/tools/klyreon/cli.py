@@ -18,6 +18,7 @@ from klyreon.settings import KlyreonSettings
 
 _ZETTEL_TYPES = ["note", "definition", "procedure", "wiki-article", "cheatsheet", "snippet", "course", "ai-prompt"]
 _CONCEPT_TYPES = ["thesis", "argument", "aporia", "question", "example", "observation"]
+_OPERATORS = ["claude"]
 
 
 @click.group(help="Autonomous Memex-Zettelkasten")
@@ -80,12 +81,29 @@ def _resolve_root_or_panic() -> Path:
 @cli.command("init", help="Create the vault skeleton and the config that points at it")
 @click.argument("path", required=False, type=click.Path(file_okay=False, path_type=Path))
 @click.option("--force", is_flag=True, default=False, help="Overwrite a config that points elsewhere.")
+@click.option(
+    "--operator",
+    "operators",
+    multiple=True,
+    type=click.Choice(_OPERATORS),
+    help="Install this operator's asset pack without prompting (repeatable).",
+)
+@click.option("--no-input", "no_input", is_flag=True, default=False, help="Skip the interactive asset-install offer.")
 @click.pass_context
-def init(ctx: click.Context, path: Path | None, *, force: bool) -> None:
-    from klyreon.commands.init import CommandInit
+def init(ctx: click.Context, path: Path | None, *, force: bool, operators: tuple[str, ...], no_input: bool) -> None:
+    import sys
+
+    from klyreon.commands.init import AssetOffer, CommandInit
 
     target = path if path is not None else Path.cwd()
-    result = CommandInit(target, force=force).execute()
+    is_tty = sys.stdin.isatty()
+    offer = AssetOffer(
+        operators=list(operators),
+        no_input=no_input,
+        is_tty=is_tty,
+        confirm=console.confirm,
+    )
+    result = CommandInit(target, force=force, offer=offer).execute()
     console.report_result(result)
     if not result.success:
         ctx.exit(1)
@@ -159,8 +177,69 @@ def status(ctx: click.Context) -> None:
 
     root = _resolve_root_or_panic()
     settings = get_settings(ctx, KlyreonSettings)
-    result = CommandStatus(root, maintenance_window_days=settings.maintenance_window_days).execute()
+    result = CommandStatus(root, maintenance_window_days=settings.maintenance_window_days, check_assets=True).execute()
     console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    if not result.success:
+        ctx.exit(1)
+
+
+@cli.group("assets", help="Install, refresh, inspect, and remove operator asset packs")
+def assets() -> None:
+    """Operator asset packs — the knowledge an interactive session needs."""
+
+
+@assets.command("install", help="Install (or refresh) one or more operator packs")
+@click.option(
+    "--operator",
+    "operators",
+    multiple=True,
+    help="Operator to install (repeatable). Default: every operator already installed.",
+)
+@click.pass_context
+def assets_install(ctx: click.Context, operators: tuple[str, ...]) -> None:
+    from klyreon.commands.assets import CommandAssetsInstall
+
+    result = CommandAssetsInstall(list(operators)).execute()
+    console.report_result(result)
+    if not result.success:
+        ctx.exit(1)
+
+
+@assets.command("status", help="Show what is installed and whether it is current")
+@click.pass_context
+def assets_status(ctx: click.Context) -> None:
+    from klyreon.commands.assets import CommandAssetsStatus
+
+    result = CommandAssetsStatus().execute()
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    if not result.success:
+        ctx.exit(1)
+
+
+@assets.command("refresh", help="Re-install every operator recorded in the manifest")
+@click.pass_context
+def assets_refresh(ctx: click.Context) -> None:
+    from klyreon.commands.assets import CommandAssetsRefresh
+
+    result = CommandAssetsRefresh().execute()
+    console.report_result(result)
+    if not result.success:
+        ctx.exit(1)
+
+
+@assets.command("uninstall", help="Remove klyreon's files; keep edited ones")
+@click.option(
+    "--operator",
+    "operators",
+    multiple=True,
+    help="Operator to uninstall (repeatable). Default: every operator installed.",
+)
+@click.pass_context
+def assets_uninstall(ctx: click.Context, operators: tuple[str, ...]) -> None:
+    from klyreon.commands.assets import CommandAssetsUninstall
+
+    result = CommandAssetsUninstall(list(operators)).execute()
+    console.report_result(result)
     if not result.success:
         ctx.exit(1)
 
