@@ -12,6 +12,14 @@ subprocess whose ``cwd`` is OUTSIDE the repo and whose only ``klyreon`` on the
 path is the unpacked wheel -- so the source tree cannot satisfy the import.
 
 Skipped automatically when the build toolchain is unavailable.
+
+Opt-in only. Building the wheel compiles the project's maturin Rust extension
+*inside the pytest process*; on the CI matrix that corrupts the interpreter and
+it segfaults at teardown (exit 139) AFTER every test has passed -- a crash the
+warm local toolchain does not reproduce. So this module runs only when
+``BUVIS_WHEEL_BUILD_TESTS=1`` is set (locally, or in a dedicated build-proof
+job), the same opt-in pattern the snapshot suite uses for its canonical-only
+tests. The per-cell unit matrix must never shell out to ``uv build``.
 """
 
 from __future__ import annotations
@@ -25,7 +33,17 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.klyreon
+pytestmark = [
+    pytest.mark.klyreon,
+    pytest.mark.skipif(
+        os.environ.get("BUVIS_WHEEL_BUILD_TESTS") != "1",
+        reason=(
+            "in-process `uv build` compiles the maturin Rust extension and "
+            "segfaults the CI interpreter at teardown; set BUVIS_WHEEL_BUILD_TESTS=1 "
+            "to run this build-proof locally or in a dedicated job"
+        ),
+    ),
+]
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _PAYLOAD_ARCHIVE_PATH = "klyreon/assets/payload/claude/skills/klyreon/SKILL.md"
