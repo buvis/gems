@@ -40,10 +40,11 @@ def doc_rules_list(ctx: click.Context) -> None:
         return
     bundle = get_issuer_registry(settings.doc)
     result = CommandRulesList().run(bundle.registry)
-    if not result.success:
-        console.failure(result.error or "list failed")
-        return
-    console.info(result.output or "")
+    console.report_result(
+        result,
+        on_success=lambda r: console.info(r.output or ""),
+        failure_msg="list failed",
+    )
 
 
 @doc_rules.command("validate", help="Statically validate rule blocks in issuers.yml")
@@ -147,7 +148,8 @@ def doc_rules_backtest(ctx: click.Context, rule_id: str | None, issuer_slug: str
             issuer_slug=issuer_slug,
             progress=reporter,
         )
-    if not result.success:
-        console.failure(result.error or "backtest failed")
-        return
-    console.info(result.output or "")
+    console.report_result(
+        result,
+        on_success=lambda r: console.info(r.output or ""),
+        failure_msg="backtest failed",
+    )
