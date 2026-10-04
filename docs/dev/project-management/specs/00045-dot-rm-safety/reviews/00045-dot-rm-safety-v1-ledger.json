@@ -1,0 +1,178 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "high",
+    "issue": "`shlex.quote` is defeated at runtime: `ShellAdapter.exe` runs `os.path.expandvars` on the whole command *after* quoting (`shell.py:53-54`), and `expandvars` is quote-unaware. Proven locally: `file_path = \"my$EVIL file\"` with `EVIL=\"x'; echo PWNED; :'\"` produces `git ... rm --cached 'myx'; echo PWNED; :' file'` and executes the injected command. Even the benign case `dot rm '$HOME'` becomes `git rm --cached '/Users/bob'` — the wrong file is acted on. The PRD's stated hole (\"no injection, no mis-parse\") is not closed for any name containing `$VAR`/`${VAR}`.",
+    "file": "src/lib/buvis/pybase/adapters/shell/shell.py",
+    "reason": "Confirmed real by reading shell.py:53-54,125-134 — but it is a PRE-EXISTING library defect, not a regression from this diff: before this PRD `rm` interpolated the filename with no quoting at all, so every metacharacter injected; after it, only names containing $VAR do. The diff strictly reduces exposure. The real fix belongs in ShellAdapter (expand env vars in the registered alias, not over the whole command string), which changes behavior for all 11 dot commands plus every other ShellAdapter caller and breaks test_shell_adapter.py:250, which pins the vulnerable behavior. That is out of this PRD's declared scope (\"single file plus its test\", design doc \"No other files change\"). Severity assessed as high, not critical, on the grounds that it is pre-existing and mitigated rather than introduced. Deferred to a follow-up PRD (dev/local/prds/backlog/00078-dot-quoting-holds-end-to-end-v1.md); the overstated CHANGELOG claim it depended on is corrected inside this cycle's rework."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "high",
+    "issue": "`dot delete` still interpolates the filename unquoted into two `shell=True` commands (`cfg rm {self.file_path}`, `cfg secret remove -c {self.file_path}`) — the identical injection hole, attached to the *destructive* command. PRD Solution says quote \"everywhere it enters the shell command\" and Success Criteria say \"odd filenames are safe\"; a `dot delete 'x; rm -rf ~'` still executes.",
+    "file": "src/tools/dot/commands/delete/delete.py",
+    "reason": "Real and pre-existing, but explicitly out of scope: the PRD scopes to src/tools/dot/commands/rm/rm.py plus its test, and the design doc's Risks section names delete.py as a known follow-up rather than part of this change. \"Everywhere it enters the shell command\" is read as everywhere within the command under change (rm), which is how the design gate already resolved it. Deferred with a durable home: dev/local/prds/backlog/00078-dot-quoting-holds-end-to-end-v1.md."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "No `--` end-of-options separator. `shlex.quote(\"-c\")` returns `-c` unquoted, so a file named `-c`/`-f` is parsed as a flag: `cfg secret remove -c` reinstates exactly the destructive ciphertext-deleting mode the PRD removed, and `cfg rm --cached -f` mis-parses. \"No mis-parse\" is unmet for leading-dash names.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "The design doc raised and settled this at the design gate: \"shlex.quote guards shell metacharacters, not git flag confusion. A file literally named -x or --force could still be misread by git as an option rather than a pathspec. Pre-existing behavior at every other shlex.quote-guarded call site in this repo (unstage.py, commit.py, git_ops.py); not introduced or worsened by this PRD, out of scope.\" Folded into the 00078 follow-up alongside the other quoting-holds work."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "Quoting protects the shell but not git pathspec magic: a filename containing `*`, `?`, or `[` is still glob-expanded by git itself after the shell hands it over, so `dot rm '*'` untracks every matching file rather than the one odd-named file. No `:(literal)` prefix or `--` guard.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Same class as the `--` separator finding and settled the same way at the design gate: pathspec semantics are pre-existing at every quoted call site in the repo, not introduced or worsened by this diff. Folded into the 00078 follow-up."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "The PRD's own example (`dot rm ~/.ssh/config`) never reaches the encrypted path: `_is_encrypted` compares the argument to `cfg secret list` output by exact string match, and the shell expands `~` to an absolute path while git-secret prints repo-relative paths. The secret silently takes the plain `rm --cached` branch, leaving the git-secret mapping intact.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Correct observation about `_is_encrypted`, which this diff does not touch — the function and its exact-string comparison are unchanged from before the PRD. Path normalization across every dot command is the shared git-ops seam PRD 00053 already owns. Out of scope for a fix whose declared surface is `_remove_normal`/`_remove_encrypted`."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "`dot rm` on a hidden (not revealed) secret always fails: git-secret's `remove` aborts with \"file not found\" when the plaintext is absent (`bin/git-secret:1613-1615`), so the user gets a raw git-secret message via `Failed to remove from git-secret:` and nothing is untracked. No fallback or guidance.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Verified against the installed git-secret 0.5.0 (lines 1612-1615 abort when the plaintext is missing). Pre-existing behavior of the underlying tool, unchanged by this diff, and the failure is already surfaced as a CommandResult error rather than a crash. Low severity, no PRD requirement touches it."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Cannot statically verify: dot tests were actually run and pass",
+    "file": "N/A",
+    "reason": "Sandbox limitation, not a defect. Resolved this cycle: the full suite ran in the review session — 3902 passed, 0 failed, 16 skipped — and Alice independently ran `uv run pytest tests/tools/dot` (422 passed, 10 skipped, 1 xfailed)."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "high",
+    "issue": "The new `cfg rm --cached <file>.secret` hard-fails whenever the ciphertext is not in the index: `git rm --cached` exits 128 with `fatal: pathspec did not match any files`. Reachable through dot's own TUI, where `register_secret` (tui/commands/secrets.py:59) runs `cfg secret add` only and never hides/stages, so no `.secret` is ever indexed. `dot rm` rewrites the git-secret mapping, returns failure, and tells the user to restore the mapping and retry - the retry fails identically, an unbreakable loop. Before this cycle's rework the command succeeded. Fix: `cfg rm --cached --ignore-unmatch {shlex.quote(...)}`; `_is_encrypted` already proved the file is a registered secret, so 'not in the index' is the desired end state.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. CONFIRMED by the orchestrator independently of the reviewers: in a throwaway repo `git rm --cached notindex.secret` exits 128, and the same command with `--ignore-unmatch` exits 0. Deferred only because the cap was reached, NOT because it was judged acceptable - it is a real regression introduced by this PRD's own cycle-1 rework and the fix is one flag wide. Raise this first at batch-end review."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "high",
+    "issue": "Failure to stage `.gitsecret/` still returns a successful CommandResult (only a warning is appended), so automation can commit the already-staged ciphertext removal without the mapping change that belongs with it, leaving the committed mapping stale relative to the index.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Confirmed by reading rm.py:64-72 - the staging error path appends to self.warnings and falls through to success=True. Mitigating context the deferral rests on: the working-tree mapping is already correct, the failure is surfaced as a warning rather than silently swallowed, and any later `dot add .gitsecret/` repairs it. Bob rated it high; the orchestrator would rate it medium on that basis, but did not downgrade a reviewer's severity unilaterally."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "`cfg add .gitsecret/` stages the whole directory, sweeping in any unrelated pending changes there (for example keyring edits from `git secret tell`); only the mapping file that `git secret remove` touched needs staging.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Real and in-scope (the staging call is new in this cycle's rework). Narrowing it to `.gitsecret/paths/mapping.cfg` is the obvious fix, but `dot encrypt` already stages `.gitsecret/` wholesale, so the broad form matches existing repo precedent and changing it is a behaviour decision rather than a defect fix."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "Untracking the ciphertext leaves `<file>.secret` on disk unignored - git-secret's `init` writes `!*.secret` into `.gitignore` - so after a successful `dot rm` the same path shows in `dot status` twice ('staged: deleted' plus 'unstaged: untracked'), and the next interactive `dot add` will offer to re-stage the blob, silently undoing the untracking. Neither dot.rst nor the CHANGELOG ('the file really does leave the repo') mentions the leftover.",
+    "file": "docs/source/tools/dot.rst",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Both halves reproduced by Alice in a scratch repo, and the `!*.secret` negation confirmed at git-secret 0.5.0:1541-1542. Deleting the leftover is out of scope by the PRD's own success criterion (`dot rm` never deletes from disk), so the remedy is a documentation line, not a code change."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "The new recovery message tells the user to run `cfg checkout -- .gitsecret/`, but `cfg` is not a command the user has: it is an alias `ShellAdapter.alias` registers for its own subprocess call (shell.py:26-33, rm.py:24-27), documented at dot.rst:97-98 as the tool's internal alias. The runnable equivalent is `dot run checkout -- .gitsecret/`. The test at test_rm.py:223 pins the unrunnable string.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. In-scope and cheap - the message and its test both landed in this cycle's rework. It hands an operator a recovery command that does not exist in their shell, which is worse than no command; it should ride along with the F1 fix."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "The `.secret` suffix is hardcoded, but git-secret honours SECRETS_EXTENSION (git-secret:195); with a non-default extension the ciphertext untrack always targets a nonexistent path, so the command always fails mid-way.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Same failure path as the F1 high finding, reached by a different route - the `--ignore-unmatch` fix for F1 also removes the hard failure here, leaving only the (correct) observation that a non-default extension means the ciphertext is never untracked. Default installs are unaffected."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "Warnings are dropped on every failure return - 'Could not check git-secret status' is attached only to success results, so the user loses the one signal that encryption detection failed exactly when it matters.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Pre-existing shape (the failure returns never carried warnings before this PRD either), but the rework added two more failure returns, so the diff widens it. Fix is mechanical: pass `warnings=self.warnings` on the failure CommandResults too."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "The TUI's `unregister_secret` still runs only `cfg secret remove`, so the 'ciphertext stays tracked and committed' defect this cycle fixed for `dot rm` is still reachable from the Secrets screen. One user action, two implementations, now demonstrably divergent.",
+    "file": "src/tools/dot/tui/commands/secrets.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Out of the PRD's declared single-file scope, and it is the all-interface invariant gap that PRD 00053 (shared git-ops service) already owns. This diff is what establishes which behaviour is correct, so 00053 now has a reference implementation to converge on."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "The TUI names the destructive operation `rm`: `GitOps.rm` runs `cfg rm` without `--cached` and deletes from disk, contradicting the PRD's success criterion at the level a maintainer reads, and duplicating the command logic outside CommandRm.",
+    "file": "src/tools/dot/tui/git_ops.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Out of the PRD's declared scope (rm.py plus its test) and the same all-interface seam PRD 00053 owns. Worth carrying into 00053 as a naming decision, not just a code move."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "The quoting regression tests assert against a MagicMock shell, never the real ShellAdapter, so they cannot prove 'no injection' - the hole lives exactly at the boundary the mock replaces. Blake demonstrated this by reproducing the injection against the real adapter while the suite stayed green.",
+    "file": "tests/tools/dot/test_rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. The underlying hole (ShellAdapter expandvars defeating shlex.quote) is a cycle-1 settled deferral tracked by PRD 00078; this is its test-side twin and belongs in the same follow-up. The cycle-2 test file deliberately documents the gap in a comment rather than pretending to cover it, which is the honest interim state."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "`_pathspecs` is a generic partial command parser used for only two assertions; direct `shlex.split` token-list assertions are simpler and bind intent more clearly.",
+    "file": "tests/tools/dot/test_rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. De-slop finding on test scaffolding added by this cycle's rework; behaviour-preserving cleanup with no correctness impact."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "`test_issues_no_commands_beyond_the_targeted_untracking` still builds its expectation with `shlex.quote(file_path)` / `shlex.quote(file_path + '.secret')` - the re-derivation pattern task 4 removed everywhere else, so the file states two different rules.",
+    "file": "tests/tools/dot/test_rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Harmless in practice: the test's fixture name `.aws/credentials` contains no shell metacharacters, so `shlex.quote` is the identity there and the assertion is exact. Consistency cleanup, not a coverage gap."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "`test_stages_gitsecret_mapping_change` largely duplicates `test_issues_no_commands_beyond_the_targeted_untracking`, which already pins `cfg add .gitsecret/` as the exact third command with no other pathspec.",
+    "file": "tests/tools/dot/test_rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Redundant-coverage de-slop on tests added this cycle; deleting one or trimming the token filtering is safe but purely cosmetic."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "The CHANGELOG 'Fixed' bullet is now four sentences and names an internal recovery command; rules/changelog.md asks for one line describing the user-visible effect.",
+    "file": "CHANGELOG.md",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Style against the changelog rule, not a correctness issue. Note the Security bullet's explicit honesty about the still-unfixed $VAR half is correct and must stay - trimming should not remove that."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "`DOTFILES_ROOT=\"\"` defeats the guard: `os.environ.setdefault` will not replace an existing empty value, so `Path(\"\")` resolves to the current working directory as the work tree.",
+    "file": "src/tools/dot/commands/rm/rm.py",
+    "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Pre-existing in CommandRm.__init__, untouched by this diff, and present in the same shape across the other dot commands - so it belongs with the shared git-ops work (PRD 00053) rather than a spot patch here."
+  }
+]

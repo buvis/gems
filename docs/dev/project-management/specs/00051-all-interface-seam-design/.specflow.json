@@ -1,0 +1,16 @@
+{
+  "id": "00051",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00051-all-interface-seam-design-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {
+    "design": "skip",
+    "design_gate": "user"
+  }
+}

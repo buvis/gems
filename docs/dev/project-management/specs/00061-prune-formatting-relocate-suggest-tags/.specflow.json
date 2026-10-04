@@ -1,0 +1,15 @@
+{
+  "id": "00061",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00061-prune-formatting-relocate-suggest-tags-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {
+    "design": "skip"
+  }
+}

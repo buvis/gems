@@ -1,0 +1,13 @@
+{
+  "id": "00068",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00068-postup-tui-text-brief-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {}
+}

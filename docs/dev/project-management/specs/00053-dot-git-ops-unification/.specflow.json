@@ -1,0 +1,15 @@
+{
+  "id": "00053",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00053-dot-git-ops-unification-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {
+    "design": "run"
+  }
+}

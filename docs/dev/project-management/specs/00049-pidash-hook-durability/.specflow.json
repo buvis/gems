@@ -1,0 +1,13 @@
+{
+  "id": "00049",
+  "phase": "hold",
+  "hold": true,
+  "migrated_from": "prds/hold/00049-pidash-hook-durability-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {}
+}

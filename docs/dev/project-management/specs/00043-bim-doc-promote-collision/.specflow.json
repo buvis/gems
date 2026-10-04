@@ -1,0 +1,13 @@
+{
+  "id": "00043",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00043-bim-doc-promote-collision-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {}
+}
