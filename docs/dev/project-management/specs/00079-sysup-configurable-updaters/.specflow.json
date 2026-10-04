@@ -1,0 +1,13 @@
+{
+  "id": "00079",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00079-sysup-configurable-updaters-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {}
+}

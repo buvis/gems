@@ -1,0 +1,13 @@
+{
+  "id": "00072",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00072-surface-meta-budget-in-postup-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {}
+}

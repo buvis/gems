@@ -1,0 +1,15 @@
+{
+  "id": "00077",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00077-klyreon-maintain-schedule-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {
+    "rework_cap": "3"
+  }
+}

@@ -1,0 +1,980 @@
+{
+  "batch_id": "202608151500",
+  "items": [
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "high",
+      "issue": "Permission widening for bim doc callers: new artifacts move from mkstemp's 0o600 to 0o644 because the lifted atomic_write adds an fchmod the deleted doc-local copy never had.",
+      "consensus": "1/5",
+      "detail": "Verified against git show fa574f1. Deferred because the PRD's own nice-to-have specifies mode=0o644 as the default and the affected files are single-user local artifacts holding no secrets (issuers.py rejects ciphertext rather than storing it). Changing the default is a PRD-level call."
+    },
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "high",
+      "issue": "atomic_write_text's `mode` kwarg is ignored whenever the target already exists, undercutting the PRD's stated '0600 for secrets' rationale on the rewrite path.",
+      "consensus": "1/5",
+      "detail": "Deliberate design-doc choice (preservation-on-overwrite avoids resetting existing files' bits) and documented in the docstring; no caller passes mode today. Reconciling explicit-mode vs preservation is a follow-up API decision."
+    },
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "high",
+      "issue": "OSError from the atomic write escapes CommandSyncNote.execute() and format_note's multi-path branch as a raw exception instead of CommandResult(success=False); the new sync_note test pins the raw raise.",
+      "consensus": "2/5",
+      "detail": "Orchestrator-verified as pre-existing: the replaced bare write_text was equally unguarded, so the PRD preserved behavior rather than regressing it. Fixing the command-layer contract across both commands is separate behavioral work."
+    },
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "medium",
+      "issue": "bim serve's patch_zettel write target is still request-derived and unconfined (no resolve(), no allowed-root assertion, no auth).",
+      "consensus": "2/5",
+      "detail": "Already tracked as AGENTS.md GAP -> PRD 00042, which this PRD's design doc names as the owner. Raised independently by the blind lens, which could not have known about 00042."
+    },
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "config_writer.py:349 still persists config with a bare write_text - the last remaining non-pidash divergence from the atomic-persistence invariant.",
+      "consensus": "1/5",
+      "detail": "Outside this PRD's stated scope (notes + updater state only). Worth a follow-up PRD."
+    },
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "Updater state remains an unlocked read-modify-write, so concurrent writers still lose each other's log entries; atomicity fixes tearing, not interleaving.",
+      "consensus": "1/5",
+      "detail": "The PRD asks only that the write never leave partial JSON. Serializing concurrent writers needs a lock design; out of scope."
+    },
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "No parent-directory fsync after os.replace, so the rename is not durable across power loss.",
+      "consensus": "2/5",
+      "detail": "PRD mandates parity with the doc/shared implementation, which also lacked it. The overclaiming docstring is corrected in cycle 2 task D1-4."
+    },
+    {
+      "prd": "00041-atomic-write-foundation-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "os.replace replaces a symlinked note with a regular file and breaks hardlinks, where the old write_text wrote through the link.",
+      "consensus": "2/5",
+      "detail": "Inherent to the rename-based pattern the PRD mandates. Cycle 2 task D1-4 documents the semantics rather than changing them."
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 2,
+      "severity": "high",
+      "issue": "New files are force-chmodded to 0644, ignoring the process umask (write_text honored it)",
+      "decision": "Defer to batch end",
+      "rationale": "New argument for cycle-1 settled entry 1, same file and mechanism: the PRD Nice-to-have specifies mode=0o644 as the default for new files, so 0644 is the specified behavior. Honoring umask is a PRD-level API decision.",
+      "prd": "00041-atomic-write-foundation-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 2,
+      "severity": "low",
+      "issue": "Ownership, ACLs and xattrs are not carried to the replacement inode by os.replace",
+      "decision": "Defer to batch end",
+      "rationale": "Inherent to the rename-based pattern the PRD mandates; same class as the settled symlink/hardlink entry. The lifted implementation carried none of them either.",
+      "prd": "00041-atomic-write-foundation-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 2,
+      "severity": "low",
+      "issue": "mkstemp prefix inflates the filename, so a name near NAME_MAX now fails with ENAMETOOLONG",
+      "decision": "Defer to batch end",
+      "rationale": "Inherent to the same-directory-tempfile pattern the PRD mandates and identical to the lifted impl. Zettel filenames (14-digit id + slug) are nowhere near NAME_MAX on either shipped platform.",
+      "prd": "00041-atomic-write-foundation-v1.md"
+    },
+    {
+      "prd": "00042-bim-serve-confinement-and-auth-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "critical",
+      "issue": "POST /api/queries/_adhoc is unauthenticated and drives client-controlled expressions through get_evaluator() == python_eval, which is eval(compiled, {\"__builtins__\": __builtins__, ...}) — arbitrary code execution. The same route lets the caller set spec.source.directory, because _run_query only injects default_directory when it is None, so the traversal root escapes the vault.",
+      "consensus": "3/4",
+      "detail": "Logged per the 'Critical severity, always' classification so it stays visible at batch end. Orchestrator-verified by direct read of bim/dependencies.py:44-47, expression_engine.py:281-300, and query_zettels_use_case.py:33-58; independently proved live by Blake and Alice. ALSO routed into cycle-1 rework as task [D1] rather than left for batch end — this is the exact vulnerability class the PRD exists to close, and its Success Metric 1 asserts it is closed. The RCE path itself pre-dates this PRD; the unmet success metric does not."
+    },
+    {
+      "prd": "00042-bim-serve-confinement-and-auth-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "critical",
+      "issue": "Non-loopback bind sets allowed_hosts=[\"*\"] while the unauthenticated GET / injects window.__BUVIS_TOKEN__ into the page, so any LAN host fetches / , reads the token, and gains authenticated write/delete. install_security's warning text claims 'writes still require it', which is false.",
+      "consensus": "3/4",
+      "detail": "Logged per the 'Critical severity, always' classification. Alice verified live with host='0.0.0.0' and Host: attacker.example.com. This weakness is newly introduced by this PRD (the token mechanism is new), so it is routed into cycle-1 rework as task [D1] rather than deferred unfixed."
+    },
+    {
+      "prd": "00042-bim-serve-confinement-and-auth-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "high",
+      "issue": "Requirements ambiguity: PRD Success Metric 2 says 'a request without the local token ... is rejected before any filesystem access', but the Feature Behavior text scopes the token to '/api/* mutating routes'. The design doc self-flagged this as an open Question and never resolved it, leaving GET /api/zettels/{path}, GET /api/queries*, POST /api/queries/{name}/exec and GET /api/events unauthenticated.",
+      "consensus": "2/4",
+      "detail": "Resolved in cycle-1 rework by the simplest safe assumption: token-gate the POST query routes (which is also what closes the RCE above) and leave GET reads token-free per the Feature Behavior text, relying on confine_path plus TrustedHostMiddleware. Whether GET reads should also require the token is a PRD-level call recorded here for batch end."
+    },
+    {
+      "prd": "00042-bim-serve-confinement-and-auth-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "The pre-commit guard glob widened from '!*/serve/*' to '!**/serve/**', which now exempts any tool's serve/ subtree from the 'no framework imports in commands/params' architecture guard (including import click / import textual). The file is outside the PRD's declared file set with no note anywhere.",
+      "consensus": "1/4",
+      "detail": "Alice verified the old glob genuinely fired on _security.py's new 'from buvis.pybase.adapters import console' and the new one is clean, so the widening was needed to land this PRD. Narrowing it back to a precise exemption is a separate hygiene change; recorded so the weakened guard is not forgotten."
+    },
+    {
+      "prd": "00042-bim-serve-confinement-and-auth-v1.md",
+      "cycle": 2,
+      "type": "review-deferral",
+      "severity": "critical",
+      "issue": "`POST /api/queries/_adhoc` still drives client-supplied `filter.expr` / `columns[].expr` through `python_eval` (`eval` with full builtins), so any token-bearing caller executes arbitrary Python on the host. Proven live by the blind lens.",
+      "consensus": "1/4",
+      "detail": "DISCARDED as a finding against PRD 00042 (out of diff: the evaluator is untouched by the PRD's whole work range, and pre-PRD the endpoint reached the same eval with no credential at all, so this PRD strictly reduces the exposure). Recorded here because the product risk is real and unowned: a follow-up PRD should sandbox or remove full-builtins eval on the HTTP query surface. Not a blocker for 00042."
+    },
+    {
+      "prd": "00042-bim-serve-confinement-and-auth-v1.md",
+      "cycle": 2,
+      "type": "review-deferral",
+      "severity": "critical",
+      "issue": "The WebUI renders note bodies with `{@html marked.parse(content)}` and no sanitizer, so a note containing `<img src=x onerror=...>` executes in the page; combined with the injected `window.__BUVIS_TOKEN__` it yields a token-theft chain into the eval endpoint.",
+      "consensus": "1/4",
+      "detail": "DISCARDED as a finding against PRD 00042 (out of diff: `MarkdownEditor.svelte` is untouched by the PRD's work range, and pre-PRD an XSS payload needed no token to hit the same endpoints). Recorded here because the stored-XSS risk is real and unowned: a follow-up PRD should sanitize markdown rendering in the WebUI. Not a blocker for 00042."
+    },
+    {
+      "type": "stall",
+      "site": "cap_critical",
+      "detail": "Cycle 2 hit rework_cap 2 with an unresolved CRITICAL: task 6 gated POST /api/queries/{name}/exec and /_adhoc with require_token but never updated the client, so execQuery/execAdhoc in frontend/src/lib/api.ts send no X-Buvis-Token and every WebUI dashboard query returns 401 (PRD Success Metric 3 broken). Also unresolved: exec_adhoc discards confine_path's resolved paths and re-resolves the client strings. Both fixes are small; see dev/local/reviews/00042-bim-serve-confinement-and-auth-v1-review-02.md Outcome section.",
+      "op_id": "6445c5c41886",
+      "prd": "00042-bim-serve-confinement-and-auth-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00043-bim-doc-promote-collision-v1.md",
+      "cycle": 1,
+      "issue": "Same overwrite bug class survives one stage upstream in `Pipeline._triage` (pipeline.py:562/577/626): two docs sharing issuer+doc-date+number/title triage to the same `_triage/` basename and the first PDF + proposal are destroyed before anyone can promote them.",
+      "severity": "high",
+      "consensus": "1/4",
+      "file": "src/tools/bim/commands/doc/shared/pipeline.py",
+      "reason": "Pre-existing, outside PRD 00043's promote-only scope; the reporting reviewer recommends a follow-up PRD rather than rework here.",
+      "status": "deferred",
+      "recommendation": "Create a follow-up PRD: call the now-shared `resolve_collision` from `Pipeline._triage` before `os.replace(...)` and `write_proposal(...)`, mirroring what 00043 did for promote."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00043-bim-doc-promote-collision-v1.md",
+      "cycle": 1,
+      "issue": "Promote has no sha dedup, so the new non-overwriting behavior turns a re-promote of identical bytes into two archived copies while `record_processed` keeps only the newer row, making the first archive invisible to dedup.",
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/bim/commands/doc/promote/promote.py",
+      "reason": "New functionality and a product decision (reject / file anyway / merge), not named by the PRD, whose success criterion 'never deletes the incumbent' the current behavior satisfies.",
+      "status": "deferred",
+      "recommendation": "Candidate follow-up PRD: decide promote's re-promote policy and align it with ingest's sha dedup."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00043-bim-doc-promote-collision-v1.md",
+      "cycle": 1,
+      "issue": "Check-then-act race between `resolve_collision`'s `.exists()` probes and the later PDF move + zettel write; two concurrent promotes can still clobber each other.",
+      "severity": "medium",
+      "consensus": "3/4 across severities (Blake medium, Alice low, Bob low/KNOWN)",
+      "file": "src/tools/bim/commands/doc/promote/promote.py",
+      "reason": "Inherited verbatim from the ingest resolver this PRD was told to reuse; closing it needs atomic reservation across two linked artifacts on both call sites. The documentation half is NOT deferred — an inherited/accepted note is being added this cycle.",
+      "status": "deferred"
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00043-bim-doc-promote-collision-v1.md",
+      "cycle": 1,
+      "issue": "The file-wide PLR0913 per-file-ignore for `shared/naming.py` covers every future function there, where the repo elsewhere bundles args into a struct (`PipelineStages`) instead.",
+      "severity": "low",
+      "consensus": "2/4",
+      "file": "pyproject.toml",
+      "reason": "The 6-keyword-only signature is design-doc-pinned and already implemented against by two call sites and the unit tests; the narrower per-function suppression comment is blocked repo-wide by the aegis suppression-marker hook. Reviewer calls it a genuine tradeoff, not a defect.",
+      "status": "deferred"
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00043-bim-doc-promote-collision-v1.md",
+      "cycle": 1,
+      "issue": "Four inherited/pre-existing low-severity observations kept out of rework: `resolve_collision`'s mkdir leaves an empty issuer dir after a later failure; the 60-slot cap is a permanent ceiling per (issuer, date, title) tuple; `_finalize` writes the zettel before moving the PDF with no rollback; `--strict` defaults false so an exhaustion failure exits 0. Plus `CommandPromote._finalize` at 74 lines, flagged as pre-existing by the reviewer who found it.",
+      "severity": "low",
+      "consensus": "1/4 each",
+      "file": "src/tools/bim/commands/doc/ (multiple)",
+      "reason": "All are pre-existing or moved-verbatim behaviour that PRD 00043 does not name; each is recorded with its own full reason in dev/local/reviews/00043-bim-doc-promote-collision-v1-ledger.json.",
+      "status": "deferred"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 2,
+      "issue": "A failed PDF move in _finalize now permanently strands the orphan zettel it already wrote: on retry resolve_collision sees that zettel, treats the slot as taken, and files one second later, so every retry accumulates another dead zettel",
+      "severity": "medium",
+      "consensus": "1/4 (Blake)",
+      "reason": "extends settled cycle-1 deferral 7 (_finalize writes the zettel before moving the PDF with no rollback). The orphan itself is pre-existing and _finalize is byte-identical in this diff; the accumulate-on-retry consequence is genuinely new, because the resolver now probes the zettel path on the promote side. Both halves need the same fix - rollback or atomic reservation across two linked artifacts on both call sites - which is the design change cycle 1 already deferred as beyond this PRD. Recorded so the new consequence rides with the original deferral into the follow-up PRD rather than being lost",
+      "status": "deferred",
+      "prd": "00043-bim-doc-promote-collision-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 2,
+      "issue": "test_promote.py still repeats the _stage_triage_pair -> write_proposal(_build_proposal(...)) -> _build_command(...) sequence inline about 9 times; the stage_and_build helper the sweep extracted lives in test_promote_collision.py and is not shared",
+      "severity": "medium",
+      "consensus": "1/1 (Pat, per-task review)",
+      "reason": "raised by the sweeps own per-task review, which scoped it itself as pre-existing and out of this tasks scope - the duplication is in test_promote.py, which this diff only edited to move three helpers out. Adopting the helper across 9 call sites is its own refactor with its own regression risk in the tests, at the tail end of a converged PRD. Recorded as a follow-up; MEDIUM never blocks convergence",
+      "status": "deferred",
+      "prd": "00043-bim-doc-promote-collision-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "high",
+      "consensus": "3/4",
+      "file": "src/tools/bim/commands/doc/shared/pipeline.py",
+      "issue": "release_claim(sha) in the new finally is not ownership-scoped: a worker whose ingest outran claim_max_age_minutes and had its claim legitimately reclaimed by a second worker still deletes the row on exit, wiping the new owner-s live claim and letting a third run start concurrently on the same document. No claim token or owner id exists to make the release conditional.",
+      "reason": "Fix needs a lease token/generation column on claims plus compare-and-delete release - a schema change and a new ownership concept, against a PRD that says no schema change. Raised as design-review non-blocker 1 and deliberately not applied. Needs concurrency AND a job outrunning the 60-minute TTL. Follow-up PRD.",
+      "found_by": "BLAKE, BOB, ALICE",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "high",
+      "consensus": "2/4",
+      "file": "src/tools/bim/commands/doc/shared/ocr.py",
+      "issue": "The PRD requires the max age to exceed a slow OCR/LLM ingest ceiling; no such ceiling exists. ocr.py shells out via subprocess.run(argv, capture_output=True, check=False) with no timeout=, so an ingest is unbounded. A hung or slow ocrmypdf past the 60-minute default gets its live claim stolen and the document processed twice.",
+      "reason": "Correct reading of the PRD wording. Fix is to bound the ocrmypdf subprocess, changing OCR failure semantics in a module this PRD does not touch, with no acceptance criterion here. Design doc chose 60 minutes as a ceiling above the observed worst case, not a tight SLA. Follow-up PRD owning OCR timeouts.",
+      "found_by": "BLAKE, BOB",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "2/4",
+      "file": "src/tools/bim/commands/doc/shared/pipeline.py",
+      "issue": "RESIDUAL of the cycle-1 Critical: no command exists to clear a processed row, so a triage proposal the human rejects or deletes leaves that raw source sha permanently un-ingestable. The PRD nice-to-have names bim doc claims --clear, which targets the claims table, but the blocking row lives in processed - the named mitigation would not fix it.",
+      "reason": "PARTIALLY FIXED in cycle-1 rework task D1: the dangerous half (user told the document was already filed when nothing was filed) is closed by the design-specified _triage/{basename} (pending review) canonical_filename plus a pending-specific duplicate sidecar. Residual is the missing escape hatch, which is the PRD-s own explicit Nice to have and the design doc-s explicitly accepted out-of-scope risk. The actionable correction carried forward: the hatch must cover processed, not only claims.",
+      "found_by": "BLAKE (critical), ALICE (medium)",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "3/4",
+      "file": "src/tools/bim/commands/doc/shared/pipeline.py",
+      "issue": "Crash windows between os.replace and record_processed on both the _file_document and _triage paths. Now that the claim releases on any exit, a crash in that window leaves either a filed PDF with no dedup row (same source re-files a second archive copy) or a _triage PDF with no proposal and no staging file (unfileable). A retry also dies in sha256_file on the moved staging path.",
+      "reason": "Real consequence of task 2, but the PRD explicitly chose release-on-any-exit. Closing the window properly needs the file move and the dedup row to commit together, a filesystem+SQLite two-phase problem. Narrowing park-forever to a narrow double-file window is a strict improvement on pre-PRD behaviour. The _triage ordering predates this PRD. Follow-up PRD.",
+      "found_by": "BLAKE x2, ALICE",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "high",
+      "consensus": "1/4 each",
+      "file": "src/tools/bim/commands/doc/promote/promote.py",
+      "issue": "Two promote-path findings from Bob: (a) promote trusts the editable proposal source.sha256 and record_processed uses INSERT OR REPLACE, so an altered sha can overwrite another document-s processed identity; (b) the filed-sha and raw-source-sha rows are separate autocommit writes after files have moved, so a failure on the second leaves split metadata and an unretryable proposal.",
+      "reason": "(a) The .proposed.yml is deliberately human-editable and promote already trusts every other field in it (issuer slug, doc type, dates all flow into the filed artifact); singling out sha256 without a wider proposal-integrity story is inconsistent. (b) Matches the codebase-s single-statement autocommit style throughout StateDB - only _migrate wraps in BEGIN/COMMIT; atomicity needs a transaction helper on StateDB. Both to a follow-up PRD.",
+      "found_by": "BOB",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "3/4",
+      "file": "src/tools/bim/commands/doc/ (multiple)",
+      "issue": "Oversized functions this diff edited, confirmed against the computed mechanical-facts block: Pipeline._triage 111 lines, Pipeline.run 58, CommandPromote._finalize 88 - all over the repo-s 50-line limit. Bob additionally flagged newly added tests at 62/61/73/63/109 lines.",
+      "reason": "All three functions were already over the limit before this PRD; the diff added roughly 10, 8 and 14 lines. Extracting helpers from _triage is a behaviour-preserving refactor of the most intricate function in the ingest path, mid-PRD, with no acceptance criterion asking for it - the surgical-changes rule says surface it, do not perform it. The test-length half is a project-wide convention question: this repo-s existing tests are uniformly long arrange-heavy scenarios. Follow-up PRD.",
+      "found_by": "ALICE, BOB, CARL",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "low",
+      "consensus": "1/4 each",
+      "file": "src/tools/bim/commands/doc/shared/pipeline.py",
+      "issue": "Three low-severity consistency observations kept out of rework: extraction_method=pending-triage falls outside the grammar zettel_writer.py:65 fixes for that field name; the triage processed row can carry issuer_slug= when no slug resolves, and ProcessedRow has no non-empty validation; the 11 copy-pasted UPDATE claims SET claimed_at backdating blocks in test_state_db.py could collapse into one _backdate_claim helper.",
+      "reason": "The sentinel is deliberate and design-specified, and the grammar cited governs the zettel frontmatter field rather than the unvalidated state-db column. Empty issuer_slug is pre-existing shape on the unknown-issuer triage path; rejecting it would break legitimate triage rows. The test-helper extraction is cosmetic DRY, already raised and dismissed by Pat during the build. Each recorded with its own full reason in the PRD ledger.",
+      "found_by": "ALICE, BLAKE",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/bim/commands/doc/shared/pipeline.py",
+      "issue": "Dedup identity is only made consistent for triage-then-promote: ingest-s filed path still records the raw staging sha alone, never the OCR-d PDF it actually files, so doc audit-s check_state_db_entry hashes the on-disk file and reports missing_state_db_entry for every scanned document ingest files.",
+      "reason": "Real and well-argued, and it is design-review non-blocker 4 raised again from the code side. Pre-existing and untouched by this PRD: _file_document recorded the raw staging sha before this work and still does. Every PRD acceptance criterion is about the triage-then-promote path; nothing asks the direct-file path to change, and adding a second row there would alter dedup semantics for every filed document with no test pinning the intended behaviour. Follow-up PRD owning the audit/ingest sha-identity question.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 2,
+      "severity": "low",
+      "consensus": "2/4",
+      "file": "src/tools/bim/commands/doc/promote/promote.py",
+      "issue": "filed_row.model_copy(update={sha256: ctx.proposal.source.sha256}) skips validation, so ProcessedRow._sha256_is_hex64 no longer runs on the raw-source row - a defence-in-depth layer rework task 7-s refactor removed.",
+      "reason": "Verified inert: the only value fed through it was already validated by SourceProposal-s identical hex64 field_validator when read_proposal called TriageProposal.model_validate, and SourceProposal is frozen. Already recorded in dev/local/assumptions.md as a known accepted LOW. Its natural home is the already-deferred validate-the-editable-proposal-sha follow-up, where the whole proposal-trust question gets settled. Revisit if _finalize ever gains a second model_copy call site fed from elsewhere.",
+      "found_by": "ALICE, BLAKE",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 2,
+      "severity": "low",
+      "consensus": "1/4 each",
+      "file": "src/tools/bim/commands/doc/shared/state_db.py",
+      "issue": "Two deliberate-semantics objections to the claim predicate: the stale check fails open on an unparsable claimed_at (a corrupt row lets a live claim be stolen), and is_claim_stale reports True for an already-processed sha that claim() then refuses to reclaim, so predicate and reclaimability disagree.",
+      "reason": "Both are the chosen semantics, not drift. Fail-open is documented at the call site: a stamp no parser accepts cannot vouch for a live worker, so reading it as abandoned avoids reinstating the park-forever failure the PRD opened with, and the narrow exception contract is scoped to ValueError so a database fault still propagates. The predicate/claim disagreement is pinned by test_stale_claim_on_processed_sha_is_not_reclaimed: the predicate answers the age question the PRD asks it to export, while claim() adds a separate and correct processed-sha guard.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00044-bim-doc-claim-dedup-integrity-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "high",
+      "consensus": "1/4",
+      "file": "src/lib/buvis/pybase/adapters/shell/shell.py",
+      "issue": "shlex.quote is defeated at runtime: ShellAdapter.exe runs os.path.expandvars over the whole command AFTER the caller quoted it (shell.py:53-54, 125-134), and expandvars is quote-unaware. A filename containing $VAR injects (proven live by the blind lens), and dot rm '$HOME' acts on the wrong file. This defeats quoting at every shlex.quote-guarded call site in dot, not just rm.py.",
+      "reason": "Orchestrator-verified by direct read of shell.py:53-54 and 125-134. Deferred as HIGH rather than treated as this PRD's CRITICAL because it is PRE-EXISTING and mitigated, not introduced: before this PRD rm.py had no quoting at all, so every metacharacter injected; after it, only $VAR-bearing names do. The fix must narrow expansion to the alias body inside ShellAdapter, which changes behaviour for all 11 cfg-alias callers plus every other ShellAdapter consumer and breaks test_shell_adapter.py:250, which pins the vulnerable behaviour - well outside this PRD's declared 'single file plus its test' scope. Durable home created: dev/local/prds/backlog/00078-dot-quoting-holds-end-to-end-v1.md. The half that IS in scope - the CHANGELOG claiming the injection hole is closed - is corrected in this cycle's rework.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "high",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/delete/delete.py",
+      "issue": "dot delete still interpolates the filename unquoted into two shell=True commands (cfg rm {path}, cfg secret remove -c {path}) - the identical injection hole this PRD fixed in rm.py, attached to the command that destroys files.",
+      "reason": "Real and pre-existing. Explicitly out of scope: the PRD scopes to rm.py plus its test and the design doc's Risks section already names delete.py as a known follow-up. Folded into the same durable home, dev/local/prds/backlog/00078-dot-quoting-holds-end-to-end-v1.md.",
+      "found_by": "BLAKE, ALICE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "1/4 each",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "Two quoting-adjacent gaps settled at the design gate: no -- end-of-options separator (a file named -c re-enables the destructive ciphertext-deleting mode this PRD removed), and git pathspec glob magic (a filename containing * is expanded by git after the shell hands it over).",
+      "reason": "Both were raised and settled in the design doc's Risks section: shlex.quote guards shell metacharacters, not git flag or pathspec semantics, and this is pre-existing behaviour at every quoted call site in the repo (unstage.py, commit.py, git_ops.py) - not introduced or worsened by this diff. Both folded into PRD 00078, which adds the -- separator across rm and delete.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "The PRD's own example (dot rm ~/.ssh/config) never reaches the encrypted path: _is_encrypted compares the argument to cfg secret list output by exact string match, while the shell expands ~ to an absolute path and git-secret prints repo-relative paths.",
+      "reason": "Correct, but about _is_encrypted, which this diff does not touch and which behaved identically before the PRD. Path normalisation across every dot command is the shared git-ops seam PRD 00053 already owns. Out of scope for a change whose declared surface is _remove_normal/_remove_encrypted.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "cycle": 1,
+      "severity": "low",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "dot rm on a hidden (not revealed) secret always fails: git-secret's remove aborts with 'file not found' when the plaintext is absent, so nothing is untracked and the user sees a raw git-secret message.",
+      "reason": "Verified against the installed git-secret 0.5.0 (bin/git-secret:1612-1615). Pre-existing behaviour of the underlying tool, unchanged by this diff, and already surfaced as a CommandResult error rather than a crash. No PRD requirement touches it.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "high",
+      "consensus": "3/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "The new `cfg rm --cached <file>.secret` hard-fails whenever the ciphertext is not in the index: `git rm --cached` exits 128 with `fatal: pathspec did not match any files`. Reachable through dot's own TUI, where `register_secret` (tui/commands/secrets.py:59) runs `cfg secret add` only and never hides/stages, so no `.secret` is ever indexed. `dot rm` rewrites the git-secret mapping, returns failure, and tells the user to restore the mapping and retry - the retry fails identically, an unbreakable loop. Before this cycle's rework the command succeeded. Fix: `cfg rm --cached --ignore-unmatch {shlex.quote(...)}`; `_is_encrypted` already proved the file is a registered secret, so 'not in the index' is the desired end state.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. CONFIRMED by the orchestrator independently of the reviewers: in a throwaway repo `git rm --cached notindex.secret` exits 128, and the same command with `--ignore-unmatch` exits 0. Deferred only because the cap was reached, NOT because it was judged acceptable - it is a real regression introduced by this PRD's own cycle-1 rework and the fix is one flag wide. Raise this first at batch-end review.",
+      "found_by": "ALICE, BLAKE, BOB",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "high",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "Failure to stage `.gitsecret/` still returns a successful CommandResult (only a warning is appended), so automation can commit the already-staged ciphertext removal without the mapping change that belongs with it, leaving the committed mapping stale relative to the index.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Confirmed by reading rm.py:64-72 - the staging error path appends to self.warnings and falls through to success=True. Mitigating context the deferral rests on: the working-tree mapping is already correct, the failure is surfaced as a warning rather than silently swallowed, and any later `dot add .gitsecret/` repairs it. Bob rated it high; the orchestrator would rate it medium on that basis, but did not downgrade a reviewer's severity unilaterally.",
+      "found_by": "BOB",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "2/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "`cfg add .gitsecret/` stages the whole directory, sweeping in any unrelated pending changes there (for example keyring edits from `git secret tell`); only the mapping file that `git secret remove` touched needs staging.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Real and in-scope (the staging call is new in this cycle's rework). Narrowing it to `.gitsecret/paths/mapping.cfg` is the obvious fix, but `dot encrypt` already stages `.gitsecret/` wholesale, so the broad form matches existing repo precedent and changing it is a behaviour decision rather than a defect fix.",
+      "found_by": "BLAKE, BOB",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "2/4",
+      "file": "docs/source/tools/dot.rst",
+      "issue": "Untracking the ciphertext leaves `<file>.secret` on disk unignored - git-secret's `init` writes `!*.secret` into `.gitignore` - so after a successful `dot rm` the same path shows in `dot status` twice ('staged: deleted' plus 'unstaged: untracked'), and the next interactive `dot add` will offer to re-stage the blob, silently undoing the untracking. Neither dot.rst nor the CHANGELOG ('the file really does leave the repo') mentions the leftover.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Both halves reproduced by Alice in a scratch repo, and the `!*.secret` negation confirmed at git-secret 0.5.0:1541-1542. Deleting the leftover is out of scope by the PRD's own success criterion (`dot rm` never deletes from disk), so the remedy is a documentation line, not a code change.",
+      "found_by": "ALICE, BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "The new recovery message tells the user to run `cfg checkout -- .gitsecret/`, but `cfg` is not a command the user has: it is an alias `ShellAdapter.alias` registers for its own subprocess call (shell.py:26-33, rm.py:24-27), documented at dot.rst:97-98 as the tool's internal alias. The runnable equivalent is `dot run checkout -- .gitsecret/`. The test at test_rm.py:223 pins the unrunnable string.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. In-scope and cheap - the message and its test both landed in this cycle's rework. It hands an operator a recovery command that does not exist in their shell, which is worse than no command; it should ride along with the F1 fix.",
+      "found_by": "ALICE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "The `.secret` suffix is hardcoded, but git-secret honours SECRETS_EXTENSION (git-secret:195); with a non-default extension the ciphertext untrack always targets a nonexistent path, so the command always fails mid-way.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Same failure path as the F1 high finding, reached by a different route - the `--ignore-unmatch` fix for F1 also removes the hard failure here, leaving only the (correct) observation that a non-default extension means the ciphertext is never untracked. Default installs are unaffected.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "Warnings are dropped on every failure return - 'Could not check git-secret status' is attached only to success results, so the user loses the one signal that encryption detection failed exactly when it matters.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Pre-existing shape (the failure returns never carried warnings before this PRD either), but the rework added two more failure returns, so the diff widens it. Fix is mechanical: pass `warnings=self.warnings` on the failure CommandResults too.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/dot/tui/commands/secrets.py",
+      "issue": "The TUI's `unregister_secret` still runs only `cfg secret remove`, so the 'ciphertext stays tracked and committed' defect this cycle fixed for `dot rm` is still reachable from the Secrets screen. One user action, two implementations, now demonstrably divergent.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Out of the PRD's declared single-file scope, and it is the all-interface invariant gap that PRD 00053 (shared git-ops service) already owns. This diff is what establishes which behaviour is correct, so 00053 now has a reference implementation to converge on.",
+      "found_by": "ALICE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "src/tools/dot/tui/git_ops.py",
+      "issue": "The TUI names the destructive operation `rm`: `GitOps.rm` runs `cfg rm` without `--cached` and deletes from disk, contradicting the PRD's success criterion at the level a maintainer reads, and duplicating the command logic outside CommandRm.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Out of the PRD's declared scope (rm.py plus its test) and the same all-interface seam PRD 00053 owns. Worth carrying into 00053 as a naming decision, not just a code move.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "tests/tools/dot/test_rm.py",
+      "issue": "The quoting regression tests assert against a MagicMock shell, never the real ShellAdapter, so they cannot prove 'no injection' - the hole lives exactly at the boundary the mock replaces. Blake demonstrated this by reproducing the injection against the real adapter while the suite stayed green.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. The underlying hole (ShellAdapter expandvars defeating shlex.quote) is a cycle-1 settled deferral tracked by PRD 00078; this is its test-side twin and belongs in the same follow-up. The cycle-2 test file deliberately documents the gap in a comment rather than pretending to cover it, which is the honest interim state.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "1/4",
+      "file": "tests/tools/dot/test_rm.py",
+      "issue": "`_pathspecs` is a generic partial command parser used for only two assertions; direct `shlex.split` token-list assertions are simpler and bind intent more clearly.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. De-slop finding on test scaffolding added by this cycle's rework; behaviour-preserving cleanup with no correctness impact.",
+      "found_by": "BOB",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "low",
+      "consensus": "1/4",
+      "file": "tests/tools/dot/test_rm.py",
+      "issue": "`test_issues_no_commands_beyond_the_targeted_untracking` still builds its expectation with `shlex.quote(file_path)` / `shlex.quote(file_path + '.secret')` - the re-derivation pattern task 4 removed everywhere else, so the file states two different rules.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Harmless in practice: the test's fixture name `.aws/credentials` contains no shell metacharacters, so `shlex.quote` is the identity there and the assertion is exact. Consistency cleanup, not a coverage gap.",
+      "found_by": "ALICE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "low",
+      "consensus": "1/4",
+      "file": "tests/tools/dot/test_rm.py",
+      "issue": "`test_stages_gitsecret_mapping_change` largely duplicates `test_issues_no_commands_beyond_the_targeted_untracking`, which already pins `cfg add .gitsecret/` as the exact third command with no other pathspec.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Redundant-coverage de-slop on tests added this cycle; deleting one or trimming the token filtering is safe but purely cosmetic.",
+      "found_by": "ALICE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "low",
+      "consensus": "1/4",
+      "file": "CHANGELOG.md",
+      "issue": "The CHANGELOG 'Fixed' bullet is now four sentences and names an internal recovery command; rules/changelog.md asks for one line describing the user-visible effect.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Style against the changelog rule, not a correctness issue. Note the Security bullet's explicit honesty about the still-unfixed $VAR half is correct and must stay - trimming should not remove that.",
+      "found_by": "ALICE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "low",
+      "consensus": "1/4",
+      "file": "src/tools/dot/commands/rm/rm.py",
+      "issue": "`DOTFILES_ROOT=\"\"` defeats the guard: `os.environ.setdefault` will not replace an existing empty value, so `Path(\"\")` resolves to the current working directory as the work tree.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Pre-existing in CommandRm.__init__, untouched by this diff, and present in the same shape across the other dot commands - so it belongs with the shared git-ops work (PRD 00053) rather than a spot patch here.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00045-dot-rm-safety-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00046-dot-tui-secret-status-refresh-v1.md",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "1/4",
+      "issue": "Success criterion \"Issue #92 closed\" is unmet: `gh issue view 92` reports state OPEN with `closedAt: null`, and the three fix commits are not on the remote (origin/master is fa574f1) — the fix exists only in the local branch",
+      "detail": "Not a code defect. Loop mode defers git push to the human (Phase 9 git-push policy), and closing the GitHub issue is outside the loop's remit. Push the batch and close #92 manually at batch end."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00046-dot-tui-secret-status-refresh-v1.md",
+      "cycle": 1,
+      "severity": "low",
+      "consensus": "1/4",
+      "issue": "`status()` is now a mutating read path: every refresh shells out to gpg via `secret hide -m`, and `commit()` hides a second time immediately after the refresh that just hid — no dedup or throttle",
+      "detail": "Accepted. `git secret hide -m` only re-encrypts files whose plaintext changed, so the repeat is a no-op walk in the common case. Deduplicating would need session state tracking the last hide, which costs more complexity than the saved work."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00046-dot-tui-secret-status-refresh-v1.md",
+      "cycle": 1,
+      "severity": "low",
+      "consensus": "1/4",
+      "issue": "Raw git-secret/gpg stderr is interpolated verbatim into the on-screen message, so gpg key ids and absolute paths reach the UI unfiltered and untruncated",
+      "detail": "Accepted. dot's TUI is a single-user local tool operating on the user's own dotfiles; showing the operator their own gpg key ids and home paths discloses nothing they do not already have. Verbatim stderr is what makes a hide failure diagnosable."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00046-dot-tui-secret-status-refresh-v1.md",
+      "cycle": 1,
+      "severity": "low",
+      "consensus": "1/4",
+      "issue": "The changelog was committed separately from the fix, contrary to the repository rule requiring each fix commit to carry its changelog update.",
+      "detail": "Accepted. The CHANGELOG entry exists and ships with the PRD; squashing b6a8cb7 into a0f45b7 rewrites already-made history for no user-visible gain. Recorded so the same-commit rule is applied on the next fix rather than retro-fitted here."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00046-dot-tui-secret-status-refresh-v1.md",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "orchestrator (rework discovery)",
+      "issue": "FileEntry.is_secret is dead in production: GitOps.status() marks it with `filepath in secrets`, but `cfg secret list` emits PLAINTEXT paths (`.ssh/config`) while `git status --porcelain` emits the tracked CIPHERTEXT path (`.ssh/config.secret`), because git-secret gitignores the plaintext. The two never match, so the TUI's file list never renders its secret marker (src/tools/dot/tui/widgets/file_list.py:92).",
+      "detail": "Discovered during PRD 00046 cycle-1 rework, not raised by any reviewer. PRE-EXISTING: the marking logic predates this PRD; 00046 only added the hide step. Deferred as out of scope — fixing it means deciding what the TUI should show for a hidden secret (the ciphertext row, the plaintext name, or both), which is a UX decision, not a bug fix. Surfaced now because cycle 1's test-realism finding forced the old `is_secret is True` assertion to be dropped: it was passing only against a porcelain fixture production cannot produce, so positive is_secret coverage is now genuinely absent rather than fake. Candidate for PRD 00053 (dot git-ops unification) or its own PRD."
+    },
+    {
+      "type": "stall",
+      "site": "cap_critical",
+      "detail": "Cycle 2 hit rework_cap 2 with an unresolved CRITICAL: tests/tools/dot/test_tui_snapshots.py:57 still mocks the OLD GitOps.status() list contract, so all 10 dot snapshot tests crash with ValueError: too many values to unpack (expected 2) at screens/main.py:141 on the canonical CI env (ubuntu+py3.12); orchestrator-reproduced. PRD success criterion 'dot tests green' is false. Also 3 unresolved HIGH defects: StatusBar height:1 hides the hide-error entirely at 80 cols (3/4 consensus, PRD must-have 2), the quit guard fails open by discarding _hide_secrets() errors (3/4), and hide-error tests assert the model string not rendered output. Full rework plan in dev/local/reviews/00046-dot-tui-secret-status-refresh-v1-review-02.md.",
+      "op_id": "e5a731bf1dca",
+      "prd": "00046-dot-tui-secret-status-refresh-v1.md"
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00047-updater-fail-loud-v1.md",
+      "cycle": 1,
+      "severity": "high",
+      "consensus": "2/4 (Blake correctly, Carl on a misquoted requirement)",
+      "file": "src/lib/buvis/pybase/updater/executor.py",
+      "issue": "The automatic update path (`run_update`) still carries the 120s `_UPGRADE_TIMEOUT`; only the interactive path was raised to 1800s. A slow `uv tool upgrade` triggered by the pre-command auto-update check is still SIGKILLed at 120s, which is the half-mutated-venv hazard the PRD's own Problem section describes.",
+      "detail": "REQUIREMENTS AMBIGUITY - needs a human call, which is why it is deferred rather than fixed. Orchestrator-verified against the pre-change file (git show b66e9c9:.../executor.py): the PRD Problem section's citation `executor.py:55-62` lands on `run_update`'s `subprocess.run(..., timeout=_UPGRADE_TIMEOUT)` and its except block - the AUTOMATIC path. The PRD's Implementation/Exports line also names `run_update()` with 'no 120s kill'. But Solution, Must-have and the Phase 0 task all say 'the interactive path', and Success Criterion 2 ('A slow upgrade is not truncated') is unqualified. The design gate read it narrowly with a documented rationale: the pre-command check must stay bounded so a scripted command is not blocked by a background upgrade. That rationale is sound; the scope question is not settled by the PRD text. Carl raised this as CRITICAL citing a requirement string ('both interactive and automatic') that does not appear anywhere in the PRD - that CRITICAL is discarded in the ledger; Blake's HIGH on a correct reading is what stands. Decide at batch end: raise the auto path to a bounded-but-generous value too, or amend the PRD to state the narrow scope explicitly. Two dependents ride with it: the test pinning `timeout: 120` on the auto path, and the auto path's fully silent TimeoutExpired branch."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00047-updater-fail-loud-v1.md",
+      "cycle": 1,
+      "severity": "high",
+      "consensus": "1/4",
+      "file": "src/lib/buvis/pybase/updater/__init__.py",
+      "issue": "Unbounded re-exec loop: if the upgrade command exits 0 without changing the installed version (uv/pipx 'nothing to upgrade', requires-python mismatch), the re-exec'd process re-runs `check_and_update`, still reads the old `pkg_version`, upgrades and execvp's again - with no generation marker surviving the process replacement to break the cycle.",
+      "detail": "Raised by the blind lens from code reading, not reproduced live. Structurally plausible on reading `check_and_update` (nothing re-reads the installed version after execvp, and the per-process guard cannot survive process replacement). PRE-EXISTING and out of scope: this diff touches only `_reexec_or_exit`'s OSError branch and the interactive timeout constant, neither of which sits on the success/re-exec path the loop runs through, and `updater/__init__.py` is outside the PRD's declared surface (`executor.py` only). Real and unowned - candidate for its own PRD (an env-var generation marker across execvp, or re-reading the installed version before deciding to upgrade)."
+    },
+    {
+      "type": "review-deferral",
+      "prd": "00047-updater-fail-loud-v1.md",
+      "cycle": 1,
+      "severity": "medium",
+      "consensus": "2/4",
+      "file": "src/lib/buvis/pybase/adapters/console/console.py",
+      "issue": "The re-exec failure message lands on stdout, not stderr as the PRD's Solution prose requires - `ConsoleAdapter` builds a Rich `Console(log_path=False)` whose default file is sys.stdout. In the PRD's own cron/pipe scenario the error contaminates the data stream. Verified end to end by the blind lens.",
+      "detail": "Two repo requirements collide. The PRD Solution says 'print to stderr via the console adapter'; AGENTS.md mandates that ALL user-facing output route through the console adapter, and that adapter has no stderr channel. Giving it one changes output routing for every tool in the monorepo, far outside a two-task PRD scoped to executor.py. The Must-have's actual testable clause ('non-zero exit AND a user-visible message via the console adapter') is met. Batch-end decision: does the console adapter grow a stderr channel (and if so, which severities route there)?"
+    },
+    {
+      "prd": "00047-updater-fail-loud-v1.md",
+      "cycle": 2,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "console.panic is annotated `-> None`, not `NoReturn`, so nothing enforces _reexec_or_exit's documented \"Never returns\" contract; if panic ever stops exiting, run_update returns and the command runs against a replaced venv with exit 0",
+      "consensus": "1/4",
+      "detail": "Raised by Blake. A genuine hardening, but it lives in the shared console adapter, outside this PRD's declared surface (executor.py only), and it is not neutral for the type checker: annotating panic as NoReturn makes mypy treat every statement after a console.panic(...) call as unreachable across all ~14 call sites in the monorepo, which can surface a fresh batch of errors well outside this PRD. Same class as the stdout-vs-stderr deferral - an adapter-wide change that needs its own PRD."
+    },
+    {
+      "prd": "00047-updater-fail-loud-v1.md",
+      "cycle": 2,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "Check-then-act in _resolve_reexec_argv: new_binary.exists() then os.execvp on the same path (pre-existing, narrow window)",
+      "consensus": "1/4",
+      "detail": "Raised by Blake, who flags it as pre-existing himself. _resolve_reexec_argv is untouched by this PRD's diff (confirmed against the cycle-2 diff, which changes only _reexec_or_exit's OSError branch, two docstrings, and the CHANGELOG). Surgical Changes forbids reworking untouched code, and the window sits between an exists() check and an execvp on a path the installer just wrote - not a security boundary."
+    },
+    {
+      "prd": "00047-updater-fail-loud-v1.md",
+      "cycle": 2,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "test_click_integration.py remains above the 800-line limit (1084 lines) after task 3 added 20 lines",
+      "consensus": "1/4",
+      "detail": "Raised by Bob, who filed it in his own KNOWN bucket as out of scope. Alice independently checked the convention: all 6 files over 800 lines in this repo are test modules and no src/ file breaches the limit, so the addition follows established repo convention rather than drifting from it. Splitting the module is its own refactor."
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "high",
+      "issue": "Automatic update path (run_update) still carries the 120s timeout; only the interactive path was raised to 1800s",
+      "decision": "Defer to batch end",
+      "rationale": "Requirements ambiguity: PRD Problem cites executor.py:55-62 (= run_update, the automatic path) and Implementation/Exports says run_update() no 120s kill, while Solution/Must-have/Task all scope the fix to the interactive path. Design gate chose the narrow reading with a documented rationale. Needs a human scope call, not a unilateral fix.",
+      "prd": "00047-updater-fail-loud-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "high",
+      "issue": "Unbounded re-exec loop in updater/__init__.py when an upgrade exits 0 without changing the installed version",
+      "decision": "Defer to batch end",
+      "rationale": "Pre-existing and outside the PRD surface (executor.py only). This diff touches only the OSError branch and the interactive timeout constant, neither on the re-exec success path. Real and unowned - candidate for its own PRD.",
+      "prd": "00047-updater-fail-loud-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "medium",
+      "issue": "Re-exec failure message lands on stdout, not stderr as the PRD Solution prose requires",
+      "decision": "Defer to batch end",
+      "rationale": "PRD Solution says stderr; AGENTS.md mandates all output route through the console adapter, which has no stderr channel. Adding one changes routing for every tool in the monorepo. The Must-have testable clause (non-zero exit AND console-adapter message) is met.",
+      "prd": "00047-updater-fail-loud-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 2,
+      "severity": "low",
+      "issue": "console.panic is annotated -> None, not NoReturn, so nothing enforces _reexec_or_exits documented Never returns contract",
+      "decision": "Defer to batch end",
+      "rationale": "Lives in the shared console adapter, outside this PRDs declared surface (executor.py only), and is NOT type-checker-neutral: annotating panic as NoReturn makes mypy treat every statement after a console.panic() call as unreachable across ~14 monorepo call sites, potentially surfacing a fresh batch of errors far outside this PRD. Same class as the stdout-vs-stderr deferral - an adapter-wide change needing its own PRD.",
+      "prd": "00047-updater-fail-loud-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 2,
+      "severity": "low",
+      "issue": "Check-then-act in _resolve_reexec_argv: new_binary.exists() then os.execvp on the same path",
+      "decision": "Defer to batch end",
+      "rationale": "Blake flags it as pre-existing himself. _resolve_reexec_argv is untouched by this PRDs diff, which changes only _reexec_or_exits OSError branch, two docstrings and the CHANGELOG. Surgical Changes forbids reworking untouched code, and the window sits between an exists() check and an execvp on a path the installer just wrote - not a security boundary.",
+      "prd": "00047-updater-fail-loud-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 2,
+      "severity": "low",
+      "issue": "test_click_integration.py remains above the 800-line limit (1084 lines) after task 3 added 20 lines",
+      "decision": "Defer to batch end",
+      "rationale": "Bob filed it in his own KNOWN bucket as out of scope. Alice independently checked the convention: all 6 files over 800 lines in this repo are test modules and no src/ file breaches the limit, so the addition follows established repo convention rather than drifting from it. Splitting the module is its own refactor.",
+      "prd": "00047-updater-fail-loud-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "low",
+      "issue": "`fctracker transactions -m garbage` raises a raw ValueError from `is_in_month`, called in the list comprehension outside the try block",
+      "decision": "Defer to batch end",
+      "rationale": "Pre-existing defect on the --month flag, outside this PRD diff and outside its three named error classes. Surgical-changes rule: surface it, do not fold it into an unrelated change. Reproduced by Blake.",
+      "prd": "00048-fctracker-integrity-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "low",
+      "issue": "A currency file present in transactions_dir but absent from config raises a raw KeyError in both commands and in Deposit.__init__",
+      "decision": "Defer to batch end",
+      "rationale": "Pre-existing config-mismatch defect, outside this PRD diff and its three named error classes. Same surgical-changes reasoning. Reproduced by Blake as RAW builtins.KeyError: EUR.",
+      "prd": "00048-fctracker-integrity-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "high",
+      "consensus": "2/4",
+      "file": "tests/tools/fctracker/test_transactions_reader.py",
+      "issue": "The `description` guard in REQUIRED_ROW_VALUES - the entire point of commit 670de3d - has zero test coverage. Removing `description` from the tuple leaves all 86 fctracker tests green, and a withdrawal row short by its trailing cell then reaches Withdrawal with description=None. The only ragged-row fixture (`2024-02-02` alone) omits amount/rate/description at once, so the `amount` arm raises first and shadows the `description` arm forever.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. CONFIRMED by the orchestrator independently of the reviewers: `git show 670de3d --stat` is one source file, 6 insertions, NO test; every CSV fixture in test_transactions_reader.py was enumerated and none omits only the trailing cell. Deferred only because the cap was reached, NOT because it was judged acceptable - it is a bug fix shipped without the regression test rules/testing.md requires. The guard itself works, so no wrong money ships; the exposure is that a future refactor can silently delete it. Fix is one 3-cell fixture. Raise this first at batch-end review for 00048.",
+      "found_by": "ALICE, BOB",
+      "status": "deferred",
+      "prd": "00048-fctracker-integrity-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "high",
+      "consensus": "1/4",
+      "file": "src/tools/fctracker/adapters/transactions/transactions_dir_scanner.py",
+      "issue": "A stray file in transactions_dir (macOS .DS_Store is the obvious one) crashes both `fctracker transactions` and `fctracker balance` with a raw `NotADirectoryError: [Errno 20]` traceback. TransactionsDirScanner calls account_dir.iterdir() on every entry with no is_dir() guard, and the command layer catches only FileNotFoundError around construction.",
+      "reason": "Cycle 2 hit rework_cap 2 with this unresolved. Reproduced live by Blake on both commands. Pre-existing defect in a file this PRD never touched - transactions_dir_scanner.py is not in the diff - and outside the PRD's three named error classes, so the surgical-changes rule applies exactly as it did for the two cycle-1 deferrals. It does contradict the PRD's Success Criterion 'No raw traceback from fctracker', which is why it is HIGH rather than a quiet note. Fix is a one-line is_dir() guard in the scanner.",
+      "found_by": "BLAKE",
+      "status": "deferred",
+      "prd": "00048-fctracker-integrity-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "severity": "medium",
+      "consensus": "mixed (see review file)",
+      "file": "src/tools/fctracker/ (multiple)",
+      "issue": "The Medium/Low tail of cycle 2, NOT swept: (a) [3/4] the DivisionUndefined branch in shared/errors.py is unreachable dead code by its own docstring, surviving on mock-only coverage; (b) [2/4] _read_rows reverses via repeated insert(0, row), O(N^2) where list(reader)+reverse() is linear; (c) [2/4] structural validation is asymmetric - a short row is rejected but an over-long row is accepted and the surplus silently dropped via the None restkey; (d) [2/4] value-level reader errors (invalid amount / zero amount / invalid rate) carry neither file nor row, unlike every structural error; (e) Infinity/NaN cells defeat the malformed-cell guard and render as `Infinity E` / `NaN Kc` - silent wrong money; (f) every OSError other than FileNotFoundError/UnicodeDecodeError is unguarded (chmod 000 -> raw PermissionError); (g) _validate_rows' data-row mapping is untested (the `\"1\" in message` assertion is satisfied by digits in the interpolated tmp_path); (h) CHANGELOG overclaims that malformed-cell errors name the file and row; (i) _build_row accepts Any instead of Deposit | Withdrawal; (j) assorted Low items - duplicate header last-wins, bad date cell raw strptime text, negative rate accepted, docs example names neither file nor row, metadata=={} assertion cannot fail.",
+      "reason": "Recorded rather than swept because the loop-mode cap-out path stops polishing by design - the Phase 5 tail sweep runs only on the clean converged outcome, not on cap-out. None of these blocks a PRD must-have. The three worth raising at batch-end review are (e) Infinity/NaN, which is the silent-wrong-money class this PRD exists to kill and is arguably mis-rated as Medium, (c) the over-long-row data loss which is its sibling, and (a) the dead branch, which three of four reviewers independently flagged. Full per-finding detail in dev/local/reviews/00048-fctracker-integrity-v1-review-02.md.",
+      "found_by": "ALICE, BLAKE, BOB, CARL",
+      "status": "deferred",
+      "prd": "00048-fctracker-integrity-v1.md"
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "high",
+      "issue": "Warm metadata-cache path re-silences parse errors: a file that fails to parse is never written to the cache, so every filtered scan after the first cold one reports zero errors while the note stays missing. This is the bim query production path.",
+      "consensus": "3/4",
+      "detail": "Orchestrator-verified by probe (run 1 errors=[bad.md, 'stream did not contain valid UTF-8']; run 2 errors=[] with the note still absent). Genuine PRD success-criterion gap, but the fix lives in the Rust cache layer (src/rust/src/scanner.rs) and needs a maturin rebuild plus macOS codesign of the .so - a cross-language diff the PRD's Implementation section scopes out (markdown_zettel_repository.py only). Pre-existing, not a regression. RECOMMEND a follow-up PRD covering all three Rust-side gaps in this batch report."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "high",
+      "issue": "Rust backend silently swallows malformed-YAML front matter (returns the note with a fabricated filename-derived title and empty metadata, errors=[]), so the PRD success criterion 'Rust and Python fallback agree on poisoned-note behavior' is unmet for that class.",
+      "consensus": "2/4",
+      "detail": "Orchestrator-verified by probe (rust: 2 results titles=['Test','Bad'] errors=[]; python fallback: 1 note + warning). Already identified and deliberately scoped out at the design gate - the accepted design doc names this exact pre-existing gap and flags it as a follow-up PRD. Re-raising it now would reverse a decision taken on the same evidence. RECOMMEND folding into the same Rust follow-up PRD."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "high",
+      "issue": "console.warning shares the Rich stdout console with bim query's structured output, so `bim query -f json/jsonl/csv` piped to a parser can now get a leading warning line.",
+      "consensus": "1/4",
+      "detail": "Recorded as a known limitation in the accepted design doc, which also documents the pre-existing same-class wart (bim query's unconditional console.info row-count trailer at cli.py:353) that already breaks strict JSON piping. Not a new failure class. Routing structured output to its own stream is separate work across the query presentation layer."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "medium",
+      "issue": "No structured errors field: find_all still returns bare list[Zettel], so TUI/serve/WebUI cannot render 'N notes could not be read'. In TUI the warning prints before the alt-screen opens and is invisible, so the visible-warning criterion holds for CLI only.",
+      "consensus": "1/4",
+      "detail": "The PRD marks interface threading as explicitly Nice-to-have and the design doc's Alternatives 2 and 3 evaluate and reject it as an application-layer plus three-interface expansion. The all-interface visibility point is real and is the strongest candidate for the follow-up PRD alongside the Rust gaps."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "medium",
+      "issue": "A single bim query emits the identical warning twice because _finish_refresh re-runs use_case.execute(spec) after the cache refresh.",
+      "consensus": "1/4",
+      "detail": "The PRD requires warn-once per scan, not per user command, and the design doc records that reading. Two scans legitimately warn twice. The double-execute is a bim query presentation concern outside this PRD's module scope."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "Warning message is unbounded (every failing path joined into one line, no cap or 'and N more') and drops the per-file failure reason even though both backends supply one.",
+      "consensus": "2/4",
+      "detail": "The accepted design doc considered truncation and chose visibility over tidiness for what should be a rare event. Merged with ALICE's separate point that the collected reason string is discarded - both are message-formatting polish on the same one-line helper."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "refresh_cache folds failures into an n_errors count inside a summary string that _finish_refresh only tests for emptiness, so those files are never named - the same dropped-error class in an adjacent path.",
+      "consensus": "1/4",
+      "detail": "Genuine instance of the same defect class, but in the Rust cache-refresh surface this PRD does not touch. Belongs with the other Rust-side deferrals in the follow-up PRD."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "The new user-visible warning is undocumented under docs/source.",
+      "consensus": "1/4",
+      "detail": "CHANGELOG entry is present and is being corrected this cycle. docs/source documents commands and features; this PRD adds no command, flag or feature surface, only a warning line on existing behavior."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 1,
+      "type": "review-discard",
+      "severity": "critical",
+      "issue": "BLAKE: Python fallback still lets one bad note kill the whole scan - a note with `date: not-a-date` raises ValueError and returns zero notes.",
+      "consensus": "1/4",
+      "detail": "REFUTED by orchestrator probe: a directory with one good note and one `date: not-a-date` note returns 2 notes from the Python fallback with nothing escaping. The structural observation (ZettelFactory.create sits outside the try) is accurate, but the stated failure does not reproduce. The real escape through that same code - non-mapping front/back matter raising AttributeError/TypeError, raised independently by BLAKE and BOB - is confirmed and is being fixed in cycle 1 rework."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 2,
+      "type": "cap-overflow",
+      "severity": "high",
+      "issue": "BOB: Non-string YAML mapping keys still escape find_all and kill the whole scan - an int or bool front-matter key raises TypeError, an int back-matter key raises AttributeError, and none is caught by the deliberately narrow except (OSError, ValueError).",
+      "consensus": "1/4",
+      "detail": "CONFIRMED by orchestrator probe with three fixtures, each killing the entire scan including the good notes: `1: value` front matter -> TypeError: expected string or bytes-like object, got 'int'; `true: value` front matter -> same for 'bool'; `- 1: value` back matter -> AttributeError: 'int' object has no attribute 'rstrip'. This is the same defect class the PRD's Must-have targets, but a DISTINCT trigger from the one cycle 1 fixed: cycle 1 validated the YAML root SHAPE (mapping vs scalar); this is about KEY TYPES inside a well-shaped mapping. Pre-existing, not a regression from this PRD, and rated high rather than critical on the same calibration the gate applied to the cycle-1 instance. Deferred at rework_cap 2. RECOMMENDED AS THE FIRST ITEM OF THE FOLLOW-UP PRD, alongside the three Rust-side deferrals."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 2,
+      "type": "cap-overflow",
+      "severity": "medium",
+      "issue": "ALICE + BOB: extract_reference grew from 46 to 52 lines, crossing the project's 50-line function convention, because this diff's non-mapping validation was added inline instead of factored out.",
+      "consensus": "2/4",
+      "detail": "Corroborated by the cycle's computed mechanical-facts block, which measures extract_reference at 52 lines from `ast` - measured, not estimated. Genuinely introduced by this diff. Two behavior-preserving fixes proposed: extract a `_validate_reference_list` helper (Alice), or drop the redundant `cast(...)` wrapper around yaml.load and validate the inferred object directly (Bob). Deferred only because the cap is reached."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 2,
+      "type": "cap-overflow",
+      "severity": "medium",
+      "issue": "BOB: Root-shape validation is bypassed for falsy invalid YAML - `or {}` converts empty-list metadata into a mapping and `or []` converts empty-mapping back matter into a list.",
+      "consensus": "1/4",
+      "detail": "PARTIALLY confirmed by orchestrator probe. Real half: a note whose front matter is an empty YAML list loads silently with a fabricated filename-derived title and no warning, so an invalid note is accepted instead of reported. Refuted half: empty-mapping back matter is not a defect - the note parses normally and back matter is legitimately optional. Neither case crashes the scan, hence medium."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 2,
+      "type": "cap-overflow",
+      "severity": "medium",
+      "issue": "BOB: The lazy-import invariant is not pinned - the clean-scan test imports the Rich-backed console at module collection and only asserts warning was not called, so it would still pass if the repository reintroduced its module-level Rich import.",
+      "consensus": "1/4",
+      "detail": "Accurate: the test module imports `console` at top level, so it cannot detect reintroduction of the module-level Rich import that cycle-1 rework deliberately removed to satisfy the library-stays-interface-agnostic invariant. A genuine coverage gap, but it guards a property that is currently correct - nothing ships broken. The repo already has a reusable precedent in tests/tools/bim/doc/ (TestLazyImport / TestLazyUnidecodeImport)."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 2,
+      "type": "cap-overflow",
+      "severity": "medium",
+      "issue": "BOB: The three non-mapping fallback tests duplicate identical good-note setup, repository invocation and assertions; they should be one parametrized test over filename and malformed content.",
+      "consensus": "1/4",
+      "detail": "A genuine NEW instance of the duplication class cycle 1 asked to consolidate: the rework did parametrize the two backend tests, but wrote the three new non-mapping fixtures as separate near-identical methods. Test-only, no behavior risk, and the parametrize shape already used elsewhere in this file applies directly."
+    },
+    {
+      "prd": "00050-zettel-scanner-error-surfacing-v1.md",
+      "cycle": 2,
+      "type": "cap-overflow",
+      "severity": "low",
+      "issue": "ALICE: A new test comment cites the gitignored, PRD-scoped ledger JSON as where the Rust-YAML-swallow deferral is tracked; that path dies with the PRD and is a dead reference outside this working tree.",
+      "consensus": "1/4",
+      "detail": "Correct on both facts: dev/local/ is gitignored, and PRD satellites under dev/local/reviews/ are GC-managed and die with the PRD, so a shipped source comment must not point at one. The right target is the follow-up PRD id, which does not exist yet - deferring is what lets the comment be repointed at a real id rather than swapped for a placeholder now."
+    },
+    {
+      "type": "stall",
+      "site": "task_premise_fail",
+      "detail": "task 12 premise: tests/tools/dot/test_git_ops.py still imports dot.tui.git_ops.GitOps (never deleted/renamed by task 2/3 despite their own description saying so); test_git_service.py already supersedes it (191 tests vs 60, same classes plus far more) but the task text explicitly forbids fixing this here and mandates stop-and-report",
+      "op_id": "ffece15bd057",
+      "prd": "00053-dot-git-ops-unification-v1.md"
+    },
+    {
+      "prd": "00054-bim-serve-tui-convergence-v1.md",
+      "cycle": 1,
+      "type": "review-deferral",
+      "severity": "low",
+      "issue": "Cannot statically verify: manual WebUI failure smoke test succeeds",
+      "consensus": "1/4",
+      "detail": "Bob (codex, static-only sandbox) could not run it, and no agent can: the PRD declares this verification method itself ('frontend has no test harness - manual WebUI smoke post-merge'). Human step at batch end: start `bim serve`, force a failing action from ActionBar and a failing PATCH from the item panel, and confirm the real server error text renders with no success state shown. The three other automated checks Bob flagged (pytest, mypy, ruff) plus the frontend tsc were all run and are clean, so this is the only unverifiable one left."
+    },
+    {
+      "prd": "00054-bim-serve-tui-convergence-v1.md",
+      "cycle": 1,
+      "type": "deferred_decision",
+      "severity": "low",
+      "issue": "Cannot statically verify: manual WebUI failure smoke test succeeds",
+      "consensus": "1/4",
+      "reason": "the PRD declares this verification method itself (frontend has no test harness - manual WebUI smoke post-merge); no agent can close it, so it is recorded here as a human post-merge step",
+      "status": "pending"
+    }
+  ]
+}

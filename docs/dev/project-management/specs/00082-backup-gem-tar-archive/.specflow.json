@@ -1,0 +1,13 @@
+{
+  "id": "00082",
+  "phase": "completed",
+  "hold": false,
+  "migrated_from": "prds/done/00082-backup-gem-tar-archive-v1.md",
+  "artifacts": {
+    "requirements": "requirements.md",
+    "design": "design.md",
+    "tasks": "tasks.md"
+  },
+  "approvals": {},
+  "frontmatter": {}
+}

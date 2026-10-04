@@ -1,0 +1,106 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "`::1` in `LOOPBACK_HOSTS` can never match. Starlette does `host = headers.get(\"host\",\"\").split(\":\")[0]`, so `Host: [::1]:8000` becomes `\"[\"`. Proved: request with that Host returns 400 even on the tight loopback allow-list. IPv6-loopback browsing is dead, and `bim serve -H ::1` builds a server that rejects 100% of its own requests. PRD asked for `[::1]`.",
+    "file": "src/tools/bim/commands/serve/_security.py",
+    "reason": "Settled by design. The design doc documents this verbatim as a known upstream Starlette limitation ('IPv6 loopback ([::1]) is a known limitation, not a bug to fix here'), noting IPv4 127.0.0.1 (the actual default) is unaffected. Not introduced by this PRD."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "`handle_import` now calls `confine_path` on the import *source*, so importing an outside file (the whole point of `import`, e.g. from `~/Downloads`) always 403s through the WebUI. The PRD does list `import` among the handlers to confine, but it offers no staging path, so a working action becomes permanently unusable rather than restricted.",
+    "file": "src/tools/bim/commands/serve/_actions.py",
+    "reason": "Settled by design. The design doc records this as a deliberate, in-scope tightening ('handle_import's file_path is now vault/archive-confined'), required by the PRD's own grep-based Exit Criteria, with the desktop `bim import-note` CLI path unaffected."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Duplicate logic: `_serialize_dict` is identical to `_serialize_row`. Use a single function for both dict serialization cases.",
+    "file": "src/tools/bim/commands/serve/_routes.py:77",
+    "reason": "Out of diff. Both functions are pre-existing (`_routes.py:65` and `:77`) and untouched by the cc11c7e..7d362cc range; the surgical-changes rule keeps pre-existing code out of this PRD's scope."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "The served frontend bundle is stale and sends no token: only `frontend/src/lib/api.ts` was updated (commit 7d362cc touches that one file); the built `static/` tree that `create_app` actually serves contains three `Content-Type` fetch headers and zero occurrences of `X-Buvis-Token`/`__BUVIS_TOKEN__`. Every WebUI patch/action/open on the currently installed app returns 401. Nothing in the test suite or CI catches the source/bundle skew.",
+    "file": "src/tools/bim/commands/serve/static/_app/immutable/nodes/2.DlOHyigm.js",
+    "reason": "Downgraded from high to low after orchestrator verification: `static/` is gitignored (.gitignore:74) and hatch_build.py:74-96 runs `npm ci` + `npm run build`, replacing `static/` at package build time, so a stale bundle cannot ship. Residual impact is dev-local only (serving from an unrebuilt working tree)."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "`handle_archive` builds `Path(str(app_state.archive_directory))` — with `archive_directory=None` (the PRD's own stated risk) that is the literal path `None`, resolved under CWD, and it is handed to `CommandArchiveNote` as `path_archive`. `confine_path` guards the None case; this call site does not.",
+    "file": "src/tools/bim/commands/serve/_actions.py",
+    "reason": "Out of diff. The `archive_dir` line is pre-existing and untouched by this range; real but not this PRD's change. Noted for a follow-up PRD rather than fixed here per the surgical-changes rule."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Test duplication: `test_matching_loopback_host_passes_through` and `test_none_archive_directory_does_not_raise_for_that_reason` duplicate existing coverage.",
+    "file": "tests/tools/bim/test_serve.py:566-614",
+    "reason": "Half-discarded on inspection during cycle-1 rework. `test_none_archive_directory_does_not_raise_for_that_reason` was byte-identical in body to `test_allows_real_in_vault_path` and WAS deleted. `test_matching_loopback_host_passes_through` was deliberately KEPT: it is the positive half of the Host-allowlist pair sitting beside `test_foreign_host_header_rejected`, so deleting it would leave the allowlist asserted only on its reject case, and the `client` fixture's coverage of the same path is incidental rather than named."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "All 8 action-handler tests assert only the reject branch; no in-vault success case.",
+    "file": "tests/tools/bim/test_serve.py:418-521",
+    "reason": "Closed to a narrower bar during cycle-1 rework, recorded rather than claimed complete. One representative valid-token in-vault success case was added per surface (`/api/open` and `/api/actions/open`), each asserting the underlying boundary receives the RESOLVED path — enough to prove confinement does not block the happy path. The other 7 action handlers still carry reject-branch-only coverage; eight near-identical success tests were judged test bloat."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "critical",
+    "issue": "`POST /api/queries/_adhoc` hands attacker-controlled `filter.expr` / `columns[].expr` to `python_eval`, which is `eval(compile(expr), {\"__builtins__\": __builtins__, ...})` — a token-bearing request runs arbitrary Python and touches any file on the host. Proven with a live probe that wrote a file outside the vault. This defeats the PRD success metric \"0 endpoints accept a path outside {default_directory, archive_directory}\", and makes the `confine_path(spec.source.directory, ...)` call in that same handler security theater.",
+    "file": "src/tools/bim/commands/serve/_routes.py",
+    "reason": "Out of diff, and inverted by the baseline. The evaluator (`expression_engine.py` / `dependencies.py`) is untouched by this PRD's whole work range (cc11c7e..39785d3 touches 11 files, none of them the query engine). Before this PRD the same endpoint reached the same `python_eval` with NO credential at all; cycle-2 task 6 added `Depends(require_token)` plus source-directory confinement, so the PRD strictly REDUCES this exposure rather than shipping it. Raised by the blind lens, which by construction cannot see the baseline. Recorded as a deferred product risk for a follow-up PRD (sandboxing or removing full-builtins eval on the HTTP surface), not as a defect in this PRD's work."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "critical",
+    "issue": "Token-theft chain enabled by the PRD's own injection design: `_app.py` writes the token into `window.__BUVIS_TOKEN__` in the served page, and the WebUI renders note bodies with `{@html marked.parse(content)}` with no sanitizer. Any note containing `<img src=x onerror=...>` executes in the page, reads the token, and reaches the eval endpoint.",
+    "file": "src/tools/bim/commands/serve/frontend/src/lib/components/MarkdownEditor.svelte",
+    "reason": "Out of diff, and the chain is not worsened. `MarkdownEditor.svelte` is untouched by this PRD's whole work range (the only frontend file in it is `api.ts`). The XSS pre-dates the PRD, and pre-PRD an XSS payload needed NO token to hit the very same mutating endpoints — the token requirement is a new obstacle on that path, not a new enabler. Recorded as a deferred product risk for a follow-up PRD (sanitize markdown rendering), not as a defect in this PRD's work."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "high",
+    "issue": "Read routes are entirely unauthenticated: `GET /api/zettels/{file_path:path}` has no `Depends(require_token)` and returns parsed note content. The PRD success metric states \"A request without the local token ... is rejected before any filesystem access\"; only the \"mutating routes\" clause is honored.",
+    "file": "src/tools/bim/commands/serve/_routes.py",
+    "reason": "Settled in cycle 1 and already recorded in the batch deferred JSON as the high-severity requirements ambiguity (Success Metric 2 vs the Feature Behavior text). Resolved then by the simplest safe assumption: token-gate the POST query routes, leave GET reads token-free per the Feature Behavior text, relying on confine_path + TrustedHostMiddleware. Whether GET reads should also require the token stays a PRD-level call for batch end."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "high",
+    "issue": "On a non-loopback bind `install_security` sets `allowed_hosts = [\"*\"]`, disabling the Host allowlist the PRD mandates; combined with token-free GETs, any LAN host reads the whole vault.",
+    "file": "src/tools/bim/commands/serve/_security.py",
+    "reason": "Two halves, both settled. The wildcard allowlist is a design-doc decision recorded verbatim ('a fixed loopback allowlist would reject every request in the already-supported LAN-access mode'), and the exposure it leaves is reads-only — identical to pre-PRD behavior, not a regression. The token-disclosure half, which WAS a regression, was fixed in cycle 2 by task 7 (token no longer injected into the page off loopback). The residual read exposure is the same settled read-surface deferral as the entry above."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "The built WebUI on disk predates the token wiring, so every mutating WebUI action currently 401s; nothing in the repo rebuilds it, so the \"existing WebUI happy-path flows still work unchanged\" metric is false on this tree until `npm run build` runs.",
+    "file": "src/tools/bim/commands/serve/static/_app/immutable",
+    "reason": "Same finding as the cycle-1 settled deferral (which named a specific bundle file under the same tree; the consolidator's ledger matcher missed it on the shortened path). Downgraded to low in cycle 1 after verification: `static/` is gitignored and `hatch_build.py` runs `npm ci` + `npm run build`, replacing it at package build time, so a stale bundle cannot ship. Residual impact is dev-local only."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Confining `handle_import` to the vault makes the import action unusable for its purpose: importing an external file (e.g. `~/Downloads/x.md`) now returns 403, so the WebUI can only \"import\" files already inside the vault.",
+    "file": "src/tools/bim/commands/serve/_actions.py",
+    "reason": "Same finding as the cycle-1 settled discard (re-raised in different words, so the ledger matcher did not auto-dismiss it). Settled by design: a deliberate, in-scope tightening required by the PRD's own grep-based Exit Criteria, with the desktop `bim import-note` CLI path unaffected."
+  }
+]

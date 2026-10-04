@@ -1,0 +1,17 @@
+{"ts": 1787765781, "file": "reviews/00041-atomic-write-foundation-v1-review-01.md", "prd": "00041", "verdicts": ["40 findings"], "reviewers": "alice,blake,bob,carl,eve"}
+{"ts": 1787765781, "file": "reviews/00041-atomic-write-foundation-v1-review-02.md", "prd": "00041", "verdicts": ["22 findings"], "reviewers": "alice,blake,bob,carl,eve"}
+{"ts": 1787765781, "file": "reviews/00043-bim-doc-promote-collision-v1-review-01.md", "prd": "00043", "verdicts": ["27 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00043-bim-doc-promote-collision-v1-review-02.md", "prd": "00043", "verdicts": ["11 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00044-bim-doc-claim-dedup-integrity-v1-review-01.md", "prd": "00044", "verdicts": ["37 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00044-bim-doc-claim-dedup-integrity-v1-review-02.md", "prd": "00044", "verdicts": ["25 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00045-dot-rm-safety-v1-review-01.md", "prd": "00045", "verdicts": ["21 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00045-dot-rm-safety-v1-review-02.md", "prd": "00045", "verdicts": ["19 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00047-updater-fail-loud-v1-review-01.md", "prd": "00047", "verdicts": ["28 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00047-updater-fail-loud-v1-review-02.md", "prd": "00047", "verdicts": ["8 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00048-fctracker-integrity-v1-review-01.md", "prd": "00048", "verdicts": ["31 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00048-fctracker-integrity-v1-review-02.md", "prd": "00048", "verdicts": ["29 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00050-zettel-scanner-error-surfacing-v1-review-01.md", "prd": "00050", "verdicts": ["30 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00050-zettel-scanner-error-surfacing-v1-review-02.md", "prd": "00050", "verdicts": ["10 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00052-decouple-pybase-from-click-v1-review-01.md", "prd": "00052", "verdicts": ["10 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00054-bim-serve-tui-convergence-v1-review-01.md", "prd": "00054", "verdicts": ["11 findings"], "reviewers": "alice,blake,bob,carl"}
+{"ts": 1787765781, "file": "reviews/00054-bim-serve-tui-convergence-v1-review-02.md", "prd": "00054", "verdicts": ["3 findings"], "reviewers": "alice,blake,bob,carl"}
