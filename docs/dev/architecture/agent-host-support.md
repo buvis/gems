@@ -62,13 +62,12 @@ Current state in buvis-gems:
 - There is **one** `AGENTS.md` today — the root file. No nested `src/<module>/AGENTS.md`
   exists yet, so the fallback is currently moot but will apply the moment one is
   added.
-- The root `AGENTS.md` does **not yet** carry the "discover and read applicable
-  nested `AGENTS.md`" instruction. Adding that sentence is the prerequisite for
-  relying on the fallback on Claude Code (whose native nested loading is
-  unverified) and for any file outside Codex's root→cwd chain. **Follow-up:**
-  add the discovery/fallback instruction to root `AGENTS.md`, and give every
-  future nested file an explicit directory-scope line (required even on hosts
-  that load it eagerly).
+- The root `AGENTS.md` carries the "discover and read applicable nested
+  `AGENTS.md`" instruction (its *Reading these instructions* section), which is
+  the prerequisite for relying on the fallback on Claude Code (whose native
+  nested loading is unverified) and for any file outside Codex's root→cwd chain.
+  **Remaining:** give every future nested file an explicit directory-scope line
+  (required even on hosts that load it eagerly).
 
 ## Maintenance
 

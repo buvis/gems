@@ -2,6 +2,16 @@
 
 BUVIS gems monorepo. Python toolkit (buvis-pybase + zettel) and CLI tools, shipped as a single PyPI package `buvis-gems`. Supports Python 3.11+.
 
+## Reading these instructions
+
+This root `AGENTS.md` is the always-on canonical guidance. Some directories also
+carry their own nested `AGENTS.md` with rules scoped to the code beside them.
+Before working on files in a directory, discover and read any `AGENTS.md` on the
+path from the repo root down to that directory, and follow it for files in its
+scope. Do this yourself even if your host did not load those files automatically
+— host loading of nested files varies and is not guaranteed (see
+[`docs/dev/architecture/agent-host-support.md`](docs/dev/architecture/agent-host-support.md)).
+
 ## Quick Start
 
 ```bash
