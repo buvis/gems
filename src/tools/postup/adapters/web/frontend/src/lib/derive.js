@@ -380,8 +380,8 @@ export function todosFor(repos) {
 				w.idle_days >= 14 ? 'now' : 'soon',
 				`Finish WIP PRD: ${w.title}`,
 				w.idle_days >= 7
-					? `idle ${w.idle_days}d in dev/local/prds/wip`
-					: 'sitting in dev/local/prds/wip',
+					? `idle ${w.idle_days}d in specs/ (WIP phase)`
+					: 'sitting in specs/ (WIP phase)',
 				{ importance: 'high', effort: 'deep' }
 			);
 		if (prds.backlog.length)

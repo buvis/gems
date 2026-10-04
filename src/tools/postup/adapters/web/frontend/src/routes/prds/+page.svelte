@@ -6,8 +6,9 @@
 	const payload = $derived(portfolio.state.payload);
 	const repos = $derived(payload?.repos ?? []);
 
-	// Repos without a dev/local/prds/ tree carry prds:null and are OMITTED, not
-	// zero-filled — a repo that simply doesn't do PRDs should not read as "0 wip".
+	// Repos without a project-management specs/ bundle tree carry prds:null and are
+	// OMITTED, not zero-filled — a repo that simply doesn't do PRDs should not read
+	// as "0 wip".
 	const rows = $derived(
 		repos
 			.filter((r) => r.prds)

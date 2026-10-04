@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **postup**: read PRD/spec signals from the migrated spec-bundle layout (specs/NNNNN/.specflow.json) and the reviews/ brush report.
+
 ### Security
 
 - **deps**: resolved both audited CVEs by upgrading rather than suppressing (PRD 00086). `oauthlib` is floored to `>=4.0.0` via a `[tool.uv]` `constraint-dependencies` entry — it is purely transitive (`jira` → `requests-oauthlib` → `oauthlib`) and its CVE-2026-49265 fix in 4.0.0 has only OAuth2 provider-side breaking changes that gems does not use (the Jira adapter authenticates with server+token, not any OAuth flow). The stale `--ignore-vuln CVE-2026-4539` (pygments, already fixed by 2.21.0 in the lock) is removed from the CI audit step. To keep suppressions from going stale, ignored CVEs now live only in a dated/justified `tools/lib/audit/pip-audit-ignores.toml` (cve, package, reason, date_added) — currently empty — and a deterministic guard (`tools/lib/check_audit_ignores.py`, with tests under `tests/dev/`) both generates pip-audit's ignore flags from that file and fails the build if any listed CVE later gains an available fix in the resolved tree.
