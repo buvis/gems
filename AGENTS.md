@@ -193,6 +193,8 @@ Extras: `bim`, `bim-web`, `doc`, `dot`, `fren`, `morph`, `muc`, `pinger`, `postu
 
 ## Release
 
+> Full procedure (version authority, checks, destinations, partial-failure recovery): `docs/dev/procedures/releasing.md`.
+
 ```bash
 release patch|minor|major              # bump, tag, push → CI publishes to PyPI
 release --pre rc1                      # pre-release current version to TestPyPI
