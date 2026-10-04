@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-_script = Path(__file__).resolve().parents[2] / "dev" / "bin" / "check_tool_wiring.py"
+_script = Path(__file__).resolve().parents[2] / "tools" / "lib" / "check_tool_wiring.py"
 _spec = importlib.util.spec_from_file_location("check_tool_wiring", _script)
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["check_tool_wiring"] = _mod

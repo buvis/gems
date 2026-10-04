@@ -30,7 +30,7 @@ SAMPLE_DOC_NUMBER = "7102105594"
 # Used by the ``num0_*`` variants in ``TestZettelWriterPerVariantFixtures`` so
 # the snapshot suite genuinely exercises the ``doc_title`` fallback branch of
 # ``compose_zettel_title`` (PRD 00035 success metric #7). Mirrors the constant
-# used in ``dev/bin/gen_zettel_writer_fixtures.py``.
+# used in ``tools/lib/gen_zettel_writer_fixtures.py``.
 SAMPLE_DOC_TITLE = "Annual Statement 2021"
 SAMPLE_TITLE = compose_zettel_title(
     issuer=SAMPLE_ISSUER, doc_type=SAMPLE_DOC_TYPE, doc_number=SAMPLE_DOC_NUMBER, doc_title=None
@@ -535,7 +535,7 @@ _FIXTURES_DIR = Path(__file__).parent / "fixtures" / "zettel_writer"
 
 
 def _fixture_name(has_number: bool, has_amount: bool, has_language: bool) -> str:
-    """Mirror of ``dev/bin/gen_zettel_writer_fixtures.py:_fixture_name``.
+    """Mirror of ``tools/lib/gen_zettel_writer_fixtures.py:_fixture_name``.
 
     Naming scheme: ``num{0|1}_amt{0|1}_lang{0|1}.md``. Each flag indicates
     whether the corresponding optional field is *present* in that variant.
@@ -555,7 +555,7 @@ class TestZettelWriterPerVariantFixtures:
 
     Regenerate fixtures (after intentional writer changes) with::
 
-        uv run python dev/bin/gen_zettel_writer_fixtures.py
+        uv run python tools/lib/gen_zettel_writer_fixtures.py
     """
 
     _EXPECTED_KEY_ORDER = [
@@ -626,7 +626,7 @@ class TestZettelWriterPerVariantFixtures:
         assert actual == expected, (
             f"writer output drift vs {fixture_path.relative_to(Path(__file__).parent)}\n"
             f"--- expected\n{expected}\n--- actual\n{actual}\n"
-            f"(regenerate with: uv run python dev/bin/gen_zettel_writer_fixtures.py)"
+            f"(regenerate with: uv run python tools/lib/gen_zettel_writer_fixtures.py)"
         )
 
         # The remaining assertions are intentionally redundant with the

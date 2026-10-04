@@ -8,7 +8,7 @@ Exercises the parity rule headlessly, without touching the real portfolio:
 * narrative/epic *content* differences do NOT fail (LLM nondeterminism excluded);
 * a missing or schema-invalid ``epics.json`` DOES fail (enrichment structural).
 
-The parity runner lives at ``dev/bin/parity_brief_portfolio.py`` (tracked but not
+The parity runner lives at ``tools/lib/parity_brief_portfolio.py`` (tracked but not
 importable as a package), loaded here via importlib the same way
 ``tests/dev/test_check_tool_wiring.py`` loads its dev script.
 """
@@ -21,7 +21,7 @@ import json
 import sys
 from pathlib import Path
 
-_script = Path(__file__).resolve().parents[3] / "dev" / "bin" / "parity_brief_portfolio.py"
+_script = Path(__file__).resolve().parents[3] / "tools" / "lib" / "parity_brief_portfolio.py"
 _spec = importlib.util.spec_from_file_location("parity_brief_portfolio", _script)
 assert _spec is not None and _spec.loader is not None
 _mod = importlib.util.module_from_spec(_spec)

@@ -1,2 +1,6 @@
 [env]
-_.path = ["dev/bin"]
+_.path = ["tools"]          # project-local command shims on PATH (tools/lib is NOT on PATH)
+
+[tasks.release]
+description = "Prepare and publish a release; preview with --dry-run. [patch|minor|major|local]"
+file = "tools/lib/release"  # explicit implementation, avoiding the tools/release shim
