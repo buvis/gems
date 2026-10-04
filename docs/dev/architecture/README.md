@@ -22,6 +22,9 @@ map and the key packaging/namespace patterns.
   wired through each tool's composition root and returning `CommandResult`.
 - [`bim-doc-architecture.md`](bim-doc-architecture.md) — the `bim doc` document
   processing and library-management subsystem.
+- [`agent-host-support.md`](agent-host-support.md) — the agent host-support
+  capability table (decision 11): how each enabled agent host loads gems'
+  authored instructions, with dated probe evidence.
 
 ## Decision records
 
