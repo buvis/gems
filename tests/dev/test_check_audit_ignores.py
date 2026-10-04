@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-_script = Path(__file__).resolve().parents[2] / "dev" / "bin" / "check_audit_ignores.py"
+_script = Path(__file__).resolve().parents[2] / "tools" / "lib" / "check_audit_ignores.py"
 _spec = importlib.util.spec_from_file_location("check_audit_ignores", _script)
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["check_audit_ignores"] = _mod

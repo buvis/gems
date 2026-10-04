@@ -38,7 +38,7 @@ Release
     release                                # after rc: strip suffix, release stable to PyPI
     release --dry-run [--pre rc1] [patch]  # preview without changes
 
-``mise`` adds ``dev/bin`` to PATH. Tags with ``rc`` publish to TestPyPI; stable tags go to PyPI.
+``mise`` adds ``tools`` to PATH. Tags with ``rc`` publish to TestPyPI; stable tags go to PyPI.
 
 Re-running a Failed Release
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
