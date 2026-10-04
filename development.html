@@ -125,7 +125,7 @@ release<span class="w">                                </span><span class="c1">#
 release<span class="w"> </span>--dry-run<span class="w"> </span><span class="o">[</span>--pre<span class="w"> </span>rc1<span class="o">]</span><span class="w"> </span><span class="o">[</span>patch<span class="o">]</span><span class="w">  </span><span class="c1"># preview without changes</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">mise</span></code> adds <code class="docutils literal notranslate"><span class="pre">dev/bin</span></code> to PATH. Tags with <code class="docutils literal notranslate"><span class="pre">rc</span></code> publish to TestPyPI; stable tags go to PyPI.</p>
+<p><code class="docutils literal notranslate"><span class="pre">mise</span></code> adds <code class="docutils literal notranslate"><span class="pre">tools</span></code> to PATH. Tags with <code class="docutils literal notranslate"><span class="pre">rc</span></code> publish to TestPyPI; stable tags go to PyPI.</p>
 <section id="re-running-a-failed-release">
 <h3>Re-running a Failed Release<a class="headerlink" href="#re-running-a-failed-release" title="Link to this heading"></a></h3>
 <p>If CI fails after a release tag was pushed (e.g. a lint error), fix the issue on master, then move the tag to the latest commit and force-push it:</p>
