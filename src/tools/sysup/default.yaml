@@ -46,6 +46,7 @@ commands:
     order: 60
     when: { os: darwin, check: mise }
     steps:
+      - [mise, self-update]
       - [mise, upgrade]
 
   # --- Cross-platform (former standalone `sysup nvim`) --------------------
