@@ -67,3 +67,15 @@
 {"id":"21e83ab3","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
 {"id":"b11357e8","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
 {"kind":"handoff","site":"build","edge":"leave","at":1791830300,"phase":"review","prd":"00088-dot-host-links-materialize-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1791831189,"phase":"review","prd":"00088-dot-host-links-materialize-v1.md"}
+{"id":"0f653ffd","kind":"bob","task":"review-202610121845","queued_at":1791831314,"prompt_bytes":9512}
+{"id":"e5e8907f","kind":"carl","task":"review-202610121845","queued_at":1791831314,"prompt_bytes":6537}
+{"id":"46698b6a","kind":"bob","task":"review-202610121845","queued_at":1791831471,"prompt_bytes":403709}
+{"id":"0f653ffd","ended_at":1791831527,"elapsed_s":213,"outcome":"error","detail":"lack-of-input"}
+{"id":"46698b6a","ended_at":1791831528,"elapsed_s":57,"outcome":"ok","detail":"retry"}
+{"id":"e5e8907f","ended_at":1791831529,"elapsed_s":215,"outcome":"error","detail":"retry: exit 1"}
+{"id":"bb2d733b","kind":"pat","task":"13","queued_at":1791831834,"prompt_bytes":7246}
+{"id":"bb2d733b","ended_at":1791831848,"elapsed_s":14,"outcome":"ok","detail":null}
+{"id":"ef47787a","kind":"pat","task":"11","queued_at":1791831974,"prompt_bytes":7463}
+{"id":"ef47787a","ended_at":1791831993,"elapsed_s":19,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1791832091,"phase":"done","prd":"00088-dot-host-links-materialize-v1.md"}

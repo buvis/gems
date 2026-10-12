@@ -1,0 +1,13 @@
+{
+  "batch_id": "202610121200",
+  "items": [
+    {
+      "type": "sweep-escape",
+      "issue": "dot TUI: a status message (L relink, commit, push, pull) is overwritten by the selected file diff when the file list is non-empty, because refresh_status() updates the file lists and their async highlight event re-renders the diff pane after _show_message. Confirmed by a TUI test (non-empty file list, unmocked DiffView, press L): the pane shows the changed.txt diff, not linked <target>. Swapping refresh_status before _show_message does not fix it. Predates PRD 00088 (src/tools/dot/tui/screens/main.py).",
+      "severity": "medium",
+      "file": "src/tools/dot/tui/screens/main.py:181",
+      "found_by": "BOB (VERIFY), confirmed by the tail sweep",
+      "prd": "00088-dot-host-links-materialize-v1.md"
+    }
+  ]
+}
