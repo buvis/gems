@@ -59,6 +59,7 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 - ``S`` (shift+s) - open secrets panel (manage git-secret files)
 - ``e`` - quick encrypt (register focused file with git-secret)
 - ``r`` (in file panes) - hide (re-encrypt) modified secrets, then refresh all panes
+- ``L`` (shift+l) - relink missing host-specific config links
 - ``q`` - quit
 
 **Browse view** (``b``):
@@ -91,6 +92,20 @@ as ``staged`` or ``unstaged``.
 .. code-block:: bash
 
     dot status
+
+If the ``host-links`` manifest has problems, ``dot status`` reports them too.
+See `Host-specific config`_.
+
+dot materialize
+~~~~~~~~~~~~~~~
+
+Create the host-specific config links listed in the ``host-links`` manifest.
+See `Host-specific config`_.
+
+.. code-block:: bash
+
+    dot materialize             # create missing links, install git hooks
+    dot materialize --hook      # quiet mode used by the git hooks
 
 dot run
 ~~~~~~~
@@ -189,3 +204,42 @@ Push dotfiles to remote.
 .. code-block:: bash
 
     dot push
+
+Host-specific config
+--------------------
+
+Some config differs per host. Keep each host's real file next to the target,
+untracked, and link it into place with a tracked manifest.
+
+The manifest is ``<dotfiles_root>/.config/buvis/host-links``. Track it in the
+dotfiles repo. Each line has the form ``<target> => <source>``. Both sides are
+relative to ``$HOME`` and use ``/`` as separator. Blank lines and lines whose
+first non-space character is ``#`` are skipped. Absolute paths, ``~``, drive
+letters and ``..`` are rejected with ``host-links:<lineno>: <reason>``. Dot
+skips the bad line and reads the rest.
+
+.. code-block:: text
+
+    # target => source
+    .config/gita/repos.csv => .config/gita/repos.csv.host
+    .config/git/local.conf => .config/git/local.conf.host
+
+``dot materialize [--hook]`` creates each missing link ``target -> source``,
+using an absolute source path. It never deletes or overwrites anything. It
+warns about real files, wrong links, dangling links and missing sources.
+
+Without ``--hook``, ``dot materialize`` also installs the missing
+``post-checkout``, ``post-merge`` and ``post-rewrite`` hooks into git
+``core.hooksPath``, when that is set. It never changes an existing hook file.
+If one of those hooks already exists and is not dot's, links are not refreshed
+on that git event, and dot does not report it. Call ``dot materialize --hook``
+from that hook yourself.
+The hooks run ``dot materialize --hook`` with ``BUVIS_AUTO_UPDATE=false``.
+With ``--hook``, dot makes no git calls and always exits 0.
+
+``dot status`` and the TUI report link problems. The TUI status bar shows
+``<n> link problem(s)``. Press ``L`` to relink.
+
+On Windows, directories become junctions. File links need symlink rights, so
+enable Developer Mode. Otherwise dot reports ``symlink refused; enable
+Developer Mode``. The hooks need ``python3`` on ``PATH``.

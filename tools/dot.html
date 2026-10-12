@@ -63,6 +63,7 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">dot</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#host-specific-config">Host-specific config</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="fctracker.html">fctracker</a></li>
@@ -177,6 +178,7 @@ dot<span class="w"> </span>tui<span class="w">                     </span><span 
 <li><p><code class="docutils literal notranslate"><span class="pre">S</span></code> (shift+s) - open secrets panel (manage git-secret files)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">e</span></code> - quick encrypt (register focused file with git-secret)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> (in file panes) - hide (re-encrypt) modified secrets, then refresh all panes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">L</span></code> (shift+l) - relink missing host-specific config links</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">q</span></code> - quit</p></li>
 </ul>
 <p><strong>Browse view</strong> (<code class="docutils literal notranslate"><span class="pre">b</span></code>):</p>
@@ -205,6 +207,17 @@ dot<span class="w"> </span>tui<span class="w">                     </span><span 
 in your dotfiles repo. Uses <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span> <span class="pre">--porcelain</span></code> and labels each file
 as <code class="docutils literal notranslate"><span class="pre">staged</span></code> or <code class="docutils literal notranslate"><span class="pre">unstaged</span></code>.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>status
+</pre></div>
+</div>
+<p>If the <code class="docutils literal notranslate"><span class="pre">host-links</span></code> manifest has problems, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> reports them too.
+See <a class="reference internal" href="#host-specific-config">Host-specific config</a>.</p>
+</section>
+<section id="dot-materialize">
+<h3>dot materialize<a class="headerlink" href="#dot-materialize" title="Link to this heading"></a></h3>
+<p>Create the host-specific config links listed in the <code class="docutils literal notranslate"><span class="pre">host-links</span></code> manifest.
+See <a class="reference internal" href="#host-specific-config">Host-specific config</a>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>materialize<span class="w">             </span><span class="c1"># create missing links, install git hooks</span>
+dot<span class="w"> </span>materialize<span class="w"> </span>--hook<span class="w">      </span><span class="c1"># quiet mode used by the git hooks</span>
 </pre></div>
 </div>
 </section>
@@ -287,6 +300,38 @@ dot<span class="w"> </span>delete<span class="w"> </span>.config/secrets.yaml<sp
 </pre></div>
 </div>
 </section>
+</section>
+<section id="host-specific-config">
+<h2>Host-specific config<a class="headerlink" href="#host-specific-config" title="Link to this heading"></a></h2>
+<p>Some config differs per host. Keep each host’s real file next to the target,
+untracked, and link it into place with a tracked manifest.</p>
+<p>The manifest is <code class="docutils literal notranslate"><span class="pre">&lt;dotfiles_root&gt;/.config/buvis/host-links</span></code>. Track it in the
+dotfiles repo. Each line has the form <code class="docutils literal notranslate"><span class="pre">&lt;target&gt;</span> <span class="pre">=&gt;</span> <span class="pre">&lt;source&gt;</span></code>. Both sides are
+relative to <code class="docutils literal notranslate"><span class="pre">$HOME</span></code> and use <code class="docutils literal notranslate"><span class="pre">/</span></code> as separator. Blank lines and lines whose
+first non-space character is <code class="docutils literal notranslate"><span class="pre">#</span></code> are skipped. Absolute paths, <code class="docutils literal notranslate"><span class="pre">~</span></code>, drive
+letters and <code class="docutils literal notranslate"><span class="pre">..</span></code> are rejected with <code class="docutils literal notranslate"><span class="pre">host-links:&lt;lineno&gt;:</span> <span class="pre">&lt;reason&gt;</span></code>. Dot
+skips the bad line and reads the rest.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># target =&gt; source
+.config/gita/repos.csv =&gt; .config/gita/repos.csv.host
+.config/git/local.conf =&gt; .config/git/local.conf.host
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span> <span class="pre">[--hook]</span></code> creates each missing link <code class="docutils literal notranslate"><span class="pre">target</span> <span class="pre">-&gt;</span> <span class="pre">source</span></code>,
+using an absolute source path. It never deletes or overwrites anything. It
+warns about real files, wrong links, dangling links and missing sources.</p>
+<p>Without <code class="docutils literal notranslate"><span class="pre">--hook</span></code>, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span></code> also installs the missing
+<code class="docutils literal notranslate"><span class="pre">post-checkout</span></code>, <code class="docutils literal notranslate"><span class="pre">post-merge</span></code> and <code class="docutils literal notranslate"><span class="pre">post-rewrite</span></code> hooks into git
+<code class="docutils literal notranslate"><span class="pre">core.hooksPath</span></code>, when that is set. It never changes an existing hook file.
+If one of those hooks already exists and is not dot’s, links are not refreshed
+on that git event, and dot does not report it. Call <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span> <span class="pre">--hook</span></code>
+from that hook yourself.
+The hooks run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span> <span class="pre">--hook</span></code> with <code class="docutils literal notranslate"><span class="pre">BUVIS_AUTO_UPDATE=false</span></code>.
+With <code class="docutils literal notranslate"><span class="pre">--hook</span></code>, dot makes no git calls and always exits 0.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> and the TUI report link problems. The TUI status bar shows
+<code class="docutils literal notranslate"><span class="pre">&lt;n&gt;</span> <span class="pre">link</span> <span class="pre">problem(s)</span></code>. Press <code class="docutils literal notranslate"><span class="pre">L</span></code> to relink.</p>
+<p>On Windows, directories become junctions. File links need symlink rights, so
+enable Developer Mode. Otherwise dot reports <code class="docutils literal notranslate"><span class="pre">symlink</span> <span class="pre">refused;</span> <span class="pre">enable</span>
+<span class="pre">Developer</span> <span class="pre">Mode</span></code>. The hooks need <code class="docutils literal notranslate"><span class="pre">python3</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p>
 </section>
 </section>
 
