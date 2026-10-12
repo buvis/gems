@@ -208,8 +208,8 @@ Push dotfiles to remote.
 Host-specific config
 --------------------
 
-Some config differs per host. Keep the host files in the repo and link them
-into place with a manifest.
+Some config differs per host. Keep each host's real file next to the target,
+untracked, and link it into place with a tracked manifest.
 
 The manifest is ``<dotfiles_root>/.config/buvis/host-links``. Track it in the
 dotfiles repo. Each line has the form ``<target> => <source>``. Both sides are
@@ -231,6 +231,9 @@ warns about real files, wrong links, dangling links and missing sources.
 Without ``--hook``, ``dot materialize`` also installs the missing
 ``post-checkout``, ``post-merge`` and ``post-rewrite`` hooks into git
 ``core.hooksPath``, when that is set. It never changes an existing hook file.
+If one of those hooks already exists and is not dot's, links are not refreshed
+on that git event, and dot does not report it. Call ``dot materialize --hook``
+from that hook yourself.
 The hooks run ``dot materialize --hook`` with ``BUVIS_AUTO_UPDATE=false``.
 With ``--hook``, dot makes no git calls and always exits 0.
 
