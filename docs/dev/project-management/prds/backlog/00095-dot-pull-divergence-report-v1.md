@@ -7,7 +7,7 @@ model_tier_rationale: destructive blast radius - resets user edits in $HOME afte
 
 # dot pull: save local divergence, then let upstream win
 
-Source: `docs/dev/project-management/intake/new/00089-dot-pull-divergence-report/discovery.md`
+Source: `docs/dev/project-management/intake/processed/00089-dot-pull-divergence-report/discovery.md`
 (M1-M9, reviewed 2026-10-12). Lands after 00088 and 00090: it reuses 00090's
 `fetch()`, `has_upstream()`, `CommandPull` rescue flow and two-host test setup.
 

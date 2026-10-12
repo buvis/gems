@@ -6,7 +6,7 @@ model_tier_rationale: exact git commands and messages given; three existing init
 
 # dot host links: hooksPath self-heal and `dot setup`
 
-Source: `docs/dev/project-management/intake/new/00088-dot-materialize-host-config/discovery.md`
+Source: `docs/dev/project-management/intake/processed/00088-dot-materialize-host-config/discovery.md`
 (PRD D of 3, M10 + M11). Depends on 00088 (`CommandMaterialize`,
 `DotGitService.hooks_path()`, the shipped hooks). Independent of 00090.
 

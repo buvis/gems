@@ -6,7 +6,7 @@ model_tier_rationale: destructive blast radius - moves user files in $HOME and g
 
 # dot host links: localize and pull rescue
 
-Source: `docs/dev/project-management/intake/new/00088-dot-materialize-host-config/discovery.md`
+Source: `docs/dev/project-management/intake/processed/00088-dot-materialize-host-config/discovery.md`
 (PRD B+C of 3, M8 + M9). Depends on 00088 (manifest, `reconcile_links`,
 `CommandMaterialize`). Shipped together so localize never exists without the
 pull-side deletion guard.

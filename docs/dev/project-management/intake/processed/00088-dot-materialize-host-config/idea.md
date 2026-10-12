@@ -1,6 +1,6 @@
 # dot: keep per-host config in dotfiles via an untracked ~/.local mirror
 
-Status: intake, not yet specced. Recorded 2026-10-12.
+Status: processed, specced as PRDs 00088 (done), 00090 and 00091. Recorded 2026-10-12.
 
 ## Problem
 

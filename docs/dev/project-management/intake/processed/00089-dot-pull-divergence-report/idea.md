@@ -1,6 +1,6 @@
 # dot: record local divergence before pull overwrites it
 
-Status: intake, not yet specced. Recorded 2026-10-12.
+Status: processed, specced as PRD 00095 (renumbered from 00089). Recorded 2026-10-12.
 
 ## Problem
 

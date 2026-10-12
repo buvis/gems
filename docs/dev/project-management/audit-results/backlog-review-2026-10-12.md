@@ -85,5 +85,6 @@ dot gains the full host-links lifecycle: manifest + materialize + hooks (00088, 
 8. 00094: executor premise pinned to 20 tests (rule-mandated). Status: applied.
 9. 00094: lookup Outputs aligned with Behavior; cwd guess confirmed and marker removed; README docs task added. Status: applied.
 10. `prds/wip/` recreated (empty, untracked). Status: applied.
+11. Follow-up on the user's question: intake items 00088 and 00089 moved to `intake/processed/` per the layout rule (`structure-git-repo/references/layout.md:64-68`, "processed means a spec exists"); the four `Source:` lines (00088 done, 00090, 00091, 00095) repointed; stale `Status:` lines in both idea files updated. 00092 (sysup expiry) and 00093 (dot add untracked) stay in `new/`: idea only, open questions, no discovery or PRD yet. Gap: no skill or hook performs this move; `create-prd` still points at the legacy `discovery/` dir. Status: applied; skill fix queued for agent-skills.
 
 Lens A re-run on the four touched PRDs after the apply pass: every `##`/`###` heading of `standard.md` present in order; every task line carries `Acceptance:`; 0 `(guess)`/TBD/TODO markers; frontmatter fields all recognized with valid values; `ground_prd.py` 0 bad rows; `check_links.py` 0 in-scope findings.

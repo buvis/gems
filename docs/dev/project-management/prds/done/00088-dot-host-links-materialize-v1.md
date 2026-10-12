@@ -6,7 +6,7 @@ model_tier_rationale: every rule, message and path is fixed below; additive code
 
 # dot host links: manifest, materialize, hooks, link status
 
-Source: `docs/dev/project-management/intake/new/00088-dot-materialize-host-config/discovery.md`
+Source: `docs/dev/project-management/intake/processed/00088-dot-materialize-host-config/discovery.md`
 (PRD A of 3; B+C = 00090 localize + pull rescue, D = 00091 self-heal + setup).
 
 ## Overview
