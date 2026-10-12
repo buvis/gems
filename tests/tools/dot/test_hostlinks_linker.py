@@ -42,6 +42,11 @@ class TestReadLink:
 
         assert _read_link(tmp_path / "lnk") == "C:\\Users\\me\\src"
 
+    def test_maps_extended_unc_prefix_to_unc_path(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(linker.os, "readlink", lambda _path: "\\\\?\\UNC\\server\\share\\src")
+
+        assert _read_link(tmp_path / "lnk") == "\\\\server\\share\\src"
+
     def test_keeps_value_without_prefix(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(linker.os, "readlink", lambda _path: "C:\\Users\\me\\src")
 

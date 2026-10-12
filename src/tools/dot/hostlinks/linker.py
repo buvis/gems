@@ -9,6 +9,7 @@ from pathlib import Path
 from dot.hostlinks.manifest import HostLink, read_manifest
 
 _EXTENDED_PREFIX = "\\\\?\\"
+_EXTENDED_UNC_PREFIX = "\\\\?\\UNC\\"
 
 
 def _is_windows() -> bool:
@@ -21,6 +22,8 @@ def _read_link(path: Path) -> str | None:
         value = os.readlink(path)
     except (OSError, ValueError):
         return None
+    if value.startswith(_EXTENDED_UNC_PREFIX):
+        return "\\\\" + value.removeprefix(_EXTENDED_UNC_PREFIX)
     return value.removeprefix(_EXTENDED_PREFIX)
 
 

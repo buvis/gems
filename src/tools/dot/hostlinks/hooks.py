@@ -38,6 +38,10 @@ def install_hooks(hooks_dir: Path) -> list[str]:
 
     Returns:
         One ``installed hook <name>`` line per hook written, in hook order.
+
+    Raises:
+        OSError: When a write fails. Hooks written before the failure stay
+            installed but get no line, since the error aborts the call.
     """
     hooks_dir.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
