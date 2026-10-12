@@ -87,14 +87,14 @@ class TestParseManifestErrors:
         assert links == []
         assert errors == ["host-links:1: empty path"]
 
-    @pytest.mark.parametrize("path", ["/etc/x", "~/x", "~", "\\outside", "C:x", "C:\\x"])
+    @pytest.mark.parametrize("path", ["/etc/x", "~/x", "~", "\\outside", "C:x", "C:\\x", "1:x"])
     def test_reports_absolute_target(self, path: str) -> None:
         links, errors = parse_manifest(f"{path} => b\n")
 
         assert links == []
         assert errors == ["host-links:1: absolute path"]
 
-    @pytest.mark.parametrize("path", ["/etc/x", "~/x", "\\outside", "C:x"])
+    @pytest.mark.parametrize("path", ["/etc/x", "~/x", "\\outside", "C:x", "1:x"])
     def test_reports_absolute_source(self, path: str) -> None:
         links, errors = parse_manifest(f"a => {path}\n")
 
