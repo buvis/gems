@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped.
+
 ### Fixed
 
 - **pybase**: config merge no longer mutates an earlier layer's nested dict when a later layer overrides the same key.
