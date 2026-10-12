@@ -32,6 +32,7 @@ commands:
     order: 40
     when: { os: darwin, check: uv }
     steps:
+      - [uv, python, upgrade]
       - [uv, tool, upgrade, --all]
 
   helm:
@@ -48,6 +49,14 @@ commands:
     steps:
       - [mise, self-update]
       - [mise, upgrade]
+
+  # Moves mise pipx tools pinned with `--managed-python --python X.Y` onto the
+  # global mise python minor. After `mise upgrade` so it sees the new global
+  # python; before nvim so pynvim is settled when Mason spawns nvim.
+  pipx-python:
+    order: 65
+    when: { os: darwin, check: mise }
+    use: pipx-python
 
   # --- Cross-platform (former standalone `sysup nvim`) --------------------
   # The old `sysup nvim` subcommand had no platform guard — it ran wherever

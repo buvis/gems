@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from sysup.capabilities.helm import HelmRepoUpdate
 from sysup.capabilities.nvim_mason import NvimMason
 from sysup.capabilities.pip import PipOutdated
+from sysup.capabilities.pipx_python import PipxPython
 from sysup.capabilities.sudo import SudoPrime
 
 if TYPE_CHECKING:
@@ -37,5 +38,6 @@ CAPABILITIES: dict[str, Capability] = {
     "helm-repo-update": HelmRepoUpdate(),
     "nvim-mason": NvimMason(),
     "pip-outdated": PipOutdated(),
+    "pipx-python": PipxPython(),
     "sudo-prime": SudoPrime(),
 }

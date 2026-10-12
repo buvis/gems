@@ -16,10 +16,11 @@ class TestDefaultConfigEquivalence:
     def test_darwin_plan_matches_old_sysup_mac(self, mocker) -> None:
         """Zero-config darwin plan == today's `sysup mac` plus the former
         standalone `sysup nvim`: brew, npm-check, pip (python-packages), uv,
-        helm, mise — mise last among the tool managers — then nvim (mason)."""
+        helm, mise — mise last among the tool managers — then pipx-python
+        (needs mise's new global python), then nvim (mason)."""
         names = _plan_names("darwin", mocker)
-        assert names == ["brew", "npm-check", "python-packages", "uv", "helm", "mise", "nvim"]
-        assert names.index("mise") < names.index("nvim")
+        assert names == ["brew", "npm-check", "python-packages", "uv", "helm", "mise", "pipx-python", "nvim"]
+        assert names.index("mise") < names.index("pipx-python") < names.index("nvim")
 
     def test_linux_plan_matches_old_sysup_wsl(self, mocker) -> None:
         """Zero-config linux plan == today's `sysup wsl` (apt then snap) plus the

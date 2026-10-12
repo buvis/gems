@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **sysup**: upgrade uv-managed pythons and move mise pipx tools pinned with `--managed-python --python X.Y` onto the global mise python minor, reverting any tool that fails to install on it.
+
 ### Fixed
 
 - **postup**: read PRD/spec signals from the migrated spec-bundle layout (specs/NNNNN/.specflow.json) and the reviews/ brush report.
