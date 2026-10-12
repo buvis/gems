@@ -8,6 +8,16 @@
       "file": "src/tools/dot/tui/screens/main.py:181",
       "found_by": "BOB (VERIFY), confirmed by the tail sweep",
       "prd": "00088-dot-host-links-materialize-v1.md"
+    },
+    {
+      "type": "settled-deferral",
+      "issue": "install_hooks checks the hook is missing then atomic_write_text does os.replace; a hook created in between would be silently replaced (tiny window)",
+      "severity": "low",
+      "consensus": "1/3",
+      "cycle": 1,
+      "file": "src/tools/dot/hostlinks/hooks.py",
+      "reason": "cycle 1: microsecond race on the user own hooks dir; exclusive-create would drop the atomic_write invariant",
+      "prd": "00088-dot-host-links-materialize-v1.md"
     }
   ]
 }

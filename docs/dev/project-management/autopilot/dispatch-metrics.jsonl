@@ -79,3 +79,5 @@
 {"id":"ef47787a","kind":"pat","task":"11","queued_at":1791831974,"prompt_bytes":7463}
 {"id":"ef47787a","ended_at":1791831993,"elapsed_s":19,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1791832091,"phase":"done","prd":"00088-dot-host-links-materialize-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1791832387,"phase":"done","prd":"00088-dot-host-links-materialize-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1791832432,"phase":"build","prd":"00088-dot-host-links-materialize-v1.md"}
