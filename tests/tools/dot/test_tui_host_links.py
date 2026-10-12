@@ -84,7 +84,7 @@ class TestTuiHostLinks:
                 await pilot.press("L")
                 await pilot.pause()
 
-                assert "linked linked.conf" in diff_view.update_diff.call_args_list[0].args[0]
+                assert "linked linked.conf" in diff_view.update_diff.call_args.args[0]
                 assert (tmp_path / "linked.conf").is_symlink()
                 assert (tmp_path / "linked.conf").read_text() == "host data"
                 assert "link problem" not in _status_text(app)

@@ -42,7 +42,8 @@ class TestCommandMaterializeLinks:
         assert isinstance(result, CommandResult)
         assert result.success is True
         assert (root / ".bashrc").is_symlink()
-        assert (root / ".vim").is_symlink()
+        # A Windows junction is not is_symlink(); resolving to the source proves the link.
+        assert (root / ".vim").is_dir()
         assert (root / ".bashrc").resolve() == (root / "hosts/h1/bashrc").resolve()
         assert (root / ".vim").resolve() == (root / "hosts/h1/vim").resolve()
         assert "linked .bashrc" in result.info
@@ -185,7 +186,7 @@ class TestMaterializeCli:
 
         assert first.exit_code == 0
         assert (root / ".bashrc").is_symlink()
-        assert (root / ".vim").is_symlink()
+        assert (root / ".vim").resolve() == (root / "hosts/h1/vim").resolve()
         assert "linked .bashrc" in first.output
         assert "linked .vim" in first.output
 
