@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from buvis.pybase.result import CommandResult
 
+from dot.commands.links.links import CommandLinkStatus
 from dot.git.service import DotGitService
 
 if TYPE_CHECKING:
@@ -21,6 +22,7 @@ _STATUS_LABELS = {
 
 class CommandStatus:
     def __init__(self: CommandStatus, shell: ShellAdapter, dotfiles_root: str) -> None:
+        self.dotfiles_root = dotfiles_root
         self.dot_git_service = DotGitService(shell, dotfiles_root)
 
     def execute(self: CommandStatus) -> CommandResult:
@@ -46,6 +48,7 @@ class CommandStatus:
             warnings.append(f"{branch.ahead} commit(s) not pushed")
         if branch.behind:
             warnings.append(f"{branch.behind} commit(s) not pulled")
+        warnings.extend(CommandLinkStatus(self.dotfiles_root).execute().warnings)
 
         if not info and not warnings:
             return CommandResult(success=True, output="No modifications found")
