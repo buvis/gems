@@ -76,3 +76,63 @@ class TestStatusBar:
             await pilot.pause()
             text = str(app.query_one(StatusBar).render())
             assert "secret" not in text.lower()
+
+
+class LinkProblemsHost(App[None]):
+    def __init__(self, info: BranchInfo, link_problems: int | None = None, error: str | None = None) -> None:
+        super().__init__()
+        self._info = info
+        self._link_problems = link_problems
+        self._error = error
+
+    def compose(self) -> ComposeResult:
+        yield StatusBar()
+
+    def on_mount(self) -> None:
+        kwargs: dict[str, object] = {}
+        if self._link_problems is not None:
+            kwargs["link_problems"] = self._link_problems
+        self.query_one(StatusBar).update_info(self._info, error=self._error, **kwargs)
+
+
+class TestStatusBarLinkProblems:
+    @pytest.mark.anyio
+    async def test_renders_link_problem_count_when_nonzero(self) -> None:
+        app = LinkProblemsHost(BranchInfo(name="main"), link_problems=1)
+        async with app.run_test(size=(80, 4)) as pilot:
+            await pilot.pause()
+            text = str(app.query_one(StatusBar).render())
+            assert "1 link problem(s)" in text
+
+    @pytest.mark.anyio
+    async def test_renders_exact_link_problem_count(self) -> None:
+        app = LinkProblemsHost(BranchInfo(name="main"), link_problems=4)
+        async with app.run_test(size=(80, 4)) as pilot:
+            await pilot.pause()
+            text = str(app.query_one(StatusBar).render())
+            assert "4 link problem(s)" in text
+
+    @pytest.mark.anyio
+    async def test_hides_link_problems_when_zero(self) -> None:
+        app = LinkProblemsHost(BranchInfo(name="main"), link_problems=0)
+        async with app.run_test(size=(80, 4)) as pilot:
+            await pilot.pause()
+            text = str(app.query_one(StatusBar).render())
+            assert "link problem" not in text
+
+    @pytest.mark.anyio
+    async def test_hides_link_problems_by_default(self) -> None:
+        app = LinkProblemsHost(BranchInfo(name="main"))
+        async with app.run_test(size=(80, 4)) as pilot:
+            await pilot.pause()
+            text = str(app.query_one(StatusBar).render())
+            assert "link problem" not in text
+
+    @pytest.mark.anyio
+    async def test_orders_secrets_then_link_problems_then_error(self) -> None:
+        app = LinkProblemsHost(BranchInfo(name="main", secret_count=2), link_problems=1, error="boom")
+        async with app.run_test(size=(120, 4)) as pilot:
+            await pilot.pause()
+            text = str(app.query_one(StatusBar).render())
+            assert "secret" in text.lower()
+            assert text.lower().index("secret") < text.index("link problem") < text.index("boom")
