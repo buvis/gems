@@ -16,14 +16,7 @@ def _is_windows() -> bool:
 
 
 def _read_link(path: Path) -> str | None:
-    """Read a link target, dropping any extended-length prefix.
-
-    Args:
-        path: Path that may be a symlink or junction.
-
-    Returns:
-        The link target, or None when path is not a readable link.
-    """
+    """Read a link target minus any extended-length prefix; None if not a link."""
     try:
         value = os.readlink(path)
     except (OSError, ValueError):
@@ -92,14 +85,8 @@ def _check_entry(root: Path, entry: HostLink, apply: bool) -> tuple[str | None, 
 def reconcile_links(root: Path, *, apply: bool) -> tuple[list[str], list[str]]:
     """Bring host links under root in line with the manifest.
 
-    Never deletes, overwrites, copies or hardlinks anything.
-
-    Args:
-        root: Directory holding the manifest and the linked paths.
-        apply: Create missing links when True, only report them when False.
-
-    Returns:
-        A (changes, problems) pair of message lists.
+    Never deletes, overwrites, copies or hardlinks anything. Missing links are
+    created only when apply is True. Returns (changes, problems).
     """
     root = Path(os.path.abspath(root))
     entries, errors = read_manifest(root)
