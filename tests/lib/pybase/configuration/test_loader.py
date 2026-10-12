@@ -583,6 +583,17 @@ class TestMergeConfigs:
 
         assert result == {"x": {"y": 3, "z": 2}}
 
+    def test_merge_does_not_mutate_input_layers(self) -> None:
+        """A later layer must never be merged into an earlier layer's own dicts."""
+        a = {"x": {"y": {"k": 1}}}
+        b = {"x": {"y": {"m": 2}}}
+
+        result = ConfigurationLoader.merge_configs(a, b)
+
+        assert result == {"x": {"y": {"k": 1, "m": 2}}}
+        assert a == {"x": {"y": {"k": 1}}}
+        assert b == {"x": {"y": {"m": 2}}}
+
     def test_non_dict_replaces_dict(self) -> None:
         """Non-dict value replaces dict."""
         base = {"key": {"nested": "value"}}

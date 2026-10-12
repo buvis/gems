@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import logging
 import os
 import re
@@ -133,7 +134,9 @@ def _deep_merge(target: dict[str, Any], source: dict[str, Any]) -> None:
             if k in target and isinstance(target[k], dict) and isinstance(v, dict):
                 _deep_merge(target[k], v)
             else:
-                target[k] = v
+                # Own the value: a later layer recurses into it and must never
+                # write through to the caller's layer.
+                target[k] = copy.deepcopy(v)
             continue
         items = list(v) if isinstance(v, list) else [v]
         appends, removes = pending.setdefault(base, ([], []))
