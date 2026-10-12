@@ -332,6 +332,31 @@ With <code class="docutils literal notranslate"><span class="pre">--hook</span><
 <p>On Windows, directories become junctions. File links need symlink rights, so
 enable Developer Mode. Otherwise dot reports <code class="docutils literal notranslate"><span class="pre">symlink</span> <span class="pre">refused;</span> <span class="pre">enable</span>
 <span class="pre">Developer</span> <span class="pre">Mode</span></code>. The hooks need <code class="docutils literal notranslate"><span class="pre">python3</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p>
+<section id="first-setup">
+<h3>First setup<a class="headerlink" href="#first-setup" title="Link to this heading"></a></h3>
+<p>Turn on the hooks once per host. Dot only installs them when
+<code class="docutils literal notranslate"><span class="pre">core.hooksPath</span></code> is set, and stays silent when it is not:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>--git-dir<span class="o">=</span><span class="nv">$HOME</span>/.buvis<span class="w"> </span>config<span class="w"> </span>core.hooksPath<span class="w"> </span>~/.buvis/hooks
+</pre></div>
+</div>
+<p>To make a file that the dotfiles repo already tracks host-specific, untrack it
+first. Otherwise <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span></code> reports <code class="docutils literal notranslate"><span class="pre">exists</span> <span class="pre">and</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">a</span> <span class="pre">link;</span>
+<span class="pre">skipped</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>--git-dir<span class="o">=</span><span class="nv">$HOME</span>/.buvis<span class="w"> </span>--work-tree<span class="o">=</span><span class="nv">$HOME</span><span class="w"> </span>rm<span class="w"> </span>--cached<span class="w"> </span>.config/gita/repos.csv
+mv<span class="w"> </span>~/.config/gita/repos.csv<span class="w"> </span>~/.config/gita/repos.csv.host
+<span class="nb">echo</span><span class="w"> </span><span class="s2">".config/gita/repos.csv =&gt; .config/gita/repos.csv.host"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.config/buvis/host-links
+dot<span class="w"> </span>materialize
+dot<span class="w"> </span>status
+</pre></div>
+</div>
+<p>Commit the removal and the manifest together.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Pulling that commit on another host deletes the file there, because git
+removes files that a pull untracks. On each other host, copy the file to its
+<code class="docutils literal notranslate"><span class="pre">.host</span></code> name before you pull, then run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span></code>.</p>
+</div>
+</section>
 </section>
 </section>
 
