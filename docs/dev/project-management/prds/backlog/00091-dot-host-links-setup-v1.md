@@ -161,10 +161,12 @@ src/tools/dot/
   `tests/tools/dot/test_dot_commands.py` (argument wins over setting; setting
   used when no argument; neither -> panic message) and
   `tests/tools/dot/test_status.py` (missing pre-commit -> warning) pass.
-- [ ] Docs: `docs/source/tools/dot.rst` and `README.md` cover `dot setup`,
-  `BUVIS_DOT_REMOTE_URL` and the hooksPath self-heal (depends on: previous
-  task) - Acceptance: `rg -n "dot setup" docs/source/tools/dot.rst README.md`
-  finds both.
+- [ ] Docs and changelog: `docs/source/tools/dot.rst` and `README.md` cover
+  `dot setup`, `BUVIS_DOT_REMOTE_URL` and the hooksPath self-heal;
+  `CHANGELOG.md` `[Unreleased]` gets a `**dot**:` Added entry for `dot setup`
+  and the self-heal (depends on: previous task) - Acceptance:
+  `rg -n "dot setup" docs/source/tools/dot.rst README.md CHANGELOG.md` hits
+  all three.
 
 **Exit Criteria**: `uv run pytest -m dot` and `uv run mypy src/tools/dot` pass.
 

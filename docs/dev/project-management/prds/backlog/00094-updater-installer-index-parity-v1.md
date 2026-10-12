@@ -35,8 +35,8 @@ Ask the installer's own index which version it would install, instead of asking 
 
 - **Description**: Return the newest buvis-gems version the detected installer can actually install.
 - **Inputs**: `InstallerInfo` (from `detect_installer`), state dir.
-- **Outputs**: version string, or `None` when the lookup fails.
-- **Behavior**: Run one subprocess per installer method, timeout 10s, cwd = state dir (guess: this keeps uv from picking up a project-level config of the caller's cwd):
+- **Outputs**: version string, or `None` when both the installer query and the PyPI fallback fail.
+- **Behavior**: Run one subprocess per installer method, timeout 10s, cwd = state dir (so uv does not pick up a project-level config from the caller's cwd):
   - `mise-pipx`: `mise latest pipx:buvis-gems`; stdout stripped is the version.
   - `pip-venv`: `pip index versions buvis-gems`; version = group 1 of `re.search(r"^buvis-gems \(([^)]+)\)", stdout, re.M)`.
   - `uv-tool`, `uv-venv`: `uv pip compile --no-deps --no-header --quiet -` with `buvis-gems` on stdin; version = group 1 of `re.search(r"^buvis-gems==(\S+)$", stdout, re.M)`.
@@ -168,7 +168,7 @@ No dependencies - built first.
 **Goal**: Upgrades are verified and the checker takes a version source.
 
 **Tasks**:
-- [ ] Add `read_installed_version` and verification plus back-off write to `run_update`, verification to `run_update_interactive` in `executor.py` (depends on: Phase 0) - Acceptance: `pytest tests/lib/pybase/updater/test_executor.py` passes, including new `test_noop_upgrade_records_failure_and_skips_reexec`, `test_verification_child_inherits_reexec_guard`, `test_unverifiable_upgrade_still_reexecs`, `test_interactive_noop_upgrade_returns_one`, and the existing `test_nothing_printed_to_stderr` unchanged. Premise: the existing executor tests mock `subprocess.run` with `returncode=0` only; re-check with `rg -c "def test_" tests/lib/pybase/updater/test_executor.py` before editing, and update those mocks only as far as the new `--version` call requires (a skipped premise means stop and report).
+- [ ] Add `read_installed_version` and verification plus back-off write to `run_update`, verification to `run_update_interactive` in `executor.py` (depends on: Phase 0) - Acceptance: `pytest tests/lib/pybase/updater/test_executor.py` passes, including new `test_noop_upgrade_records_failure_and_skips_reexec`, `test_verification_child_inherits_reexec_guard`, `test_unverifiable_upgrade_still_reexecs`, `test_interactive_noop_upgrade_returns_one`, and the existing `test_nothing_printed_to_stderr` unchanged. Premise: the existing executor tests mock `subprocess.run` with `returncode=0` only; re-check with `rg -c "def test_" tests/lib/pybase/updater/test_executor.py` (expect 20) before editing, and if the count differs stop and report; update those mocks only as far as the new `--version` call requires.
 - [ ] Add the `fetch` parameter to `check_for_update` (depends on: Phase 0) - Acceptance: `pytest tests/lib/pybase/updater/test_checker.py` passes with no test changed, plus new `test_fetch_parameter_replaces_pypi_query`.
 
 **Exit Criteria**: executor and checker tests pass.
@@ -180,6 +180,7 @@ No dependencies - built first.
 - [ ] Rewire `check_and_update` in `__init__.py`: detect installer first, pass `fetch`, skip on back-off (depends on: Phase 1) - Acceptance: `pytest tests/lib/pybase/updater/test_init.py` passes, including new `test_mirror_lagging_pypi_does_not_attempt_upgrade`, `test_backed_off_version_skips_upgrade`, `test_backoff_expires_after_24h`, `test_newer_version_than_failed_retries`, `test_noop_installer_second_invocation_skips_upgrade`, and the existing `test_restarted_process_does_not_update_again`.
 - [ ] Make `force_update` report installer lag and no-op upgrades (depends on: Phase 1) - Acceptance: `pytest tests/lib/pybase/updater/test_force_update.py` passes, including new `test_reports_installer_index_lag_when_pypi_is_newer`.
 - [ ] Add a `### Fixed` entry under `[Unreleased]` in `CHANGELOG.md` prefixed `**pybase**:` (depends on: Phase 1) - Acceptance: `rg -n "installer's index" CHANGELOG.md` matches under `[Unreleased]`.
+- [ ] Docs: the `--update` paragraph in `README.md` (line 42 today) says the check asks the installer's own index and reports when that index lags PyPI (depends on: Phase 1) - Acceptance: `rg -n "installer" README.md` matches within three lines of `--update`.
 
 **Exit Criteria**: `uv run --all-extras --all-groups pytest tests/lib/pybase/updater -q`, `uv run mypy src/lib/ src/tools/` and `pre-commit run --files` on the changed files all exit 0. The pipeline's single full-suite run follows.
 

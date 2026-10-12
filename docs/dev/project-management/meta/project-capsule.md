@@ -19,9 +19,10 @@ Generated: 2026-10-12
 ## Active Work
 ### Batch 202610121200
 - [x] 00088-dot-host-links-materialize-v1 (1 cycle)
-- [ ] 00089-dot-pull-divergence-report-v1
 - [ ] 00090-dot-host-links-localize-pull-rescue-v1
 - [ ] 00091-dot-host-links-setup-v1
+- [ ] 00094-updater-installer-index-parity-v1
+- [ ] 00095-dot-pull-divergence-report-v1 (renumbered from 00089 on 2026-10-12: depends on 00090; 00092/00093 are intake numbers)
 
 Observations: codex reviewer unhealthy under Seatbelt (sandbox_apply EPERM); qwen excluded on memory pressure for 3 tasks. Working tree has uncommitted postup frontend build churn (not this batch's work). Deferred: TUI status message overwritten by diff re-render (pre-existing, screens/main.py).
 

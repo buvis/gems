@@ -220,7 +220,10 @@ src/tools/dot/
   `has_upstream.return_value = False` stubs; their assertions stay.
   Acceptance: `uv run pytest tests/tools/dot/test_pull.py tests/tools/dot/test_rescue_modal.py tests/tools/dot/test_tui_app.py`
   passes, including: noninteractive collision -> failure, both paths
-  unchanged, `pull` not called; TUI cancel -> `pull` not called.
+  unchanged, `pull` not called; TUI cancel -> `pull` not called. TUI tests
+  that assert the diff-pane text mock `status()` to return no entries (a
+  non-empty file list re-renders the pane over the message, a pre-existing
+  bug deferred in batch 202610121200).
 - [ ] Two-host real-git test `tests/tools/dot/test_pull_two_hosts.py` (depends
   on: previous task): tmp bare origin, hosts A and B as bare clones with
   work-trees, git identity set via `monkeypatch.setenv`, real
@@ -229,10 +232,12 @@ src/tools/dot/
   B's bytes at the source, target is a link to it. Second case: B also has a
   different source file -> noninteractive failure, B's HEAD unchanged.
   Acceptance: `uv run pytest tests/tools/dot/test_pull_two_hosts.py` passes.
-- [ ] Docs: `docs/source/tools/dot.rst` and `README.md` cover `dot localize`,
-  pull rescue, the collision choices, and that raw `git pull` bypasses the
-  rescue (depends on: previous task) - Acceptance:
-  `rg -n "dot localize" docs/source/tools/dot.rst README.md` finds both.
+- [ ] Docs and changelog: `docs/source/tools/dot.rst` and `README.md` cover
+  `dot localize`, pull rescue, the collision choices, and that raw `git pull`
+  bypasses the rescue; `CHANGELOG.md` `[Unreleased]` gets a `**dot**:` Added
+  entry for `dot localize` and pull rescue (depends on: previous task) -
+  Acceptance: `rg -n "dot localize" docs/source/tools/dot.rst README.md CHANGELOG.md`
+  hits all three.
 
 **Exit Criteria**: `uv run pytest -m dot` and `uv run mypy src/tools/dot src/lib` pass.
 
@@ -248,9 +253,10 @@ src/tools/dot/
 ## Risks
 
 - **Raw `git pull` bypasses rescue**: documented; git has no pre-pull hook.
-- **00089 also changes `dot pull`**: both add a fetch before `cfg pull`.
-  Whichever lands second keeps one `fetch()` call and runs both pre-merge
-  steps; 00089's divergence save must run after rescue moves.
+- **00095 also changes `dot pull`**: both add a fetch before `cfg pull`.
+  00095 lands second (renumbered from 00089 by the 2026-10-12 backlog
+  review), keeps one `fetch()` call and runs both pre-merge steps; its
+  divergence save must run after rescue moves.
 - **Window between fetch and `cfg pull`**: `cfg pull` re-fetches, so a commit
   pushed in that gap is merged unplanned. Git still refuses to delete a
   locally modified file, so bytes survive; accepted.

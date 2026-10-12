@@ -1,4 +1,5 @@
 ---
+catchup: force
 design: run
 default_model: opus
 model_tier_rationale: destructive blast radius - resets user edits in $HOME after a save; invented selection predicate (incoming x dirty, mixed-state guard)
@@ -76,7 +77,7 @@ The solo dotfiles owner who edits dotfiles in place on several hosts.
   submodule steps, secret reveal exactly as today, each failure keeping the
   warnings. Never restore from the patch automatically.
 
-#### Feature: Messages (guess)
+#### Feature: Messages
 - Patch saved: `divergence patch saved: <patch path>`
 - Per reset: `reset to HEAD, local edit in patch: <path>`
 - Mixed: `pull stopped: <p1>, <p2> have both staged and unstaged changes; commit or unstage them first`
@@ -93,7 +94,9 @@ The solo dotfiles owner who edits dotfiles in place on several hosts.
 - **Outputs**: `pending_patch_warning(root) -> str | None`.
 - **Behavior**: `n = len(list(d.glob("*.patch")))` when `d.is_dir()`, else 0;
   `None` when `n == 0`. `CommandStatus.execute` appends it to `warnings`
-  before the "No modifications found" check. TUI `refresh_status` passes it
+  before the "No modifications found" check. TUI `refresh_status` passes
+  `pending_patch_warning(self._dotfiles_root) if self._dotfiles_root else None`
+  (the root 00088 already hands to `MainScreen`, same guard as link status)
   to `StatusBar.update_info(..., pending=...)`, rendered `bold yellow` after
   the secret count.
 
@@ -132,7 +135,7 @@ tests/tools/dot/
 ### Module: dot.git.service
 - **Maps to capability**: Divergence save
 - **Responsibility**: Select, save, reset, then pull.
-- **Exports**: `DotGitService.pull(passphrase=None, *, exclude=(), fetched=False)` (guess)
+- **Exports**: `DotGitService.pull(passphrase=None, *, exclude=(), fetched=False)`
   - `fetched=False` -> runs `self.fetch()` first (error -> `Fetch failed: <err>`);
     `CommandPull` passes `fetched=True` after its own plan fetch, keeping one fetch.
 - Prerequisite 00090 creates `fetch` and `has_upstream`; this PRD adds `exclude` and `fetched`.
@@ -140,7 +143,7 @@ tests/tools/dot/
 
 ### Module: dot commands and TUI
 - **Maps to capability**: Surface records, Recovery output
-- **Exports**: unchanged signatures; `StatusBar.update_info(info, error=None, pending=None)`.
+- **Exports**: unchanged signatures; `StatusBar.update_info(info, error=None, link_problems=0, pending=None)`.
 - Prerequisite 00090 creates `plan_rescue`, `CommandLocalize` and `RescuePlan`; this PRD adds `pending`.
 - New symbols: `pending`, `plan_rescue`, `CommandLocalize`, `RescuePlan`, `has_upstream`
 
@@ -201,19 +204,18 @@ tests/tools/dot/
   no assertion is removed. Acceptance: `uv run pytest tests/tools/dot/test_pull.py`
   passes, including a new test that a service failure with warnings comes out
   of `CommandPull.execute` with those warnings.
-- [ ] Status: `CommandStatus` stores `dotfiles_root` and appends
-  `pending_patch_warning`; `StatusBar` `pending` segment; `MainScreen.refresh_status`
-  passes `pending_patch_warning(self._git_ops.dotfiles_root)`; `action_pull`
-  message per Recovery output (depends on: Phase 1). Premise: the TUI mock
-  helpers are `_mock_git_ops` in `test_tui_app.py` and `_mock_git_ops_with_content`
-  in `test_tui_snapshots.py`; re-check with `rg -n "def _mock_git_ops" tests/tools/dot`
-  (expect 2). Each gains only `ops.dotfiles_root = "/nonexistent"`; if the
-  count differs, stop and report. Acceptance: `uv run pytest tests/tools/dot/test_status.py tests/tools/dot/test_tui_app.py tests/tools/dot/test_status_bar.py`
+- [ ] Status: `CommandStatus.execute` appends `pending_patch_warning(self.dotfiles_root)`;
+  `StatusBar` `pending` segment; `MainScreen.refresh_status` passes
+  `pending_patch_warning(self._dotfiles_root) if self._dotfiles_root else None`
+  (existing TUI mock helpers need no edit); `action_pull` message per
+  Recovery output (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/dot/test_status.py tests/tools/dot/test_tui_app.py tests/tools/dot/test_status_bar.py`
   passes, with new tests: status with one patch -> one warning naming count 1
   and the dir, none after deletion; status bar shows the pending text; TUI
-  pull failure with warnings -> diff pane shows error and patch path; CLI
-  `dot pull` (CliRunner, `CommandPull.execute` patched to a failure with a
-  patch warning) prints the patch path and the error.
+  pull failure with warnings -> diff pane shows error and patch path (mock
+  `status()` to return no entries: with a non-empty file list the selection
+  re-render overwrites the pane, a pre-existing bug deferred in batch
+  202610121200); CLI `dot pull` (CliRunner, `CommandPull.execute` patched to
+  a failure with a patch warning) prints the patch path and the error.
 - [ ] Real-git test `tests/tools/dot/test_pull_divergence_two_hosts.py`
   (depends on: previous tasks): reuse 00090's host setup from
   `test_pull_two_hosts.py` (import or move its helpers to `conftest.py`; do
