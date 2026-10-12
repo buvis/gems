@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **pybase**: stop every CLI hanging in an endless silent restart loop when the installer reports success without installing (e.g. mise hides releases younger than its `minimum_release_age`); the auto-update now runs at most once per invocation.
+
 ## [0.14.0] - 2026-10-12
 
 ### Added

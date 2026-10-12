@@ -11,7 +11,7 @@ from packaging.version import Version
 
 from .checker import check_for_update, fetch_latest_version
 from .detector import detect_installer
-from .executor import run_update, run_update_interactive
+from .executor import REEXEC_ENV, run_update, run_update_interactive
 from .state import DEFAULT_STATE_DIR, append_log
 
 if TYPE_CHECKING:
@@ -34,6 +34,7 @@ def check_and_update(settings: GlobalSettings) -> None:
     Guards:
         - settings.auto_update must be True
         - BUVIS_DEV_MODE must not be "1"
+        - the process must not be the restart of an update that already ran
 
     Args:
         settings: Resolved GlobalSettings (or subclass) with auto_update and installer fields.
@@ -42,6 +43,9 @@ def check_and_update(settings: GlobalSettings) -> None:
         return
 
     if os.environ.get("BUVIS_DEV_MODE") == "1":
+        return
+
+    if os.environ.get(REEXEC_ENV) == "1":
         return
 
     latest = check_for_update()

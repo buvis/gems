@@ -13,7 +13,12 @@ from buvis.pybase.adapters import console
 from .detector import InstallerInfo
 from .state import DEFAULT_STATE_DIR, append_log
 
-__all__ = ["run_update", "run_update_interactive"]
+__all__ = ["REEXEC_ENV", "run_update", "run_update_interactive"]
+
+# Set before re-exec so the restarted process skips the update check. An installer can exit 0
+# without installing (e.g. mise hides releases younger than minimum_release_age); without this
+# guard the restart sees the same "newer" PyPI release and re-execs forever.
+REEXEC_ENV = "BUVIS_UPDATE_REEXEC"
 
 _UPGRADE_TIMEOUT = 120
 # --update is a foreground, user-initiated wait; bounded generously (not removed) so a
@@ -141,6 +146,7 @@ def _reexec_or_exit(installer: InstallerInfo, state_dir: Path) -> None:
     through the console adapter and exit non-zero.
     """
     reexec_argv = _resolve_reexec_argv(installer)
+    os.environ[REEXEC_ENV] = "1"
     try:
         os.execvp(reexec_argv[0], reexec_argv)
     except OSError as exc:
