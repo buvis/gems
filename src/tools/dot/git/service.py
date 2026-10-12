@@ -276,6 +276,16 @@ class DotGitService:
                 secret_count = len([line for line in out.strip().split("\n") if line])
         return BranchInfo(name=name, ahead=ahead, behind=behind, secret_count=secret_count)
 
+    def hooks_path(self) -> Path | None:
+        """Return the configured core.hooksPath, or None when unset."""
+        err, out = self.shell.exe("cfg config core.hooksPath", self.wd)
+        if err or not out or not out.strip():
+            return None
+        p = Path(os.path.expanduser(out.strip()))
+        if not p.is_absolute():
+            p = self.wd / p
+        return p
+
     def ls_files(self, pathspec: str) -> set[str]:
         """List tracked paths matching a pathspec.
 
