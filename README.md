@@ -106,6 +106,20 @@ All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netsc
 | vuc | Video utility collection |
 | zseq | Zettelsequence utilities |
 
+### dot host-specific config
+
+List per-host paths in the tracked manifest
+`<dotfiles_root>/.config/buvis/host-links`, one `<target> => <source>` per
+line. Both sides are `$HOME`-relative with `/` separators; absolute paths, `~`,
+drive letters and `..` are rejected as `host-links:<lineno>: <reason>`.
+`dot materialize` links each missing target to its untracked host file. It
+never deletes or overwrites anything and warns about real files, wrong or
+dangling links and missing sources. It also installs missing `post-checkout`,
+`post-merge` and `post-rewrite` hooks into git `core.hooksPath` when set; they
+run `dot materialize --hook`. `dot status` and the TUI (key `L`) report link
+problems. On Windows, directories become junctions and file links need
+Developer Mode. Details: `docs/source/tools/dot.rst`.
+
 ### bim doc subsystem
 
 `bim doc ingest` watches the staging inbox and either auto-files a PDF
