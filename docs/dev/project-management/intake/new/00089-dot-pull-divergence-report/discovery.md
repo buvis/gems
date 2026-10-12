@@ -18,38 +18,56 @@ should be saved first in a form a maintainer can read or apply.
 
 ### Must have
 
-- **M1 Upstream wins**: `dot pull` no longer aborts on conflicting
-  uncommitted edits. It saves them, resets those files to `HEAD`, then pulls.
-  The pull ends with the upstream version in place.
+- **M1 Upstream wins**: for edits eligible under M2/M8/M9, `dot pull` no
+  longer aborts on conflicting uncommitted edits. It saves them, resets
+  those files to `HEAD`, then pulls. A successful pull ends with the
+  upstream version in place for those files.
 - **M2 Narrow scope**: only uncommitted tracked edits (staged or not) to
-  files the incoming commits change (`HEAD..@{u}`) are saved and reset. Other
-  local edits are left alone. Unpushed commits that conflict still fail the
-  pull as they do today.
+  files changed upstream since the common ancestor of `HEAD` and `@{u}`
+  are eligible to be saved and reset. Differences caused solely by local
+  commits do not count as incoming changes. Other local edits are left
+  alone. Unpushed commits that conflict still fail the pull as they do today.
 - **M3 Patch record**: one `git diff` patch per pull that saves anything, at
   `~/.local/share/dot/divergence/<timestamp>.patch`, covering every reset
-  file. It must `git apply` cleanly onto the commit the edits were based on.
+  file. Its base is pre-pull `HEAD`, whose full commit ID must be included
+  in the record. It must `git apply` cleanly onto that commit to reconstruct
+  the saved local content.
 - **M4 Save before destroy**: the patch is written with
   `pybase.filesystem.atomic_write` before any reset. If the write fails, pull
   aborts with nothing reset.
-- **M5 Pull output**: the result carries one warning per overwritten file
-  plus the patch path. CLI and TUI both render it.
-- **M6 Status hint**: `dot status` warns when any `*.patch` exists in the
-  divergence dir (count plus dir path). Pending = the file exists; the user
-  deletes it once it has been handled. No other state.
+- **M5 Pull output**: every result after patch creation carries the patch
+  path and one warning per file actually reset, including when a later
+  reset, merge, submodule or secret-reveal step fails. CLI and TUI both
+  render this recovery information alongside any error. A failed pull
+  does not automatically restore edits from the patch.
+- **M6 Status hint**: `dot status` and TUI status warn when any `*.patch`
+  exists in the divergence dir (count plus dir path). Both use shared
+  pending-patch logic. Pending = the file exists; the user deletes it once
+  it has been handled. No other state.
 - **M7 One implementation**: the logic lives in `DotGitService.pull` (the TUI
   calls the service directly, the CLI goes through `CommandPull`), so both
   get it.
+- **M8 Mixed-state guard**: if any path selected for divergence reset has
+  both staged and unstaged changes, pull aborts before any divergence
+  reset, identifies the path and leaves its index and working content
+  unchanged. This includes a working file restored to `HEAD` while its
+  index still contains a different version.
+- **M9 Host rescue priority**: when combined with intake 00088, host rescue
+  preserves the original local content before any divergence reset of
+  that path. Successfully rescued paths are excluded from divergence
+  resets; upstream deletion must not replace the host-local source with
+  `HEAD` content.
 
 ### Nice to have
 
-- Patch header comment naming host, the base commit and the upstream commit,
-  so a maintainer knows where it applies.
+- Patch header comment naming host and the upstream commit for additional
+  context; the base commit ID is mandatory under M3.
 
 ### Out of scope
 
 - Submodule edits wiped by `submodule foreach git reset --hard`.
 - Revealed secret files overwritten by `secret reveal -f`.
-- Unpushed local commits (still fail the pull).
+- Resolving conflicts in unpushed local commits (still fail the pull).
 - Sending the patch anywhere (issue, PR, pushed branch). That stays manual.
 - A `dot divergence` verb to list, show or delete patches.
 - Raw `git pull` (bypasses dot, unchanged).
@@ -74,41 +92,65 @@ should be saved first in a form a maintainer can read or apply.
   returning `(err, out)`; `CommandResult(warnings=...)`; tests mock the
   shell.
 - **Integration points**: `pull()` gains a fetch-detect-save-reset step before
-  the merge; `CommandStatus.execute` gains the pending-patch warning.
-- **Likely git shape**: `cfg fetch`; incoming = `cfg diff --name-only
-  HEAD @{u}`; dirty = `cfg diff --name-only HEAD`; save = `cfg diff HEAD --
-  <files>`; reset = `cfg checkout HEAD -- <files>`; then `cfg pull`.
+  the merge, coordinated with 00088 host rescue; `CommandStatus.execute`
+  and TUI status gain the pending-patch warning through shared logic.
+- **Design starting point**: fetch, identify upstream changes since the
+  common ancestor, and inspect index and worktree changes separately.
+  Exclude successfully rescued host paths and reject mixed-state reset
+  candidates before any divergence reset. Save eligible changes against
+  pre-pull `HEAD`, including binary content and the full base commit ID,
+  before resetting those paths and integrating upstream. Exact Git
+  commands belong to design; a branch-tip diff is not the incoming set,
+  and a worktree-to-HEAD diff alone is not a mixed-state check.
 
 ## Success Criteria
 
 - Two-clone test: B edits `x` without committing, A changes `x` and pushes;
   B `dot pull` succeeds, `x` holds A's bytes, and a patch exists that turns
-  A's base `x` into B's edit with `git apply`.
+  B's pre-pull `HEAD` version of `x` into B's edit with `git apply`. The
+  record includes that base's full commit ID.
 - B also has an unrelated dirty file `y` -> `y` is unchanged after the pull,
   and not in the patch.
+- B has an unpushed commit changing `y` and a further uncommitted edit to
+  `y`, while upstream changes only `x` -> `y` is neither reset nor included
+  in the patch, regardless of whether ordinary pull succeeds or fails.
+- A selected file has staged content B and distinct working content C ->
+  pull aborts before any divergence reset, names the file and preserves
+  both versions. Repeat with C equal to `HEAD` to verify the staged version
+  is still protected; other selected paths are not reset either.
+- Combined with 00088: upstream deletes a manifest target while this host
+  has local edits -> rescue preserves this host's original content in the
+  host-local source, the target becomes the expected link, and divergence
+  handling does not reset or replace the rescued content.
 - No conflicting edits -> no patch written, output unchanged.
 - Patch write fails (read-only dir) -> pull aborts, `x` still holds B's edit.
-- `dot status` with one patch present -> one warning naming the dir;
-  after deleting it -> no warning.
+- A patch is saved and a later reset, merge, submodule or secret-reveal
+  step fails -> the failure result retains the patch path and accurately
+  identifies completed resets, and both CLI and TUI display this recovery
+  information alongside the error. The patch remains available.
+- `dot status` and TUI status with one patch present -> each shows one
+  warning with count 1 and the directory; after deleting it and refreshing
+  status -> neither shows a pending-patch warning.
 
 ## Risks
 
 - **Collides with 00088 M9 (pull rescue)**: both add a fetch-before-merge
-  step to `pull()`. Whichever lands second rebases onto the other's shape.
+  step to `pull()`. Whichever lands second must preserve M9's host-rescue
+  priority and run the combined acceptance case, not merely resolve code
+  conflicts; resetting first would substitute `HEAD` bytes for host edits.
 - **Losing data on a bad diff**: if the save misses a file but the reset hits
   it, the edit is gone. Mitigate: build the save and reset lists from the
-  same set, and test that they match.
+  same set, and test that they match. Inspect index and worktree separately
+  so mixed states cannot lose staged content through a combined diff.
 - **No upstream (`@{u}` unset)**: skip detection and fall back to today's
   plain pull.
 - **Binary files**: plain `git diff` omits binary content. Use `--binary`.
 
 ## Open Questions
 
-- R2 in `idea.md` says "diff against the upstream version". The patch here
-  diffs against the local base (`HEAD`), because that is what applies
-  cleanly and shows only the local change. create-prd should confirm.
-- Does the TUI show the status hint (M6)? Its main screen uses
-  `has_uncommitted_changes`, not `CommandStatus`.
+- None remaining from this review. The patch base is pre-pull `HEAD`,
+  identified by full commit ID, and pending-patch status is required in
+  both CLI and TUI through shared logic.
 
 ## Discovery Log
 
@@ -145,3 +187,20 @@ no extra state.
   required by AGENTS.md invariants (M4).
 - `--binary` diff and the no-upstream fallback: edge cases from the git
   shape, not user choices.
+
+### Review decisions (2026-10-12)
+
+The user selected option 1 for all six findings in `review-discovery-doc`:
+
+1. Refuse selected paths with both staged and unstaged changes before any
+   divergence reset, preserving both versions (M8).
+2. Define incoming paths by upstream changes since the common ancestor,
+   excluding differences caused solely by local commits (M2).
+3. Give 00088 host rescue priority, preserving original local content and
+   excluding successfully rescued paths from divergence resets (M9).
+4. Confirm pre-pull `HEAD` as the patch base and require its full commit ID
+   in the record; this resolves the upstream-base wording in `idea.md` (M3).
+5. Retain the patch path and accurate completed-reset warnings on every
+   result after patch creation, including later failures (M5).
+6. Show pending-patch count and directory in CLI and TUI status through
+   shared logic (M6).

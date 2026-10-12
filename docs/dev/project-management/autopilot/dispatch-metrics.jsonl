@@ -1,0 +1,69 @@
+{"kind":"handoff","site":"build","edge":"resume","at":1791825870,"phase":"build","prd":"00088-dot-host-links-materialize-v1.md"}
+{"id":"f1cd5573","kind":"tess","task":"1","queued_at":1791826709,"prompt_bytes":9164}
+{"id":"f1cd5573","ended_at":1791826773,"elapsed_s":64,"outcome":"ok","detail":null}
+{"id":"301e8096","kind":"ivan","task":"1","queued_at":1791826811,"prompt_bytes":25603}
+{"id":"301e8096","ended_at":1791827734,"elapsed_s":923,"outcome":"ok","detail":null}
+{"id":"b609e5f5","kind":"deslop","task":"1","queued_at":1791827786,"prompt_bytes":10324}
+{"id":"b609e5f5","ended_at":1791827805,"elapsed_s":19,"outcome":"ok","detail":null}
+{"id":"34c3e668","kind":"pat","task":"1","queued_at":1791827819,"prompt_bytes":19800}
+{"id":"e675610c","kind":"ivan","task":"1","queued_at":1791827885,"prompt_bytes":18537}
+{"id":"e675610c","ended_at":1791827921,"elapsed_s":36,"outcome":"ok","detail":null}
+{"id":"9c14a456","kind":"pat","task":"1","queued_at":1791827932,"prompt_bytes":3080}
+{"id":"9e7cc5f4","kind":"tess","task":"2","queued_at":1791828015,"prompt_bytes":19990}
+{"id":"9e7cc5f4","ended_at":1791828148,"elapsed_s":133,"outcome":"ok","detail":null}
+{"id":"86b3e249","kind":"ivan","task":"2","queued_at":1791828196,"prompt_bytes":35594}
+{"id":"86b3e249","ended_at":1791828251,"elapsed_s":55,"outcome":"ok","detail":null}
+{"id":"8e5581cd","kind":"ivan","task":"2","queued_at":1791828283,"prompt_bytes":21212}
+{"id":"8e5581cd","ended_at":1791828307,"elapsed_s":24,"outcome":"ok","detail":null}
+{"id":"02358d41","kind":"deslop","task":"2","queued_at":1791828317,"prompt_bytes":11944}
+{"id":"02358d41","ended_at":1791828346,"elapsed_s":29,"outcome":"ok","detail":null}
+{"id":"c6f1aa81","kind":"pat","task":"2","queued_at":1791828355,"prompt_bytes":29846}
+{"id":"c7101efa","kind":"tess","task":"3","queued_at":1791828417,"prompt_bytes":15637}
+{"id":"c7101efa","ended_at":1791828464,"elapsed_s":47,"outcome":"ok","detail":null}
+{"id":"1c342a85","kind":"ivan","task":"3","queued_at":1791828490,"prompt_bytes":24752}
+{"id":"1c342a85","ended_at":1791828865,"elapsed_s":375,"outcome":"ok","detail":null}
+{"id":"026d0bf3","kind":"deslop","task":"3","queued_at":1791828882,"prompt_bytes":9653}
+{"id":"026d0bf3","ended_at":1791828896,"elapsed_s":14,"outcome":"ok","detail":null}
+{"id":"7a2d93b1","kind":"pat","task":"3","queued_at":1791828905,"prompt_bytes":15501}
+{"id":"308bc985","kind":"ivan","task":"4","queued_at":1791829017,"prompt_bytes":18648}
+{"id":"308bc985","ended_at":1791829043,"elapsed_s":26,"outcome":"ok","detail":null}
+{"id":"d880770b","kind":"pat","task":"4","queued_at":1791829063,"prompt_bytes":6359}
+{"id":"03fcc47c","kind":"tess","task":"5","queued_at":1791829125,"prompt_bytes":12794}
+{"id":"03fcc47c","ended_at":1791829162,"elapsed_s":37,"outcome":"ok","detail":null}
+{"id":"e3e9312c","kind":"ivan","task":"5","queued_at":1791829184,"prompt_bytes":21092}
+{"id":"e3e9312c","ended_at":1791829349,"elapsed_s":165,"outcome":"ok","detail":null}
+{"id":"103f71c7","kind":"pat","task":"5","queued_at":1791829366,"prompt_bytes":10205}
+{"id":"24a34fdc","kind":"tess","task":"6","queued_at":1791829452,"prompt_bytes":18496}
+{"id":"24a34fdc","ended_at":1791829527,"elapsed_s":75,"outcome":"ok","detail":null}
+{"id":"d0da1a85","kind":"ivan","task":"6","queued_at":1791829560,"prompt_bytes":31839}
+{"id":"d0da1a85","ended_at":1791829603,"elapsed_s":43,"outcome":"ok","detail":null}
+{"id":"f44eec73","kind":"deslop","task":"6","queued_at":1791829628,"prompt_bytes":12719}
+{"id":"f44eec73","ended_at":1791829646,"elapsed_s":18,"outcome":"ok","detail":null}
+{"id":"cedb60bb","kind":"pat","task":"6","queued_at":1791829656,"prompt_bytes":26031}
+{"id":"f8f70d74","kind":"tess","task":"7","queued_at":1791829704,"prompt_bytes":17796}
+{"id":"f8f70d74","ended_at":1791829756,"elapsed_s":52,"outcome":"ok","detail":null}
+{"id":"8f636164","kind":"ivan","task":"7","queued_at":1791829775,"prompt_bytes":31728}
+{"id":"8f636164","ended_at":1791829801,"elapsed_s":26,"outcome":"ok","detail":null}
+{"id":"21e83ab3","kind":"pat","task":"7","queued_at":1791829814,"prompt_bytes":12287}
+{"id":"29f43f37","kind":"tess","task":"8","queued_at":1791829868,"prompt_bytes":13251}
+{"id":"29f43f37","ended_at":1791829933,"elapsed_s":65,"outcome":"ok","detail":null}
+{"id":"f63db769","kind":"ivan","task":"8","queued_at":1791829965,"prompt_bytes":29697}
+{"id":"f63db769","ended_at":1791829978,"elapsed_s":13,"outcome":"error","detail":"gemini-run.sh exit 1"}
+{"id":"f63db769","ended_at":1791830035,"elapsed_s":70,"outcome":"ok","detail":"claude fallback after gemini auth failure"}
+{"id":"7d0f6430","kind":"deslop","task":"8","queued_at":1791830064,"prompt_bytes":10375}
+{"id":"7d0f6430","ended_at":1791830079,"elapsed_s":15,"outcome":"ok","detail":null}
+{"id":"b11357e8","kind":"pat","task":"8","queued_at":1791830090,"prompt_bytes":21217}
+{"id":"2576d5a7","kind":"ivan","task":"9","queued_at":1791830140,"prompt_bytes":19803}
+{"id":"2576d5a7","ended_at":1791830169,"elapsed_s":29,"outcome":"ok","detail":null}
+{"id":"f7de0ee1","kind":"deslop","task":"9","queued_at":1791830184,"prompt_bytes":8812}
+{"id":"f7de0ee1","ended_at":1791830204,"elapsed_s":20,"outcome":"ok","detail":null}
+{"id":"34c3e668","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"9c14a456","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"c6f1aa81","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"7a2d93b1","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"d880770b","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"103f71c7","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"cedb60bb","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"21e83ab3","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"b11357e8","ended_at":1791830300,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1791830300,"phase":"review","prd":"00088-dot-host-links-materialize-v1.md"}

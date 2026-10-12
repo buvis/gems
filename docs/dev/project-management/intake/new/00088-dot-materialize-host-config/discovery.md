@@ -50,7 +50,12 @@ any machine nobody wired by hand.
   and for each manifest target the incoming commits delete, moves the local
   file to its source (only when the source is missing) before merging. Then
   materialize links it. Without this, untracking on host A deletes host B's
-  real file on pull.
+  real file on pull. If both the target and source exist, interactive CLI
+  and TUI callers offer collision-resolution choices, including cancel,
+  before changing either path or merging; apply only the user's selected
+  resolution, preserving user data under M3. Do not merge while any rescue
+  collision remains unresolved. Noninteractive callers report unresolved
+  collisions without prompting, changing either path, or merging.
 - **M10 hooksPath self-heal**: `DotGitService` init sets
   `core.hooksPath=~/.config/buvis/hooks` when unset (same pattern as the
   fetch refspec) and warns when the hooks dir or `pre-commit` is missing.
@@ -59,8 +64,10 @@ any machine nobody wired by hand.
   reported, not overwritten.
 - **M12 All-interface**: materialize, localize and link status are command
   classes returning `CommandResult`; hook, CLI and TUI call the same class.
-- **M13 Glean**: links settle in glean (add each source parent, or `~/.local`,
-  to glean `link_roots` in the glean config; no glean code change needed).
+- **M13 Glean**: symlinks settle in glean (add each source parent, or
+  `~/.local`, to glean `link_roots` in the glean config; no glean code change
+  needed). Windows directory junctions are an explicit exception: they may
+  remain glean candidates; junction settling is deferred.
 
 ### Nice to have
 
@@ -73,6 +80,7 @@ any machine nobody wired by hand.
 - Backing up the host-local sources (Kopia/Backblaze cover `~/.local`; verify,
   don't build).
 - Copy, hardlink or drift-sync fallbacks on Windows.
+- Glean code changes to settle Windows directory junctions.
 - Making raw `git pull` safe (git has no pre-pull hook); documented only.
 - Templating or merging host values into a shared file.
 - Pull divergence reporting (intake 00089).
@@ -137,10 +145,18 @@ any machine nobody wired by hand.
 - Two clones (host A, host B) in tests: A localizes a tracked file and pushes;
   B `dot pull` -> B's original bytes now at the source, target is a link to
   them.
+- Pull rescue with both target and source present and containing different
+  data -> CLI and TUI offer resolution choices before mutation or merge;
+  each supported resolution follows the user's selection and preserves
+  user data. Cancelling leaves both paths unchanged and does not merge.
+- The same unresolved collision in a noninteractive pull -> reported, no
+  prompt, both paths unchanged, no merge.
 - New clone via `dot setup` -> `core.hooksPath` set, links present; a
   `dot run checkout` fires post-checkout and relinks.
 - On this machine: `~/.config/gita/repos.csv` localized; glean reports no
   candidate for it.
+- Glean settling applies to symlinks under configured `link_roots`;
+  Windows directory junctions may remain candidates without failing M13.
 
 ## Risks
 
@@ -151,8 +167,8 @@ any machine nobody wired by hand.
   shape.
 - **`dot setup` into a non-empty `$HOME`**: checkout refuses on existing
   files; report the conflicting paths and stop, don't force.
-- **Windows junctions invisible to glean link settling**: accept for now or
-  file a glean change; flagged, not solved here.
+- **Windows junctions invisible to glean link settling**: accepted limitation
+  for this feature; M13 excludes them and glean support is deferred.
 - **Hook runs before dot is installed** (fresh machine, first checkout): hook
   warns and exits 0; `dot setup` runs materialize itself.
 
@@ -210,6 +226,17 @@ clone bare repo, checkout, set hooksPath, materialize.
 ### Q7: One PRD or several?
 **Answer**: 3 PRDs: A (manifest + materialize + hooks + status), B+C
 (localize + pull rescue together), D (self-heal + setup).
+
+### Review Q1: What if a pull-rescue source already exists?
+**Answer**: Offer collision-resolution choices to the user instead of simply
+stopping. Interactive callers wait for a selection before changing either
+path or merging; cancellation and noninteractive unresolved collisions
+leave both paths unchanged and do not merge. Preserve user data under M3.
+
+### Review Q2: Must glean settle Windows junctions in this feature?
+**Answer**: No. Document the exception: M13 guarantees config-only settling
+for symlinks; Windows junctions may remain candidates. Defer junction
+settling without removing the junction fallback or adding glean code work.
 
 ### Inferred (not asked)
 - R6 gate: already enforced by glean `check-staged` built-ins; no work here.
