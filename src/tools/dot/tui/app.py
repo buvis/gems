@@ -76,9 +76,12 @@ class DotApp(App[None]):
         self._git_ops = DotGitService(shell, dotfiles_root)
         self.theme = theme
         self._confirm_revert = confirm_revert
+        self._dotfiles_root = dotfiles_root
 
     def on_mount(self) -> None:
-        self.push_screen(MainScreen(self._git_ops, confirm_revert=self._confirm_revert))
+        self.push_screen(
+            MainScreen(self._git_ops, confirm_revert=self._confirm_revert, dotfiles_root=self._dotfiles_root),
+        )
 
     async def action_quit(self) -> None:
         uncommitted = self._git_ops.has_uncommitted_changes()

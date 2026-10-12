@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped. New `dot materialize [--hook]` makes each target a link to its host-local source (a junction for directories on Windows); real files, wrong links, dangling links and missing sources are reported, never deleted or overwritten. Outside `--hook` it also installs missing `post-checkout`, `post-merge` and `post-rewrite` hooks into git `core.hooksPath` so links refresh after git operations; existing hook files are never changed. `dot status` lists link problems.
+- **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped. New `dot materialize [--hook]` makes each target a link to its host-local source (a junction for directories on Windows); real files, wrong links, dangling links and missing sources are reported, never deleted or overwritten. Outside `--hook` it also installs missing `post-checkout`, `post-merge` and `post-rewrite` hooks into git `core.hooksPath` so links refresh after git operations; existing hook files are never changed. `dot status` lists link problems; the TUI status bar shows their count and `L` relinks.
 
 ### Fixed
 

@@ -7,6 +7,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Footer
 
+from dot.commands.links.links import CommandLinkStatus
+from dot.commands.materialize.materialize import CommandMaterialize
 from dot.tui.patch import build_hunk_patch, build_line_patch, build_partial_revert_patch
 from dot.tui.widgets import (
     CommitModal,
@@ -98,13 +100,21 @@ class MainScreen(Screen[None]):
         Binding("S", "secrets", "Secrets", show=True),
         Binding("e", "encrypt", "Encrypt", show=True),
         Binding("enter", "stage_hunk", "Stage hunk", show=False),
+        Binding("L", "materialize", "Links", show=True),
     ]
 
     _FOCUS_ORDER = ["unstaged", "staged", "diff"]
 
-    def __init__(self, git_ops: DotGitService, *, confirm_revert: bool = True) -> None:
+    def __init__(
+        self,
+        git_ops: DotGitService,
+        *,
+        confirm_revert: bool = True,
+        dotfiles_root: str | None = None,
+    ) -> None:
         super().__init__()
         self._git_ops = git_ops
+        self._dotfiles_root = dotfiles_root
         self._current_diff_path: str = ""
         self._current_diff_staged: bool = False
         self._confirm_revert = confirm_revert
@@ -157,7 +167,19 @@ class MainScreen(Screen[None]):
 
         self.query_one("#unstaged", FileListWidget).update_files(unstaged)
         self.query_one("#staged", FileListWidget).update_files(staged)
-        self.query_one("#status-bar", StatusBar).update_info(self._git_ops.branch_info(), error=hide_error)
+        link_problems = len(CommandLinkStatus(self._dotfiles_root).execute().warnings) if self._dotfiles_root else 0
+        self.query_one("#status-bar", StatusBar).update_info(
+            self._git_ops.branch_info(),
+            error=hide_error,
+            link_problems=link_problems,
+        )
+
+    def action_materialize(self) -> None:
+        if self._dotfiles_root is None:
+            return
+        result = CommandMaterialize(self._git_ops.shell, self._dotfiles_root, git_service=self._git_ops).execute()
+        self._show_message("\n".join([*result.info, *result.warnings]) or "Host links current")
+        self.refresh_status()
 
     def action_focus_next_pane(self) -> None:
         focused = self.focused

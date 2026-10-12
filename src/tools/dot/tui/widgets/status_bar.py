@@ -21,10 +21,12 @@ class StatusBar(Static):
         super().__init__(name=name, id=id, classes=classes)
         self._info: BranchInfo | None = None
         self._error: str | None = None
+        self._link_problems: int = 0
 
-    def update_info(self, info: BranchInfo, error: str | None = None) -> None:
+    def update_info(self, info: BranchInfo, error: str | None = None, link_problems: int = 0) -> None:
         self._info = info
         self._error = error
+        self._link_problems = link_problems
         self.update(self._render_info())
 
     def _render_info(self) -> Text:
@@ -44,6 +46,9 @@ class StatusBar(Static):
 
         if self._info.secret_count > 0:
             output.append(f"  \U0001f512{self._info.secret_count} secrets", style="magenta")
+
+        if self._link_problems > 0:
+            output.append(f"  {self._link_problems} link problem(s)", style="bold yellow")
 
         if self._error:
             output.append(f"  {self._error}", style="bold red")
