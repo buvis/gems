@@ -243,3 +243,80 @@ class TestCommandStatusExecute:
         shell.exe.assert_not_called()
         shell.interact.assert_not_called()
         shell.alias.assert_not_called()
+
+
+def _write_manifest(root, *lines: str) -> None:
+    manifest = root / ".config" / "buvis" / "host-links"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text("\n".join(lines) + "\n")
+
+
+class TestCommandStatusHostLinks:
+    @staticmethod
+    def _clean_service(mock_service_cls) -> MagicMock:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
+        return mock_service
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_warns_when_host_file_is_missing(self, mock_service_cls, dotfiles_root) -> None:
+        self._clean_service(mock_service_cls)
+        _write_manifest(dotfiles_root, ".gitconfig => hosts/laptop/gitconfig")
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.success
+        assert ".gitconfig: no host file at hosts/laptop/gitconfig" in result.warnings
+        assert result.output != "No modifications found"
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_warns_when_link_missing_and_creates_nothing(self, mock_service_cls, dotfiles_root) -> None:
+        self._clean_service(mock_service_cls)
+        source = dotfiles_root / "hosts" / "laptop" / "gitconfig"
+        source.parent.mkdir(parents=True)
+        source.write_text("[user]\n")
+        _write_manifest(dotfiles_root, ".gitconfig => hosts/laptop/gitconfig")
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert ".gitconfig: link missing; run 'dot materialize'" in result.warnings
+        assert not (dotfiles_root / ".gitconfig").exists()
+        assert not (dotfiles_root / ".gitconfig").is_symlink()
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_link_warnings_come_after_git_warnings(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = self._clean_service(mock_service_cls)
+        mock_service.status.return_value = ([FileEntry(path=".bashrc", status=" M")], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main", ahead=2)
+        _write_manifest(dotfiles_root, ".gitconfig => hosts/laptop/gitconfig")
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.warnings == [
+            "unstaged: .bashrc modified",
+            "2 commit(s) not pushed",
+            ".gitconfig: no host file at hosts/laptop/gitconfig",
+        ]
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_reports_no_modifications_without_manifest(self, mock_service_cls, dotfiles_root) -> None:
+        self._clean_service(mock_service_cls)
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.success
+        assert result.output == "No modifications found"
+        assert result.warnings == []
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_secret_hide_failure_returns_without_link_warnings(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], "secret error")
+        _write_manifest(dotfiles_root, ".gitconfig => hosts/laptop/gitconfig")
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert not result.success
+        assert result.error == "Error hiding secrets: secret error"
+        assert result.warnings == []
