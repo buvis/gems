@@ -53,6 +53,17 @@ def status() -> None:
     )
 
 
+@cli.command("materialize", help="Link host-specific config listed in host-links")
+@click.option("--hook", is_flag=True, help="Run from a git hook: skip hook install and git calls")
+def materialize(hook: bool) -> None:
+    from dot.commands.materialize.materialize import CommandMaterialize
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(
+        CommandMaterialize(shell=shell, dotfiles_root=_dotfiles_root(), install_hooks=not hook).execute()
+    )
+
+
 @cli.command("add", help="Add changes")
 @click.argument("file_path", required=False)
 @click.pass_context
