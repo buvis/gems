@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-12
+
 ### Added
 
 - **sysup**: upgrade uv-managed pythons and move mise pipx tools pinned with `--managed-python --python X.Y` onto the global mise python minor, reverting any tool that fails to install on it.
@@ -533,7 +535,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.13.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.14.0...HEAD
+[0.14.0]: https://github.com/buvis/gems/compare/gems-v0.13.0...gems-v0.14.0
 [0.13.0]: https://github.com/buvis/gems/compare/gems-v0.12.6...gems-v0.13.0
 [0.12.6]: https://github.com/buvis/gems/compare/gems-v0.12.5...gems-v0.12.6
 [0.12.5]: https://github.com/buvis/gems/compare/gems-v0.12.4...gems-v0.12.5
