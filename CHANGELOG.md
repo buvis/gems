@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped. Each target becomes a link to its host-local source (a junction for directories on Windows); real files, wrong links, dangling links and missing sources are reported, never deleted or overwritten.
+- **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped. Each target becomes a link to its host-local source (a junction for directories on Windows); real files, wrong links, dangling links and missing sources are reported, never deleted or overwritten. Missing `post-checkout`, `post-merge` and `post-rewrite` hooks that relink after git operations can be installed; existing hook files are never changed.
 
 ### Fixed
 
