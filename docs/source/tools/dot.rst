@@ -243,3 +243,33 @@ With ``--hook``, dot makes no git calls and always exits 0.
 On Windows, directories become junctions. File links need symlink rights, so
 enable Developer Mode. Otherwise dot reports ``symlink refused; enable
 Developer Mode``. The hooks need ``python3`` on ``PATH``.
+
+First setup
+~~~~~~~~~~~
+
+Turn on the hooks once per host. Dot only installs them when
+``core.hooksPath`` is set, and stays silent when it is not:
+
+.. code-block:: bash
+
+    git --git-dir=$HOME/.buvis config core.hooksPath ~/.buvis/hooks
+
+To make a file that the dotfiles repo already tracks host-specific, untrack it
+first. Otherwise ``dot materialize`` reports ``exists and is not a link;
+skipped``:
+
+.. code-block:: bash
+
+    git --git-dir=$HOME/.buvis --work-tree=$HOME rm --cached .config/gita/repos.csv
+    mv ~/.config/gita/repos.csv ~/.config/gita/repos.csv.host
+    echo ".config/gita/repos.csv => .config/gita/repos.csv.host" >> ~/.config/buvis/host-links
+    dot materialize
+    dot status
+
+Commit the removal and the manifest together.
+
+.. warning::
+
+   Pulling that commit on another host deletes the file there, because git
+   removes files that a pull untracks. On each other host, copy the file to its
+   ``.host`` name before you pull, then run ``dot materialize``.
