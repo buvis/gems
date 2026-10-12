@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **pybase**: config merge no longer mutates an earlier layer's nested dict when a later layer overrides the same key.
+
 ## [0.14.0] - 2026-10-12
 
 ### Added
