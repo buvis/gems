@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped.
+- **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped. Each target becomes a link to its host-local source (a junction for directories on Windows); real files, wrong links, dangling links and missing sources are reported, never deleted or overwritten.
 
 ### Fixed
 
