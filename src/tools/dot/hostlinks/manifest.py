@@ -8,13 +8,9 @@ maps installed target paths to host-specific source paths, one
 from __future__ import annotations
 
 import dataclasses
-import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 MANIFEST_PATH = ".config/buvis/host-links"
-
-_DRIVE_PREFIX = re.compile(r"^[A-Za-z]:")
-_PATH_SEPARATORS = re.compile(r"[\\/]")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -26,11 +22,18 @@ class HostLink:
 
 
 def _is_absolute(path: str) -> bool:
-    return path.startswith(("/", "~", "\\")) or _DRIVE_PREFIX.match(path) is not None
+    windows = PureWindowsPath(path)
+    return (
+        PurePosixPath(path).is_absolute()
+        or windows.is_absolute()
+        or windows.drive != ""
+        or windows.root != ""
+        or path.startswith("~")
+    )
 
 
 def _has_dotdot(path: str) -> bool:
-    return ".." in _PATH_SEPARATORS.split(path)
+    return ".." in PurePosixPath(path).parts or ".." in PureWindowsPath(path).parts
 
 
 def _validate_path(path: str) -> str | None:
