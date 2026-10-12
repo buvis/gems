@@ -16,6 +16,9 @@ Current examples:
 - `~/.config/buvis/buvis-postup.yaml` (postup reads its config here)
 - `~/.config/buvis/buvis-bim.yaml`
 - `~/.config/klyreon/`
+- `~/.config/gita/repos.csv` (repo list differs per machine, but the
+  path belongs in the public dotfiles repo): the host's file moves to
+  `~/.local/.config/gita/repos.csv`, linked back to `~/.config/gita/repos.csv`
 - `~/.local/bin/<script>` bound to one external volume
 
 ## Idea (from the user)

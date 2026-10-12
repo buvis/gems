@@ -13,3 +13,7 @@
   under `~/.local`, with a hook materializing links into the expected
   locations. Example: postup reads `~/.config/buvis/buvis-postup.yaml`,
   and the real file lives under `~/.local/.config/buvis/`.
+- **Another example?** `~/.config/gita/repos.csv`: host-specific, wanted in
+  the public dotfiles repo. The machine's copy must move to
+  `~/.local/.config/gita/repos.csv` with a link at `~/.config/gita/repos.csv`.
+  This leans toward dot doing the move (the `dot localize` open question).
