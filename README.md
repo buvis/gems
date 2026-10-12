@@ -92,7 +92,7 @@ All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netsc
 |------|---------|
 | backup | Config-driven tar archiver (git-src backup) |
 | bim | BUVIS InfoMesh (zettel integration) |
-| dot | Dotfiles manager |
+| dot | Dotfiles manager, with host-specific config links via a `host-links` manifest |
 | fctracker | Foreign currency account tracker |
 | fren | File renamer toolkit |
 | morph | File conversion toolkit |
