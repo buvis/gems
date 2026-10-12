@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from buvis.pybase.updater import check_and_update
 from buvis.pybase.updater.detector import InstallerInfo
+from buvis.pybase.updater.executor import REEXEC_ENV
 
 
 def _make_settings(auto_update: bool = True, installer: str | None = None) -> MagicMock:
@@ -30,6 +32,17 @@ class TestGuards:
 
         with (
             patch.dict("os.environ", {"BUVIS_DEV_MODE": "1"}),
+            patch("buvis.pybase.updater.check_for_update") as mock_check,
+        ):
+            check_and_update(settings)
+
+        mock_check.assert_not_called()
+
+    def test_skips_in_process_restarted_by_update(self) -> None:
+        settings = _make_settings()
+
+        with (
+            patch.dict("os.environ", {REEXEC_ENV: "1"}),
             patch("buvis.pybase.updater.check_for_update") as mock_check,
         ):
             check_and_update(settings)
@@ -93,6 +106,29 @@ class TestUpdateAvailable:
             check_and_update(settings)
 
         mock_detect.assert_called_once_with(override=None)
+
+
+class TestInstallerExitsZeroWithoutInstalling:
+    def test_restarted_process_does_not_update_again(self, tmp_path: Path) -> None:
+        """mise hides releases younger than minimum_release_age and exits 0: no re-exec loop."""
+        settings = _make_settings()
+        installer_info = InstallerInfo(method="mise-pipx", upgrade_command=("mise", "upgrade", "pipx:buvis-gems"))
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("buvis.pybase.updater.check_for_update", return_value="0.14.0"),
+            patch("buvis.pybase.updater.detect_installer", return_value=installer_info),
+            patch("buvis.pybase.updater.pkg_version", return_value="0.13.0"),
+            patch("buvis.pybase.updater.executor.DEFAULT_STATE_DIR", tmp_path),
+            patch("buvis.pybase.updater.executor.subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
+            patch("buvis.pybase.updater.executor._resolve_reexec_argv", return_value=["dot", "status"]),
+            patch("buvis.pybase.updater.executor.os.execvp") as mock_execvp,
+        ):
+            check_and_update(settings)  # first process: upgrades, re-execs
+            check_and_update(settings)  # restarted process inherits the environment
+
+        mock_run.assert_called_once()
+        mock_execvp.assert_called_once()
 
 
 class TestPackageNotFound:
