@@ -1,6 +1,6 @@
 # sysup: track credential expiry and guide refreshes without losing the warning
 
-Status: intake, not yet specced. Recorded 2026-10-12.
+Status: processed, specced as PRD 00092 (attention layer) and PRD 00096 (expiry registry and guided refresh). Recorded 2026-10-12.
 
 ## Problem
 
