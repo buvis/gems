@@ -1,7 +1,7 @@
 ---
 design: skip
 default_model: sonnet
-model_tier_rationale: no escalator row holds; regexes, commands and the back-off predicate are given verbatim; the --version recursion trap is named in the task text
+model_tier_rationale: no escalator row holds; regexes, commands, separate cache schema and the back-off predicate are fixed here; the --version recursion trap is named in the task text
 ---
 
 # Updater checks the installer's index
@@ -23,6 +23,7 @@ Anyone running a buvis-gems CLI (`dot`, `bim`, `sysup`, ...) through an installe
 - With an installer index that lags PyPI, a CLI run starts no installer subprocess and no restart: `test_mirror_lagging_pypi_does_not_attempt_upgrade` passes.
 - An installer that exits 0 without changing the installed version is attempted at most once per target version per 24h: `test_noop_installer_second_invocation_skips_upgrade` passes.
 - `--update` never reports success when the installed version did not change: `test_interactive_noop_upgrade_returns_one` passes.
+- Informational PyPI data cannot drive a passive installer check: `test_installer_check_ignores_legacy_pypi_cache` and `test_lag_report_then_passive_check_does_not_upgrade` pass, with both paths sharing one state directory.
 - The regression test from 0.14.1 keeps passing: `test_restarted_process_does_not_update_again`.
 
 ## Functional Decomposition
@@ -45,10 +46,11 @@ Ask the installer's own index which version it would install, instead of asking 
 
 #### Feature: Checker uses the lookup
 
-- **Description**: `check_for_update` takes the version source as a parameter so the cache holds the installable version.
-- **Inputs**: a zero-argument `fetch` callable, default `_query_pypi`.
+- **Description**: `check_for_update` takes the version source and installer method, keeping installer results separate from informational PyPI data.
+- **Inputs**: optional zero-argument `fetch` callable; `None` resolves `_query_pypi` at call time. Keyword-only `installer_method: str | None = None`; installer-aware callers pass both the installer lookup and `installer.method`.
 - **Outputs**: unchanged contract (newer version or `None`).
-- **Behavior**: `src/lib/buvis/pybase/updater/checker.py:42-78` (`check_for_update`) calls `fetch()` where it calls `_query_pypi()` today. `fetch_latest_version` (`src/lib/buvis/pybase/updater/checker.py:81-101`) stays PyPI-only and stays the source for the `--update` message about PyPI.
+- **Behavior**: `src/lib/buvis/pybase/updater/checker.py:42-78` (`check_for_update`) calls the selected fetcher on a cache miss. Without `installer_method`, existing callers use the existing top-level PyPI cache. With a method, read/write only `installer_cache` in `updater.json`: `{"method": "<installer.method>", "last_check": "<iso utc>", "latest_version": "<lookup result>"}`. This single record is fresh only for the matching method and the existing `interval_hours` rule (default 6h); absent/malformed records or a different method are misses. Legacy top-level `last_check` / `latest_version` never satisfy an installer-aware check. A successful lookup caches its version even when it is not newer; `None` writes nothing.
+  `fetch_latest_version` (`src/lib/buvis/pybase/updater/checker.py:81-101`) stays PyPI-only, using the existing top-level fields for the informational `--update` message. It never writes `installer_cache`. Both writers preserve each other's fields, the log and the back-off record, through the existing atomic state writer.
 
 ### Capability: Verified upgrade and back-off
 
@@ -71,9 +73,9 @@ Never claim an upgrade that did not happen; never retry one that just failed.
 #### Feature: Honest `--update`
 
 - **Description**: The user-initiated path reports installer lag instead of success.
-- **Inputs**: output of the lookup and of `fetch_latest_version`.
+- **Inputs**: output of the lookup and of `fetch_latest_version`; both use the same state directory.
 - **Outputs**: exit code and console message.
-- **Behavior**: `force_update` (`src/lib/buvis/pybase/updater/__init__.py:64-107`) compares `current` to the installable version. If the installable version is not newer but PyPI's is, print `console.success("buvis-gems {current} is the newest your installer offers (PyPI has {pypi}).")` and return 0. After `run_update_interactive` returns 0, verify as above; if unchanged, `console.failure("Installer reported success but buvis-gems is still {current}; its index may not offer {latest} yet.")`, log `error`, return 1. No back-off is written on this path.
+- **Behavior**: `force_update` (`src/lib/buvis/pybase/updater/__init__.py:64-107`) fetches the installable version unconditionally, writes a non-`None` result to `installer_cache` with the detected method, then compares `current` to it. The informational PyPI fetch cannot replace that record. If the installable version is not newer but PyPI's is, print `console.success("buvis-gems {current} is the newest your installer offers (PyPI has {pypi}).")` and return 0. After `run_update_interactive` returns 0, verify as above; if unchanged, `console.failure("Installer reported success but buvis-gems is still {current}; its index may not offer {latest} yet.")`, log `error`, return 1. No back-off is written on this path.
 
 ## Structural Decomposition
 
@@ -82,13 +84,14 @@ Never claim an upgrade that did not happen; never retry one that just failed.
 ```
 src/lib/buvis/pybase/updater/
 ├── index.py        # Maps to: Installable version lookup
-├── state.py        # Maps to: Back-off record
+├── state.py        # Maps to: Back-off record, Checker uses the lookup
 ├── checker.py      # Maps to: Checker uses the lookup
 ├── executor.py     # Maps to: Post-upgrade verification
 └── __init__.py     # Maps to: Back-off record, Honest --update
 tests/lib/pybase/updater/
 ├── test_index.py   # new
 ├── test_state.py
+├── test_checker.py
 ├── test_executor.py
 ├── test_init.py
 └── test_force_update.py
@@ -104,14 +107,16 @@ tests/lib/pybase/updater/
 
 ### Module: state
 
-- **Maps to capability**: Verified upgrade and back-off
-- **Responsibility**: Persist and read the `upgrade_failed` key without disturbing `last_check`, `latest_version`, `log`.
+- **Maps to capability**: Installer-aware version lookup, Verified upgrade and back-off
+- **Responsibility**: Persist/read `installer_cache` and `upgrade_failed` without disturbing each other or the PyPI `last_check`, `latest_version`, and `log` fields. Existing PyPI cache helpers retain their contract. New helpers use the existing atomic state writer and its nonfatal I/O behavior.
 - **Exports**:
+  - `read_installer_cache(state_dir, method)` - `(last_check, latest_version)` or `(None, None)` for an absent/malformed record or method mismatch; timestamp parsing follows `read_cache`
+  - `write_installer_cache(state_dir, method, latest_version)` - sets only `installer_cache`, using the current UTC timestamp
   - `read_upgrade_failure(state_dir)` - `(version, ts)` or `None`
   - `write_upgrade_failure(state_dir, version)` - sets the key
   - `clear_upgrade_failure(state_dir)` - removes the key
   - `UPGRADE_BACKOFF` - `timedelta(hours=24)`
-- New symbols: `read_upgrade_failure`, `write_upgrade_failure`, `clear_upgrade_failure`, `UPGRADE_BACKOFF`, `upgrade_failed`
+- New symbols: `read_installer_cache`, `write_installer_cache`, `installer_cache`, `read_upgrade_failure`, `write_upgrade_failure`, `clear_upgrade_failure`, `UPGRADE_BACKOFF`, `upgrade_failed`
 
 ### Module: executor
 
@@ -127,8 +132,9 @@ tests/lib/pybase/updater/
 - **Maps to capability**: Installer-aware version lookup, Verified upgrade and back-off
 - **Responsibility**: Wire the lookup and the back-off into `check_and_update` and `force_update`.
 - **Exports**:
-  - `check_for_update(state_dir, interval_hours, fetch)` - new `fetch` parameter
-  - `check_and_update(settings)` - detects the installer before the check, honors the back-off
+  - `check_for_update(state_dir=None, interval_hours=6, fetch=None, *, installer_method=None)` - optional fetcher plus cache source; default behavior remains PyPI-only
+  - `check_and_update(settings)` - detects the installer before the check, passes both lookup and method, honors the back-off
+- New symbols: `installer_method`
 
 ### Module: tests
 
@@ -136,19 +142,19 @@ tests/lib/pybase/updater/
 - **Responsibility**: One named regression test per behavior above.
 - **Exports**:
   - the tests named in the phase Acceptance lines below
-- New symbols: `test_mirror_lagging_pypi_does_not_attempt_upgrade`, `test_noop_installer_second_invocation_skips_upgrade`, `test_interactive_noop_upgrade_returns_one`, `test_upgrade_failure_roundtrip_preserves_cache_and_log`, `test_clear_upgrade_failure_removes_key`, `test_mise_pipx_uses_mise_latest`, `test_pip_venv_parses_pip_index_versions`, `test_uv_uses_pip_compile_no_deps`, `test_pipx_and_unknown_fall_back_to_pypi`, `test_query_failure_falls_back_to_pypi`, `test_noop_upgrade_records_failure_and_skips_reexec`, `test_verification_child_inherits_reexec_guard`, `test_unverifiable_upgrade_still_reexecs`, `test_fetch_parameter_replaces_pypi_query`, `test_backed_off_version_skips_upgrade`, `test_backoff_expires_after_24h`, `test_newer_version_than_failed_retries`, `test_reports_installer_index_lag_when_pypi_is_newer`
+- New symbols: `test_mirror_lagging_pypi_does_not_attempt_upgrade`, `test_noop_installer_second_invocation_skips_upgrade`, `test_interactive_noop_upgrade_returns_one`, `test_upgrade_failure_roundtrip_preserves_cache_and_log`, `test_clear_upgrade_failure_removes_key`, `test_mise_pipx_uses_mise_latest`, `test_pip_venv_parses_pip_index_versions`, `test_uv_uses_pip_compile_no_deps`, `test_pipx_and_unknown_fall_back_to_pypi`, `test_query_failure_falls_back_to_pypi`, `test_noop_upgrade_records_failure_and_skips_reexec`, `test_verification_child_inherits_reexec_guard`, `test_unverifiable_upgrade_still_reexecs`, `test_fetch_parameter_replaces_pypi_query`, `test_backed_off_version_skips_upgrade`, `test_backoff_expires_after_24h`, `test_newer_version_than_failed_retries`, `test_reports_installer_index_lag_when_pypi_is_newer`, `test_installer_cache_preserves_pypi_cache_log_and_backoff`, `test_installer_cache_missing_malformed_or_method_mismatch_is_miss`, `test_installer_check_ignores_legacy_pypi_cache`, `test_lag_report_then_passive_check_does_not_upgrade`
 
 ## Dependency Graph
 
 ### Foundation Layer (Phase 0)
 No dependencies - built first.
 
-- **state**: back-off read/write/clear
+- **state**: separate installer cache and back-off read/write/clear
 - **index**: installable version lookup
 
 ### Core Layer (Phase 1)
 - **executor**: Depends on [state]
-- **checker**: Depends on [index]
+- **checker**: Depends on [index, state]
 
 ### Integration Layer (Phase 2)
 - **init**: Depends on [executor, checker, state, index]
@@ -159,7 +165,7 @@ No dependencies - built first.
 **Goal**: The two leaf modules exist and are tested alone.
 
 **Tasks**:
-- [ ] Add `read_upgrade_failure`, `write_upgrade_failure`, `clear_upgrade_failure`, `UPGRADE_BACKOFF` to `state.py` (no deps) - Acceptance: `pytest tests/lib/pybase/updater/test_state.py -k "upgrade_failure"` passes, including `test_upgrade_failure_roundtrip_preserves_cache_and_log` and `test_clear_upgrade_failure_removes_key`.
+- [ ] Add `read_installer_cache`, `write_installer_cache`, `read_upgrade_failure`, `write_upgrade_failure`, `clear_upgrade_failure`, `UPGRADE_BACKOFF` to `state.py` (no deps) - Acceptance: `pytest tests/lib/pybase/updater/test_state.py` passes, including `test_upgrade_failure_roundtrip_preserves_cache_and_log`, `test_clear_upgrade_failure_removes_key`, `test_installer_cache_preserves_pypi_cache_log_and_backoff` (write both cache sources in both orders, retaining their distinct versions and existing log/back-off), and `test_installer_cache_missing_malformed_or_method_mismatch_is_miss`.
 - [ ] Add `index.py` with `fetch_installable_version` (no deps) - Acceptance: `pytest tests/lib/pybase/updater/test_index.py` passes: `test_mise_pipx_uses_mise_latest`, `test_pip_venv_parses_pip_index_versions`, `test_uv_uses_pip_compile_no_deps`, `test_pipx_and_unknown_fall_back_to_pypi`, `test_query_failure_falls_back_to_pypi`. Subprocess is mocked; no network.
 
 **Exit Criteria**: both test files pass; `mypy src/lib/buvis/pybase/updater` is clean.
@@ -169,7 +175,7 @@ No dependencies - built first.
 
 **Tasks**:
 - [ ] Add `read_installed_version` and verification plus back-off write to `run_update`, verification to `run_update_interactive` in `executor.py` (depends on: Phase 0) - Acceptance: `pytest tests/lib/pybase/updater/test_executor.py` passes, including new `test_noop_upgrade_records_failure_and_skips_reexec`, `test_verification_child_inherits_reexec_guard`, `test_unverifiable_upgrade_still_reexecs`, `test_interactive_noop_upgrade_returns_one`, and the existing `test_nothing_printed_to_stderr` unchanged. Premise: the existing executor tests mock `subprocess.run` with `returncode=0` only; re-check with `rg -c "def test_" tests/lib/pybase/updater/test_executor.py` (expect 20) before editing, and if the count differs stop and report; update those mocks only as far as the new `--version` call requires.
-- [ ] Add the `fetch` parameter to `check_for_update` (depends on: Phase 0) - Acceptance: `pytest tests/lib/pybase/updater/test_checker.py` passes with no test changed, plus new `test_fetch_parameter_replaces_pypi_query`.
+- [ ] Add `fetch` and keyword-only `installer_method` to `check_for_update`, selecting the separate cache before the freshness check (depends on: Phase 0) - Acceptance: `pytest tests/lib/pybase/updater/test_checker.py` passes with no existing test changed, plus `test_fetch_parameter_replaces_pypi_query` and `test_installer_check_ignores_legacy_pypi_cache`: seed a fresh top-level PyPI 0.14.1 cache, installed 0.13.0, pass a mise lookup returning 0.13.0 and method `mise-pipx`; assert the lookup runs, no newer version is returned, and only the separate installer cache records 0.13.0.
 
 **Exit Criteria**: executor and checker tests pass.
 
@@ -177,8 +183,8 @@ No dependencies - built first.
 **Goal**: The orchestrator uses the installer's index and honors the back-off; `--update` is honest.
 
 **Tasks**:
-- [ ] Rewire `check_and_update` in `__init__.py`: detect installer first, pass `fetch`, skip on back-off (depends on: Phase 1) - Acceptance: `pytest tests/lib/pybase/updater/test_init.py` passes, including new `test_mirror_lagging_pypi_does_not_attempt_upgrade`, `test_backed_off_version_skips_upgrade`, `test_backoff_expires_after_24h`, `test_newer_version_than_failed_retries`, `test_noop_installer_second_invocation_skips_upgrade`, and the existing `test_restarted_process_does_not_update_again`.
-- [ ] Make `force_update` report installer lag and no-op upgrades (depends on: Phase 1) - Acceptance: `pytest tests/lib/pybase/updater/test_force_update.py` passes, including new `test_reports_installer_index_lag_when_pypi_is_newer`.
+- [ ] Rewire `check_and_update` in `__init__.py`: detect installer first, pass `fetch` and `installer_method`, skip on back-off (depends on: Phase 1) - Acceptance: `pytest tests/lib/pybase/updater/test_init.py` passes, including new `test_mirror_lagging_pypi_does_not_attempt_upgrade`, `test_backed_off_version_skips_upgrade`, `test_backoff_expires_after_24h`, `test_newer_version_than_failed_retries`, `test_noop_installer_second_invocation_skips_upgrade`, and the existing `test_restarted_process_does_not_update_again`.
+- [ ] Make `force_update` report installer lag and no-op upgrades (depends on: Phase 2 check_and_update task) - Acceptance: `pytest tests/lib/pybase/updater/test_force_update.py` passes, including new `test_reports_installer_index_lag_when_pypi_is_newer` and `test_lag_report_then_passive_check_does_not_upgrade`. The latter runs real `force_update` followed by real `check_and_update` against one temporary state directory, with installed and installer lookup versions 0.13.0, PyPI 0.14.1, external queries/installer/restart mocked: assert the lag message and exit 0, distinct persisted cache versions, and zero upgrade or restart calls across both invocations. Do not mock the cache helpers or the checker.
 - [ ] Add a `### Fixed` entry under `[Unreleased]` in `CHANGELOG.md` prefixed `**pybase**:` (depends on: Phase 1) - Acceptance: `rg -n "installer's index" CHANGELOG.md` matches under `[Unreleased]`.
 - [ ] Docs: the `--update` paragraph in `README.md` (line 42 today) says the check asks the installer's own index and reports when that index lags PyPI (depends on: Phase 1) - Acceptance: `rg -n "installer" README.md` matches within three lines of `--update`.
 
@@ -190,6 +196,7 @@ No dependencies - built first.
 
 - **Happy path**: installer index and PyPI agree on a newer version; the installer upgrades; verification reads the new version; the process restarts once; the back-off key is cleared.
 - **Edge case**: PyPI has 0.14.1, `mise latest` says 0.13.0, installed is 0.13.0 -> no subprocess upgrade, no restart, nothing printed (`test_mirror_lagging_pypi_does_not_attempt_upgrade`).
+- **Edge case**: `--update` reports installer lag and caches both sources -> the next passive check uses only the installer result, starts no upgrade and no restart; a legacy PyPI-only cache cannot bypass the installer lookup.
 - **Edge case**: installer lookup and PyPI both say 0.14.1 but the installer exits 0 without installing -> back-off written, no restart; a second invocation within 24h starts no installer (`test_noop_installer_second_invocation_skips_upgrade`); 0.14.2 appearing retries.
 - **Error case**: lookup subprocess times out or prints garbage -> falls back to PyPI, never raises, never blocks the user's command beyond the 10s timeout.
 - **Error case**: `--version` child cannot run -> behaves as before 0.14.1's guard: one restart, then the guard stops the loop.

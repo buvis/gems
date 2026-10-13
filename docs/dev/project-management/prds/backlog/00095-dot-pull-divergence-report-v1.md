@@ -28,7 +28,8 @@ The solo dotfiles owner who edits dotfiles in place on several hosts.
   `test_divergence.py`, `test_status.py`, `test_pull.py`, `test_tui_app.py` pass.
 - Two-host test: B edits `x` uncommitted, A changes `x` and pushes; B pulls ->
   `x` holds A's bytes; the patch carries B's pre-pull `HEAD` full ID and
-  `git apply` of it onto that commit rebuilds B's edit byte for byte.
+  `git apply` of it onto that commit rebuilds B's edit byte for byte, including
+  CRLF text with `core.autocrlf=false`.
 - No conflicting edit -> no patch file, pull output unchanged.
 
 ## Functional Decomposition
@@ -56,14 +57,21 @@ The solo dotfiles owner who edits dotfiles in place on several hosts.
 - **Inputs**: selected paths, dotfiles root.
 - **Outputs**: patch file at `<dotfiles_root>/.local/share/dot/divergence/<UTC %Y%m%dT%H%M%SZ>.patch`
   (`dotfiles_root` is `$HOME` in normal use, so this is `~/.local/share/dot/divergence/`).
-- **Behavior**: body = `cfg --literal-pathspecs diff --binary --full-index --no-renames HEAD -- <shlex-quoted paths>`
-  (HEAD vs worktree; with mixed states excluded this equals the staged or
-  unstaged change). Header lines before the body (git apply skips text before
-  the first `diff --git`): `# dot divergence patch`, `# base: <cfg rev-parse HEAD>`,
+- **Behavior**: capture the body as raw stdout bytes from
+  `git --git-dir=<root>/.buvis --work-tree=<root> --literal-pathspecs diff --binary --full-index --no-renames HEAD -- <selected paths>`,
+  using an argv list and `subprocess.run(cwd=self.wd, capture_output=True, text=False)`.
+  The working directory is the dotfiles root, matching the existing cfg calls.
+  Each selected path is a separate argument; no shell quoting or text decoding
+  of the body. This is HEAD vs worktree; with mixed states excluded it equals
+  the staged or unstaged change. Do not use `ShellAdapter.exe` for this capture:
+  its text mode translates CRLF. Other shell calls keep their existing contract.
+  Header lines before the body (git apply skips text before the first
+  `diff --git`): `# dot divergence patch`, `# base: <cfg rev-parse HEAD>`,
   `# upstream: <cfg rev-parse @{u}>`, `# host: <socket.gethostname()>`, blank line.
-  `mkdir(parents=True, exist_ok=True)`, then `atomic_write_text`. Target file
-  already exists, any `OSError`, a failing git command, or `UnicodeDecodeError`
-  from `shell.exe` (non-UTF-8 content) -> failure, nothing reset.
+  Encode the header as UTF-8 and append the unchanged body bytes.
+  `mkdir(parents=True, exist_ok=True)`, then `atomic_write_bytes`. Target file
+  already exists, any `OSError`, a failing git command, or failure reading
+  metadata -> failure, nothing reset.
 
 #### Feature: Reset and pull
 - **Description**: Reset saved paths, then run the existing pull sequence (M1, M5).
@@ -153,7 +161,7 @@ tests/tools/dot/
 - **dot.divergence**: no dependencies.
 
 ### Core Layer (Phase 1)
-- **dot.git.service pull**: depends on [dot.divergence, 00090 `fetch`/`has_upstream`, pybase `atomic_write_text`]
+- **dot.git.service pull**: depends on [dot.divergence, 00090 `fetch`/`has_upstream`, pybase `atomic_write_bytes`]
 
 ### Integration Layer (Phase 2)
 - **commands.pull, commands.status, tui**: depend on [dot.git.service pull, dot.divergence, 00090 `CommandPull` rescue flow]
@@ -180,9 +188,11 @@ tests/tools/dot/
   `rg -n "def fetch|def has_upstream" src/tools/dot/git/service.py` (expect 2
   hits). If absent, stop and report; do not implement them here.
   Acceptance: `uv run pytest tests/tools/dot/test_pull_divergence.py` passes
-  (mocked shell, exact command strings asserted): no upstream -> no diff
+  (mocked shell and binary subprocess, exact command strings/argv asserted): no upstream -> no diff
   commands, plain pull; nothing selected -> no patch, no restore, output
   unchanged; selected -> patch written before first `restore` (call order),
+  binary capture runs at the dotfiles root, and raw diff stdout reaches
+  `atomic_write_bytes` unchanged after the header;
   save list equals reset list; excluded path and path under an excluded dir
   skipped; mixed path -> failure naming it, zero `restore` calls; read-only
   divergence dir -> failure, zero `restore` calls; existing patch name ->
@@ -223,6 +233,9 @@ tests/tools/dot/
   Cases: (1) B dirty `x`, A changes `x` -> success, `x` == A's bytes, patch
   has `# base: <B pre-pull HEAD full ID>`, and `git apply` of it in a fresh
   clone checked out at that ID yields B's `x` bytes; binary `x` variant too.
+  Repeat with CRLF text (no NUL bytes), `core.autocrlf=false` on every test
+  repository, and byte reads/writes: applying the saved patch at the base ID
+  restores B's exact CRLF bytes, not LF-normalized content.
   (2) B also dirty `y` untouched upstream -> `y` unchanged, not in patch.
   (3) B unpushed commit on `y` + further dirty `y`, upstream changes only
   `x` -> `y` neither reset nor in patch, whatever the pull outcome.
@@ -245,6 +258,7 @@ tests/tools/dot/
 
 ### Critical Scenarios
 - **Happy path**: dirty `x` changed upstream -> patch saved, `x` upstream, patch rebuilds edit.
+- **Edge case**: CRLF text with `core.autocrlf=false` -> saved patch applies at its base ID and restores the exact pre-pull bytes.
 - **Edge case**: unpushed local commit on `y` -> `y` never selected (merge-base diff).
 - **Edge case**: rescued host-link target -> excluded, rescue bytes kept.
 - **Error case**: mixed staged/unstaged -> abort before any reset.
@@ -256,8 +270,9 @@ tests/tools/dot/
 - **Save misses a file the reset hits**: one `selected` list feeds both; tested by call-order and list-equality asserts.
 - **Fetch-to-pull window**: `cfg pull` re-fetches; a commit landing in that gap
   that touches another dirty file makes git abort as today, so no bytes are lost. Accepted (same as 00090).
-- **Non-UTF-8 text in a selected file**: `ShellAdapter.exe` decodes as text and
-  raises; caught, pull aborts before reset. User resolves by hand. Accepted.
+- **Patch bytes altered by text capture**: use binary subprocess stdout and
+  `atomic_write_bytes`; the CRLF real-git round trip catches newline translation.
+  Any capture or metadata failure aborts before reset.
 - **00090 ordering**: rescue moves run in `CommandPull` before `DotGitService.pull`,
   so a rescued target shows as a local deletion; `exclude` stops divergence from
   restoring `HEAD` bytes over it (case 5).
