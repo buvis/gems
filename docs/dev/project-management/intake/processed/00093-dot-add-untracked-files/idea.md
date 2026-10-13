@@ -1,6 +1,6 @@
 # dot: `dot add <new file>` must track untracked files instead of saying "No changes."
 
-Status: intake, not yet specced. Recorded 2026-10-12.
+Status: processed, specced as PRD 00093. Recorded 2026-10-12.
 
 ## Problem
 
