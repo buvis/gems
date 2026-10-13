@@ -1,6 +1,6 @@
 ---
 default_model: sonnet
-model_tier_rationale: every git command, message and return shape is fixed below and was measured on git 2.55 in a scratch bare repo on 2026-10-13; additive tests plus one rewritten test class whose collected count is pinned
+model_tier_rationale: every git command, message and return shape is fixed below and was measured on git 2.55 in a scratch bare repo on 2026-10-13; additive tests plus rewritten test classes whose counts are pinned as premises
 ---
 
 # dot add: track untracked files, literal quoted paths, loud outcome
@@ -25,6 +25,7 @@ The solo dotfiles owner running `dot add` from any directory of the work tree.
 - `uv run pytest tests/tools/dot/test_add.py tests/tools/dot/test_add_integration.py -q` passes with no test skipped on a machine with git on PATH under default pytest capture.
 - Integration: from `<root>/.config/gh-agent`, `CommandAdd` with `config.yml` stages `.config/gh-agent/config.yml` (asserted through `git diff --cached --name-only`); an ignored file fails with the ignore rule in the error; a path outside the work tree fails without staging; untracked `file[1].txt` beside a modified tracked `file1.txt` stages only `file[1].txt`; a symlink to a directory is staged as a `120000` link entry.
 - `rg -n "non-zero exit status" src/tools/dot` prints nothing.
+- `dot add` on a path that exists neither relative to the cwd nor under the dotfiles root fails with `Path <x> doesn't exist` and runs no git command (`test_nonexistent_path_fails_without_calling_the_service`).
 
 ## Functional Decomposition
 
@@ -68,15 +69,15 @@ Stage the named path the way its state demands and report what is staged afterwa
 `CommandAdd` turns the user's argument into a path git can locate from the dotfiles root.
 
 #### Feature: Resolve the argument from any cwd
-- **Description**: A path that exists relative to the current directory becomes absolute; otherwise the dotfiles-root-relative reading is tried; otherwise today's warning and whole-tree fallback stay.
+- **Description**: A path that exists relative to the current directory becomes absolute; otherwise the dotfiles-root-relative reading is tried; otherwise the command fails instead of falling through to the whole tree.
 - **Inputs**: `file_path` string, `dotfiles_root` string.
-- **Outputs**: `self.file_path` as `Path(os.path.abspath(file_path))`, or `Path(dotfiles_root) / file_path`, or `None` plus the existing warning `Path {file_path} doesn't exist. Proceeding with cherry picking all.`
-- **Behavior**: existence is tested with `os.path.lexists()` (both branches) so a dangling symlink is a path, not a missing file; `os.path.abspath()` prepends the cwd and collapses `..` without resolving symlinks, so a named link stays the link. Precedence (cwd first, then root) is unchanged. The missing-path fallback is out of scope (discovery Open Questions).
+- **Outputs**: `self.file_path` as `Path(os.path.abspath(file_path))`, or `Path(dotfiles_root) / file_path`, or `None` with `self.missing_path = file_path`; `execute()` then returns `CommandResult(success=False, error=f"Path {self.missing_path} doesn't exist")` without calling the service.
+- **Behavior**: existence is tested with `os.path.lexists()` (both branches) so a dangling symlink is a path, not a missing file; `os.path.abspath()` prepends the cwd and collapses `..` without resolving symlinks, so a named link stays the link. Precedence (cwd first, then root) is unchanged. Decided 2026-10-13 at create-prd (discovery Open Questions): a named path that exists nowhere is an error, never a whole-tree `add -p`; this also applies to a configured `add_file_path` that is absent on the host. The `warnings` attribute of `CommandAdd` is removed, since nothing writes it any more.
 
 #### Feature: Pass the service result through
-- **Description**: `CommandAdd.execute` returns the service's `CommandResult` with its own warnings first.
+- **Description**: `CommandAdd.execute` returns the service's `CommandResult` unchanged.
 - **Inputs**: `stage_interactive` return value.
-- **Outputs**: `dataclasses.replace(result, warnings=[*self.warnings, *result.warnings])`.
+- **Outputs**: that same `CommandResult` object.
 - **Behavior**: `cli.py` already renders through `console.report_result` (`src/tools/dot/cli.py:67-80`); no CLI change. The TUI stages through `DotGitService.stage` (`src/tools/dot/git/service.py:88`) and never calls `stage_interactive`.
 
 ## Structural Decomposition
@@ -89,7 +90,7 @@ src/tools/dot/
 └── commands/add/add.py            # Maps to: Path resolution
 tests/tools/dot/
 ├── test_git_service.py            # TestDotGitServiceStageInteractive rewritten against real git output shapes
-├── test_add.py                    # cwd-relative, symlink and pass-through tests
+├── test_add.py                    # cwd-relative, symlink, missing-path and pass-through tests
 └── test_add_integration.py        # NEW: CommandAdd through the real ShellAdapter against a bare repo
 docs/source/tools/dot.rst          # dot add section
 CHANGELOG.md                       # Fixed entry
@@ -160,24 +161,27 @@ def _literal(path: str) -> str:
 
 ### Module: dot.commands.add
 - **Maps to capability**: Path resolution
-- **Responsibility**: Resolve the argument, call the service, merge warnings.
+- **Responsibility**: Resolve the argument, fail on a missing one, otherwise return the service result.
 - **Exports**: `CommandAdd` (unchanged signature)
-- Final text of the resolution block and `execute` (`import os` and `from dataclasses import replace` added at the top):
+- New symbols: `missing_path`
+- Final text of `__init__` after the service line, and of `execute` (`import os` added at the top; the `warnings` attribute and its test assertions go away):
 
 ```python
+        self.file_path: Path | None = None
+        self.missing_path: str | None = None
+
         if file_path:
             if os.path.lexists(file_path):
                 self.file_path = Path(os.path.abspath(file_path))
             elif os.path.lexists(os.path.join(dotfiles_root, file_path)):
                 self.file_path = Path(dotfiles_root) / file_path
             else:
-                self.warnings.append(
-                    f"Path {file_path} doesn't exist. Proceeding with cherry picking all.",
-                )
+                self.missing_path = file_path
 
     def execute(self: CommandAdd) -> CommandResult:
-        result = self.dot_git_service.stage_interactive(str(self.file_path) if self.file_path else None)
-        return replace(result, warnings=[*self.warnings, *result.warnings])
+        if self.missing_path:
+            return CommandResult(success=False, error=f"Path {self.missing_path} doesn't exist")
+        return self.dot_git_service.stage_interactive(str(self.file_path) if self.file_path else None)
 ```
 
 ### Module: tests.tools.dot.test_git_service (class TestDotGitServiceStageInteractive)
@@ -207,12 +211,14 @@ def _literal(path: str) -> str:
 - **Maps to capability**: Path resolution
 - **Responsibility**: Resolution and pass-through with `DotGitService` patched.
 - **Exports**: none (tests)
-- New symbols: `test_relative_path_resolves_against_cwd_before_the_dotfiles_root`, `test_symlink_is_kept_as_the_link_not_its_target`, `test_dangling_symlink_is_a_path_not_a_missing_file`
+- New symbols: `test_relative_path_resolves_against_cwd_before_the_dotfiles_root`, `test_symlink_is_kept_as_the_link_not_its_target`, `test_dangling_symlink_is_a_path_not_a_missing_file`, `test_nonexistent_path_resolves_to_none`, `test_nonexistent_path_fails_without_calling_the_service`
 - Changes:
-  - `test_relative_path_resolves_against_cwd_before_the_dotfiles_root`: create `dotfiles_root / ".config" / "gh-agent" / "config.yml"`, `monkeypatch.chdir` into that directory, `CommandAdd(..., file_path="config.yml")`; `cmd.file_path == dotfiles_root / ".config" / "gh-agent" / "config.yml"`, `cmd.warnings == []`.
+  - `test_relative_path_resolves_against_cwd_before_the_dotfiles_root`: create `dotfiles_root / ".config" / "gh-agent" / "config.yml"`, `monkeypatch.chdir` into that directory, `CommandAdd(..., file_path="config.yml")`; `cmd.file_path == dotfiles_root / ".config" / "gh-agent" / "config.yml"`, `cmd.missing_path is None`.
   - `test_symlink_is_kept_as_the_link_not_its_target`: `real` directory and `link` symlink under `dotfiles_root`; `CommandAdd(..., file_path=str(link))`; `cmd.file_path == link`.
-  - `test_dangling_symlink_is_a_path_not_a_missing_file`: `link` symlink to `dotfiles_root / "gone"`; `cmd.file_path == link`, `cmd.warnings == []`.
-  - Every `TestCommandAddExecute` test sets `mock_service.stage_interactive.return_value` to a real `CommandResult` (a bare `MagicMock` cannot be `replace`d). `test_with_file_calls_stage_interactive_with_str_path` returns `CommandResult(success=True, output="Currently staged:\nA\ttracked.txt")` and asserts `result.output` equals it. `test_nonexistent_file_still_calls_stage_interactive_with_none_and_warns` returns `CommandResult(success=True, warnings=["Nothing staged for the work tree"])` and asserts `result.warnings == ["Path missing.txt doesn't exist. Proceeding with cherry picking all.", "Nothing staged for the work tree"]`.
+  - `test_dangling_symlink_is_a_path_not_a_missing_file`: `link` symlink to `dotfiles_root / "gone"`; `cmd.file_path == link`, `cmd.missing_path is None`.
+  - `test_nonexistent_file_warns` becomes `test_nonexistent_path_resolves_to_none`: `cmd.file_path is None`, `cmd.missing_path == "no_such_file.txt"`.
+  - `test_nonexistent_file_still_calls_stage_interactive_with_none_and_warns` becomes `test_nonexistent_path_fails_without_calling_the_service`: `result == CommandResult(success=False, error="Path missing.txt doesn't exist")`, `mock_service.stage_interactive.assert_not_called()`.
+  - Every `assert cmd.warnings == []` line in `TestCommandAddInit` is deleted (the attribute is gone). `test_no_file_calls_stage_interactive_with_none` and `test_with_file_calls_stage_interactive_with_str_path` set `mock_service.stage_interactive.return_value = CommandResult(success=True, output="Currently staged:\nA\tx")` and assert `result is mock_service.stage_interactive.return_value`.
 
 ### Module: tests.tools.dot.test_add_integration (new file)
 - **Maps to capability**: all three, end to end
@@ -244,10 +250,10 @@ dot add
 Stage changes. A tracked file or a directory opens git's hunk picker
 (``add -p``); a file the repository has never tracked is added whole. A path is
 looked up relative to the current directory first, then relative to the
-dotfiles root, and a symlink is staged as the link itself. An ignored file is
-refused with the matching ignore rule and the ``git add -f`` command that
-overrides it. Afterwards the command prints what is currently staged for the
-path, or warns when nothing is.
+dotfiles root; one found in neither place is an error, and a symlink is staged
+as the link itself. An ignored file is refused with the matching ignore rule
+and the ``git add -f`` command that overrides it. Afterwards the command prints
+what is currently staged for the path, or warns when nothing is.
 
 .. code-block:: bash
 
@@ -256,7 +262,7 @@ path, or warns when nothing is.
     dot add config.yml          # new file, relative to the current directory
 ```
 
-- Changelog bullet (under `### Fixed` in `[Unreleased]`): `- **dot**: `dot add <file>` tracks a file the repository has never seen instead of answering `No changes.`; a path relative to the current directory resolves there before the dotfiles root; an ignored file is refused with the matching rule and the `git add -f` escape; paths are shell-quoted and matched literally, so `file[1].txt` no longer also stages `file1.txt`; afterwards the command prints what is currently staged for the path, or warns when nothing is.`
+- Changelog bullet (under `### Fixed` in `[Unreleased]`): `- **dot**: `dot add <file>` tracks a file the repository has never seen instead of answering `No changes.`; a path relative to the current directory resolves there before the dotfiles root; an ignored file is refused with the matching rule and the `git add -f` escape; paths are shell-quoted and matched literally, so `file[1].txt` no longer also stages `file1.txt`; a path that exists nowhere is an error instead of a fall-through to the whole-tree picker; afterwards the command prints what is currently staged for the path, or warns when nothing is.`
 
 ## Dependency Graph
 
@@ -284,11 +290,11 @@ No dependencies - built first.
 **Exit Criteria**: `uv run pytest tests/tools/dot/test_git_service.py -q` green with the regression test present.
 
 ### Phase 1: Core
-**Goal**: `CommandAdd` resolves from any cwd, keeps symlinks, and returns the service result.
+**Goal**: `CommandAdd` resolves from any cwd, keeps symlinks, fails on a missing path, and returns the service result.
 
 **Tasks**:
-- [ ] Add the three `test_add.py` tests and update `TestCommandAddExecute` to real `CommandResult` return values (depends on: Phase 0). Premise, re-checked at execution: `rg -c "    def test_" tests/tools/dot/test_add.py` prints 13; otherwise stop and report. Acceptance: the count prints at least 16; `uv run pytest tests/tools/dot/test_add.py -k "cwd_before or symlink" -q` FAILS before the `add.py` change (quoted in the task log).
-- [ ] Apply the `add.py` final text (depends on: previous task). Acceptance: `uv run pytest tests/tools/dot/test_add.py -q` passes; `rg -n "\.exists\(\)" src/tools/dot/commands/add/add.py` prints nothing.
+- [ ] Add the three new `test_add.py` tests, rewrite the two nonexistent-path tests, drop the `warnings` assertions and give `TestCommandAddExecute` real `CommandResult` return values (depends on: Phase 0). Premise, re-checked at execution: `rg -c "    def test_" tests/tools/dot/test_add.py` prints 13; otherwise stop and report. Acceptance: the count prints at least 16; `uv run pytest tests/tools/dot/test_add.py -k "cwd_before or symlink or nonexistent" -q` FAILS before the `add.py` change (quoted in the task log).
+- [ ] Apply the `add.py` final text (depends on: previous task). Acceptance: `uv run pytest tests/tools/dot/test_add.py -q` passes; `rg -n "\.exists\(\)|cherry picking|warnings" src/tools/dot/commands/add/add.py` prints nothing.
 
 **Exit Criteria**: `uv run pytest tests/tools/dot/test_add.py tests/tools/dot/test_git_service.py -q` green.
 
@@ -311,6 +317,7 @@ No dependencies - built first.
 - **Error case**: lookup failure (`fatal: ...` from status) -> Expected: `success=False`, `Could not determine whether <path> is tracked: fatal: ...`, nothing run after status.
 - **Error case**: ignored file -> Expected: `success=False`, error names `.gitignore:<line>:<pattern>` and `git --git-dir=... --work-tree=... add -f -- <path>`, nothing added.
 - **Error case**: untracked file that `cfg add` could not stage -> Expected: `success=False` with git's stderr, or `<path> was not staged` when the index stays empty.
+- **Error case**: `dot add typo.yml` where nothing exists -> Expected: `success=False`, `Path typo.yml doesn't exist`, no git command run.
 
 ## Risks
 
