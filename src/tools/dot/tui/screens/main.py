@@ -283,18 +283,69 @@ class MainScreen(Screen[None]):
         self.refresh_status()
 
     def action_pull(self) -> None:
-        if self._git_ops.shell.is_command_available("git-secret"):
+        from dot.commands.pull.pull import CommandPull
+        from dot.hostlinks.rescue import Resolution
+        from dot.tui.widgets.rescue_modal import RescueCollisionModal
 
-            def _on_passphrase(passphrase: str | None) -> None:
-                result = self._git_ops.pull(passphrase=passphrase)
+        if self._dotfiles_root is None:
+            self._show_message("Dotfiles root not configured")
+            return
+
+        cmd = CommandPull(
+            self._git_ops.shell,
+            self._dotfiles_root,
+            git_service=self._git_ops,
+        )
+        plan = cmd.plan()
+
+        if plan.error:
+            self._show_message(plan.error)
+            return
+
+        resolutions: dict[str, Resolution] = {}
+
+        def _process_collisions(collision_index: int = 0) -> None:
+            if collision_index >= len(plan.collisions):
+                # All collisions resolved, proceed to passphrase
+                _do_pull()
+                return
+
+            entry = plan.collisions[collision_index]
+
+            def _on_resolution(resolution: Resolution | None) -> None:
+                if resolution is None or resolution == Resolution.CANCEL:
+                    self._show_message("Pull cancelled; nothing changed")
+                    return
+                resolutions[entry.target] = resolution
+                _process_collisions(collision_index + 1)
+
+            self.app.push_screen(
+                RescueCollisionModal(entry.target, entry.source),
+                callback=_on_resolution,
+            )
+
+        def _do_pull() -> None:
+            if self._git_ops.shell.is_command_available("git-secret"):
+
+                def _on_passphrase(passphrase: str | None) -> None:
+                    result = cmd.execute(
+                        plan=plan,
+                        resolutions=resolutions,
+                        passphrase=passphrase,
+                    )
+                    self._show_message(result.output or result.error or "Pull complete")
+                    self.refresh_status()
+
+                self.app.push_screen(PassphraseModal(), callback=_on_passphrase)
+            else:
+                result = cmd.execute(plan=plan, resolutions=resolutions)
                 self._show_message(result.output or result.error or "Pull complete")
                 self.refresh_status()
 
-            self.app.push_screen(PassphraseModal(), callback=_on_passphrase)
+        if plan.collisions:
+            _process_collisions()
         else:
-            result = self._git_ops.pull()
-            self._show_message(result.output or result.error or "Pull complete")
-            self.refresh_status()
+            _do_pull()
 
     def action_refresh(self) -> None:
         self.refresh_status()

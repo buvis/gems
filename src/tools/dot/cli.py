@@ -109,14 +109,42 @@ def delete(file_path: str) -> None:
 
 @cli.command("pull", help="Pull dotfiles and update submodules")
 def pull() -> None:
+    import sys
+
     from dot.commands.pull.pull import CommandPull
+    from dot.hostlinks.rescue import Resolution
 
     shell = ShellAdapter(suppress_logging=True)
+    cmd = CommandPull(shell=shell, dotfiles_root=_dotfiles_root())
 
+    # Plan rescue
+    plan = cmd.plan()
+
+    if plan.error:
+        console.failure(plan.error)
+        return
+
+    # Handle collisions
+    resolutions: dict[str, Resolution] = {}
+    if plan.collisions:
+        if sys.stdin.isatty():
+            for entry in plan.collisions:
+                console.warning(f"{entry.target} and {entry.source} both exist and differ")
+                choice = console.choose(
+                    "Resolve",
+                    ["keep-source", "keep-target", "cancel"],
+                    default="cancel",
+                )
+                resolutions[entry.target] = Resolution(choice)
+        # Non-TTY: no prompts, execute will report unresolved collisions
+
+    # Passphrase prompt
+    passphrase = None
     if shell.is_command_available("git-secret"):
         console.info("GPG passphrase required to decrypt secret files")
 
-    console.report_result(CommandPull(shell=shell, dotfiles_root=_dotfiles_root()).execute())
+    result = cmd.execute(plan=plan, resolutions=resolutions, passphrase=passphrase)
+    console.report_result(result)
 
 
 @cli.command("commit", help="Commit dotfiles changes")
@@ -156,6 +184,23 @@ def push() -> None:
 
     shell = ShellAdapter(suppress_logging=True)
     console.report_result(CommandPush(shell=shell, dotfiles_root=_dotfiles_root()).execute())
+
+
+@cli.command("localize", help="Make a file or directory host-specific")
+@click.argument("path")
+@click.option("--to", "source", help="Source path (default: .local/<path>)")
+def localize(path: str, source: str | None = None) -> None:
+    from dot.commands.localize.localize import CommandLocalize
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(
+        CommandLocalize(
+            shell=shell,
+            dotfiles_root=_dotfiles_root(),
+            path=path,
+            source=source,
+        ).execute()
+    )
 
 
 if __name__ == "__main__":

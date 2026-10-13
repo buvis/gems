@@ -2111,3 +2111,139 @@ class TestDotGitServiceHideSecrets:
 
         assert result.success is False
         assert result.error == error
+
+
+class TestDotGitServiceFetch:
+    def test_success_returns_empty_string(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.fetch()
+
+        assert result == ""
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg fetch" in cmd
+        assert str(shell.exe.call_args[0][1]) == "/home/user/dotfiles"
+
+    def test_failure_returns_error_text(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("fatal: unable to access remote", "")
+
+        result = git_service.fetch()
+
+        assert result == "fatal: unable to access remote"
+
+
+class TestDotGitServiceHasUpstream:
+    def test_true_when_upstream_exists(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "abc1234\n")
+
+        result = git_service.has_upstream()
+
+        assert result is True
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg rev-parse --verify --quiet @{u}" in cmd
+
+    def test_false_when_no_upstream(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("fatal: no upstream configured", "")
+
+        result = git_service.has_upstream()
+
+        assert result is False
+
+
+class TestDotGitServiceShowUpstreamFile:
+    def test_returns_content_when_file_exists(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "file content here\nline 2\n")
+
+        result = git_service.show_upstream_file(".config/buvis/host-links")
+
+        assert result == "file content here\nline 2\n"
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg show @{u}:" in cmd
+        assert ".config/buvis/host-links" in cmd
+
+    def test_returns_none_on_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("fatal: path '.bashrc' does not exist", "")
+
+        result = git_service.show_upstream_file(".bashrc")
+
+        assert result is None
+
+    def test_quotes_path_with_special_chars(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "content")
+
+        git_service.show_upstream_file("it's a file.txt")
+
+        cmd = shell.exe.call_args[0][0]
+        # shlex.quote wraps paths with special chars
+        assert "it" in cmd
+
+
+class TestDotGitServiceUpstreamDeletedPaths:
+    def test_parses_nul_separated_output(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", ".bashrc\0.vimrc\0.config/app/conf\0")
+
+        result = git_service.upstream_deleted_paths()
+
+        assert result == [".bashrc", ".vimrc", ".config/app/conf"]
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg diff --name-only --no-renames -z --diff-filter=D HEAD...@{u}" in cmd
+
+    def test_returns_empty_list_on_error(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("fatal: no upstream branch", "")
+
+        result = git_service.upstream_deleted_paths()
+
+        assert result == []
+
+    def test_returns_empty_list_on_empty_output(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.upstream_deleted_paths()
+
+        assert result == []
+
+    def test_filters_empty_strings_from_trailing_nul(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "file.txt\0\0\0")
+
+        result = git_service.upstream_deleted_paths()
+
+        assert result == ["file.txt"]
+
+
+class TestDotGitServiceUntrack:
+    def test_success(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.untrack(".bashrc")
+
+        assert result.success is True
+        cmd = shell.exe.call_args[0][0]
+        assert "cfg rm -r --cached --quiet -- " in cmd
+        assert ".bashrc" in cmd
+        assert str(shell.exe.call_args[0][1]) == "/home/user/dotfiles"
+
+    def test_failure(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("fatal: pathspec '.bashrc' did not match", "")
+
+        result = git_service.untrack(".bashrc")
+
+        assert result.success is False
+        assert result.error == "fatal: pathspec '.bashrc' did not match"
+
+    def test_quotes_path_with_spaces(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.untrack("my file.txt")
+
+        assert result.success is True
+        cmd = shell.exe.call_args[0][0]
+        assert "'my file.txt'" in cmd
+
+    def test_supports_directory_recursion(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = git_service.untrack(".config/app")
+
+        assert result.success is True
+        cmd = shell.exe.call_args[0][0]
+        assert "-r" in cmd

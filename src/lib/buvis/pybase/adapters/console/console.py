@@ -19,7 +19,7 @@ from rich.columns import Columns
 from rich.console import Console, Group, RenderableType
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.prompt import Confirm
+from rich.prompt import Confirm, Prompt
 from rich.text import Text
 
 CHECKMARK = "[bold green1]\u2714[/bold green1]"
@@ -163,6 +163,26 @@ class ConsoleAdapter:
             bool: Result of the confirmation.
         """
         return Confirm.ask(question)
+
+    def choose(
+        self: ConsoleAdapter,
+        question: str,
+        choices: list[str],
+        default: str | None = None,
+    ) -> str:
+        """Prompt the user to select from a list of choices.
+
+        Args:
+            question: The prompt text.
+            choices: Valid choices.
+            default: Pre-selected default value.
+
+        Returns:
+            The user's selection.
+        """
+        if default is not None:
+            return Prompt.ask(question, choices=choices, default=default)
+        return Prompt.ask(question, choices=choices)
 
     def render(self: ConsoleAdapter, renderable: RenderableType) -> None:
         """Print a Rich renderable object directly.
