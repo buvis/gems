@@ -289,9 +289,55 @@ dot<span class="w"> </span>delete<span class="w"> </span>.config/secrets.yaml<sp
 <section id="dot-pull">
 <h3>dot pull<a class="headerlink" href="#dot-pull" title="Link to this heading"></a></h3>
 <p>Pull dotfiles and update submodules. Reveals git-secret files if available.</p>
+<p>Before merging, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> detects incoming deletions of host-link targets
+and rescues your local bytes. When the upstream manifest defines a target that
+incoming commits delete, dot moves your local target to the source location
+(or backs up one side when both exist with different content).</p>
+<p><strong>Collision handling:</strong></p>
+<p>When the target and source both exist and differ, you must choose:</p>
+<ul class="simple">
+<li><p><strong>keep-source</strong>: Keep the existing source file, backup the target</p></li>
+<li><p><strong>keep-target</strong>: Keep the target’s bytes as the new source, backup old source</p></li>
+<li><p><strong>cancel</strong>: Abort the pull, nothing changes</p></li>
+</ul>
+<p>In a TTY, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> prompts for each collision. Non-interactive runs fail
+with <code class="docutils literal notranslate"><span class="pre">pull</span> <span class="pre">stopped:</span> <span class="pre">unresolved</span> <span class="pre">host-link</span> <span class="pre">collision(s):</span> <span class="pre">&lt;targets&gt;</span></code>.</p>
+<p>The TUI (<code class="docutils literal notranslate"><span class="pre">P</span></code>) shows a modal for each collision with keys <code class="docutils literal notranslate"><span class="pre">s</span></code>/<code class="docutils literal notranslate"><span class="pre">t</span></code>/<code class="docutils literal notranslate"><span class="pre">Esc</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Raw <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">pull</span></code> bypasses rescue - git has no pre-pull hook. Always use
+<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> to protect host-specific files.</p>
+</div>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>pull
 </pre></div>
 </div>
+</section>
+<section id="dot-localize">
+<h3>dot localize<a class="headerlink" href="#dot-localize" title="Link to this heading"></a></h3>
+<p>Convert a tracked file or directory to a host-specific link. This automates
+the manual steps described in “First setup”: untrack, move, link, manifest.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>localize<span class="w"> </span>.config/gita/repos.csv<span class="w">                    </span><span class="c1"># default source: .local/.config/gita/repos.csv</span>
+dot<span class="w"> </span>localize<span class="w"> </span>.bashrc<span class="w"> </span>--to<span class="w"> </span>.host-config/.bashrc<span class="w">         </span><span class="c1"># custom source path</span>
+</pre></div>
+</div>
+<p><strong>What it does:</strong></p>
+<ol class="arabic simple">
+<li><p>Untracks the file from git (if tracked)</p></li>
+<li><p>Moves the file to the source location</p></li>
+<li><p>Creates a symlink at the original path pointing to the source</p></li>
+<li><p>Appends an entry to the host-links manifest</p></li>
+<li><p>Stages the manifest</p></li>
+</ol>
+<p><strong>Refusals:</strong></p>
+<ul class="simple">
+<li><p>Target doesn’t exist</p></li>
+<li><p>Target is already a symlink</p></li>
+<li><p>Source path already exists</p></li>
+<li><p>Target already in manifest</p></li>
+<li><p>Any tracked file under target is a git-secret file</p></li>
+</ul>
+<p>After localizing, commit the staged manifest and the deletion. On other hosts,
+<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> will rescue their local bytes before the deletion is applied.</p>
 </section>
 <section id="dot-push">
 <h3>dot push<a class="headerlink" href="#dot-push" title="Link to this heading"></a></h3>
@@ -339,9 +385,16 @@ enable Developer Mode. Otherwise dot reports <code class="docutils literal notra
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>--git-dir<span class="o">=</span><span class="nv">$HOME</span>/.buvis<span class="w"> </span>config<span class="w"> </span>core.hooksPath<span class="w"> </span>~/.buvis/hooks
 </pre></div>
 </div>
-<p>To make a file that the dotfiles repo already tracks host-specific, untrack it
-first. Otherwise <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span></code> reports <code class="docutils literal notranslate"><span class="pre">exists</span> <span class="pre">and</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">a</span> <span class="pre">link;</span>
-<span class="pre">skipped</span></code>:</p>
+<p>To make a file that the dotfiles repo already tracks host-specific, use
+<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">localize</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>localize<span class="w"> </span>.config/gita/repos.csv
+dot<span class="w"> </span>commit<span class="w"> </span><span class="s2">"Localize repos.csv"</span>
+dot<span class="w"> </span>push
+</pre></div>
+</div>
+<p>On other hosts, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> automatically rescues their local bytes to the
+source location and creates the link.</p>
+<p><strong>Manual method</strong> (before <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">localize</span></code> existed):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>--git-dir<span class="o">=</span><span class="nv">$HOME</span>/.buvis<span class="w"> </span>--work-tree<span class="o">=</span><span class="nv">$HOME</span><span class="w"> </span>rm<span class="w"> </span>--cached<span class="w"> </span>.config/gita/repos.csv
 mv<span class="w"> </span>~/.config/gita/repos.csv<span class="w"> </span>~/.config/gita/repos.csv.host
 <span class="nb">echo</span><span class="w"> </span><span class="s2">".config/gita/repos.csv =&gt; .config/gita/repos.csv.host"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.config/buvis/host-links
@@ -352,9 +405,8 @@ dot<span class="w"> </span>status
 <p>Commit the removal and the manifest together.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Pulling that commit on another host deletes the file there, because git
-removes files that a pull untracks. On each other host, copy the file to its
-<code class="docutils literal notranslate"><span class="pre">.host</span></code> name before you pull, then run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span></code>.</p>
+<p>Raw <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">pull</span></code> bypasses rescue - git has no pre-pull hook. Always use
+<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> to protect host-specific files.</p>
 </div>
 </section>
 </section>
