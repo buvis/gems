@@ -32,6 +32,7 @@ class DotGitService:
         self._git = f"git --git-dir={dotfiles_root}/.buvis/ --work-tree={dotfiles_root}"
         self.shell.alias("cfg", self._git)
         self._ensure_fetch_refspec()
+        self._ensure_hooks_path()
 
     def _ensure_fetch_refspec(self) -> None:
         err, out = self.shell.exe("cfg config remote.origin.fetch", self.wd)
@@ -40,6 +41,11 @@ class DotGitService:
                 "cfg config remote.origin.fetch +refs/heads/*:refs/remotes/origin/*",
                 self.wd,
             )
+
+    def _ensure_hooks_path(self) -> None:
+        if self.hooks_path() is None:
+            hooks_dir = shlex.quote(f"{self.dotfiles_root}/.config/buvis/hooks")
+            self.shell.exe(f"cfg config core.hooksPath {hooks_dir}", self.wd)
 
     def _hide_secrets(self) -> str | None:
         if not self.shell.is_command_available("git-secret"):
@@ -285,6 +291,22 @@ class DotGitService:
         if not p.is_absolute():
             p = self.wd / p
         return p
+
+    def check_hooks(self) -> list[str]:
+        """Report missing hooks under the configured core.hooksPath.
+
+        Returns:
+            One warning when the hooks dir or its pre-commit hook is missing, else empty.
+        """
+        hooks_dir = self.hooks_path()
+        if hooks_dir is None:
+            return []
+        if not hooks_dir.is_dir():
+            return [f"hooks dir missing: {hooks_dir}"]
+        pre_commit = hooks_dir / "pre-commit"
+        if not pre_commit.exists():
+            return [f"pre-commit hook missing: {pre_commit}"]
+        return []
 
     def ls_files(self, pathspec: str) -> set[str]:
         """List tracked paths matching a pathspec.

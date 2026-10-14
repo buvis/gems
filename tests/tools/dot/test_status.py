@@ -320,3 +320,49 @@ class TestCommandStatusHostLinks:
         assert not result.success
         assert result.error == "Error hiding secrets: secret error"
         assert result.warnings == []
+
+
+class TestCommandStatusHookHealth:
+    @staticmethod
+    def _clean_service(mock_service_cls) -> MagicMock:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
+        mock_service.check_hooks.return_value = []
+        return mock_service
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_missing_pre_commit_hook_is_reported_as_warning(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = self._clean_service(mock_service_cls)
+        mock_service.check_hooks.return_value = ["pre-commit hook missing: /h/pre-commit"]
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.success
+        assert result.warnings == ["pre-commit hook missing: /h/pre-commit"]
+        assert result.output != "No modifications found"
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_hook_warnings_come_after_link_warnings(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = self._clean_service(mock_service_cls)
+        mock_service.branch_info.return_value = BranchInfo(name="main", ahead=1)
+        mock_service.check_hooks.return_value = ["hooks dir missing: /h"]
+        _write_manifest(dotfiles_root, ".gitconfig => hosts/laptop/gitconfig")
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.warnings == [
+            "1 commit(s) not pushed",
+            ".gitconfig: no host file at hosts/laptop/gitconfig",
+            "hooks dir missing: /h",
+        ]
+
+    @patch("dot.commands.status.status.DotGitService")
+    def test_secret_hide_failure_skips_hook_check(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], "secret error")
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert not result.success
+        mock_service.check_hooks.assert_not_called()

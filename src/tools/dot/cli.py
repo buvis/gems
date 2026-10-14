@@ -64,6 +64,22 @@ def materialize(hook: bool) -> None:
     )
 
 
+@cli.command("setup", help="Clone dotfiles onto a fresh host and link host config")
+@click.argument("url", required=False)
+@click.pass_context
+def setup(ctx: click.Context, url: str | None = None) -> None:
+    settings = get_settings(ctx, DotSettings)
+    remote_url = url or settings.remote_url
+    if not remote_url:
+        console.panic("remote URL required: dot setup <url> or set BUVIS_DOT_REMOTE_URL")
+        return
+
+    from dot.commands.setup.setup import CommandSetup
+
+    shell = ShellAdapter(suppress_logging=True)
+    console.report_result(CommandSetup(shell=shell, dotfiles_root=_dotfiles_root(), remote_url=remote_url).execute())
+
+
 @cli.command("add", help="Add changes")
 @click.argument("file_path", required=False)
 @click.pass_context

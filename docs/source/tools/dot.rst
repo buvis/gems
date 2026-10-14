@@ -22,6 +22,9 @@ Configuration
    * - ``confirm_revert``
      - ``true``
      - Show confirmation modal before reverting a hunk or selected lines (``r``). Set to ``false`` to skip the prompt.
+   * - ``remote_url``
+     - *none*
+     - Remote URL that ``dot setup`` clones when no URL argument is given (``BUVIS_DOT_REMOTE_URL``).
 
 Commands
 --------
@@ -82,6 +85,31 @@ files with diff preview, supports keyboard navigation and staging/unstaging.
 
 Requires the ``dot`` extra: ``pip install buvis-gems[dot]``
 
+dot setup
+~~~~~~~~~
+
+Bring up dotfiles on a fresh host. Give the remote URL as an argument, or set
+``BUVIS_DOT_REMOTE_URL``. The argument wins when both are set.
+
+.. code-block:: bash
+
+    dot setup git@host:me/dotfiles.git
+    dot setup                   # uses BUVIS_DOT_REMOTE_URL
+
+Steps:
+
+#. Bare-clone the remote into ``<dotfiles_root>/.buvis``.
+#. Hide untracked files from ``git status`` (``status.showUntrackedFiles no``).
+#. Set the upstream of the checked-out branch to ``origin/<branch>``. A failure
+   is a warning, and setup continues.
+#. Check out the files into ``<dotfiles_root>``.
+#. Link host config and install the git hooks, like ``dot materialize``.
+
+``dot setup`` refuses when ``<dotfiles_root>/.buvis`` already exists or when the
+clone fails. The checkout never overwrites anything: if existing files conflict,
+setup stops and lists them. Move those files away, then run
+``dot run checkout`` and ``dot materialize`` (to install any missing hooks).
+
 dot status
 ~~~~~~~~~~
 
@@ -94,7 +122,9 @@ as ``staged`` or ``unstaged``.
     dot status
 
 If the ``host-links`` manifest has problems, ``dot status`` reports them too.
-See `Host-specific config`_.
+See `Host-specific config`_. Status also warns ``hooks dir missing`` or
+``pre-commit hook missing`` when the configured ``core.hooksPath`` points at a
+missing directory or at one without a ``pre-commit`` hook.
 
 dot materialize
 ~~~~~~~~~~~~~~~
@@ -300,12 +330,11 @@ Developer Mode``. The hooks need ``python3`` on ``PATH``.
 First setup
 ~~~~~~~~~~~
 
-Turn on the hooks once per host. Dot only installs them when
-``core.hooksPath`` is set, and stays silent when it is not:
-
-.. code-block:: bash
-
-    git --git-dir=$HOME/.buvis config core.hooksPath ~/.buvis/hooks
+Every dot command that touches git sets ``core.hooksPath`` to
+``<dotfiles_root>/.config/buvis/hooks`` when it is unset. It never changes a
+value that is already set. ``dot status`` warns ``hooks dir missing: <dir>`` or
+``pre-commit hook missing: <dir>/pre-commit`` when the hooks are not in place.
+On a new host, run ``dot setup <url>``.
 
 To make a file that the dotfiles repo already tracks host-specific, use
 ``dot localize``:

@@ -49,6 +49,7 @@ class CommandStatus:
         if branch.behind:
             warnings.append(f"{branch.behind} commit(s) not pulled")
         warnings.extend(CommandLinkStatus(self.dotfiles_root).execute().warnings)
+        warnings.extend(self.dot_git_service.check_hooks())
 
         if not info and not warnings:
             return CommandResult(success=True, output="No modifications found")

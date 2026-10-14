@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from dot.git.models import BranchInfo, FileEntry
@@ -62,21 +62,107 @@ class TestDotGitServiceConstruction:
 
         DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
 
-        assert shell.exe.call_count == 1
+        assert sum("remote.origin.fetch" in c[0][0] for c in shell.exe.call_args_list) == 1
 
     def test_resets_fetch_refspec_when_check_errors(self, shell: MagicMock) -> None:
         shell.exe.return_value = ("fatal: not found", "")
 
         DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
 
-        assert shell.exe.call_count == 2
+        assert sum("remote.origin.fetch" in c[0][0] for c in shell.exe.call_args_list) == 2
 
     def test_resets_fetch_refspec_when_check_returns_empty(self, shell: MagicMock) -> None:
         shell.exe.return_value = ("", "")
 
         DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
 
-        assert shell.exe.call_count == 2
+        assert sum("remote.origin.fetch" in c[0][0] for c in shell.exe.call_args_list) == 2
+
+
+class TestDotGitServiceHooksPathSelfHeal:
+    def test_sets_hooks_path_to_dotfiles_hooks_dir_when_unset(self, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
+
+        assert (
+            call(
+                "cfg config core.hooksPath /home/user/dotfiles/.config/buvis/hooks",
+                Path("/home/user/dotfiles"),
+            )
+            in shell.exe.call_args_list
+        )
+
+    def test_sets_hooks_path_when_lookup_errors(self, shell: MagicMock) -> None:
+        shell.exe.return_value = ("Command 'git config' returned non-zero exit status 1.", "")
+
+        DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
+
+        assert (
+            call(
+                "cfg config core.hooksPath /home/user/dotfiles/.config/buvis/hooks",
+                Path("/home/user/dotfiles"),
+            )
+            in shell.exe.call_args_list
+        )
+
+    def test_leaves_configured_hooks_path_unchanged(self, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "/elsewhere/hooks\n")
+
+        DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
+
+        hooks_calls = [c[0][0] for c in shell.exe.call_args_list if "core.hooksPath" in c[0][0]]
+        assert hooks_calls == ["cfg config core.hooksPath"]
+
+    def test_quotes_dotfiles_root_in_hooks_path(self, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        DotGitService(shell=shell, dotfiles_root="/home/u s/dots")
+
+        commands = [c[0][0] for c in shell.exe.call_args_list]
+        assert "cfg config core.hooksPath '/home/u s/dots/.config/buvis/hooks'" in commands
+
+    def test_hooks_path_step_runs_after_fetch_refspec_step(self, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
+
+        commands = [c[0][0] for c in shell.exe.call_args_list]
+        first_refspec = next(i for i, c in enumerate(commands) if "remote.origin.fetch" in c)
+        first_hooks = next(i for i, c in enumerate(commands) if "core.hooksPath" in c)
+        assert first_hooks > first_refspec
+
+
+class TestDotGitServiceCheckHooks:
+    def test_no_warning_when_hooks_path_unset(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        assert git_service.check_hooks() == []
+
+    def test_warns_when_hooks_dir_missing(self, git_service: DotGitService, shell: MagicMock, tmp_path: Path) -> None:
+        hooks = tmp_path / "hooks"
+        shell.exe.return_value = ("", f"{hooks}\n")
+
+        assert git_service.check_hooks() == [f"hooks dir missing: {hooks}"]
+
+    def test_warns_when_pre_commit_missing_from_existing_dir(
+        self, git_service: DotGitService, shell: MagicMock, tmp_path: Path
+    ) -> None:
+        hooks = tmp_path / "hooks"
+        hooks.mkdir()
+        shell.exe.return_value = ("", f"{hooks}\n")
+
+        assert git_service.check_hooks() == [f"pre-commit hook missing: {hooks}/pre-commit"]
+
+    def test_no_warning_when_pre_commit_present(
+        self, git_service: DotGitService, shell: MagicMock, tmp_path: Path
+    ) -> None:
+        hooks = tmp_path / "hooks"
+        hooks.mkdir()
+        (hooks / "pre-commit").write_text("#!/bin/sh\n")
+        shell.exe.return_value = ("", f"{hooks}\n")
+
+        assert git_service.check_hooks() == []
 
 
 class TestDotGitServiceStatus:
