@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import FatalError
@@ -67,26 +68,27 @@ class Runner:
     def _run_use(self: Runner, name: str, command: SysupCommand) -> Iterator[StepResult]:
         capability = CAPABILITIES[command.use] if command.use is not None else None
         if capability is None:  # pragma: no cover - load_config validates this
-            yield StepResult(name, success=False, message=f"unknown capability '{command.use}'")
+            yield StepResult(name, success=False, message=f"unknown capability '{command.use}'", command=name)
             return
 
         if self._dry_run:
-            yield StepResult(name, success=True, message=f"would run capability '{command.use}'")
+            yield StepResult(name, success=True, message=f"would run capability '{command.use}'", command=name)
             return
 
         try:
-            yield from capability.run(**command.with_)
+            for step in capability.run(**command.with_):
+                yield replace(step, command=name)
         except FatalError:
             raise
         except Exception as exc:
-            yield StepResult(name, success=False, message=f"{name} failed: {exc}")
+            yield StepResult(name, success=False, message=f"{name} failed: {exc}", command=name)
 
     def _run_steps(self: Runner, name: str, command: SysupCommand) -> Iterator[StepResult]:
         steps = command.steps or ()
 
         if self._dry_run:
             rendered = "; ".join(" ".join(step) for step in steps)
-            yield StepResult(name, success=True, message=f"would run: {rendered}")
+            yield StepResult(name, success=True, message=f"would run: {rendered}", command=name)
             return
 
         ok = True
@@ -100,26 +102,27 @@ class Runner:
             elif command.continue_on_error:
                 yield result
         if ok and not command.continue_on_error:
-            yield StepResult(name, success=True)
+            yield StepResult(name, success=True, command=name)
 
     def _run_argv(self: Runner, name: str, argv: list[str], command: SysupCommand) -> StepResult:
         if not argv:
-            return StepResult(name, success=False, message="empty step")
+            return StepResult(name, success=False, message="empty step", command=name)
 
         binary = argv[0]
         binary_path = shutil.which(binary)
         if binary_path is None:
-            return StepResult(name, success=False, message=f"{binary} not found, skipping")
+            return StepResult(name, success=False, message=f"{binary} not found, skipping", command=name)
         resolved = [binary_path, *argv[1:]]
 
         if command.interactive:
             interactive_result = subprocess.run(resolved, check=False, timeout=command.timeout)
             if interactive_result.returncode == 0:
-                return StepResult(name, success=True)
+                return StepResult(name, success=True, command=name)
             return StepResult(
                 name,
                 success=False,
                 message=f"{name} failed: exit code {interactive_result.returncode}",
+                command=name,
             )
 
         result = subprocess.run(
@@ -130,6 +133,6 @@ class Runner:
             timeout=command.timeout,
         )
         if result.returncode == 0:
-            return StepResult(name, success=True)
+            return StepResult(name, success=True, command=name)
         message = result.stderr.strip() or "unknown error"
-        return StepResult(name, success=False, message=f"{name} failed: {message}")
+        return StepResult(name, success=False, message=f"{name} failed: {message}", command=name)

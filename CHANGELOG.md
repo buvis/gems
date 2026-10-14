@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **sysup**: an end-of-run summary of everything unresolved, persisted in $XDG_STATE_HOME/sysup/attention.json until the failing command completes cleanly, pushed through ntfy (config `ntfy:` url/topic/credentials_file, env NTFY_URL/NTFY_TOPIC) once per run, and `sysup status` to read it back without running anything
 - **dot**: `dot localize <target> [--to <source>]` command converts a tracked file to a host-specific link in one step: untrack, move to source location, create symlink, append to manifest, stage the manifest. `dot pull` now detects incoming deletions of host-link targets and rescues local bytes before the merge — moves become automatic, and collisions (both target and source exist with different content) prompt for resolution: keep-source (backup target), keep-target (backup old source), or cancel. The TUI (key `P`) shows a modal for each collision. Warning: raw `git pull` bypasses rescue — always use `dot pull` to protect host-specific files.
 - **dot**: host-specific config links: a tracked `~/.config/buvis/host-links` manifest of `<target> => <source>` lines (both `$HOME`-relative); bad lines are reported as `host-links:<line>: <reason>` and skipped. New `dot materialize [--hook]` makes each target a link to its host-local source (a junction for directories on Windows); real files, wrong links, dangling links and missing sources are reported, never deleted or overwritten. Outside `--hook` it also installs missing `post-checkout`, `post-merge` and `post-rewrite` hooks into git `core.hooksPath` so links refresh after git operations; existing hook files are never changed. `dot status` lists link problems; the TUI status bar shows their count and `L` relinks.
+
+### Changed
+
+- **sysup**: exits 1 when a step failed during the run (was 0); "expiring" outcomes and entries retained from earlier runs keep exit 0
 
 ### Fixed
 

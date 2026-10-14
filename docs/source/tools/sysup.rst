@@ -18,6 +18,7 @@ Usage
     sysup --tag python        # run only entries carrying this tag
     sysup --list              # print the resolved plan for this host, run nothing
     sysup --dry-run           # show what would run without running it
+    sysup status              # read unresolved attention without running updates
 
 Applicability is decided per entry by its ``when`` guard (OS + a binary that
 must exist), so there are no platform subcommands: a macOS-only entry simply
@@ -127,6 +128,57 @@ than its shared twin, so it overrides per-key while staying untracked.
 
 Because ``*.local.yaml`` is deliberately untracked, it is not backed up by the
 dotfiles repo; keep a separate backup of anything only it holds.
+
+Attention
+---------
+
+An ordinary run ends with one summary of everything unresolved, sorted by
+command name. Failed, expired and unknown outcomes are red; expiring outcomes
+are amber. Each command has one entry containing all of its not-ok messages,
+so a later successful step within the same command does not hide an earlier
+failure. A complete clean check of that command clears its entry.
+
+Entries persist in ``$XDG_STATE_HOME/sysup/attention.json``, falling back to
+``~/.local/state/sysup/attention.json``. The version-one JSON file is written
+atomically and records status, details, first-seen and last-checked UTC
+timestamps, and whether a notification succeeded. Filtered-out commands retain
+their entries, labelled ``not rechecked this run`` in the summary.
+
+``sysup status`` reads this record without loading the updater configuration
+or running commands. It prints each entry with its last-checked timestamp, or
+``nothing needs attention`` when empty. It exits 1 if any persisted entry is
+red, and 0 for an empty or amber-only record.
+
+An ordinary run exits 1 when a result **from that run** is red (previously,
+failed steps exited 0). Amber-only results and red entries retained from
+earlier runs keep exit 0. ``--list`` and ``--dry-run`` do not even read the
+attention record; neither they nor ``sysup status`` write state or push
+notifications. Group options go before the subcommand:
+``sysup --only brew status`` runs status only and ignores the updater filters;
+``sysup status --only brew`` is a usage error.
+
+Configure optional ntfy pushes in the same config stack, including the
+machine-local twin:
+
+.. code-block:: yaml
+
+    ntfy:
+      url: https://ntfy.example
+      topic: sysup
+      credentials_file: ~/.config/ntfy/credentials
+
+``NTFY_URL`` and ``NTFY_TOPIC`` independently fill a missing URL or topic.
+``credentials_file`` is optional; its path expands ``~`` and its stripped
+content is ``user:password`` for Basic authentication. Keep credentials
+outside tracked config files.
+
+Each ordinary run sends at most one aggregated message, titled
+``sysup on <hostname>: <N> need attention``. Its sorted lines contain status,
+name and the first detail. Red entries push on every ordinary run, even if
+retained; amber entries push once after appearing and stay quiet after a
+successful push (including a red-to-amber transition). A missing endpoint,
+unreadable credentials or failed send produces a warning, keeps the entries
+pending for retry, and never changes the run's exit code.
 
 Migration from the subcommands
 -------------------------------

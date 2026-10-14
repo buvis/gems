@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from buvis.pybase.result import FatalError
 
-from sysup.config import SysupCommand, SysupConfig, load_config
+from sysup.config import NtfySpec, SysupCommand, SysupConfig, load_config
 
 
 class TestSysupCommandModel:
@@ -61,6 +61,21 @@ class TestSysupCommandModel:
 
 
 class TestSysupConfigModel:
+    def test_ntfy_section_validates_and_defaults(self) -> None:
+        assert SysupConfig().ntfy == NtfySpec(url=None, topic=None, credentials_file=None)
+        cfg = SysupConfig.model_validate(
+            {"ntfy": {"url": "https://ntfy.example", "topic": "sysup", "credentials_file": "~/.ntfy"}}
+        )
+        assert cfg.ntfy.url == "https://ntfy.example"
+        assert cfg.ntfy.topic == "sysup"
+        assert cfg.ntfy.credentials_file == "~/.ntfy"
+        with pytest.raises(ValueError, match="frozen"):
+            cfg.ntfy.topic = "other"
+
+    def test_ntfy_unknown_key_rejected(self) -> None:
+        with pytest.raises(ValueError, match="bogus"):
+            SysupConfig.model_validate({"ntfy": {"bogus": "value"}})
+
     def test_unknown_top_level_key_raises(self) -> None:
         with pytest.raises(ValueError, match="nonsense"):
             SysupConfig.model_validate({"nonsense": True})
@@ -75,6 +90,15 @@ def _write(path: Path, text: str) -> None:
 
 
 class TestLoadConfig:
+    def test_ntfy_local_layer_merges_over_shared_config(self, mocker, tmp_path: Path) -> None:
+        shared = tmp_path / "buvis-sysup.yaml"
+        local = tmp_path / "buvis-sysup.local.yaml"
+        _write(shared, "ntfy:\n  url: https://ntfy.example\n  topic: shared\n")
+        _write(local, "ntfy:\n  topic: local\n  credentials_file: ~/.ntfy\n")
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[shared, local])
+        cfg = load_config()
+        assert cfg.ntfy == NtfySpec(url="https://ntfy.example", topic="local", credentials_file="~/.ntfy")
+
     def test_no_user_config_returns_bundled_default(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()

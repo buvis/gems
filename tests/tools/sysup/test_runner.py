@@ -219,3 +219,91 @@ class TestRunnerDryRun:
         assert cap.run.call_count == 0
         assert steps[0].success is True
         assert "would run capability" in steps[0].message
+
+
+class TestRunnerCommandStamping:
+    def test_results_carry_command_name(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", return_value="/bin/tool")
+        mocker.patch(
+            "sysup.runner.subprocess.run",
+            return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+        )
+        steps = list(Runner(_cfg()).run([("entry-name", _cmd(steps=[["tool"]]))]))
+        assert steps == [StepResult("entry-name", True, command="entry-name")]
+
+    def test_capability_results_are_restamped_with_command(self, mocker) -> None:
+        original = StepResult("pip (3.12)", False, "numpy failed", command="other")
+        cap = mocker.MagicMock()
+        cap.run.return_value = iter([original, StepResult("pip (3.13)", True)])
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"pip-outdated": cap})
+        steps = list(Runner(_cfg()).run([("pip", _cmd(use="pip-outdated"))]))
+        assert steps[0].label == "pip (3.12)"
+        assert steps[0].command == "pip"
+        assert steps[1].command == "pip"
+        assert original.command == "other"
+
+    def test_capability_generator_error_is_caught_inside_iteration(self, mocker) -> None:
+        def generate():
+            yield StepResult("pip (3.12)", True)
+            raise RuntimeError("iterator failed")
+
+        cap = mocker.MagicMock()
+        cap.run.return_value = generate()
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"pip-outdated": cap})
+        steps = list(Runner(_cfg()).run([("pip", _cmd(use="pip-outdated"))]))
+        assert steps == [
+            StepResult("pip (3.12)", True, command="pip"),
+            StepResult("pip", False, "pip failed: iterator failed", command="pip"),
+        ]
+
+    @pytest.mark.parametrize("error", [FatalError("fatal iterator"), KeyboardInterrupt()])
+    def test_capability_generator_fatal_or_interrupt_propagates(self, mocker, error) -> None:
+        def generate():
+            yield StepResult("pip (3.12)", True)
+            raise error
+
+        cap = mocker.MagicMock()
+        cap.run.return_value = generate()
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"pip-outdated": cap})
+        with pytest.raises(type(error)):
+            list(Runner(_cfg()).run([("pip", _cmd(use="pip-outdated"))]))
+
+    @pytest.mark.parametrize(
+        "options,returncode,binary",
+        [
+            ({"steps": [["tool"]]}, 0, "/bin/tool"),
+            ({"steps": [["tool"]]}, 1, "/bin/tool"),
+            ({"steps": [["tool"]]}, 0, None),
+            ({"steps": [[]]}, 0, "/bin/tool"),
+            ({"steps": [["tool"]], "interactive": True}, 0, "/bin/tool"),
+            ({"steps": [["tool"]], "interactive": True}, 3, "/bin/tool"),
+            ({"steps": [["tool"], ["tool"]], "continue_on_error": True}, 0, "/bin/tool"),
+            ({"steps": [["tool"], ["tool"]], "continue_on_error": True}, 1, "/bin/tool"),
+        ],
+    )
+    def test_own_results_stamp_every_run_success_and_failure(self, mocker, options, returncode: int, binary) -> None:
+        mocker.patch("sysup.runner.shutil.which", return_value=binary)
+        mocker.patch(
+            "sysup.runner.subprocess.run",
+            return_value=subprocess.CompletedProcess(args=[], returncode=returncode, stdout="", stderr="boom"),
+        )
+        steps = list(Runner(_cfg()).run([("entry-name", _cmd(**options))]))
+        assert steps
+        assert all(step.command == "entry-name" for step in steps)
+
+    @pytest.mark.parametrize("options", [{"steps": [["tool"]]}, {"use": "pip-outdated"}])
+    def test_dry_run_results_stamp_command(self, options) -> None:
+        steps = list(Runner(_cfg(), dry_run=True).run([("entry-name", _cmd(**options))]))
+        assert steps[0].command == "entry-name"
+
+    def test_capability_call_error_is_stamped(self, mocker) -> None:
+        cap = mocker.MagicMock()
+        cap.run.side_effect = RuntimeError("boom")
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"pip-outdated": cap})
+        steps = list(Runner(_cfg()).run([("pip", _cmd(use="pip-outdated"))]))
+        assert steps[0].command == "pip"
+
+    def test_missing_capability_result_is_stamped(self) -> None:
+        steps = list(Runner(_cfg())._run_use("entry-name", _cmd(steps=[["tool"]])))
+        assert steps[0].command == "entry-name"
+        assert steps[0].status == "failed"

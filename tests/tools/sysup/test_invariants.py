@@ -10,6 +10,7 @@ _SYSUP_ROOT = Path(__file__).resolve().parents[3] / "src" / "tools" / "sysup"
 # runner.py and every capability must return/yield StepResult or raise
 # FatalError — never call console.panic or sys.exit (repo Invariants section).
 _LIBRARY_FILES = [
+    _SYSUP_ROOT / "attention.py",
     _SYSUP_ROOT / "config.py",
     _SYSUP_ROOT / "runner.py",
     *sorted((_SYSUP_ROOT / "capabilities").glob("*.py")),

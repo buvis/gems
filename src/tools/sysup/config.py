@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from sysup.capabilities import CAPABILITIES
 
 __all__ = [
+    "NtfySpec",
     "SysupCommand",
     "SysupConfig",
     "WhenSpec",
@@ -34,6 +35,16 @@ class WhenSpec(BaseModel):
 
     os: Literal["darwin", "linux", "win32"] | None = None
     check: str | None = None
+
+
+class NtfySpec(BaseModel):
+    """Optional ntfy endpoint, topic and Basic-auth credentials file."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    url: str | None = None
+    topic: str | None = None
+    credentials_file: str | None = None
 
 
 class SysupCommand(BaseModel):
@@ -68,6 +79,7 @@ class SysupConfig(BaseModel):
 
     commands: dict[str, SysupCommand] = {}
     prime: tuple[str, ...] = ()
+    ntfy: NtfySpec = NtfySpec()
 
 
 def _validate_capabilities(cfg: SysupConfig) -> None:
