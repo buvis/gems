@@ -192,9 +192,62 @@ dot pull
 
 Pull dotfiles and update submodules. Reveals git-secret files if available.
 
+Before merging, ``dot pull`` detects incoming deletions of host-link targets
+and rescues your local bytes. When the upstream manifest defines a target that
+incoming commits delete, dot moves your local target to the source location
+(or backs up one side when both exist with different content).
+
+**Collision handling:**
+
+When the target and source both exist and differ, you must choose:
+
+- **keep-source**: Keep the existing source file, backup the target
+- **keep-target**: Keep the target's bytes as the new source, backup old source
+- **cancel**: Abort the pull, nothing changes
+
+In a TTY, ``dot pull`` prompts for each collision. Non-interactive runs fail
+with ``pull stopped: unresolved host-link collision(s): <targets>``.
+
+The TUI (``P``) shows a modal for each collision with keys ``s``/``t``/``Esc``.
+
+.. warning::
+
+   Raw ``git pull`` bypasses rescue - git has no pre-pull hook. Always use
+   ``dot pull`` to protect host-specific files.
+
 .. code-block:: bash
 
     dot pull
+
+dot localize
+~~~~~~~~~~~~
+
+Convert a tracked file or directory to a host-specific link. This automates
+the manual steps described in "First setup": untrack, move, link, manifest.
+
+.. code-block:: bash
+
+    dot localize .config/gita/repos.csv                    # default source: .local/.config/gita/repos.csv
+    dot localize .bashrc --to .host-config/.bashrc         # custom source path
+
+**What it does:**
+
+1. Untracks the file from git (if tracked)
+2. Moves the file to the source location
+3. Creates a symlink at the original path pointing to the source
+4. Appends an entry to the host-links manifest
+5. Stages the manifest
+
+**Refusals:**
+
+- Target doesn't exist
+- Target is already a symlink
+- Source path already exists
+- Target already in manifest
+- Any tracked file under target is a git-secret file
+
+After localizing, commit the staged manifest and the deletion. On other hosts,
+``dot pull`` will rescue their local bytes before the deletion is applied.
 
 dot push
 ~~~~~~~~
@@ -254,9 +307,19 @@ Turn on the hooks once per host. Dot only installs them when
 
     git --git-dir=$HOME/.buvis config core.hooksPath ~/.buvis/hooks
 
-To make a file that the dotfiles repo already tracks host-specific, untrack it
-first. Otherwise ``dot materialize`` reports ``exists and is not a link;
-skipped``:
+To make a file that the dotfiles repo already tracks host-specific, use
+``dot localize``:
+
+.. code-block:: bash
+
+    dot localize .config/gita/repos.csv
+    dot commit "Localize repos.csv"
+    dot push
+
+On other hosts, ``dot pull`` automatically rescues their local bytes to the
+source location and creates the link.
+
+**Manual method** (before ``dot localize`` existed):
 
 .. code-block:: bash
 
@@ -270,6 +333,5 @@ Commit the removal and the manifest together.
 
 .. warning::
 
-   Pulling that commit on another host deletes the file there, because git
-   removes files that a pull untracks. On each other host, copy the file to its
-   ``.host`` name before you pull, then run ``dot materialize``.
+   Raw ``git pull`` bypasses rescue - git has no pre-pull hook. Always use
+   ``dot pull`` to protect host-specific files.

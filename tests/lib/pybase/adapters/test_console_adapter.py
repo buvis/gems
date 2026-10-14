@@ -326,3 +326,35 @@ class TestValidatePath:
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "music library" in captured.out
+
+
+class TestChoose:
+    def test_choose_delegates_to_prompt_ask(self, mocker, console_adapter: ConsoleAdapter) -> None:
+        import importlib
+
+        console_module = importlib.import_module("buvis.pybase.adapters.console.console")
+        mock_ask = mocker.patch.object(console_module.Prompt, "ask", return_value="keep-source")
+
+        result = console_adapter.choose(
+            "Resolve",
+            ["keep-source", "keep-target", "cancel"],
+            default="cancel",
+        )
+
+        assert result == "keep-source"
+        mock_ask.assert_called_once_with(
+            "Resolve",
+            choices=["keep-source", "keep-target", "cancel"],
+            default="cancel",
+        )
+
+    def test_choose_without_default(self, mocker, console_adapter: ConsoleAdapter) -> None:
+        import importlib
+
+        console_module = importlib.import_module("buvis.pybase.adapters.console.console")
+        mock_ask = mocker.patch.object(console_module.Prompt, "ask", return_value="yes")
+
+        result = console_adapter.choose("Proceed?", ["yes", "no"])
+
+        assert result == "yes"
+        mock_ask.assert_called_once_with("Proceed?", choices=["yes", "no"])

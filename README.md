@@ -120,6 +120,17 @@ run `dot materialize --hook`. `dot status` and the TUI (key `L`) report link
 problems. On Windows, directories become junctions and file links need
 Developer Mode. Details: `docs/source/tools/dot.rst`.
 
+**Localizing files:** `dot localize <target> [--to <source>]` converts a tracked
+file to a host-specific link: untracks it, moves it to the source location,
+creates the symlink, and updates the manifest. Commit the staged manifest and
+deletion, then push.
+
+**Pull rescue:** When another host's localize-commit arrives, `dot pull` detects
+the incoming deletion and rescues your local bytes to the source location before
+git removes the file. If both target and source exist with different content, you
+choose which to keep (the other is backed up). The TUI (key `P`) shows a modal for
+collisions. Warning: raw `git pull` bypasses rescue — always use `dot pull`.
+
 ### bim doc subsystem
 
 `bim doc ingest` watches the staging inbox and either auto-files a PDF

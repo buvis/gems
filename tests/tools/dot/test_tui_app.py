@@ -240,11 +240,14 @@ class TestMainScreen:
                 ops.push.assert_called_once()
 
     @pytest.mark.anyio
-    async def test_pull_calls_git_ops(self) -> None:
+    async def test_pull_calls_command_pull(self) -> None:
         from dot.tui.app import DotApp
 
         with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.DotGitService") as mock_cls:
             ops = _mock_git_ops(_TEST_ENTRIES)
+            # CommandPull calls fetch() then pull()
+            ops.fetch.return_value = ""
+            ops.has_upstream.return_value = False
             ops.pull.return_value = CommandResult(success=True, output="Pulled")
             mock_cls.return_value = ops
 
@@ -253,6 +256,8 @@ class TestMainScreen:
                 await pilot.pause()
                 await pilot.press("P")
                 await pilot.pause()
+                # Verify the git service methods were called
+                ops.fetch.assert_called_once()
                 ops.pull.assert_called_once()
 
     @pytest.mark.anyio

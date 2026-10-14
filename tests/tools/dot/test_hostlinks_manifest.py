@@ -4,7 +4,7 @@ import dataclasses
 from pathlib import Path
 
 import pytest
-from dot.hostlinks.manifest import MANIFEST_PATH, HostLink, parse_manifest, read_manifest
+from dot.hostlinks.manifest import MANIFEST_PATH, HostLink, append_entry, parse_manifest, read_manifest
 
 
 class TestManifestPath:
@@ -239,3 +239,63 @@ class TestReadManifest:
         assert links == []
         assert len(errors) == 1
         assert errors[0].startswith("host-links: ")
+
+
+class TestAppendEntry:
+    def test_creates_missing_file(self, tmp_path: Path) -> None:
+        link = HostLink(target=".zshrc", source=".zshrc.host")
+
+        append_entry(tmp_path, link)
+
+        manifest = tmp_path / MANIFEST_PATH
+        assert manifest.exists()
+        assert manifest.read_text() == ".zshrc => .zshrc.host\n"
+
+    def test_creates_parent_directories(self, tmp_path: Path) -> None:
+        link = HostLink(target=".bashrc", source=".bashrc.host")
+
+        append_entry(tmp_path, link)
+
+        manifest = tmp_path / MANIFEST_PATH
+        assert manifest.parent.exists()
+        assert manifest.exists()
+
+    def test_appends_to_existing_file(self, tmp_path: Path) -> None:
+        manifest = tmp_path / MANIFEST_PATH
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(".a => .a.host\n")
+
+        append_entry(tmp_path, HostLink(target=".b", source=".b.host"))
+
+        content = manifest.read_text()
+        assert content == ".a => .a.host\n.b => .b.host\n"
+
+    def test_adds_newline_if_missing(self, tmp_path: Path) -> None:
+        manifest = tmp_path / MANIFEST_PATH
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(".a => .a.host")  # No trailing newline
+
+        append_entry(tmp_path, HostLink(target=".b", source=".b.host"))
+
+        content = manifest.read_text()
+        assert content == ".a => .a.host\n.b => .b.host\n"
+
+    def test_roundtrip_through_parse_manifest(self, tmp_path: Path) -> None:
+        link1 = HostLink(target=".zshrc", source=".zshrc.host")
+        link2 = HostLink(target=".vimrc", source=".vimrc.host")
+
+        append_entry(tmp_path, link1)
+        append_entry(tmp_path, link2)
+
+        links, errors = read_manifest(tmp_path)
+        assert errors == []
+        assert links == [link1, link2]
+
+    def test_empty_file_gets_entry_appended(self, tmp_path: Path) -> None:
+        manifest = tmp_path / MANIFEST_PATH
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text("")
+
+        append_entry(tmp_path, HostLink(target=".a", source=".a.host"))
+
+        assert manifest.read_text() == ".a => .a.host\n"

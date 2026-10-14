@@ -530,3 +530,67 @@ class DotGitService:
         if err:
             return CommandResult(success=False, error=err)
         return CommandResult(success=True)
+
+    def fetch(self) -> str:
+        """Fetch from origin.
+
+        Returns:
+            Error text on failure, empty string on success.
+        """
+        err, _out = self.shell.exe("cfg fetch", self.wd)
+        return err or ""
+
+    def has_upstream(self) -> bool:
+        """Check if an upstream tracking branch is configured.
+
+        Returns:
+            True if @{u} resolves, False otherwise.
+        """
+        err, _out = self.shell.exe("cfg rev-parse --verify --quiet @{u}", self.wd)
+        return not err
+
+    def show_upstream_file(self, path: str) -> str | None:
+        """Read a file's content from the upstream branch.
+
+        Args:
+            path: File path relative to the work-tree root.
+
+        Returns:
+            The file content, or None if the file does not exist at @{u}.
+        """
+        err, out = self.shell.exe(f"cfg show @{{u}}:{shlex.quote(path)}", self.wd)
+        if err:
+            return None
+        return out
+
+    def upstream_deleted_paths(self) -> list[str]:
+        """List paths deleted in commits between HEAD and upstream.
+
+        Returns:
+            Deleted paths, or empty list if diff fails or no upstream.
+        """
+        err, out = self.shell.exe(
+            "cfg diff --name-only --no-renames -z --diff-filter=D HEAD...@{u}",
+            self.wd,
+        )
+        if err:
+            return []
+        # NUL-separated output; filter empty strings from trailing NUL
+        return [p for p in out.split("\0") if p]
+
+    def untrack(self, path: str) -> CommandResult:
+        """Remove a path from the index without touching the work-tree.
+
+        Args:
+            path: Path to untrack; supports directories (recursive).
+
+        Returns:
+            The outcome of the untrack command.
+        """
+        err, _out = self.shell.exe(
+            f"cfg rm -r --cached --quiet -- {shlex.quote(path)}",
+            self.wd,
+        )
+        if err:
+            return CommandResult(success=False, error=err)
+        return CommandResult(success=True)
