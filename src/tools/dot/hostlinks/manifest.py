@@ -23,6 +23,17 @@ class HostLink:
     source: str
 
 
+def _has_windows_drive(path: str) -> bool:
+    """Report whether path starts with a Windows-style ``<char>:`` drive prefix.
+
+    ``PureWindowsPath(...).drive`` parses a single-character drive prefix
+    inconsistently across platforms and CPython versions (e.g. ``"1:x"`` yields
+    ``"1:"`` on macOS but ``""`` on Linux), so detect it explicitly here to keep
+    manifest validation platform-independent.
+    """
+    return len(path) >= 2 and path[1] == ":" and path[0] != ":"
+
+
 def _is_absolute(path: str) -> bool:
     windows = PureWindowsPath(path)
     return (
@@ -30,6 +41,7 @@ def _is_absolute(path: str) -> bool:
         or windows.is_absolute()
         or windows.drive != ""
         or windows.root != ""
+        or _has_windows_drive(path)
         or path.startswith("~")
     )
 
