@@ -126,3 +126,16 @@ class TestSetupRealGit:
         assert result.error.endswith("move them away, then run: dot run checkout")
         assert (home / ".zshrc").read_bytes() == b"mine\r\n\xff"
         assert not (home / ".gitconfig").exists()
+
+    def test_checkout_refuses_to_overwrite_an_ignored_existing_file(self, env: tuple[Path, Path]) -> None:
+        origin, home = env
+        # Plain `git checkout` silently overwrites untracked files that are ignored.
+        (home / ".gitignore").write_text(".zshrc\n")
+        (home / ".zshrc").write_bytes(b"mine\n")
+
+        result = CommandSetup(ShellAdapter(suppress_logging=True), str(home), str(origin)).execute()
+
+        assert not result.success
+        assert result.error is not None
+        assert ".zshrc" in result.error
+        assert (home / ".zshrc").read_bytes() == b"mine\n"

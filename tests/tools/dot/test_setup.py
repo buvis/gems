@@ -72,7 +72,14 @@ class TestCommandSetupCommands:
 
         CommandSetup(shell, str(tmp_path), "file:///a b/dots").execute()
 
-        assert commands(shell)[0] == f"git clone --bare 'file:///a b/dots' {shlex.quote(str(tmp_path) + '/.buvis')}"
+        assert commands(shell)[0] == f"git clone --bare -- 'file:///a b/dots' {shlex.quote(str(tmp_path) + '/.buvis')}"
+
+    def test_clone_treats_dash_leading_url_as_operand_not_option(self, tmp_path: Path, materialize: MagicMock) -> None:
+        shell = scripted_shell()
+
+        CommandSetup(shell, str(tmp_path), "--upload-pack=touch x").execute()
+
+        assert commands(shell)[0].startswith("git clone --bare -- '--upload-pack=touch x' ")
 
     def test_self_heal_runs_after_clone_and_before_checkout(self, tmp_path: Path, materialize: MagicMock) -> None:
         shell = scripted_shell()
@@ -81,7 +88,7 @@ class TestCommandSetupCommands:
 
         cmds = commands(shell)
         clone = index_of(cmds, "git clone")
-        checkout = cmds.index("cfg checkout")
+        checkout = cmds.index("cfg checkout --no-overwrite-ignore")
         assert clone < index_of(cmds, "remote.origin.fetch") < checkout
         assert clone < index_of(cmds, "core.hooksPath") < checkout
 
@@ -91,7 +98,7 @@ class TestCommandSetupCommands:
         CommandSetup(shell, str(tmp_path), URL).execute()
 
         cmds = commands(shell)
-        assert cmds.index("cfg config status.showUntrackedFiles no") < cmds.index("cfg checkout")
+        assert cmds.index("cfg config status.showUntrackedFiles no") < cmds.index("cfg checkout --no-overwrite-ignore")
 
     def test_sets_upstream_to_origin_of_head_branch(self, tmp_path: Path, materialize: MagicMock) -> None:
         shell = scripted_shell()
@@ -102,7 +109,7 @@ class TestCommandSetupCommands:
         fetch = cmds.index("cfg fetch origin")
         rev_parse = cmds.index("cfg rev-parse --abbrev-ref HEAD")
         branch = cmds.index("cfg branch --set-upstream-to=origin/master")
-        assert fetch < rev_parse < branch < cmds.index("cfg checkout")
+        assert fetch < rev_parse < branch < cmds.index("cfg checkout --no-overwrite-ignore")
 
     def test_quotes_branch_name_with_shell_metacharacters(self, tmp_path: Path, materialize: MagicMock) -> None:
         shell = scripted_shell({"cfg rev-parse --abbrev-ref HEAD": ("", "a;b\n")})
@@ -152,7 +159,7 @@ class TestCommandSetupOutcomes:
 
         assert result.success
         assert "upstream not set: fatal: no remote" in result.warnings
-        assert "cfg checkout" in commands(shell)
+        assert "cfg checkout --no-overwrite-ignore" in commands(shell)
         assert not any(c.startswith("cfg branch") for c in commands(shell))
         materialize.return_value.execute.assert_called_once()
 
@@ -163,7 +170,7 @@ class TestCommandSetupOutcomes:
 
         assert result.success
         assert "upstream not set: fatal: bad head" in result.warnings
-        assert "cfg checkout" in commands(shell)
+        assert "cfg checkout --no-overwrite-ignore" in commands(shell)
         assert not any(c.startswith("cfg branch") for c in commands(shell))
         materialize.return_value.execute.assert_called_once()
 
@@ -174,7 +181,7 @@ class TestCommandSetupOutcomes:
 
         assert result.success
         assert "status.showUntrackedFiles not set: error: locked" in result.warnings
-        assert "cfg checkout" in commands(shell)
+        assert "cfg checkout --no-overwrite-ignore" in commands(shell)
 
     def test_checkout_conflict_fails_names_dot_run_checkout_and_skips_materialize(
         self, tmp_path: Path, materialize: MagicMock

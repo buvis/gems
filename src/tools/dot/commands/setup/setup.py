@@ -28,7 +28,7 @@ class CommandSetup:
         if Path(buvis_dir).exists():
             return CommandResult(success=False, error=f"already set up: {buvis_dir} exists")
         err, _out = self._shell.exe(
-            f"git clone --bare {shlex.quote(self.remote_url)} {shlex.quote(buvis_dir)}",
+            f"git clone --bare -- {shlex.quote(self.remote_url)} {shlex.quote(buvis_dir)}",
             Path(self.dotfiles_root),
         )
         if err:
@@ -42,7 +42,8 @@ class CommandSetup:
         err = self._set_upstream(service)
         if err:
             warnings.append(f"upstream not set: {err}")
-        err, _out = self._shell.exe("cfg checkout", service.wd)
+        # Plain checkout silently overwrites ignored untracked files.
+        err, _out = self._shell.exe("cfg checkout --no-overwrite-ignore", service.wd)
         if err:
             return CommandResult(
                 success=False,
