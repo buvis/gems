@@ -5,13 +5,19 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 from buvis.pybase.updater.state import (
     STATE_FILE_NAME,
     append_log,
+    clear_upgrade_failure,
     read_cache,
+    read_installer_cache,
+    read_upgrade_failure,
     write_cache,
+    write_installer_cache,
+    write_upgrade_failure,
 )
 from pytest_mock import MockerFixture
 
@@ -137,3 +143,101 @@ class TestAppendLog:
         assert state["log"] == [
             {"ts": state["log"][0]["ts"], "level": "info", "message": "recovered"},
         ]
+
+
+def _seconds_ago(ts: datetime | None) -> float:
+    assert ts is not None
+    return (datetime.now(tz=timezone.utc) - ts).total_seconds()
+
+
+class TestUpgradeFailure:
+    def test_upgrade_failure_roundtrip_preserves_cache_and_log(self, state_dir: Path) -> None:
+        write_cache(state_dir, "0.14.1")
+        append_log(state_dir, "info", "prior")
+
+        write_upgrade_failure(state_dir, "0.14.1")
+
+        failure = read_upgrade_failure(state_dir)
+        assert failure is not None
+        assert failure[0] == "0.14.1"
+        assert 0 <= _seconds_ago(failure[1]) < 5
+        assert read_cache(state_dir)[1] == "0.14.1"
+        state = json.loads((state_dir / STATE_FILE_NAME).read_text())
+        assert [entry["message"] for entry in state["log"]] == ["prior"]
+
+    def test_clear_upgrade_failure_removes_key(self, state_dir: Path) -> None:
+        write_cache(state_dir, "0.14.1")
+        write_upgrade_failure(state_dir, "0.14.1")
+
+        clear_upgrade_failure(state_dir)
+
+        assert read_upgrade_failure(state_dir) is None
+        state = json.loads((state_dir / STATE_FILE_NAME).read_text())
+        assert "upgrade_failed" not in state
+        assert state["latest_version"] == "0.14.1"
+
+
+class TestInstallerCache:
+    @pytest.mark.parametrize("installer_first", [True, False], ids=["installer-first", "pypi-first"])
+    def test_installer_cache_preserves_pypi_cache_log_and_backoff(self, state_dir: Path, installer_first: bool) -> None:
+        append_log(state_dir, "info", "prior")
+        write_upgrade_failure(state_dir, "0.14.0")
+
+        writes = [
+            lambda: write_installer_cache(state_dir, "mise-pipx", "0.13.0"),
+            lambda: write_cache(state_dir, "0.14.1"),
+        ]
+        for write in writes if installer_first else reversed(writes):
+            write()
+
+        pypi_check, pypi_version = read_cache(state_dir)
+        installer_check, installer_version = read_installer_cache(state_dir, "mise-pipx")
+        assert pypi_version == "0.14.1"
+        assert installer_version == "0.13.0"
+        assert 0 <= _seconds_ago(pypi_check) < 5
+        assert 0 <= _seconds_ago(installer_check) < 5
+        failure = read_upgrade_failure(state_dir)
+        assert failure is not None and failure[0] == "0.14.0"
+        state = json.loads((state_dir / STATE_FILE_NAME).read_text())
+        assert [entry["message"] for entry in state["log"]] == ["prior"]
+
+    @pytest.mark.parametrize(
+        "state",
+        [
+            {},
+            {"last_check": "2026-10-12T00:00:00+00:00", "latest_version": "0.14.1"},
+            {"installer_cache": "not a dict"},
+            {"installer_cache": {"method": "mise-pipx", "last_check": "garbage", "latest_version": "0.13.0"}},
+            {"installer_cache": {"method": "mise-pipx", "last_check": "2026-10-12T00:00:00+00:00"}},
+            {
+                "installer_cache": {
+                    "method": "mise-pipx",
+                    "last_check": "2026-10-12T00:00:00+00:00",
+                    "latest_version": 1,
+                }
+            },
+            {
+                "installer_cache": {
+                    "method": "uv-tool",
+                    "last_check": "2026-10-12T00:00:00+00:00",
+                    "latest_version": "1",
+                }
+            },
+        ],
+        ids=["absent", "legacy-pypi-only", "not-a-dict", "bad-ts", "no-version", "non-str-version", "other-method"],
+    )
+    def test_installer_cache_missing_malformed_or_method_mismatch_is_miss(
+        self, state_dir: Path, state: dict[str, Any]
+    ) -> None:
+        (state_dir / STATE_FILE_NAME).write_text(json.dumps(state))
+
+        assert read_installer_cache(state_dir, "mise-pipx") == (None, None)
+
+    def test_naive_installer_timestamp_treated_as_utc(self, state_dir: Path) -> None:
+        record = {"method": "mise-pipx", "last_check": "2026-10-12T00:00:00", "latest_version": "0.13.0"}
+        (state_dir / STATE_FILE_NAME).write_text(json.dumps({"installer_cache": record}))
+
+        last_check, version = read_installer_cache(state_dir, "mise-pipx")
+
+        assert version == "0.13.0"
+        assert last_check == datetime(2026, 10, 12, tzinfo=timezone.utc)

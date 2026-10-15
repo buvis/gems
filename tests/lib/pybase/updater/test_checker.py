@@ -288,6 +288,40 @@ class TestFetchLatestVersion:
         assert mock_write.call_args.args[0] == DEFAULT_STATE_DIR
 
 
+class TestVersionSource:
+    def test_fetch_parameter_replaces_pypi_query(self, state_dir: Path) -> None:
+        fetch = MagicMock(return_value="0.9.0")
+
+        with (
+            patch("buvis.pybase.updater.checker.pkg_version", return_value="0.7.0"),
+            patch("buvis.pybase.updater.checker.urlopen") as mock_urlopen,
+        ):
+            result = check_for_update(state_dir=state_dir, fetch=fetch)
+
+        assert result == "0.9.0"
+        fetch.assert_called_once_with()
+        mock_urlopen.assert_not_called()
+
+    def test_installer_check_ignores_legacy_pypi_cache(self, state_dir: Path) -> None:
+        """A fresh PyPI-only cache must never answer an installer-aware check."""
+        _write_state(state_dir, datetime.now(tz=timezone.utc), "0.14.1")
+        mise_lookup = MagicMock(return_value="0.13.0")
+
+        with (
+            patch("buvis.pybase.updater.checker.pkg_version", return_value="0.13.0"),
+            patch("buvis.pybase.updater.checker.urlopen") as mock_urlopen,
+        ):
+            result = check_for_update(state_dir=state_dir, fetch=mise_lookup, installer_method="mise-pipx")
+
+        assert result is None
+        mise_lookup.assert_called_once_with()
+        mock_urlopen.assert_not_called()
+        state = json.loads((state_dir / "updater.json").read_text())
+        assert state["latest_version"] == "0.14.1"
+        assert state["installer_cache"]["method"] == "mise-pipx"
+        assert state["installer_cache"]["latest_version"] == "0.13.0"
+
+
 class TestCustomInterval:
     def test_interval_zero_always_queries_pypi(self, state_dir: Path) -> None:
         _write_state(state_dir, datetime.now(tz=timezone.utc), "0.7.0")

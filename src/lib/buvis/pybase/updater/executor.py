@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 from subprocess import TimeoutExpired
 
 from buvis.pybase.adapters import console
+from packaging.version import Version
 
 from .detector import InstallerInfo
-from .state import DEFAULT_STATE_DIR, append_log
+from .state import DEFAULT_STATE_DIR, append_log, clear_upgrade_failure, write_upgrade_failure
 
-__all__ = ["REEXEC_ENV", "run_update", "run_update_interactive"]
+__all__ = ["REEXEC_ENV", "read_installed_version", "run_update", "run_update_interactive"]
 
 # Set before re-exec so the restarted process skips the update check. An installer can exit 0
 # without installing (e.g. mise hides releases younger than minimum_release_age); without this
@@ -25,6 +27,44 @@ _UPGRADE_TIMEOUT = 120
 # genuinely hung installer is still reported rather than blocking forever.
 _INTERACTIVE_UPGRADE_TIMEOUT = 1800
 _MISE_WHERE_TIMEOUT = 10
+_VERSION_TIMEOUT = 10
+_VERSION_PATTERN = re.compile(r"version (\S+)")
+
+
+def read_installed_version(installer: InstallerInfo) -> str | None:
+    """Return the installed buvis-gems version as reported by a ``--version`` child.
+
+    The child gets ``REEXEC_ENV=1``: ``--version`` runs the update check before
+    the version option fires, so an unguarded child would start its own upgrade.
+
+    Args:
+        installer: Detected installer info, used to locate the upgraded binary.
+
+    Returns:
+        The installed version string, or None when it cannot be read.
+    """
+    try:
+        argv0 = _resolve_reexec_argv(installer)[0]
+        result = subprocess.run(
+            [argv0, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=_VERSION_TIMEOUT,
+            env={**os.environ, REEXEC_ENV: "1"},
+        )
+        match = _VERSION_PATTERN.search(result.stdout)
+        if match is None:
+            return None
+        Version(match.group(1))
+        return match.group(1)
+    except Exception:
+        # Runs on every CLI start after an upgrade: any failure means "unverifiable", never a crash.
+        return None
+
+
+def _is_noop_upgrade(installed: str | None, current: str) -> bool:
+    """True when verification ran and the installed version did not move past ``current``."""
+    return installed is not None and Version(installed) <= Version(current)
 
 
 def run_update(
@@ -39,7 +79,9 @@ def run_update(
     the upgraded binary and does not return. If the re-exec cannot be performed,
     the process prints a user-visible failure message and exits with status 1,
     because the current interpreter's cached files may have been replaced by the
-    upgrade and continuing execution is unsafe.
+    upgrade and continuing execution is unsafe. When the installer exits 0 but the
+    installed version did not move, it records ``latest`` for the upgrade back-off
+    and returns without restarting.
 
     Args:
         current: Currently installed version string.
@@ -79,6 +121,20 @@ def run_update(
         )
         return
 
+    installed = read_installed_version(installer)
+    if _is_noop_upgrade(installed, current):
+        write_upgrade_failure(state_dir, latest)
+        append_log(
+            state_dir,
+            "error",
+            f"Upgrade to {latest} was a no-op: installer index may not offer it yet. Continuing with {current}.",
+        )
+        return
+    if installed is None:
+        append_log(state_dir, "warning", f"Could not verify the upgrade to {latest}; restarting once to pick it up")
+    else:
+        clear_upgrade_failure(state_dir)
+
     append_log(state_dir, "info", f"Updated to {latest}, restarting")
     _reexec_or_exit(installer, state_dir)
 
@@ -96,7 +152,8 @@ def run_update_interactive(
     code immediately after.
 
     Returns 0 on success, 1 on any failure (subprocess error, nonzero exit,
-    timeout, or an unknown installer passed by a defensive caller).
+    timeout, an installer that exits 0 without changing the installed version,
+    or an unknown installer passed by a defensive caller).
     """
     if state_dir is None:
         state_dir = DEFAULT_STATE_DIR
@@ -130,6 +187,12 @@ def run_update_interactive(
     if result.returncode != 0:
         console.failure(f"Update failed: installer exited with code {result.returncode}")
         append_log(state_dir, "error", f"Update failed: exit code {result.returncode}")
+        return 1
+
+    if _is_noop_upgrade(read_installed_version(installer), current):
+        message = f"Installer reported success but buvis-gems is still {current}; its index may not offer {latest} yet."
+        console.failure(message)
+        append_log(state_dir, "error", message)
         return 1
 
     console.success("Upgraded.")

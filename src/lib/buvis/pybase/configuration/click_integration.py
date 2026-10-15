@@ -177,7 +177,7 @@ def _install_parse_args_patch() -> None:
 
 
 def _update_callback(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
-    """Force-check PyPI and upgrade if newer version is available, then exit."""
+    """Force-check the installer's index and upgrade if a newer version is available, then exit."""
     if not value or ctx.resilient_parsing:
         return
 

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **pybase**: config merge no longer mutates an earlier layer's nested dict when a later layer overrides the same key.
+- **pybase**: auto-update asks the installer's index (mise, uv, pip) what it can install, not PyPI, so a lagging mirror or release-age gate no longer costs a useless upgrade and restart on every run. An upgrade that installs nothing is logged as an error and skipped for that version for 24 hours. `--update` says when PyPI is ahead of the installer's index and fails when the upgrade did not apply.
 
 ## [0.14.1] - 2026-10-12
 
