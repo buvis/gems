@@ -4,6 +4,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 from dot.commands.status.status import CommandStatus
+from dot.divergence import divergence_dir
 from dot.git.models import BranchInfo, FileEntry
 
 
@@ -366,3 +367,26 @@ class TestCommandStatusHookHealth:
 
         assert not result.success
         mock_service.check_hooks.assert_not_called()
+
+
+class TestCommandStatusPendingPatches:
+    @patch("dot.commands.status.status.DotGitService")
+    def test_pending_patch_is_warned_until_deleted(self, mock_service_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.status.return_value = ([], None)
+        mock_service.branch_info.return_value = BranchInfo(name="main")
+        mock_service.check_hooks.return_value = []
+        d = divergence_dir(dotfiles_root)
+        d.mkdir(parents=True)
+        patch_file = d / "20261016T120000Z.patch"
+        patch_file.write_bytes(b"x")
+
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.warnings == [f"1 divergence patch(es) pending in {d}"]
+
+        patch_file.unlink()
+        result = CommandStatus(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.warnings == []
+        assert result.output == "No modifications found"
