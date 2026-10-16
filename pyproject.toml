@@ -169,6 +169,7 @@ combine-as-imports = true
 "src/tools/bim/commands/doc/shared/naming.py" = ["PLR0913"]
 "src/tools/bim/commands/serve/_*.py" = ["ARG001"]
 "src/lib/buvis/pybase/updater/checker.py" = ["S310"]
+"src/lib/buvis/pybase/adapters/ntfy/ntfy.py" = ["S310", "PLR0913"]
 "src/tools/bim/shared/suggest_tags.py" = ["S310"]
 "src/lib/buvis/pybase/updater/executor.py" = ["S606"]
 "src/tools/bim/commands/shared/os_open.py" = ["S606"]
