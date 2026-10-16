@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **sysup**: exits 1 when a step failed during the run (was 0); "expiring" outcomes and entries retained from earlier runs keep exit 0
+- **dot**: `dot pull` no longer fails with "would be overwritten" when an uncommitted edit touches a file the incoming commits change: it saves those edits to a `git apply`-able divergence patch in `~/.local/share/dot/divergence/`, resets the files to `HEAD` and lets upstream win. A file with both staged and unstaged changes stops the pull untouched. `dot status` and the TUI status bar warn while a patch is pending.
 
 ### Fixed
 

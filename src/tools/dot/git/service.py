@@ -2,15 +2,22 @@ from __future__ import annotations
 
 import os
 import shlex
+import socket
+import subprocess
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from buvis.pybase.filesystem import atomic_write_bytes
 from buvis.pybase.result import CommandResult
 
+from dot.divergence import divergence_dir
 from dot.git.models import BranchInfo, FileEntry
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from buvis.pybase.adapters.shell.shell import ShellAdapter
 
 __all__ = ["DotGitService"]
@@ -140,35 +147,169 @@ class DotGitService:
             return CommandResult(success=False, error=err)
         return CommandResult(success=True, output="Changes pushed")
 
-    def pull(self, passphrase: str | None = None) -> CommandResult:
-        """Pull, refresh submodules and reveal secrets.
+    def pull(
+        self,
+        passphrase: str | None = None,
+        *,
+        exclude: Iterable[str] = (),
+        fetched: bool = False,
+    ) -> CommandResult:
+        """Save divergent local edits, reset them, then pull, refresh submodules and reveal secrets.
+
+        Uncommitted edits to paths the incoming commits also change are saved to a
+        ``git apply``-able patch and reset to ``HEAD`` so upstream wins.
 
         Args:
             passphrase: GPG passphrase for the secret reveal step.
+            exclude: Paths (and directories) never selected for divergence save.
+            fetched: The caller already fetched; skip the fetch step.
 
         Returns:
-            The outcome of the pull sequence.
+            The outcome of the pull sequence. ``warnings`` start with the saved patch
+            and every path reset, on success and on any later failure.
         """
-        err, _out = self.shell.exe("cfg pull", self.wd)
-        if err:
-            return CommandResult(success=False, error=err)
-        err, _out = self.shell.exe("cfg submodule foreach git reset --hard", self.wd)
-        if err:
-            return CommandResult(success=False, error=f"Submodule reset failed: {err}")
-        err, _out = self.shell.exe("cfg submodule update --init", self.wd)
-        if err:
-            return CommandResult(success=False, error=f"Submodule init failed: {err}")
-        err, _out = self.shell.exe("cfg submodule update --remote --merge", self.wd)
-        if err:
-            return CommandResult(success=False, error=f"Submodule update failed: {err}")
+        if not fetched:
+            fetch_err = self.fetch()
+            if fetch_err:
+                return CommandResult(success=False, error=f"Fetch failed: {fetch_err}")
+        warnings: list[str] = []
+        if self.has_upstream():
+            diverged = self._save_and_reset_divergence(exclude)
+            if not diverged.success:
+                return diverged
+            warnings = list(diverged.warnings)
+        for cmd, prefix in (
+            ("cfg pull", ""),
+            ("cfg submodule foreach git reset --hard", "Submodule reset failed: "),
+            ("cfg submodule update --init", "Submodule init failed: "),
+            ("cfg submodule update --remote --merge", "Submodule update failed: "),
+        ):
+            err, _out = self.shell.exe(cmd, self.wd)
+            if err:
+                return CommandResult(success=False, error=f"{prefix}{err}", warnings=warnings)
         if self.shell.is_command_available("git-secret"):
             cmd = "cfg secret reveal -f"
             if passphrase:
                 cmd += f" -p {shlex.quote(passphrase)}"
             err, _out = self.shell.exe(cmd, self.wd)
             if err:
-                return CommandResult(success=False, error=f"Secret reveal failed: {err}")
-        return CommandResult(success=True, output="Dotfiles pulled successfully")
+                return CommandResult(success=False, error=f"Secret reveal failed: {err}", warnings=warnings)
+        return CommandResult(success=True, output="Dotfiles pulled successfully", warnings=warnings)
+
+    def _save_and_reset_divergence(self, exclude: Iterable[str]) -> CommandResult:
+        """Save divergent edits to a patch, then reset each saved path to HEAD.
+
+        Returns:
+            Success with the patch and reset lines as ``warnings`` (empty when
+            nothing diverged), or a failure keeping the lines of resets done so far.
+        """
+        selected, error = self._select_divergent(exclude)
+        if error:
+            return CommandResult(success=False, error=error)
+        if not selected:
+            return CommandResult(success=True)
+        patch, error = self._save_divergence(selected)
+        if error:
+            return CommandResult(success=False, error=f"could not save divergence patch: {error}")
+        warnings = [f"divergence patch saved: {patch}"]
+        for path in selected:
+            err, _out = self.shell.exe(
+                f"cfg --literal-pathspecs restore --source=HEAD --staged --worktree -- {shlex.quote(path)}",
+                self.wd,
+            )
+            if err:
+                return CommandResult(success=False, error=f"reset failed for {path}: {err}", warnings=warnings)
+            warnings.append(f"reset to HEAD, local edit in patch: {path}")
+        return CommandResult(success=True, warnings=warnings)
+
+    def _select_divergent(self, exclude: Iterable[str]) -> tuple[list[str], str | None]:
+        """Pick uncommitted paths the incoming commits also change.
+
+        Returns:
+            The sorted selected paths, or an error when detection failed or a
+            selected path cannot be saved faithfully (both staged and unstaged
+            changes, or untracked while still on disk).
+        """
+        lists: list[set[str]] = []
+        for cmd in (
+            "cfg diff --name-only --no-renames -z HEAD...@{u}",
+            "cfg diff --cached --name-only --no-renames --ignore-submodules=all -z",
+            "cfg diff --name-only --no-renames --ignore-submodules=all -z",
+            "cfg diff --cached --name-only --no-renames --diff-filter=D -z",
+        ):
+            err, out = self.shell.exe(cmd, self.wd)
+            if err:
+                return [], f"divergence check failed: {err}"
+            lists.append({p for p in out.split("\0") if p})
+        incoming, staged, unstaged, staged_deleted = lists
+        excluded = tuple(exclude)
+        selected = sorted(
+            p for p in (staged | unstaged) & incoming if not any(p == e or p.startswith(e + "/") for e in excluded)
+        )
+        mixed = [p for p in selected if p in staged and p in unstaged]
+        if mixed:
+            return [], (
+                f"pull stopped: {', '.join(mixed)} have both staged and unstaged changes; commit or unstage them first"
+            )
+        # `git rm --cached` keeps the file on disk; the patch would record a deletion and the
+        # reset would overwrite the kept bytes with HEAD.
+        kept = [p for p in selected if p in staged_deleted and os.path.lexists(self.wd / p)]
+        if kept:
+            return [], f"pull stopped: {', '.join(kept)} untracked but kept on disk; commit the removal or re-add first"
+        return selected, None
+
+    def _save_divergence(self, selected: list[str]) -> tuple[Path | None, str | None]:
+        """Write the HEAD-to-worktree diff of ``selected`` to a new patch file.
+
+        Returns:
+            The patch path, or the reason the save failed.
+        """
+        err, head = self.shell.exe("cfg rev-parse HEAD", self.wd)
+        if err or not head.strip():
+            return None, f"cannot read HEAD: {err or 'empty output'}"
+        err, upstream = self.shell.exe("cfg rev-parse @{u}", self.wd)
+        if err or not upstream.strip():
+            return None, f"cannot read upstream: {err or 'empty output'}"
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        patch = divergence_dir(self.wd) / f"{stamp}.patch"
+        header = (
+            "# dot divergence patch\n"
+            f"# base: {head.strip()}\n"
+            f"# upstream: {upstream.strip()}\n"
+            f"# host: {socket.gethostname()}\n\n"
+        )
+        argv = [
+            "git",
+            f"--git-dir={self.dotfiles_root}/.buvis",
+            f"--work-tree={self.dotfiles_root}",
+            "--literal-pathspecs",
+            "diff",
+            "--binary",
+            "--full-index",
+            "--no-renames",
+            # Keep user diff config (external tools, textconv, color, prefixes) out of the patch.
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            "HEAD",
+            "--",
+            *selected,
+        ]
+        try:
+            # Patches hold private dotfile bytes: keep the directory owner-only.
+            patch.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if patch.exists():
+                return None, f"{patch} already exists"
+            # Raw bytes via a fixed argv: ShellAdapter.exe decodes text and would rewrite CRLF.
+            proc = subprocess.run(argv, cwd=self.wd, capture_output=True, text=False, check=False)
+            if proc.returncode != 0:
+                return None, proc.stderr.decode(errors="replace").strip() or f"git diff exited {proc.returncode}"
+            atomic_write_bytes(patch, header.encode() + proc.stdout)
+        except OSError as exc:
+            return None, str(exc)
+        return patch, None
 
     def has_uncommitted_changes(self) -> bool:
         """Report whether the work-tree has changes to commit."""

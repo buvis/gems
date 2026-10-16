@@ -261,6 +261,58 @@ class TestMainScreen:
                 ops.pull.assert_called_once()
 
     @pytest.mark.anyio
+    async def test_pull_failure_shows_error_and_divergence_warnings(self) -> None:
+        from dot.tui.app import DotApp
+        from dot.tui.widgets import DiffView
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.DotGitService") as mock_cls:
+            # No file entries: a non-empty list re-renders the diff pane on selection.
+            ops = _mock_git_ops()
+            ops.fetch.return_value = ""
+            ops.has_upstream.return_value = False
+            ops.pull.return_value = CommandResult(
+                success=False,
+                error="reset failed for .b: denied",
+                warnings=["divergence patch saved: /d/1.patch", "reset to HEAD, local edit in patch: .a"],
+            )
+            mock_cls.return_value = ops
+
+            app = DotApp(dotfiles_root="/tmp/test")
+            async with app.run_test(size=(120, 30)) as pilot:
+                await pilot.pause()
+                diff_view = app.screen.query_one("#diff", DiffView)
+                diff_view.update_diff = MagicMock()
+
+                await pilot.press("P")
+                await pilot.pause()
+
+                shown = diff_view.update_diff.call_args_list[0].args[0]
+                assert shown == (
+                    "reset failed for .b: denied\n"
+                    "divergence patch saved: /d/1.patch\n"
+                    "reset to HEAD, local edit in patch: .a"
+                )
+
+    @pytest.mark.anyio
+    async def test_status_bar_shows_pending_divergence_patches(self, tmp_path) -> None:
+        from dot.divergence import divergence_dir
+        from dot.tui.app import DotApp
+        from dot.tui.widgets import StatusBar
+
+        d = divergence_dir(tmp_path)
+        d.mkdir(parents=True)
+        (d / "a.patch").write_bytes(b"x")
+
+        with patch("dot.tui.app.ShellAdapter"), patch("dot.tui.app.DotGitService") as mock_cls:
+            mock_cls.return_value = _mock_git_ops()
+
+            app = DotApp(dotfiles_root=str(tmp_path))
+            async with app.run_test(size=(200, 30)) as pilot:
+                await pilot.pause()
+                status_bar = app.screen.query_one("#status-bar", StatusBar)
+                assert f"1 divergence patch(es) pending in {d}" in status_bar.content.plain
+
+    @pytest.mark.anyio
     async def test_refresh_updates_status(self) -> None:
         from dot.tui.app import DotApp
 
