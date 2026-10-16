@@ -75,6 +75,7 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">sysup</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#attention">Attention</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#migration-from-the-subcommands">Migration from the subcommands</a></li>
 </ul>
 </li>
@@ -129,6 +130,7 @@ sysup<span class="w"> </span>--only<span class="w"> </span>brew,helm<span class=
 sysup<span class="w"> </span>--tag<span class="w"> </span>python<span class="w">        </span><span class="c1"># run only entries carrying this tag</span>
 sysup<span class="w"> </span>--list<span class="w">              </span><span class="c1"># print the resolved plan for this host, run nothing</span>
 sysup<span class="w"> </span>--dry-run<span class="w">           </span><span class="c1"># show what would run without running it</span>
+sysup<span class="w"> </span>status<span class="w">              </span><span class="c1"># read unresolved attention without running updates</span>
 </pre></div>
 </div>
 <p>Applicability is decided per entry by its <code class="docutils literal notranslate"><span class="pre">when</span></code> guard (OS + a binary that
@@ -262,6 +264,49 @@ than its shared twin, so it overrides per-key while staying untracked.</p>
 <p>Because <code class="docutils literal notranslate"><span class="pre">*.local.yaml</span></code> is deliberately untracked, it is not backed up by the
 dotfiles repo; keep a separate backup of anything only it holds.</p>
 </section>
+</section>
+<section id="attention">
+<h2>Attention<a class="headerlink" href="#attention" title="Link to this heading"></a></h2>
+<p>An ordinary run ends with one summary of everything unresolved, sorted by
+command name. Failed, expired and unknown outcomes are red; expiring outcomes
+are amber. Each command has one entry containing all of its not-ok messages,
+so a later successful step within the same command does not hide an earlier
+failure. A complete clean check of that command clears its entry.</p>
+<p>Entries persist in <code class="docutils literal notranslate"><span class="pre">$XDG_STATE_HOME/sysup/attention.json</span></code>, falling back to
+<code class="docutils literal notranslate"><span class="pre">~/.local/state/sysup/attention.json</span></code>. The version-one JSON file is written
+atomically and records status, details, first-seen and last-checked UTC
+timestamps, and whether a notification succeeded. Filtered-out commands retain
+their entries, labelled <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">rechecked</span> <span class="pre">this</span> <span class="pre">run</span></code> in the summary.</p>
+<p><code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">status</span></code> reads this record without loading the updater configuration
+or running commands. It prints each entry with its last-checked timestamp, or
+<code class="docutils literal notranslate"><span class="pre">nothing</span> <span class="pre">needs</span> <span class="pre">attention</span></code> when empty. It exits 1 if any persisted entry is
+red, and 0 for an empty or amber-only record.</p>
+<p>An ordinary run exits 1 when a result <strong>from that run</strong> is red (previously,
+failed steps exited 0). Amber-only results and red entries retained from
+earlier runs keep exit 0. <code class="docutils literal notranslate"><span class="pre">--list</span></code> and <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> do not even read the
+attention record; neither they nor <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">status</span></code> write state or push
+notifications. Group options go before the subcommand:
+<code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">--only</span> <span class="pre">brew</span> <span class="pre">status</span></code> runs status only and ignores the updater filters;
+<code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">status</span> <span class="pre">--only</span> <span class="pre">brew</span></code> is a usage error.</p>
+<p>Configure optional ntfy pushes in the same config stack, including the
+machine-local twin:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">ntfy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://ntfy.example</span>
+<span class="w">  </span><span class="nt">topic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sysup</span>
+<span class="w">  </span><span class="nt">credentials_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/ntfy/credentials</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">NTFY_URL</span></code> and <code class="docutils literal notranslate"><span class="pre">NTFY_TOPIC</span></code> independently fill a missing URL or topic.
+<code class="docutils literal notranslate"><span class="pre">credentials_file</span></code> is optional; its path expands <code class="docutils literal notranslate"><span class="pre">~</span></code> and its stripped
+content is <code class="docutils literal notranslate"><span class="pre">user:password</span></code> for Basic authentication. Keep credentials
+outside tracked config files.</p>
+<p>Each ordinary run sends at most one aggregated message, titled
+<code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">on</span> <span class="pre">&lt;hostname&gt;:</span> <span class="pre">&lt;N&gt;</span> <span class="pre">need</span> <span class="pre">attention</span></code>. Its sorted lines contain status,
+name and the first detail. Red entries push on every ordinary run, even if
+retained; amber entries push once after appearing and stay quiet after a
+successful push (including a red-to-amber transition). A missing endpoint,
+unreadable credentials or failed send produces a warning, keeps the entries
+pending for retry, and never changes the run’s exit code.</p>
 </section>
 <section id="migration-from-the-subcommands">
 <h2>Migration from the subcommands<a class="headerlink" href="#migration-from-the-subcommands" title="Link to this heading"></a></h2>
