@@ -154,12 +154,19 @@ is appended to the ``cfg`` alias.
 dot add
 ~~~~~~~
 
-Interactively stage changes (cherry-pick mode).
+Stage changes. A tracked file or a directory opens git's hunk picker
+(``add -p``); a file the repository has never tracked is added whole. A path is
+looked up relative to the current directory first, then relative to the
+dotfiles root; one found in neither place is an error, and a symlink is staged
+as the link itself. An ignored file is refused with the matching ignore rule
+and the ``git add -f`` command that overrides it. Afterwards the command prints
+what is currently staged for the path, or warns when nothing is.
 
 .. code-block:: bash
 
-    dot add                     # interactive selection
-    dot add ~/.bashrc           # stage specific file
+    dot add                     # hunk picker over the whole tree
+    dot add ~/.bashrc           # hunk picker for a tracked file
+    dot add config.yml          # new file, relative to the current directory
 
 dot unstage
 ~~~~~~~~~~~

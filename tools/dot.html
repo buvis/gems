@@ -263,9 +263,16 @@ dot<span class="w"> </span>run<span class="w"> </span>submodule<span class="w"> 
 </section>
 <section id="dot-add">
 <h3>dot add<a class="headerlink" href="#dot-add" title="Link to this heading"></a></h3>
-<p>Interactively stage changes (cherry-pick mode).</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>add<span class="w">                     </span><span class="c1"># interactive selection</span>
-dot<span class="w"> </span>add<span class="w"> </span>~/.bashrc<span class="w">           </span><span class="c1"># stage specific file</span>
+<p>Stage changes. A tracked file or a directory opens git’s hunk picker
+(<code class="docutils literal notranslate"><span class="pre">add</span> <span class="pre">-p</span></code>); a file the repository has never tracked is added whole. A path is
+looked up relative to the current directory first, then relative to the
+dotfiles root; one found in neither place is an error, and a symlink is staged
+as the link itself. An ignored file is refused with the matching ignore rule
+and the <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span> <span class="pre">-f</span></code> command that overrides it. Afterwards the command prints
+what is currently staged for the path, or warns when nothing is.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>add<span class="w">                     </span><span class="c1"># hunk picker over the whole tree</span>
+dot<span class="w"> </span>add<span class="w"> </span>~/.bashrc<span class="w">           </span><span class="c1"># hunk picker for a tracked file</span>
+dot<span class="w"> </span>add<span class="w"> </span>config.yml<span class="w">          </span><span class="c1"># new file, relative to the current directory</span>
 </pre></div>
 </div>
 </section>
