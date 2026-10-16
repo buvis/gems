@@ -3,20 +3,46 @@ from __future__ import annotations
 import shutil
 import subprocess
 from dataclasses import replace
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import FatalError
 
-from sysup.capabilities import CAPABILITIES
+from sysup.capabilities import CAPABILITIES, EXPIRY_CAPABILITIES
 from sysup.capabilities.sudo import SudoPrime
 from sysup.step_result import StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-    from sysup.config import SysupCommand, SysupConfig
+    from sysup.config import ExpiryItem, SysupCommand, SysupConfig
 
-__all__ = ["Runner"]
+__all__ = ["Runner", "classify_expiry"]
+
+
+def classify_expiry(name: str, outcome: datetime | str, warn_days: int, now: datetime) -> StepResult:
+    if isinstance(outcome, str):
+        return StepResult(
+            name, success=False, message=f"{name}: unknown, {outcome}", status="unknown", command=name, kind="item"
+        )
+    day = outcome.astimezone(timezone.utc).date().isoformat()
+    if outcome <= now:
+        return StepResult(
+            name, success=False, message=f"{name}: expired on {day}", status="expired", command=name, kind="item"
+        )
+    days_left = (outcome.astimezone(timezone.utc).date() - now.astimezone(timezone.utc).date()).days
+    if days_left <= warn_days:
+        return StepResult(
+            name,
+            success=True,
+            message=f"{name}: expiring in {days_left} days ({day})",
+            status="expiring",
+            command=name,
+            kind="item",
+        )
+    return StepResult(
+        name, success=True, message=f"{name}: ok, expires {day} ({days_left} days)", command=name, kind="item"
+    )
 
 
 class Runner:
@@ -33,6 +59,7 @@ class Runner:
     def __init__(self: Runner, cfg: SysupConfig, *, dry_run: bool = False) -> None:
         self._cfg = cfg
         self._dry_run = dry_run
+        self._item_status: dict[str, str] = {}
 
     def run(self: Runner, selected: list[tuple[str, SysupCommand]]) -> Iterator[StepResult]:
         """Run ``selected`` (name, command) entries in the given order.
@@ -44,12 +71,37 @@ class Runner:
         stops: list[Callable[[], None]] = []
         try:
             if not self._dry_run:
+                from sysup.config import applicable_items
+
+                yield from self.check_items(applicable_items(self._cfg))
                 stops = self._prime()
             for name, command in selected:
                 yield from self._run_entry(name, command)
         finally:
             for stop in stops:
                 stop()
+
+    def check_items(self: Runner, items: list[tuple[str, ExpiryItem]]) -> Iterator[StepResult]:
+        """Probe each expiry item, yielding one :class:`StepResult` per item.
+
+        Records each item's status in ``self._item_status`` so ``needs:`` gating
+        in :meth:`_run_entry` can read it. A capability returning a string, or
+        raising anything other than :class:`FatalError`, becomes an ``unknown``
+        step; ``FatalError`` propagates. Public so ``sysup refresh`` can re-check
+        a single item.
+        """
+        now = datetime.now(timezone.utc)
+        for name, item in items:
+            capability = EXPIRY_CAPABILITIES[item.use]
+            try:
+                outcome = capability.expires_at(**item.with_)
+            except FatalError:
+                raise
+            except Exception as exc:
+                outcome = f"{type(exc).__name__}: {exc}"
+            step = classify_expiry(name, outcome, item.warn_days, now)
+            self._item_status[name] = step.status
+            yield step
 
     def _prime(self: Runner) -> list[Callable[[], None]]:
         stops: list[Callable[[], None]] = []
@@ -60,6 +112,16 @@ class Runner:
         return stops
 
     def _run_entry(self: Runner, name: str, command: SysupCommand) -> Iterator[StepResult]:
+        for item in command.needs:
+            status = self._item_status.get(item)
+            if status in ("expired", "unknown"):
+                yield StepResult(
+                    name,
+                    success=False,
+                    message=f"{name} skipped: {item} is {status}; run: sysup refresh {item}",
+                    command=name,
+                )
+                return
         if command.use is not None:
             yield from self._run_use(name, command)
         else:

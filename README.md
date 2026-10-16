@@ -80,6 +80,7 @@ All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netsc
 | `muc` | ffmpeg-python | muc |
 | `pinger` | ping3 | pinger |
 | `readerctl` | requests | readerctl |
+| `sysup-cert` | cryptography | sysup (x509-expiry) |
 | `all` | all of the above | — |
 
 ## What's inside

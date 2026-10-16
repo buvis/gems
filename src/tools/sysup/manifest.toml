@@ -13,4 +13,4 @@ web = false
 
 [tool.requirements]
 python = ">=3.10"
-extras = []
+extras = ["sysup-cert"]
