@@ -157,7 +157,9 @@ class DotGitService:
         """Save divergent local edits, reset them, then pull, refresh submodules and reveal secrets.
 
         Uncommitted edits to paths the incoming commits also change are saved to a
-        ``git apply``-able patch and reset to ``HEAD`` so upstream wins.
+        ``git apply``-able patch and reset to ``HEAD`` so upstream wins. Edited
+        git-secret plaintext is re-encrypted first, so it reaches the patch as its
+        ``.secret`` ciphertext.
 
         Args:
             passphrase: GPG passphrase for the secret reveal step.
@@ -174,6 +176,12 @@ class DotGitService:
                 return CommandResult(success=False, error=f"Fetch failed: {fetch_err}")
         warnings: list[str] = []
         if self.has_upstream():
+            if self.shell.is_command_available("git-secret"):
+                # -m: re-encrypt only changed plaintext; -F: skip a registered file whose plaintext
+                # is missing instead of aborting. Not _hide_secrets: status/commit keep their flags.
+                err, _out = self.shell.exe("cfg secret hide -m -F", self.wd)
+                if err:
+                    return CommandResult(success=False, error=f"secret hide failed: {err}")
             diverged = self._save_and_reset_divergence(exclude)
             if not diverged.success:
                 return diverged
@@ -220,6 +228,11 @@ class DotGitService:
             if err:
                 return CommandResult(success=False, error=f"reset failed for {path}: {err}", warnings=warnings)
             warnings.append(f"reset to HEAD, local edit in patch: {path}")
+            if path.endswith(".secret"):
+                warnings.append(
+                    f"secret {path.removesuffix('.secret')} saved encrypted in patch; "
+                    "to read it, git apply the patch at its base commit and run git secret reveal there"
+                )
         return CommandResult(success=True, warnings=warnings)
 
     def _select_divergent(self, exclude: Iterable[str]) -> tuple[list[str], str | None]:

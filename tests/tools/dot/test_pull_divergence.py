@@ -15,6 +15,7 @@ from dot.git.service import DotGitService
 
 FETCH = "cfg fetch"
 UPSTREAM = "cfg rev-parse --verify --quiet @{u}"
+HIDE = "cfg secret hide -m -F"
 INCOMING = "cfg diff --name-only --no-renames -z HEAD...@{u}"
 STAGED = "cfg diff --cached --name-only --no-renames --ignore-submodules=all -z"
 UNSTAGED = "cfg diff --name-only --no-renames --ignore-submodules=all -z"
@@ -397,4 +398,92 @@ class TestFailuresAfterSaveKeepWarnings:
             f"divergence patch saved: {_patch_path(root)}",
             "reset to HEAD, local edit in patch: x",
             "reset to HEAD, local edit in patch: y",
+        ]
+
+
+SECRET_DIRTY = ".gitsecret/paths/mapping.cfg\0x.secret\0"
+SECRET_HINT = (
+    "secret x saved encrypted in patch; "
+    "to read it, git apply the patch at its base commit and run git secret reveal there"
+)
+
+
+class TestSecretHide:
+    def test_hide_runs_after_upstream_check_and_before_selection(
+        self, root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        h = Harness(root, monkeypatch, _responses())
+        h.shell.is_command_available.return_value = True
+
+        result = h.service.pull(fetched=True)
+
+        assert result.success
+        assert h.commands == [
+            UPSTREAM,
+            HIDE,
+            INCOMING,
+            STAGED,
+            UNSTAGED,
+            STAGED_DELETED,
+            PULL,
+            SUB_RESET,
+            SUB_INIT,
+            SUB_UPDATE,
+            REVEAL,
+        ]
+
+    def test_hide_failure_stops_before_any_diff_save_reset_or_pull(
+        self, root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        responses = _responses(incoming="x.secret\0", unstaged="x.secret\0")
+        responses[HIDE] = ("gpg: no public key", "")
+        h = Harness(root, monkeypatch, responses)
+        h.shell.is_command_available.return_value = True
+
+        result = h.service.pull(fetched=True)
+
+        assert not result.success
+        assert result.error == "secret hide failed: gpg: no public key"
+        assert h.commands == [UPSTREAM, HIDE]
+        h.run.assert_not_called()
+        assert h.written == []
+
+    def test_no_upstream_skips_hide(self, root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        h = Harness(root, monkeypatch, {UPSTREAM: ("no upstream", "")})
+        h.shell.is_command_available.return_value = True
+
+        result = h.service.pull(fetched=True)
+
+        assert result.success
+        assert h.commands == [UPSTREAM, PULL, SUB_RESET, SUB_INIT, SUB_UPDATE, REVEAL]
+
+    def test_reset_secret_gets_recovery_hint_and_mapping_does_not(
+        self, root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        h = Harness(root, monkeypatch, _responses(incoming=SECRET_DIRTY, unstaged=SECRET_DIRTY))
+        h.shell.is_command_available.return_value = True
+
+        result = h.service.pull(fetched=True)
+
+        assert result.success
+        assert result.warnings == [
+            f"divergence patch saved: {_patch_path(root)}",
+            "reset to HEAD, local edit in patch: .gitsecret/paths/mapping.cfg",
+            "reset to HEAD, local edit in patch: x.secret",
+            SECRET_HINT,
+        ]
+
+    def test_failed_secret_reset_gets_no_hint(self, root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        responses = _responses(incoming=SECRET_DIRTY, unstaged=SECRET_DIRTY)
+        responses[_restore("x.secret")] = ("denied", "")
+        h = Harness(root, monkeypatch, responses)
+        h.shell.is_command_available.return_value = True
+
+        result = h.service.pull(fetched=True)
+
+        assert not result.success
+        assert result.error == "reset failed for x.secret: denied"
+        assert result.warnings == [
+            f"divergence patch saved: {_patch_path(root)}",
+            "reset to HEAD, local edit in patch: .gitsecret/paths/mapping.cfg",
         ]
