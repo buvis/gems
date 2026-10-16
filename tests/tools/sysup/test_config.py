@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from buvis.pybase.result import FatalError
 
-from sysup.config import NtfySpec, SysupCommand, SysupConfig, load_config
+from sysup.config import ExpiryItem, NtfySpec, SysupCommand, SysupConfig, load_config
 
 
 class TestSysupCommandModel:
@@ -233,3 +233,79 @@ class TestLoadConfigPriorityOrdering:
         )
         cfg = load_config()
         assert cfg.commands["brew"].order == 3
+
+
+class TestExpiryRegistry:
+    def test_expiry_item_validates_with_defaults(self) -> None:
+        item = ExpiryItem.model_validate({"use": "x509-expiry", "with": {"path": "/c.pem"}})
+        assert item.use == "x509-expiry"
+        assert item.with_ == {"path": "/c.pem"}
+        assert item.warn_days == 30
+        assert item.enabled is True
+        assert item.refresh is None
+
+    def test_enabled_gh_item_without_probe_is_rejected(self, mocker, tmp_path: Path) -> None:
+        user = tmp_path / "buvis-sysup.yaml"
+        _write(
+            user,
+            """
+            expiry:
+              gh-agent:
+                use: gh-token-expiry
+                with:
+                  config_dir: ~/.config/gh-agent
+                enabled: true
+            """,
+        )
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        with pytest.raises(FatalError, match="requires input 'probe'"):
+            load_config()
+
+    def test_disabled_template_without_probe_loads(self, mocker, tmp_path: Path) -> None:
+        user = tmp_path / "buvis-sysup.yaml"
+        _write(
+            user,
+            """
+            expiry:
+              gh-agent:
+                use: gh-token-expiry
+                with:
+                  config_dir: ~/.config/gh-agent
+                enabled: false
+            """,
+        )
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        cfg = load_config()
+        assert cfg.expiry["gh-agent"].enabled is False
+
+    def test_unknown_expiry_capability_rejected(self, mocker, tmp_path: Path) -> None:
+        user = tmp_path / "buvis-sysup.yaml"
+        _write(user, "expiry:\n  x:\n    use: no-such-expiry\n    enabled: false\n")
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        with pytest.raises(FatalError, match="unknown expiry capability 'no-such-expiry'"):
+            load_config()
+
+    def test_needs_unknown_item_rejected(self, mocker, tmp_path: Path) -> None:
+        user = tmp_path / "buvis-sysup.yaml"
+        _write(user, "commands:\n  brew:\n    steps: [[brew, update]]\n    needs: [ghost]\n")
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        with pytest.raises(FatalError, match="needs unknown expiry item 'ghost'"):
+            load_config()
+
+    def test_item_and_command_name_collision_rejected(self, mocker, tmp_path: Path) -> None:
+        user = tmp_path / "buvis-sysup.yaml"
+        _write(
+            user,
+            """
+            commands:
+              shared:
+                steps: [[tool]]
+            expiry:
+              shared:
+                use: x509-expiry
+                with: { path: /c.pem }
+            """,
+        )
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        with pytest.raises(FatalError, match="'shared' is both a command and an expiry item"):
+            load_config()

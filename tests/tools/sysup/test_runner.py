@@ -307,3 +307,151 @@ class TestRunnerCommandStamping:
         steps = list(Runner(_cfg())._run_use("entry-name", _cmd(steps=[["tool"]])))
         assert steps[0].command == "entry-name"
         assert steps[0].status == "failed"
+
+
+def _expiry_cfg(items: dict[str, dict[str, object]], commands: dict[str, dict[str, object]] | None = None) -> object:
+    from sysup.config import SysupConfig
+
+    return SysupConfig.model_validate({"expiry": items, "commands": commands or {}})
+
+
+class TestClassifyExpiry:
+    def test_header_date_maps_to_ok_expiring_expired_around_warn_days(self) -> None:
+        from datetime import datetime, timedelta, timezone
+
+        from sysup.capabilities.gh_token import parse_expiration
+        from sysup.runner import classify_expiry
+
+        now = datetime(2026, 10, 16, 12, 0, 0, tzinfo=timezone.utc)
+
+        def _at(days: int) -> datetime:
+            moment = now + timedelta(days=days)
+            return parse_expiration(moment.strftime("%Y-%m-%d %H:%M:%S UTC"))
+
+        assert classify_expiry("x", _at(40), 30, now).status == "ok"
+        assert classify_expiry("x", _at(30), 30, now).status == "expiring"
+        assert classify_expiry("x", _at(1), 30, now).status == "expiring"
+        assert classify_expiry("x", _at(-1), 30, now).status == "expired"
+        assert classify_expiry("x", now, 30, now).status == "expired"
+
+    def test_unknown_outcome_maps_to_unknown(self) -> None:
+        from datetime import datetime, timezone
+
+        from sysup.runner import classify_expiry
+
+        now = datetime(2026, 10, 16, 12, 0, 0, tzinfo=timezone.utc)
+        step = classify_expiry("gh-agent", "grant broken: ...", 30, now)
+        assert step.status == "unknown"
+        assert step.kind == "item"
+        assert step.success is False
+
+
+class TestRunnerItems:
+    def _ok(self) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+    def test_items_are_checked_before_prime_and_commands(self, mocker) -> None:
+        from datetime import datetime, timezone
+
+        from sysup.capabilities.sudo import SudoPrime
+
+        order: list[str] = []
+        cap = mocker.MagicMock()
+        cap.expires_at.side_effect = lambda **_: order.append("item") or datetime(2030, 1, 1, tzinfo=timezone.utc)
+        cap.warn_days = 30
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"x509-expiry": cap})
+        prime_cap = mocker.MagicMock(spec=SudoPrime)
+        prime_cap.prime.side_effect = lambda: order.append("primed") or (lambda: None)
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch(
+            "sysup.runner.subprocess.run",
+            side_effect=lambda *a, **k: order.append("step") or self._ok(),
+        )
+        cfg = _expiry_cfg(
+            {"cert": {"use": "x509-expiry", "with": {"path": "/c.pem"}}},
+            {"brew": {"steps": [["brew", "update"]]}},
+        )
+        cfg = cfg.model_copy(update={"prime": ("sudo-prime",)})
+
+        list(Runner(cfg).run([("brew", cfg.commands["brew"])]))
+
+        assert order == ["item", "primed", "step"]
+
+    def test_dry_run_skips_item_probes(self, mocker) -> None:
+        cap = mocker.MagicMock()
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"x509-expiry": cap})
+        cfg = _expiry_cfg({"cert": {"use": "x509-expiry", "with": {"path": "/c.pem"}}})
+
+        steps = list(Runner(cfg, dry_run=True).run([]))
+
+        assert steps == []
+        assert cap.expires_at.call_count == 0
+
+    def test_capability_exception_becomes_unknown(self, mocker) -> None:
+        cap = mocker.MagicMock()
+        cap.expires_at.side_effect = RuntimeError("boom")
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"x509-expiry": cap})
+        cfg = _expiry_cfg({"cert": {"use": "x509-expiry", "with": {"path": "/c.pem"}}})
+
+        steps = list(Runner(cfg).run([]))
+
+        assert len(steps) == 1
+        assert steps[0].status == "unknown"
+        assert "RuntimeError: boom" in steps[0].message
+
+    def test_needs_expired_item_skips_command_with_refresh_hint(self, mocker) -> None:
+        from datetime import datetime, timezone
+
+        cap = mocker.MagicMock()
+        cap.expires_at.return_value = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
+        run = mocker.patch("sysup.runner.subprocess.run")
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        cfg = _expiry_cfg(
+            {"gh-agent": {"use": "gh-token-expiry", "with": {"config_dir": "/c", "probe": "repos/x/y"}}},
+            {"brew": {"steps": [["brew", "update"]], "needs": ["gh-agent"]}},
+        )
+
+        steps = list(Runner(cfg).run([("brew", cfg.commands["brew"])]))
+
+        skip = next(s for s in steps if s.command == "brew")
+        assert skip.success is False
+        assert skip.message == "brew skipped: gh-agent is expired; run: sysup refresh gh-agent"
+        assert run.call_count == 0
+
+    def test_needs_unknown_item_skips_command(self, mocker) -> None:
+        cap = mocker.MagicMock()
+        cap.expires_at.return_value = "grant broken: ..."
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
+        run = mocker.patch("sysup.runner.subprocess.run")
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        cfg = _expiry_cfg(
+            {"gh-agent": {"use": "gh-token-expiry", "with": {"config_dir": "/c", "probe": "repos/x/y"}}},
+            {"brew": {"steps": [["brew", "update"]], "needs": ["gh-agent"]}},
+        )
+
+        steps = list(Runner(cfg).run([("brew", cfg.commands["brew"])]))
+
+        skip = next(s for s in steps if s.command == "brew")
+        assert "gh-agent is unknown" in skip.message
+        assert run.call_count == 0
+
+    def test_needs_ok_or_expiring_item_runs_command(self, mocker) -> None:
+        from datetime import datetime, timedelta, timezone
+
+        cap = mocker.MagicMock()
+        cap.expires_at.return_value = datetime.now(timezone.utc) + timedelta(days=10)
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
+        run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        cfg = _expiry_cfg(
+            {"gh-agent": {"use": "gh-token-expiry", "with": {"config_dir": "/c", "probe": "repos/x/y"}}},
+            {"brew": {"steps": [["brew", "update"]], "needs": ["gh-agent"]}},
+        )
+
+        steps = list(Runner(cfg).run([("brew", cfg.commands["brew"])]))
+
+        brew = next(s for s in steps if s.command == "brew")
+        assert brew.success is True
+        assert run.call_count == 1

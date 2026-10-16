@@ -10,14 +10,18 @@ from buvis.pybase.configuration import ConfigurationLoader
 from buvis.pybase.result import FatalError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from sysup.capabilities import CAPABILITIES
+from sysup.capabilities import CAPABILITIES, EXPIRY_CAPABILITIES
 
 __all__ = [
+    "ExpiryItem",
     "NtfySpec",
+    "RefreshCommand",
+    "RefreshSpec",
     "SysupCommand",
     "SysupConfig",
     "WhenSpec",
     "applicable_commands",
+    "applicable_items",
     "load_config",
 ]
 
@@ -63,6 +67,7 @@ class SysupCommand(BaseModel):
     steps: tuple[tuple[str, ...], ...] | None = None
     use: str | None = None
     with_: dict[str, object] = Field(default_factory=dict, alias="with")
+    needs: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _exactly_one_kind(self: SysupCommand) -> SysupCommand:
@@ -70,6 +75,32 @@ class SysupCommand(BaseModel):
             msg = "entry must have exactly one of `steps` or `use`"
             raise ValueError(msg)
         return self
+
+
+class RefreshCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    argv: tuple[str, ...] = Field(..., min_length=1)
+    env: dict[str, str] = {}
+    stdin: Literal["secret"] | None = None
+
+
+class RefreshSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    instructions: str
+    commands: tuple[RefreshCommand, ...] = ()
+
+
+class ExpiryItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    use: str
+    with_: dict[str, object] = Field(default_factory=dict, alias="with")
+    warn_days: int = 30
+    refresh: RefreshSpec | None = None
+    enabled: bool = True
+    when: WhenSpec = WhenSpec()
 
 
 class SysupConfig(BaseModel):
@@ -80,6 +111,7 @@ class SysupConfig(BaseModel):
     commands: dict[str, SysupCommand] = {}
     prime: tuple[str, ...] = ()
     ntfy: NtfySpec = NtfySpec()
+    expiry: dict[str, ExpiryItem] = {}
 
 
 def _validate_capabilities(cfg: SysupConfig) -> None:
@@ -110,6 +142,54 @@ def _validate_capabilities(cfg: SysupConfig) -> None:
         if capability is None:
             msg = f"prime: unknown capability '{name}'"
             raise FatalError(msg)
+
+
+def _validate_expiry(cfg: SysupConfig) -> None:
+    """Validate the expiry registry and the ``needs:`` references.
+
+    Rules, each raising :class:`FatalError` with one clear message:
+
+    * unknown expiry capability on an item;
+    * unknown ``with:`` input for a known capability;
+    * a required input (capability default ``None``) absent, ``None`` or empty
+      on an *enabled* item (disabled items skip this, so the bundled template
+      can ship without a probe);
+    * a name used by both a command and an expiry item;
+    * a command ``needs:`` naming an item that does not exist.
+
+    Raises:
+        FatalError: on any violated rule.
+    """
+    for name, item in cfg.expiry.items():
+        capability = EXPIRY_CAPABILITIES.get(item.use)
+        if capability is None:
+            msg = f"item '{name}': unknown expiry capability '{item.use}'"
+            raise FatalError(msg)
+        accepted = set(capability.inputs)
+        unknown = set(item.with_) - accepted
+        if unknown:
+            allowed = ", ".join(sorted(accepted)) or "(none)"
+            msg = (
+                f"item '{name}': capability '{item.use}' got unknown "
+                f"input(s) {', '.join(sorted(unknown))}; accepted: {allowed}"
+            )
+            raise FatalError(msg)
+        if item.enabled:
+            for key, default in capability.inputs.items():
+                if default is None and not item.with_.get(key):
+                    msg = f"item '{name}': capability '{item.use}' requires input '{key}' before it can be enabled"
+                    raise FatalError(msg)
+
+    for name in cfg.expiry:
+        if name in cfg.commands:
+            msg = f"'{name}' is both a command and an expiry item"
+            raise FatalError(msg)
+
+    for name, command in cfg.commands.items():
+        for needed in command.needs:
+            if needed not in cfg.expiry:
+                msg = f"command '{name}': needs unknown expiry item '{needed}'"
+                raise FatalError(msg)
 
 
 def _load_default() -> dict[str, object]:
@@ -166,7 +246,22 @@ def load_config(config_dir: str | None = None, config_path: str | None = None) -
         raise FatalError(msg) from exc
 
     _validate_capabilities(cfg)
+    _validate_expiry(cfg)
     return cfg
+
+
+def _applies(entry: SysupCommand | ExpiryItem) -> bool:
+    """Return whether an enabled entry's ``when`` guard matches this host.
+
+    An entry applies when it is ``enabled``, its ``when.os`` (if set) equals
+    :data:`sys.platform`, and its ``when.check`` binary (if set) resolves via
+    :func:`shutil.which`.
+    """
+    if not entry.enabled:
+        return False
+    if entry.when.os is not None and entry.when.os != sys.platform:
+        return False
+    return not (entry.when.check is not None and shutil.which(entry.when.check) is None)
 
 
 def applicable_commands(cfg: SysupConfig) -> list[tuple[str, SysupCommand]]:
@@ -177,15 +272,13 @@ def applicable_commands(cfg: SysupConfig) -> list[tuple[str, SysupCommand]]:
     equals :data:`sys.platform`, and its ``when.check`` binary (if set) resolves
     via :func:`shutil.which`.
     """
-    applicable: list[tuple[str, SysupCommand]] = []
-    for name, command in cfg.commands.items():
-        if not command.enabled:
-            continue
-        if command.when.os is not None and command.when.os != sys.platform:
-            continue
-        if command.when.check is not None and shutil.which(command.when.check) is None:
-            continue
-        applicable.append((name, command))
-
+    applicable = [(name, command) for name, command in cfg.commands.items() if _applies(command)]
     applicable.sort(key=lambda item: (item[1].order, item[0]))
+    return applicable
+
+
+def applicable_items(cfg: SysupConfig) -> list[tuple[str, ExpiryItem]]:
+    """Return enabled expiry items whose ``when`` matches this host, sorted by name."""
+    applicable = [(name, item) for name, item in cfg.expiry.items() if _applies(item)]
+    applicable.sort(key=lambda entry: entry[0])
     return applicable

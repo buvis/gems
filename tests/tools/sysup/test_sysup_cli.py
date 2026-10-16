@@ -24,9 +24,9 @@ def _cfg(commands: dict[str, dict[str, object]], prime: tuple[str, ...] = ()) ->
 
 
 class TestSysupCliShape:
-    def test_cli_is_a_group_with_status_only(self) -> None:
+    def test_cli_is_a_group_with_status_and_refresh(self) -> None:
         assert isinstance(cli, click.Group)
-        assert set(cli.commands) == {"status"}
+        assert set(cli.commands) == {"refresh", "status"}
 
     def test_help_lists_filters(self, runner) -> None:
         result = runner.invoke(cli, ["--help"])
@@ -560,3 +560,171 @@ class TestSysupCliAttentionInspection:
             run.assert_not_called()
         else:
             run.assert_called_once()
+
+
+def _expiry_cfg(enabled: bool = True, *, with_probe: bool = True) -> SysupConfig:
+    with_: dict[str, object] = {"config_dir": "~/.config/gh-agent"}
+    if with_probe:
+        with_["probe"] = "repos/x/y"
+    return SysupConfig.model_validate(
+        {
+            "commands": {"brew": {"steps": [["brew"]]}},
+            "expiry": {
+                "gh-agent": {
+                    "enabled": enabled,
+                    "use": "gh-token-expiry",
+                    "with": with_,
+                    "refresh": {
+                        "instructions": "paste it",
+                        "commands": [
+                            {
+                                "argv": ["gh", "auth", "login", "--with-token"],
+                                "env": {"GH_CONFIG_DIR": "~/.config/gh-agent"},
+                                "stdin": "secret",
+                            }
+                        ],
+                    },
+                }
+            },
+        }
+    )
+
+
+class TestSysupCliRefresh:
+    def test_refresh_refuses_without_tty(self, runner, mocker) -> None:
+        mocker.patch("sysup.cli._is_tty", return_value=False)
+        run = mocker.patch("sysup.refresh.subprocess.run")
+        load = mocker.patch("sysup.config.load_config", autospec=True)
+        result = runner.invoke(cli, ["refresh", "gh-agent"])
+        assert result.exit_code == 1
+        assert "needs a terminal" in result.output
+        run.assert_not_called()
+        load.assert_not_called()
+
+    def test_refresh_disabled_item_is_refused(self, runner, mocker) -> None:
+        mocker.patch("sysup.cli._is_tty", return_value=True)
+        mocker.patch("sysup.config.load_config", return_value=_expiry_cfg(enabled=False, with_probe=False))
+        run = mocker.patch("sysup.refresh.subprocess.run")
+        result = runner.invoke(cli, ["refresh", "gh-agent"], input="\n")
+        assert result.exit_code == 1
+        assert "is disabled" in result.output
+        run.assert_not_called()
+
+    def test_refresh_runs_procedure_then_rechecks_and_clears_on_ok(self, runner, mocker) -> None:
+        from datetime import datetime, timezone
+
+        mocker.patch("sysup.cli._is_tty", return_value=True)
+        mocker.patch("sysup.config.load_config", return_value=_expiry_cfg())
+        mocker.patch("getpass.getpass", return_value="tok")
+        write_state({"gh-agent": _entry("expired", details=["gh-agent: expired on 2020-01-01"])})
+        run = mocker.patch(
+            "sysup.refresh.subprocess.run",
+            return_value=__import__("subprocess").CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+        )
+        cap = mocker.MagicMock()
+        cap.expires_at.return_value = datetime(2030, 1, 1, tzinfo=timezone.utc)
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
+
+        result = runner.invoke(cli, ["refresh", "gh-agent"], input="\n")
+
+        assert result.exit_code == 0
+        call = run.call_args
+        assert call.kwargs["input"] == "tok"
+        assert "tok" not in call.args[0]
+        assert all("tok" not in value for value in call.kwargs["env"].values())
+        assert "gh-agent" not in read_state()
+
+    @pytest.mark.parametrize(
+        "status,day,expected_exit",
+        [
+            ("expiring", "2026-10-20", 0),
+            ("expired", "2020-01-01", 1),
+            ("unknown", None, 1),
+        ],
+    )
+    def test_refresh_recheck_retains_non_ok_entry_with_status_exit_code(
+        self, runner, mocker, status: str, day: str | None, expected_exit: int
+    ) -> None:
+        from datetime import datetime, timedelta, timezone
+
+        mocker.patch("sysup.cli._is_tty", return_value=True)
+        mocker.patch("sysup.config.load_config", return_value=_expiry_cfg())
+        mocker.patch("getpass.getpass", return_value="tok")
+        mocker.patch(
+            "sysup.refresh.subprocess.run",
+            return_value=__import__("subprocess").CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+        )
+        cap = mocker.MagicMock()
+        if status == "unknown":
+            cap.expires_at.return_value = "grant broken: still bad"
+        elif status == "expired":
+            cap.expires_at.return_value = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        else:
+            cap.expires_at.return_value = datetime.now(timezone.utc) + timedelta(days=3)
+        mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
+
+        result = runner.invoke(cli, ["refresh", "gh-agent"], input="\n")
+
+        assert result.exit_code == expected_exit
+        entry = read_state()["gh-agent"]
+        assert entry["status"] == status
+        assert entry["kind"] == "item"
+
+
+class TestSysupCliItemFolding:
+    def test_filtered_run_still_checks_every_item(self, runner, mocker) -> None:
+        cfg = SysupConfig.model_validate(
+            {
+                "commands": {"brew": {"steps": [["brew"]]}, "helm": {"steps": [["helm"]]}},
+                "expiry": {"cert": {"use": "x509-expiry", "with": {"path": "/c.pem"}}},
+            }
+        )
+        write_state({"helm": _entry()})
+        item_step = StepResult("cert", True, "cert: ok, expires 2030-01-01 (900 days)", command="cert", kind="item")
+
+        def _fake_run(self, selected):
+            self._item_status["cert"] = "ok"
+            return iter([item_step, StepResult("brew", True, command="brew")])
+
+        with (
+            patch("sysup.config.load_config", return_value=cfg),
+            patch("sysup.config.applicable_commands", return_value=[("brew", cfg.commands["brew"])]),
+            patch("sysup.config.applicable_items", return_value=[("cert", cfg.expiry["cert"])]),
+            patch("sysup.runner.Runner.run", _fake_run),
+        ):
+            result = runner.invoke(cli, ["--only", "brew"])
+        assert result.exit_code == 0
+        # cert was folded (ok -> cleared / never added) and helm retained.
+        assert "cert" not in read_state()
+        assert "helm (failed, not rechecked this run): old failure" in result.output
+
+    def test_summary_adds_refresh_hint_for_items(self, runner, mocker) -> None:
+        cfg = SysupConfig.model_validate(
+            {
+                "commands": {},
+                "expiry": {"cert": {"use": "x509-expiry", "with": {"path": "/c.pem"}}},
+            }
+        )
+        write_state(
+            {
+                "cert": {
+                    "kind": "item",
+                    "status": "expired",
+                    "details": ["cert: expired on 2020-01-01"],
+                    "first_seen": "2026-10-13T10:00:00+00:00",
+                    "last_checked": "2026-10-14T11:00:00+00:00",
+                    "notified": True,
+                }
+            }
+        )
+        with (
+            patch("sysup.config.load_config", return_value=cfg),
+            patch("sysup.config.applicable_commands", return_value=[]),
+            patch("sysup.config.applicable_items", return_value=[]),
+            patch("sysup.runner.Runner.run", return_value=iter([])),
+        ):
+            result = runner.invoke(cli, [])
+        assert (
+            "cert (expired, not rechecked this run): cert: expired on 2020-01-01; run: sysup refresh cert"
+            in result.output.replace("\n", "")
+        )

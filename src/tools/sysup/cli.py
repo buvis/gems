@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import platform
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -14,12 +15,18 @@ from buvis.pybase.result import FatalError
 from sysup.settings import SysupSettings
 
 if TYPE_CHECKING:
-    from sysup.config import SysupCommand, SysupConfig
+    from sysup.config import ExpiryItem, SysupCommand, SysupConfig
     from sysup.step_result import StepResult
 
 
+def _is_tty() -> bool:
+    return sys.stdin.isatty()
+
+
 def _report_step(step: StepResult) -> None:
-    if step.success:
+    if step.status == "expiring":
+        console.warning(step.message or f"{step.label} expiring")
+    elif step.success:
         console.success(step.message or f"{step.label} updated")
     else:
         console.failure(step.message or f"{step.label} failed")
@@ -65,7 +72,8 @@ def _filter_plan(
 
 def _entry_line(name: str, entry: dict[str, Any], qualifier: str = "") -> str:
     suffix = f", {qualifier}" if qualifier else ""
-    return f"{name} ({entry['status']}{suffix}): {'; '.join(entry['details'])}"
+    hint = f"; run: sysup refresh {name}" if entry.get("kind") == "item" else ""
+    return f"{name} ({entry['status']}{suffix}): {'; '.join(entry['details'])}{hint}"
 
 
 def _print_summary(entries: dict[str, Any], checked: set[str]) -> None:
@@ -133,7 +141,7 @@ def cli(
         return
 
     from sysup.attention import exit_code, fold_results, read_state, write_state
-    from sysup.config import applicable_commands, load_config
+    from sysup.config import applicable_commands, applicable_items, load_config
     from sysup.runner import Runner
 
     # Honour the same --config / --config-dir the buvis_options wrapper resolved
@@ -164,7 +172,7 @@ def cli(
         return
     if dry_run:
         return
-    checked = {name for name, _ in plan}
+    checked = {name for name, _ in plan} | {name for name, _ in applicable_items(cfg)}
     entries = fold_results(read_state(), checked, results, datetime.now(timezone.utc))
     _print_summary(entries, checked)
     entries = _notify(cfg, entries)
@@ -194,6 +202,73 @@ def status(ctx: click.Context) -> None:
         else:
             console.warning(line)
     if any(entry["status"] in RED for entry in entries.values()):
+        ctx.exit(1)
+
+
+@cli.command(name="refresh", help="Walk through renewing a tracked credential on this terminal")
+@click.argument("item")
+@click.pass_context
+def refresh(ctx: click.Context, item: str) -> None:
+    if not _is_tty():
+        console.panic("sysup refresh needs a terminal")
+        return
+
+    import getpass
+
+    from sysup.config import load_config
+    from sysup.refresh import run_refresh
+
+    obj = ctx.obj or {}
+    try:
+        cfg = load_config(config_dir=obj.get("config_dir"), config_path=obj.get("config_path"))
+    except FatalError as exc:
+        console.panic(str(exc))
+        return
+
+    expiry_item = cfg.expiry.get(item)
+    if expiry_item is None:
+        console.panic(f"unknown expiry item '{item}'")
+        return
+    if not expiry_item.enabled:
+        console.panic(f"item '{item}' is disabled; enable it in buvis-sysup.local.yaml first")
+        return
+    if expiry_item.refresh is None:
+        console.panic(f"item '{item}' has no refresh procedure")
+        return
+
+    console.print(expiry_item.refresh.instructions, mode="raw")
+    console.info("press Enter when done")
+    input()
+
+    result = run_refresh(item, expiry_item.refresh, lambda: getpass.getpass("paste the new secret: "))
+    _report_step(result)
+    if not result.success:
+        ctx.exit(1)
+        return
+
+    _recheck_item(ctx, cfg, item, expiry_item)
+
+
+def _recheck_item(ctx: click.Context, cfg: SysupConfig, item: str, expiry_item: ExpiryItem) -> None:
+    """Re-check one item after a successful refresh, fold, persist and exit.
+
+    Only an ``ok`` recheck clears the entry; ``expiring``, ``expired`` and
+    ``unknown`` update it. Exit follows :func:`exit_code`: ``ok`` / ``expiring``
+    exit 0, ``expired`` / ``unknown`` exit 1.
+    """
+    from sysup.attention import exit_code, fold_results, read_state, write_state
+    from sysup.runner import Runner
+
+    recheck = list(Runner(cfg).check_items([(item, expiry_item)]))
+    for step in recheck:
+        _report_step(step)
+    entries = fold_results(read_state(), {item}, recheck, datetime.now(timezone.utc))
+    try:
+        write_state(entries)
+    except OSError as exc:
+        console.panic(f"could not write attention state: {exc}")
+        return
+    if exit_code(recheck):
         ctx.exit(1)
 
 
