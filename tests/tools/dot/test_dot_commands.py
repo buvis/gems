@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from buvis.pybase.result import CommandResult
 from dot.cli import cli
 
@@ -151,3 +152,38 @@ class TestDotCommands:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Remove failed")
         result = runner.invoke(cli, ["rm", ".bashrc"])
         assert result.exit_code == 0
+
+
+class TestDotSetupCli:
+    @pytest.fixture(autouse=True)
+    def _env(self, tmp_path, monkeypatch, mocker) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("BUVIS_DOT_REMOTE_URL", raising=False)
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.delenv("BUVIS_CONFIG_FILE", raising=False)
+        mocker.patch("dot.cli.ShellAdapter")
+        self.setup_cls = mocker.patch("dot.commands.setup.setup.CommandSetup")
+        self.setup_cls.return_value.execute.return_value = CommandResult(success=True)
+
+    def test_url_argument_wins_over_remote_url_setting(self, runner, monkeypatch) -> None:
+        monkeypatch.setenv("BUVIS_DOT_REMOTE_URL", "https://setting.test/d.git")
+
+        result = runner.invoke(cli, ["setup", "https://arg.test/d.git"])
+
+        assert result.exit_code == 0
+        assert self.setup_cls.call_args.kwargs["remote_url"] == "https://arg.test/d.git"
+
+    def test_remote_url_setting_used_without_argument(self, runner, monkeypatch) -> None:
+        monkeypatch.setenv("BUVIS_DOT_REMOTE_URL", "https://setting.test/d.git")
+
+        result = runner.invoke(cli, ["setup"])
+
+        assert result.exit_code == 0
+        assert self.setup_cls.call_args.kwargs["remote_url"] == "https://setting.test/d.git"
+
+    def test_missing_url_and_setting_panics_with_hint(self, runner) -> None:
+        result = runner.invoke(cli, ["setup"])
+
+        assert result.exit_code == 1
+        assert "remote URL required: dot setup <url> or set BUVIS_DOT_REMOTE_URL" in result.output
+        self.setup_cls.assert_not_called()

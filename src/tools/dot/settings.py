@@ -16,3 +16,4 @@ class DotSettings(GlobalSettings):
     add_file_path: str | None = None
     theme: str = "textual-dark"
     confirm_revert: bool = True
+    remote_url: str | None = None

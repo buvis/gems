@@ -120,6 +120,13 @@ run `dot materialize --hook`. `dot status` and the TUI (key `L`) report link
 problems. On Windows, directories become junctions and file links need
 Developer Mode. Details: `docs/source/tools/dot.rst`.
 
+dot sets `core.hooksPath` to `<dotfiles_root>/.config/buvis/hooks` when it is
+unset, and `dot status` warns when the hooks dir or its `pre-commit` is missing.
+
+**New host:** `dot setup [<url>]` (or `BUVIS_DOT_REMOTE_URL`) bare-clones the
+dotfiles repo, checks it out without overwriting existing files, and links host
+config.
+
 **Localizing files:** `dot localize <target> [--to <source>]` converts a tracked
 file to a host-specific link: untracks it, moves it to the source location,
 creates the symlink, and updates the manifest. Commit the staged manifest and
