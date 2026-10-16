@@ -1215,163 +1215,173 @@ class TestDotGitServiceCheckIgnore:
 
 
 class TestDotGitServiceStageInteractive:
-    def test_without_path_starts_patch_mode_over_whole_worktree(
-        self, git_service: DotGitService, shell: MagicMock
-    ) -> None:
+    def test_without_path_starts_patch_mode_then_reports_staged_state(self, git_service, shell) -> None:
+        shell.exe.return_value = ("", "M\t.bashrc\n")
         result = git_service.stage_interactive()
+        shell.interact.assert_called_once_with("cfg add -p", Path("/home/user/dotfiles"))
+        shell.exe.assert_called_once_with("cfg diff --cached --name-status", Path("/home/user/dotfiles"))
+        assert result.output == "Currently staged:\nM\t.bashrc"
+        assert result.warnings == []
 
-        assert result is None
-        shell.exe.assert_not_called()
-        assert shell.interact.call_args[0][0] == "cfg add -p"
-        assert str(shell.interact.call_args[0][1]) == "/home/user/dotfiles"
+    def test_without_path_and_nothing_staged_warns(self, git_service, shell) -> None:
+        shell.exe.return_value = ("", "")
+        result = git_service.stage_interactive()
+        assert result.success is True
+        assert result.warnings == ["Nothing staged for the work tree"]
 
-    def test_tracked_file_is_staged_in_patch_mode(self, git_service: DotGitService, shell: MagicMock) -> None:
-        shell.exe.return_value = ("", ".bashrc\n")  # ls-files --error-unmatch: file is tracked
+    def test_untracked_file_is_added_whole_without_patch_mode(self, git_service, shell) -> None:
+        shell.exe.side_effect = [("", "?? newfile.txt\n"), ("", ""), ("", "A\tnewfile.txt\n")]
+        result = git_service.stage_interactive("newfile.txt")
+        shell.interact.assert_not_called()
+        assert [c.args[0] for c in shell.exe.call_args_list] == [
+            "cfg status --porcelain --untracked-files=all --ignored -- ':(literal)newfile.txt'",
+            "cfg add -- ':(literal)newfile.txt'",
+            "cfg diff --cached --name-status -- ':(literal)newfile.txt'",
+        ]
+        assert result.success is True
+        assert result.output == "Currently staged:\nA\tnewfile.txt"
 
+    def test_tracked_file_is_staged_in_patch_mode(self, git_service, shell) -> None:
+        shell.exe.side_effect = [("", ""), ("", "M\t.bashrc\n")]
         result = git_service.stage_interactive(".bashrc")
+        shell.interact.assert_called_once_with("cfg add -p -- ':(literal).bashrc'", Path("/home/user/dotfiles"))
+        assert [c.args[0] for c in shell.exe.call_args_list] == [
+            "cfg status --porcelain --untracked-files=all --ignored -- ':(literal).bashrc'",
+            "cfg diff --cached --name-status -- ':(literal).bashrc'",
+        ]
+        assert result.output == "Currently staged:\nM\t.bashrc"
 
-        assert result is None
-        assert "--error-unmatch" in shell.exe.call_args[0][0]
-        assert shell.exe.call_args[0][0] == "cfg ls-files --error-unmatch .bashrc"
-        assert str(shell.exe.call_args[0][1]) == "/home/user/dotfiles"
-        interact_cmd = shell.interact.call_args[0][0]
-        assert interact_cmd.startswith("cfg add -p")
-        assert ".bashrc" in interact_cmd
-        assert interact_cmd == "cfg add -p .bashrc"
-        assert str(shell.interact.call_args[0][1]) == "/home/user/dotfiles"
+    def test_lookup_failure_stops_before_staging(self, git_service, shell) -> None:
+        error = "fatal: not a git repository: '/home/user/dotfiles/.buvis/'"
+        shell.exe.side_effect = [(error, "")]
+        result = git_service.stage_interactive(".bashrc")
+        assert result.success is False
+        assert result.error == f"Could not determine whether .bashrc is tracked: {error}"
+        shell.interact.assert_not_called()
+        shell.exe.assert_called_once_with(
+            "cfg status --porcelain --untracked-files=all --ignored -- ':(literal).bashrc'", Path("/home/user/dotfiles")
+        )
 
-    def test_unrelated_lookup_error_still_stages_in_patch_mode(
-        self, git_service: DotGitService, shell: MagicMock
-    ) -> None:
-        """Only git's own "no such tracked path" answer skips patch mode.
+    def test_ignored_file_is_refused_naming_the_rule_and_the_force_escape(self, git_service, shell) -> None:
+        shell.exe.side_effect = [("", "!! .cache/x\n"), ("", ".gitignore:3:.cache/\t.cache/x\n")]
+        result = git_service.stage_interactive(".cache/x")
+        assert result.success is False
+        assert result.error == (
+            ".cache/x is ignored (.gitignore:3:.cache/\t.cache/x); add it anyway with: "
+            "git --git-dir=/home/user/dotfiles/.buvis/ --work-tree=/home/user/dotfiles add -f -- .cache/x"
+        )
+        assert shell.exe.call_args_list[1].args[0] == "cfg check-ignore -v -- .cache/x"
+        shell.interact.assert_not_called()
+        assert not any(c.args[0].startswith("cfg add") for c in shell.exe.call_args_list)
 
-        Any other lookup failure leaves the file on the tracked path, so ``-p`` stays on.
-        """
-        shell.exe.return_value = ("fatal: not a git repository", "")
+    def test_declined_hunks_report_existing_staged_changes_as_currently_staged(self, git_service, shell) -> None:
+        shell.exe.side_effect = [("", "MM .bashrc\n"), ("", "M\t.bashrc\n")]
+        result = git_service.stage_interactive(".bashrc")
+        shell.interact.assert_called_once_with("cfg add -p -- ':(literal).bashrc'", Path("/home/user/dotfiles"))
+        assert result.output == "Currently staged:\nM\t.bashrc"
+        assert result.warnings == []
 
-        git_service.stage_interactive(".bashrc")
+    def test_tracked_file_with_nothing_staged_warns(self, git_service, shell) -> None:
+        shell.exe.side_effect = [("", ""), ("", "")]
+        result = git_service.stage_interactive(".bashrc")
+        assert result.success is True
+        assert result.warnings == ["Nothing staged for .bashrc"]
+        assert result.output is None
 
-        assert shell.interact.call_args[0][0] == "cfg add -p .bashrc"
+    def test_untracked_file_left_unstaged_fails(self, git_service, shell) -> None:
+        shell.exe.side_effect = [("", "?? newfile.txt\n"), ("", ""), ("", "")]
+        result = git_service.stage_interactive("newfile.txt")
+        assert result.success is False
+        assert result.error == "newfile.txt was not staged"
 
-    def test_path_with_embedded_quote_is_passed_through_verbatim(
-        self, git_service: DotGitService, shell: MagicMock
-    ) -> None:
-        # ported verbatim from CommandAdd: the path is interpolated unquoted
-        shell.exe.return_value = ("", "it's.txt\n")
+    def test_failed_add_is_reported(self, git_service, shell) -> None:
+        shell.exe.side_effect = [
+            ("", "?? newfile.txt\n"),
+            ("error: insufficient permission for adding an object to repository database .git/objects", ""),
+        ]
+        result = git_service.stage_interactive("newfile.txt")
+        assert result.success is False
+        assert result.error.startswith("Could not add newfile.txt: error: insufficient permission")
+        assert shell.exe.call_count == 2
 
+    def test_path_with_embedded_quote_is_shell_quoted(self, git_service, shell) -> None:
+        shell.exe.side_effect = [("", ""), ("", "")]
         git_service.stage_interactive("it's.txt")
-
-        assert shell.exe.call_args[0][0] == "cfg ls-files --error-unmatch it's.txt"
-        assert shell.interact.call_args[0][0] == "cfg add -p it's.txt"
-
-    def test_untracked_file_is_staged_whole_without_patch_mode(
-        self, git_service: DotGitService, shell: MagicMock
-    ) -> None:
-        shell.exe.return_value = ("Command 'cfg ls-files' returned non-zero exit status 1.", "")
-
-        git_service.stage_interactive("newfile.txt")
-
-        assert shell.exe.call_args[0][0] == "cfg ls-files --error-unmatch newfile.txt"
-        interact_cmd = shell.interact.call_args[0][0]
-        assert "-p" not in interact_cmd
-        assert interact_cmd.startswith("cfg add")
-        assert "newfile.txt" in interact_cmd
-        assert interact_cmd == "cfg add newfile.txt"
+        quoted = "'" + ":(literal)it" + "'\"'\"'" + "s.txt'"
+        assert (
+            shell.exe.call_args_list[0].args[0] == f"cfg status --porcelain --untracked-files=all --ignored -- {quoted}"
+        )
+        shell.interact.assert_called_once_with(f"cfg add -p -- {quoted}", Path("/home/user/dotfiles"))
 
     @pytest.mark.parametrize("path", [".bashrc", "newfile.txt"])
-    @pytest.mark.parametrize(
-        ("ls_files_result", "expected_command"),
-        [
-            (("", "{path}\n"), "cfg add -p {path}"),
-            (("Command 'cfg ls-files' returned non-zero exit status 1.", ""), "cfg add {path}"),
-        ],
-        ids=["tracked", "untracked"],
-    )
-    def test_patch_mode_follows_the_tracked_answer_not_the_path_name(
-        self,
-        git_service: DotGitService,
-        shell: MagicMock,
-        path: str,
-        ls_files_result: tuple[str, str],
-        expected_command: str,
-    ) -> None:
-        """The same path staged twice: only git's answer decides whether -p is used."""
-        err, out = ls_files_result
-        shell.exe.return_value = (err, out.format(path=path))
-
+    @pytest.mark.parametrize("untracked", [False, True], ids=["tracked", "untracked"])
+    def test_patch_mode_follows_the_tracked_answer_not_the_path_name(self, git_service, shell, path, untracked) -> None:
+        shell.exe.side_effect = (
+            [("", f"?? {path}\n"), ("", ""), ("", f"A\t{path}\n")] if untracked else [("", ""), ("", "")]
+        )
         git_service.stage_interactive(path)
+        if untracked:
+            assert shell.exe.call_args_list[1].args[0] == f"cfg add -- ':(literal){path}'"
+            shell.interact.assert_not_called()
+        else:
+            shell.interact.assert_called_once_with(f"cfg add -p -- ':(literal){path}'", Path("/home/user/dotfiles"))
 
-        assert shell.interact.call_args[0][0] == expected_command.format(path=path)
-
-    def test_relative_directory_path_is_resolved_against_the_dotfiles_root(
-        self, shell: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A relative path is a directory when it is one *inside the dotfiles root*.
-
-        The process working directory is somewhere else entirely, so resolving against
-        it would miss ``sub`` and fall through to the file heuristic.
-        """
+    def test_relative_directory_path_is_resolved_against_the_dotfiles_root(self, shell, tmp_path, monkeypatch) -> None:
         (tmp_path / "sub").mkdir()
         (tmp_path / "elsewhere").mkdir()
         monkeypatch.chdir(tmp_path / "elsewhere")
         service = _service_at(shell, tmp_path)
-        shell.exe.side_effect = [
-            ("", "sub/new.txt\n"),  # ls-files --others --exclude-standard
-            ("", ""),  # add --intent-to-add
+        shell.exe.side_effect = [("", "sub/new.txt\n"), ("", ""), ("", "")]
+        result = service.stage_interactive("sub")
+        assert shell.exe.call_args_list == [
+            call("cfg ls-files --others --exclude-standard -- ':(literal)sub'", tmp_path),
+            call("cfg add --intent-to-add -- ':(literal)sub'", tmp_path),
+            call("cfg diff --cached --name-status -- ':(literal)sub'", tmp_path),
         ]
+        shell.interact.assert_called_once_with("cfg add -p -- ':(literal)sub'", tmp_path)
+        assert result.warnings == ["Nothing staged for sub"]
 
-        service.stage_interactive("sub")
-
-        assert [c[0][0] for c in shell.exe.call_args_list] == [
-            "cfg ls-files --others --exclude-standard sub",
-            "cfg add --intent-to-add sub",
-        ]
-        assert [str(c[0][1]) for c in shell.exe.call_args_list] == [str(tmp_path), str(tmp_path)]
-        assert shell.interact.call_args[0][0] == "cfg add -p sub"
-        assert str(shell.interact.call_args[0][1]) == str(tmp_path)
-
-    def test_absolute_path_to_a_plain_file_is_not_treated_as_a_directory(
-        self, git_service: DotGitService, shell: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_absolute_path_to_a_plain_file_is_not_treated_as_a_directory(self, git_service, shell, tmp_path) -> None:
         plain_file = tmp_path / "notes.txt"
         plain_file.write_text("x")
-        shell.exe.return_value = ("", f"{plain_file}\n")  # ls-files --error-unmatch: tracked
-
+        shell.exe.side_effect = [("", ""), ("", "")]
         git_service.stage_interactive(str(plain_file))
+        assert shell.exe.call_args_list[0].args[0] == (
+            f"cfg status --porcelain --untracked-files=all --ignored -- ':(literal){plain_file}'"
+        )
+        shell.interact.assert_called_once_with(f"cfg add -p -- ':(literal){plain_file}'", Path("/home/user/dotfiles"))
 
-        assert [c[0][0] for c in shell.exe.call_args_list] == [f"cfg ls-files --error-unmatch {plain_file}"]
-        assert shell.interact.call_args[0][0] == f"cfg add -p {plain_file}"
-
-    def test_directory_with_untracked_content_gets_intent_to_add_first(
-        self, git_service: DotGitService, shell: MagicMock, tmp_path: Path
-    ) -> None:
-        shell.exe.side_effect = [
-            ("", "sub/new.txt\n"),  # ls-files --others --exclude-standard
-            ("", ""),  # add --intent-to-add
+    def test_directory_with_untracked_content_gets_intent_to_add_first(self, git_service, shell, tmp_path) -> None:
+        shell.exe.side_effect = [("", "sub/new.txt\n"), ("", ""), ("", "")]
+        git_service.stage_interactive(str(tmp_path))
+        assert [c.args[0] for c in shell.exe.call_args_list] == [
+            f"cfg ls-files --others --exclude-standard -- ':(literal){tmp_path}'",
+            f"cfg add --intent-to-add -- ':(literal){tmp_path}'",
+            f"cfg diff --cached --name-status -- ':(literal){tmp_path}'",
         ]
+        shell.interact.assert_called_once_with(f"cfg add -p -- ':(literal){tmp_path}'", Path("/home/user/dotfiles"))
 
+    def test_directory_without_untracked_content_skips_intent_to_add(self, git_service, shell, tmp_path) -> None:
+        shell.exe.side_effect = [("", "\n"), ("", "")]
         git_service.stage_interactive(str(tmp_path))
+        assert [c.args[0] for c in shell.exe.call_args_list] == [
+            f"cfg ls-files --others --exclude-standard -- ':(literal){tmp_path}'",
+            f"cfg diff --cached --name-status -- ':(literal){tmp_path}'",
+        ]
+        shell.interact.assert_called_once_with(f"cfg add -p -- ':(literal){tmp_path}'", Path("/home/user/dotfiles"))
 
-        cmds = [c[0][0] for c in shell.exe.call_args_list]
-        assert "cfg ls-files --others --exclude-standard" in cmds[0]
-        assert "cfg add --intent-to-add" in cmds[1]
-        assert str(tmp_path) in cmds[1]
-        assert [name for name, _a, _k in shell.mock_calls][-1] == "interact"
-        interact_cmd = shell.interact.call_args[0][0]
-        assert interact_cmd.startswith("cfg add -p")
-        assert str(tmp_path) in interact_cmd
-
-    def test_directory_without_untracked_content_skips_intent_to_add(
-        self, git_service: DotGitService, shell: MagicMock, tmp_path: Path
-    ) -> None:
-        shell.exe.return_value = ("", "\n")  # no untracked files below the directory
-
-        git_service.stage_interactive(str(tmp_path))
-
-        cmds = [c[0][0] for c in shell.exe.call_args_list]
-        assert len(cmds) == 1
-        assert "--intent-to-add" not in cmds[0]
-        assert shell.interact.call_args[0][0].startswith("cfg add -p")
+    def test_symlink_to_a_directory_takes_the_file_path(self, shell, tmp_path) -> None:
+        (tmp_path / "real").mkdir()
+        (tmp_path / "link").symlink_to(tmp_path / "real", target_is_directory=True)
+        service = _service_at(shell, tmp_path)
+        shell.exe.side_effect = [("", "?? link\n"), ("", ""), ("", "A\tlink\n")]
+        service.stage_interactive("link")
+        assert [c.args[0] for c in shell.exe.call_args_list] == [
+            "cfg status --porcelain --untracked-files=all --ignored -- ':(literal)link'",
+            "cfg add -- ':(literal)link'",
+            "cfg diff --cached --name-status -- ':(literal)link'",
+        ]
+        shell.interact.assert_not_called()
 
 
 class TestDotGitServiceUnstage:
