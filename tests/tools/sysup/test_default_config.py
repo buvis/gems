@@ -82,3 +82,19 @@ class TestDefaultConfigEquivalence:
             ("sudo", "apt", "upgrade", "-y"),
             ("sudo", "apt", "autoremove", "-y"),
         )
+
+
+class TestDefaultExpiryTemplate:
+    def test_gh_agent_template_is_disabled_and_has_no_probe(self, mocker) -> None:
+        """The bundled gh-agent item ships disabled with no probe, so it adds no
+        command and loads without the enabled-item required-input rule firing."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        item = cfg.expiry["gh-agent"]
+        assert item.enabled is False
+        assert item.use == "gh-token-expiry"
+        assert item.with_ == {"config_dir": "~/.config/gh-agent"}
+        assert "probe" not in item.with_
+        assert item.refresh is not None
+        assert item.refresh.commands[0].stdin == "secret"
+        assert "gh-agent" not in cfg.commands

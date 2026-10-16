@@ -87,3 +87,27 @@ commands:
 # credentials up front so brew casks don't prompt mid-run (former mac behaviour).
 prime:
   - sudo-prime
+
+# Expiring credentials checked before every ordinary run (PRD 00096). gh-agent
+# is a disabled template: in buvis-sysup.local.yaml set `with.probe` to a
+# `gh api` path that needs private-repository access (for example
+# repos/<owner>/<private-repo>) and `enabled: true`. The other fields merge in.
+expiry:
+  gh-agent:
+    enabled: false
+    use: gh-token-expiry
+    with:
+      config_dir: ~/.config/gh-agent
+    warn_days: 30
+    refresh:
+      instructions: |
+        1. Open https://github.com/settings/personal-access-tokens/new
+        2. Token name: gh-agent. Resource owner: buvis. Expiration: 1 year.
+        3. Repository access: All repositories.
+        4. Permissions: Pull requests (read and write), Issues (read and write),
+           Actions (read), Commit statuses (read), Contents (read), Metadata (read).
+        5. Generate the token, copy it, and paste it at the prompt below.
+      commands:
+        - argv: [gh, auth, login, --hostname, github.com, --with-token, --insecure-storage]
+          env: { GH_CONFIG_DIR: ~/.config/gh-agent }
+          stdin: secret
