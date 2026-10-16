@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import json
+import os
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from buvis.pybase.updater.detector import InstallerInfo
-from buvis.pybase.updater.executor import run_update, run_update_interactive
+from buvis.pybase.updater.executor import REEXEC_ENV, run_update, run_update_interactive
+from buvis.pybase.updater.state import write_upgrade_failure
 
 
 @pytest.fixture()
@@ -105,6 +109,8 @@ class TestRunUpdateMisePipx:
                 return MagicMock(returncode=0, stderr=b"")
             if cmd == ("mise", "where", "pipx:buvis-gems"):
                 return MagicMock(returncode=0, stdout=f"{new_root}\n")
+            if cmd == [str(new_binary), "--version"]:
+                return MagicMock(returncode=0, stdout="hello-world, version 0.8.2\n")
             raise AssertionError(f"unexpected command: {cmd}")
 
         with (
@@ -130,6 +136,8 @@ class TestRunUpdateMisePipx:
                 return MagicMock(returncode=0, stderr=b"")
             if cmd == ("mise", "where", "pipx:buvis-gems"):
                 return MagicMock(returncode=1, stdout="")
+            if cmd == ["/old/install/bin/hello-world", "--version"]:
+                return MagicMock(returncode=0, stdout="hello-world, version 0.8.2\n")
             raise AssertionError(f"unexpected command: {cmd}")
 
         with (
@@ -158,6 +166,8 @@ class TestRunUpdateMisePipx:
                 return MagicMock(returncode=0, stderr=b"")
             if cmd == ("mise", "where", "pipx:buvis-gems"):
                 return MagicMock(returncode=0, stdout=f"{new_root}\n")
+            if cmd == ["/old/install/bin/hello-world", "--version"]:
+                return MagicMock(returncode=0, stdout="hello-world, version 0.8.2\n")
             raise AssertionError(f"unexpected command: {cmd}")
 
         with (
@@ -391,6 +401,129 @@ class TestRunUpdateInteractive:
 
         assert result == 0
         mock_os.execvp.assert_not_called()
+
+
+def _fake_upgrade_then_version(
+    installed: str | None, calls: list[tuple[object, dict[str, object]]]
+) -> Callable[..., MagicMock]:
+    """Installer exits 0; the ``--version`` child reports ``installed`` (None: it cannot run)."""
+
+    def fake_run(argv: object, **kwargs: object) -> MagicMock:
+        calls.append((argv, kwargs))
+        if argv == ("uv", "tool", "upgrade", "buvis-gems"):
+            return MagicMock(returncode=0, stderr=b"")
+        if argv == ["bim", "--version"]:
+            if installed is None:
+                raise OSError("bim: not found")
+            return MagicMock(returncode=0, stdout=f"buvis-gems, version {installed}\n")
+        raise AssertionError(f"unexpected command: {argv}")
+
+    return fake_run
+
+
+class TestRunUpdateVerification:
+    def _run(
+        self, state_dir: Path, installed: str | None
+    ) -> tuple[MagicMock, list[tuple[object, dict[str, object]]], str | None]:
+        """Run run_update; return the execvp mock, subprocess calls and the parent's guard value."""
+        calls: list[tuple[object, dict[str, object]]] = []
+        with (
+            patch.dict(os.environ, {}, clear=False),
+            patch(
+                "buvis.pybase.updater.executor.subprocess.run",
+                side_effect=_fake_upgrade_then_version(installed, calls),
+            ),
+            patch("buvis.pybase.updater.executor.sys") as mock_sys,
+            patch("buvis.pybase.updater.executor.os.execvp") as mock_execvp,
+        ):
+            os.environ.pop(REEXEC_ENV, None)
+            mock_sys.argv = ["bim", "list"]
+            run_update("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+            parent_guard = os.environ.get(REEXEC_ENV)
+        return mock_execvp, calls, parent_guard
+
+    def test_noop_upgrade_records_failure_and_skips_reexec(
+        self, state_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        mock_execvp, _, _ = self._run(state_dir, installed="0.7.0")
+
+        mock_execvp.assert_not_called()
+        state = json.loads((state_dir / "updater.json").read_text())
+        assert state["upgrade_failed"]["version"] == "0.8.0"
+        assert state["log"][-1]["level"] == "error"
+        assert state["log"][-1]["message"] == (
+            "Upgrade to 0.8.0 was a no-op: installer index may not offer it yet. Continuing with 0.7.0."
+        )
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == ""
+
+    def test_verification_child_inherits_reexec_guard(self, state_dir: Path) -> None:
+        """--version runs the update check, so an unguarded child would start its own upgrade."""
+        _, calls, parent_guard = self._run(state_dir, installed="0.7.0")
+
+        version_calls = [kwargs for argv, kwargs in calls if argv == ["bim", "--version"]]
+        assert len(version_calls) == 1
+        env = version_calls[0]["env"]
+        assert isinstance(env, dict)
+        assert env[REEXEC_ENV] == "1"
+        assert version_calls[0]["timeout"] == 10
+        assert parent_guard is None  # the guard is set in the child's copy, not the parent
+
+    def test_unverifiable_upgrade_still_reexecs(self, state_dir: Path) -> None:
+        mock_execvp, _, _ = self._run(state_dir, installed=None)
+
+        mock_execvp.assert_called_once_with("bim", ["bim", "list"])
+        state = json.loads((state_dir / "updater.json").read_text())
+        assert "upgrade_failed" not in state
+        assert any(entry["level"] == "warning" and "Could not verify" in entry["message"] for entry in state["log"])
+
+    def test_verified_upgrade_clears_failure_and_reexecs(self, state_dir: Path) -> None:
+        write_upgrade_failure(state_dir, "0.8.0")
+
+        mock_execvp, _, _ = self._run(state_dir, installed="0.8.0")
+
+        mock_execvp.assert_called_once_with("bim", ["bim", "list"])
+        state = json.loads((state_dir / "updater.json").read_text())
+        assert "upgrade_failed" not in state
+
+    def _run_interactive(self, state_dir: Path, installed: str) -> tuple[int, MagicMock]:
+        calls: list[tuple[object, dict[str, object]]] = []
+        with (
+            patch(
+                "buvis.pybase.updater.executor.subprocess.run",
+                side_effect=_fake_upgrade_then_version(installed, calls),
+            ),
+            patch("buvis.pybase.updater.executor.sys") as mock_sys,
+            patch("buvis.pybase.updater.executor.os.execvp") as mock_execvp,
+        ):
+            mock_sys.argv = ["bim", "--update"]
+            result = run_update_interactive("0.7.0", "0.8.0", _uv_tool_installer(), state_dir=state_dir)
+        return result, mock_execvp
+
+    def test_interactive_verified_upgrade_returns_zero(
+        self, state_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        result, mock_execvp = self._run_interactive(state_dir, installed="0.8.0")
+
+        assert result == 0
+        mock_execvp.assert_not_called()
+        out = capsys.readouterr().out
+        assert "Upgraded." in out
+        assert "✔" in out
+
+    def test_interactive_noop_upgrade_returns_one(self, state_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        result, mock_execvp = self._run_interactive(state_dir, installed="0.7.0")
+
+        assert result == 1
+        mock_execvp.assert_not_called()
+        out = " ".join(capsys.readouterr().out.split())
+        assert "Installer reported success but buvis-gems is still 0.7.0; its index may not offer 0.8.0 yet." in out
+        assert "✘" in out
+        assert "Upgraded." not in out
+        state = json.loads((state_dir / "updater.json").read_text())
+        assert state["log"][-1]["level"] == "error"
+        assert "upgrade_failed" not in state  # --update never writes the back-off
 
 
 class TestRunUpdateUnknownInstaller:

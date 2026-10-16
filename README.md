@@ -39,13 +39,13 @@ Then run `mise install`.
 
 ## Update
 
-Any tool accepts `--update` to force-check PyPI and upgrade if a newer release is available:
+Any tool accepts `--update` to ask your installer's own index (mise, uv or pip; PyPI for pipx) for a newer release and upgrade to it:
 
 ```bash
 dot --update
 ```
 
-This prints `buvis-gems X.Y.Z is up to date.` or streams the installer upgrade output.
+This prints `buvis-gems X.Y.Z is up to date.` or streams the installer upgrade output. When PyPI is ahead of what the installer's index offers (a lagging mirror, mise's `minimum_release_age`), it says so instead of upgrading. An upgrade that leaves the installed version unchanged is reported as a failure.
 
 You can also upgrade manually with your package manager:
 
