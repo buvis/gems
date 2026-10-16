@@ -143,6 +143,10 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
 <td><p>Show confirmation modal before reverting a hunk or selected lines (<code class="docutils literal notranslate"><span class="pre">r</span></code>). Set to <code class="docutils literal notranslate"><span class="pre">false</span></code> to skip the prompt.</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">remote_url</span></code></p></td>
+<td><p><em>none</em></p></td>
+<td><p>Remote URL that <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">setup</span></code> clones when no URL argument is given (<code class="docutils literal notranslate"><span class="pre">BUVIS_DOT_REMOTE_URL</span></code>).</p></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -201,6 +205,28 @@ dot<span class="w"> </span>tui<span class="w">                     </span><span 
 </ul>
 <p>Requires the <code class="docutils literal notranslate"><span class="pre">dot</span></code> extra: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">buvis-gems[dot]</span></code></p>
 </section>
+<section id="dot-setup">
+<h3>dot setup<a class="headerlink" href="#dot-setup" title="Link to this heading"></a></h3>
+<p>Bring up dotfiles on a fresh host. Give the remote URL as an argument, or set
+<code class="docutils literal notranslate"><span class="pre">BUVIS_DOT_REMOTE_URL</span></code>. The argument wins when both are set.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>setup<span class="w"> </span>git@host:me/dotfiles.git
+dot<span class="w"> </span>setup<span class="w">                   </span><span class="c1"># uses BUVIS_DOT_REMOTE_URL</span>
+</pre></div>
+</div>
+<p>Steps:</p>
+<ol class="arabic simple">
+<li><p>Bare-clone the remote into <code class="docutils literal notranslate"><span class="pre">&lt;dotfiles_root&gt;/.buvis</span></code>.</p></li>
+<li><p>Hide untracked files from <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span></code> (<code class="docutils literal notranslate"><span class="pre">status.showUntrackedFiles</span> <span class="pre">no</span></code>).</p></li>
+<li><p>Set the upstream of the checked-out branch to <code class="docutils literal notranslate"><span class="pre">origin/&lt;branch&gt;</span></code>. A failure
+is a warning, and setup continues.</p></li>
+<li><p>Check out the files into <code class="docutils literal notranslate"><span class="pre">&lt;dotfiles_root&gt;</span></code>.</p></li>
+<li><p>Link host config and install the git hooks, like <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span></code>.</p></li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">setup</span></code> refuses when <code class="docutils literal notranslate"><span class="pre">&lt;dotfiles_root&gt;/.buvis</span></code> already exists or when the
+clone fails. The checkout never overwrites anything: if existing files conflict,
+setup stops and lists them. Move those files away, then run
+<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">run</span> <span class="pre">checkout</span></code> and <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">materialize</span></code> (to install any missing hooks).</p>
+</section>
 <section id="dot-status">
 <h3>dot status<a class="headerlink" href="#dot-status" title="Link to this heading"></a></h3>
 <p>Hides (re-encrypts) modified secrets, then shows staged and unstaged changes
@@ -210,7 +236,9 @@ as <code class="docutils literal notranslate"><span class="pre">staged</span></c
 </pre></div>
 </div>
 <p>If the <code class="docutils literal notranslate"><span class="pre">host-links</span></code> manifest has problems, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> reports them too.
-See <a class="reference internal" href="#host-specific-config">Host-specific config</a>.</p>
+See <a class="reference internal" href="#host-specific-config">Host-specific config</a>. Status also warns <code class="docutils literal notranslate"><span class="pre">hooks</span> <span class="pre">dir</span> <span class="pre">missing</span></code> or
+<code class="docutils literal notranslate"><span class="pre">pre-commit</span> <span class="pre">hook</span> <span class="pre">missing</span></code> when the configured <code class="docutils literal notranslate"><span class="pre">core.hooksPath</span></code> points at a
+missing directory or at one without a <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> hook.</p>
 </section>
 <section id="dot-materialize">
 <h3>dot materialize<a class="headerlink" href="#dot-materialize" title="Link to this heading"></a></h3>
@@ -380,11 +408,11 @@ enable Developer Mode. Otherwise dot reports <code class="docutils literal notra
 <span class="pre">Developer</span> <span class="pre">Mode</span></code>. The hooks need <code class="docutils literal notranslate"><span class="pre">python3</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p>
 <section id="first-setup">
 <h3>First setup<a class="headerlink" href="#first-setup" title="Link to this heading"></a></h3>
-<p>Turn on the hooks once per host. Dot only installs them when
-<code class="docutils literal notranslate"><span class="pre">core.hooksPath</span></code> is set, and stays silent when it is not:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>--git-dir<span class="o">=</span><span class="nv">$HOME</span>/.buvis<span class="w"> </span>config<span class="w"> </span>core.hooksPath<span class="w"> </span>~/.buvis/hooks
-</pre></div>
-</div>
+<p>Every dot command that touches git sets <code class="docutils literal notranslate"><span class="pre">core.hooksPath</span></code> to
+<code class="docutils literal notranslate"><span class="pre">&lt;dotfiles_root&gt;/.config/buvis/hooks</span></code> when it is unset. It never changes a
+value that is already set. <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> warns <code class="docutils literal notranslate"><span class="pre">hooks</span> <span class="pre">dir</span> <span class="pre">missing:</span> <span class="pre">&lt;dir&gt;</span></code> or
+<code class="docutils literal notranslate"><span class="pre">pre-commit</span> <span class="pre">hook</span> <span class="pre">missing:</span> <span class="pre">&lt;dir&gt;/pre-commit</span></code> when the hooks are not in place.
+On a new host, run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">setup</span> <span class="pre">&lt;url&gt;</span></code>.</p>
 <p>To make a file that the dotfiles repo already tracks host-specific, use
 <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">localize</span></code>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>localize<span class="w"> </span>.config/gita/repos.csv
