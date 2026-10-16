@@ -284,8 +284,8 @@ No dependencies - built first.
 **Goal**: `stage_interactive` classifies from porcelain output, quotes every path literally, and returns what is staged.
 
 **Tasks**:
-- [ ] Rewrite `TestDotGitServiceStageInteractive` per the test table (no deps). Premise, re-checked at execution: `uv run pytest tests/tools/dot/test_git_service.py -k TestDotGitServiceStageInteractive --co -q` collects 13 tests and `rg -n "returned non-zero exit status" tests/tools/dot/test_git_service.py` hits only lines inside that class plus the `check_ignore` parametrization at `tests/tools/dot/test_git_service.py:1106-1119` (which stays). If the class differs, stop and report. Acceptance: the same `--co` command collects at least 19 tests; `uv run pytest tests/tools/dot/test_git_service.py -k untracked_file_is_added_whole -q` FAILS against the unchanged service with `interact` having been called (output quoted in the task log); no test outside the class changed.
-- [ ] Implement `_literal`, `stage_interactive`, `_staged_report` in `src/tools/dot/git/service.py` with the final text above, and add the changelog bullet in the same commit (depends on: task 1). Acceptance: `uv run pytest tests/tools/dot/test_git_service.py -q` passes; `rg -n "non-zero exit status" src/tools/dot` prints nothing; `rg -n -F "afterwards the command prints what is currently staged for the path" CHANGELOG.md` matches the new Fixed bullet under `[Unreleased]`.
+- [x] Rewrite `TestDotGitServiceStageInteractive` per the test table (no deps). Premise, re-checked at execution: `uv run pytest tests/tools/dot/test_git_service.py -k TestDotGitServiceStageInteractive --co -q` collects 13 tests and `rg -n "returned non-zero exit status" tests/tools/dot/test_git_service.py` hits only lines inside that class plus the `check_ignore` parametrization at `tests/tools/dot/test_git_service.py:1106-1119` (which stays). If the class differs, stop and report. Acceptance: the same `--co` command collects at least 19 tests; `uv run pytest tests/tools/dot/test_git_service.py -k untracked_file_is_added_whole -q` FAILS against the unchanged service with `interact` having been called (output quoted in the task log); no test outside the class changed.
+- [x] Implement `_literal`, `stage_interactive`, `_staged_report` in `src/tools/dot/git/service.py` with the final text above, and add the changelog bullet in the same commit (depends on: task 1). Acceptance: `uv run pytest tests/tools/dot/test_git_service.py -q` passes; `rg -n "non-zero exit status" src/tools/dot` prints nothing; `rg -n -F "afterwards the command prints what is currently staged for the path" CHANGELOG.md` matches the new Fixed bullet under `[Unreleased]`.
 
 **Exit Criteria**: `uv run pytest tests/tools/dot/test_git_service.py -q` green with the regression test present.
 
@@ -293,8 +293,8 @@ No dependencies - built first.
 **Goal**: `CommandAdd` resolves from any cwd, keeps symlinks, fails on a missing path, and returns the service result.
 
 **Tasks**:
-- [ ] Add the three new `test_add.py` tests, rewrite the two nonexistent-path tests, drop the `warnings` assertions and give `TestCommandAddExecute` real `CommandResult` return values (depends on: Phase 0). Premise, re-checked at execution: `rg -c "    def test_" tests/tools/dot/test_add.py` prints 13; otherwise stop and report. Acceptance: the count prints at least 16; `uv run pytest tests/tools/dot/test_add.py -k "cwd_before or symlink or nonexistent" -q` FAILS before the `add.py` change (quoted in the task log).
-- [ ] Apply the `add.py` final text (depends on: previous task). Acceptance: `uv run pytest tests/tools/dot/test_add.py -q` passes; `rg -n "\.exists\(\)|cherry picking|warnings" src/tools/dot/commands/add/add.py` prints nothing.
+- [x] Add the three new `test_add.py` tests, rewrite the two nonexistent-path tests, drop the `warnings` assertions and give `TestCommandAddExecute` real `CommandResult` return values (depends on: Phase 0). Premise, re-checked at execution: `rg -c "    def test_" tests/tools/dot/test_add.py` prints 13; otherwise stop and report. Acceptance: the count prints at least 16; `uv run pytest tests/tools/dot/test_add.py -k "cwd_before or symlink or nonexistent" -q` FAILS before the `add.py` change (quoted in the task log).
+- [x] Apply the `add.py` final text (depends on: previous task). Acceptance: `uv run pytest tests/tools/dot/test_add.py -q` passes; `rg -n "\.exists\(\)|cherry picking|warnings" src/tools/dot/commands/add/add.py` prints nothing.
 
 **Exit Criteria**: `uv run pytest tests/tools/dot/test_add.py tests/tools/dot/test_git_service.py -q` green.
 
@@ -302,8 +302,8 @@ No dependencies - built first.
 **Goal**: Real git proves the whole path and the docs describe it.
 
 **Tasks**:
-- [ ] Create `tests/tools/dot/test_add_integration.py` with the guards, fixture and eight cases above (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/dot/test_add_integration.py -q -rs` reports 8 passed, 0 skipped; `uv run pytest tests/tools/dot/test_add_integration.py -q -s` reports 8 skipped when fd 0 is a terminal, 8 passed otherwise.
-- [ ] Replace the `dot add` section in `docs/source/tools/dot.rst` with the final text (depends on: Phase 1). Acceptance: `rg -c "added whole" docs/source/tools/dot.rst` prints 1; `uv run sphinx-build -b html docs/source docs/build/html -q` exits 0.
+- [x] Create `tests/tools/dot/test_add_integration.py` with the guards, fixture and eight cases above (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/dot/test_add_integration.py -q -rs` reports 8 passed, 0 skipped; `uv run pytest tests/tools/dot/test_add_integration.py -q -s` reports 8 skipped when fd 0 is a terminal, 8 passed otherwise.
+- [x] Replace the `dot add` section in `docs/source/tools/dot.rst` with the final text (depends on: Phase 1). Acceptance: `rg -c "added whole" docs/source/tools/dot.rst` prints 1; `uv run sphinx-build -b html docs/source docs/build/html -q` exits 0.
 
 **Exit Criteria**: `uv run pytest -m dot -q` green; `uv run mypy src/tools/dot` clean; `uv run ruff check src/tools/dot tests/tools/dot` clean.
 

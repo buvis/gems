@@ -16,6 +16,11 @@ if TYPE_CHECKING:
 __all__ = ["DotGitService"]
 
 
+def _literal(path: str) -> str:
+    """Quote a path as a shell-safe literal pathspec (no glob matching)."""
+    return shlex.quote(f":(literal){path}")
+
+
 class DotGitService:
     """Wrap bare-repo git commands for the dotfiles tool."""
 
@@ -336,26 +341,53 @@ class DotGitService:
             return set()
         return {line for line in out.splitlines() if line}
 
-    def stage_interactive(self, path: str | None = None) -> None:
-        """Stage changes interactively, hunk by hunk.
+    def stage_interactive(self, path: str | None = None) -> CommandResult:
+        """Stage a path: whole when untracked, hunk by hunk otherwise.
 
         Args:
             path: Path to stage; the whole work-tree when omitted.
+
+        Returns:
+            What is staged for the path afterwards, or why staging stopped.
         """
-        command = "cfg add -p"
-        if path:
-            if (self.wd / path).is_dir():
-                _err, untracked = self.shell.exe(f"cfg ls-files --others --exclude-standard {path}", self.wd)
-                if untracked.strip():
-                    self.shell.exe(f"cfg add --intent-to-add {path}", self.wd)
-                command = f"cfg add -p {path}"
-            else:
-                err, _out = self.shell.exe(f"cfg ls-files --error-unmatch {path}", self.wd)
-                if "returned non-zero exit status 1" in err:
-                    command = f"cfg add {path}"
-                else:
-                    command = f"cfg add -p {path}"
-        self.shell.interact(command, self.wd)
+        if path is None:
+            self.shell.interact("cfg add -p", self.wd)
+            return self._staged_report(None, untracked=False)
+        spec = _literal(path)
+        target = self.wd / path
+        if target.is_dir() and not target.is_symlink():
+            _err, untracked = self.shell.exe(f"cfg ls-files --others --exclude-standard -- {spec}", self.wd)
+            if untracked.strip():
+                self.shell.exe(f"cfg add --intent-to-add -- {spec}", self.wd)
+            self.shell.interact(f"cfg add -p -- {spec}", self.wd)
+            return self._staged_report(path, untracked=False)
+        err, out = self.shell.exe(f"cfg status --porcelain --untracked-files=all --ignored -- {spec}", self.wd)
+        if err:
+            return CommandResult(success=False, error=f"Could not determine whether {path} is tracked: {err}")
+        state = out[:2]
+        if state == "!!":
+            err, rule = self.shell.exe(f"cfg check-ignore -v -- {shlex.quote(path)}", self.wd)
+            detail = rule.strip() or err
+            escape = f"{self._git} add -f -- {shlex.quote(path)}"
+            return CommandResult(success=False, error=f"{path} is ignored ({detail}); add it anyway with: {escape}")
+        if state == "??":
+            err, _out = self.shell.exe(f"cfg add -- {spec}", self.wd)
+            if err:
+                return CommandResult(success=False, error=f"Could not add {path}: {err}")
+            return self._staged_report(path, untracked=True)
+        self.shell.interact(f"cfg add -p -- {spec}", self.wd)
+        return self._staged_report(path, untracked=False)
+
+    def _staged_report(self, path: str | None, *, untracked: bool) -> CommandResult:
+        pathspec = f" -- {_literal(path)}" if path else ""
+        err, out = self.shell.exe(f"cfg diff --cached --name-status{pathspec}", self.wd)
+        if err:
+            return CommandResult(success=False, error=f"Could not read the staged state: {err}")
+        if not out.strip():
+            if untracked:
+                return CommandResult(success=False, error=f"{path} was not staged")
+            return CommandResult(success=True, warnings=[f"Nothing staged for {path or 'the work tree'}"])
+        return CommandResult(success=True, output="Currently staged:\n" + out.strip())
 
     def unstage(self, path: str | None = None) -> CommandResult:
         """Reset staged changes.

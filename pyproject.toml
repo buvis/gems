@@ -163,6 +163,8 @@ ignore = ["ANN401", "S105", "S106", "S108", "S603", "S607", "PLR2004", "RUF012",
 combine-as-imports = true
 
 [tool.ruff.lint.per-file-ignores]
+# PRD 00093 fixes stage_interactive's seven explicit outcome branches verbatim.
+"src/tools/dot/git/service.py" = ["PLR0911"]
 "tests/**/*.py" = ["S101", "S104", "ANN", "ARG", "SLF001", "PLR0913", "PLR0917", "PLR2004", "RUF043", "RUF059", "UP007"]
 "src/tools/*/cli.py" = ["PLR0913"]
 "src/tools/*/*_cli.py" = ["PLR0913"]
