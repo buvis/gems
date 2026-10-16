@@ -74,15 +74,18 @@ class CommandPull:
         if not rescue_result.success:
             return rescue_result
 
-        rescued_sources = [e.source for e in plan.moves + plan.duplicates + plan.collisions]
+        rescued = plan.moves + plan.duplicates + plan.collisions
+        rescued_sources = [e.source for e in rescued]
+        # Rescued targets now show as local deletions; divergence must not restore HEAD over them.
+        rescued_targets = [e.target for e in rescued]
 
-        # Execute pull
-        pull_result = self.dot_git_service.pull(passphrase=passphrase)
+        # Execute pull; plan() already fetched.
+        pull_result = self.dot_git_service.pull(passphrase=passphrase, exclude=rescued_targets, fetched=True)
         if not pull_result.success:
             error = pull_result.error or "Pull failed"
             if rescued_sources:
                 error += f"; rescued files are at: {', '.join(rescued_sources)}"
-            return CommandResult(success=False, error=error)
+            return CommandResult(success=False, error=error, warnings=list(pull_result.warnings))
 
         # Materialize links
         mat_result = CommandMaterialize(
@@ -94,7 +97,7 @@ class CommandPull:
 
         # Merge results
         info = list(rescue_result.info) + list(mat_result.info)
-        warnings = list(rescue_result.warnings) + list(mat_result.warnings)
+        warnings = [*pull_result.warnings, *rescue_result.warnings, *mat_result.warnings]
         if plan.skipped:
             warnings.append(plan.skipped)
 

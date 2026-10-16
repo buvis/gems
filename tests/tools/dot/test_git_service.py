@@ -780,6 +780,13 @@ class TestDotGitServicePush:
 
 
 class TestDotGitServicePull:
+    @pytest.fixture(autouse=True)
+    def _no_fetch_no_upstream(self, git_service: DotGitService, monkeypatch: pytest.MonkeyPatch) -> None:
+        # These tests pin the pull sequence after fetch and divergence save;
+        # test_pull_divergence.py covers those steps.
+        monkeypatch.setattr(git_service, "fetch", MagicMock(return_value=""))
+        monkeypatch.setattr(git_service, "has_upstream", MagicMock(return_value=False))
+
     def test_full_flow_succeeds_without_git_secret(self, git_service: DotGitService, shell: MagicMock) -> None:
         shell.is_command_available.return_value = False
         shell.exe.return_value = ("", "ok")

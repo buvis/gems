@@ -22,11 +22,19 @@ class StatusBar(Static):
         self._info: BranchInfo | None = None
         self._error: str | None = None
         self._link_problems: int = 0
+        self._pending: str | None = None
 
-    def update_info(self, info: BranchInfo, error: str | None = None, link_problems: int = 0) -> None:
+    def update_info(
+        self,
+        info: BranchInfo,
+        error: str | None = None,
+        link_problems: int = 0,
+        pending: str | None = None,
+    ) -> None:
         self._info = info
         self._error = error
         self._link_problems = link_problems
+        self._pending = pending
         self.update(self._render_info())
 
     def _render_info(self) -> Text:
@@ -46,6 +54,9 @@ class StatusBar(Static):
 
         if self._info.secret_count > 0:
             output.append(f"  \U0001f512{self._info.secret_count} secrets", style="magenta")
+
+        if self._pending:
+            output.append(f"  {self._pending}", style="bold yellow")
 
         if self._link_problems > 0:
             output.append(f"  {self._link_problems} link problem(s)", style="bold yellow")

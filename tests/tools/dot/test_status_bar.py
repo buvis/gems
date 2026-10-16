@@ -136,3 +136,35 @@ class TestStatusBarLinkProblems:
             text = str(app.query_one(StatusBar).render())
             assert "secret" in text.lower()
             assert text.lower().index("secret") < text.index("link problem") < text.index("boom")
+
+
+class PendingHost(App[None]):
+    def __init__(self, info: BranchInfo, pending: str | None) -> None:
+        super().__init__()
+        self._info = info
+        self._pending = pending
+
+    def compose(self) -> ComposeResult:
+        yield StatusBar()
+
+    def on_mount(self) -> None:
+        self.query_one(StatusBar).update_info(self._info, link_problems=1, pending=self._pending)
+
+
+class TestStatusBarPendingPatches:
+    @pytest.mark.anyio
+    async def test_renders_pending_text_after_secrets(self) -> None:
+        app = PendingHost(BranchInfo(name="main", secret_count=2), "1 divergence patch(es) pending in /d")
+        async with app.run_test(size=(160, 4)) as pilot:
+            await pilot.pause()
+            text = str(app.query_one(StatusBar).render())
+            assert "1 divergence patch(es) pending in /d" in text
+            assert text.lower().index("secret") < text.index("divergence") < text.index("link problem")
+
+    @pytest.mark.anyio
+    async def test_hides_pending_when_none(self) -> None:
+        app = PendingHost(BranchInfo(name="main"), None)
+        async with app.run_test(size=(80, 4)) as pilot:
+            await pilot.pause()
+            text = str(app.query_one(StatusBar).render())
+            assert "divergence" not in text

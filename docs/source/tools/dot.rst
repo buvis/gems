@@ -252,6 +252,30 @@ The TUI (``P``) shows a modal for each collision with keys ``s``/``t``/``Esc``.
    Raw ``git pull`` bypasses rescue - git has no pre-pull hook. Always use
    ``dot pull`` to protect host-specific files.
 
+**Divergence patch:**
+
+When an uncommitted edit touches a file the incoming commits also change,
+``dot pull`` saves the edit and lets upstream win instead of failing with
+"would be overwritten". It writes one patch per pull to
+``~/.local/share/dot/divergence/<UTC timestamp>.patch``, resets each saved
+file to ``HEAD`` and pulls. The output names the patch and every reset file,
+also when a later step fails. Edits to files upstream did not change, and
+local commits, are left alone. Rescued host-link targets are never reset.
+
+The patch header records the base commit (``# base: <id>``), the upstream
+commit and the host. To bring an edit back, apply it onto its base commit,
+for example in a clone checked out at that ID::
+
+    git apply ~/.local/share/dot/divergence/<timestamp>.patch
+
+Delete the patch once you have handled it. ``dot status`` and the TUI status
+bar warn while any patch is pending.
+
+``dot pull`` stops before touching anything when a selected file has both
+staged and unstaged changes (commit or unstage first), when it was untracked
+with ``dot rm`` but is still on disk (commit the removal or re-add it first),
+or when the patch cannot be saved.
+
 .. code-block:: bash
 
     dot pull
