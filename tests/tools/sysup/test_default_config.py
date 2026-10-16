@@ -69,6 +69,13 @@ class TestDefaultConfigEquivalence:
             ("brew", "cleanup"),
         )
 
+    def test_mise_self_update_never_waits_for_a_prompt(self, mocker) -> None:
+        """sysup captures mise's output, so a confirmation prompt can never be
+        answered and the step fails with "self-update cancelled"."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        assert cfg.commands["mise"].steps[0] == ("mise", "self-update", "--yes")
+
     def test_npm_check_is_interactive(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()

@@ -47,7 +47,7 @@ commands:
     order: 60
     when: { os: darwin, check: mise }
     steps:
-      - [mise, self-update]
+      - [mise, self-update, --yes]
       - [mise, upgrade]
 
   # Moves mise pipx tools pinned with `--managed-python --python X.Y` onto the
