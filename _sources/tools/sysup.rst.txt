@@ -19,6 +19,7 @@ Usage
     sysup --list              # print the resolved plan for this host, run nothing
     sysup --dry-run           # show what would run without running it
     sysup status              # read unresolved attention without running updates
+    sysup refresh gh-agent    # walk through renewing a tracked credential on this terminal
 
 Applicability is decided per entry by its ``when`` guard (OS + a binary that
 must exist), so there are no platform subcommands: a macOS-only entry simply
@@ -102,6 +103,8 @@ Capability                    Behaviour / inputs
 ``nvim-mason``                headless Mason update probe; input ``timeout`` (default 600)
 ``pip-outdated``              per-interpreter (mise-managed, else PATH ``python3``) pip upgrade
 ``sudo-prime``                caches sudo credentials with a background refresher (``prime:``)
+``gh-token-expiry``           gh token: expiration header + a private-repo grant probe; inputs ``config_dir``, ``probe``
+``x509-expiry``               PEM file or TLS endpoint not-after; one of ``path`` / ``host``; needs the ``cryptography`` extra
 ============================  ================================================================
 
 An unknown capability name, or an unknown ``with`` input, is a config error
@@ -179,6 +182,88 @@ retained; amber entries push once after appearing and stay quiet after a
 successful push (including a red-to-amber transition). A missing endpoint,
 unreadable credentials or failed send produces a warning, keeps the entries
 pending for retry, and never changes the run's exit code.
+
+Expiry items
+------------
+
+Alongside ``commands:``, an ``expiry:`` map tracks credentials with a hard
+expiry. Each item names a code-owned expiry capability, its inputs, a warning
+threshold, an optional refresh procedure, and the same ``enabled`` / ``when``
+envelope as a command. Items are checked **before any command on every ordinary
+run** — before ``prime`` too, so a read-only probe never waits on a sudo
+prompt. ``--only`` and ``--tag`` never filter items: a filtered run still probes
+every applicable item and folds it into the attention record. Items are not
+probed under ``--list`` or ``--dry-run``, and ``sysup status`` only reads the
+record.
+
+.. code-block:: yaml
+
+    # buvis-sysup.yaml / buvis-sysup.local.yaml
+    expiry:
+      gh-agent:
+        enabled: true
+        use: gh-token-expiry
+        with:
+          config_dir: ~/.config/gh-agent
+          probe: repos/<owner>/<private-repo>   # a gh api path needing private access
+        warn_days: 30
+
+An item's ``StepResult`` is ``ok``, ``expiring``, ``expired`` or ``unknown``.
+``expiring`` is amber (within ``warn_days`` of expiry; exactly ``warn_days`` days
+left is already amber); ``expired`` and ``unknown`` are red. A clean ``ok`` check
+clears the item's entry; any other outcome records or updates it.
+
+A command may declare ``needs: [item]``. While a needed item is ``expired`` or
+``unknown`` **this run**, the command is skipped with a failed step reading
+``<command> skipped: <item> is <status>; run: sysup refresh <item>``. ``ok`` and
+``expiring`` items never block, and an item that was not checked this run
+(disabled, or a ``when`` mismatch) never blocks either.
+
+The bundled ``gh-agent`` item ships **disabled** with no probe, so tracking stays
+off until you opt in. Enable it on one host from the untracked
+``buvis-sysup.local.yaml`` by supplying a private-repository ``probe`` and
+``enabled: true``; the bundled ``config_dir`` and refresh procedure merge in:
+
+.. code-block:: yaml
+
+    # buvis-sysup.local.yaml  (machine-local, never `dot add`ed)
+    expiry:
+      gh-agent:
+        enabled: true
+        with:
+          probe: repos/myorg/myprivate
+
+``gh-token-expiry`` reads the ``Github-Authentication-Token-Expiration`` header
+from ``gh api -i user`` and then probes the grant with one authenticated call
+that needs private-repository access, so a token that authenticates but has lost
+its repository access reads ``unknown`` rather than ``ok``. Both calls target
+**github.com** credentials in the configured directory: the five ambient gh
+token/host variables (``GH_TOKEN``, ``GITHUB_TOKEN``, ``GH_ENTERPRISE_TOKEN``,
+``GITHUB_ENTERPRISE_TOKEN``, ``GH_HOST``) are stripped from the child
+environment and ``--hostname github.com`` is pinned, without ever mutating your
+shell's environment.
+
+``x509-expiry`` reads the not-after date of a local PEM ``path`` or of the
+certificate a TLS ``host`` (``name`` or ``name:port``, port 443 by default)
+presents. It needs the optional ``cryptography`` extra
+(``uv tool install 'buvis-gems[sysup-cert]'``); a core-only install reports
+``unknown`` with that install hint and keeps tracking gh tokens in the same run.
+
+``sysup refresh <item>`` walks you through renewal on a terminal and re-checks:
+
+* it refuses with ``sysup refresh needs a terminal`` (exit 1) when stdin is not
+  a TTY, and runs nothing;
+* it prints the item's instructions, waits for Enter, then runs the refresh
+  procedure's commands in order, stopping at the first failure;
+* a command declaring ``stdin: secret`` receives the pasted secret **only** on
+  its standard input — never on argv, in the environment, in logs, in state or
+  in a notification — and the secret is dropped immediately after the call; a
+  ``gh auth login`` step strips the same five ambient overrides and pins
+  github.com;
+* after the procedure succeeds the item is re-checked. Only an ``ok`` recheck
+  clears the entry; ``expiring`` keeps the amber entry (exit 0), while
+  ``expired`` and ``unknown`` keep the entry and exit 1. A refresh never sends a
+  notification — you are at the terminal watching the result.
 
 Migration from the subcommands
 -------------------------------

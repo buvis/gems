@@ -76,6 +76,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#attention">Attention</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#expiry-items">Expiry items</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#migration-from-the-subcommands">Migration from the subcommands</a></li>
 </ul>
 </li>
@@ -131,6 +132,7 @@ sysup<span class="w"> </span>--tag<span class="w"> </span>python<span class="w">
 sysup<span class="w"> </span>--list<span class="w">              </span><span class="c1"># print the resolved plan for this host, run nothing</span>
 sysup<span class="w"> </span>--dry-run<span class="w">           </span><span class="c1"># show what would run without running it</span>
 sysup<span class="w"> </span>status<span class="w">              </span><span class="c1"># read unresolved attention without running updates</span>
+sysup<span class="w"> </span>refresh<span class="w"> </span>gh-agent<span class="w">    </span><span class="c1"># walk through renewing a tracked credential on this terminal</span>
 </pre></div>
 </div>
 <p>Applicability is decided per entry by its <code class="docutils literal notranslate"><span class="pre">when</span></code> guard (OS + a binary that
@@ -240,6 +242,12 @@ code-owned capabilities, referenced by name:</p>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sudo-prime</span></code></p></td>
 <td><p>caches sudo credentials with a background refresher (<code class="docutils literal notranslate"><span class="pre">prime:</span></code>)</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gh-token-expiry</span></code></p></td>
+<td><p>gh token: expiration header + a private-repo grant probe; inputs <code class="docutils literal notranslate"><span class="pre">config_dir</span></code>, <code class="docutils literal notranslate"><span class="pre">probe</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">x509-expiry</span></code></p></td>
+<td><p>PEM file or TLS endpoint not-after; one of <code class="docutils literal notranslate"><span class="pre">path</span></code> / <code class="docutils literal notranslate"><span class="pre">host</span></code>; needs the <code class="docutils literal notranslate"><span class="pre">cryptography</span></code> extra</p></td>
+</tr>
 </tbody>
 </table>
 <p>An unknown capability name, or an unknown <code class="docutils literal notranslate"><span class="pre">with</span></code> input, is a config error
@@ -307,6 +315,80 @@ retained; amber entries push once after appearing and stay quiet after a
 successful push (including a red-to-amber transition). A missing endpoint,
 unreadable credentials or failed send produces a warning, keeps the entries
 pending for retry, and never changes the run’s exit code.</p>
+</section>
+<section id="expiry-items">
+<h2>Expiry items<a class="headerlink" href="#expiry-items" title="Link to this heading"></a></h2>
+<p>Alongside <code class="docutils literal notranslate"><span class="pre">commands:</span></code>, an <code class="docutils literal notranslate"><span class="pre">expiry:</span></code> map tracks credentials with a hard
+expiry. Each item names a code-owned expiry capability, its inputs, a warning
+threshold, an optional refresh procedure, and the same <code class="docutils literal notranslate"><span class="pre">enabled</span></code> / <code class="docutils literal notranslate"><span class="pre">when</span></code>
+envelope as a command. Items are checked <strong>before any command on every ordinary
+run</strong> — before <code class="docutils literal notranslate"><span class="pre">prime</span></code> too, so a read-only probe never waits on a sudo
+prompt. <code class="docutils literal notranslate"><span class="pre">--only</span></code> and <code class="docutils literal notranslate"><span class="pre">--tag</span></code> never filter items: a filtered run still probes
+every applicable item and folds it into the attention record. Items are not
+probed under <code class="docutils literal notranslate"><span class="pre">--list</span></code> or <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>, and <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">status</span></code> only reads the
+record.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-sysup.yaml / buvis-sysup.local.yaml</span>
+<span class="nt">expiry</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">gh-agent</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gh-token-expiry</span>
+<span class="w">    </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">config_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.config/gh-agent</span>
+<span class="w">      </span><span class="nt">probe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">repos/&lt;owner&gt;/&lt;private-repo&gt;</span><span class="w">   </span><span class="c1"># a gh api path needing private access</span>
+<span class="w">    </span><span class="nt">warn_days</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</pre></div>
+</div>
+<p>An item’s <code class="docutils literal notranslate"><span class="pre">StepResult</span></code> is <code class="docutils literal notranslate"><span class="pre">ok</span></code>, <code class="docutils literal notranslate"><span class="pre">expiring</span></code>, <code class="docutils literal notranslate"><span class="pre">expired</span></code> or <code class="docutils literal notranslate"><span class="pre">unknown</span></code>.
+<code class="docutils literal notranslate"><span class="pre">expiring</span></code> is amber (within <code class="docutils literal notranslate"><span class="pre">warn_days</span></code> of expiry; exactly <code class="docutils literal notranslate"><span class="pre">warn_days</span></code> days
+left is already amber); <code class="docutils literal notranslate"><span class="pre">expired</span></code> and <code class="docutils literal notranslate"><span class="pre">unknown</span></code> are red. A clean <code class="docutils literal notranslate"><span class="pre">ok</span></code> check
+clears the item’s entry; any other outcome records or updates it.</p>
+<p>A command may declare <code class="docutils literal notranslate"><span class="pre">needs:</span> <span class="pre">[item]</span></code>. While a needed item is <code class="docutils literal notranslate"><span class="pre">expired</span></code> or
+<code class="docutils literal notranslate"><span class="pre">unknown</span></code> <strong>this run</strong>, the command is skipped with a failed step reading
+<code class="docutils literal notranslate"><span class="pre">&lt;command&gt;</span> <span class="pre">skipped:</span> <span class="pre">&lt;item&gt;</span> <span class="pre">is</span> <span class="pre">&lt;status&gt;;</span> <span class="pre">run:</span> <span class="pre">sysup</span> <span class="pre">refresh</span> <span class="pre">&lt;item&gt;</span></code>. <code class="docutils literal notranslate"><span class="pre">ok</span></code> and
+<code class="docutils literal notranslate"><span class="pre">expiring</span></code> items never block, and an item that was not checked this run
+(disabled, or a <code class="docutils literal notranslate"><span class="pre">when</span></code> mismatch) never blocks either.</p>
+<p>The bundled <code class="docutils literal notranslate"><span class="pre">gh-agent</span></code> item ships <strong>disabled</strong> with no probe, so tracking stays
+off until you opt in. Enable it on one host from the untracked
+<code class="docutils literal notranslate"><span class="pre">buvis-sysup.local.yaml</span></code> by supplying a private-repository <code class="docutils literal notranslate"><span class="pre">probe</span></code> and
+<code class="docutils literal notranslate"><span class="pre">enabled:</span> <span class="pre">true</span></code>; the bundled <code class="docutils literal notranslate"><span class="pre">config_dir</span></code> and refresh procedure merge in:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-sysup.local.yaml  (machine-local, never `dot add`ed)</span>
+<span class="nt">expiry</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">gh-agent</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">probe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">repos/myorg/myprivate</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">gh-token-expiry</span></code> reads the <code class="docutils literal notranslate"><span class="pre">Github-Authentication-Token-Expiration</span></code> header
+from <code class="docutils literal notranslate"><span class="pre">gh</span> <span class="pre">api</span> <span class="pre">-i</span> <span class="pre">user</span></code> and then probes the grant with one authenticated call
+that needs private-repository access, so a token that authenticates but has lost
+its repository access reads <code class="docutils literal notranslate"><span class="pre">unknown</span></code> rather than <code class="docutils literal notranslate"><span class="pre">ok</span></code>. Both calls target
+<strong>github.com</strong> credentials in the configured directory: the five ambient gh
+token/host variables (<code class="docutils literal notranslate"><span class="pre">GH_TOKEN</span></code>, <code class="docutils literal notranslate"><span class="pre">GITHUB_TOKEN</span></code>, <code class="docutils literal notranslate"><span class="pre">GH_ENTERPRISE_TOKEN</span></code>,
+<code class="docutils literal notranslate"><span class="pre">GITHUB_ENTERPRISE_TOKEN</span></code>, <code class="docutils literal notranslate"><span class="pre">GH_HOST</span></code>) are stripped from the child
+environment and <code class="docutils literal notranslate"><span class="pre">--hostname</span> <span class="pre">github.com</span></code> is pinned, without ever mutating your
+shell’s environment.</p>
+<p><code class="docutils literal notranslate"><span class="pre">x509-expiry</span></code> reads the not-after date of a local PEM <code class="docutils literal notranslate"><span class="pre">path</span></code> or of the
+certificate a TLS <code class="docutils literal notranslate"><span class="pre">host</span></code> (<code class="docutils literal notranslate"><span class="pre">name</span></code> or <code class="docutils literal notranslate"><span class="pre">name:port</span></code>, port 443 by default)
+presents. It needs the optional <code class="docutils literal notranslate"><span class="pre">cryptography</span></code> extra
+(<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">install</span> <span class="pre">'buvis-gems[sysup-cert]'</span></code>); a core-only install reports
+<code class="docutils literal notranslate"><span class="pre">unknown</span></code> with that install hint and keeps tracking gh tokens in the same run.</p>
+<p><code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">refresh</span> <span class="pre">&lt;item&gt;</span></code> walks you through renewal on a terminal and re-checks:</p>
+<ul class="simple">
+<li><p>it refuses with <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">refresh</span> <span class="pre">needs</span> <span class="pre">a</span> <span class="pre">terminal</span></code> (exit 1) when stdin is not
+a TTY, and runs nothing;</p></li>
+<li><p>it prints the item’s instructions, waits for Enter, then runs the refresh
+procedure’s commands in order, stopping at the first failure;</p></li>
+<li><p>a command declaring <code class="docutils literal notranslate"><span class="pre">stdin:</span> <span class="pre">secret</span></code> receives the pasted secret <strong>only</strong> on
+its standard input — never on argv, in the environment, in logs, in state or
+in a notification — and the secret is dropped immediately after the call; a
+<code class="docutils literal notranslate"><span class="pre">gh</span> <span class="pre">auth</span> <span class="pre">login</span></code> step strips the same five ambient overrides and pins
+github.com;</p></li>
+<li><p>after the procedure succeeds the item is re-checked. Only an <code class="docutils literal notranslate"><span class="pre">ok</span></code> recheck
+clears the entry; <code class="docutils literal notranslate"><span class="pre">expiring</span></code> keeps the amber entry (exit 0), while
+<code class="docutils literal notranslate"><span class="pre">expired</span></code> and <code class="docutils literal notranslate"><span class="pre">unknown</span></code> keep the entry and exit 1. A refresh never sends a
+notification — you are at the terminal watching the result.</p></li>
+</ul>
 </section>
 <section id="migration-from-the-subcommands">
 <h2>Migration from the subcommands<a class="headerlink" href="#migration-from-the-subcommands" title="Link to this heading"></a></h2>
