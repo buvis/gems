@@ -58,9 +58,9 @@ class Harness:
         self.run = MagicMock(side_effect=self._run)
         self.diff_result = subprocess.CompletedProcess([], 0, DIFF_BODY, b"")
         self.written: list[tuple[Path, bytes]] = []
-        monkeypatch.setattr("dot.git.service.subprocess.run", self.run)
-        monkeypatch.setattr("dot.git.service.atomic_write_bytes", self._write)
-        monkeypatch.setattr("dot.git.service.datetime", _FixedDatetime)
+        monkeypatch.setattr("dot.divergence.subprocess.run", self.run)
+        monkeypatch.setattr("dot.divergence.atomic_write_bytes", self._write)
+        monkeypatch.setattr("dot.divergence.datetime", _FixedDatetime)
 
     def _exe(self, cmd: str, _wd: Path) -> tuple[str, str]:
         self.events.append(("exe", cmd))
