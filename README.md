@@ -138,6 +138,13 @@ git removes the file. If both target and source exist with different content, yo
 choose which to keep (the other is backed up). The TUI (key `P`) shows a modal for
 collisions. Warning: raw `git pull` bypasses rescue — always use `dot pull`.
 
+**Divergence patch:** When an uncommitted edit touches a file the incoming
+commits also change, `dot pull` saves the edit to
+`~/.local/share/dot/divergence/<UTC timestamp>.patch`, resets that file to
+`HEAD` and lets upstream win. The patch header names its base commit; `git apply`
+it onto that commit to get the edit back, then delete the patch. `dot status`
+and the TUI status bar warn while a patch is pending.
+
 ### bim doc subsystem
 
 `bim doc ingest` watches the staging inbox and either auto-files a PDF

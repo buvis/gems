@@ -90,6 +90,24 @@ class TestDotCommands:
         result = runner.invoke(cli, ["pull"])
         assert result.exit_code == 0
 
+    def test_pull_failure_prints_divergence_patch_and_error(self, mocker, runner) -> None:
+        from dot.hostlinks.rescue import RescuePlan
+
+        mock_shell_cls = mocker.patch("dot.cli.ShellAdapter")
+        mock_shell_cls.return_value.is_command_available.return_value = False
+        mock_cmd_cls = mocker.patch("dot.commands.pull.pull.CommandPull")
+        mock_cmd_cls.return_value.plan.return_value = RescuePlan()
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(
+            success=False,
+            error="Submodule reset failed: boom",
+            warnings=["divergence patch saved: /home/u/.local/share/dot/divergence/20261016T120000Z.patch"],
+        )
+
+        result = runner.invoke(cli, ["pull"])
+
+        assert "/home/u/.local/share/dot/divergence/20261016T120000Z.patch" in result.output
+        assert "Submodule reset failed: boom" in result.output
+
     def test_commit_success(self, mocker, runner) -> None:
         mocker.patch("dot.cli.ShellAdapter")
         mock_cmd_cls = mocker.patch("dot.commands.commit.commit.CommandCommit")

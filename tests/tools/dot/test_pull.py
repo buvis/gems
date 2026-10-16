@@ -50,7 +50,7 @@ class TestCommandPullExecute:
         cmd = CommandPull(shell=shell, dotfiles_root=str(dotfiles_root))
         result = cmd.execute()
 
-        mock_service.pull.assert_called_once_with(passphrase=None)
+        mock_service.pull.assert_called_once_with(passphrase=None, exclude=[], fetched=True)
         assert result.success
         assert result.output == "Dotfiles pulled successfully"
 
@@ -195,3 +195,64 @@ class TestCommandPullRescue:
         assert not result.success
         assert "rescued files are at:" in result.error
         assert ".local/.zshrc" in result.error
+
+
+class TestCommandPullDivergence:
+    @patch("dot.commands.pull.pull.CommandMaterialize")
+    @patch("dot.commands.pull.pull.DotGitService")
+    def test_rescued_targets_are_excluded_and_fetch_is_not_repeated(
+        self, mock_service_cls, mock_mat_cls, dotfiles_root
+    ) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.fetch.return_value = ""
+        mock_service.has_upstream.return_value = True
+        mock_service.show_upstream_file.return_value = ".zshrc => .local/.zshrc\n.vimrc => .local/.vimrc\n"
+        mock_service.upstream_deleted_paths.return_value = [".zshrc", ".vimrc"]
+        mock_service.pull.return_value = CommandResult(success=True, output="ok")
+        mock_mat_cls.return_value.execute.return_value = CommandResult(success=True)
+        (dotfiles_root / ".zshrc").write_text("move me")
+        (dotfiles_root / ".vimrc").write_text("same")
+        (dotfiles_root / ".local").mkdir()
+        (dotfiles_root / ".local/.vimrc").write_text("same")
+
+        CommandPull(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        mock_service.fetch.assert_called_once()
+        kwargs = mock_service.pull.call_args.kwargs
+        assert kwargs["fetched"] is True
+        assert sorted(kwargs["exclude"]) == [".vimrc", ".zshrc"]
+
+    @patch("dot.commands.pull.pull.CommandMaterialize")
+    @patch("dot.commands.pull.pull.DotGitService")
+    def test_service_failure_keeps_divergence_warnings(self, mock_service_cls, mock_mat_cls, dotfiles_root) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.fetch.return_value = ""
+        mock_service.has_upstream.return_value = False
+        warnings = ["divergence patch saved: /p.patch", "reset to HEAD, local edit in patch: .a"]
+        mock_service.pull.return_value = CommandResult(
+            success=False, error="Secret reveal failed: x", warnings=warnings
+        )
+
+        result = CommandPull(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert not result.success
+        assert result.error == "Secret reveal failed: x"
+        assert result.warnings == warnings
+
+    @patch("dot.commands.pull.pull.CommandMaterialize")
+    @patch("dot.commands.pull.pull.DotGitService")
+    def test_service_success_puts_divergence_warnings_first(
+        self, mock_service_cls, mock_mat_cls, dotfiles_root
+    ) -> None:
+        mock_service = mock_service_cls.return_value
+        mock_service.fetch.return_value = ""
+        mock_service.has_upstream.return_value = False
+        mock_service.pull.return_value = CommandResult(
+            success=True, output="ok", warnings=["divergence patch saved: /p.patch"]
+        )
+        mock_mat_cls.return_value.execute.return_value = CommandResult(success=True, warnings=["link warning"])
+
+        result = CommandPull(shell=MagicMock(), dotfiles_root=str(dotfiles_root)).execute()
+
+        assert result.success
+        assert result.warnings[:2] == ["divergence patch saved: /p.patch", "link warning"]

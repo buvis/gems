@@ -9,6 +9,7 @@ from textual.widgets import Footer
 
 from dot.commands.links.links import CommandLinkStatus
 from dot.commands.materialize.materialize import CommandMaterialize
+from dot.divergence import pending_patch_warning
 from dot.tui.patch import build_hunk_patch, build_line_patch, build_partial_revert_patch
 from dot.tui.widgets import (
     CommitModal,
@@ -172,6 +173,7 @@ class MainScreen(Screen[None]):
             self._git_ops.branch_info(),
             error=hide_error,
             link_problems=link_problems,
+            pending=pending_patch_warning(self._dotfiles_root) if self._dotfiles_root else None,
         )
 
     def action_materialize(self) -> None:
@@ -333,13 +335,13 @@ class MainScreen(Screen[None]):
                         resolutions=resolutions,
                         passphrase=passphrase,
                     )
-                    self._show_message(result.output or result.error or "Pull complete")
+                    self._show_message("\n".join([result.output or result.error or "Pull complete", *result.warnings]))
                     self.refresh_status()
 
                 self.app.push_screen(PassphraseModal(), callback=_on_passphrase)
             else:
                 result = cmd.execute(plan=plan, resolutions=resolutions)
-                self._show_message(result.output or result.error or "Pull complete")
+                self._show_message("\n".join([result.output or result.error or "Pull complete", *result.warnings]))
                 self.refresh_status()
 
         if plan.collisions:

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from buvis.pybase.result import CommandResult
 
 from dot.commands.links.links import CommandLinkStatus
+from dot.divergence import pending_patch_warning
 from dot.git.service import DotGitService
 
 if TYPE_CHECKING:
@@ -50,6 +51,9 @@ class CommandStatus:
             warnings.append(f"{branch.behind} commit(s) not pulled")
         warnings.extend(CommandLinkStatus(self.dotfiles_root).execute().warnings)
         warnings.extend(self.dot_git_service.check_hooks())
+        pending = pending_patch_warning(self.dotfiles_root)
+        if pending:
+            warnings.append(pending)
 
         if not info and not warnings:
             return CommandResult(success=True, output="No modifications found")
