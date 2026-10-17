@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-10-17
+
 ### Added
 
 - **sysup**: an `expiry:` registry of credentials with a hard expiry, checked before every ordinary run and fed into the attention summary, state, push and exit code: built-in `gh-token-expiry` (expiration header plus a private-repository grant probe; a disabled `gh-agent` template ships, enable it locally with your probe) and `x509-expiry` (PEM file or TLS endpoint, needs the new `sysup-cert` extra); commands can declare `needs: [item]` and are skipped with a `sysup refresh <item>` hint while the item is expired or unknown; `sysup refresh <item>` walks through renewal on a terminal, passes a pasted secret only on the stdin of the command that declares `stdin: secret`, and re-checks the item
@@ -562,7 +564,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.14.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.14.2...HEAD
+[0.14.2]: https://github.com/buvis/gems/compare/gems-v0.14.1...gems-v0.14.2
 [0.14.1]: https://github.com/buvis/gems/compare/gems-v0.14.0...gems-v0.14.1
 [0.14.0]: https://github.com/buvis/gems/compare/gems-v0.13.0...gems-v0.14.0
 [0.13.0]: https://github.com/buvis/gems/compare/gems-v0.12.6...gems-v0.13.0
