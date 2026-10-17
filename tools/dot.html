@@ -363,6 +363,16 @@ bar warn while any patch is pending.</p>
 staged and unstaged changes (commit or unstage first), when it was untracked
 with <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">rm</span></code> but is still on disk (commit the removal or re-add it first),
 or when the patch cannot be saved.</p>
+<p><strong>Secrets in the patch:</strong></p>
+<p>Before selecting, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> re-encrypts edited secrets
+(<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">secret</span> <span class="pre">hide</span> <span class="pre">-m</span> <span class="pre">-F</span></code>), so an edited plaintext shows up as its dirty
+<code class="docutils literal notranslate"><span class="pre">&lt;file&gt;.secret</span></code>. A clashing secret is saved in the patch as that encrypted
+<code class="docutils literal notranslate"><span class="pre">.secret</span></code> file, never as plaintext. To read it, clone the dotfiles repo or
+add a worktree at the patch’s base commit, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">apply</span></code> the patch there, run
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">secret</span> <span class="pre">reveal</span> <span class="pre">-f</span></code> there, copy what you need, then remove the clone. A
+<code class="docutils literal notranslate"><span class="pre">.gitsecret/paths/mapping.cfg</span></code> entry in the patch is git-secret hash
+bookkeeping; the next hide rewrites it. If the hide step fails, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code>
+stops before touching anything.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>pull
 </pre></div>
 </div>
