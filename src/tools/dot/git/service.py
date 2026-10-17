@@ -2,17 +2,13 @@ from __future__ import annotations
 
 import os
 import shlex
-import socket
-import subprocess
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from buvis.pybase.filesystem import atomic_write_bytes
 from buvis.pybase.result import CommandResult
 
-from dot.divergence import divergence_dir
+from dot.divergence import save_divergence_patch
 from dot.git.models import BranchInfo, FileEntry
 
 if TYPE_CHECKING:
@@ -157,7 +153,9 @@ class DotGitService:
         """Save divergent local edits, reset them, then pull, refresh submodules and reveal secrets.
 
         Uncommitted edits to paths the incoming commits also change are saved to a
-        ``git apply``-able patch and reset to ``HEAD`` so upstream wins.
+        ``git apply``-able patch and reset to ``HEAD`` so upstream wins. Edited
+        git-secret plaintext is re-encrypted first, so it reaches the patch as its
+        ``.secret`` ciphertext.
 
         Args:
             passphrase: GPG passphrase for the secret reveal step.
@@ -197,18 +195,24 @@ class DotGitService:
         return CommandResult(success=True, output="Dotfiles pulled successfully", warnings=warnings)
 
     def _save_and_reset_divergence(self, exclude: Iterable[str]) -> CommandResult:
-        """Save divergent edits to a patch, then reset each saved path to HEAD.
+        """Re-encrypt edited secrets, save divergent edits to a patch, then reset each saved path to HEAD.
 
         Returns:
             Success with the patch and reset lines as ``warnings`` (empty when
             nothing diverged), or a failure keeping the lines of resets done so far.
         """
+        if self.shell.is_command_available("git-secret"):
+            # -m: re-encrypt only changed plaintext; -F: skip a registered file whose plaintext
+            # is missing instead of aborting. Not _hide_secrets: status/commit keep their flags.
+            err, _out = self.shell.exe("cfg secret hide -m -F", self.wd)
+            if err:
+                return CommandResult(success=False, error=f"secret hide failed: {err}")
         selected, error = self._select_divergent(exclude)
         if error:
             return CommandResult(success=False, error=error)
         if not selected:
             return CommandResult(success=True)
-        patch, error = self._save_divergence(selected)
+        patch, error = save_divergence_patch(self.shell, self.dotfiles_root, selected)
         if error:
             return CommandResult(success=False, error=f"could not save divergence patch: {error}")
         warnings = [f"divergence patch saved: {patch}"]
@@ -220,6 +224,11 @@ class DotGitService:
             if err:
                 return CommandResult(success=False, error=f"reset failed for {path}: {err}", warnings=warnings)
             warnings.append(f"reset to HEAD, local edit in patch: {path}")
+            if path.endswith(".secret"):
+                warnings.append(
+                    f"secret {path.removesuffix('.secret')} saved encrypted in patch; "
+                    "to read it, git apply the patch at its base commit and run git secret reveal there"
+                )
         return CommandResult(success=True, warnings=warnings)
 
     def _select_divergent(self, exclude: Iterable[str]) -> tuple[list[str], str | None]:
@@ -257,59 +266,6 @@ class DotGitService:
         if kept:
             return [], f"pull stopped: {', '.join(kept)} untracked but kept on disk; commit the removal or re-add first"
         return selected, None
-
-    def _save_divergence(self, selected: list[str]) -> tuple[Path | None, str | None]:
-        """Write the HEAD-to-worktree diff of ``selected`` to a new patch file.
-
-        Returns:
-            The patch path, or the reason the save failed.
-        """
-        err, head = self.shell.exe("cfg rev-parse HEAD", self.wd)
-        if err or not head.strip():
-            return None, f"cannot read HEAD: {err or 'empty output'}"
-        err, upstream = self.shell.exe("cfg rev-parse @{u}", self.wd)
-        if err or not upstream.strip():
-            return None, f"cannot read upstream: {err or 'empty output'}"
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        patch = divergence_dir(self.wd) / f"{stamp}.patch"
-        header = (
-            "# dot divergence patch\n"
-            f"# base: {head.strip()}\n"
-            f"# upstream: {upstream.strip()}\n"
-            f"# host: {socket.gethostname()}\n\n"
-        )
-        argv = [
-            "git",
-            f"--git-dir={self.dotfiles_root}/.buvis",
-            f"--work-tree={self.dotfiles_root}",
-            "--literal-pathspecs",
-            "diff",
-            "--binary",
-            "--full-index",
-            "--no-renames",
-            # Keep user diff config (external tools, textconv, color, prefixes) out of the patch.
-            "--no-ext-diff",
-            "--no-textconv",
-            "--no-color",
-            "--src-prefix=a/",
-            "--dst-prefix=b/",
-            "HEAD",
-            "--",
-            *selected,
-        ]
-        try:
-            # Patches hold private dotfile bytes: keep the directory owner-only.
-            patch.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            if patch.exists():
-                return None, f"{patch} already exists"
-            # Raw bytes via a fixed argv: ShellAdapter.exe decodes text and would rewrite CRLF.
-            proc = subprocess.run(argv, cwd=self.wd, capture_output=True, text=False, check=False)
-            if proc.returncode != 0:
-                return None, proc.stderr.decode(errors="replace").strip() or f"git diff exited {proc.returncode}"
-            atomic_write_bytes(patch, header.encode() + proc.stdout)
-        except OSError as exc:
-            return None, str(exc)
-        return patch, None
 
     def has_uncommitted_changes(self) -> bool:
         """Report whether the work-tree has changes to commit."""

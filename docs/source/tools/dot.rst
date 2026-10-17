@@ -276,6 +276,18 @@ staged and unstaged changes (commit or unstage first), when it was untracked
 with ``dot rm`` but is still on disk (commit the removal or re-add it first),
 or when the patch cannot be saved.
 
+**Secrets in the patch:**
+
+Before selecting, ``dot pull`` re-encrypts edited secrets
+(``git secret hide -m -F``), so an edited plaintext shows up as its dirty
+``<file>.secret``. A clashing secret is saved in the patch as that encrypted
+``.secret`` file, never as plaintext. To read it, clone the dotfiles repo or
+add a worktree at the patch's base commit, ``git apply`` the patch there, run
+``git secret reveal -f`` there, copy what you need, then remove the clone. A
+``.gitsecret/paths/mapping.cfg`` entry in the patch is git-secret hash
+bookkeeping; the next hide rewrites it. If the hide step fails, ``dot pull``
+stops before touching anything.
+
 .. code-block:: bash
 
     dot pull

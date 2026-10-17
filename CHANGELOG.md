@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **dot**: pull no longer overwrites a locally edited git-secret file whose upstream copy changed; the edit is saved encrypted in the divergence patch
 - **dot**: `dot add <file>` tracks a file the repository has never seen instead of answering `No changes.`; a path relative to the current directory resolves there before the dotfiles root; an ignored file is refused with the matching rule and the `git add -f` escape; paths are shell-quoted and matched literally, so `file[1].txt` no longer also stages `file1.txt`; a path that exists nowhere is an error instead of a fall-through to the whole-tree picker; afterwards the command prints what is currently staged for the path, or warns when nothing is.
 - **sysup**: the mise step updates mise itself without a confirmation prompt, which sysup could never answer, so it no longer fails with "self-update cancelled".
 - **pybase**: config merge no longer mutates an earlier layer's nested dict when a later layer overrides the same key.

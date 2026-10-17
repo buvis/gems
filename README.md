@@ -144,7 +144,8 @@ commits also change, `dot pull` saves the edit to
 `~/.local/share/dot/divergence/<UTC timestamp>.patch`, resets that file to
 `HEAD` and lets upstream win. The patch header names its base commit; `git apply`
 it onto that commit to get the edit back, then delete the patch. `dot status`
-and the TUI status bar warn while a patch is pending.
+and the TUI status bar warn while a patch is pending. Edited secrets are
+saved encrypted; see `docs/source/tools/dot.rst` for recovery.
 
 ### bim doc subsystem
 
