@@ -90,6 +90,13 @@ src/tools/postup/adapters/web/frontend/.svelte-kit/
 .kiro/*
 !.kiro/steering/
 !.kiro/specs/
+# Same policy for a .kiro/ created in any subdirectory (e.g. a tool writing
+# local LSP settings into an intake folder): ignore its local state, keep only
+# shared steering/specs. Without these the root-anchored `.kiro/*` above misses
+# nested ones and they surface as untracked clutter.
+**/.kiro/*
+!**/.kiro/steering/
+!**/.kiro/specs/
 
 # Agent material (.agents/): shared skills + autopilot records are TRACKED
 # (canonical). Only locally-generated projections and live runtime are ignored.
