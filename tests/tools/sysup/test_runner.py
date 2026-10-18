@@ -152,11 +152,16 @@ class TestRunnerUseEntries:
             list(Runner(_cfg()).run([("nvim", cmd)]))
 
 
+def _ok() -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+
 class TestRunnerPrime:
     def test_prime_runs_before_commands(self, mocker) -> None:
         order: list[str] = []
         from sysup.capabilities.sudo import SudoPrime
 
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
         prime_cap = mocker.MagicMock(spec=SudoPrime)
         prime_cap.prime.side_effect = lambda: order.append("primed") or (lambda: None)
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
@@ -167,7 +172,7 @@ class TestRunnerPrime:
                 order.append("step") or subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
             ),
         )
-        cmd = _cmd(steps=[["brew", "update"]])
+        cmd = _cmd(steps=[["brew", "update"]], sudo=True)
 
         list(Runner(_cfg(prime=("sudo-prime",))).run([("brew", cmd)]))
 
@@ -178,17 +183,222 @@ class TestRunnerPrime:
         stopped: list[bool] = []
         from sysup.capabilities.sudo import SudoPrime
 
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
         prime_cap = mocker.MagicMock(spec=SudoPrime)
         prime_cap.prime.return_value = lambda: stopped.append(True)
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         mocker.patch("sysup.runner.subprocess.run", side_effect=KeyboardInterrupt())
-        cmd = _cmd(steps=[["brew", "update"]])
+        cmd = _cmd(steps=[["brew", "update"]], sudo=True)
 
         with pytest.raises(KeyboardInterrupt):
             list(Runner(_cfg(prime=("sudo-prime",))).run([("brew", cmd)]))
 
         assert stopped == [True]
+
+    def test_no_tty_skips_prime(self, mocker) -> None:
+        from sysup.capabilities.sudo import SudoPrime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=False)
+        prime_cap = mocker.MagicMock(spec=SudoPrime)
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(steps=[["brew", "update"]], sudo=True)
+
+        list(Runner(_cfg(prime=("sudo-prime",))).run([("brew", cmd)]))
+
+        assert prime_cap.prime.call_count == 0
+
+    def test_no_sudo_needing_command_skips_prime(self, mocker) -> None:
+        from sysup.capabilities.sudo import SudoPrime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        prime_cap = mocker.MagicMock(spec=SudoPrime)
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(steps=[["brew", "update"]])
+
+        list(Runner(_cfg(prime=("sudo-prime",))).run([("brew", cmd)]))
+
+        assert prime_cap.prime.call_count == 0
+
+    def test_sudo_argv_first_step_triggers_prime(self, mocker) -> None:
+        from sysup.capabilities.sudo import SudoPrime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        prime_cap = mocker.MagicMock(spec=SudoPrime)
+        prime_cap.prime.return_value = lambda: None
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(steps=[["sudo", "apt", "update"]])
+
+        list(Runner(_cfg(prime=("sudo-prime",))).run([("apt", cmd)]))
+
+        assert prime_cap.prime.call_count == 1
+
+
+class TestRunnerLogWiring:
+    def test_run_opens_and_closes_log_with_plan_names(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(steps=[["brew", "update"]])
+
+        runner = Runner(_cfg())
+        list(runner.run([("brew", cmd)]))
+
+        assert runner.log_path is not None
+        assert runner.log_path.exists()
+        assert "plan: brew" in runner.log_path.read_text()
+
+    def test_dry_run_creates_no_log(self, mocker) -> None:
+        from sysup import runlog
+
+        cmd = _cmd(steps=[["brew", "update"]])
+        runner = Runner(_cfg(), dry_run=True)
+        list(runner.run([("brew", cmd)]))
+
+        assert runner.log_path is None
+        assert not runlog.logs_dir().exists()
+
+    def test_log_open_failure_propagates_as_fatal(self, mocker) -> None:
+        mocker.patch("sysup.runner.runlog.open_run_log", side_effect=FatalError("could not create run log"))
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(steps=[["brew", "update"]])
+
+        with pytest.raises(FatalError, match="could not create run log"):
+            list(Runner(_cfg()).run([("brew", cmd)]))
+
+    def test_close_called_even_when_entry_raises(self, mocker) -> None:
+        close = mocker.patch("sysup.runner.runlog.close")
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", side_effect=KeyboardInterrupt())
+        cmd = _cmd(steps=[["brew", "update"]])
+
+        with pytest.raises(KeyboardInterrupt):
+            list(Runner(_cfg()).run([("brew", cmd)]))
+
+        assert close.called
+
+
+class TestShouldPrime:
+    def test_tty_and_sudo_flag(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        assert _should_prime([("brew", _cmd(steps=[["brew", "update"]], sudo=True))]) is True
+
+    def test_tty_and_sudo_argv(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        assert _should_prime([("apt", _cmd(steps=[["sudo", "apt", "update"]]))]) is True
+
+    def test_no_tty_is_false(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=False)
+        assert _should_prime([("brew", _cmd(steps=[["brew", "update"]], sudo=True))]) is False
+
+    def test_no_sudo_needing_entry_is_false(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        assert _should_prime([("brew", _cmd(steps=[["brew", "update"]]))]) is False
+
+    def test_checks_every_step_not_only_first(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        cmd = _cmd(steps=[["brew", "update"], ["sudo", "something"]])
+        assert _should_prime([("brew", cmd)]) is True
+
+
+class TestRunnerStatusContexts:
+    def test_captured_step_wrapped_in_status(self, mocker) -> None:
+        status = mocker.patch("sysup.runner.console.status")
+        status.return_value.__enter__ = mocker.Mock(return_value=None)
+        status.return_value.__exit__ = mocker.Mock(return_value=False)
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(steps=[["brew", "update"]])
+
+        list(Runner(_cfg()).run([("brew", cmd)]))
+
+        status.assert_any_call("brew: brew update")
+
+    def test_interactive_step_not_wrapped_in_status(self, mocker) -> None:
+        status = mocker.patch("sysup.runner.console.status")
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(interactive=True, steps=[["npm-check", "-gu"]])
+
+        list(Runner(_cfg()).run([("npm-check", cmd)]))
+
+        assert status.call_count == 0
+
+    def test_use_entry_wrapped_in_status(self, mocker) -> None:
+        status = mocker.patch("sysup.runner.console.status")
+        status.return_value.__enter__ = mocker.Mock(return_value=None)
+        status.return_value.__exit__ = mocker.Mock(return_value=False)
+        cap = mocker.MagicMock()
+        cap.run.return_value = iter([StepResult("helm repos", success=True)])
+        mocker.patch.dict("sysup.runner.CAPABILITIES", {"helm-repo-update": cap})
+        cmd = _cmd(use="helm-repo-update")
+
+        list(Runner(_cfg()).run([("helm", cmd)]))
+
+        status.assert_any_call("helm: helm-repo-update")
+
+
+class TestRunnerTimeout:
+    def test_captured_timeout_reports_no_exit_code_and_partial_output(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        exc = subprocess.TimeoutExpired(cmd=["mise"], timeout=30, output=b"partial-out", stderr=b"partial-err")
+        mocker.patch("sysup.runner.subprocess.run", side_effect=exc)
+        cmd = _cmd(steps=[["mise", "self-update"]], timeout=30)
+
+        outcomes = []
+        runner = Runner(_cfg())
+        outcome = runner._run_argv("mise", ["mise", "self-update"], cmd)
+        outcomes.append(outcome)
+
+        assert outcomes[0].timed_out is True
+        assert outcomes[0].exit_code is None
+        assert outcomes[0].timeout_s == 30
+        assert outcomes[0].stdout == "partial-out"
+        assert outcomes[0].stderr == "partial-err"
+        assert outcomes[0].result.success is False
+        assert "timed out after 30s" in outcomes[0].result.message
+
+    def test_interactive_timeout_reports_no_exit_code(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        exc = subprocess.TimeoutExpired(cmd=["npm-check"], timeout=10)
+        mocker.patch("sysup.runner.subprocess.run", side_effect=exc)
+        cmd = _cmd(interactive=True, steps=[["npm-check", "-gu"]], timeout=10)
+
+        outcome = Runner(_cfg())._run_argv("npm-check", ["npm-check", "-gu"], cmd)
+
+        assert outcome.timed_out is True
+        assert outcome.exit_code is None
+        assert outcome.result.success is False
+
+    def test_no_timeout_configured_outcome_carries_exit_code(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch(
+            "sysup.runner.subprocess.run",
+            return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out", stderr=""),
+        )
+        cmd = _cmd(steps=[["brew", "update"]])
+
+        outcome = Runner(_cfg())._run_argv("brew", ["brew", "update"], cmd)
+
+        assert outcome.timed_out is False
+        assert outcome.exit_code == 0
+        assert outcome.stdout == "out"
 
 
 class TestRunnerDryRun:
@@ -355,6 +565,7 @@ class TestRunnerItems:
 
         from sysup.capabilities.sudo import SudoPrime
 
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
         order: list[str] = []
         cap = mocker.MagicMock()
         cap.expires_at.side_effect = lambda **_: order.append("item") or datetime(2030, 1, 1, tzinfo=timezone.utc)
@@ -370,7 +581,7 @@ class TestRunnerItems:
         )
         cfg = _expiry_cfg(
             {"cert": {"use": "x509-expiry", "with": {"path": "/c.pem"}}},
-            {"brew": {"steps": [["brew", "update"]]}},
+            {"brew": {"steps": [["brew", "update"]], "sudo": True}},
         )
         cfg = cfg.model_copy(update={"prime": ("sudo-prime",)})
 
