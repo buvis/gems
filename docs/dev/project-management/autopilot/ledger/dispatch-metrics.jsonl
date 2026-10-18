@@ -83,3 +83,4 @@
 {"kind":"handoff","site":"done","edge":"leave","at":1791832432,"phase":"build","prd":"00088-dot-host-links-materialize-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1792357600,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1792359217,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792359235,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
