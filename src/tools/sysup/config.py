@@ -63,6 +63,7 @@ class SysupCommand(BaseModel):
     interactive: bool = False
     timeout: int | None = None
     continue_on_error: bool = False
+    sudo: bool = False
     tags: tuple[str, ...] = ()
     steps: tuple[tuple[str, ...], ...] | None = None
     use: str | None = None

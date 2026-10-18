@@ -5,6 +5,8 @@ import subprocess
 import threading
 from typing import TYPE_CHECKING
 
+from buvis.pybase.adapters import console
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
 
@@ -40,7 +42,11 @@ class SudoPrime:
         sudo_path = shutil.which("sudo")
         if sudo_path is None:
             return lambda: None
-        prime = subprocess.run([sudo_path, "-v"], check=False)
+        console.info(
+            "sysup needs your password to cache sudo for this run's updates; "
+            "press Ctrl-D to skip (later steps will prompt themselves)"
+        )
+        prime = subprocess.run([sudo_path, "-p", "sysup needs your password: ", "-v"], check=False)
         if prime.returncode != 0:
             return lambda: None
 

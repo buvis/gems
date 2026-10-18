@@ -11,6 +11,7 @@ commands:
   brew:
     order: 10
     when: { os: darwin, check: brew }
+    sudo: true
     steps:
       - [brew, update]
       - [brew, upgrade]
