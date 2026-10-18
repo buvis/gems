@@ -17,23 +17,16 @@ Generated: 2026-10-12
 - `src/tools/dot/`: `cli.py` -> `commands/<name>/` -> `git/service.py` (`DotGitService`); TUI (`tui/app.py`, `tui/screens/main.py`, `tui/widgets/status_bar.py`) drives the same commands.
 
 ## Active Work
-### Batch 202610121200
-- [x] 00088-dot-host-links-materialize-v1 (1 cycle)
-- [ ] 00090-dot-host-links-localize-pull-rescue-v1
-- [ ] 00091-dot-host-links-setup-v1
-- [ ] 00094-updater-installer-index-parity-v1
-- [ ] 00095-dot-pull-divergence-report-v1 (renumbered from 00089 on 2026-10-12: depends on 00090; 00092/00093 are intake numbers)
-
-Observations: codex reviewer unhealthy under Seatbelt (sandbox_apply EPERM); qwen excluded on memory pressure for 3 tasks. Working tree has uncommitted postup frontend build churn (not this batch's work). Deferred: TUI status message overwritten by diff re-render (pre-existing, screens/main.py).
+### New batch (master, 2026-10-18)
+- [ ] 00098-sysup-run-observability-v1 (selected; default_model: opus)
+- 00099 (dot shared config placeholders) also in backlog.
+- Prior batch 202610121200 (00088-00095, dot host-links set) is not in `wip/` anymore — presumed closed/drained; this is a fresh batch.
 
 ## Related context
-engram unavailable (not on PATH); no related-context query run. Topic would have been: "dot host links: manifest, materialize, hooks, link status".
+engram unavailable (not on PATH); no related-context query run. Topic: "master: sysup run observability".
 
 ## GitHub State
-- 0 open issues. Open PRs: #231 lock-file maintenance (automerge), #220 @sveltejs/kit v3 and #219 adapter-static v4 (both with Renovate artifact-update failures, do not merge as-is).
-- Latest release gems-v0.14.0 (2026-10-12), 2 unreleased commits.
-- Remote branch `fix/config-merge-aliasing` active (4h old).
+- 0 open issues. Open PRs (all renovate, none for this PRD's scope): #245 pillow v13, #231 lock-file maintenance (automerge), #220 @sveltejs/kit v3 and #219 adapter-static v4 (both with artifact-update failures, do not merge as-is).
 
 ## Project Health
-- Test on master queued at catchup time; older failures (2026-09-28, 2026-08-31) were Test runs, and an old docs deploy failure (gh-pages push race, 2026-10-04) has since succeeded.
-- See memory: a `lib` failure skips the `tools` matrix; 3 known env-noise local test failures.
+- See memory: a `lib` failure skips the `tools` matrix; 3 known env-noise local test failures (klyreon GIT_AUTHOR_NAME, postup gh call). `BUVIS_SKIP_FRONTEND=1` + scratch `CARGO_HOME` needed for `uv sync`/`uv run` under the Seatbelt profile.
