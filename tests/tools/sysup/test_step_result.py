@@ -35,3 +35,11 @@ class TestStepResult:
 
     def test_red_statuses(self) -> None:
         assert RED == frozenset({"failed", "expired", "unknown"})
+
+    def test_warned_status_is_kept_with_success_true(self) -> None:
+        result = StepResult("brew", True, "1 error line(s), see log", status="warned")
+        assert result.status == "warned"
+        assert result.success is True
+
+    def test_warned_is_not_red(self) -> None:
+        assert "warned" not in RED

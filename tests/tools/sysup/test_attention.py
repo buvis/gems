@@ -84,11 +84,22 @@ class TestFoldResults:
             (["expiring", "unknown"], "unknown"),
             (["unknown", "expired"], "expired"),
             (["expired", "failed"], "failed"),
+            (["warned", "expiring"], "expiring"),
         ],
     )
     def test_ranking(self, statuses, worst: str) -> None:
         results = [StepResult("check", True, status=status) for status in statuses]
         assert fold_results({}, set(), results, _NOW)["check"]["status"] == worst
+
+    def test_warned_folds_into_an_entry_below_expiring(self) -> None:
+        results = [StepResult("brew", True, "1 error line(s), see log", status="warned", command="brew")]
+        entries = fold_results({}, {"brew"}, results, _NOW)
+        assert entries["brew"]["status"] == "warned"
+        assert entries["brew"]["details"] == ["1 error line(s), see log"]
+
+    def test_clean_recheck_clears_warned_entry(self) -> None:
+        previous = {"brew": _entry("warned")}
+        assert fold_results(previous, {"brew"}, [StepResult("brew", True, command="brew")], _NOW) == {}
 
     def test_stamp_is_utc_seconds_and_previous_metadata_survives(self) -> None:
         later = datetime(2026, 10, 15, 19, 30, 12, 987654, tzinfo=timezone(timedelta(hours=2)))
@@ -156,6 +167,15 @@ class TestAttentionDecisions:
     @pytest.mark.parametrize("status", ["failed", "expired", "unknown"])
     def test_exit_code_counts_every_red_status_not_success_flag(self, status) -> None:
         assert exit_code([StepResult("check", True, status=status)]) == 1
+
+    def test_exit_code_zero_for_warned_alone(self) -> None:
+        assert exit_code([StepResult("brew", True, status="warned")]) == 0
+
+    def test_warned_entry_notifies_once_like_amber(self) -> None:
+        entries = {"brew": _entry("warned")}
+        assert to_notify(entries) == ["brew"]
+        pushed = mark_notified(entries, ["brew"])
+        assert to_notify(pushed) == []
 
 
 class TestAttentionState:
