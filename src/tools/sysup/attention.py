@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 __all__ = ["exit_code", "fold_results", "mark_notified", "read_state", "state_path", "to_notify", "write_state"]
 
-_RANK = {"expiring": 0, "unknown": 1, "expired": 2, "failed": 3}
+_RANK = {"warned": -1, "expiring": 0, "unknown": 1, "expired": 2, "failed": 3}
 
 
 def state_path() -> Path:

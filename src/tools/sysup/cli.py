@@ -26,6 +26,8 @@ def _is_tty() -> bool:
 def _report_step(step: StepResult) -> None:
     if step.status == "expiring":
         console.warning(step.message or f"{step.label} expiring")
+    elif step.status == "warned":
+        console.warning(step.message or f"{step.label} warned")
     elif step.success:
         console.success(step.message or f"{step.label} updated")
     else:

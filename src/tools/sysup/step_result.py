@@ -5,7 +5,7 @@ from typing import Literal
 
 __all__ = ["RED", "Kind", "Status", "StepResult"]
 
-Status = Literal["ok", "failed", "expiring", "expired", "unknown"]
+Status = Literal["ok", "failed", "expiring", "expired", "unknown", "warned"]
 Kind = Literal["command", "item"]
 RED: frozenset[str] = frozenset({"failed", "expired", "unknown"})
 
