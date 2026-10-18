@@ -26,26 +26,29 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
 
 ### Must have
 - **R1 Live progress**: every captured (non-interactive) step runs inside
-  `console.status("<entry>: <argv joined>")`, resolving to today's `✔`/`✘` line.
+  `console.status("<entry>: <argv joined>")`, resolving to the entry's `✔`/`⚠`/`✘` line.
   `use:` capability entries get the same status around their iteration. Interactive
   steps are never wrapped.
 - **R2 Framed sudo prompt**: before `sudo -v`, one `console.info` line says sysup is
-  caching sudo credentials so cask upgrades do not stall mid-run and that a declined
-  prompt only means later steps prompt themselves. The prompt itself is branded through
+  caching sudo credentials so cask upgrades do not stall mid-run and that Ctrl-D skips
+  it (later steps then prompt themselves). The prompt itself is branded through
   `sudo -p "sysup needs your password: "`. The banner must not claim Ctrl-C skips the
   prompt (it aborts the run).
 - **R3 Prime only when needed**: `SysupCommand` gains `sudo: bool = False`; `default.yaml`
   sets it on `brew`. Priming runs only when the selected plan holds an entry with
   `sudo: true` or a `steps` argv whose first token is `sudo` (apt, snap), and stdin is a
   TTY. `--only helm` never prompts.
-- **R4 Errors surfaced live**: a failing step reports at the moment it fails (as today).
-  After any captured step, lines matching `^\s*error:` (case-insensitive) in its retained
-  stdout+stderr print condensed under the step line, capped at 5 with `+N more, see log`.
-- **R4b Amber status for exit-0 errors**: a step that exits 0 but produced such lines
-  yields `StepResult(success=True, status="warned", message=...)`. `warned` joins
-  `Status`, `_RANK` (lowest amber rank), `_valid_entry`, `_report_step` (prints via
-  `console.warning`), the summary and ntfy as an amber entry: notified once, exit 0,
-  cleared by a clean run.
+- **R4 Errors surfaced live**: a failing step reports at the moment it fails (as today,
+  its `✘` line carrying the stderr). After a captured step that exits 0, lines matching
+  `^\s*error:` (case-insensitive) in its retained stdout+stderr print condensed right
+  after that step, before the entry's closing line, capped at 5 with `+N more, see log`.
+- **R4b Amber status for exit-0 errors**: an entry whose captured steps all exit 0 but
+  any of which produced such lines closes with one
+  `StepResult(success=True, status="warned", message="<entry>: N error line(s), see log")`
+  instead of today's `ok` result; the entry prints a single `⚠` line, never a `✔`.
+  `warned` joins `Status`, `_RANK` (lowest amber rank), `_valid_entry`, `_report_step`
+  (prints via `console.warning`), the summary and ntfy as an amber entry: notified once,
+  exit 0, cleared by a clean run.
 - **R5 Unattended-safe**: no spinner control codes on a non-TTY (Rich `Status` is a
   transient `Live` and renders nothing there; a test pins it with
   `Console(force_terminal=False)`); the sudo prime is skipped when stdin is not a TTY;
@@ -53,12 +56,15 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
 - **R6 Summary preserved**: the 00092 summary, state file, ntfy push and exit code keep
   their contracts; this work adds the live surface and the `warned` status only.
 - **R7 Full output retained**: every ordinary run writes
-  `$XDG_STATE_HOME/sysup/logs/<UTC timestamp>.log` (fallback `~/.local/state`), one
+  `$XDG_STATE_HOME/sysup/logs/<UTC timestamp>.log` (fallback `~/.local/state`): a
+  header line (UTC start, plan names) and, in run order, one
   `=== <entry>: <argv> (exit N) ===` section per captured step holding its full
-  stdout and stderr, appended and flushed per step. The newest 10 files are kept;
-  older ones are removed at the start of each run. The summary ends with one
-  `full log: <path>` line whenever a log was written. `--list`, `--dry-run` and
-  `status` write no log.
+  stdout and stderr, plus a one-line `=== <entry>: <use or argv> (<status>, not captured) ===`
+  marker for every interactive step and `use:` result, so the file lists every entry;
+  appended and flushed per step. At the start of each run, older files are removed so
+  that at most 10 remain once this run's file is written (keep the newest 9, then
+  create). The summary ends with one `full log: <path>` line whenever a log was
+  written. `--list`, `--dry-run` and `status` write no log.
 - **R8 Timeout handled**: `_run_argv` catches `subprocess.TimeoutExpired` and yields a
   failed `StepResult` (`<entry> timed out after Ns`) instead of a traceback; partial
   output captured before the timeout goes to the log.
@@ -115,14 +121,15 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
   - `_run_argv`: wrap the captured branch in `console.status(...)`; catch
     `TimeoutExpired`; return captured stdout/stderr alongside the `StepResult`
     (a small private record or a second return value) so `_run_steps` can log it and
-    scan for `Error:` lines; yield `warned` when the scan hits on exit 0.
+    scan for `Error:` lines; `_run_steps` closes the entry `warned` when any scan hit
+    on exit 0.
   - `_run_use`: wrap the capability iteration in `console.status(f"{name}: {use}")`.
   - `_prime`: take the selected plan; compute "needs sudo"; skip when nothing needs it
     or `sys.stdin.isatty()` is false.
   - `SudoPrime.prime()`: banner via `console.info`, `-p` prompt string.
   - `SysupCommand.sudo`, `default.yaml` `brew.sudo: true`.
   - New `src/tools/sysup/runlog.py`: `logs_dir()`, `open_run_log()`, `append_step()`,
-    `prune(keep=10)`.
+    `prune(keep=9)`.
   - `cli.py`: `_report_step` handles `warned`; print the live `Error:` lines; summary
     appends `full log: <path>`.
   - `step_result.py` / `attention.py`: `warned` in `Status`, `_RANK`, `_valid_entry`.
@@ -133,7 +140,7 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
 ## Approach
 - **Chosen**: keep `subprocess.run(capture_output=True)`; wrap each captured step in
   the existing Rich status spinner; after the step, write its full output to a per-run
-  log and scan it for `^error:` lines; print those lines live and mark the step
+  log and scan it for `^error:` lines; print those lines live and close the entry
   `warned` when it exited 0; prime sudo only for a plan that needs it, behind a banner
   and a branded `-p` prompt.
 - **Why**: smallest diff that satisfies R1 to R7; no Popen or reader threads; the
@@ -159,15 +166,24 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
 - A mocked step with exit 0 and `Error: firefox: ...` on stderr yields status `warned`,
   prints that line under the step, folds into `attention.json` as an amber entry, is
   pushed once, and exits 0; the next clean run clears it.
+- A three-step entry whose middle step exits 0 with `Error:` lines and whose last step
+  exits 0 prints those lines once, right after the middle step, and closes with a single
+  `warned` line and no `✔`.
+- A step with 7 `Error:` lines prints 5 and `+2 more, see log`.
 - A mocked exit-1 step still yields `failed` and exit 1 (00092 tests unchanged).
 - After a run, `XDG_STATE_HOME/sysup/logs/` holds one file with a section per captured
-  step containing the mocked stdout and stderr; after 11 runs it holds 10 files; the
+  step containing the mocked stdout and stderr and one marker line per interactive or
+  `use:` result; after 11 runs it holds 10 files; the
   summary output ends with `full log: <that path>`; `--dry-run`, `--list` and `status`
   create no file.
 - `sysup --only helm` never spawns `sudo`; `sysup --only brew` spawns
   `sudo -p "sysup needs your password: " -v` after one banner line; with stdin not a
   TTY no `sudo` is spawned; a `steps: [[sudo, apt, update]]` entry primes without a
   `sudo:` flag.
+- A `sudo -v` that exits non-zero prints no sysup failure line and the run continues
+  without a refresher; the banner text contains no `Ctrl-C`.
+- With the console not a terminal (`force_terminal=False`), a captured step prints no
+  escape sequence and the step lines are unchanged.
 - A step raising `TimeoutExpired` yields a failed `StepResult` with `timed out` in the
   message and no traceback.
 - `uv run pytest -m sysup -q`, `uv run mypy src/tools/sysup`, `uv run ruff check
