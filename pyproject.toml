@@ -176,3 +176,7 @@ combine-as-imports = true
 "src/tools/bim/shared/suggest_tags.py" = ["S310"]
 "src/lib/buvis/pybase/updater/executor.py" = ["S606"]
 "src/tools/bim/commands/shared/os_open.py" = ["S606"]
+# runlog.py's append_step signature and RunLog._handle field are the design
+# doc's verbatim contract (PRD 00098); module-level helpers in the same file
+# intentionally reach into the dataclass's internal handle.
+"src/tools/sysup/runlog.py" = ["PLR0913", "SLF001"]
