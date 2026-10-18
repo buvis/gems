@@ -17,6 +17,19 @@ class TestSysupCommandModel:
         assert cmd.enabled is True
         assert cmd.order == 100
 
+    def test_sudo_defaults_false(self) -> None:
+        cmd = SysupCommand.model_validate({"steps": [["brew", "update"]]})
+        assert cmd.sudo is False
+
+    def test_sudo_true_accepted(self) -> None:
+        cmd = SysupCommand.model_validate({"steps": [["brew", "update"]], "sudo": True})
+        assert cmd.sudo is True
+
+    def test_legacy_config_without_sudo_key_still_validates(self) -> None:
+        """A config predating the `sudo` field must keep loading unchanged."""
+        cmd = SysupCommand.model_validate({"order": 10, "enabled": True, "steps": [["brew", "update"]]})
+        assert cmd.sudo is False
+
     def test_use_entry_validates(self) -> None:
         cmd = SysupCommand.model_validate({"use": "pip-outdated"})
         assert cmd.use == "pip-outdated"

@@ -90,6 +90,18 @@ class TestDefaultConfigEquivalence:
             ("sudo", "apt", "autoremove", "-y"),
         )
 
+    def test_brew_has_sudo_flag_set(self, mocker) -> None:
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        assert cfg.commands["brew"].sudo is True
+
+    def test_apt_and_snap_do_not_set_sudo_flag(self, mocker) -> None:
+        """apt/snap invoke sudo via argv, not the flag — the flag stays default."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        assert cfg.commands["apt"].sudo is False
+        assert cfg.commands["snap"].sudo is False
+
 
 class TestDefaultExpiryTemplate:
     def test_gh_agent_template_is_disabled_and_has_no_probe(self, mocker) -> None:

@@ -17,10 +17,45 @@ class TestSudoPrime:
 
         stop = SudoPrime().prime()
 
-        assert mock_run.call_args_list[0].args[0] == ["/usr/bin/sudo", "-v"]
+        assert mock_run.call_args_list[0].args[0] == [
+            "/usr/bin/sudo",
+            "-p",
+            "sysup needs your password: ",
+            "-v",
+        ]
         assert thread.called
         # stop callback is the Event.set method; calling it must not raise.
         stop()
+
+    def test_banner_printed_before_prime_spawn(self, mocker) -> None:
+        mocker.patch("sysup.capabilities.sudo.shutil.which", return_value="/usr/bin/sudo")
+        mocker.patch("sysup.capabilities.sudo.threading.Thread")
+        calls: list[str] = []
+
+        def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            calls.append("run")
+            return self._result()
+
+        def fake_info(*args: object, **kwargs: object) -> None:
+            calls.append("info")
+
+        mocker.patch("sysup.capabilities.sudo.subprocess.run", side_effect=fake_run)
+        mock_info = mocker.patch("sysup.capabilities.sudo.console.info", side_effect=fake_info)
+
+        SudoPrime().prime()
+
+        assert calls == ["info", "run"]
+        assert "Ctrl-D" in mock_info.call_args.args[0]
+        assert "Ctrl-C" not in mock_info.call_args.args[0]
+
+    def test_no_banner_when_sudo_missing(self, mocker) -> None:
+        mocker.patch("sysup.capabilities.sudo.shutil.which", return_value=None)
+        mocker.patch("sysup.capabilities.sudo.subprocess.run")
+        mock_info = mocker.patch("sysup.capabilities.sudo.console.info")
+
+        SudoPrime().prime()
+
+        assert mock_info.call_count == 0
 
     def test_missing_sudo_returns_noop(self, mocker) -> None:
         mocker.patch("sysup.capabilities.sudo.shutil.which", return_value=None)
