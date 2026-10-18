@@ -48,23 +48,33 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
   instead of today's `ok` result; the entry prints a single `⚠` line, never a `✔`.
   `warned` joins `Status`, `_RANK` (lowest amber rank), `_valid_entry`, `_report_step`
   (prints via `console.warning`), the summary and ntfy as an amber entry: notified once,
-  exit 0, cleared by a clean run.
-- **R5 Unattended-safe**: no spinner control codes on a non-TTY (Rich `Status` is a
+  exit 0, cleared by a clean run. Existing ntfy construction uses `details[0]`, which
+  for this result is the count message `<entry>: N error line(s), see log`, not a raw
+  `Error:` line.
+- **R5 Non-TTY-safe progress and prime**: no spinner control codes on a non-TTY (Rich `Status` is a
   transient `Live` and renders nothing there; a test pins it with
   `Console(force_terminal=False)`); the sudo prime is skipped when stdin is not a TTY;
-  nothing waits for input.
+  sysup's progress and prime add no input waits. Child-input behavior remains
+  unchanged: interactive steps and later sudo invocations may still prompt, so this
+  does not guarantee a prompt-free unattended plan.
 - **R6 Summary preserved**: the 00092 summary, state file, ntfy push and exit code keep
-  their contracts; this work adds the live surface and the `warned` status only.
+  their contracts for completed runs; this work adds the live surface and the
+  `warned` status. Log I/O failures stop the run with a controlled error under R7.
 - **R7 Full output retained**: every ordinary run writes
-  `$XDG_STATE_HOME/sysup/logs/<UTC timestamp>.log` (fallback `~/.local/state`): a
+  `$XDG_STATE_HOME/sysup/logs/<UTC timestamp>[-<suffix>].log` (fallback `~/.local/state`): a
   header line (UTC start, plan names) and, in run order, one
   `=== <entry>: <argv> (exit N) ===` section per captured step holding its full
   stdout and stderr, plus a one-line `=== <entry>: <use or argv> (<status>, not captured) ===`
   marker for every interactive step and `use:` result, so the file lists every entry;
   appended and flushed per step. At the start of each run, older files are removed so
   that at most 10 remain once this run's file is written (keep the newest 9, then
-  create). The summary ends with one `full log: <path>` line whenever a log was
-  written. `--list`, `--dry-run` and `status` write no log.
+  create). Creation must be collision-safe: add a filename suffix when needed so
+  same-second runs have distinct files without overwriting or mixing output.
+  If log creation, pruning or writing fails, report a controlled error without a
+  traceback, preserve already written evidence, and start no further update steps;
+  do not roll back completed updates or present an incomplete log as complete.
+  The summary ends with one `full log: <path>` line whenever a log was written for
+  a completed run. `--list`, `--dry-run` and `status` write no log.
 - **R8 Timeout handled**: `_run_argv` catches `subprocess.TimeoutExpired` and yields a
   failed `StepResult` (`<entry> timed out after Ns`) instead of a traceback; partial
   output captured before the timeout goes to the log.
@@ -165,7 +175,8 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
   step never does (status mocked on `sysup.runner.console`).
 - A mocked step with exit 0 and `Error: firefox: ...` on stderr yields status `warned`,
   prints that line under the step, folds into `attention.json` as an amber entry, is
-  pushed once, and exits 0; the next clean run clears it.
+  pushed once with the count message as its ntfy detail, and exits 0; the next clean
+  run clears it.
 - A three-step entry whose middle step exits 0 with `Error:` lines and whose last step
   exits 0 prints those lines once, right after the middle step, and closes with a single
   `warned` line and no `✔`.
@@ -176,9 +187,16 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
   `use:` result; after 11 runs it holds 10 files; the
   summary output ends with `full log: <that path>`; `--dry-run`, `--list` and `status`
   create no file.
+- Two runs with the same UTC timestamp create distinct log files, preserving each
+  run's complete output without overwrite or mixing.
+- Log creation or pruning failure reports a controlled error and starts no update
+  steps; a write failure after a completed step reports a controlled error, preserves
+  already written evidence, and starts no further update steps; neither emits a
+  traceback or claims the incomplete log is complete.
 - `sysup --only helm` never spawns `sudo`; `sysup --only brew` spawns
   `sudo -p "sysup needs your password: " -v` after one banner line; with stdin not a
-  TTY no `sudo` is spawned; a `steps: [[sudo, apt, update]]` entry primes without a
+  TTY no sudo prime or refresher is spawned, while selected child commands retain
+  their existing input behavior; a `steps: [[sudo, apt, update]]` entry primes without a
   `sudo:` flag.
 - A `sudo -v` that exits non-zero prints no sysup failure line and the run continues
   without a refresher; the banner text contains no `Ctrl-C`.
@@ -214,14 +232,10 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
 ## Open Questions
 - Should the `Error:` scan also match mise's `mise ERROR ...` prefix in v1, or stay
   strictly `^\s*error:` until a log shows a missed case?
-- Should the ntfy body for a `warned` entry carry the first `Error:` line (it does
-  under the current `details[0]` rule) or a count? Default: unchanged rule.
 - Does the banner print from `SudoPrime.prime()` through `console.info` (shortest),
   or should the runner yield an informational `StepResult` the CLI renders, keeping
   capabilities output-free? Default: `console.info` inside `prime()`; the invariant
   test covers the runner, not capabilities.
-- Log filename timestamp: `%Y%m%dT%H%M%SZ` (sorts lexically, no colons for macOS
-  Finder). Default unless create-prd prefers ISO with colons.
 
 ## Discovery Log
 
@@ -230,7 +244,8 @@ run legible while it runs, and nothing keeps the full output to re-read afterwar
 - **Non-TTY degradation (R5)**: `ConsoleAdapter.status()` returns a Rich `Status`, a
   transient `Live`; Rich renders nothing for it when the console is not a terminal.
   Plain step lines print as today. No extra code for R5 beyond skipping the sudo prime
-  when stdin is not a TTY (sudo cannot prompt there anyway).
+  when stdin is not a TTY. This limits sysup's own progress and prime behavior;
+  children retain their input behavior, including possible prompts on `/dev/tty`.
 - **Interactive steps**: `interactive: true` steps (npm-check) inherit the TTY; the
   spinner must not wrap them. Decision: no status context around interactive steps;
   they already show their own output.
@@ -291,3 +306,14 @@ ceremony. Sized like 00092.
 **Answer**: No; the list (tee/streaming, capability log retention, ntfy hook drift,
 interactive steps unchanged) is complete. A `sysup logs` subcommand was offered as an
 extra exclusion and not taken; it is simply not requested.
+
+### Discovery review: accepted resolutions (2026-10-18)
+
+1. **R5 scope**: bound the non-TTY guarantee to sysup's progress and sudo prime;
+   preserve child-input behavior rather than promise a prompt-free unattended plan.
+2. **R7 filename collisions**: use UTC `%Y%m%dT%H%M%SZ` as the base timestamp and
+   add a collision-safe suffix when needed; each run retains separate evidence.
+3. **ntfy detail**: keep existing message construction; `details[0]` carries the
+   warned count message, not the first raw `Error:` line.
+4. **R7 log failures**: report a controlled error and stop further update steps on
+   log I/O failure; preserve already written evidence and do not roll back updates.

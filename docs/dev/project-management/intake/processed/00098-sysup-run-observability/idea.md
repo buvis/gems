@@ -1,6 +1,6 @@
 # sysup: make an unattended run observable — progress, prompt context, visible errors
 
-Status: new, idea only. Recorded 2026-10-16.
+Status: processed, specced as PRD 00098. Recorded 2026-10-16.
 
 ## Problem
 

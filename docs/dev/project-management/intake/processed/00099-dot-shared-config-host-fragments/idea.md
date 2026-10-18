@@ -1,6 +1,6 @@
 # dot: share a config file across hosts while keeping its host-specific parts local
 
-Status: new, idea only. Recorded 2026-10-16.
+Status: processed, specced as PRD 00099. Recorded 2026-10-16.
 
 ## Problem
 
