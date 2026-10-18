@@ -25,12 +25,14 @@ divergence patch for these two files.
   from stdin and write the converted bytes to stdout. Clean replaces this
   host's home path with the token `@HOME@`; smudge replaces the token with
   this host's home path. Byte-safe: no newline, encoding or BOM changes;
-  bytes outside a match are untouched. `clean(smudge(x)) == x` for tokenized
-  `x`; `smudge(clean(y)) == y` for raw POSIX `y`.
-- **R2 Home value**: the work-tree root, resolved as `GIT_WORK_TREE` (git
-  exports it to filter processes when run with `--work-tree`), else
-  `DOTFILES_ROOT`, else `Path.home()`; trailing separator stripped. On
-  Windows the drive letter compares case-insensitively.
+  bytes outside a match are untouched. `clean(smudge(x)) == x` for any `x`
+  that clean can produce (every token at an R3 boundary);
+  `smudge(clean(y)) == y` for raw POSIX `y`.
+- **R2 Home value**: the work-tree root, resolved as `GIT_WORK_TREE` made
+  absolute against the filter's cwd (git re-exports it as `.` after
+  entering the work tree and runs filters from there; verified with git
+  2.56), else `DOTFILES_ROOT`, else `Path.home()`; trailing separator
+  stripped. On Windows the drive letter compares case-insensitively.
 - **R3 Safe matching**: a match needs a boundary on both sides: the byte
   before and the byte after the home path are not `[A-Za-z0-9_.-]`, or the
   match touches the start or end of the input. So `/Users/bob/x`,
@@ -39,8 +41,10 @@ divergence patch for these two files.
   Tests cover each listed case.
 - **R4 Windows spellings (Q1)**: clean recognizes `C:\Users\bob`,
   `C:\\Users\\bob` and `C:/Users/bob`; smudge always writes `C:/Users/bob`.
-  On POSIX the three spellings collapse to one, so files tokenized on either
-  platform smudge correctly on the other.
+  Only the home prefix is portable; separators after it keep the writing
+  platform's form. The three spellings exist so a Windows host's own tool
+  rewrites never flip its index; sharing one file between a Windows and a
+  POSIX host is not a v1 goal.
 - **R5 Token guard**: clean exits 1 with one stderr line
   (`dot filter: <path> already contains @HOME@; the token is reserved`) when
   the raw input holds the literal token, so a lossy round trip never reaches
@@ -92,7 +96,10 @@ divergence patch for these two files.
 - **R13 Docs and changelog**: `docs/source/tools/dot.rst` (localize section
   gains `--shared`; new section on sharing: `.gitattributes`, driver config,
   the token, diffs show `@HOME@`, Windows forward slashes, raw git without
-  `dot` on PATH fails loudly), `README.md`, `CHANGELOG.md` Added entry.
+  `dot` on PATH fails loudly, run `dot status` once after upgrading a host,
+  the two manual unshare steps (delete the `.gitattributes` line,
+  renormalize), the recovery for a file checked out before the driver
+  existed (Risks)), `README.md`, `CHANGELOG.md` Added entry.
 
 ### Nice to have
 - `dot status` warning when a path carries `filter=dot-host` but its index
@@ -200,9 +207,16 @@ divergence patch for these two files.
 ## Risks
 - **Raw git before the first dot run on a host**: after `.gitattributes`
   lands but before any dot command self-heals the driver, raw `git status`
-  shows the file modified and raw `git add` would commit host paths.
+  shows the file modified and raw `git add` would commit host paths. A raw
+  checkout or pull in that window (raw `git pull`, `dot run pull`, a GUI
+  client) writes the file with literal `@HOME@` and no error: git treats an
+  undefined driver as a no-op, and the later self-heal does not rewrite an
+  unchanged index entry. Once a tool touches that file, every `git status`
+  dies on the R5 guard, whose line names the token, not the missed smudge.
   Mitigation: docs say "run `dot status` once after upgrading"; dot's own
-  pull self-heals before merging. Low: both hosts pull through dot.
+  pull self-heals before merging. Recovery, documented (R13): run any dot
+  command, delete the file, then `dot run checkout -- <path>`. Low: both
+  hosts pull through dot.
 - **Attribute ordering inside one checkout**: git reads `.gitattributes`
   from the index during checkout (`GIT_ATTR_CHECKOUT` direction), so the new
   line applies to files written in the same merge. The two-host test
