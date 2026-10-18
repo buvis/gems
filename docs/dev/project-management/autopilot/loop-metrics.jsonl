@@ -1,0 +1,1 @@
+{"ts_start":1792357592,"ts_end":1792359228,"wall_secs":1636,"prd":"00098-sysup-run-observability-v1.md","batch":"202610121200","phase_launched":"build","phase_end":"build","signal":"continue","model":"claude-sonnet-5[1m]","effort":"low","lane":"full","lane_effective":"full","cost_usd":9.920366800000002,"tokens_out":115097}
