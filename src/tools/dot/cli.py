@@ -239,11 +239,6 @@ def localize(path: str, source: str | None = None, shared: bool = False) -> None
 
 
 def _filter_home() -> str:
-    """Resolve the host home path for a filter run.
-
-    GIT_WORK_TREE is made absolute against the working directory git started the
-    filter in; without it the home value falls back to DOTFILES_ROOT, then $HOME.
-    """
     from dot.hostfilter import resolve_home
 
     return resolve_home(os.environ.get("GIT_WORK_TREE"), os.getcwd())
