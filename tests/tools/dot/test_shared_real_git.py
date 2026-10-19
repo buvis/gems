@@ -362,6 +362,25 @@ class TestShellUnsafePaths:
         assert not (host_a / ".gitattributes").exists()
         assert _index_bytes(host_a, name) == _home_line(host_a)
 
+    def test_share_succeeds_for_a_tracked_leading_dash_name(self, host_a: Path) -> None:
+        """``CommandShare`` must share a tracked leading-dash name, not report it untracked.
+
+        Regression coverage for a review finding: ``DotGitService.ls_files``
+        hands ``git ls-files`` an unguarded pathspec, so ``-dashy.conf`` is
+        parsed as an option and the tracked-file check refuses it as
+        untracked. See the class docstring above for the pre-fix workaround
+        this test supersedes for the "tracked" check itself.
+        """
+        name = "-dashy.conf"
+        _track(host_a, name, _home_line(host_a))
+        _commit(host_a, f"track {name}")
+
+        result = _share(host_a, name)
+
+        assert result.success, result.error
+        assert (host_a / ".gitattributes").read_text() == f"/{name} filter=dot-host\n"
+        assert _index_bytes(host_a, name) == _token_line()
+
 
 class TestRequiredFilterFailsLoudly:
     def test_missing_dot_fails_the_smudge_instead_of_writing_the_token(self, host_a: Path) -> None:
@@ -432,3 +451,24 @@ class TestDivergenceWithSharedContent:
         assert result.success, result.error
         assert (host_a / ".zshrc").read_bytes() == _home_line(host_a)
         assert _status(host_a) == ""
+
+
+class TestIndexModeReadOnce:
+    def test_execute_reads_the_stage_zero_index_mode_exactly_once(self, host_a: Path) -> None:
+        """``execute()`` must capture the stage-zero index entry a single time.
+
+        Regression coverage for a review finding (code-quality duplication):
+        ``CommandShare`` currently reads the target's stage-zero index mode
+        twice for one share - once through ``DotGitService.capture_index_entry``
+        and once through its own private ``_index_mode``, both running
+        ``git ls-files -s`` for the same path.
+        """
+        _track(host_a, ".zshrc", _home_line(host_a))
+        _commit(host_a, "track .zshrc")
+        shell = _RecordingShell()
+
+        result = CommandShare(shell, str(host_a), ".zshrc").execute()
+
+        assert result.success, result.error
+        ls_files_s_calls = [command for command in shell.commands if "ls-files -s" in command]
+        assert len(ls_files_s_calls) == 1

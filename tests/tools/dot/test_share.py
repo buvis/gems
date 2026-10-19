@@ -796,3 +796,134 @@ class TestCommandShareFilesystemErrors:
         assert result.error
         assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
         assert_index_untouched(service)
+
+
+class TestCommandShareStageFailureKeepsRegistration:
+    """A failed ``stage(.gitattributes)`` must not undo the share.
+
+    Regression coverage for a review finding: the current implementation
+    (``CommandShare._mutate``) calls ``_roll_back`` on a stage failure, which
+    restores the prior attribute text and the prior index entry. That rollback
+    is the behavior under test here being refused: a stage failure should
+    leave the attribute registration and the renormalized index alone and
+    tell the user to finish staging by hand.
+    """
+
+    def test_keeps_attribute_line_and_index_and_warns_to_add_attributes(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+    ) -> None:
+        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
+        service = make_service(
+            tracked={".zshrc"},
+            stage=CommandResult(success=False, error="cfg add failed"),
+        )
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE + "/.zshrc filter=dot-host\n"
+        service.restore_index_entry.assert_not_called()
+        messages = " ".join(value for value in (result.output, result.error, *result.info, *result.warnings) if value)
+        assert "dot add .gitattributes" in messages
+
+
+class TestCommandShareAttributeSymlinkRefusal:
+    """``.gitattributes`` must be rejected before it is read when it is a symlink."""
+
+    def test_refuses_symlinked_attributes_file(self, tmp_path: Path, shell: MagicMock) -> None:
+        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        elsewhere = write_file(tmp_path, "elsewhere.gitattributes", "*.png binary\n")
+        (tmp_path / ".gitattributes").symlink_to(elsewhere)
+        service = make_service(tracked={".zshrc"})
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert result.success is False
+        assert result.error
+        message = result.error.lower()
+        assert any(word in message for word in ("symlink", "refus", "regular", "plain"))
+        assert (tmp_path / ".gitattributes").is_symlink()
+        assert_index_untouched(service)
+
+
+class TestCommandShareNonRegularTargetRefusal:
+    """A non-regular tracked file (e.g. a FIFO) must be rejected before ``read_bytes()``.
+
+    A real FIFO is deliberately avoided here: opening one for read with no
+    writer blocks forever, and the current implementation has no guard that
+    would stop that read. Mocking ``Path.is_file``/``Path.read_bytes`` proves
+    the intended ordering (regular-file check before the blocking read)
+    without risking a hung test.
+    """
+
+    def test_refuses_non_regular_file_before_reading_bytes(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        target = write_file(tmp_path, ".zshrc", "placeholder\n")
+        service = make_service(tracked={".zshrc"})
+        original_is_file = Path.is_file
+        original_read_bytes = Path.read_bytes
+
+        def fake_is_file(self: Path, *args: object, **kwargs: object) -> bool:
+            if self == target:
+                return False
+            return original_is_file(self, *args, **kwargs)
+
+        def guarded_read_bytes(self: Path, *args: object, **kwargs: object) -> bytes:
+            if self == target:
+                pytest.fail("read_bytes() must not be called on a non-regular tracked file (e.g. a FIFO)")
+            return original_read_bytes(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "is_file", fake_is_file)
+        monkeypatch.setattr(Path, "read_bytes", guarded_read_bytes)
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert not result.success
+
+
+class TestCommandShareQuotingRefusalExtraCharacters:
+    """``_QUOTE_CHARS`` must also refuse newline and carriage-return bytes in the target name."""
+
+    @pytest.mark.parametrize("rel", [".config/line\nbreak", ".config/carriage\rreturn"])
+    def test_refuses_path_with_newline_or_carriage_return(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+        rel: str,
+    ) -> None:
+        write_file(tmp_path, rel, "plain\n")
+        service = make_service(tracked={rel})
+
+        result = CommandShare(shell, str(tmp_path), rel, git_service=service).execute()
+
+        assert not result.success
+        assert result.error == f"{rel} needs attribute-file quoting, which is unsupported"
+        assert not (tmp_path / ".gitattributes").exists()
+        assert_index_untouched(service)
+
+
+class TestCommandShareNormalizesRelativeSpelling:
+    """A non-canonical relative spelling must resolve to the same target as its canonical form."""
+
+    @pytest.mark.parametrize("rel", ["./settings", "a/../settings"])
+    def test_normalizes_before_building_the_attribute_line(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+        rel: str,
+    ) -> None:
+        (tmp_path / "a").mkdir()
+        write_file(tmp_path, "settings", host_text(tmp_path, 1))
+        service = make_service(tracked={"settings"})
+
+        result = CommandShare(shell, str(tmp_path), rel, git_service=service).execute()
+
+        assert result.success, result.error
+        assert (tmp_path / ".gitattributes").read_text() == "/settings filter=dot-host\n"
+        service.renormalize.assert_called_once_with("settings")

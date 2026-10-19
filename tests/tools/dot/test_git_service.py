@@ -1168,6 +1168,23 @@ class TestDotGitServiceLsFiles:
         assert cmd == "cfg ls-files '*.txt'"
         assert str(cwd) == "/home/user/dotfiles"
 
+    def test_guards_a_leading_dash_pathspec_with_a_double_dash(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
+        """A leading ``-`` must not be parsed as a ``git ls-files`` option.
+
+        Regression coverage for a review finding: without ``--`` guarding the
+        pathspec, ``git ls-files -dashy.conf`` treats ``-dashy.conf`` as an
+        option string instead of a path, so a tracked file with a leading
+        dash comes back as untracked.
+        """
+        shell.exe.return_value = ("", "")
+
+        git_service.ls_files("-dashy.conf")
+
+        cmd = shell.exe.call_args[0][0]
+        assert cmd == "cfg ls-files -- '-dashy.conf'"
+
 
 class TestDotGitServiceCheckIgnore:
     def test_returns_ignored_paths_as_set(self, git_service: DotGitService, shell: MagicMock) -> None:
