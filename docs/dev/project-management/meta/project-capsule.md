@@ -17,10 +17,12 @@ Generated: 2026-10-12
 - `src/tools/dot/`: `cli.py` -> `commands/<name>/` -> `git/service.py` (`DotGitService`); TUI (`tui/app.py`, `tui/screens/main.py`, `tui/widgets/status_bar.py`) drives the same commands.
 
 ## Active Work
-### New batch (master, 2026-10-18)
-- [ ] 00098-sysup-run-observability-v1 (selected; default_model: opus)
-- 00099 (dot shared config placeholders) also in backlog.
-- Prior batch 202610121200 (00088-00095, dot host-links set) is not in `wip/` anymore — presumed closed/drained; this is a fresh batch.
+
+### Batch 202610121200
+- [x] 00098-sysup-run-observability-v1 (2 cycles)
+- [ ] 00099-dot-shared-config-host-fragments-v1 (backlog)
+
+Observations: `wip/` is empty after this close; next session picks up 00099 from backlog.
 
 ## Related context
 engram unavailable (not on PATH); no related-context query run. Topic: "master: sysup run observability".
