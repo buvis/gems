@@ -62,8 +62,8 @@ class TestRunnerRunEntries:
         steps = list(Runner(_cfg()).run([("multi", cmd)]))
 
         assert mock_run.call_count == 2
+        assert len(steps) == 1
         assert steps[0].success is False
-        assert steps[1].success is True
 
     def test_interactive_inherits_stdio_exit_code_only(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
@@ -666,3 +666,134 @@ class TestRunnerItems:
         brew = next(s for s in steps if s.command == "brew")
         assert brew.success is True
         assert run.call_count == 1
+
+
+def _proc(returncode: int = 0, stdout: str = "", stderr: str = "") -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+class TestObservabilityScanErrors:
+    @pytest.mark.parametrize(
+        "line,matches",
+        [
+            ("error: x", True),
+            ("  ERROR: disk full", True),
+            ("\tError: y", True),
+            ("errors: 3 found", False),
+            ("mise ERROR failed to install", False),
+            ("mise error: x", False),
+            ("Warning: error: x", False),
+        ],
+    )
+    def test_matches_error_prefix_case_and_whitespace_insensitive(self, line: str, matches: bool) -> None:
+        from sysup.runner import _scan_errors
+
+        expected = [line] if matches else []
+        assert _scan_errors(line, "") == expected
+        assert _scan_errors("", line) == expected
+
+    def test_returns_stdout_matches_before_stderr_matches(self) -> None:
+        from sysup.runner import _scan_errors
+
+        assert _scan_errors("error: a\nok\nerror: b", "error: c") == ["error: a", "error: b", "error: c"]
+        assert _scan_errors("error: c", "error: a") == ["error: c", "error: a"]
+        assert _scan_errors("", "") == []
+
+
+class TestObservabilityRunSteps:
+    @pytest.mark.parametrize("count", [5, 7])
+    def test_prints_at_most_five_matches_then_overflow(self, mocker, count: int) -> None:
+        lines = [f"error: e{i}" for i in range(1, count + 1)]
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_proc(stdout="\n".join(lines)))
+        failure = mocker.patch("sysup.runner.console.failure")
+
+        steps = list(Runner(_cfg()).run([("brew", _cmd(steps=[["brew", "upgrade"]]))]))
+
+        overflow = [f"+{count - 5} more, see log"] if count > 5 else []
+        assert [c.args[0] for c in failure.call_args_list] == lines[:5] + overflow
+        assert steps == [
+            StepResult("brew", True, f"brew: {count} error line(s), see log", status="warned", command="brew")
+        ]
+
+    def test_middle_step_diagnostics_print_before_next_spawn(self, mocker) -> None:
+        events: list[str] = []
+        outputs = iter([_proc(), _proc(stderr="error: mid"), _proc()])
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", side_effect=lambda *a, **k: events.append("spawn") or next(outputs))
+        mocker.patch("sysup.runner.console.failure", side_effect=lambda msg: events.append(msg))
+
+        list(Runner(_cfg()).run([("tool", _cmd(steps=[["a"], ["b"], ["c"]]))]))
+
+        assert events == ["spawn", "spawn", "error: mid", "spawn"]
+
+    def test_clean_last_step_keeps_warning_from_earlier_steps(self, mocker) -> None:
+        outputs = [_proc(stdout="error: one"), _proc(stdout="Error: two", stderr="error: three"), _proc(stdout="done")]
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
+        mocker.patch("sysup.runner.console.failure")
+
+        steps = list(Runner(_cfg()).run([("mise", _cmd(steps=[["a"], ["b"], ["c"]]))]))
+
+        assert steps == [StepResult("mise", True, "mise: 3 error line(s), see log", status="warned", command="mise")]
+
+    @pytest.mark.parametrize(
+        "outputs,status",
+        [
+            ([_proc(), _proc(), _proc()], "ok"),
+            ([_proc(stdout="error: x"), _proc(), _proc()], "warned"),
+            ([_proc(returncode=1, stderr="first boom"), _proc(stdout="error: y"), _proc()], "failed"),
+        ],
+        ids=["clean", "warned", "failed"],
+    )
+    def test_continue_on_error_yields_exactly_one_final_result(self, mocker, outputs, status: str) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mock_run = mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
+        mocker.patch("sysup.runner.console.failure")
+        cmd = _cmd(continue_on_error=True, steps=[["a"], ["b"], ["c"]])
+
+        steps = list(Runner(_cfg()).run([("multi", cmd)]))
+
+        assert mock_run.call_count == 3
+        assert [(s.status, s.success, s.command) for s in steps] == [(status, status != "failed", "multi")]
+
+    def test_failure_dominates_earlier_error_lines(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", side_effect=[_proc(stdout="error: w"), _proc(1, stderr="kaput")])
+        failure = mocker.patch("sysup.runner.console.failure")
+
+        steps = list(Runner(_cfg()).run([("brew", _cmd(steps=[["a"], ["b"]]))]))
+
+        assert [c.args[0] for c in failure.call_args_list] == ["error: w"]
+        assert [s.status for s in steps] == ["failed"]
+        assert "kaput" in steps[0].message
+        assert "error line(s)" not in steps[0].message
+
+    def test_failed_step_output_is_not_scanned_and_result_arrives_before_next_spawn(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mock_run = mocker.patch("sysup.runner.subprocess.run", side_effect=[_proc(2, "error: out", "error: bad")])
+        failure = mocker.patch("sysup.runner.console.failure")
+
+        gen = Runner(_cfg()).run([("brew", _cmd(steps=[["a"], ["b"]]))])
+        first = next(gen)
+
+        assert first.status == "failed"
+        assert "error: bad" in first.message
+        assert mock_run.call_count == 1
+        assert failure.call_count == 0
+        assert list(gen) == []
+
+    def test_every_failed_step_keeps_its_output_in_the_log(self, mocker) -> None:
+        outputs = [_proc(1, stdout="alpha-out", stderr="alpha-boom"), _proc(2, stderr="beta-boom")]
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
+        runner = Runner(_cfg())
+
+        steps = list(runner.run([("multi", _cmd(continue_on_error=True, steps=[["a", "x"], ["b"]]))]))
+
+        assert runner.log_path is not None
+        text = runner.log_path.read_text()
+        assert "=== multi: a x (exit 1) ===\nalpha-out\nalpha-boom" in text
+        assert "=== multi: b (exit 2) ===\n\nbeta-boom" in text
+        assert [s.status for s in steps] == ["failed"]
+        assert "beta-boom" in steps[0].message
