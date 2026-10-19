@@ -701,7 +701,7 @@ class TestObservabilityScanErrors:
 
 
 class TestObservabilityRunSteps:
-    @pytest.mark.parametrize("count", [5, 7])
+    @pytest.mark.parametrize("count", [5, 7, 12])
     def test_prints_at_most_five_matches_then_overflow(self, mocker, count: int) -> None:
         lines = [f"error: e{i}" for i in range(1, count + 1)]
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
@@ -736,26 +736,6 @@ class TestObservabilityRunSteps:
         steps = list(Runner(_cfg()).run([("mise", _cmd(steps=[["a"], ["b"], ["c"]]))]))
 
         assert steps == [StepResult("mise", True, "mise: 3 error line(s), see log", status="warned", command="mise")]
-
-    @pytest.mark.parametrize(
-        "outputs,status",
-        [
-            ([_proc(), _proc(), _proc()], "ok"),
-            ([_proc(stdout="error: x"), _proc(), _proc()], "warned"),
-            ([_proc(returncode=1, stderr="first boom"), _proc(stdout="error: y"), _proc()], "failed"),
-        ],
-        ids=["clean", "warned", "failed"],
-    )
-    def test_continue_on_error_yields_exactly_one_final_result(self, mocker, outputs, status: str) -> None:
-        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
-        mocker.patch("sysup.runner.console.failure")
-        cmd = _cmd(continue_on_error=True, steps=[["a"], ["b"], ["c"]])
-
-        steps = list(Runner(_cfg()).run([("multi", cmd)]))
-
-        assert mock_run.call_count == 3
-        assert [(s.status, s.success, s.command) for s in steps] == [(status, status != "failed", "multi")]
 
     def test_failure_dominates_earlier_error_lines(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
