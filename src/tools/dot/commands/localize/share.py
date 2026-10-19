@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import shlex
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,6 +14,8 @@ from dot.hostfilter import TOKEN, count_home
 from dot.hostlinks.manifest import read_manifest
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from buvis.pybase.adapters.shell.shell import ShellAdapter
 
     from dot.git.models import IndexEntry
@@ -44,6 +45,19 @@ def _has_filter_line(text: str | None, target: str) -> bool:
         if fields[0] == anchored and "filter=dot-host" in fields[1:]:
             return True
     return False
+
+
+def _first_refusal(checks: list[tuple[Callable[[], bool], str]]) -> str | None:
+    """Return the message of the first check that refuses, evaluating lazily."""
+    for failed, message in checks:
+        if failed():
+            return message
+    return None
+
+
+def _with_note(error: str, restore_error: str | None) -> str:
+    """Append a failed attribute-restore note to an error, when there is one."""
+    return error if restore_error is None else f"{error}; {restore_error}"
 
 
 class CommandShare:
@@ -90,18 +104,16 @@ class CommandShare:
         attrs_path = self._root / ATTRIBUTES_PATH
         try:
             previous = self._read_attributes(attrs_path)
-            refusal = self._check_preconditions(target_path, previous)
+            refusal = self._check_before_read(target_path, previous)
             if refusal is not None:
                 return CommandResult(success=False, error=refusal)
             data = target_path.read_bytes()
-        except OSError as exc:
+        except (OSError, UnicodeDecodeError) as exc:
             return CommandResult(success=False, error=str(exc))
 
-        if TOKEN in data:
-            return CommandResult(
-                success=False,
-                error=f"{self._target} contains the reserved {TOKEN.decode()} token",
-            )
+        refusal = self._check_after_read(data)
+        if refusal is not None:
+            return CommandResult(success=False, error=refusal)
 
         # None conflates an absent entry, a conflicted path and a failed read, so refuse
         # rather than hand that None back to restore_index_entry later.
@@ -111,48 +123,93 @@ class CommandShare:
 
         return self._mutate(attrs_path, previous, data, entry)
 
-    def _check_preconditions(self, target_path: Path, previous: str | None) -> str | None:
-        """Validate the share request; return an error string or None if OK."""
-        not_plain = _NOT_PLAIN.format(path=self._target)
-        checks: list[tuple[bool, str]] = [
-            (self._target == ATTRIBUTES_PATH, f"refused: {ATTRIBUTES_PATH} itself cannot be shared"),
+    def _check_before_read(self, target_path: Path, previous: str | None) -> str | None:
+        """Validate everything decidable without the target's bytes.
+
+        The checks run lazily in refusal order, so the first match wins and no
+        later git subprocess runs once an earlier check has refused.
+
+        Args:
+            target_path: Absolute path of the share target.
+            previous: Current attribute-file text, None when the file is absent.
+
+        Returns:
+            The refusal message, or None when every check passes.
+        """
+        checks: list[tuple[Callable[[], bool], str]] = [
             (
-                self._escapes_root(target_path),
+                lambda: self._escapes_root(target_path),
                 f"{self._target} resolves outside the dotfiles root; shared opt-in refused",
             ),
             (
-                any(char in self._target for char in _GLOB_CHARS),
+                lambda: not self._git_service.ls_files(self._target),
+                f"{self._target} not tracked; run dot add first",
+            ),
+            (target_path.is_dir, f"{self._target} is a directory; directory opt-in is unsupported"),
+            (
+                lambda: self._target in self._git_service.list_secrets(),
+                f"{self._target} is a git-secret file; shared opt-in refused",
+            ),
+            (self._claimed_by_manifest, f"{self._target} already listed in host-links manifest"),
+            (
+                lambda: self._target == ATTRIBUTES_PATH,
+                f"refused: {ATTRIBUTES_PATH} itself cannot be shared",
+            ),
+            (
+                lambda: _has_filter_line(previous, self._target),
+                f"{self._target} already has a dot-host filter line",
+            ),
+            # Before exists(), which follows the link and would blame the broken link on disk.
+            (target_path.is_symlink, _NOT_PLAIN.format(path=self._target)),
+            (
+                lambda: not target_path.exists(),
+                f"{self._target} is tracked but missing from disk; run dot add or restore it first",
+            ),
+        ]
+        return _first_refusal(checks)
+
+    def _check_after_read(self, data: bytes) -> str | None:
+        """Validate what needs the target's bytes or a further git subprocess.
+
+        Args:
+            data: Raw bytes of the share target.
+
+        Returns:
+            The refusal message, or None when every check passes.
+        """
+        checks: list[tuple[Callable[[], bool], str]] = [
+            (
+                lambda: TOKEN in data,
+                f"{self._target} contains the reserved {TOKEN.decode()} token",
+            ),
+            (
+                lambda: any(char in self._target for char in _GLOB_CHARS),
                 f"{self._target} looks like a glob pattern; glob opt-in is unsupported",
             ),
             (
-                any(char in self._target for char in _QUOTE_CHARS),
+                lambda: any(char in self._target for char in _QUOTE_CHARS),
                 f"{self._target} needs attribute-file quoting, which is unsupported",
             ),
-            (not self._git_service.ls_files(self._target), f"{self._target} not tracked; run dot add first"),
             (
-                self._target in self._git_service.list_secrets(),
-                f"{self._target} is a git-secret file; shared opt-in refused",
+                lambda: not self._git_service.filter_driver_configured(),
+                _UNCONFIGURED.format(path=self._target),
             ),
-            (self._claimed_by_manifest(), f"{self._target} already listed in host-links manifest"),
-            (_has_filter_line(previous, self._target), f"{self._target} already has a dot-host filter line"),
             (
-                not target_path.exists(),
-                f"{self._target} is tracked but missing from disk; run dot add or restore it first",
+                lambda: self._index_mode() not in _REGULAR_MODES,
+                _NOT_PLAIN.format(path=self._target),
             ),
-            (target_path.is_symlink(), not_plain),
-            (target_path.is_dir(), f"{self._target} is a directory; directory opt-in is unsupported"),
-            (self._index_mode() not in _REGULAR_MODES, not_plain),
-            (not self._git_service.filter_driver_configured(), _UNCONFIGURED.format(path=self._target)),
         ]
-        for failed, message in checks:
-            if failed:
-                return message
-        return None
+        return _first_refusal(checks)
 
     def _read_attributes(self, attrs_path: Path) -> str | None:
-        """Return the attribute-file text, or None when the file does not exist."""
+        """Return the attribute-file text, or None when the file does not exist.
+
+        Newline translation is off, so a CRLF attribute file survives a
+        rollback byte-exactly instead of coming back with rewritten endings.
+        """
         try:
-            return attrs_path.read_text(encoding="utf-8")
+            with attrs_path.open(encoding="utf-8", newline="") as handle:
+                return handle.read()
         except FileNotFoundError:
             return None
 
@@ -205,20 +262,19 @@ class CommandShare:
 
         effective = self._git_service.check_attr_filter(self._target)
         if effective != "dot-host":
-            self._restore_attributes(attrs_path, previous)
-            return CommandResult(
-                success=False,
-                error=(
-                    f"{self._target} is governed by a conflicting attribute entry "
-                    f"(effective filter: {effective!r}); check nested .gitattributes files and "
-                    "$GIT_DIR/info/attributes for a prior rule on this path"
-                ),
+            conflict = (
+                f"{self._target} is governed by a conflicting attribute entry "
+                f"(effective filter: {effective!r}); check nested .gitattributes files and "
+                "$GIT_DIR/info/attributes for a prior rule on this path"
             )
+            note = self._restore_attributes(attrs_path, previous)
+            return CommandResult(success=False, error=_with_note(conflict, note))
 
         renormalized = self._git_service.renormalize(self._target)
         if not renormalized.success:
-            self._restore_attributes(attrs_path, previous)
-            return CommandResult(success=False, error=f"renormalize failed: {renormalized.error}")
+            failure = f"renormalize failed: {renormalized.error}"
+            note = self._restore_attributes(attrs_path, previous)
+            return CommandResult(success=False, error=_with_note(failure, note))
 
         staged = self._git_service.stage(ATTRIBUTES_PATH)
         if not staged.success:
@@ -239,14 +295,16 @@ class CommandShare:
         stage_error: str | None,
     ) -> CommandResult:
         """Undo the attribute write and the renormalize, reporting whether it worked."""
-        self._restore_attributes(attrs_path, previous)
+        restore_error = self._restore_attributes(attrs_path, previous)
         restored = self._git_service.restore_index_entry(self._target, entry)
         prefix = f"could not stage {ATTRIBUTES_PATH}: {stage_error}"
-        if not restored.success:
+        index_error = None if restored.success else restored.error
+        reasons = [reason for reason in (restore_error, index_error) if reason]
+        if reasons:
             return CommandResult(
                 success=False,
                 error=(
-                    f"{prefix}; ROLLBACK FAILED ({restored.error}); "
+                    f"{prefix}; ROLLBACK FAILED ({'; '.join(reasons)}); "
                     f"{self._target}'s index entry may still be tokenized — run 'cfg status' and "
                     f"'dot run diff --cached -- {self._target}' before retrying"
                 ),
@@ -256,10 +314,17 @@ class CommandShare:
             error=f"{prefix}; share rolled back, retry 'dot localize --shared {self._target}'",
         )
 
-    def _restore_attributes(self, attrs_path: Path, previous: str | None) -> None:
-        """Put the attribute file back as it was, removing one this command created."""
-        with contextlib.suppress(OSError):
+    def _restore_attributes(self, attrs_path: Path, previous: str | None) -> str | None:
+        """Put the attribute file back as it was, removing one this command created.
+
+        Returns:
+            An error string when the restore failed, None when it succeeded.
+        """
+        try:
             if previous is None:
                 attrs_path.unlink(missing_ok=True)
             else:
                 atomic_write_text(attrs_path, previous)
+        except OSError as exc:
+            return f"could not restore {ATTRIBUTES_PATH} ({exc})"
+        return None
