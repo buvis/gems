@@ -118,3 +118,9 @@
 {"kind":"handoff","site":"build","edge":"leave","at":1792374522,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1792374535,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1792374922,"phase":"review","prd":"00098-sysup-run-observability-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1792374960,"phase":"review","prd":"00098-sysup-run-observability-v1.md"}
+{"id":"500652bb","kind":"bob","task":"review-20261019a","queued_at":1792375440,"prompt_bytes":9500}
+{"id":"0868100f","kind":"carl","task":"review-20261019a","queued_at":1792375440,"prompt_bytes":6531}
+{"id":"500652bb","ended_at":1792376012,"elapsed_s":572,"outcome":"ok","detail":null}
+{"id":"0868100f","ended_at":1792376013,"elapsed_s":573,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1792376390,"phase":"review","prd":"00098-sysup-run-observability-v1.md"}
