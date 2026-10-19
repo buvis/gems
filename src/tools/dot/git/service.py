@@ -416,7 +416,13 @@ class DotGitService(FilterDriverMixin):
         Returns:
             The tracked paths, empty when the lookup failed.
         """
-        err, out = self.shell.exe(f"cfg ls-files {shlex.quote(pathspec)}", self.wd)
+        if pathspec.startswith("-"):
+            # shlex.quote leaves a lone leading dash unquoted (no shell-unsafe char), so force
+            # single-quoting here; "--" alone still lets git's own option parser see it first.
+            quoted = "'" + pathspec.replace("'", "'\"'\"'") + "'"
+            err, out = self.shell.exe(f"cfg ls-files -- {quoted}", self.wd)
+        else:
+            err, out = self.shell.exe(f"cfg ls-files {shlex.quote(pathspec)}", self.wd)
         if err:
             return set()
         return {line for line in out.splitlines() if line}

@@ -18,13 +18,6 @@ PLAIN_ENTRY = IndexEntry(mode="100644", sha="a" * 40)
 LINK_ENTRY = IndexEntry(mode="120000", sha="b" * 40)
 
 
-def _command_text(call: object) -> str:
-    """Join every argument of a recorded shell call into one string."""
-    args = getattr(call, "args", ())
-    kwargs = getattr(call, "kwargs", {})
-    return " ".join(str(value) for value in (*args, *kwargs.values()))
-
-
 def _index_read(*args: object, **kwargs: object) -> tuple[str, str]:
     """Return a regular-file index line for the path the command asks about."""
     parts = [str(value) for value in (*args, *kwargs.values())]
@@ -44,12 +37,6 @@ def shell() -> MagicMock:
 def canned_index_read(shell: MagicMock, read: tuple[str, str]) -> None:
     """Make every shell read return the same canned result pair."""
     shell.exe.side_effect = lambda *_args, **_kwargs: read
-
-
-def index_read_commands(shell: MagicMock) -> list[str]:
-    """Return the text of every shell call that read the git index."""
-    texts = [_command_text(call) for call in shell.exe.call_args_list]
-    return [text for text in texts if "ls-files" in text]
 
 
 def host_text(root: Path, count: int) -> str:
@@ -291,25 +278,6 @@ class TestCommandShareRefusals:
         assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
         assert_index_untouched(service)
 
-    @pytest.mark.parametrize("read", [("fatal: not a git repository", ""), ("", ""), ("", "\n")])
-    def test_refuses_target_whose_index_mode_read_fails(
-        self,
-        tmp_path: Path,
-        shell: MagicMock,
-        read: tuple[str, str],
-    ) -> None:
-        write_file(tmp_path, ".zshrc", host_text(tmp_path, 2))
-        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
-        canned_index_read(shell, read)
-        service = make_service(tracked={".zshrc"})
-
-        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
-
-        assert not result.success
-        assert result.error == ".zshrc is not a plain tracked file (symlink or special mode); shared opt-in refused"
-        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
-        assert_index_untouched(service)
-
     @pytest.mark.parametrize("rel", ["../outside.conf", "../../etc/hosts", "../deep/nested/other.cfg"])
     def test_refuses_relative_path_escaping_dotfiles_root(
         self,
@@ -511,18 +479,6 @@ class TestCommandShareSuccess:
         assert (tmp_path / ".gitattributes").read_text() == "/.zshrc filter=dot-host\n"
         assert (tmp_path / MANIFEST_PATH).read_text() == manifest_text
 
-    def test_reads_index_mode_with_a_pathspec_for_the_target(self, tmp_path: Path, shell: MagicMock) -> None:
-        rel = ".config/app/settings.json"
-        write_file(tmp_path, rel, host_text(tmp_path, 1))
-        service = make_service(tracked={rel})
-
-        result = CommandShare(shell, str(tmp_path), rel, git_service=service).execute()
-
-        assert result.success, result.error
-        reads = index_read_commands(shell)
-        assert reads
-        assert all(rel in text for text in reads)
-
     def test_leaves_file_location_and_manifest_untouched(self, tmp_path: Path, shell: MagicMock) -> None:
         target = write_file(tmp_path, ".zshrc", host_text(tmp_path, 2))
         before = target.read_bytes()
@@ -649,116 +605,19 @@ class TestCommandShareRollback:
         service.stage.assert_not_called()
         service.restore_index_entry.assert_not_called()
 
-    @pytest.mark.parametrize(
-        ("rel", "entry"),
-        [(".zshrc", PLAIN_ENTRY), (".config/app/settings.json", IndexEntry(mode="100755", sha="c" * 40))],
-    )
-    def test_stage_failure_rolls_back_by_captured_index_entry(
-        self,
-        tmp_path: Path,
-        shell: MagicMock,
-        rel: str,
-        entry: IndexEntry,
-    ) -> None:
-        write_file(tmp_path, rel, host_text(tmp_path, 1))
-        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
-        canned_index_read(shell, ("", f"{entry.mode} {entry.sha} 0\t{rel}"))
-        service = make_service(
-            tracked={rel},
-            entry=entry,
-            stage=CommandResult(success=False, error="cfg add failed"),
-        )
-
-        result = CommandShare(shell, str(tmp_path), rel, git_service=service).execute()
-
-        assert not result.success
-        assert result.error == (
-            f"could not stage .gitattributes: cfg add failed; share rolled back, retry 'dot localize --shared {rel}'"
-        )
-        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
-        service.restore_index_entry.assert_called_once_with(rel, entry)
-
-    def test_stage_failure_restores_the_entry_captured_before_renormalize(
+    def test_never_restores_target_index_entry_on_stage_success(
         self,
         tmp_path: Path,
         shell: MagicMock,
     ) -> None:
         write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
         write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
-        pre_entry = IndexEntry(mode="100644", sha="d" * 40)
-        tokenized_entry = IndexEntry(mode="100644", sha="e" * 40)
-        order: list[str] = []
-
-        def on_capture(path: str) -> IndexEntry | None:
-            order.append("capture")
-            if path == ".gitattributes":
-                return None
-            return tokenized_entry if "renormalize" in order else pre_entry
-
-        def on_renormalize(_path: str) -> CommandResult:
-            order.append("renormalize")
-            return CommandResult(success=True)
-
-        service = make_service(tracked={".zshrc"}, stage=CommandResult(success=False, error="cfg add failed"))
-        service.capture_index_entry.side_effect = on_capture
-        service.renormalize.side_effect = on_renormalize
-
-        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
-
-        assert not result.success
-        assert "capture" in order[: order.index("renormalize")]
-        assert "capture" not in order[order.index("renormalize") :]
-        service.restore_index_entry.assert_called_once_with(".zshrc", pre_entry)
-        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
-
-    def test_failed_rollback_after_stage_failure_does_not_claim_rollback(
-        self,
-        tmp_path: Path,
-        shell: MagicMock,
-    ) -> None:
-        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
-        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
-        service = make_service(
-            tracked={".zshrc"},
-            stage=CommandResult(success=False, error="cfg add failed"),
-            restore=CommandResult(success=False, error="update-index refused"),
-        )
-
-        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
-
-        assert not result.success
-        assert result.error == (
-            "could not stage .gitattributes: cfg add failed; ROLLBACK FAILED (update-index refused); "
-            ".zshrc's index entry may still be tokenized — run 'cfg status' and "
-            "'dot run diff --cached -- .zshrc' before retrying"
-        )
-        assert "rolled back, retry" not in result.error
-        service.restore_index_entry.assert_called_once_with(".zshrc", PLAIN_ENTRY)
-
-    @pytest.mark.parametrize(
-        ("stage", "expected_entries"),
-        [
-            (CommandResult(success=True), []),
-            (CommandResult(success=False, error="cfg add failed"), [PLAIN_ENTRY]),
-        ],
-        ids=["stage-succeeds", "stage-fails"],
-    )
-    def test_never_restores_target_index_entry_from_a_none_capture(
-        self,
-        tmp_path: Path,
-        shell: MagicMock,
-        stage: CommandResult,
-        expected_entries: list[IndexEntry],
-    ) -> None:
-        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
-        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
-        service = make_service(tracked={".zshrc"}, stage=stage)
+        service = make_service(tracked={".zshrc"}, stage=CommandResult(success=True))
 
         CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
 
         restored = [(call.args[0], call.args[1]) for call in service.restore_index_entry.call_args_list]
-        assert [entry for path, entry in restored if path == ".zshrc"] == expected_entries
-        assert [entry for path, entry in restored if entry is None] == []
+        assert [entry for path, entry in restored if path == ".zshrc"] == []
 
 
 class TestCommandShareFilesystemErrors:

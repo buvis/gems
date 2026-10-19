@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import shlex
+import os
+import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,7 +26,7 @@ __all__ = ["CommandShare"]
 ATTRIBUTES_PATH = ".gitattributes"
 
 _GLOB_CHARS = "*?["
-_QUOTE_CHARS = " \t#!\\"
+_QUOTE_CHARS = " \t#!\\\n\r"
 _REGULAR_MODES = frozenset({"100644", "100755"})
 _NOT_PLAIN = "{path} is not a plain tracked file (symlink or special mode); shared opt-in refused"
 _UNCONFIGURED = (
@@ -79,7 +80,6 @@ class CommandShare:
             path: Target path ($HOME-relative or absolute under dotfiles root).
             git_service: Optional pre-initialized git service.
         """
-        self._shell = shell
         self._root = Path(dotfiles_root)
         self._git_service = git_service or DotGitService(shell, dotfiles_root)
 
@@ -92,7 +92,9 @@ class CommandShare:
                 # Path is not under dotfiles root
                 self._target = path
         else:
-            self._target = path
+            # Lexical normalization only (no symlink resolution), so a non-canonical
+            # relative spelling (./settings, a/../settings) still tracks the canonical one.
+            self._target = os.path.normpath(path)
 
     def execute(self) -> CommandResult:
         """Run the share command.
@@ -111,17 +113,17 @@ class CommandShare:
         except (OSError, UnicodeDecodeError) as exc:
             return CommandResult(success=False, error=str(exc))
 
-        refusal = self._check_after_read(data)
-        if refusal is not None:
-            return CommandResult(success=False, error=refusal)
-
         # None conflates an absent entry, a conflicted path and a failed read, so refuse
         # rather than hand that None back to restore_index_entry later.
         entry = self._git_service.capture_index_entry(self._target)
         if entry is None:
             return CommandResult(success=False, error=_NOT_PLAIN.format(path=self._target))
 
-        return self._mutate(attrs_path, previous, data, entry)
+        refusal = self._check_after_read(data, entry)
+        if refusal is not None:
+            return CommandResult(success=False, error=refusal)
+
+        return self._mutate(attrs_path, previous, data)
 
     def _check_before_read(self, target_path: Path, previous: str | None) -> str | None:
         """Validate everything decidable without the target's bytes.
@@ -165,14 +167,18 @@ class CommandShare:
                 lambda: not target_path.exists(),
                 f"{self._target} is tracked but missing from disk; run dot add or restore it first",
             ),
+            # Catches a FIFO or other special file: is_symlink() above already cleared
+            # the symlink case, so a plain is_file() check is enough here.
+            (lambda: not target_path.is_file(), _NOT_PLAIN.format(path=self._target)),
         ]
         return _first_refusal(checks)
 
-    def _check_after_read(self, data: bytes) -> str | None:
-        """Validate what needs the target's bytes or a further git subprocess.
+    def _check_after_read(self, data: bytes, entry: IndexEntry) -> str | None:
+        """Validate what needs the target's bytes or the captured index entry.
 
         Args:
             data: Raw bytes of the share target.
+            entry: Stage-zero index entry already captured by ``execute()``.
 
         Returns:
             The refusal message, or None when every check passes.
@@ -195,7 +201,7 @@ class CommandShare:
                 _UNCONFIGURED.format(path=self._target),
             ),
             (
-                lambda: self._index_mode() not in _REGULAR_MODES,
+                lambda: entry.mode not in _REGULAR_MODES,
                 _NOT_PLAIN.format(path=self._target),
             ),
         ]
@@ -207,6 +213,12 @@ class CommandShare:
         Newline translation is off, so a CRLF attribute file survives a
         rollback byte-exactly instead of coming back with rewritten endings.
         """
+        try:
+            info = attrs_path.lstat()
+        except FileNotFoundError:
+            return None
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError(f"{ATTRIBUTES_PATH} is not a regular file (symlink or special mode); refusing to read it")
         try:
             with attrs_path.open(encoding="utf-8", newline="") as handle:
                 return handle.read()
@@ -227,19 +239,6 @@ class CommandShare:
         links, _errors = read_manifest(self._root)
         return any(link.target == self._target for link in links)
 
-    def _index_mode(self) -> str | None:
-        """Read the stage-zero index mode of the target, None when unreadable."""
-        spec = shlex.quote(f":(literal){self._target}")
-        err, out = self._shell.exe(f"cfg ls-files -s -- {spec}", self._root)
-        if err:
-            return None
-        for line in out.splitlines():
-            meta, _tab, _name = line.partition("\t")
-            fields = meta.split()
-            if len(fields) == 3 and fields[2] == "0":
-                return fields[0]
-        return None
-
     def _attributes_text(self, previous: str | None) -> str:
         """Return the attribute text with the anchored dot-host line appended."""
         body = previous or ""
@@ -252,7 +251,6 @@ class CommandShare:
         attrs_path: Path,
         previous: str | None,
         data: bytes,
-        entry: IndexEntry,
     ) -> CommandResult:
         """Register the attribute, renormalize the target, then stage the attribute file."""
         try:
@@ -276,43 +274,23 @@ class CommandShare:
             note = self._restore_attributes(attrs_path, previous)
             return CommandResult(success=False, error=_with_note(failure, note))
 
-        staged = self._git_service.stage(ATTRIBUTES_PATH)
-        if not staged.success:
-            return self._roll_back(attrs_path, previous, entry, staged.error)
-
         count = count_home(data, str(self._root))
         if count:
             output = f"shared {self._target}: {count} host value(s) replaced"
         else:
             output = f"no host value found in {self._target}; filter active for future writes"
-        return CommandResult(success=True, output=output, info=[f"staged {ATTRIBUTES_PATH}"])
 
-    def _roll_back(
-        self,
-        attrs_path: Path,
-        previous: str | None,
-        entry: IndexEntry,
-        stage_error: str | None,
-    ) -> CommandResult:
-        """Undo the attribute write and the renormalize, reporting whether it worked."""
-        restore_error = self._restore_attributes(attrs_path, previous)
-        restored = self._git_service.restore_index_entry(self._target, entry)
-        prefix = f"could not stage {ATTRIBUTES_PATH}: {stage_error}"
-        index_error = None if restored.success else restored.error
-        reasons = [reason for reason in (restore_error, index_error) if reason]
-        if reasons:
-            return CommandResult(
-                success=False,
-                error=(
-                    f"{prefix}; ROLLBACK FAILED ({'; '.join(reasons)}); "
-                    f"{self._target}'s index entry may still be tokenized — run 'cfg status' and "
-                    f"'dot run diff --cached -- {self._target}' before retrying"
-                ),
+        staged = self._git_service.stage(ATTRIBUTES_PATH)
+        if not staged.success:
+            # A failed stage must not undo the attribute registration or the renormalized
+            # index: both are already correct on disk, so leave them and tell the user to
+            # finish staging by hand instead of rolling back a share that in fact succeeded.
+            warning = (
+                f"could not stage {ATTRIBUTES_PATH} ({staged.error}); run 'dot add {ATTRIBUTES_PATH}' to finish staging"
             )
-        return CommandResult(
-            success=False,
-            error=f"{prefix}; share rolled back, retry 'dot localize --shared {self._target}'",
-        )
+            return CommandResult(success=True, output=output, warnings=[warning])
+
+        return CommandResult(success=True, output=output, info=[f"staged {ATTRIBUTES_PATH}"])
 
     def _restore_attributes(self, attrs_path: Path, previous: str | None) -> str | None:
         """Put the attribute file back as it was, removing one this command created.
