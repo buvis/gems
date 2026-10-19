@@ -322,12 +322,13 @@ class TestAnchoredAttributeLine:
 class TestShellUnsafePaths:
     """Shell-unsafe names reach the filter intact.
 
-    ``CommandShare`` writes the attribute line for neither name: it refuses a
-    path that would need attribute-file quoting (the space), and it reads
-    tracking state through ``ls_files``, which hands ``git ls-files`` an
-    unguarded pathspec, so the leading-dash name comes back as untracked. Both
-    round-trip tests therefore register the anchored rule themselves - git's own
-    quoted pattern - and then assert the bytes git stores and checks out.
+    ``CommandShare`` refuses the space-bearing name (it needs attribute-file
+    quoting, which is unsupported) and registers the leading-dash name
+    successfully (``ls_files`` now guards the pathspec with ``--``; see
+    ``test_share_succeeds_for_a_tracked_leading_dash_name`` below). The
+    round-trip test still writes ``.gitattributes`` by hand for both names
+    rather than going through ``CommandShare``, so it can exercise the space
+    name's quoted round trip too, which ``CommandShare`` itself refuses.
     """
 
     @pytest.mark.parametrize("name", ["my file.conf", "-dashy.conf"])
