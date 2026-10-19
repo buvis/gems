@@ -268,6 +268,16 @@ def capture_index_entry(self, path: str) -> IndexEntry | None:
         ``cfg ls-files -s -- <literal-path>`` (fields: mode, sha, stage,
         path — space-separated, tab before path), or ``None`` when the path
         has no index entry at all (never tracked, or already removed).
+
+        Only a **stage-0** record is captured. A conflicted path has no
+        stage 0: ``ls-files -s`` prints three records for it, at stages 1
+        (base), 2 (ours) and 3 (theirs), and blindly reading the first
+        line's fields would capture stage 1 and later "restore" it as a
+        stage-0 entry — silently resolving a merge conflict to its base and
+        discarding both sides. So the parse requires the stage field to read
+        exactly ``0`` and returns ``None`` otherwise, and a conflicted path
+        is refused before any mutation by check 12 below rather than rolled
+        back afterwards.
     """
 
 def restore_index_entry(self, path: str, entry: IndexEntry | None) -> CommandResult:
@@ -279,8 +289,15 @@ def restore_index_entry(self, path: str, entry: IndexEntry | None) -> CommandRes
             index entry before" (restoring to that state removes it again).
 
     Returns:
-        Success from ``cfg update-index --cacheinfo <mode>,<sha>,<path>``
-        when ``entry`` is not ``None`` — the whole comma triple is one
+        Success from ``cfg update-index --add --cacheinfo <mode>,<sha>,<path>``
+        when ``entry`` is not ``None``. ``--add`` is REQUIRED, not optional:
+        verified empirically 2026-10-19, ``--cacheinfo`` without it refuses a
+        path that is not currently in the index with ``error: <path>: cannot
+        add to the index - missing --add option?`` and exits 128 — which is
+        precisely the restore case, since the mutation being rolled back may
+        have dropped the entry. With ``--add`` both paths work: re-creating a
+        removed entry and replacing an existing entry's mode both exit 0.
+        The whole comma triple is one
         ``shlex.quote``d shell token, and its third field is a **pathname**,
         NOT a ``:(literal)`` pathspec: ``git update-index --cacheinfo`` takes
         ``<mode>,<object>,<path>`` (git's own usage string), so a pathspec
@@ -342,7 +359,7 @@ class CommandShare:
   9. path contains a glob metacharacter (`*`, `?`, `[`) — `f"{target} looks like a glob pattern; glob opt-in is unsupported"`.
   10. path needs attribute quoting (whitespace, `#`, `!`, `[`, backslash) — `f"{target} needs attribute-file quoting, which is unsupported"`.
   11. the dot-host filter driver is not actually and fully configured on this host (`git_service.filter_driver_configured() -> bool`, reading all three of `filter.dot-host.clean`/`.smudge`/`.required` — not just `clean` — since a self-heal that wrote the first two and failed on `required` is just as inert a half-configuration as one that wrote none) — `f"dot-host filter driver is not configured; a prior self-heal write may have failed. Re-run 'dot status' to retry, then 'dot localize --shared {target}' again"`. Without this check, a host whose `_ensure_filter_driver` self-heal failed silently (Interfaces & contracts above) would let `CommandShare` "succeed" via Git's own no-op passthrough on an unconfigured filter — the index would be byte-identical to the work tree, not tokenized, and the reported replacement count would be a lie about what the index actually holds.
-  12. the target is a symlink, or its tracked index entry's mode is not a plain regular-file mode (`100644`/`100755`) — checked via `Path(target_path).is_symlink()` (not-following) and `git_service`'s existing `status()`/`ls_files` surface extended with one `cfg ls-files -s -- <literal-path>` call to read the mode field — `f"{target} is not a plain tracked file (symlink or special mode); shared opt-in refused"`. This is checked before check 8's byte read, so a FIFO or other special file is refused before anything ever attempts to read it (which could hang); a symlink is refused rather than silently sharing its target's content under the link's own path.
+  12. the target is a symlink, or its tracked index entry's mode is not a plain regular-file mode (`100644`/`100755`) — checked via `Path(target_path).is_symlink()` (not-following) and `git_service`'s existing `status()`/`ls_files` surface extended with one `cfg ls-files -s -- <literal-path>` call to read the mode field — `f"{target} is not a plain tracked file (symlink or special mode); shared opt-in refused"`. This is checked before check 8's byte read, so a FIFO or other special file is refused before anything ever attempts to read it (which could hang); a symlink is refused rather than silently sharing its target's content under the link's own path. The same check refuses a path with **no stage-0 index entry** — a conflicted path, whose `ls-files -s` output is three stage-1/2/3 records and whose `capture_index_entry` therefore returns `None` — with `f"{target} has no clean index entry (merge conflict in progress); shared opt-in refused"`. Refusing here is what keeps the rollback safe: a conflicted path is never mutated, so `restore_index_entry(target, None)` can never drop its conflict stages from the index.
   (Checks 9 and 10 overlap on `[`; check 9's glob message wins when both match, since it is tested first. Checks 11-12 run after 1-10 since they need git/filesystem round-trips the string-only checks above do not. There is deliberately no "no staged changes" refusal — unlike an earlier draft of this design, the mutation sequence below restores index state by captured sha rather than by reconstructing it from work-tree bytes, so a staged difference on `target` is no longer a hazard and need not be refused.)
 - **Mutation sequence** (mirrors `CommandLocalize._mutate`'s ordered-steps +
   reverse rollback shape, but there is no move/link step here — only an

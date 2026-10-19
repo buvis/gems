@@ -157,3 +157,9 @@
 {"id":"2348d2e9","ended_at":1792382186,"elapsed_s":410,"outcome":"ok","detail":null}
 {"id":"6274793a","kind":"tess","task":"2","queued_at":1792382254,"prompt_bytes":14572}
 {"id":"6274793a","ended_at":1792382305,"elapsed_s":51,"outcome":"ok","detail":null}
+{"id":"50f26cdc","kind":"devon","task":"2","queued_at":1792382373,"prompt_bytes":4509}
+{"id":"50f26cdc","ended_at":1792382841,"elapsed_s":468,"outcome":"ok","detail":"broke the tests; 8 weak points + 1 blocking over-constraint"}
+{"id":"514ae3d2","kind":"tess","task":"2","queued_at":1792382940,"prompt_bytes":20081}
+{"id":"514ae3d2","ended_at":1792383202,"elapsed_s":262,"outcome":"ok","detail":"8 weak points addressed, 1 blocker raised (conflict stage unpinned)"}
+{"id":"4fd2e91d","kind":"tess","task":"2","queued_at":1792383282,"prompt_bytes":15575}
+{"id":"4fd2e91d","ended_at":1792383330,"elapsed_s":48,"outcome":"ok","detail":"conflict-stage test added"}
