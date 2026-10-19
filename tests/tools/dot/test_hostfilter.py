@@ -330,3 +330,11 @@ class TestResolveHome:
         monkeypatch.setenv("HOME", "/Users/dave/")
 
         assert resolve_home(None, "/home/alice") == "/Users/dave"
+
+    def test_normalizes_and_strips_trailing_separator_from_windows_dotfiles_root(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("DOTFILES_ROOT", "C:\\Users\\bob\\dots\\")
+
+        assert resolve_home(None, "/home/alice") == "C:/Users/bob/dots"

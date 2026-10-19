@@ -57,8 +57,10 @@ def count_home(data: bytes, home: str) -> int:
 def resolve_home(work_tree: str | None, cwd: str) -> str:
     """Resolve the home path from the git work tree, DOTFILES_ROOT, or HOME."""
     if work_tree:
-        return str(Path(cwd, work_tree))
-    dotfiles_root = os.environ.get("DOTFILES_ROOT")
-    if dotfiles_root:
-        return str(Path(dotfiles_root))
-    return str(Path.home())
+        home = str(Path(cwd, work_tree))
+    else:
+        dotfiles_root = os.environ.get("DOTFILES_ROOT")
+        home = str(Path(dotfiles_root)) if dotfiles_root else str(Path.home())
+    if _WINDOWS_HOME.match(home):
+        return _normalize(home).rstrip("/\\")
+    return home
