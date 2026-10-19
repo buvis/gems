@@ -266,11 +266,53 @@ class TestRunnerLogWiring:
     def test_log_open_failure_propagates_as_fatal(self, mocker) -> None:
         mocker.patch("sysup.runner.runlog.open_run_log", side_effect=FatalError("could not create run log"))
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
         cmd = _cmd(steps=[["brew", "update"]])
 
         with pytest.raises(FatalError, match="could not create run log"):
             list(Runner(_cfg()).run([("brew", cmd)]))
+
+        run_mock.assert_not_called()
+
+    def test_prune_failure_spawns_no_updates(self, mocker) -> None:
+        mocker.patch("sysup.runner.runlog.prune", side_effect=FatalError("could not list run-log directory"))
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        cmd = _cmd(steps=[["brew", "update"]])
+
+        with pytest.raises(FatalError, match="could not list run-log directory"):
+            list(Runner(_cfg()).run([("brew", cmd)]))
+
+        run_mock.assert_not_called()
+
+    def test_append_failure_stops_further_spawns_even_with_continue_on_error(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner.runlog.append_step", side_effect=FatalError("could not write run log"))
+        cmd = _cmd(steps=[["brew", "update"], ["mise", "upgrade"]], continue_on_error=True)
+
+        with pytest.raises(FatalError, match="could not write run log"):
+            list(Runner(_cfg()).run([("brew", cmd)]))
+
+        # only the first step's argv was spawned before the write failure stopped the run.
+        assert run_mock.call_count == 1
+
+    def test_flush_failure_stops_sudo_and_still_closes_log(self, mocker) -> None:
+        stop = mocker.Mock()
+        mocker.patch("sysup.runner.Runner._prime", return_value=[stop])
+        mocker.patch("sysup.runner._should_prime", return_value=True)
+        close = mocker.patch("sysup.runner.runlog.close")
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner.runlog.append_step", side_effect=FatalError("could not write run log"))
+        cmd = _cmd(steps=[["brew", "update"], ["mise", "upgrade"]])
+
+        with pytest.raises(FatalError, match="could not write run log"):
+            list(Runner(_cfg(prime=("sudo",))).run([("brew", cmd)]))
+
+        assert run_mock.call_count == 1
+        stop.assert_called_once()
+        close.assert_called_once()
 
     def test_close_called_even_when_entry_raises(self, mocker) -> None:
         close = mocker.patch("sysup.runner.runlog.close")
