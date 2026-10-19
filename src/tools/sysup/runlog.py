@@ -240,22 +240,7 @@ def append_step(
     timeout_s: float | None = None,
 ) -> None:
     """Append one completed step's section, then ``handle.flush()`` and
-    ``os.fsync(handle.fileno())``.
-
-    ``descriptor`` is the argv joined with spaces (captured/timeout sections)
-    or the ``use:`` capability name / interactive argv string (not-captured
-    sections). Section markers, exactly:
-
-    - captured, no timeout: ``=== <entry>: <descriptor> (exit <exit_code>) ===``
-      followed by ``stdout`` written verbatim (preserving its own internal
-      newlines, no per-line transformation), then a single ``\\n``, then
-      ``stderr`` written verbatim the same way — neither stream gets its own
-      sub-header; a trailing blank line after both.
-    - timed out (``timed_out=True``): ``=== <entry>: <descriptor> (timed out after <timeout_s>s) ===``
-      followed by whatever ``stdout``/``stderr`` partial text is available
-      (empty string if none) — never invents an exit code.
-    - not captured (``captured=False``): ``=== <entry>: <descriptor> (<status>, not captured) ===``
-      with no stdout/stderr section.
+    ``os.fsync(handle.fileno())``. Section marker format: see :func:`_format_section`.
 
     Raises ``FatalError`` wrapping any ``OSError`` from the write or flush,
     WITH ``log.path`` in the message. Performs no retry and leaves previously
@@ -295,7 +280,23 @@ def _format_section(
     timed_out: bool,
     timeout_s: float | None,
 ) -> str:
-    """Render one ``=== ... ===`` section marker plus its body, per :func:`append_step`."""
+    """Render one ``=== ... ===`` section marker plus its body.
+
+    ``descriptor`` is the argv joined with spaces (captured/timeout sections)
+    or the ``use:`` capability name / interactive argv string (not-captured
+    sections). Section markers, exactly:
+
+    - captured, no timeout: ``=== <entry>: <descriptor> (exit <exit_code>) ===``
+      followed by ``stdout`` written verbatim (preserving its own internal
+      newlines, no per-line transformation), then a single ``\\n``, then
+      ``stderr`` written verbatim the same way — neither stream gets its own
+      sub-header; a trailing blank line after both.
+    - timed out (``timed_out=True``): ``=== <entry>: <descriptor> (timed out after <timeout_s>s) ===``
+      followed by whatever ``stdout``/``stderr`` partial text is available
+      (empty string if none) — never invents an exit code.
+    - not captured (``captured=False``): ``=== <entry>: <descriptor> (<status>, not captured) ===``
+      with no stdout/stderr section.
+    """
     if timed_out:
         header = f"=== {entry}: {descriptor} (timed out after {timeout_s}s) ===\n"
         body = f"{stdout}\n{stderr}\n\n"
