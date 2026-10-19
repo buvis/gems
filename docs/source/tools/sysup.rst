@@ -135,7 +135,7 @@ dotfiles repo; keep a separate backup of anything only it holds.
 Priming sudo
 -------------
 
-An entry that sets ``sudo: true``, or whose first step's argv starts with
+An entry that sets ``sudo: true``, or any of whose steps' argv starts with
 ``sudo``, needs a cached sudo ticket:
 
 .. code-block:: yaml
@@ -180,8 +180,8 @@ nothing was captured. If the log itself cannot be written — directory
 creation, file creation, or a write/flush failure — the run stops with an
 error instead of continuing silently (stop-on-log-failure).
 
-``sysup`` prints the log's path after every clean or amber (non-red) run,
-e.g. ``full log: ~/.local/state/sysup/logs/20261019T120000Z.log``.
+``sysup`` prints the log's path after every run that reaches one, clean,
+amber or red, e.g. ``full log: ~/.local/state/sysup/logs/20261019T120000Z.log``.
 
 Within a ``run:`` entry's ``steps``, each argv step's captured stdout and
 stderr are scanned for lines starting with ``error:`` (case-insensitive,
