@@ -65,6 +65,30 @@ class TestRunnerRunEntries:
         assert len(steps) == 1
         assert steps[0].success is False
 
+    def test_continue_on_error_prints_and_retains_every_failure(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mock_run = mocker.patch("sysup.runner.subprocess.run")
+        mock_run.side_effect = [
+            self._ok(returncode=1, stderr="first boom"),
+            self._ok(returncode=1, stderr="second boom"),
+            self._ok(),
+        ]
+        failure = mocker.patch("sysup.runner.console.failure")
+        cmd = _cmd(continue_on_error=True, steps=[["a"], ["b"], ["c"]])
+
+        steps = list(Runner(_cfg()).run([("multi", cmd)]))
+
+        assert mock_run.call_count == 3
+        assert len(steps) == 1
+        assert steps[0].success is False
+        # both failures are visible in the printed diagnostics...
+        printed = [call.args[0] for call in failure.call_args_list]
+        assert any("first boom" in line for line in printed)
+        assert any("second boom" in line for line in printed)
+        # ...and both survive into the final failed result, not just the last one.
+        assert "first boom" in steps[0].message
+        assert "second boom" in steps[0].message
+
     def test_interactive_inherits_stdio_exit_code_only(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())

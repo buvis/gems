@@ -49,7 +49,7 @@ class TestObservabilityRepeatsAndContinue:
             (
                 [_proc(1, stderr="first boom"), _proc(stdout="error: y"), _proc(stderr="error: z")],
                 "failed",
-                ["error: y", "error: z"],
+                ["multi failed: first boom", "error: y", "error: z"],
             ),
         ],
         ids=["clean", "warned", "failed"],

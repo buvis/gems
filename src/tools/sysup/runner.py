@@ -221,7 +221,7 @@ class Runner:
             yield StepResult(name, success=True, message=f"would run: {rendered}", command=name)
             return
 
-        failure: StepResult | None = None
+        failures: list[StepResult] = []
         error_count = 0
         for argv in steps:
             outcome = self._run_argv(name, list(argv), command)
@@ -240,10 +240,11 @@ class Runner:
                     timeout_s=outcome.timeout_s,
                 )
             if not outcome.result.success:
-                failure = outcome.result
+                failures.append(outcome.result)
                 if not command.continue_on_error:
-                    yield failure
+                    yield outcome.result
                     return
+                console.failure(outcome.result.message or f"{name}: step failed")
                 continue
             errors = _scan_errors(outcome.stdout, outcome.stderr)
             error_count += len(errors)
@@ -251,8 +252,9 @@ class Runner:
                 console.failure(line)
             if len(errors) > _MAX_PRINTED_ERRORS:
                 console.failure(f"+{len(errors) - _MAX_PRINTED_ERRORS} more, see log")
-        if failure is not None:
-            yield failure
+        if failures:
+            message = "; ".join(f.message or f"{name}: step failed" for f in failures)
+            yield StepResult(name, success=False, message=message, command=name)
         elif error_count:
             message = f"{name}: {error_count} error line(s), see log"
             yield StepResult(name, success=True, message=message, status="warned", command=name)
