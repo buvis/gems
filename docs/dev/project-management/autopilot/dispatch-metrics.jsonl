@@ -137,3 +137,14 @@
 {"kind":"handoff","site":"build","edge":"resume","at":1792378861,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1792378868,"phase":"done","prd":"00098-sysup-run-observability-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1792378971,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792378988,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"id":"d72c8f6b","kind":"tess","task":"1","queued_at":1792380603,"prompt_bytes":26971}
+{"id":"a64f49d9","kind":"tess","task":"1","queued_at":1792380611,"prompt_bytes":26971}
+{"id":"a64f49d9","ended_at":1792380801,"elapsed_s":190,"outcome":"ok","detail":null}
+{"id":"14d36dc4","kind":"devon","task":"1","queued_at":1792380877,"prompt_bytes":3492}
+{"id":"14d36dc4","ended_at":1792381003,"elapsed_s":126,"outcome":"ok","detail":null}
+{"id":"3a45917b","kind":"tess","task":"1","queued_at":1792381036,"prompt_bytes":5558}
+{"id":"3a45917b","ended_at":1792381113,"elapsed_s":77,"outcome":"ok","detail":null}
+{"id":"aa90d1a6","kind":"ivan","task":"1","queued_at":1792381147,"prompt_bytes":30207}
+{"id":"aa90d1a6","ended_at":1792381223,"elapsed_s":76,"outcome":"ok","detail":null}
+{"id":"c187f533","kind":"pat","task":"1","queued_at":1792381339,"prompt_bytes":26379}
