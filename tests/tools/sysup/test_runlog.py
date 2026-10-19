@@ -97,10 +97,35 @@ class TestOpenRunLog:
 
     def test_header_write_failure_closes_wrapped_handle(self, tmp_path: Path, mocker) -> None:
         mocker.patch("sysup.runlog.os.fsync", side_effect=OSError("fsync failed"))
-        with pytest.raises(FatalError, match="fsync failed"):
+        with pytest.raises(FatalError, match=r"\(incomplete\).*fsync failed"):
             runlog.open_run_log(datetime(2026, 10, 18, tzinfo=timezone.utc), [])
         # the file exists but is incomplete; its handle was closed, not leaked.
         assert runlog.logs_dir().is_dir()
+
+    def test_header_write_failure_suppresses_secondary_close_error(self, tmp_path: Path, mocker) -> None:
+        class _BrokenCloseHandle:
+            def write(self, _text: str) -> None:
+                pass
+
+            def flush(self) -> None:
+                pass
+
+            def fileno(self) -> int:
+                return -1
+
+            def close(self) -> None:
+                raise OSError("close failed")
+
+        mocker.patch("sysup.runlog.os.fdopen", return_value=_BrokenCloseHandle())
+        mocker.patch("sysup.runlog.os.fsync", side_effect=OSError("fsync failed"))
+        with pytest.raises(FatalError, match="fsync failed"):
+            runlog.open_run_log(datetime(2026, 10, 18, tzinfo=timezone.utc), [])
+
+    def test_fdopen_failure_suppresses_secondary_close_error(self, tmp_path: Path, mocker) -> None:
+        mocker.patch("sysup.runlog.os.close", side_effect=OSError("close failed"))
+        mocker.patch("sysup.runlog.os.fdopen", side_effect=OSError("wrap failed"))
+        with pytest.raises(FatalError, match="wrap failed"):
+            runlog.open_run_log(datetime(2026, 10, 18, tzinfo=timezone.utc), [])
 
 
 class TestAppendStep:
@@ -155,7 +180,7 @@ class TestAppendStep:
         log = self._log(tmp_path)
         runlog.append_step(log, "brew", "brew update", captured=True, status="ok", exit_code=0, stdout="kept")
         mocker.patch.object(log._handle, "write", side_effect=OSError("disk full"))
-        with pytest.raises(FatalError, match="disk full"):
+        with pytest.raises(FatalError, match=r"\(incomplete\).*disk full"):
             runlog.append_step(log, "mise", "mise upgrade", captured=True, status="ok", exit_code=0)
         log._handle.flush = lambda: None
         log._handle.close = lambda: None
@@ -179,13 +204,14 @@ class TestClose:
     def test_close_failure_raises_fatal_with_path(self, tmp_path: Path, mocker) -> None:
         log = runlog.open_run_log(datetime(2026, 10, 18, tzinfo=timezone.utc), [])
         mocker.patch.object(log._handle, "close", side_effect=OSError("close failed"))
-        with pytest.raises(FatalError, match=str(log.path)):
+        with pytest.raises(FatalError, match=r"\(incomplete\).*close failed"):
             runlog.close(log)
 
 
 class TestPrune:
     def test_missing_directory_is_noop(self, tmp_path: Path) -> None:
-        runlog.prune(runlog.logs_dir())
+        assert runlog.prune(runlog.logs_dir()) is None
+        assert not runlog.logs_dir().exists()
 
     def test_sequential_runs_retain_ten(self, tmp_path: Path) -> None:
         for hour in range(11):
@@ -219,9 +245,10 @@ class TestPrune:
     def test_already_deleted_file_is_not_an_error(self, tmp_path: Path, mocker) -> None:
         directory = runlog.logs_dir()
         directory.mkdir(parents=True)
+        unlink = mocker.patch("sysup.runlog.os.unlink", side_effect=FileNotFoundError)
         (directory / "20261018T010000Z.log").write_text("x")
-        mocker.patch("sysup.runlog.os.unlink", side_effect=FileNotFoundError)
-        runlog.prune(directory, keep=0)
+        assert runlog.prune(directory, keep=0) is None
+        unlink.assert_called_once()
 
     def test_other_oserror_on_delete_raises_fatal_and_stops(self, tmp_path: Path, mocker) -> None:
         directory = runlog.logs_dir()
@@ -238,3 +265,45 @@ class TestPrune:
         mocker.patch.object(Path, "iterdir", side_effect=OSError("denied"))
         with pytest.raises(FatalError, match="denied"):
             runlog.prune(directory)
+
+    def test_non_matching_name_is_reported(self, tmp_path: Path, mocker) -> None:
+        warning = mocker.patch("sysup.runlog.console.warning")
+        directory = runlog.logs_dir()
+        directory.mkdir(parents=True)
+        bogus = directory / "notes.txt"
+        bogus.write_text("keep me")
+        runlog.prune(directory, keep=0)
+        warning.assert_called_once()
+        assert str(bogus) in warning.call_args[0][0]
+
+    def test_non_regular_entry_is_reported(self, tmp_path: Path, mocker) -> None:
+        warning = mocker.patch("sysup.runlog.console.warning")
+        directory = runlog.logs_dir()
+        directory.mkdir(parents=True)
+        target = tmp_path / "outside.log"
+        target.write_text("outside")
+        link = directory / "20261018T010000Z.log"
+        link.symlink_to(target)
+        runlog.prune(directory, keep=0)
+        warning.assert_called_once()
+        assert str(link) in warning.call_args[0][0]
+
+    def test_candidate_vanishing_before_restat_is_skipped(self, tmp_path: Path, mocker) -> None:
+        directory = runlog.logs_dir()
+        directory.mkdir(parents=True)
+        path = directory / "20261018T010000Z.log"
+        path.write_text("x")
+        real_lstat = os.lstat
+        calls = {"n": 0}
+
+        def flaky_lstat(target):
+            calls["n"] += 1
+            if calls["n"] != 1:
+                raise FileNotFoundError
+            return real_lstat(target)
+
+        mocker.patch("sysup.runlog.os.lstat", side_effect=flaky_lstat)
+        unlink = mocker.patch("sysup.runlog.os.unlink")
+        assert runlog.prune(directory, keep=0) is None
+        unlink.assert_not_called()
+        assert calls["n"] == 2

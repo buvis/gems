@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import stat
@@ -8,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from buvis.pybase.adapters import console
 from buvis.pybase.result import FatalError
 
 if TYPE_CHECKING:
@@ -34,6 +36,51 @@ class RunLog:
     _handle: TextIO
 
 
+def _is_disposable_log(entry: Path) -> bool:
+    """True only for a regular file whose basename matches the run-log naming scheme."""
+    if not _NAME_RE.match(entry.name):
+        return False
+    try:
+        info = os.lstat(entry)
+    except FileNotFoundError:
+        return False
+    return stat.S_ISREG(info.st_mode)
+
+
+def _list_candidates(directory: Path) -> list[tuple[float, str, Path]] | None:
+    """List run-log prune candidates with their ``st_mtime``, or ``None`` if ``directory`` is missing.
+
+    Reports (via ``console.warning``) and skips any entry whose name does not
+    match the run-log scheme, that vanished between listing and stat, or that
+    is not a regular file. Raises ``FatalError`` on any other stat failure.
+    """
+    try:
+        entries = list(directory.iterdir())
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        msg = f"could not list run-log directory {directory}: {exc}"
+        raise FatalError(msg) from exc
+
+    candidates: list[tuple[float, str, Path]] = []
+    for entry in entries:
+        if not _NAME_RE.match(entry.name):
+            console.warning(f"run-log prune: skipping {entry} (name does not match run-log scheme)")
+            continue
+        try:
+            info = os.lstat(entry)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            msg = f"could not stat run-log candidate {entry}: {exc}"
+            raise FatalError(msg) from exc
+        if not stat.S_ISREG(info.st_mode):
+            console.warning(f"run-log prune: skipping {entry} (not a regular file)")
+            continue
+        candidates.append((info.st_mtime, entry.name, entry))
+    return candidates
+
+
 def prune(directory: Path, *, keep: int = _KEEP) -> None:
     """Delete oldest matching log files beyond ``keep``, oldest-first.
 
@@ -43,35 +90,20 @@ def prune(directory: Path, *, keep: int = _KEEP) -> None:
     anywhere, including outside ``directory``) pass the check and be deleted.
     ``lstat`` reports the link itself, so a symlink always fails ``S_ISREG``
     and is skipped, never followed. The basename must also match ``_NAME_RE``.
-    A mismatch (wrong type or wrong name) is reported (not raised) and skipped.
-    Ordering: by ``st_mtime`` (from the same ``lstat`` call, so no second
-    syscall), filename as tie-breaker. Missing ``directory`` is a no-op. A file
-    that disappears between the initial listing and its scheduled deletion
-    (``FileNotFoundError`` from ``os.unlink``) is treated as already-pruned,
-    not an error. Raises ``FatalError`` wrapping any OTHER ``OSError`` hit
-    during listing or deletion, with the offending path in the message, after
-    attempting no further deletions this call.
+    A mismatch (wrong type or wrong name) is reported (not raised) via
+    ``console.warning`` and skipped, both at listing time and again
+    immediately before deletion. Ordering: by ``st_mtime`` (from the listing
+    ``lstat``), filename as tie-breaker. Missing ``directory`` is a no-op. A
+    candidate that vanishes between the initial listing and its re-check
+    (``FileNotFoundError`` from either the pre-deletion ``os.lstat`` or
+    ``os.unlink``) is treated as already-pruned, not an error. Raises
+    ``FatalError`` wrapping any OTHER ``OSError`` hit during listing or
+    deletion, with the offending path in the message, after attempting no
+    further deletions this call.
     """
-    try:
-        entries = list(directory.iterdir())
-    except FileNotFoundError:
+    candidates = _list_candidates(directory)
+    if candidates is None:
         return
-    except OSError as exc:
-        msg = f"could not list run-log directory {directory}: {exc}"
-        raise FatalError(msg) from exc
-
-    candidates: list[tuple[float, str, Path]] = []
-    for entry in entries:
-        if not _NAME_RE.match(entry.name):
-            continue
-        try:
-            info = os.lstat(entry)
-        except OSError as exc:
-            msg = f"could not stat run-log candidate {entry}: {exc}"
-            raise FatalError(msg) from exc
-        if not stat.S_ISREG(info.st_mode):
-            continue
-        candidates.append((info.st_mtime, entry.name, entry))
 
     candidates.sort(key=lambda item: (item[0], item[1]))
     overflow = len(candidates) - keep
@@ -79,6 +111,14 @@ def prune(directory: Path, *, keep: int = _KEEP) -> None:
         return
 
     for _, _, path in candidates[:overflow]:
+        try:
+            still_disposable = _is_disposable_log(path)
+        except OSError as exc:
+            msg = f"could not stat run-log candidate {path}: {exc}"
+            raise FatalError(msg) from exc
+        if not still_disposable:
+            console.warning(f"run-log prune: skipping {path} (no longer a disposable run log)")
+            continue
         try:
             os.unlink(path)
         except FileNotFoundError:
@@ -130,6 +170,13 @@ def open_run_log(start: datetime, plan_names: list[str]) -> RunLog:
         raise FatalError(msg) from exc
 
     base = start.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    fd, path = _create_exclusive(directory, base)
+    handle = _write_header(fd, path, start, plan_names)
+    return RunLog(path=path, _handle=handle)
+
+
+def _create_exclusive(directory: Path, base: str) -> tuple[int, Path]:
+    """Exclusively create ``<base>.log``, retrying ``-1``, ``-2``, ... on collision."""
     fd: int | None = None
     path: Path | None = None
     suffix = 0
@@ -152,11 +199,16 @@ def open_run_log(start: datetime, plan_names: list[str]) -> RunLog:
         detail = last_error if last_error is not None else "no available filename"
         msg = f"could not create run log {directory / (base + '.log')}: {detail}"
         raise FatalError(msg)
+    return fd, path
 
+
+def _write_header(fd: int, path: Path, start: datetime, plan_names: list[str]) -> TextIO:
+    """Wrap ``fd`` in a text handle and write/flush/fsync the run-log header."""
     try:
         handle = os.fdopen(fd, "w", encoding="utf-8")
     except OSError as exc:
-        os.close(fd)
+        with contextlib.suppress(OSError):
+            os.close(fd)
         msg = f"could not create run log {path}: {exc}"
         raise FatalError(msg) from exc
 
@@ -167,11 +219,11 @@ def open_run_log(start: datetime, plan_names: list[str]) -> RunLog:
         handle.flush()
         os.fsync(handle.fileno())
     except OSError as exc:
-        msg = f"could not create run log {path}: {exc}"
-        handle.close()
+        msg = f"could not create run log {path} (incomplete): {exc}"
+        with contextlib.suppress(OSError):
+            handle.close()
         raise FatalError(msg) from exc
-
-    return RunLog(path=path, _handle=handle)
+    return handle
 
 
 def append_step(
@@ -211,8 +263,39 @@ def append_step(
     Does NOT close ``log`` on failure — the caller's ``finally`` still calls
     :func:`close` exactly once regardless of how the generator unwound.
     """
-    handle = log._handle
+    section = _format_section(
+        entry,
+        descriptor,
+        captured=captured,
+        status=status,
+        exit_code=exit_code,
+        stdout=stdout,
+        stderr=stderr,
+        timed_out=timed_out,
+        timeout_s=timeout_s,
+    )
+    try:
+        log._handle.write(section)
+        log._handle.flush()
+        os.fsync(log._handle.fileno())
+    except OSError as exc:
+        msg = f"could not write run log {log.path} (incomplete): {exc}"
+        raise FatalError(msg) from exc
 
+
+def _format_section(
+    entry: str,
+    descriptor: str,
+    *,
+    captured: bool,
+    status: str,
+    exit_code: int | None,
+    stdout: str,
+    stderr: str,
+    timed_out: bool,
+    timeout_s: float | None,
+) -> str:
+    """Render one ``=== ... ===`` section marker plus its body, per :func:`append_step`."""
     if timed_out:
         header = f"=== {entry}: {descriptor} (timed out after {timeout_s}s) ===\n"
         body = f"{stdout}\n{stderr}\n\n"
@@ -222,14 +305,7 @@ def append_step(
     else:
         header = f"=== {entry}: {descriptor} (exit {exit_code}) ===\n"
         body = f"{stdout}\n{stderr}\n\n"
-
-    try:
-        handle.write(header + body)
-        handle.flush()
-        os.fsync(handle.fileno())
-    except OSError as exc:
-        msg = f"could not write run log {log.path}: {exc}"
-        raise FatalError(msg) from exc
+    return header + body
 
 
 def close(log: RunLog) -> None:
@@ -238,5 +314,5 @@ def close(log: RunLog) -> None:
     try:
         log._handle.close()
     except OSError as exc:
-        msg = f"could not close run log {log.path}: {exc}"
+        msg = f"could not close run log {log.path} (incomplete): {exc}"
         raise FatalError(msg) from exc
