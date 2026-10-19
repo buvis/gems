@@ -125,6 +125,26 @@ def _notify(cfg: SysupConfig, entries: dict[str, Any]) -> dict[str, Any]:
     return mark_notified(entries, names)
 
 
+def _persist_attention(cfg: SysupConfig, plan: list[tuple[str, SysupCommand]], results: list[StepResult]) -> bool:
+    """Fold run results into attention state, summarize, notify and persist.
+
+    Returns False when the state could not be written.
+    """
+    from sysup.attention import fold_results, read_state, write_state
+    from sysup.config import applicable_items
+
+    checked = {name for name, _ in plan} | {name for name, _ in applicable_items(cfg)}
+    entries = fold_results(read_state(), checked, results, datetime.now(timezone.utc))
+    _print_summary(entries, checked)
+    entries = _notify(cfg, entries)
+    try:
+        write_state(entries)
+    except OSError as exc:
+        console.panic(f"could not write attention state: {exc}")
+        return False
+    return True
+
+
 @click.group(invoke_without_command=True, help="Run applicable system and tooling updates")
 @click.option("--only", multiple=True, help="Run only these command names (comma-separated or repeated).")
 @click.option("--tag", "tags", multiple=True, help="Run only commands carrying one of these tags.")
@@ -142,8 +162,8 @@ def cli(
     if ctx.invoked_subcommand is not None:
         return
 
-    from sysup.attention import exit_code, fold_results, read_state, write_state
-    from sysup.config import applicable_commands, applicable_items, load_config
+    from sysup.attention import exit_code
+    from sysup.config import applicable_commands, load_config
     from sysup.runner import Runner
 
     # Honour the same --config / --config-dir the buvis_options wrapper resolved
@@ -175,14 +195,7 @@ def cli(
         return
     if dry_run:
         return
-    checked = {name for name, _ in plan} | {name for name, _ in applicable_items(cfg)}
-    entries = fold_results(read_state(), checked, results, datetime.now(timezone.utc))
-    _print_summary(entries, checked)
-    entries = _notify(cfg, entries)
-    try:
-        write_state(entries)
-    except OSError as exc:
-        console.panic(f"could not write attention state: {exc}")
+    if not _persist_attention(cfg, plan, results):
         return
     if runner.log_path is not None:
         console.info(f"full log: {runner.log_path}")
