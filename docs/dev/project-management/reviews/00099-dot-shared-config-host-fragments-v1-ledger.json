@@ -1,0 +1,42 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Scope creep in the share action, beyond the spec's refusal and rollback set. It adds `check_attr_filter` (a conflicting-attribute check that triggers rollback), a `filter_driver_configured()` refusal, `capture_index_entry` and `restore_index_entry` index rollback, and a \"not a plain tracked file / index mode\" refusal. These are defensible hardening, but none are specified and they cause the stage-failure deviation above.",
+    "file": "src/tools/dot/commands/localize/share.py:171",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Structure deviates from the spec. The driver logic (`_ensure_filter_driver`, `renormalize`, plus the extra methods) lives in a new mixin file `filter_driver.py`, and `IndexEntry` was added to `models.py`. The spec places these in `DotGitService` in service.py. `DotGitService` still exposes them by inheritance, so behavior is unaffected.",
+    "file": "src/tools/dot/git/filter_driver.py:37",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Driver rollback removes only keys written successfully during this invocation. Pre-existing smudge/required keys survive a failed installation, contradicting the fully-inert rollback contract. Attempt cleanup of all three keys and test failures with pre-existing partial configuration.",
+    "file": "src/tools/dot/git/filter_driver.py:65",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The two-host pull test creates B after sharing, leaving the required first arrival of `.gitattributes` and tokenized content untested. Create B before A shares, give B its local home-valued content, then assert the first pull's bytes, index, divergence recovery, and subsequent clean pull.",
+    "file": "tests/tools/dot/test_shared_real_git.py:272",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Documentation claims status is clean immediately after sharing, although sharing deliberately stages the target and `.gitattributes`. State that status becomes clean after committing those changes.",
+    "file": "docs/source/tools/dot.rst:350",
+    "reason": "single-voice"
+  }
+]
