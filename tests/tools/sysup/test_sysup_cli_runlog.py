@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from buvis.pybase.adapters import console
 from buvis.pybase.result import FatalError
 
 from sysup.attention import read_state, state_path, write_state
 from sysup.cli import cli
 from sysup.config import SysupConfig
+from sysup.runner import Runner
 from sysup.step_result import StepResult
 
 if TYPE_CHECKING:
@@ -69,24 +71,53 @@ def _flat(result: Result) -> str:
     return result.output.replace("\n", "")
 
 
+def _log_line(result: Result) -> str:
+    """The single output line carrying 'full log:', stripped; fails if absent or repeated."""
+    lines = [line.strip() for line in result.output.splitlines() if "full log:" in line]
+    assert len(lines) == 1, lines
+    return lines[0]
+
+
+def _full_log_calls(spy: Any) -> list[tuple[Any, ...]]:
+    return [c.args for c in spy.call_args_list if c.args and "full log" in str(c.args[0])]
+
+
 class TestSysupCliFullLogLine:
     @pytest.mark.parametrize("log_path", [_LOG_A, _LOG_B], ids=["tmp", "var"])
     def test_clean_run_prints_one_full_log_line_with_runner_path(self, runner, mocker, log_path: Path) -> None:
         other = _LOG_B if log_path == _LOG_A else _LOG_A
+        info = mocker.spy(console, "info")
+        init = mocker.spy(Runner, "__init__")
         result = _invoke(runner, mocker, _cfg(), _fake_run(log_path, [StepResult("brew", True, "brew updated")]))
         assert result.exit_code == 0
-        assert f"full log: {log_path}" in _flat(result)
+        assert _log_line(result).endswith(f"full log: {log_path}")
+        assert _full_log_calls(info) == [(f"full log: {log_path}",)]
         assert str(other) not in _flat(result)
-        assert result.output.count("full log:") == 1
         assert result.output.index("brew updated") < result.output.index("full log:")
+        assert init.call_count == 1
+        assert init.call_args.kwargs.get("dry_run") is False
+
+    @pytest.mark.parametrize("args", [["--only", "brew"], ["--tag", "x"]], ids=["only", "tag"])
+    def test_filtered_clean_run_still_prints_full_log_once(self, runner, mocker, args: list[str]) -> None:
+        cfg = SysupConfig.model_validate(
+            {"commands": {"brew": {"steps": [["brew"]], "tags": ["x"]}, "helm": {"steps": [["helm"]]}}}
+        )
+        result = _invoke(runner, mocker, cfg, _fake_run(_LOG_B, [StepResult("brew", True, "brew updated")]), args)
+        assert result.exit_code == 0
+        assert _log_line(result).endswith(f"full log: {_LOG_B}")
 
     def test_amber_run_prints_line_after_summary_and_notification(self, runner, mocker) -> None:
         write_state({"certificate": _entry("expiring")})
+        info = mocker.spy(console, "info")
+        failure = mocker.spy(console, "failure")
+        warning = mocker.spy(console, "warning")
         steps = [StepResult("helm", True, "helm: 1 error line", status="warned", command="helm")]
         result = _invoke(runner, mocker, _cfg(), _fake_run(_LOG_A, steps))
         assert result.exit_code == 0
-        assert result.output.count("full log:") == 1
-        assert f"full log: {_LOG_A}" in _flat(result)
+        assert _log_line(result).endswith(f"full log: {_LOG_A}")
+        assert _full_log_calls(info) == [(f"full log: {_LOG_A}",)]
+        assert _full_log_calls(failure) == []
+        assert _full_log_calls(warning) == []
         assert result.output.index("attention: 2 unresolved") < result.output.index("full log:")
         assert result.output.index("notification not sent") < result.output.index("full log:")
 
@@ -94,9 +125,34 @@ class TestSysupCliFullLogLine:
         steps = [StepResult("helm", True, "helm updated"), StepResult("brew", False, "brew failed: boom")]
         result = _invoke(runner, mocker, _cfg(), _fake_run(_LOG_B, steps))
         assert result.exit_code == 1
-        assert result.output.count("full log:") == 1
-        assert f"full log: {_LOG_B}" in _flat(result)
+        assert _log_line(result).endswith(f"full log: {_LOG_B}")
+        assert result.output.index("attention: 1 unresolved") < result.output.index("full log:")
+        assert result.output.index("notification not sent") < result.output.index("full log:")
         assert read_state()["brew"]["status"] == "failed"
+
+    def test_many_failed_and_warned_steps_print_full_log_once(self, runner, mocker) -> None:
+        cfg = SysupConfig.model_validate(
+            {"commands": {"brew": {"steps": [["brew"]]}, "helm": {"steps": [["helm"]]}, "pip": {"steps": [["pip"]]}}}
+        )
+        steps = [
+            StepResult("brew", False, "brew failed: one", command="brew"),
+            StepResult("helm", False, "helm failed: two", command="helm"),
+            StepResult("pip", True, "pip: 1 error line", status="warned", command="pip"),
+        ]
+        result = _invoke(runner, mocker, cfg, _fake_run(_LOG_A, steps))
+        assert result.exit_code == 1
+        assert result.output.count("full log:") == 1
+        assert _log_line(result).endswith(f"full log: {_LOG_A}")
+        assert result.output.index("attention: 3 unresolved") < result.output.index("full log:")
+
+    def test_red_run_state_write_failure_prints_no_full_log_line(self, runner, mocker) -> None:
+        mocker.patch("sysup.attention.write_state", side_effect=OSError("state disk full"))
+        result = _invoke(runner, mocker, _cfg(), _fake_run(_LOG_B, [StepResult("brew", False, "brew failed: boom")]))
+        assert result.exit_code == 1
+        assert "state disk full" in result.output
+        assert "full log" not in result.output
+        assert str(_LOG_B) not in result.output
+        assert "Traceback" not in result.output
 
     def test_empty_plan_run_still_prints_full_log(self, runner, mocker) -> None:
         result = _invoke(runner, mocker, _cfg(), _fake_run(_LOG_A, []))
@@ -122,10 +178,13 @@ class TestSysupCliFullLogLine:
 
 class TestSysupCliNoLogForInspection:
     def test_dry_run_prints_no_full_log_line_even_if_path_set(self, runner, mocker) -> None:
+        init = mocker.spy(Runner, "__init__")
         result = _invoke(
             runner, mocker, _cfg(), _fake_run(_LOG_A, [StepResult("brew", True, "would run")]), ["--dry-run"]
         )
         assert result.exit_code == 0
+        assert init.call_count == 1
+        assert init.call_args.kwargs.get("dry_run") is True
         assert "would run" in result.output
         assert "full log" not in result.output
         assert str(_LOG_A) not in result.output
