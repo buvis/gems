@@ -18,11 +18,38 @@ PLAIN_ENTRY = IndexEntry(mode="100644", sha="a" * 40)
 LINK_ENTRY = IndexEntry(mode="120000", sha="b" * 40)
 
 
+def _command_text(call: object) -> str:
+    """Join every argument of a recorded shell call into one string."""
+    args = getattr(call, "args", ())
+    kwargs = getattr(call, "kwargs", {})
+    return " ".join(str(value) for value in (*args, *kwargs.values()))
+
+
+def _index_read(*args: object, **kwargs: object) -> tuple[str, str]:
+    """Return a regular-file index line for the path the command asks about."""
+    parts = [str(value) for value in (*args, *kwargs.values())]
+    command = next((part for part in parts if "ls-files" in part), parts[0] if parts else "")
+    token = command.split()[-1] if command.split() else ""
+    path = token.removeprefix(":(literal)").strip("'\"")
+    return "", f"{PLAIN_ENTRY.mode} {PLAIN_ENTRY.sha} 0\t{path}"
+
+
 @pytest.fixture
 def shell() -> MagicMock:
     mock = MagicMock()
-    mock.exe.return_value = ("", f"100644 {PLAIN_ENTRY.sha} 0\tfile")
+    mock.exe.side_effect = _index_read
     return mock
+
+
+def canned_index_read(shell: MagicMock, read: tuple[str, str]) -> None:
+    """Make every shell read return the same canned result pair."""
+    shell.exe.side_effect = lambda *_args, **_kwargs: read
+
+
+def index_read_commands(shell: MagicMock) -> list[str]:
+    """Return the text of every shell call that read the git index."""
+    texts = [_command_text(call) for call in shell.exe.call_args_list]
+    return [text for text in texts if "ls-files" in text]
 
 
 def host_text(root: Path, count: int) -> str:
@@ -108,16 +135,25 @@ class TestCommandShareRefusals:
         assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
         assert_index_untouched(service)
 
-    def test_refuses_host_links_target(self, tmp_path: Path, shell: MagicMock) -> None:
+    @pytest.mark.parametrize(
+        "manifest_text",
+        [
+            ".vimrc => .local/.vimrc\n.zshrc => .local/.zshrc\n",
+            ".zshrc=>.local/.zshrc\n",
+            "   .zshrc   =>   .local/.zshrc   \n",
+        ],
+        ids=["spaced", "unspaced", "padded"],
+    )
+    def test_refuses_host_links_target(self, tmp_path: Path, shell: MagicMock, manifest_text: str) -> None:
         write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
-        manifest = write_file(tmp_path, MANIFEST_PATH, ".vimrc => .local/.vimrc\n.zshrc => .local/.zshrc\n")
+        manifest = write_file(tmp_path, MANIFEST_PATH, manifest_text)
         service = make_service(tracked={".zshrc"})
 
         result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
 
         assert not result.success
         assert result.error == ".zshrc already listed in host-links manifest"
-        assert manifest.read_text() == ".vimrc => .local/.vimrc\n.zshrc => .local/.zshrc\n"
+        assert manifest.read_text() == manifest_text
         assert not (tmp_path / ".gitattributes").exists()
         assert_index_untouched(service)
 
@@ -181,7 +217,17 @@ class TestCommandShareRefusals:
         assert not (tmp_path / ".gitattributes").exists()
         assert_index_untouched(service)
 
-    @pytest.mark.parametrize("rel", [".config/my conf", ".config/note#1", ".config/bang!", ".config/back\\slash"])
+    @pytest.mark.parametrize(
+        "rel",
+        [
+            ".config/my conf",
+            ".config/note#1",
+            ".config/bang!",
+            ".config/back\\slash",
+            ".config/tab\there",
+            ".config/trail ",
+        ],
+    )
     def test_refuses_path_needing_attribute_quoting(self, tmp_path: Path, shell: MagicMock, rel: str) -> None:
         write_file(tmp_path, rel, "plain\n")
         service = make_service(tracked={rel})
@@ -223,7 +269,7 @@ class TestCommandShareRefusals:
 
     def test_refuses_non_regular_index_mode(self, tmp_path: Path, shell: MagicMock) -> None:
         write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
-        shell.exe.return_value = ("", f"120000 {LINK_ENTRY.sha} 0\t.zshrc")
+        canned_index_read(shell, ("", f"120000 {LINK_ENTRY.sha} 0\t.zshrc"))
         service = make_service(tracked={".zshrc"}, entry=LINK_ENTRY)
 
         result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
@@ -254,7 +300,7 @@ class TestCommandShareRefusals:
     ) -> None:
         write_file(tmp_path, ".zshrc", host_text(tmp_path, 2))
         write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
-        shell.exe.return_value = read
+        canned_index_read(shell, read)
         service = make_service(tracked={".zshrc"})
 
         result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
@@ -264,17 +310,52 @@ class TestCommandShareRefusals:
         assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
         assert_index_untouched(service)
 
-    @pytest.mark.parametrize("escape", ["relative", "absolute"])
-    def test_refuses_path_outside_dotfiles_root(self, tmp_path: Path, shell: MagicMock, escape: str) -> None:
-        outside = tmp_path.parent / "outside.conf"
-        outside.write_text("stranger\n")
-        rel = "../outside.conf" if escape == "relative" else str(outside)
-        service = make_service(tracked={rel, "../outside.conf", "outside.conf"})
+    @pytest.mark.parametrize("rel", ["../outside.conf", "../../etc/hosts", "../deep/nested/other.cfg"])
+    def test_refuses_relative_path_escaping_dotfiles_root(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+        rel: str,
+    ) -> None:
+        escaped = Path(os.path.normpath(tmp_path / rel))
+        escaped.parent.mkdir(parents=True, exist_ok=True)
+        escaped.write_text("stranger\n")
+        service = make_service(tracked={rel, Path(rel).name, str(escaped)})
 
         result = CommandShare(shell, str(tmp_path), rel, git_service=service).execute()
 
         assert not result.success
+        assert escaped.read_text() == "stranger\n"
+        assert not (tmp_path / ".gitattributes").exists()
+        assert_index_untouched(service)
+
+    def test_refuses_absolute_path_outside_dotfiles_root(self, tmp_path: Path, shell: MagicMock) -> None:
+        outside = tmp_path.parent / f"{tmp_path.name}-stranger.conf"
+        outside.write_text("stranger\n")
+        service = make_service(tracked={str(outside), outside.name})
+
+        result = CommandShare(shell, str(tmp_path), str(outside), git_service=service).execute()
+
+        assert not result.success
         assert outside.read_text() == "stranger\n"
+        assert not (tmp_path / ".gitattributes").exists()
+        assert_index_untouched(service)
+
+    def test_refuses_path_escaping_root_through_a_symlinked_directory(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+    ) -> None:
+        outside = tmp_path.parent / f"{tmp_path.name}-elsewhere"
+        outside.mkdir()
+        (outside / "linked.conf").write_text("stranger\n")
+        (tmp_path / "link").symlink_to(outside, target_is_directory=True)
+        service = make_service(tracked={"link/linked.conf"})
+
+        result = CommandShare(shell, str(tmp_path), "link/linked.conf", git_service=service).execute()
+
+        assert not result.success
+        assert (outside / "linked.conf").read_text() == "stranger\n"
         assert not (tmp_path / ".gitattributes").exists()
         assert_index_untouched(service)
 
@@ -301,16 +382,46 @@ class TestCommandShareSuccess:
         service.renormalize.assert_called_once_with(rel)
         service.stage.assert_called_once_with(".gitattributes")
 
-    @pytest.mark.parametrize("text", ["", "plain tail\n"])
-    def test_reports_zero_host_values(self, tmp_path: Path, shell: MagicMock, text: str) -> None:
-        write_file(tmp_path, ".zshrc", text)
+    @pytest.mark.parametrize(
+        ("template", "count"),
+        [
+            ("path = {root}_backup/x\nother = {root}abc\nkey0 = {root}\n", 1),
+            ("a = {root}/sub\nb = {root}/\n", 2),
+        ],
+        ids=["suffix-glued", "trailing-slash"],
+    )
+    def test_counts_only_boundary_matched_host_values(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+        template: str,
+        count: int,
+    ) -> None:
+        write_file(tmp_path, ".zshrc", template.format(root=tmp_path))
+        service = make_service(tracked={".zshrc"})
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert result.success, result.error
+        assert result.output == f"shared .zshrc: {count} host value(s) replaced"
+
+    @pytest.mark.parametrize(
+        "template",
+        ["", "plain tail\n", "path = {root}_backup/x\nother = {root}abc\n"],
+        ids=["empty", "plain", "non-boundary-only"],
+    )
+    def test_reports_zero_host_values(self, tmp_path: Path, shell: MagicMock, template: str) -> None:
+        write_file(tmp_path, ".zshrc", template.format(root=tmp_path))
         service = make_service(tracked={".zshrc"})
 
         result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
 
         assert result.success, result.error
         assert result.output == "no host value found in .zshrc; filter active for future writes"
+        assert result.info == ["staged .gitattributes"]
         assert (tmp_path / ".gitattributes").read_text() == "/.zshrc filter=dot-host\n"
+        service.renormalize.assert_called_once_with(".zshrc")
+        service.stage.assert_called_once_with(".gitattributes")
 
     @pytest.mark.parametrize(
         ("existing", "expected"),
@@ -354,7 +465,10 @@ class TestCommandShareSuccess:
         [
             (".zshrc", "/.zshrc.local filter=dot-host\n"),
             (".zshrc.local", "/.zshrc filter=dot-host\n"),
+            (".zshrc", "/sub/.zshrc filter=dot-host\n"),
+            (".zshrc", "#/.zshrc filter=dot-host\n"),
         ],
+        ids=["suffix-neighbour", "shorter-neighbour", "nested-neighbour", "commented"],
     )
     def test_shares_path_whose_neighbour_is_registered(
         self,
@@ -371,6 +485,43 @@ class TestCommandShareSuccess:
 
         assert result.success, result.error
         assert (tmp_path / ".gitattributes").read_text() == existing + f"/{rel} filter=dot-host\n"
+
+    @pytest.mark.parametrize(
+        "manifest_text",
+        [
+            "# .zshrc => .local/.zshrc\n",
+            ".zshrc\n",
+            "sub/.zshrc => .local/.zshrc\n",
+        ],
+        ids=["commented", "missing-arrow", "nested-target"],
+    )
+    def test_shares_path_that_no_valid_manifest_entry_claims(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+        manifest_text: str,
+    ) -> None:
+        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        write_file(tmp_path, MANIFEST_PATH, manifest_text)
+        service = make_service(tracked={".zshrc"})
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert result.success, result.error
+        assert (tmp_path / ".gitattributes").read_text() == "/.zshrc filter=dot-host\n"
+        assert (tmp_path / MANIFEST_PATH).read_text() == manifest_text
+
+    def test_reads_index_mode_with_a_pathspec_for_the_target(self, tmp_path: Path, shell: MagicMock) -> None:
+        rel = ".config/app/settings.json"
+        write_file(tmp_path, rel, host_text(tmp_path, 1))
+        service = make_service(tracked={rel})
+
+        result = CommandShare(shell, str(tmp_path), rel, git_service=service).execute()
+
+        assert result.success, result.error
+        reads = index_read_commands(shell)
+        assert reads
+        assert all(rel in text for text in reads)
 
     def test_leaves_file_location_and_manifest_untouched(self, tmp_path: Path, shell: MagicMock) -> None:
         target = write_file(tmp_path, ".zshrc", host_text(tmp_path, 2))
@@ -511,7 +662,7 @@ class TestCommandShareRollback:
     ) -> None:
         write_file(tmp_path, rel, host_text(tmp_path, 1))
         write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
-        shell.exe.return_value = ("", f"{entry.mode} {entry.sha} 0\t{rel}")
+        canned_index_read(shell, ("", f"{entry.mode} {entry.sha} 0\t{rel}"))
         service = make_service(
             tracked={rel},
             entry=entry,
@@ -526,6 +677,39 @@ class TestCommandShareRollback:
         )
         assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
         service.restore_index_entry.assert_called_once_with(rel, entry)
+
+    def test_stage_failure_restores_the_entry_captured_before_renormalize(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+    ) -> None:
+        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
+        pre_entry = IndexEntry(mode="100644", sha="d" * 40)
+        tokenized_entry = IndexEntry(mode="100644", sha="e" * 40)
+        order: list[str] = []
+
+        def on_capture(path: str) -> IndexEntry | None:
+            order.append("capture")
+            if path == ".gitattributes":
+                return None
+            return tokenized_entry if "renormalize" in order else pre_entry
+
+        def on_renormalize(_path: str) -> CommandResult:
+            order.append("renormalize")
+            return CommandResult(success=True)
+
+        service = make_service(tracked={".zshrc"}, stage=CommandResult(success=False, error="cfg add failed"))
+        service.capture_index_entry.side_effect = on_capture
+        service.renormalize.side_effect = on_renormalize
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert not result.success
+        assert "capture" in order[: order.index("renormalize")]
+        assert "capture" not in order[order.index("renormalize") :]
+        service.restore_index_entry.assert_called_once_with(".zshrc", pre_entry)
+        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
 
     def test_failed_rollback_after_stage_failure_does_not_claim_rollback(
         self,
