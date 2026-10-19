@@ -172,3 +172,7 @@
 {"id":"f6af460a","kind":"pat","task":"2","queued_at":1792384149,"prompt_bytes":55099}
 {"id":"32201d3e","kind":"pat","task":"2","queued_at":1792384176,"prompt_bytes":37298}
 {"id":"293593d5","kind":"pat","task":"2","queued_at":1792384312,"prompt_bytes":6336}
+{"id":"f6af460a","ended_at":1792384479,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"id":"32201d3e","ended_at":1792384479,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"id":"293593d5","ended_at":1792384479,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"kind":"handoff","site":"build","edge":"leave","at":1792384479,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
