@@ -110,11 +110,26 @@ class FilterDriverMixin:
     def capture_index_entry(self, path: str) -> IndexEntry | None:
         """Read the stage-zero index record of a path.
 
+        Pass a file path, not a directory: a literal pathspec also matches
+        files under a directory, so a directory argument captures whichever
+        contained file git lists first.
+
         Args:
-            path: Path to look up.
+            path: File path to look up.
 
         Returns:
-            The mode and sha, or None when the path has no stage-zero entry.
+            The mode and sha, or None when no stage-zero record could be read.
+
+            None is deliberately NOT "the path is untracked". It covers three
+            cases a caller must tell apart itself: the path has no index entry,
+            the path is conflicted (stages 1/2/3 only, no stage 0), or the
+            ``ls-files`` read failed. A caller that requires a tracked path must
+            refuse to mutate on None rather than read it as "was untracked" -
+            otherwise the matching ``restore_index_entry(path, None)`` drops a
+            real index entry, discarding conflict stages or a tracked entry
+            whose read merely failed. Only a caller for which absence is the
+            genuinely expected state (a not-yet-tracked ``.gitattributes``) may
+            treat None as absence.
         """
         err, out = self.shell.exe(f"cfg ls-files -s -- {_literal(path)}", self.wd)
         if err:
@@ -131,10 +146,15 @@ class FilterDriverMixin:
 
         Args:
             path: Path to restore.
-            entry: The record captured before the change, None when the path was untracked.
+            entry: The record ``capture_index_entry`` returned before the
+                change. None drops the path from the index, so pass None only
+                when the path genuinely had no index entry - never a None that
+                came back from a conflicted path or a failed read (see
+                ``capture_index_entry``), which would discard real index state.
 
         Returns:
-            The outcome of the index update.
+            The outcome of the index update. Touches only the index; the
+            work-tree file is never read or written.
         """
         if entry is None:
             cmd = f"cfg rm --cached --ignore-unmatch -- {_literal(path)}"
