@@ -660,12 +660,9 @@ class TestCommandShareFilesystemErrors:
 class TestCommandShareStageFailureKeepsRegistration:
     """A failed ``stage(.gitattributes)`` must not undo the share.
 
-    Regression coverage for a review finding: the current implementation
-    (``CommandShare._mutate``) calls ``_roll_back`` on a stage failure, which
-    restores the prior attribute text and the prior index entry. That rollback
-    is the behavior under test here being refused: a stage failure should
-    leave the attribute registration and the renormalized index alone and
-    tell the user to finish staging by hand.
+    The command still succeeds (the attribute registration and the
+    renormalized index are already correct on disk) and warns the user to
+    finish staging by hand instead of rolling the share back.
     """
 
     def test_keeps_attribute_line_and_index_and_warns_to_add_attributes(
@@ -682,10 +679,11 @@ class TestCommandShareStageFailureKeepsRegistration:
 
         result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
 
+        assert result.success
         assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE + "/.zshrc filter=dot-host\n"
         service.restore_index_entry.assert_not_called()
-        messages = " ".join(value for value in (result.output, result.error, *result.info, *result.warnings) if value)
-        assert "dot add .gitattributes" in messages
+        assert result.warnings
+        assert "run 'dot add .gitattributes'" in result.warnings[0]
 
 
 class TestCommandShareAttributeSymlinkRefusal:
@@ -711,8 +709,7 @@ class TestCommandShareNonRegularTargetRefusal:
     """A non-regular tracked file (e.g. a FIFO) must be rejected before ``read_bytes()``.
 
     A real FIFO is deliberately avoided here: opening one for read with no
-    writer blocks forever, and the current implementation has no guard that
-    would stop that read. Mocking ``Path.is_file``/``Path.read_bytes`` proves
+    writer blocks forever. Mocking ``Path.is_file``/``Path.read_bytes`` proves
     the intended ordering (regular-file check before the blocking read)
     without risking a hung test.
     """
@@ -782,6 +779,26 @@ class TestCommandShareNormalizesRelativeSpelling:
         service = make_service(tracked={"settings"})
 
         result = CommandShare(shell, str(tmp_path), rel, git_service=service).execute()
+
+        assert result.success, result.error
+        assert (tmp_path / ".gitattributes").read_text() == "/settings filter=dot-host\n"
+        service.renormalize.assert_called_once_with("settings")
+
+    def test_normalizes_an_absolute_spelling_with_a_dotdot_segment(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+    ) -> None:
+        (tmp_path / "a").mkdir()
+        write_file(tmp_path, "settings", host_text(tmp_path, 1))
+        service = make_service(tracked={"settings"})
+
+        result = CommandShare(
+            shell,
+            str(tmp_path),
+            str(tmp_path / "a" / ".." / "settings"),
+            git_service=service,
+        ).execute()
 
         assert result.success, result.error
         assert (tmp_path / ".gitattributes").read_text() == "/settings filter=dot-host\n"

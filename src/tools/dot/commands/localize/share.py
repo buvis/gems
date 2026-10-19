@@ -83,18 +83,19 @@ class CommandShare:
         self._root = Path(dotfiles_root)
         self._git_service = git_service or DotGitService(shell, dotfiles_root)
 
-        # Normalize path to dotfiles-relative
-        input_path = Path(path)
+        # Normalize path to dotfiles-relative. Lexical normalization only (no
+        # symlink resolution), applied before branching so a non-canonical
+        # spelling (./settings, a/../settings, <root>/a/../settings) tracks
+        # the canonical one on either branch.
+        input_path = Path(os.path.normpath(path))
         if input_path.is_absolute():
             try:
                 self._target = str(input_path.relative_to(self._root))
             except ValueError:
                 # Path is not under dotfiles root
-                self._target = path
+                self._target = str(input_path)
         else:
-            # Lexical normalization only (no symlink resolution), so a non-canonical
-            # relative spelling (./settings, a/../settings) still tracks the canonical one.
-            self._target = os.path.normpath(path)
+            self._target = str(input_path)
 
     def execute(self) -> CommandResult:
         """Run the share command.
@@ -114,7 +115,7 @@ class CommandShare:
             return CommandResult(success=False, error=str(exc))
 
         # None conflates an absent entry, a conflicted path and a failed read, so refuse
-        # rather than hand that None back to restore_index_entry later.
+        # rather than treat it as plain.
         entry = self._git_service.capture_index_entry(self._target)
         if entry is None:
             return CommandResult(success=False, error=_NOT_PLAIN.format(path=self._target))

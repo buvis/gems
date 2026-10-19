@@ -417,8 +417,10 @@ class DotGitService(FilterDriverMixin):
             The tracked paths, empty when the lookup failed.
         """
         if pathspec.startswith("-"):
-            # shlex.quote leaves a lone leading dash unquoted (no shell-unsafe char), so force
-            # single-quoting here; "--" alone still lets git's own option parser see it first.
+            # "--" stops git's own option parser from treating the leading
+            # dash as a flag. Force single-quoting: shlex.quote leaves a
+            # bare leading-dash string unquoted (no shell-unsafe char), but
+            # the pinned command-string assertion below expects quotes.
             quoted = "'" + pathspec.replace("'", "'\"'\"'") + "'"
             err, out = self.shell.exe(f"cfg ls-files -- {quoted}", self.wd)
         else:
