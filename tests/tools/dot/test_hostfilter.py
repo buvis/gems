@@ -43,6 +43,8 @@ class TestCleanPosixMatches:
             b"_/Users/bob",
             b"7/Users/bob",
             b"/Users/bo",
+            b"X/Users/bob",
+            b"/Users/bobX",
         ],
     )
     def test_leaves_near_miss_without_boundary_untouched(self, data: bytes) -> None:
@@ -52,11 +54,22 @@ class TestCleanPosixMatches:
         assert clean(b" /Users/bob ", HOME) == b" @HOME@ "
         assert clean(b"a/Users/bob ", HOME) == b"a/Users/bob "
         assert clean(b" /Users/boba", HOME) == b" /Users/boba"
+        assert clean(b"Z/Users/bob ", HOME) == b"Z/Users/bob "
+        assert clean(b" /Users/bobZ", HOME) == b" /Users/bobZ"
+
+    def test_matches_regex_metacharacters_in_home_literally(self) -> None:
+        assert clean(b"/home/axb", "/home/a.b") == b"/home/axb"
+        assert clean(b"/home/a.b/x", "/home/a.b") == b"@HOME@/x"
+        assert count_home(b"/home/axb /home/a.b", "/home/a.b") == 1
 
     def test_replaces_every_occurrence_and_skips_near_misses_between(self) -> None:
         data = b"A=/Users/bob/a:/Users/bobby:/Users/bob/b\n'/Users/bob'"
 
         assert clean(data, HOME) == b"A=@HOME@/a:/Users/bobby:@HOME@/b\n'@HOME@'"
+
+    def test_adjacent_matches_sharing_one_separator_are_both_replaced(self) -> None:
+        assert clean(b"/Users/bob:/Users/bob", HOME) == b"@HOME@:@HOME@"
+        assert clean(b"/Users/bob /Users/bob /Users/bob", HOME) == b"@HOME@ @HOME@ @HOME@"
 
     def test_uses_given_home_not_a_fixed_value(self) -> None:
         data = b"/Users/bob/x /home/alice/y"
@@ -97,6 +110,11 @@ class TestCleanReservedToken:
         with pytest.raises(ValueError):
             clean(b"/Users/bob/x\n@HOME@/y\n", HOME)
 
+    @pytest.mark.parametrize("data", [b"x=@HOME@", b"a@HOME@b", b"/@HOME@/x", b"@HOME@"])
+    def test_rejects_token_regardless_of_preceding_byte(self, data: bytes) -> None:
+        with pytest.raises(ValueError):
+            clean(data, HOME)
+
     @pytest.mark.parametrize("data", [b"@HOME", b"HOME@", b"@home@", b"@ HOME@"])
     def test_accepts_partial_or_differently_cased_token(self, data: bytes) -> None:
         assert clean(data, HOME) == data
@@ -128,6 +146,18 @@ class TestCleanWindowsSpellings:
 
     def test_matches_uppercase_drive_for_lowercase_home_drive(self) -> None:
         assert clean(b"C:\\Users\\bob\\x", "c:/Users/bob") == b"@HOME@\\x"
+
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            (b"d:\\Users\\bob\\x", b"@HOME@\\x"),
+            (b"D:\\\\Users\\\\bob", b"@HOME@"),
+            (b"D:/Users/bob/y", b"@HOME@/y"),
+            (b"C:\\Users\\bob", b"C:\\Users\\bob"),
+        ],
+    )
+    def test_windows_spellings_apply_to_any_drive_letter(self, data: bytes, expected: bytes) -> None:
+        assert clean(data, "D:/Users/bob") == expected
 
     @pytest.mark.parametrize(
         "data",
@@ -211,6 +241,9 @@ class TestCountHome:
         assert count_home(data, OTHER_HOME) == 2
         assert count_home(data, HOME) == 1
 
+    def test_counts_adjacent_matches_sharing_one_separator(self) -> None:
+        assert count_home(b"/Users/bob:/Users/bob", HOME) == 2
+
     def test_matches_number_of_tokens_clean_inserts(self) -> None:
         data = b"x=/Users/bob\r\ny=/Users/bob/z\r\n\xff/Users/bob\xff"
 
@@ -270,6 +303,9 @@ class TestResolveHome:
 
     def test_strips_trailing_separator_from_work_tree(self) -> None:
         assert resolve_home("/home/alice/", "/tmp") == "/home/alice"
+
+    def test_strips_trailing_separator_from_relative_work_tree(self) -> None:
+        assert resolve_home("dots/", "/home/alice") == "/home/alice/dots"
 
     def test_falls_back_to_dotfiles_root_without_work_tree(self) -> None:
         assert resolve_home(None, "/home/alice") == "/srv/dots"
