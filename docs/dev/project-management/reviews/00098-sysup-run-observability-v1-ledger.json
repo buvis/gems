@@ -1,13 +1,202 @@
 [
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "Prime is invoked before the log is opened, which reverses the design's Data flow order (log open, then prime). If the log directory is unwritable, the operator is asked for a sudo password and then the run fails with no update started. Move `runlog.prune`/`open_run_log` ahead of `self._prime()`.", "file": "src/tools/sysup/runner.py:129", "reason": "single-voice"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "pyproject.toml gains a per-file ruff ignore (PLR0913, SLF001) to cover a private `_handle` field used from module functions and a 10-parameter `append_step`. Renaming the field to `handle` removes the SLF001 need. Splitting `append_step` (see the size finding) removes the other need.", "file": "pyproject.toml:182", "reason": "single-voice"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "Tests the PRD placed in tests/tools/sysup/test_sysup_cli.py went into new files (test_sysup_cli_runlog.py, test_sysup_cli_warned.py, test_runner_observability_log.py). `test_sysup_cli.py` is untouched. The task-5 acceptance command `pytest test_runner.py test_sysup_cli.py -k observability` therefore selects nothing from `test_sysup_cli.py`.", "file": "tests/tools/sysup/test_sysup_cli_runlog.py:1", "reason": "single-voice"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "Nonmatching filenames and nonregular candidates are silently skipped, although pruning must report both. Emit console warnings and assert them in the existing preservation tests.", "file": "src/tools/sysup/runlog.py:37", "reason": "single-voice (the reportable-mismatch requirement is carried by R3, which is being fixed)"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "CLI failure tests replace Runner.run entirely, leaving required failure boundaries untested. Exercise the real runner with injected prune/create/append/flush/close failures; assert update-spawn limits, capability iteration stops, resource cleanup, unchanged attention and absent notifications.", "file": "tests/tools/sysup/test_sysup_cli_runlog.py:254", "reason": "single-voice (the fail-stop test gap is carried by R7, which is being fixed)"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "The nonterminal test replaces Runner.run and never enters console.status; status unit tests check construction without verifying execution inside the context. Exercise captured spawns and multi-result capabilities with ordered context assertions and a real nonterminal console.", "file": "tests/tools/sysup/test_sysup_cli_runlog.py:285", "reason": "single-voice"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "[MECH] test_already_deleted_file_is_not_an_error has no assertion. Assert the expected unlink attempt and continued pruning of another candidate after FileNotFoundError.", "file": "tests/tools/sysup/test_runlog.py:219", "reason": "single-voice duplicate of R6, which is being fixed and covers this same test"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "test_missing_directory_is_noop has no assertion: it only proves the code does not raise", "file": "tests/tools/sysup/test_runlog.py:187", "reason": "single-voice duplicate of R6, which is being fixed and covers this same test"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "`open_run_log` builds its \"could not create run log\" message from `directory / (base + '.log')` even when the failing candidate carried a suffix. That is not the attempted path the contract requires. The `while suffix <= 10_000` bound is an undocumented magic number.", "file": "src/tools/sysup/runlog.py:153", "reason": "single-voice"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "The sudo banner says \"cache sudo for this run's updates\". The spec asks it to explain credential caching for cask upgrades. Ctrl-D and later-steps-prompt wording are present, and Ctrl-C skip is not claimed.", "file": "src/tools/sysup/capabilities/sudo.py:45", "reason": "single-voice"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "If the second prime capability raises, stop callbacks from the first are lost. `stops` is only assigned after `_prime()` returns, so the refresher thread is never stopped. This is pre-existing, but the spec requires sudo cleanup in finally.", "file": "src/tools/sysup/runner.py:129", "reason": "single-voice, and pre-existing behaviour outside this PRD's diff"}
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Prime is invoked before the log is opened, which reverses the design's Data flow order (log open, then prime). If the log directory is unwritable, the operator is asked for a sudo password and then the run fails with no update started. Move `runlog.prune`/`open_run_log` ahead of `self._prime()`.",
+    "file": "src/tools/sysup/runner.py:129",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "pyproject.toml gains a per-file ruff ignore (PLR0913, SLF001) to cover a private `_handle` field used from module functions and a 10-parameter `append_step`. Renaming the field to `handle` removes the SLF001 need. Splitting `append_step` (see the size finding) removes the other need.",
+    "file": "pyproject.toml:182",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Tests the PRD placed in tests/tools/sysup/test_sysup_cli.py went into new files (test_sysup_cli_runlog.py, test_sysup_cli_warned.py, test_runner_observability_log.py). `test_sysup_cli.py` is untouched. The task-5 acceptance command `pytest test_runner.py test_sysup_cli.py -k observability` therefore selects nothing from `test_sysup_cli.py`.",
+    "file": "tests/tools/sysup/test_sysup_cli_runlog.py:1",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Nonmatching filenames and nonregular candidates are silently skipped, although pruning must report both. Emit console warnings and assert them in the existing preservation tests.",
+    "file": "src/tools/sysup/runlog.py:37",
+    "reason": "single-voice (the reportable-mismatch requirement is carried by R3, which is being fixed)"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "CLI failure tests replace Runner.run entirely, leaving required failure boundaries untested. Exercise the real runner with injected prune/create/append/flush/close failures; assert update-spawn limits, capability iteration stops, resource cleanup, unchanged attention and absent notifications.",
+    "file": "tests/tools/sysup/test_sysup_cli_runlog.py:254",
+    "reason": "single-voice (the fail-stop test gap is carried by R7, which is being fixed)"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "The nonterminal test replaces Runner.run and never enters console.status; status unit tests check construction without verifying execution inside the context. Exercise captured spawns and multi-result capabilities with ordered context assertions and a real nonterminal console.",
+    "file": "tests/tools/sysup/test_sysup_cli_runlog.py:285",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "[MECH] test_already_deleted_file_is_not_an_error has no assertion. Assert the expected unlink attempt and continued pruning of another candidate after FileNotFoundError.",
+    "file": "tests/tools/sysup/test_runlog.py:219",
+    "reason": "single-voice duplicate of R6, which is being fixed and covers this same test"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "test_missing_directory_is_noop has no assertion: it only proves the code does not raise",
+    "file": "tests/tools/sysup/test_runlog.py:187",
+    "reason": "single-voice duplicate of R6, which is being fixed and covers this same test"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`open_run_log` builds its \"could not create run log\" message from `directory / (base + '.log')` even when the failing candidate carried a suffix. That is not the attempted path the contract requires. The `while suffix <= 10_000` bound is an undocumented magic number.",
+    "file": "src/tools/sysup/runlog.py:153",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The sudo banner says \"cache sudo for this run's updates\". The spec asks it to explain credential caching for cask upgrades. Ctrl-D and later-steps-prompt wording are present, and Ctrl-C skip is not claimed.",
+    "file": "src/tools/sysup/capabilities/sudo.py:45",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "If the second prime capability raises, stop callbacks from the first are lost. `stops` is only assigned after `_prime()` returns, so the refresher thread is never stopped. This is pre-existing, but the spec requires sudo cleanup in finally.",
+    "file": "src/tools/sysup/runner.py:129",
+    "reason": "single-voice, and pre-existing behaviour outside this PRD's diff"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "With `continue_on_error`, each failure is printed via console.failure at src/tools/sysup/runner.py:247. The final joined result is then rendered again by the CLI, so the operator sees each failure twice. The joined message also repeats the entry prefix per failure (\"multi failed: first boom; multi failed: second boom\"). This matches the PRD (\"diagnostics are not additional persisted results\"), so it is cosmetic only.",
+    "file": "src/tools/sysup/runner.py:256",
+    "reason": "cosmetic only and PRD-sanctioned by the reviewers' own reading: diagnostics are not additional persisted results"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Prior R2 remains partly unresolved: when os.fdopen fails, the exclusively created file remains, but its diagnostic lacks \"incomplete\". Add that label to this branch and assert it alongside the retained path.",
+    "file": "src/tools/sysup/runlog.py:205",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Prior R7 remains partly unresolved: new failure-stop tests cover argv entries only, and the \"flush failure\" test merely makes append_step raise FatalError. Add a multi-result capability test proving iteration stops, and inject a real flush/fsync failure after successful header creation to verify propagation and cleanup.",
+    "file": "tests/tools/sysup/test_runner.py:324",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Prior R4 remains unresolved for append_step: the supplied AST count is still 55 lines. Shorten its duplicated design prose while retaining the formatting, durability and ownership guarantees; further helper extraction is unnecessary.",
+    "file": "src/tools/sysup/runlog.py:229",
+    "reason": "single-voice (duplicate of R1, which is swept)"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Rework pushes test_runner.py beyond the 800-line limit; the supplied AST places its final test at line 832. Move TestRunnerLogWiring into a focused test module.",
+    "file": "tests/tools/sysup/test_runner.py:832",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Both new secondary-close-error tests leak real file descriptors: one replaces fdopen with a handle that never owns the descriptor, and the other replaces os.close with an exception. Mock os.open to return a sentinel descriptor in these isolated error-path tests.",
+    "file": "tests/tools/sysup/test_runlog.py:105",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The `_fdopen` failure branch of `_write_header` leaves a created, empty log file on disk but its FatalError (\"could not create run log <path>: ...\") lacks \"(incomplete)\".",
+    "file": "src/tools/sysup/runlog.py:212",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`prune` now emits a console.warning \"no longer a disposable run log\" when a candidate vanishes before the pre-delete re-check, while the docstring says such a candidate is \"treated as already-pruned, not an error\".",
+    "file": "src/tools/sysup/runlog.py:39",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "A `FatalError` from `runlog.close()` in the `finally` can mask the original exception. A failed close after a fully complete run also labels the log \"(incomplete)\".",
+    "file": "src/tools/sysup/runlog.py:317",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Only log-origin `FatalError`s name the retained log as incomplete. A `FatalError` raised mid-run from a capability or `check_items` while a log is open prints its own message with no mention of the retained path.",
+    "file": "src/tools/sysup/cli.py:193",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "If `write_state` fails after a completed run, `console.panic` fires and the `full log:` line is never printed.",
+    "file": "src/tools/sysup/cli.py:198",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Run logs are created with mode 0o644 and hold complete, unredacted stdout and stderr of update commands. A stricter mode such as 0o600 would be safer. There is also a small unlink-after-`lstat` TOCTOU window in prune.",
+    "file": "src/tools/sysup/runlog.py:188",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "pyproject.toml adds per-file ruff suppressions (`PLR0913`, `SLF001`) for runlog.py. The spec does not call for these.",
+    "file": "pyproject.toml:179",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The changelog \"Changed\" bullet \"a run-log write failure now stops the run instead of continuing silently\" describes a prior behavior that never existed, because the log is new in this change.",
+    "file": "CHANGELOG.md:19",
+    "reason": "single-voice"
+  }
 ]
