@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -410,3 +411,21 @@ class TestCommandLocalizeRealGit:
             text=True,
         )
         assert MANIFEST_PATH in result_status.stdout
+
+
+def test_localize_package_exports_only_command_localize() -> None:
+    """A re-added eager CommandShare re-export must fail this, not pass silently."""
+    probe = (
+        "import sys\n"
+        "import dot.commands.localize as pkg\n"
+        'assert pkg.__all__ == ["CommandLocalize"], pkg.__all__\n'
+        'assert "dot.commands.localize.share" not in sys.modules, sys.modules.keys()\n'
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
