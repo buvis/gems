@@ -237,3 +237,8 @@
 {"kind":"handoff","site":"build","edge":"resume","at":1792393833,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
 {"kind":"handoff","site":"review","edge":"leave","at":1792396242,"phase":"review","prd":"00099-dot-shared-config-host-fragments-v1.md"}
 {"kind":"handoff","site":"review","edge":"resume","at":1792396285,"phase":"review","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"id":"3f5120d5","kind":"bob","task":"review-20261019-c2","queued_at":1792396511,"prompt_bytes":30670}
+{"id":"5c153beb","kind":"carl","task":"review-20261019-c2","queued_at":1792396511,"prompt_bytes":23677}
+{"id":"3f5120d5","ended_at":1792397068,"elapsed_s":557,"outcome":"ok","detail":null}
+{"id":"5c153beb","ended_at":1792397072,"elapsed_s":561,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1792397273,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}

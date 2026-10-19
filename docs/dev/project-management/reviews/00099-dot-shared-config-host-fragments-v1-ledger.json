@@ -38,5 +38,93 @@
     "issue": "Documentation claims status is clean immediately after sharing, although sharing deliberately stages the target and `.gitattributes`. State that status becomes clean after committing those changes.",
     "file": "docs/source/tools/dot.rst:350",
     "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Either-or hedge assertion in the symlink-refusal test: any(word in message for word in (\"symlink\",\"refus\",\"regular\",\"plain\")). The message is deterministic, so assert it exactly.",
+    "file": "tests/tools/dot/test_share.py:891",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The FIFO regression test asserts only `not result.success` and mocks `Path.is_file`, so it never touches a real FIFO. Assert the exact `_NOT_PLAIN` error and that `.gitattributes` was not created.",
+    "file": "tests/tools/dot/test_share.py:905",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "`normpath()` removes symlink-bearing components before confinement checks. With `a` pointing outside the root, `a/../settings` now silently selects the root's `settings` instead of refusing the original outside path.",
+    "file": "src/tools/dot/commands/localize/share.py:90",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The whitespace refusal remains incomplete: adding newline and CR still permits vertical tab and form feed, contrary to the required all-whitespace rejection.",
+    "file": "src/tools/dot/commands/localize/share.py:29",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Removing `_index_mode` leaves obsolete `_index_read`/`canned_index_read` mock-shell machinery: index reads now use the injected service.",
+    "file": "tests/tools/dot/test_share.py:21",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`tests/tools/dot/test_share.py` is 805 lines, over the 800-line limit.",
+    "file": "tests/tools/dot/test_share.py:805",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Ordering change: `capture_index_entry` now runs before the token, glob, quoting and driver checks. Behavior is safe; only the error priority changed.",
+    "file": "src/tools/dot/commands/localize/share.py:119",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Structure deviation: `_ensure_filter_driver` and `renormalize` live in `filter_driver.py` as a mixin `DotGitService` inherits; the spec's layout lists only `service.py`.",
+    "file": "src/tools/dot/git/service.py:23",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`CommandShare` counts host values with `count_home(data, str(self._root))` while the filter derives home from GIT_WORK_TREE, cwd, DOTFILES_ROOT or `Path.home()`.",
+    "file": "src/tools/dot/commands/localize/share.py:278",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Test-gate observation: the full suite exits 1 with no summary line in this sandbox, so the full-suite state is unverified from the gate alone.",
+    "file": "N/A",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "🟠",
+    "issue": "Configured driver values differ from the spec: the code writes `... dot filter clean -- %f` where the PRD pins `... dot filter clean %f`.",
+    "file": "src/tools/dot/git/filter_driver.py:33",
+    "reason": "requirements ambiguity deferred to batch end in cycle 1 (review-1 R4); a human decides whether to keep `--` and amend the PRD"
   }
 ]
