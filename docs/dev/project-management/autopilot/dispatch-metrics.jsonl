@@ -163,3 +163,12 @@
 {"id":"514ae3d2","ended_at":1792383202,"elapsed_s":262,"outcome":"ok","detail":"8 weak points addressed, 1 blocker raised (conflict stage unpinned)"}
 {"id":"4fd2e91d","kind":"tess","task":"2","queued_at":1792383282,"prompt_bytes":15575}
 {"id":"4fd2e91d","ended_at":1792383330,"elapsed_s":48,"outcome":"ok","detail":"conflict-stage test added"}
+{"id":"738e6497","kind":"ivan","task":"2","queued_at":1792383413,"prompt_bytes":36795}
+{"id":"738e6497","ended_at":1792383582,"elapsed_s":169,"outcome":"ok","detail":"60 passed"}
+{"id":"47e80d84","kind":"deslop","task":"2","queued_at":1792383703,"prompt_bytes":4872}
+{"id":"47e80d84","ended_at":1792383802,"elapsed_s":99,"outcome":"ok","detail":"no slop found, zero edits"}
+{"id":"78fe7eae","kind":"ivan","task":"2","queued_at":1792383840,"prompt_bytes":19220}
+{"id":"78fe7eae","ended_at":1792384001,"elapsed_s":161,"outcome":"ok","detail":"split into host_filter.py mixin, 744 lines"}
+{"id":"f6af460a","kind":"pat","task":"2","queued_at":1792384149,"prompt_bytes":55099}
+{"id":"32201d3e","kind":"pat","task":"2","queued_at":1792384176,"prompt_bytes":37298}
+{"id":"293593d5","kind":"pat","task":"2","queued_at":1792384312,"prompt_bytes":6336}

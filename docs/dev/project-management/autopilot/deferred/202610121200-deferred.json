@@ -18,6 +18,15 @@
       "file": "src/tools/dot/hostlinks/hooks.py",
       "reason": "cycle 1: microsecond race on the user own hooks dir; exclusive-create would drop the atomic_write invariant",
       "prd": "00088-dot-host-links-materialize-v1.md"
+    },
+    {
+      "type": "review-finding-deferred",
+      "severity": "MEDIUM",
+      "task": "2",
+      "finding": "capture_index_entry returns None for three distinct states (no index entry, conflicted path with only stages 1/2/3, failed ls-files read) and restore_index_entry(path, None) unconditionally runs cfg rm --cached --ignore-unmatch, so a caller reading None as was-untracked drops conflict stages or a tracked entry whose read merely failed",
+      "disposition": "deferred to task 3 as a tested precondition",
+      "detail": "Raised by Pat in the task-2 per-task review and re-raised as unresolved after the one permitted retry: the fix shipped in task 2 is a docstring contract plus a design-level refusal in check 12, which the reviewer correctly called unenforceable in code. A signature change (enum or result object) was rejected because the committed tests pin is-None for all three states and the Tess dispatch budget for task 2 was exhausted 4/4. The design now REQUIRES task 3 to ship a test that a conflicted or unreadable capture is refused by check 12 and never reaches restore_index_entry(target, None). Verify that test exists before closing task 3.",
+      "prd": "00099-dot-shared-config-host-fragments-v1.md"
     }
   ]
 }
