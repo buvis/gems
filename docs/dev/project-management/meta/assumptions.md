@@ -48,3 +48,21 @@
 - Orchestrator: Gemini (routing row 1, UI) failed on Copilot-backend auth under the agent PAT; Claude Sonnet implemented the task.
 - Orchestrator: Pat's MEDIUM (TUI ignores `result.success`) discarded: `CommandMaterialize` never returns `success=False` by contract.
 - Tess: `DiffView` imported from `dot.tui.widgets.diff_view`; status bar widget id `#status-bar`.
+
+# Assumptions ledger: PRD 00098 sysup run observability v1
+
+## 5: sysup: exit-0 error scan, one final result per entry, capability log markers
+
+- Tess: the log header formats for captured, not-captured and timed-out steps come from the `append_step` docstring in `src/tools/sysup/runlog.py`, which she read with a targeted `rg`.
+- Tess: "immediate failure diagnostics" means that in abort mode the failure is yielded before any later step spawns, and a failed step's output is not scanned for error lines.
+- Tess: "all failure details retained" means each failed step's stdout and stderr stay in the run log. The final result carries the last failure's message, as the contract code says.
+- Tess: "no intermediate success lines and red dominance" is tested in the runner (exactly one result, failed beats warned), not in the CLI output. The contract gives no cli.py change to test.
+- Tess (strengthen): a capability may yield `StepResult` values with status `expiring` or `warned`. The `Status` literal allows both.
+- Ivan: the 5-line print limit counts per step, not across the whole entry.
+- Ivan: with `continue_on_error` and several failures, the final result is the last failure.
+- Ivan: in `_run_use`, `append_step` is called before the `yield` of the stamped step, not after it — the retry text only said "after the replace(...)"; logging first means the section is written even if the consumer stops at that yield.
+
+## 6: sysup: cli.py Runner binding, full-log line, and FatalError diagnostics
+
+- Ivan: the real `Runner` exposes a `log_path` attribute (`Path | None`) once `run()` has finished; could not verify against `runner.py` (not on allowlist), but `Runner.__init__` already sets `self.log_path = None` unconditionally (confirmed in task 5's prior diff).
+- Ivan (style fix): tests patch `sysup.attention.*` and `sysup.config.*` at module level, so moving their lazy imports into the new `_persist_attention` helper is safe.

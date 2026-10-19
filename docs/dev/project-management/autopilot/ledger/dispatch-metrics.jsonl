@@ -84,3 +84,35 @@
 {"kind":"handoff","site":"build","edge":"resume","at":1792357600,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1792359217,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1792359235,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792372328,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
+{"id":"e1d340bb","kind":"tess","task":"5","queued_at":1792372433,"prompt_bytes":72856}
+{"id":"d02d0eb4","kind":"tess","task":"5","queued_at":1792372444,"prompt_bytes":62595}
+{"id":"6f1d2cae","kind":"tess","task":"5","queued_at":1792372452,"prompt_bytes":52986}
+{"id":"ca5619e9","kind":"tess","task":"5","queued_at":1792372472,"prompt_bytes":26683}
+{"id":"6f1d2cae","ended_at":1792372480,"elapsed_s":28,"outcome":"error","detail":null}
+{"id":"17690bca","kind":"devon","task":"5","queued_at":1792372891,"prompt_bytes":17476}
+{"id":"17690bca","ended_at":1792373010,"elapsed_s":119,"outcome":"ok","detail":null}
+{"id":"6350be9e","kind":"ivan","task":"5","queued_at":1792373161,"prompt_bytes":60060}
+{"id":"7b136e0b","kind":"ivan","task":"5","queued_at":1792373178,"prompt_bytes":46688}
+{"id":"b2863608","kind":"ivan","task":"5","queued_at":1792373282,"prompt_bytes":50324}
+{"id":"e2070a01","kind":"ivan","task":"5","queued_at":1792373292,"prompt_bytes":49953}
+{"id":"68504668","kind":"pat","task":"5","queued_at":1792373439,"prompt_bytes":29394}
+{"id":"a53612ac","kind":"tess","task":"6","queued_at":1792373585,"prompt_bytes":22263}
+{"id":"e6968da3","kind":"devon","task":"6","queued_at":1792373938,"prompt_bytes":17938}
+{"id":"e6968da3","ended_at":1792374066,"elapsed_s":128,"outcome":"ok","detail":null}
+{"id":"4701f2f5","kind":"ivan","task":"6","queued_at":1792374191,"prompt_bytes":17687}
+{"id":"92ad78ba","kind":"ivan","task":"6","queued_at":1792374279,"prompt_bytes":4067}
+{"id":"9433e2cd","kind":"pat","task":"6","queued_at":1792374377,"prompt_bytes":32812}
+{"id":"68504668","ended_at":1792374522,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"id":"9433e2cd","ended_at":1792374522,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"id":"e1d340bb","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"d02d0eb4","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"ca5619e9","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"6350be9e","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"7b136e0b","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"b2863608","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"e2070a01","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"a53612ac","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"4701f2f5","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"92ad78ba","ended_at":1792374522,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1792374522,"phase":"build","prd":"00098-sysup-run-observability-v1.md"}
