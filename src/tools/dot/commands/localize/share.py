@@ -34,15 +34,7 @@ _UNCONFIGURED = (
 
 
 def _has_filter_line(text: str | None, target: str) -> bool:
-    """Report whether attribute text already registers target for the dot-host filter.
-
-    Args:
-        text: The ``.gitattributes`` content, or None when the file is absent.
-        target: Root-relative path the caller wants to register.
-
-    Returns:
-        True when an active line anchors exactly target to ``filter=dot-host``.
-    """
+    """Report whether an active line anchors exactly target to ``filter=dot-host``."""
     anchored = f"/{target}"
     for line in (text or "").splitlines():
         stripped = line.strip()
