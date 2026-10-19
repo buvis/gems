@@ -133,6 +133,13 @@ file to a host-specific link: untracks it, moves it to the source location,
 creates the symlink, and updates the manifest. Commit the staged manifest and
 deletion, then push.
 
+**Sharing one file across hosts:** `dot localize --shared <target>` keeps the
+file where it is and registers a git clean/smudge filter for it instead. Git
+stores the reserved `@HOME@` token in place of this host's home path, and each
+host's checkout gets its own home back. The opt-in is one `.gitattributes`
+line, staged for you; commit it with the file. `--shared` cannot be combined
+with `--to`. Details: `docs/source/tools/dot.rst`.
+
 **Pull rescue:** When another host's localize-commit arrives, `dot pull` detects
 the incoming deletion and rescues your local bytes to the source location before
 git removes the file. If both target and source exist with different content, you
