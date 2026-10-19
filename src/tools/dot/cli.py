@@ -249,8 +249,8 @@ def filter_group() -> None:
     """Group the byte-stream filters git invokes; not a user-facing command."""
 
 
-# The filter streams carry git's blob payload, not console output: both handlers
-# write raw bytes so no console marker can corrupt the file content.
+# Discovery R12: the filter streams carry git's blob payload, not console output, so
+# both handlers write raw bytes - the one sanctioned exception to dot's console-only rule.
 @filter_group.command("clean", help="Replace the host home path with the @HOME@ token")
 @click.argument("path")
 def filter_clean(path: str) -> None:
