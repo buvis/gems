@@ -48,6 +48,20 @@
       "file": "src/tools/dot/commands/localize/share.py",
       "detail": "Five LOW findings from the task 3 per-task review, left unfixed after the one sanctioned MEDIUM retry (both MEDIUMs were fixed). (1) _roll_back takes the ROLLBACK FAILED branch when only the .gitattributes restore failed, but its message still blames the index entry and sends the user to cfg status / diff --cached; build the index hint only when the index restore failed. (2) the index-mode check moved into _check_after_read, so it runs after read_bytes and after the token/glob/quote checks, while the design contract puts check 12 before check 8 byte read. (3) _QUOTE_CHARS covers only space and tab though the contract says whitespace, so a name with \\n, \\r, \\v or \\f would append as two attribute lines (check_attr_filter is the only backstop). (4) the target is not normalized beyond relative_to, so ./foo or a//b appends /./foo filter=dot-host, which never matches, and the user gets a misleading conflicting-attribute error (the share does roll back). (5) _read_attributes never uses self.",
       "prd": "00099-dot-shared-config-host-fragments-v1.md"
+    },
+    {
+      "type": "adjacent-defect",
+      "finding": "DotGitService.ls_files (src/tools/dot/git/service.py:419) runs `cfg ls-files <pathspec>` with no `--` guard, so a root-level dotfile whose name starts with a dash is parsed as options. CommandShare reads tracking state through it, so `dot localize --shared -dashy.conf` fails with the misleading `-dashy.conf not tracked; run dot add first`.",
+      "why_deferred": "Task 5 is test-only and its scoped-fix rule permits touching service.py only when the new tests demonstrate a REQUIRED compatibility fix; they pass without it. The one-token fix (`cfg ls-files -- ...`) is confined to service.py, but tests/tools/dot/test_git_service.py:1168 pins the exact string `cfg ls-files *.txt`, so the fix also needs that assertion updated - outside task 5 allowlist.",
+      "fix": "Add `--` before the pathspec in DotGitService.ls_files and update the pinned assertion in tests/tools/dot/test_git_service.py:1168.",
+      "prd": "00099-dot-shared-config-host-fragments-v1.md"
+    },
+    {
+      "type": "latent-flake",
+      "finding": "tests/tools/dot/test_pull_divergence_two_hosts.py two_host_setup fixture does not isolate GIT_CONFIG_GLOBAL, so its temp clones inherit the global commit.gpgsign=true with an ssh signing key the sandbox reaches only intermittently. Observed 10 setup errors (git commit exit 128) on one run during task 5, then green on two later runs with no code change.",
+      "why_deferred": "Pre-existing (file landed in 1857e376, predates PRD 00099) and outside task 5 scope. The new tests/tools/dot/test_shared_real_git.py already does the right thing: temp GIT_CONFIG_GLOBAL with commit.gpgsign=false, GIT_CONFIG_SYSTEM=/dev/null, GIT_CONFIG_NOSYSTEM=1.",
+      "fix": "Port the git_sandbox isolation from tests/tools/dot/test_shared_real_git.py into test_pull_divergence_two_hosts.py (and tests/tools/dot/conftest.py _run-based fixtures generally).",
+      "prd": "00099-dot-shared-config-host-fragments-v1.md"
     }
   ]
 }

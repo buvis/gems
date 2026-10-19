@@ -104,3 +104,27 @@
 - Ivan: the `--shared` help text, the hidden `filter` group help and the two subcommand help strings were unpinned by any test; the group and option strings were later set to the design doc's verbatim text on a reviewer finding.
 - Orchestrator (review fix): `filter_smudge` takes `@click.argument("path", expose_value=False)` and no callback parameter, which keeps the contract's argument name and argv shape without an unused-argument lint suppression.
 - Orchestrator (review fix): the clean refusal line is assembled as bytes with `os.fsencode(path)` rather than `str.encode()`, so a non-UTF-8 filename from argv cannot turn the refusal into a `UnicodeEncodeError` traceback.
+
+## 5: Add real-Git integration tests for the dot-host filter
+
+- Orchestrator: this is a test-only task, so Tess, the red-check, the self-deslop pass and Pat's per-task review were all skipped by their own gates; Ivan authored the test file directly.
+- Orchestrator: `tests/tools/dot/test_pull_divergence_two_hosts.py` errored 10 times (every `git commit` in its `two_host_setup` fixture exiting 128) on one run during this task, then passed on two later runs with no code change in between. The fixture does not isolate `GIT_CONFIG_GLOBAL`, so its temp clones inherit the user's global `commit.gpgsign=true` with an ssh signing key whose agent the sandbox reaches only intermittently - a latent flake, not a task 1-4 defect. The file predates this PRD (1857e376) and fixing its isolation is out of task 5's scope.
+- Ivan: read beyond the two allowlisted files (dot `cli.py`, `hostfilter.py`, `filter_driver.py`, `share.py`, `setup.py`, `materialize.py`, `ShellAdapter`, `test_setup_real_git.py`, `test_filter_cli.py`) because an end-to-end test needs the surface of commands the allowlist did not name.
+- Ivan: "fixture shape from `test_pull_divergence.py`" read as the scenario shape (base / B edit / A change triple, patch applied at base) realized with real git, since the task also mandates temporary bare repos; that file's mocked `Harness` cannot drive real filters.
+- Ivan: criterion 6's "is shared" is satisfied by registering the same anchored attribute rule `CommandShare` would write, because the command refuses both shell-unsafe names (see the deferred `ls_files` finding); the CLI `--` guard is proven by the leading-dash round trip.
+- Ivan: used `GIT_CONFIG_SYSTEM=/dev/null` with `GIT_CONFIG_NOSYSTEM=1` rather than a temp system-config file; the temp global config carries `commit.gpgsign=false`.
+- Ivan: `_pull` drives `DotGitService.pull` with conftest's `_disable_git_secret`, not `CommandPull`, to keep the assertion on the service under test.
+- Ivan (measured): git exports a relative `GIT_WORK_TREE=.` to the filter subprocess and chdirs to the work-tree's real path, so `resolve_home` yields the realpath. On macOS a test root must be `os.path.realpath`-resolved or `/var` vs `/private/var` makes every clean a no-op.
+- Ivan (measured): `git apply` runs `convert_to_git` on the preimage and `convert_to_working_tree` on the result, which is why the divergence patch stays host-neutral and reverse-apply lands real host paths with no service change.
+
+## 6: Document the dot-host shared-config filter and run the full exit checks
+
+- Orchestrator: docs-only task, so Tess, the red-check and Pat's per-task review were skipped by their own gates. The step-5.6 deslop pass has no docs carve-out, so it ran with the task's three acceptance checks substituted for the absent narrow test run; it removed one restating sentence (e1f28b6a).
+- Orchestrator: `style_gate` recorded `clean` without running `check_style_limits.py`, because the task diff holds no `.py` file.
+- Ivan: CHANGELOG.md left untouched on purpose. The `### Added` **dot** bullet from d3cf92fc already states `--shared`, the file staying in place, the `@HOME@` token, the per-host checkout value, the `--shared` + `--to` refusal and the hidden `dot filter clean|smudge` plumbing, so a second bullet would duplicate it.
+- Ivan: the task brief named `src/tools/dot/commands/share.py`; the real path is `src/tools/dot/commands/localize/share.py`.
+- Ivan: "unchanged suffixes" read as the shared file keeping its own name with no `.host` or `.secret` suffix added (contrast with plain localize's source file and git-secret).
+- Ivan: "expected one-time divergence" read as the first `dot pull` carrying the sharing commit saving the local host-valued copy to a divergence patch and resetting to HEAD, after which the file stops diverging.
+- Ivan: git treats an attribute naming an unconfigured filter driver as a pass-through with no error, so the undefined-driver symptom is a literal `@HOME@` in the work tree and a host path staged. That is git semantics, not something the repo's tests assert.
+- Ivan: unshare steps use `dot run add --renormalize -- <path>` rather than `dot add`, because `dot add` on a tracked path opens git's interactive hunk picker.
+- Ivan: the new rst section sits after `dot localize` and before `dot push` (the flag belongs to `localize`); the brief did not pin placement.
