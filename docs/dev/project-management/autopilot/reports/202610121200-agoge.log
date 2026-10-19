@@ -1,0 +1,13 @@
+Authoring is already settled: the tree is dirty with four pre-existing autopilot entries, so step 6 will be skipped and the report will say so. The report dir does not exist yet and today's date is free, so the files will be `agoge-2026-10-19.md` and `.json`.
+
+Waiting on the five lanes to report back.
+
+Wendy is back with five verified findings and two disclosures worth noting: her first `sysup` run attempted an ntfy push because the session exports `NTFY_URL` (it got a 403, nothing was delivered), and an untracked `voice.md` appeared at the repo root that she did not create. That file looks like a klyreon `init` skeleton, which points at walter's lane. I'll hold judgement until walter reports.
+
+Waiting on walter, heidi, peggy and trudy.
+
+Trudy is back: four verified findings (unauthenticated SSE path disclosure, unbounded YAML alias expansion in the note parser, raw tracebacks on malformed input, and an unbounded `/api/history` read), plus negative results on path confinement, token gating and host checks. She confirms `voice.md` is written only by `klyreon init`, which is in walter's tactics. She also saw a postup server on port 18766 that is not hers, most likely heidi's in-flight probe.
+
+Waiting on walter, heidi and peggy.
+
+You've hit your session limit · resets 1:10pm (Europe/Prague)

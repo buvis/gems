@@ -1,0 +1,97 @@
+{
+  "phase": "done",
+  "next_phase": "",
+  "schema_version": 1,
+  "batch": {
+    "id": "202610121200",
+    "mode": "autopilot",
+    "completed_prds": [
+      {
+        "filename": "00088-dot-host-links-materialize-v1.md",
+        "cycles": 1,
+        "autonomous_decisions": 9,
+        "escalated_decisions": 0,
+        "tasks_completed": 13,
+        "tasks_total": 13,
+        "lane": "full",
+        "lane_reason": "design",
+        "lane_effective": "full",
+        "lane_escalated": null
+      },
+      {
+        "filename": "00098-sysup-run-observability-v1.md",
+        "cycles": 2,
+        "autonomous_decisions": 32,
+        "escalated_decisions": 0,
+        "tasks_completed": 12,
+        "tasks_total": 12,
+        "lane": "full",
+        "lane_reason": "design",
+        "lane_effective": "full",
+        "lane_escalated": null
+      }
+    ],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "catchup_completed_at": "2026-10-19T05:45:00Z",
+    "catchup_head_sha": "47ab9982947f589ba2d7fc04c85c68995a6a7234",
+    "parks_consecutive": 0,
+    "minted_stubs": [
+      "00100-triage-filter-driver-config-values-are-buvis-au-v1.md",
+      "00101-triage-r2-d19066d1-stage-failure-path-leaves-a-v1.md",
+      "00102-triage-the-configured-driver-commands-are-dot-f-v1.md",
+      "00103-triage-docs-contradict-the-code-docs-source-too-v1.md",
+      "00104-triage-stage-failure-path-leaves-a-tokenized-bl-v1.md"
+    ]
+  },
+  "prd": "00099-dot-shared-config-host-fragments-v1.md",
+  "catchup_mode": "run",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "full",
+  "lane_reason": "design",
+  "lane_effective": "full",
+  "tasks_total": 0,
+  "qwen_breaker": {
+    "tripped": false,
+    "after_task": null,
+    "failed_tasks": [],
+    "batch_id": "202610121200"
+  },
+  "qwen_gate_failures_consecutive": 0,
+  "qwen_preflight": {
+    "batch_id": "202610121200",
+    "verdict": "healthy",
+    "detail": null,
+    "checked_at": "2026-10-12T17:45:00Z"
+  },
+  "tasks_completed": 0,
+  "codex_probe": {
+    "batch_id": "202610121200",
+    "verdict": "unhealthy",
+    "backend": "codex",
+    "detail": "sandbox_apply: Operation not permitted (codex read-only sandbox cannot run tools under the Seatbelt profile; observed on design-review dispatch 2 this batch)",
+    "checked_at": "2026-10-12T18:05:00Z"
+  },
+  "cycle": 1,
+  "applied_review_batches": [
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00088-dot-host-links-materialize-v1-review-1.md::tail-sweep",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00098-sysup-run-observability-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00098-sysup-run-observability-v1-review-2.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00098-sysup-run-observability-v1-review-2.md::tail-sweep",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00099-dot-shared-config-host-fragments-v1-review-1.md::decision-gate"
+  ],
+  "phases_completed": [],
+  "replan_count": 0,
+  "catchup_probe": {
+    "batch_id": "202610121200",
+    "gh": "ok",
+    "engram": "ok",
+    "checked_at": "2026-10-19T03:03:20Z"
+  },
+  "contract_card": "step: review gate cycle 2 closed by cap-out; PRD 00099 stalled (cap_regression) and moved to hold/, 5 triage stubs minted | invariants: batch keeps draining (a per-PRD stall is never a batch halt); next session's Phase 0 selects a NEW PRD and must not re-select 00099 from hold/ | next: build gate Phase 0 (references/phase-build.md) \u2014 select the next backlog PRD for batch 202610121200"
+}
