@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **sysup**: a `sudo: true` flag on an entry (or any step starting with `sudo`) primes a cached sudo ticket before the run, refreshed in the background past sudo's 5-minute timeout; press Ctrl-D at the password prompt to skip priming (later steps then prompt for themselves as before), or Ctrl-C to abort the run entirely. A missing `sudo` binary or a declined prompt is not an error. Each run writes a per-run log under `$XDG_STATE_HOME/sysup/logs` (falling back to `~/.local/state/sysup/logs`), keeping the newest 10 files; a same-second filename collision gets a `-1`, `-2`, ... suffix. `sysup` prints the log path after every clean or amber run. A captured step's stdout/stderr lines starting with `error:` (case-insensitive) are flagged even on a zero exit code; up to 5 are printed inline, any more are summarized as `+N more, see log`. One entry producing any such lines reports a single `warned` result (amber, not red) instead of the usual success.
+
+### Changed
+
+- **sysup**: a `run:` entry now yields exactly one final `StepResult` for its whole `steps` list (success, failure, or `warned`), not one per step
+- **sysup**: a run-log write failure now stops the run instead of continuing silently
+
 ## [0.14.2] - 2026-10-17
 
 ### Added

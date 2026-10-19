@@ -132,6 +132,70 @@ than its shared twin, so it overrides per-key while staying untracked.
 Because ``*.local.yaml`` is deliberately untracked, it is not backed up by the
 dotfiles repo; keep a separate backup of anything only it holds.
 
+Priming sudo
+-------------
+
+An entry that sets ``sudo: true``, or whose first step's argv starts with
+``sudo``, needs a cached sudo ticket:
+
+.. code-block:: yaml
+
+    commands:
+      brew:
+        order: 10
+        sudo: true          # at least one cask needs sudo partway through
+        steps:
+          - [brew, upgrade]
+
+Priming only runs when stdin is a TTY and at least one selected entry needs
+sudo; ``--list`` and ``--dry-run`` never prime. Before the first command runs,
+``sysup`` prompts for your password to cache a sudo ticket, then refreshes it
+in the background every 60 seconds (past sudo's 5-minute timeout) for the rest
+of the run, stopping the refresher in a ``finally`` so a ``Ctrl-C`` between
+entries cannot leak the background thread. At the prompt:
+
+* press **Ctrl-D** to skip priming — later sudo-needing steps then prompt for
+  themselves as before, exactly as if priming were never configured;
+* press **Ctrl-C** to abort the whole run.
+
+A missing ``sudo`` binary or a declined prompt is not an error — it is the
+same as skipping priming. Each sudo-needing argv step still only inherits its
+own child's stdin when it runs (the ``interactive`` scope is per step, not
+shared across the whole run), so priming only ever affects whether that step
+is prompted again.
+
+Run logs
+--------
+
+Every ordinary run (not ``--list`` or ``--dry-run``) writes one log file
+before its first command: ``$XDG_STATE_HOME/sysup/logs``, falling back to
+``~/.local/state/sysup/logs``. The filename is the run's UTC start time,
+``YYYYMMDDTHHMMSSZ.log``; a same-second collision (two runs starting in the
+same second) appends a ``-1``, ``-2``, ... suffix, first available name wins.
+Older log files beyond the **newest 10** are deleted at the start of each run.
+A captured step's section records its argv, exit code, and stdout/stderr
+verbatim; a timed-out step records the timeout instead of an exit code; a
+``use:`` capability or an ``interactive`` step records only its status, since
+nothing was captured. If the log itself cannot be written — directory
+creation, file creation, or a write/flush failure — the run stops with an
+error instead of continuing silently (stop-on-log-failure).
+
+``sysup`` prints the log's path after every clean or amber (non-red) run,
+e.g. ``full log: ~/.local/state/sysup/logs/20261019T120000Z.log``.
+
+Within a ``run:`` entry's ``steps``, each argv step's captured stdout and
+stderr are scanned for lines starting with ``error:`` (case-insensitive,
+leading whitespace ignored) — this strict heuristic fires even when the step
+exits 0, catching tools that report an error without a nonzero exit. Up to 5
+matching lines are printed inline; any beyond that are summarized as
+``+N more, see log``. A ``run:`` entry still reports exactly **one final
+result** for its whole ``steps`` list, never one per step: a genuine step
+failure ends the entry early (unless ``continue_on_error``) with a failed
+result; otherwise, if any ``error:`` line was seen anywhere in the entry's
+output, the entry reports a single ``warned`` result (amber, like
+``expiring`` — it does not fail the run or turn the exit code red); with
+neither, the entry reports its usual success.
+
 Attention
 ---------
 
