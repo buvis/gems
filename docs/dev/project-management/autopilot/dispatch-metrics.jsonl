@@ -176,3 +176,31 @@
 {"id":"32201d3e","ended_at":1792384479,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
 {"id":"293593d5","ended_at":1792384479,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
 {"kind":"handoff","site":"build","edge":"leave","at":1792384479,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792384524,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"id":"bc035eaf","kind":"tess","task":"3","queued_at":1792384802,"prompt_bytes":50275}
+{"id":"067e676b","kind":"tess","task":"3","queued_at":1792384810,"prompt_bytes":45700}
+{"id":"c2fff256","kind":"tess","task":"3","queued_at":1792384828,"prompt_bytes":46050}
+{"id":"c2fff256","ended_at":1792385320,"elapsed_s":492,"outcome":"ok","detail":null}
+{"id":"4768b888","kind":"tess","task":"3","queued_at":1792385363,"prompt_bytes":20630}
+{"id":"4768b888","ended_at":1792385473,"elapsed_s":110,"outcome":"ok","detail":null}
+{"id":"2b280897","kind":"devon","task":"3","queued_at":1792385516,"prompt_bytes":3812}
+{"id":"2b280897","ended_at":1792385815,"elapsed_s":299,"outcome":"ok","detail":null}
+{"id":"5f07edb4","kind":"tess","task":"3","queued_at":1792385868,"prompt_bytes":25193}
+{"id":"5f07edb4","ended_at":1792386336,"elapsed_s":468,"outcome":"ok","detail":null}
+{"id":"7f46db86","kind":"ivan","task":"3","queued_at":1792386417,"prompt_bytes":41153}
+{"id":"7f46db86","ended_at":1792386842,"elapsed_s":425,"outcome":"ok","detail":null}
+{"id":"0a1514ce","kind":"deslop","task":"3","queued_at":1792386923,"prompt_bytes":7970}
+{"id":"0a1514ce","ended_at":1792387129,"elapsed_s":206,"outcome":"ok","detail":null}
+{"id":"d2d8b98d","kind":"pat","task":"3","queued_at":1792387186,"prompt_bytes":64593}
+{"id":"3e63a34b","kind":"pat","task":"3","queued_at":1792387199,"prompt_bytes":29532}
+{"id":"3e63a34b","ended_at":1792387282,"elapsed_s":83,"outcome":"ok","detail":null}
+{"id":"844d92fe","kind":"pat","task":"3","queued_at":1792387294,"prompt_bytes":29807}
+{"id":"844d92fe","ended_at":1792387312,"elapsed_s":18,"outcome":"ok","detail":null}
+{"id":"3d6d9195","kind":"ivan","task":"3","queued_at":1792387348,"prompt_bytes":11779}
+{"id":"3d6d9195","ended_at":1792387677,"elapsed_s":329,"outcome":"ok","detail":null}
+{"id":"53bfd77e","kind":"pat","task":"3","queued_at":1792387707,"prompt_bytes":15213}
+{"id":"53bfd77e","ended_at":1792387741,"elapsed_s":34,"outcome":"ok","detail":null}
+{"id":"d2d8b98d","ended_at":1792387893,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"id":"bc035eaf","ended_at":1792387893,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"067e676b","ended_at":1792387893,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1792387893,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}

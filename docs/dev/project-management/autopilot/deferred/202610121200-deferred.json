@@ -27,6 +27,27 @@
       "disposition": "deferred to task 3 as a tested precondition",
       "detail": "Raised by Pat in the task-2 per-task review and re-raised as unresolved after the one permitted retry: the fix shipped in task 2 is a docstring contract plus a design-level refusal in check 12, which the reviewer correctly called unenforceable in code. A signature change (enum or result object) was rejected because the committed tests pin is-None for all three states and the Tess dispatch budget for task 2 was exhausted 4/4. The design now REQUIRES task 3 to ship a test that a conflicted or unreadable capture is refused by check 12 and never reaches restore_index_entry(target, None). Verify that test exists before closing task 3.",
       "prd": "00099-dot-shared-config-host-fragments-v1.md"
+    },
+    {
+      "type": "assumed-ambiguity",
+      "question": "Task 3 contract calls hostfilter.count_home(raw_bytes, home) without defining home for CommandShare.",
+      "assumption": "home is the dotfiles root the command was constructed with (str(dotfiles_root)), since dot git work-tree is that root and hostfilter.resolve_home falls back to DOTFILES_ROOT.",
+      "prd": "00099-dot-shared-config-host-fragments-v1.md"
+    },
+    {
+      "type": "design-gap",
+      "severity": "LOW",
+      "task": "3",
+      "detail": "Design-doc check 10 lists attribute-quoting characters as whitespace, #, !, [ and backslash, which omits the double quote. Git attribute files need a literal double quote escaped too, so a path like .config/say\"hi\" is accepted by the contract and would be written unquoted. Flagged by Tess during the task 3 adversarial strengthen pass; left unasserted in tests rather than inventing a contract.",
+      "prd": "00099-dot-shared-config-host-fragments-v1.md"
+    },
+    {
+      "type": "review-low-findings",
+      "severity": "LOW",
+      "task": "3",
+      "file": "src/tools/dot/commands/localize/share.py",
+      "detail": "Five LOW findings from the task 3 per-task review, left unfixed after the one sanctioned MEDIUM retry (both MEDIUMs were fixed). (1) _roll_back takes the ROLLBACK FAILED branch when only the .gitattributes restore failed, but its message still blames the index entry and sends the user to cfg status / diff --cached; build the index hint only when the index restore failed. (2) the index-mode check moved into _check_after_read, so it runs after read_bytes and after the token/glob/quote checks, while the design contract puts check 12 before check 8 byte read. (3) _QUOTE_CHARS covers only space and tab though the contract says whitespace, so a name with \\n, \\r, \\v or \\f would append as two attribute lines (check_attr_filter is the only backstop). (4) the target is not normalized beyond relative_to, so ./foo or a//b appends /./foo filter=dot-host, which never matches, and the user gets a misleading conflicting-attribute error (the share does roll back). (5) _read_attributes never uses self.",
+      "prd": "00099-dot-shared-config-host-fragments-v1.md"
     }
   ]
 }
