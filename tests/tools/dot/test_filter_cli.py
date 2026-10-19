@@ -14,6 +14,31 @@ from dot.cli import cli
 
 TOKEN = b"@HOME@"
 
+# Sentinel strings that cannot be derived from any CLI argument, so a handler
+# cannot fabricate the rendered line instead of running the command.
+SHARE_OUTPUT = "share-result-8f3c21"
+LOCALIZE_OUTPUT = "localize-result-5a90de"
+LOCALIZE_ERROR = "localize-error-1b4e77"
+
+# The complete set of commands `dot --help` may advertise. The filter plumbing
+# must not appear here under any name.
+VISIBLE_TOP_LEVEL_COMMANDS = {
+    "add",
+    "commit",
+    "delete",
+    "encrypt",
+    "localize",
+    "materialize",
+    "pull",
+    "push",
+    "rm",
+    "run",
+    "setup",
+    "status",
+    "tui",
+    "unstage",
+}
+
 
 def _make_home(tmp_path: Path, name: str) -> Path:
     """Create and return a throwaway host home directory."""
@@ -27,25 +52,53 @@ def _encoded(path: Path | str) -> bytes:
     return os.fsencode(str(path))
 
 
+def _tree_snapshot(root: Path) -> set[str]:
+    """Return every path under root, relative to it."""
+    return {str(entry.relative_to(root)) for entry in root.rglob("*")}
+
+
+def _help_commands(output: str) -> set[str]:
+    """Return the command names listed in the Commands section of a help page."""
+    names: set[str] = set()
+    indent: int | None = None
+    in_block = False
+    for line in output.splitlines():
+        if line.rstrip() == "Commands:":
+            in_block = True
+            continue
+        if not in_block or not line.strip():
+            continue
+        current = len(line) - len(line.lstrip())
+        if indent is None:
+            indent = current
+        if current == indent:
+            names.add(line.split()[0])
+    return names
+
+
 def _filter_env(
     home: Path,
     *,
     work_tree: str | None = None,
     dotfiles_root: str | None = None,
+    home_env: str | None = None,
     extra_bin: Path | None = None,
+    omit_work_tree: bool = False,
 ) -> dict[str, str]:
     """Build a minimal environment for a `dot filter` subprocess."""
     bin_dirs = [str(Path(sys.executable).parent)]
     if extra_bin is not None:
         bin_dirs.insert(0, str(extra_bin))
-    return {
+    env = {
         "PATH": os.pathsep.join(bin_dirs),
-        "HOME": str(home),
+        "HOME": str(home) if home_env is None else home_env,
         "DOTFILES_ROOT": str(home) if dotfiles_root is None else dotfiles_root,
-        "GIT_WORK_TREE": str(home) if work_tree is None else work_tree,
         "BUVIS_AUTO_UPDATE": "false",
         "LC_ALL": "C.UTF-8",
     }
+    if not omit_work_tree:
+        env["GIT_WORK_TREE"] = str(home) if work_tree is None else work_tree
+    return env
 
 
 def _run_filter(
@@ -92,6 +145,31 @@ class TestFilterCleanBytes:
 
         assert proc.returncode == 0, proc.stderr
         assert proc.stdout == b"first=" + TOKEN + b"/.config/app.conf\nsecond=" + TOKEN + b"/bin/tool\n"
+        assert proc.stderr == b""
+
+    def test_clean_replaces_the_home_path_in_every_surrounding_context(self, tmp_path: Path) -> None:
+        home = _make_home(tmp_path, "home-alpha")
+        home_bytes = _encoded(home)
+        payload = (
+            home_bytes + b"/bin/tool --flag\n"
+            b'quoted="' + home_bytes + b'/.config"\n'
+            b"single='" + home_bytes + b"'\n"
+            b"PATH=/usr/bin:" + home_bytes + b"/bin:/sbin\n"
+            b"bare " + home_bytes + b" trailing\n"
+            b"tail=" + home_bytes
+        )
+
+        proc = _run_filter("clean", ".zshrc", payload, _filter_env(home), tmp_path)
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout == (
+            TOKEN + b"/bin/tool --flag\n"
+            b'quoted="' + TOKEN + b'/.config"\n'
+            b"single='" + TOKEN + b"'\n"
+            b"PATH=/usr/bin:" + TOKEN + b"/bin:/sbin\n"
+            b"bare " + TOKEN + b" trailing\n"
+            b"tail=" + TOKEN
+        )
         assert proc.stderr == b""
 
     def test_clean_leaves_paths_that_only_resemble_home_untouched(self, tmp_path: Path) -> None:
@@ -146,18 +224,45 @@ class TestFilterCleanBytes:
         assert proc.returncode == 0, proc.stderr
         assert proc.stdout == b"work=" + TOKEN + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
 
+    def test_clean_resolves_home_from_the_working_directory_without_a_work_tree(self, tmp_path: Path) -> None:
+        real_tmp = Path(os.path.realpath(tmp_path))
+        home = _make_home(real_tmp, "cwd-home")
+        decoy = _make_home(real_tmp, "decoy-root")
+        env = _filter_env(home, omit_work_tree=True, home_env=str(decoy), dotfiles_root=str(decoy))
+        payload = b"cwd=" + _encoded(home) + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
+
+        proc = _run_filter("clean", ".gitconfig", payload, env, home)
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout == b"cwd=" + TOKEN + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
+        assert proc.stderr == b""
+
 
 class TestFilterCleanTokenRefusal:
     @pytest.mark.parametrize("path_arg", [".gitconfig", "deep/dir/app.conf"])
-    def test_clean_refuses_a_payload_that_already_contains_the_token(self, tmp_path: Path, path_arg: str) -> None:
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            b"home=" + TOKEN + b"/x\n",
+            TOKEN,
+            b"\xff\xfe" + TOKEN + b"\n",
+        ],
+        ids=["in a path", "whole payload", "after invalid utf-8"],
+    )
+    def test_clean_refuses_a_payload_that_already_contains_the_token(
+        self,
+        tmp_path: Path,
+        path_arg: str,
+        payload: bytes,
+    ) -> None:
         home = _make_home(tmp_path, "home-alpha")
-        payload = b"home=" + TOKEN + b"/x\n"
 
         proc = _run_filter("clean", path_arg, payload, _filter_env(home), tmp_path)
 
         assert proc.returncode == 1
         assert proc.stdout == b""
         assert proc.stderr == f"dot filter: {path_arg} already contains @HOME@; the token is reserved\n".encode()
+        assert proc.stderr.count(b"\n") == 1
 
 
 class TestFilterSmudgeBytes:
@@ -171,6 +276,18 @@ class TestFilterSmudgeBytes:
 
         assert proc.returncode == 0, proc.stderr
         assert proc.stdout == b"first=" + home_bytes + b"/.config/app.conf\nsecond=" + home_bytes + b"/bin/tool\n"
+        assert proc.stderr == b""
+
+    def test_smudge_resolves_home_from_work_tree_relative_to_the_working_directory(self, tmp_path: Path) -> None:
+        real_tmp = Path(os.path.realpath(tmp_path))
+        home = _make_home(real_tmp, "relative-home")
+        decoy = _make_home(real_tmp, "decoy-root")
+        env = _filter_env(home, work_tree="relative-home", home_env=str(decoy), dotfiles_root=str(decoy))
+
+        proc = _run_filter("smudge", ".gitconfig", b"p=" + TOKEN + b"/f\n", env, real_tmp)
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout == b"p=" + _encoded(home) + b"/f\n"
         assert proc.stderr == b""
 
     def test_smudge_leaves_token_lookalikes_untouched(self, tmp_path: Path) -> None:
@@ -221,6 +338,7 @@ class TestFilterIsolation:
         env = _filter_env(home, extra_bin=bin_dir)
         payload = home_bytes + b"\n" if action == "clean" else TOKEN + b"\n"
         expected = TOKEN + b"\n" if action == "clean" else home_bytes + b"\n"
+        before = _tree_snapshot(tmp_path)
 
         proc = _run_filter(action, ".gitconfig", payload, env, tmp_path)
 
@@ -230,6 +348,8 @@ class TestFilterIsolation:
         assert proc.stderr == b""
         for name, sentinel in sentinels.items():
             assert not sentinel.exists(), f"{name} was executed"
+        # The filter is a pure stream transform: it writes nothing to disk.
+        assert _tree_snapshot(tmp_path) == before
 
 
 class TestFilterHelpVisibility:
@@ -237,8 +357,7 @@ class TestFilterHelpVisibility:
         result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
-        assert re.search(r"^\s+localize\b", result.output, re.MULTILINE)
-        assert re.search(r"^\s+filter\b", result.output, re.MULTILINE) is None
+        assert _help_commands(result.output) == VISIBLE_TOP_LEVEL_COMMANDS
 
     def test_filter_own_help_lists_clean_and_smudge(self, runner) -> None:
         result = runner.invoke(cli, ["filter", "--help"])
@@ -264,13 +383,14 @@ class TestLocalizeSharedDispatch:
         monkeypatch.setenv("DOTFILES_ROOT", dotfiles_root)
         mock_shell = mocker.patch("dot.cli.ShellAdapter")
         mock_share = mocker.patch("dot.commands.localize.share.CommandShare")
-        mock_share.return_value.execute.return_value = CommandResult(success=True, output=f"shared {path_arg}")
+        mock_share.return_value.execute.return_value = CommandResult(success=True, output=SHARE_OUTPUT)
         mock_localize = mocker.patch("dot.commands.localize.localize.CommandLocalize")
 
         result = runner.invoke(cli, ["localize", "--shared", path_arg])
 
         assert result.exit_code == 0, result.output
-        assert f"shared {path_arg}" in result.output
+        assert SHARE_OUTPUT in result.output
+        mock_share.return_value.execute.assert_called_once_with()
         kwargs = mock_share.call_args.kwargs
         assert kwargs["dotfiles_root"] == dotfiles_root
         assert str(kwargs["path"]) == path_arg
@@ -283,11 +403,13 @@ class TestLocalizeSharedDispatch:
         mocker.patch("dot.cli.ShellAdapter")
         mock_share = mocker.patch("dot.commands.localize.share.CommandShare")
         mock_localize = mocker.patch("dot.commands.localize.localize.CommandLocalize")
-        mock_localize.return_value.execute.return_value = CommandResult(success=True, output="localized .bashrc")
+        mock_localize.return_value.execute.return_value = CommandResult(success=True, output=LOCALIZE_OUTPUT)
 
         result = runner.invoke(cli, ["localize", ".bashrc"])
 
         assert result.exit_code == 0, result.output
+        assert LOCALIZE_OUTPUT in result.output
+        mock_localize.return_value.execute.assert_called_once_with()
         kwargs = mock_localize.call_args.kwargs
         assert kwargs["dotfiles_root"] == "/fake/root-one"
         assert str(kwargs["path"]) == ".bashrc"
@@ -299,26 +421,51 @@ class TestLocalizeSharedDispatch:
         mocker.patch("dot.cli.ShellAdapter")
         mock_share = mocker.patch("dot.commands.localize.share.CommandShare")
         mock_localize = mocker.patch("dot.commands.localize.localize.CommandLocalize")
-        mock_localize.return_value.execute.return_value = CommandResult(success=True, output="localized .zshrc")
+        mock_localize.return_value.execute.return_value = CommandResult(success=True, output=LOCALIZE_OUTPUT)
 
         result = runner.invoke(cli, ["localize", "--to", ".host-config/.zshrc", ".zshrc"])
 
         assert result.exit_code == 0, result.output
+        assert LOCALIZE_OUTPUT in result.output
+        mock_localize.return_value.execute.assert_called_once_with()
         kwargs = mock_localize.call_args.kwargs
         assert kwargs["dotfiles_root"] == "/other/root-two"
         assert str(kwargs["path"]) == ".zshrc"
         assert str(kwargs["source"]) == ".host-config/.zshrc"
         mock_share.assert_not_called()
 
-    def test_shared_with_to_is_refused_before_any_dispatch(self, monkeypatch, mocker, runner) -> None:
+    def test_a_failing_localize_reports_the_error_from_the_command(self, monkeypatch, mocker, runner) -> None:
         monkeypatch.setenv("DOTFILES_ROOT", "/fake/root-one")
         mocker.patch("dot.cli.ShellAdapter")
+        mock_localize = mocker.patch("dot.commands.localize.localize.CommandLocalize")
+        mock_localize.return_value.execute.return_value = CommandResult(success=False, error=LOCALIZE_ERROR)
+
+        result = runner.invoke(cli, ["localize", ".bashrc"])
+
+        assert LOCALIZE_ERROR in result.output
+        assert LOCALIZE_OUTPUT not in result.output
+        mock_localize.return_value.execute.assert_called_once_with()
+
+    @pytest.mark.parametrize("to_arg", [".host-config/.zshrc", "shared/profiles/zsh"])
+    def test_shared_with_to_is_refused_before_any_dispatch(
+        self,
+        tmp_path: Path,
+        monkeypatch,
+        mocker,
+        runner,
+        to_arg: str,
+    ) -> None:
+        monkeypatch.setenv("DOTFILES_ROOT", str(tmp_path))
+        mock_shell = mocker.patch("dot.cli.ShellAdapter")
         mock_share = mocker.patch("dot.commands.localize.share.CommandShare")
         mock_localize = mocker.patch("dot.commands.localize.localize.CommandLocalize")
+        before = _tree_snapshot(tmp_path)
 
-        result = runner.invoke(cli, ["localize", "--shared", "--to", ".host-config/.zshrc", ".zshrc"])
+        result = runner.invoke(cli, ["localize", "--shared", "--to", to_arg, ".zshrc"])
 
         assert result.exit_code == 1
         assert "--shared cannot be combined with --to" in result.output
         mock_share.assert_not_called()
         mock_localize.assert_not_called()
+        mock_shell.assert_not_called()
+        assert _tree_snapshot(tmp_path) == before
