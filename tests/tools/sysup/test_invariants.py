@@ -13,6 +13,8 @@ _LIBRARY_FILES = [
     _SYSUP_ROOT / "attention.py",
     _SYSUP_ROOT / "config.py",
     _SYSUP_ROOT / "runner.py",
+    # Log I/O failures must surface as FatalError for cli.py's controlled handler.
+    _SYSUP_ROOT / "runlog.py",
     *sorted((_SYSUP_ROOT / "capabilities").glob("*.py")),
 ]
 
@@ -25,6 +27,6 @@ class TestLibraryLayerInvariants:
         assert "sys.exit" not in source, f"{path.name} must not call sys.exit"
 
     def test_files_exist(self) -> None:
-        assert len(_LIBRARY_FILES) >= 6
+        assert len(_LIBRARY_FILES) >= 7
         for path in _LIBRARY_FILES:
             assert path.is_file()
