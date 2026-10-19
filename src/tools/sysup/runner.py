@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import re
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,13 @@ if TYPE_CHECKING:
     from sysup.runlog import RunLog
 
 __all__ = ["Runner", "classify_expiry"]
+
+_MAX_PRINTED_ERRORS = 5
+_ERROR_LINE = re.compile(r"^\s*error:", re.IGNORECASE)
+
+
+def _scan_errors(stdout: str, stderr: str) -> list[str]:
+    return [line for text in (stdout, stderr) for line in text.splitlines() if _ERROR_LINE.match(line)]
 
 
 def _should_prime(selected: list[tuple[str, SysupCommand]]) -> bool:
@@ -182,7 +190,7 @@ class Runner:
 
     def _run_use(self: Runner, name: str, command: SysupCommand) -> Iterator[StepResult]:
         capability = CAPABILITIES[command.use] if command.use is not None else None
-        if capability is None:  # pragma: no cover - load_config validates this
+        if capability is None or command.use is None:  # pragma: no cover - load_config validates this
             yield StepResult(name, success=False, message=f"unknown capability '{command.use}'", command=name)
             return
 
@@ -193,11 +201,17 @@ class Runner:
         try:
             with console.status(f"{name}: {command.use}"):
                 for step in capability.run(**command.with_):
-                    yield replace(step, command=name)
+                    stamped = replace(step, command=name)
+                    if self._log is not None:
+                        runlog.append_step(self._log, name, command.use, captured=False, status=stamped.status)
+                    yield stamped
         except FatalError:
             raise
         except Exception as exc:
-            yield StepResult(name, success=False, message=f"{name} failed: {exc}", command=name)
+            failed = StepResult(name, success=False, message=f"{name} failed: {exc}", command=name)
+            if self._log is not None:
+                runlog.append_step(self._log, name, command.use, captured=False, status=failed.status)
+            yield failed
 
     def _run_steps(self: Runner, name: str, command: SysupCommand) -> Iterator[StepResult]:
         steps = command.steps or ()
@@ -207,18 +221,42 @@ class Runner:
             yield StepResult(name, success=True, message=f"would run: {rendered}", command=name)
             return
 
-        ok = True
+        failure: StepResult | None = None
+        error_count = 0
         for argv in steps:
             outcome = self._run_argv(name, list(argv), command)
-            result = outcome.result
-            if not result.success:
-                yield result
-                ok = False
+            if self._log is not None:
+                really_captured = not command.interactive and (outcome.exit_code is not None or outcome.timed_out)
+                runlog.append_step(
+                    self._log,
+                    name,
+                    " ".join(argv),
+                    captured=really_captured,
+                    status=outcome.result.status,
+                    exit_code=outcome.exit_code,
+                    stdout=outcome.stdout,
+                    stderr=outcome.stderr,
+                    timed_out=outcome.timed_out,
+                    timeout_s=outcome.timeout_s,
+                )
+            if not outcome.result.success:
+                failure = outcome.result
                 if not command.continue_on_error:
+                    yield failure
                     return
-            elif command.continue_on_error:
-                yield result
-        if ok and not command.continue_on_error:
+                continue
+            errors = _scan_errors(outcome.stdout, outcome.stderr)
+            error_count += len(errors)
+            for line in errors[:_MAX_PRINTED_ERRORS]:
+                console.failure(line)
+            if len(errors) > _MAX_PRINTED_ERRORS:
+                console.failure(f"+{len(errors) - _MAX_PRINTED_ERRORS} more, see log")
+        if failure is not None:
+            yield failure
+        elif error_count:
+            message = f"{name}: {error_count} error line(s), see log"
+            yield StepResult(name, success=True, message=message, status="warned", command=name)
+        else:
             yield StepResult(name, success=True, command=name)
 
     def _run_argv(self: Runner, name: str, argv: list[str], command: SysupCommand) -> _ArgvOutcome:
