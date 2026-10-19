@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-__all__ = ["BranchInfo", "FileEntry"]
+__all__ = ["BranchInfo", "FileEntry", "IndexEntry"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -12,6 +12,14 @@ class FileEntry:
     path: str
     status: str
     is_secret: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class IndexEntry:
+    """The index record of a path: its mode and blob sha."""
+
+    mode: str
+    sha: str
 
 
 @dataclass(frozen=True, slots=True)
