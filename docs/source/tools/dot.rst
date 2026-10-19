@@ -353,8 +353,7 @@ after sharing.
 
 On success dot reports ``shared <path>: <n> host value(s) replaced``, or
 ``no host value found in <path>; filter active for future writes`` when the
-file carries no home path yet. The second message is not a failure: the filter
-is registered and covers later writes.
+file carries no home path yet.
 
 **The token is reserved.** ``@HOME@`` is dot's, so a file that already contains
 it is refused, and so is a later write that puts it into a shared file: the
