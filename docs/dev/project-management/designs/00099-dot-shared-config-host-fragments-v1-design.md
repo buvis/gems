@@ -279,8 +279,16 @@ def restore_index_entry(self, path: str, entry: IndexEntry | None) -> CommandRes
             index entry before" (restoring to that state removes it again).
 
     Returns:
-        Success from ``cfg update-index --cacheinfo <mode>,<sha>,<literal-path>``
-        when ``entry`` is not ``None``, or from
+        Success from ``cfg update-index --cacheinfo <mode>,<sha>,<path>``
+        when ``entry`` is not ``None`` — the whole comma triple is one
+        ``shlex.quote``d shell token, and its third field is a **pathname**,
+        NOT a ``:(literal)`` pathspec: ``git update-index --cacheinfo`` takes
+        ``<mode>,<object>,<path>`` (git's own usage string), so a pathspec
+        operator there would register an index entry for a file literally
+        named ``:(literal)<path>`` — the same pathname-vs-pathspec confusion
+        ``check_attr_filter`` above warns about. The ``rm --cached`` branch
+        below keeps the literal pathspec, because ``git rm`` does take
+        pathspecs. Or from
         ``cfg rm --cached --ignore-unmatch -- <literal-path>`` when it is
         ``None`` (the path is dropped from the index, work-tree untouched —
         same flag ``untrack`` already uses). Either way this touches ONLY
@@ -627,11 +635,11 @@ pipeline everything else in dot flows through.
 - Non-blocking: every `DotGitService` construction now pays one additional `git config` read (and occasionally up to 3 writes) — additive overhead on an already-accepted self-heal pattern (hooks path, fetch refspec).
 - Non-blocking: a raw `git clone`/`cfg checkout` performed outside `dot setup`/`dot materialize` bypasses `_ensure_filter_driver` and checks out literal `@HOME@` bytes; mitigation is the documented Phase 2 recovery procedure, not a code-level guard — accepted for a dotfiles CLI, not a production service.
 - Question (resolved by inspection, no doc change needed): the parent `cli` Click group's `buvis_options`/update-check processing runs before Click dispatches into `filter clean`/`filter smudge`, but that processing goes through `console`/`click.echo`, never raw stdout — and the acceptance tests assert byte-exact stdout, which would catch any contamination. No separate guard needed.
-- dispatch 1 (claude): cardinal-sin 0, blocker 2, non-blocking 4, question 2
+- dispatch 1 (claude): cardinal-sin 0, blocker 2, non-blocker 4, question 2
 - Non-blocking (dispatch 2): tracked-regular-file enforcement did not previously reject symlinks/special modes — fixed via check 12 above.
 - Non-blocking (dispatch 2): `dot filter clean/smudge %f` lacked an option terminator for leading-dash filenames — fixed by configuring `-- %f` above.
 - Non-blocking (dispatch 2): installing the filter driver does not retroactively rewrite files already checked out with literal `@HOME@` bytes from before the driver existed; this is the documented Phase 2 recovery procedure (save edits, run `dot`, remove and re-checkout the affected file), not a code-level auto-repair — accepted as-is for a dotfiles CLI.
 - Question (dispatch 2, recorded, not resolved — out of scope per PRD): smudge always writes a forward-slash home, so Windows-spelled shared content checked out on a POSIX host keeps its Windows path separators past the home prefix (e.g. `C:\Users\Alice\settings` → `/home/bob\settings`). The PRD explicitly scopes Windows/POSIX cross-sharing out of v1 ("Windows spelling normalization is supported within Windows; Windows/POSIX sharing is outside v1") — this is that exact exclusion observed at the byte level, not a new gap.
-- dispatch 2 (codex): cardinal-sin 0, blocker 3, non-blocking 4, question 1
+- dispatch 2 (codex): cardinal-sin 0, blocker 3, non-blocker 4, question 1
 - dispatch 3 (codex): verification pass found all 3 prior fixes incomplete — check-11's "no staged diff" precondition didn't prove work-tree==index, only index==HEAD; `filter_driver_configured` checked only `clean`, not `required`; `check_attr_filter` passed a `:(literal)` pathspec to a command that takes pathnames, so the check always read "unspecified"; and the effective-attribute rollback reused the renormalize-based reconstruction that has the same divergence problem as the original rollback. Resolved by redesigning the rollback mechanism entirely: `capture_index_entry`/`restore_index_entry` replace every renormalize-based "undo" with an exact index-sha restore that needs no work-tree/index-equality precondition at all, which let the "no staged diff" refusal (old check 11) be deleted rather than fixed; `filter_driver_configured` now reads all three keys; `check_attr_filter` now takes a plain pathname; the effective-attribute check now runs immediately after the `.gitattributes` write and before any git mutation, so its own rollback is the cheapest one (work-tree text only) rather than reusing the index-touching rollback. No dispatch 4 (3-dispatch ceiling reached); the fixes above were re-verified against this session's own line-by-line reading of Git's `check-attr`/`update-index`/`ls-files` contracts rather than a further codex call.
-- dispatch 3 (codex): cardinal-sin 0, blocker 4, non-blocking 0, question 0
+- dispatch 3 (codex): cardinal-sin 0, blocker 4, non-blocker 0, question 0

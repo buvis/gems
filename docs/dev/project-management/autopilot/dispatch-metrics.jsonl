@@ -148,3 +148,12 @@
 {"id":"aa90d1a6","kind":"ivan","task":"1","queued_at":1792381147,"prompt_bytes":30207}
 {"id":"aa90d1a6","ended_at":1792381223,"elapsed_s":76,"outcome":"ok","detail":null}
 {"id":"c187f533","kind":"pat","task":"1","queued_at":1792381339,"prompt_bytes":26379}
+{"id":"c187f533","ended_at":1792381500,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"id":"d72c8f6b","ended_at":1792381500,"elapsed_s":null,"outcome":"lost","detail":"open at build/resume handoff"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792381500,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792381537,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792381706,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"id":"2348d2e9","kind":"tess","task":"2","queued_at":1792381776,"prompt_bytes":17892}
+{"id":"2348d2e9","ended_at":1792382186,"elapsed_s":410,"outcome":"ok","detail":null}
+{"id":"6274793a","kind":"tess","task":"2","queued_at":1792382254,"prompt_bytes":14572}
+{"id":"6274793a","ended_at":1792382305,"elapsed_s":51,"outcome":"ok","detail":null}
