@@ -165,8 +165,9 @@ def cli(
         return
 
     results: list[StepResult] = []
+    runner = Runner(cfg, dry_run=dry_run)
     try:
-        for step in Runner(cfg, dry_run=dry_run).run(plan):
+        for step in runner.run(plan):
             _report_step(step)
             results.append(step)
     except FatalError as exc:
@@ -183,6 +184,8 @@ def cli(
     except OSError as exc:
         console.panic(f"could not write attention state: {exc}")
         return
+    if runner.log_path is not None:
+        console.info(f"full log: {runner.log_path}")
     if exit_code(results):
         ctx.exit(1)
 
