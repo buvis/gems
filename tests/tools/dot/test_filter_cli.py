@@ -84,6 +84,7 @@ def _filter_env(
     home_env: str | None = None,
     extra_bin: Path | None = None,
     omit_work_tree: bool = False,
+    omit_dotfiles_root: bool = False,
 ) -> dict[str, str]:
     """Build a minimal environment for a `dot filter` subprocess."""
     bin_dirs = [str(Path(sys.executable).parent)]
@@ -92,10 +93,11 @@ def _filter_env(
     env = {
         "PATH": os.pathsep.join(bin_dirs),
         "HOME": str(home) if home_env is None else home_env,
-        "DOTFILES_ROOT": str(home) if dotfiles_root is None else dotfiles_root,
         "BUVIS_AUTO_UPDATE": "false",
         "LC_ALL": "C.UTF-8",
     }
+    if not omit_dotfiles_root:
+        env["DOTFILES_ROOT"] = str(home) if dotfiles_root is None else dotfiles_root
     if not omit_work_tree:
         env["GIT_WORK_TREE"] = str(home) if work_tree is None else work_tree
     return env
@@ -224,17 +226,30 @@ class TestFilterCleanBytes:
         assert proc.returncode == 0, proc.stderr
         assert proc.stdout == b"work=" + TOKEN + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
 
-    def test_clean_resolves_home_from_the_working_directory_without_a_work_tree(self, tmp_path: Path) -> None:
+    def test_clean_falls_back_to_dotfiles_root_without_a_work_tree(self, tmp_path: Path) -> None:
         real_tmp = Path(os.path.realpath(tmp_path))
-        home = _make_home(real_tmp, "cwd-home")
-        decoy = _make_home(real_tmp, "decoy-root")
-        env = _filter_env(home, omit_work_tree=True, home_env=str(decoy), dotfiles_root=str(decoy))
-        payload = b"cwd=" + _encoded(home) + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
+        home = _make_home(real_tmp, "dotfiles-home")
+        decoy = _make_home(real_tmp, "decoy-home")
+        env = _filter_env(home, omit_work_tree=True, dotfiles_root=str(home), home_env=str(decoy))
+        payload = b"root=" + _encoded(home) + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
 
-        proc = _run_filter("clean", ".gitconfig", payload, env, home)
+        proc = _run_filter("clean", ".gitconfig", payload, env, decoy)
 
         assert proc.returncode == 0, proc.stderr
-        assert proc.stdout == b"cwd=" + TOKEN + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
+        assert proc.stdout == b"root=" + TOKEN + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
+        assert proc.stderr == b""
+
+    def test_clean_falls_back_to_the_home_env_without_a_work_tree_or_dotfiles_root(self, tmp_path: Path) -> None:
+        real_tmp = Path(os.path.realpath(tmp_path))
+        home = _make_home(real_tmp, "env-home")
+        decoy = _make_home(real_tmp, "decoy-cwd")
+        env = _filter_env(home, omit_work_tree=True, omit_dotfiles_root=True, home_env=str(home))
+        payload = b"home=" + _encoded(home) + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
+
+        proc = _run_filter("clean", ".gitconfig", payload, env, decoy)
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout == b"home=" + TOKEN + b"/f\ndecoy=" + _encoded(decoy) + b"/f\n"
         assert proc.stderr == b""
 
 

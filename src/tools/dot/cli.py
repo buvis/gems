@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import click
@@ -205,10 +206,28 @@ def push() -> None:
 @cli.command("localize", help="Make a file or directory host-specific")
 @click.argument("path")
 @click.option("--to", "source", help="Source path (default: .local/<path>)")
-def localize(path: str, source: str | None = None) -> None:
-    from dot.commands.localize.localize import CommandLocalize
+@click.option("--shared", is_flag=True, help="Keep the file shared, with host-specific home paths tokenized")
+def localize(path: str, source: str | None = None, shared: bool = False) -> None:
+    if shared and source is not None:
+        console.panic("--shared cannot be combined with --to")
+        return
 
     shell = ShellAdapter(suppress_logging=True)
+
+    if shared:
+        from dot.commands.localize.share import CommandShare
+
+        console.report_result(
+            CommandShare(
+                shell=shell,
+                dotfiles_root=_dotfiles_root(),
+                path=path,
+            ).execute()
+        )
+        return
+
+    from dot.commands.localize.localize import CommandLocalize
+
     console.report_result(
         CommandLocalize(
             shell=shell,
@@ -217,6 +236,47 @@ def localize(path: str, source: str | None = None) -> None:
             source=source,
         ).execute()
     )
+
+
+def _filter_home() -> str:
+    """Resolve the host home path for a filter run.
+
+    GIT_WORK_TREE is made absolute against the working directory git started the
+    filter in; without it the home value falls back to DOTFILES_ROOT, then $HOME.
+    """
+    from dot.hostfilter import resolve_home
+
+    return resolve_home(os.environ.get("GIT_WORK_TREE"), os.getcwd())
+
+
+@cli.group("filter", hidden=True, help="Git clean/smudge filters for host home paths")
+def filter_group() -> None:
+    """Group the byte-stream filters git invokes; not a user-facing command."""
+
+
+# The filter streams carry git's blob payload, not console output: both handlers
+# write raw bytes so no console marker can corrupt the file content.
+@filter_group.command("clean", help="Replace the host home path with the @HOME@ token")
+@click.argument("path")
+def filter_clean(path: str) -> None:
+    from dot.hostfilter import TOKEN, clean
+
+    try:
+        cleaned = clean(sys.stdin.buffer.read(), _filter_home())
+    except ValueError:
+        message = f"dot filter: {path} already contains {TOKEN.decode()}; the token is reserved\n"
+        sys.stderr.buffer.write(message.encode())
+        raise SystemExit(1) from None
+
+    sys.stdout.buffer.write(cleaned)
+
+
+@filter_group.command("smudge", help="Replace the @HOME@ token with the host home path")
+@click.argument("_path", metavar="PATH")
+def filter_smudge(_path: str) -> None:
+    from dot.hostfilter import smudge
+
+    sys.stdout.buffer.write(smudge(sys.stdin.buffer.read(), _filter_home()))
 
 
 if __name__ == "__main__":
