@@ -88,3 +88,19 @@
 - Ivan (review fix): the failed-attribute-restore note text was unspecified, so it reads `could not restore .gitattributes (<exc>)`; when both that restore and `restore_index_entry` fail, the two reasons join with `"; "` inside one `ROLLBACK FAILED (...)`.
 - Ivan (review fix): `atomic_write_text` is byte-exact for CRLF here because `os.linesep == "\n"` on POSIX; a Windows write side would re-translate, which this repo's POSIX-only scope makes moot.
 - Ivan (review fix): `is_symlink()` was put before `exists()` on explicit instruction, overriding the contract's numbering (symlink 12, missing-from-disk 8), so a broken tracked symlink reports "not a plain tracked file" instead of "missing from disk".
+
+## 4: Add dot filter clean/smudge commands and localize --shared to cli.py
+
+- Tess: `console.panic` exits with code 1 and writes its message into `CliRunner`'s captured output (measured by probe, not assumed from docs).
+- Tess: `path` and `source` may arrive at the command classes as `str` or `Path`, so assertions compare via `str(...)` and kill hardcoding with two distinct parametrized values instead.
+- Tess: auto-update, if it ever shelled out, would do so via `git`, `uv` or `pip`; the isolation test sentinels exactly those three names. A different binary would not be caught, though byte-exact stdout and empty stderr still constrain it.
+- Tess: the sabotage shims are POSIX-only (`#!/bin/sh`, mode 0o755), matching the rest of `tests/tools/dot/`, which already depends on symlinks and git work-trees.
+- Tess: `tmp_path` on macOS can differ from the child's `os.getcwd()` spelling, so the work-tree tests normalize through `os.path.realpath` before building expectations.
+- Tess (strengthen): home occurrences at line start, inside single and double quotes, inside a `:`-separated value, space-delimited, and at end-of-payload are all real home references `clean` must tokenize, while the already-pinned word-adjacent lookalikes stay untouched.
+- Tess (strengthen): `dot`'s visible top-level roster is the 14 commands printed by `python -m dot --help` on the current tree; adding a future top-level command will intentionally require updating `VISIBLE_TOP_LEVEL_COMMANDS`.
+- Tess (strengthen, in-contract): a failed plain `localize` keeps today's exit code 0 and only renders the error text (measured, the non-zero assertion failed against the current tree). The PRD freezes plain localize as unchanged, so no exit-code contract was invented.
+- Orchestrator: Tess's first `without_a_work_tree` test asserted cwd beats `DOTFILES_ROOT`, contradicting the PRD's documented precedence (`GIT_WORK_TREE` -> `DOTFILES_ROOT` -> `Path.home()`), and that test had driven the implementor to pass `os.environ.get("GIT_WORK_TREE") or "."`, which left both fallbacks dead. The test was replaced with two asserting the PRD precedence, and the contract's verbatim `resolve_home(os.environ.get("GIT_WORK_TREE"), os.getcwd())` call restored.
+- Ivan: `CommandShare` needs only `shell`, `dotfiles_root` and `path` as keywords, verified against its `__init__` (whose only other parameter is the keyword-only `git_service=None`).
+- Ivan: the `--shared` help text, the hidden `filter` group help and the two subcommand help strings were unpinned by any test; the group and option strings were later set to the design doc's verbatim text on a reviewer finding.
+- Orchestrator (review fix): `filter_smudge` takes `@click.argument("path", expose_value=False)` and no callback parameter, which keeps the contract's argument name and argv shape without an unused-argument lint suppression.
+- Orchestrator (review fix): the clean refusal line is assembled as bytes with `os.fsencode(path)` rather than `str.encode()`, so a non-UTF-8 filename from argv cannot turn the refusal into a `UnicodeEncodeError` traceback.

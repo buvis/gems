@@ -204,3 +204,18 @@
 {"id":"bc035eaf","ended_at":1792387893,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
 {"id":"067e676b","ended_at":1792387893,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
 {"kind":"handoff","site":"build","edge":"leave","at":1792387893,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792387933,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1792387954,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
+{"id":"fdb69890","kind":"tess","task":"4","queued_at":1792388144,"prompt_bytes":23242}
+{"id":"fdb69890","ended_at":1792388588,"elapsed_s":444,"outcome":"ok","detail":null}
+{"id":"ab3bcf6e","kind":"devon","task":"4","queued_at":1792388647,"prompt_bytes":4445}
+{"id":"ab3bcf6e","ended_at":1792389032,"elapsed_s":385,"outcome":"ok","detail":"broke tests, 9 weak points"}
+{"id":"bf938373","kind":"tess","task":"4","queued_at":1792389075,"prompt_bytes":16275}
+{"id":"bf938373","ended_at":1792389437,"elapsed_s":362,"outcome":"ok","detail":"9/9 weak points answered, 1 in-contract"}
+{"id":"45150d1b","kind":"ivan","task":"4","queued_at":1792389479,"prompt_bytes":36391}
+{"id":"45150d1b","ended_at":1792389917,"elapsed_s":438,"outcome":"ok","detail":null}
+{"id":"bfce1b9c","kind":"deslop","task":"4","queued_at":1792390111,"prompt_bytes":10126}
+{"id":"bfce1b9c","ended_at":1792390245,"elapsed_s":134,"outcome":"ok","detail":"committed cdfc5750"}
+{"id":"1f6ec7e3","kind":"pat","task":"4","queued_at":1792390348,"prompt_bytes":36005}
+{"id":"1f6ec7e3","ended_at":1792390397,"elapsed_s":49,"outcome":"ok","detail":"6 LOW, no CRITICAL/HIGH/MEDIUM"}
+{"kind":"handoff","site":"build","edge":"leave","at":1792390643,"phase":"build","prd":"00099-dot-shared-config-host-fragments-v1.md"}
