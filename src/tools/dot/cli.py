@@ -206,8 +206,8 @@ def push() -> None:
 @cli.command("localize", help="Make a file or directory host-specific")
 @click.argument("path")
 @click.option("--to", "source", help="Source path (default: .local/<path>)")
-@click.option("--shared", is_flag=True, help="Keep the file shared, with host-specific home paths tokenized")
-def localize(path: str, source: str | None = None, shared: bool = False) -> None:
+@click.option("--shared", is_flag=True, help="Register a host-value filter instead of moving the file")
+def localize(path: str, source: str | None = None, *, shared: bool = False) -> None:
     if shared and source is not None:
         console.panic("--shared cannot be combined with --to")
         return
@@ -244,7 +244,7 @@ def _filter_home() -> str:
     return resolve_home(os.environ.get("GIT_WORK_TREE"), os.getcwd())
 
 
-@cli.group("filter", hidden=True, help="Git clean/smudge filters for host home paths")
+@cli.group("filter", hidden=True, help="Git clean/smudge filter plumbing (internal)")
 def filter_group() -> None:
     """Group the byte-stream filters git invokes; not a user-facing command."""
 
@@ -256,19 +256,24 @@ def filter_group() -> None:
 def filter_clean(path: str) -> None:
     from dot.hostfilter import TOKEN, clean
 
+    data = sys.stdin.buffer.read()
+    home = _filter_home()
+
     try:
-        cleaned = clean(sys.stdin.buffer.read(), _filter_home())
+        cleaned = clean(data, home)
     except ValueError:
-        message = f"dot filter: {path} already contains {TOKEN.decode()}; the token is reserved\n"
-        sys.stderr.buffer.write(message.encode())
+        # path comes from argv, so it can carry surrogate-escaped non-UTF-8 bytes.
+        sys.stderr.buffer.write(
+            b"dot filter: " + os.fsencode(path) + b" already contains " + TOKEN + b"; the token is reserved\n"
+        )
         raise SystemExit(1) from None
 
     sys.stdout.buffer.write(cleaned)
 
 
 @filter_group.command("smudge", help="Replace the @HOME@ token with the host home path")
-@click.argument("_path", metavar="PATH")
-def filter_smudge(_path: str) -> None:
+@click.argument("path", expose_value=False)
+def filter_smudge() -> None:
     from dot.hostfilter import smudge
 
     sys.stdout.buffer.write(smudge(sys.stdin.buffer.read(), _filter_home()))
