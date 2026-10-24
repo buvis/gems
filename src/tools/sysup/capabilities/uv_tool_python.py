@@ -72,9 +72,8 @@ def _pinned_minor(receipt_path: Path) -> str | None:
     name = _normalize(receipt_path.parent.name)
     if not isinstance(requirement, str) or _normalize(requirement) != name:
         raise ValueError("unsupported requirements identity")
-    if any(
-        tool.get(key, []) != [] for key in ("constraints", "overrides", "excludes", "build-constraint-dependencies")
-    ):
+    dependency_keys = ("constraints", "overrides", "excludes", "build-constraint-dependencies")
+    if any(tool.get(key, []) != [] for key in dependency_keys):
         raise ValueError("unsupported dependency customization")
     entrypoints = tool.get("entrypoints", [])
     if not isinstance(entrypoints, list):
@@ -131,8 +130,7 @@ class UvToolPython:
             return
 
         moves: list[tuple[str, str | None]] = []
-        skipped = False
-        newer = False
+        skipped = newer = False
         target_version = tuple(map(int, target.split(".")))
         for directory in tools:
             try:
@@ -145,7 +143,6 @@ class UvToolPython:
             if version is None or version < target_version:
                 moves.append((directory.name, old))
             newer |= version is not None and version > target_version
-
         if not moves:
             if not skipped:
                 message = (
