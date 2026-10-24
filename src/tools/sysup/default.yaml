@@ -29,6 +29,12 @@ commands:
     when: { os: darwin }
     use: pip-outdated
 
+  # Pin freestanding uv tools to the global python minor before uv tool upgrade.
+  uv-tool-python:
+    order: 35
+    when: { os: darwin, check: uv }
+    use: uv-tool-python
+
   uv:
     order: 40
     when: { os: darwin, check: uv }

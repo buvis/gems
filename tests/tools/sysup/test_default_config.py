@@ -15,11 +15,22 @@ def _plan_names(platform: str, mocker) -> list[str]:
 class TestDefaultConfigEquivalence:
     def test_darwin_plan_matches_old_sysup_mac(self, mocker) -> None:
         """Zero-config darwin plan == today's `sysup mac` plus the former
-        standalone `sysup nvim`: brew, npm-check, pip (python-packages), uv,
+        standalone `sysup nvim`: brew, npm-check, pip (python-packages),
+        uv-tool-python, uv,
         helm, mise — mise last among the tool managers — then pipx-python
         (needs mise's new global python), then nvim (mason)."""
         names = _plan_names("darwin", mocker)
-        assert names == ["brew", "npm-check", "python-packages", "uv", "helm", "mise", "pipx-python", "nvim"]
+        assert names == [
+            "brew",
+            "npm-check",
+            "python-packages",
+            "uv-tool-python",
+            "uv",
+            "helm",
+            "mise",
+            "pipx-python",
+            "nvim",
+        ]
         assert names.index("mise") < names.index("pipx-python") < names.index("nvim")
 
     def test_linux_plan_matches_old_sysup_wsl(self, mocker) -> None:
@@ -46,8 +57,20 @@ class TestDefaultConfigEquivalence:
 
     def test_linux_does_not_include_darwin_entries(self, mocker) -> None:
         names = _plan_names("linux", mocker)
-        for mac_entry in ("brew", "npm-check", "python-packages", "uv", "helm", "mise"):
+        for mac_entry in ("brew", "npm-check", "python-packages", "uv-tool-python", "uv", "helm", "mise"):
             assert mac_entry not in names
+
+    def test_uv_tool_python_runs_before_unchanged_uv_upgrades(self, mocker) -> None:
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        entry = cfg.commands["uv-tool-python"]
+        assert entry.order == 35
+        assert entry.when.os == "darwin"
+        assert entry.when.check == "uv"
+        assert entry.use == "uv-tool-python"
+        uv = cfg.commands["uv"]
+        assert uv.order == 40
+        assert uv.steps == (("uv", "python", "upgrade"), ("uv", "tool", "upgrade", "--all"))
 
     def test_pip_runs_between_npm_check_and_uv_on_darwin(self, mocker) -> None:
         """1.4: the former mac->pip in-code delegation is now an independent entry
