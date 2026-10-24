@@ -404,6 +404,114 @@ dot<span class="w"> </span>localize<span class="w"> </span>.bashrc<span class="w
 <p>After localizing, commit the staged manifest and the deletion. On other hosts,
 <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> will rescue their local bytes before the deletion is applied.</p>
 </section>
+<section id="dot-localize-shared">
+<h3>dot localize –shared<a class="headerlink" href="#dot-localize-shared" title="Link to this heading"></a></h3>
+<p>Keep one tracked file for every host, and let each host spell its own home
+path in it. <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">localize</span> <span class="pre">--shared</span> <span class="pre">&lt;path&gt;</span></code> registers the file with dot’s
+<code class="docutils literal notranslate"><span class="pre">dot-host</span></code> git filter.</p>
+<p>Plain <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">localize</span></code> moves the file out of the way and links it back.
+<code class="docutils literal notranslate"><span class="pre">--shared</span></code> moves nothing: the file keeps its path and its name (no <code class="docutils literal notranslate"><span class="pre">.host</span></code>
+or <code class="docutils literal notranslate"><span class="pre">.secret</span></code> suffix), stays tracked, gets no symlink and no <code class="docutils literal notranslate"><span class="pre">host-links</span></code>
+entry. The work-tree layout is the same after sharing as before.
+<code class="docutils literal notranslate"><span class="pre">--shared</span></code> cannot be combined with <code class="docutils literal notranslate"><span class="pre">--to</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>localize<span class="w"> </span>--shared<span class="w"> </span>.zshrc
+dot<span class="w"> </span>commit<span class="w"> </span><span class="s2">"Share .zshrc"</span>
+</pre></div>
+</div>
+<p>What the command does:</p>
+<ol class="arabic simple">
+<li><p>Appends <code class="docutils literal notranslate"><span class="pre">/&lt;path&gt;</span> <span class="pre">filter=dot-host</span></code> to <code class="docutils literal notranslate"><span class="pre">&lt;dotfiles_root&gt;/.gitattributes</span></code>.</p></li>
+<li><p>Re-stages the file through the filter (<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span> <span class="pre">--renormalize</span></code>).</p></li>
+<li><p>Stages <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code>. Commit it together with the file.</p></li>
+</ol>
+<p>From then on git stores the reserved token <code class="docutils literal notranslate"><span class="pre">&#64;HOME&#64;</span></code> where this host’s home
+path stood, and writes the checking-out host’s own home path back into the work
+tree. The file on disk never holds the token, and <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> is clean right
+after sharing.</p>
+<p>On success dot reports <code class="docutils literal notranslate"><span class="pre">shared</span> <span class="pre">&lt;path&gt;:</span> <span class="pre">&lt;n&gt;</span> <span class="pre">host</span> <span class="pre">value(s)</span> <span class="pre">replaced</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">host</span> <span class="pre">value</span> <span class="pre">found</span> <span class="pre">in</span> <span class="pre">&lt;path&gt;;</span> <span class="pre">filter</span> <span class="pre">active</span> <span class="pre">for</span> <span class="pre">future</span> <span class="pre">writes</span></code> when the
+file carries no home path yet.</p>
+<p><strong>The token is reserved.</strong> <code class="docutils literal notranslate"><span class="pre">&#64;HOME&#64;</span></code> is dot’s, so a file that already contains
+it is refused, and so is a later write that puts it into a shared file: the
+clean filter stops with <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">filter:</span> <span class="pre">&lt;path&gt;</span> <span class="pre">already</span> <span class="pre">contains</span> <span class="pre">&#64;HOME&#64;;</span> <span class="pre">the</span> <span class="pre">token</span>
+<span class="pre">is</span> <span class="pre">reserved</span></code> and git fails the operation.</p>
+<p><strong>Diffs and patches carry the token.</strong> <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">run</span> <span class="pre">diff</span></code>, the TUI diff and the
+divergence patch of <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> all show <code class="docutils literal notranslate"><span class="pre">&#64;HOME&#64;</span></code>, not your home path,
+because git runs them through the clean filter. A patch therefore applies on
+any host, and reverse-applying one puts the host path back on disk.</p>
+<p><strong>Every host installs the filter itself.</strong> The <code class="docutils literal notranslate"><span class="pre">dot-host</span></code> driver lives in the
+local repo config, never in a commit. Every dot command that touches git writes
+it when its clean command is unset, and never changes a value already there:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>filter.dot-host.clean    = BUVIS_AUTO_UPDATE=false dot filter clean -- %f
+filter.dot-host.smudge   = BUVIS_AUTO_UPDATE=false dot filter smudge -- %f
+filter.dot-host.required = true
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">setup</span></code> writes them before its own checkout, so a fresh clone lands
+host-valued. After upgrading dot on a host that already has shared files, run
+<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> once before the next checkout or pull, so the driver is in place
+when git needs it. If the self-heal write fails, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">localize</span> <span class="pre">--shared</span></code>
+refuses with <code class="docutils literal notranslate"><span class="pre">dot-host</span> <span class="pre">filter</span> <span class="pre">driver</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">configured</span></code> and tells you to
+re-run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code>.</p>
+<p><strong>Expect one divergence patch per shared file, once.</strong> The first <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code>
+that brings in the sharing commit saves your local host-valued copy to a
+divergence patch, resets the file to <code class="docutils literal notranslate"><span class="pre">HEAD</span></code> and lets upstream win. Your
+checkout then holds your own home path again, written by the filter. The file
+does not diverge on later pulls, because every host reads the same token.</p>
+<p><strong>When dot is missing, git stops.</strong> The driver is required, so a shell with a
+stripped <code class="docutils literal notranslate"><span class="pre">PATH</span></code> (cron, a login hook) cannot write the wrong bytes. A checkout
+fails and leaves no file; a <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span></code> fails and leaves both the tokenized
+index entry and your edited file untouched. Git names <code class="docutils literal notranslate"><span class="pre">dot-host</span></code> in the
+error. Put dot back on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and retry.</p>
+<p><strong>Windows.</strong> A Windows home such as <code class="docutils literal notranslate"><span class="pre">C:\Users\me</span></code> is written back with
+forward slashes (<code class="docutils literal notranslate"><span class="pre">C:/Users/me</span></code>), and the clean filter matches the
+backslash and the forward-slash spelling of it alike. That is a slash-spelling
+rule, nothing more: the filter swaps one home path for another and never
+rewrites path syntax, so a file shared between a Windows host and a POSIX host
+is not promised to work on both.</p>
+<p><strong>Refusals.</strong> <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">localize</span> <span class="pre">--shared</span></code> refuses, and changes nothing, when the
+path:</p>
+<ul class="simple">
+<li><p>resolves outside the dotfiles root</p></li>
+<li><p>is not tracked (run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code> first)</p></li>
+<li><p>is a directory, or looks like a glob (<code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">?</span></code>, <code class="docutils literal notranslate"><span class="pre">[</span></code>)</p></li>
+<li><p>needs quoting in the attribute file (space, tab, <code class="docutils literal notranslate"><span class="pre">#</span></code>, <code class="docutils literal notranslate"><span class="pre">!</span></code>, <code class="docutils literal notranslate"><span class="pre">\</span></code>)</p></li>
+<li><p>is a git-secret file, or is already listed in the <code class="docutils literal notranslate"><span class="pre">host-links</span></code> manifest</p></li>
+<li><p>is <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code> itself</p></li>
+<li><p>already has a <code class="docutils literal notranslate"><span class="pre">dot-host</span></code> filter line</p></li>
+<li><p>is a symlink, or is not a plain file in the index</p></li>
+<li><p>is tracked but missing from disk</p></li>
+<li><p>already contains <code class="docutils literal notranslate"><span class="pre">&#64;HOME&#64;</span></code></p></li>
+<li><p>is governed by a conflicting filter attribute from another attribute file</p></li>
+</ul>
+<p>Dot also rolls the attribute line (and the index entry) back when the
+renormalize or the staging step fails, and says so in the error.</p>
+<p><strong>Unsharing.</strong> Delete the <code class="docutils literal notranslate"><span class="pre">/&lt;path&gt;</span> <span class="pre">filter=dot-host</span></code> line from
+<code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code>, then renormalize the file so git stores it literally again:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>run<span class="w"> </span>add<span class="w"> </span>--renormalize<span class="w"> </span>--<span class="w"> </span>.zshrc
+dot<span class="w"> </span>run<span class="w"> </span>add<span class="w"> </span>--<span class="w"> </span>.gitattributes
+dot<span class="w"> </span>commit<span class="w"> </span><span class="s2">"Unshare .zshrc"</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code> names <code class="docutils literal notranslate"><span class="pre">filter=dot-host</span></code> but this repo has no
+<code class="docutils literal notranslate"><span class="pre">dot-host</span></code> driver configured, git calls the filter undefined and passes
+content through untouched: a checkout writes the literal <code class="docutils literal notranslate"><span class="pre">&#64;HOME&#64;</span></code> token
+into your file, and a stage records your host path instead of the token.
+Recover in this order:</p>
+<ol class="arabic simple">
+<li><p>Save your edits first. Copy the file to a path outside the dotfiles
+repo. Step 3 deletes the file and step 4 rewrites it from the index, so
+nothing you have not copied out survives. The recovery does not keep
+unsaved edits for you.</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> to install the driver.</p></li>
+<li><p>Remove only the affected file.</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">run</span> <span class="pre">checkout</span> <span class="pre">--</span> <span class="pre">&lt;path&gt;</span></code>. Git writes it back, smudged for this
+host. Merge your saved edits into it by hand.</p></li>
+</ol>
+</div>
+</section>
 <section id="dot-push">
 <h3>dot push<a class="headerlink" href="#dot-push" title="Link to this heading"></a></h3>
 <p>Push dotfiles to remote.</p>

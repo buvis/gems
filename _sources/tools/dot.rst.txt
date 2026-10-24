@@ -322,6 +322,129 @@ the manual steps described in "First setup": untrack, move, link, manifest.
 After localizing, commit the staged manifest and the deletion. On other hosts,
 ``dot pull`` will rescue their local bytes before the deletion is applied.
 
+dot localize --shared
+~~~~~~~~~~~~~~~~~~~~~
+
+Keep one tracked file for every host, and let each host spell its own home
+path in it. ``dot localize --shared <path>`` registers the file with dot's
+``dot-host`` git filter.
+
+Plain ``dot localize`` moves the file out of the way and links it back.
+``--shared`` moves nothing: the file keeps its path and its name (no ``.host``
+or ``.secret`` suffix), stays tracked, gets no symlink and no ``host-links``
+entry. The work-tree layout is the same after sharing as before.
+``--shared`` cannot be combined with ``--to``.
+
+.. code-block:: bash
+
+    dot localize --shared .zshrc
+    dot commit "Share .zshrc"
+
+What the command does:
+
+#. Appends ``/<path> filter=dot-host`` to ``<dotfiles_root>/.gitattributes``.
+#. Re-stages the file through the filter (``git add --renormalize``).
+#. Stages ``.gitattributes``. Commit it together with the file.
+
+From then on git stores the reserved token ``@HOME@`` where this host's home
+path stood, and writes the checking-out host's own home path back into the work
+tree. The file on disk never holds the token, and ``dot status`` is clean right
+after sharing.
+
+On success dot reports ``shared <path>: <n> host value(s) replaced``, or
+``no host value found in <path>; filter active for future writes`` when the
+file carries no home path yet.
+
+**The token is reserved.** ``@HOME@`` is dot's, so a file that already contains
+it is refused, and so is a later write that puts it into a shared file: the
+clean filter stops with ``dot filter: <path> already contains @HOME@; the token
+is reserved`` and git fails the operation.
+
+**Diffs and patches carry the token.** ``dot run diff``, the TUI diff and the
+divergence patch of ``dot pull`` all show ``@HOME@``, not your home path,
+because git runs them through the clean filter. A patch therefore applies on
+any host, and reverse-applying one puts the host path back on disk.
+
+**Every host installs the filter itself.** The ``dot-host`` driver lives in the
+local repo config, never in a commit. Every dot command that touches git writes
+it when its clean command is unset, and never changes a value already there:
+
+.. code-block:: text
+
+    filter.dot-host.clean    = BUVIS_AUTO_UPDATE=false dot filter clean -- %f
+    filter.dot-host.smudge   = BUVIS_AUTO_UPDATE=false dot filter smudge -- %f
+    filter.dot-host.required = true
+
+``dot setup`` writes them before its own checkout, so a fresh clone lands
+host-valued. After upgrading dot on a host that already has shared files, run
+``dot status`` once before the next checkout or pull, so the driver is in place
+when git needs it. If the self-heal write fails, ``dot localize --shared``
+refuses with ``dot-host filter driver is not configured`` and tells you to
+re-run ``dot status``.
+
+**Expect one divergence patch per shared file, once.** The first ``dot pull``
+that brings in the sharing commit saves your local host-valued copy to a
+divergence patch, resets the file to ``HEAD`` and lets upstream win. Your
+checkout then holds your own home path again, written by the filter. The file
+does not diverge on later pulls, because every host reads the same token.
+
+**When dot is missing, git stops.** The driver is required, so a shell with a
+stripped ``PATH`` (cron, a login hook) cannot write the wrong bytes. A checkout
+fails and leaves no file; a ``git add`` fails and leaves both the tokenized
+index entry and your edited file untouched. Git names ``dot-host`` in the
+error. Put dot back on ``PATH`` and retry.
+
+**Windows.** A Windows home such as ``C:\Users\me`` is written back with
+forward slashes (``C:/Users/me``), and the clean filter matches the
+backslash and the forward-slash spelling of it alike. That is a slash-spelling
+rule, nothing more: the filter swaps one home path for another and never
+rewrites path syntax, so a file shared between a Windows host and a POSIX host
+is not promised to work on both.
+
+**Refusals.** ``dot localize --shared`` refuses, and changes nothing, when the
+path:
+
+- resolves outside the dotfiles root
+- is not tracked (run ``dot add`` first)
+- is a directory, or looks like a glob (``*``, ``?``, ``[``)
+- needs quoting in the attribute file (space, tab, ``#``, ``!``, ``\``)
+- is a git-secret file, or is already listed in the ``host-links`` manifest
+- is ``.gitattributes`` itself
+- already has a ``dot-host`` filter line
+- is a symlink, or is not a plain file in the index
+- is tracked but missing from disk
+- already contains ``@HOME@``
+- is governed by a conflicting filter attribute from another attribute file
+
+Dot also rolls the attribute line (and the index entry) back when the
+renormalize or the staging step fails, and says so in the error.
+
+**Unsharing.** Delete the ``/<path> filter=dot-host`` line from
+``.gitattributes``, then renormalize the file so git stores it literally again:
+
+.. code-block:: bash
+
+    dot run add --renormalize -- .zshrc
+    dot run add -- .gitattributes
+    dot commit "Unshare .zshrc"
+
+.. warning::
+
+   If ``.gitattributes`` names ``filter=dot-host`` but this repo has no
+   ``dot-host`` driver configured, git calls the filter undefined and passes
+   content through untouched: a checkout writes the literal ``@HOME@`` token
+   into your file, and a stage records your host path instead of the token.
+   Recover in this order:
+
+   #. Save your edits first. Copy the file to a path outside the dotfiles
+      repo. Step 3 deletes the file and step 4 rewrites it from the index, so
+      nothing you have not copied out survives. The recovery does not keep
+      unsaved edits for you.
+   #. Run ``dot status`` to install the driver.
+   #. Remove only the affected file.
+   #. Run ``dot run checkout -- <path>``. Git writes it back, smudged for this
+      host. Merge your saved edits into it by hand.
+
 dot push
 ~~~~~~~~
 
