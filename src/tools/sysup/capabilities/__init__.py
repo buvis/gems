@@ -8,6 +8,7 @@ from sysup.capabilities.nvim_mason import NvimMason
 from sysup.capabilities.pip import PipOutdated
 from sysup.capabilities.pipx_python import PipxPython
 from sysup.capabilities.sudo import SudoPrime
+from sysup.capabilities.uv_tool_python import UvToolPython
 from sysup.capabilities.x509 import X509Expiry
 
 if TYPE_CHECKING:
@@ -50,6 +51,7 @@ CAPABILITIES: dict[str, Capability] = {
     "pip-outdated": PipOutdated(),
     "pipx-python": PipxPython(),
     "sudo-prime": SudoPrime(),
+    "uv-tool-python": UvToolPython(),
 }
 
 
