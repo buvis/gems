@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-10-19
+Generated: 2026-10-24
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -16,21 +16,23 @@ Generated: 2026-10-19
 ## Component Boundaries
 - `src/tools/dot/`: `cli.py` -> `commands/<name>/` -> `git/service.py` (`DotGitService`); TUI (`tui/app.py`, `tui/screens/main.py`, `tui/widgets/status_bar.py`) drives the same commands.
 - dot's host-filter surface lives in `src/tools/dot/git/filter_driver.py` as `FilterDriverMixin` (split out of `service.py` at 861 lines, over the 800 max); `_literal` moved there and `service.py` imports it from there.
+- sysup capabilities yield `StepResult`; config validates their `inputs` against `with:` and the runner owns dry-run, error conversion, command stamping, and run-log markers. Registering a capability therefore exposes it through the existing shared runner without another interface implementation.
 
 ## Active Work
 
-### Batch 202610121200
-- [x] 00088-dot-host-links-materialize-v1 (1 cycle)
-- [x] 00098-sysup-run-observability-v1 (2 cycles)
-- [ ] 00099-dot-shared-config-host-fragments-v1 (wip, this session, 3/6 tasks done, resuming at task 4 CLI wiring) — Git clean/smudge filter for shared dotfiles with per-host `@HOME@` token substitution; new `src/tools/dot/hostfilter.py`, `CommandShare`, `DotGitService._ensure_filter_driver`/`renormalize`. Task 3 landed `CommandShare` at `src/tools/dot/commands/localize/share.py` (65 tests, Pat's 2 MEDIUMs fixed in 75fb9299; 5 LOWs deferred). Design-doc corrections remain authoritative over the original task text: `--cacheinfo` takes a PATHNAME (not a `:(literal)` pathspec), `--add` is REQUIRED (git exits 128 otherwise), and `capture_index_entry` captures only a stage-0 record.
-- Carried obligations into tasks 4-6: `--shared` with `--to` must be refused at the CLI level (CommandShare takes no `source`), Click parse-time validators are banned (validate in the callback, `console.panic`), and no CHANGELOG entry exists yet for this PRD — the user-visible `dot localize --shared` / `dot filter clean|smudge` entry must land by task 6.
-- Backlog is empty: 00099 is the last PRD of this batch.
+### Batch 202610242315
+- PRD `00105-sysup-uv-tool-python-pin-v1.md`: build complete, 3/3 tasks, awaiting fresh full-lane review. Work begins at db6b1b434a88c84ce06d25e5773d0225d23de56b.
+- New `UvToolPython` pins supported plain unpinned/older installs before uv upgrades (order35 before40); preserves newer pins, visibly skips customized/unreadable receipts, and reports rollback failures honestly. This intentionally narrows automatic repair to preserve installation intent.
+- Full suite passed under isolated writable state/config: 5665 passed, 16 skipped, 1 xfailed. Ruff, full-source mypy, and Sphinx passed. Exact fixture/operator-config leakage evidence is in the build report.
+- Five contributing OpenAI worker sessions (including Tess and style repair) are audited from raw metadata. Host review-route selects Anthropic for Alice/Blake/Bob. Claude authentication failed during design external review and Pat; full completion review must run fresh via the host helper and handle any continuing auth failure precisely.
 
 ## Related context
-Topic queried: "dot shared config host fragments" (re-run 2026-10-19 05:4x). Repo hits: the wip PRD itself (`prds/wip/00099-...md:6-9` 0.0328, `:49-54` 0.0159), then this PRD's own new code `src/tools/dot/commands/localize/share.py:63-330` 0.0161 (task 3, now indexed) and `prds/done/00088-dot-host-links-materialize-v1.md:7-11` 0.0156 / `prds/done/00091-dot-host-links-setup-v1.md:52-74` 0.0156 (the two prior dot host-links PRDs, the nearest precedent for this filter work). Portfolio adds only `claude-aegis/.../00011-extract-shared-shell-parser-v1.md` 0.0159 (name collision on "shared", not relevant). No precedent doc beyond the 00099 design doc and the 00088/00091 reviews. Staleness (`engram status --scope portfolio`, exit 1): memory 192/stale 24/dead 1, code 57261/stale 81/dead 21 (5645 skipped), transcripts 17713 with 17604 dead, prd 9000 with 3179 dead — the index carries a lot of dead rows, so absence of a hit is weak evidence. Harvest gap: 17 review/meta files under `reviews/` failed to harvest (`missing frontmatter`), including every `backlog-review-*`, the evolution assessment, and the per-PRD `-audit.md` renders.
+Topic: `master sysup uv-tool-python: pin freestanding uv tools to the global python minor`. Repo/portfolio queries, repo index refresh, and review harvest were attempted but interrupted after waiting without results: the embedding endpoint `http://127.0.0.1:8083/v1` refused connections and engram kept retrying startup. No related-hit claim is possible. Portfolio status completed (exit 1): memory 192/stale 24/dead 1; PRD 9156/dead 3063; discovery 531/dead 50; transcripts 17713/dead 17604; code 57876/stale 76/dead 21, skipped 5686; findings 34368; decisions 25/stale 1. Directly loaded precedent: `src/tools/sysup/capabilities/pipx_python.py` and its registry/default wiring.
 
 ## GitHub State
-- 0 open issues. Open PRs (all renovate, none for this PRD's scope): #245 pillow v13, #231 lock-file maintenance (automerge armed, and its branch's Test run is RED as of 2026-10-19 — it will not merge green), #220 @sveltejs/kit v3 and #219 adapter-static v4 (both with artifact-update failures, do not merge as-is). CI on master green (2026-10-18, latest Test + Deploy Documentation both success); older master failures (10-04 through 10-13) are historical — the 10-13 one was a cancelled (`abandoned`) lib job, not a code failure. 9 unreleased commits on master since `gems-v0.14.2` (2026-10-17).
+- 0 open issues. Six open Renovate PRs: #249 patch updates, #248 minor updates, #245 pillow v13, #231 lock maintenance, #220 SvelteKit v3, #219 adapter-static v4. The two Svelte majors still report artifact-update failures. No feature PR overlaps the sysup capability work.
+- At master `db6b1b43`, the 2026-10-24 Test run is queued; Deploy Documentation succeeded. Latest completed master Test succeeded on 2026-10-18. Historical 2026-10-13 failure reports `Lib tests failed` because its lib job was `abandoned`, not a confirmed current regression.
+- Latest release is `gems-v0.14.2` (2026-10-17), with 96 unreleased master commits. Catchup starts on master, so feature-branch diff/issue extraction is inapplicable; worktree changes are autopilot telemetry and the PRD's backlog-to-wip move.
 
 ## Project Health
-- See memory: a `lib` failure skips the `tools` matrix; 3 known env-noise local test failures (klyreon GIT_AUTHOR_NAME, postup gh call). `BUVIS_SKIP_FRONTEND=1` + scratch `CARGO_HOME` needed for `uv sync`/`uv run` under the Seatbelt profile.
+- A `lib` failure skips the `tools` matrix. Local tests need writable XDG_STATE_HOME and a high-priority empty postup roots config to avoid host lock permissions/operator portfolio configuration; PRD00105 build evidence records this isolation. `BUVIS_SKIP_FRONTEND=1` + scratch `CARGO_HOME` needed for `uv sync`/`uv run` under the Seatbelt profile.

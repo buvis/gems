@@ -1,0 +1,88 @@
+{
+  "fingerprint": "4a4d4b063de65bb21fab328c50d0ef7580689441f4f8305dbbd0d7d812e78592",
+  "snapshot": {
+    "prd": "00105-sysup-uv-tool-python-pin-v1.md",
+    "cycle": null,
+    "work_start_sha": "db6b1b434a88c84ce06d25e5773d0225d23de56b",
+    "tasks": [
+      {
+        "id": "1",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "2",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "task": "3",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00105-ivan_3-session-metadata.jsonl",
+      "line": 2,
+      "sha256": "117ad741e84bcb68a5a0bccde24ac6dd0ee6f4e480fed22ca347b67d882c41d3"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00105-ivan_1-session-metadata.jsonl",
+      "line": 2,
+      "sha256": "ea547d9c76abc274c55f81ca955b355ddc587df347b3e1631026866312a023d0"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00105-tess_1-session-metadata.jsonl",
+      "line": 2,
+      "sha256": "9d873f8b37af6794af92e0bcc97023bbd115d861fddb3952ce42559eadbb366f"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00105-ivan_2-session-metadata.jsonl",
+      "line": 2,
+      "sha256": "3c90f712dd0fd06aa47ca25598028eea8f1a7b316057f3a26b6296f2182a9884"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00105-ivan_1_style-session-metadata.jsonl",
+      "line": 2,
+      "sha256": "acbf2d0e45252600f9b06d611583429b828f50c7723eba71ce66562e22d7bb60"
+    }
+  ]
+}
