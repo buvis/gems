@@ -1,0 +1,15 @@
+{
+  "batch_id": "202610242315",
+  "items": [
+    {
+      "cycle": 1,
+      "type": "deferred_decision",
+      "issue": "`engram` gets skipped with `success=False` on every run and stays unpinned. The PRD names it as one of two motivating tools with compiled deps. Its real receipt is an editable install, and the requirement allowlist rejects it. A failed step is red, so `exit_code` returns 1 and `sysup` exits 1 on every run on this host. The skip itself is the right call; the real gap is the reinstall mechanism. `uv tool upgrade --python <target> <tool>` exists in the host uv and keeps the receipt's requirements; it is the likely fix",
+      "severity": "high",
+      "file": "src/tools/sysup/capabilities/uv_tool_python.py:64",
+      "action": "deferred",
+      "reason": "Requirements ambiguity: the reviewed design explicitly limits migration to plain installs and mandates skips for editable/source requests. Supporting engram safely requires preserving installation intent with a newly designed reinstall mechanism, not the PRD bare-name argv. Deferred to batch-end; current plain-install support remains useful.",
+      "prd": "00105-sysup-uv-tool-python-pin-v1.md"
+    }
+  ]
+}

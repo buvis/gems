@@ -21,10 +21,9 @@ Generated: 2026-10-24
 ## Active Work
 
 ### Batch 202610242315
-- PRD `00105-sysup-uv-tool-python-pin-v1.md`: build complete, 3/3 tasks, awaiting fresh full-lane review. Work begins at db6b1b434a88c84ce06d25e5773d0225d23de56b.
-- New `UvToolPython` pins supported plain unpinned/older installs before uv upgrades (order35 before40); preserves newer pins, visibly skips customized/unreadable receipts, and reports rollback failures honestly. This intentionally narrows automatic repair to preserve installation intent.
-- Full suite passed under isolated writable state/config: 5665 passed, 16 skipped, 1 xfailed. Ruff, full-source mypy, and Sphinx passed. Exact fixture/operator-config leakage evidence is in the build report.
-- Five contributing OpenAI worker sessions (including Tess and style repair) are audited from raw metadata. Host review-route selects Anthropic for Alice/Blake/Bob. Claude authentication failed during design external review and Pat; full completion review must run fresh via the host helper and handle any continuing auth failure precisely.
+- [x] `00105-sysup-uv-tool-python-pin-v1.md` (1 cycle)
+
+Observations: New `UvToolPython` pins supported plain unpinned/older installs before uv upgrades (order35 before40); preserves newer pins, visibly skips customized/unreadable receipts, and reports rollback failures honestly. Full suite green at 63e0d4ef (5665 passed, 0 failed, 16 skipped) under isolated writable state/config and with the loop launcher's GIT_AUTHOR_NAME/GIT_COMMITTER_NAME dropped (otherwise 2 unrelated klyreon identity tests fail - known env noise, not a regression). One HIGH deferred to batch-end: `engram`'s editable install stays unpinned/red on this host (triage stub `00106-triage-engram-gets-skipped-with-success-false-o-v1.md` minted). Batch drained - both `wip/` and `backlog/` are empty.
 
 ## Related context
 Topic: `master sysup uv-tool-python: pin freestanding uv tools to the global python minor`. Repo/portfolio queries, repo index refresh, and review harvest were attempted but interrupted after waiting without results: the embedding endpoint `http://127.0.0.1:8083/v1` refused connections and engram kept retrying startup. No related-hit claim is possible. Portfolio status completed (exit 1): memory 192/stale 24/dead 1; PRD 9156/dead 3063; discovery 531/dead 50; transcripts 17713/dead 17604; code 57876/stale 76/dead 21, skipped 5686; findings 34368; decisions 25/stale 1. Directly loaded precedent: `src/tools/sysup/capabilities/pipx_python.py` and its registry/default wiring.
