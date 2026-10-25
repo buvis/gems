@@ -65,6 +65,9 @@ docs/build/
 # Disposable development scratch (also in global ignore; repeated here so a
 # fresh clone on any machine ignores it without relying on a user's global file).
 /docs/dev/tmp/
+# agoge QA pack scratch (recon profile, raw audit output). Local-only like
+# docs/dev/tmp; durable findings belong under docs/dev/project-management/.
+/dev/local/
 
 # Rust
 src/rust/target/
