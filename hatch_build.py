@@ -2,7 +2,9 @@
 
 Compiles src/rust/ into buvis.pybase.zettel._core using maturin and places
 the shared library where hatchling will pick it up for the wheel.
-Optionally builds the SvelteKit frontend for bim serve.
+Builds the SvelteKit frontends for bim serve and postup serve, except that an
+editable install (every ``uv sync``) leaves postup's committed build/ alone and
+``BUVIS_SKIP_FRONTEND=1`` skips every frontend build.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ class RustBuildHook(BuildHookInterface):
             return
 
         self._build_rust()
-        self._build_frontend()
+        self._build_frontend(editable=version == "editable")
         build_data["infer_tag"] = True
         build_data["pure_python"] = False
 
@@ -51,7 +53,7 @@ class RustBuildHook(BuildHookInterface):
                 "--release",
                 "--strip",
             ]
-            subprocess.run(cmd, check=True, cwd=str(self.root))  # noqa: S603
+            subprocess.run(cmd, check=True, cwd=str(self.root))
 
             wheels = list(Path(tmpdir).glob("*.whl"))
             if not wheels:
@@ -88,7 +90,7 @@ class RustBuildHook(BuildHookInterface):
         ),
     )
 
-    def _build_frontend(self) -> None:
+    def _build_frontend(self, *, editable: bool = False) -> None:
         if os.environ.get("BUVIS_SKIP_FRONTEND"):
             return
 
@@ -98,6 +100,12 @@ class RustBuildHook(BuildHookInterface):
 
         root = Path(self.root)
         for frontend_parts, static_parts in self._FRONTENDS:
+            # A frontend served from its committed build/ (postup) is never
+            # rebuilt for an editable install: every `uv sync` would refresh
+            # tracked files and dirty the tree whenever the npm toolchain drifts.
+            # Release wheels still rebuild it.
+            if editable and static_parts is None:
+                continue
             frontend_dir = root.joinpath(*frontend_parts)
             static_dir = root.joinpath(*static_parts) if static_parts else None
             self._build_one_frontend(npm, frontend_dir, static_dir)
