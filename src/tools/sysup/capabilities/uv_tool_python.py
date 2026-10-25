@@ -91,7 +91,7 @@ def _pinned_minor(receipt_path: Path) -> str | None:
     return match.group(1)
 
 
-def _install_error(argv: list[str]) -> str | None:
+def _run_install(argv: list[str]) -> str | None:
     try:
         result = subprocess.run(argv, capture_output=True, text=True, check=False)
     except OSError as exc:
@@ -150,7 +150,7 @@ class UvToolPython:
                 )
                 yield StepResult(label, success=True, message=message)
             return
-        error = _install_error([uv, "python", "install", target])
+        error = _run_install([uv, "python", "install", target])
         if error is not None:
             yield StepResult(label, success=False, message=f"uv python install {target} failed: {error}")
             return
@@ -159,13 +159,13 @@ class UvToolPython:
 
     def _move(self: UvToolPython, uv: str, tool: str, old: str | None, target: str) -> StepResult:
         label = f"{tool} (python {old or 'unpinned'} -> {target})"
-        error = _install_error([uv, "tool", "install", "--python", target, "--force", tool])
+        error = _run_install([uv, "tool", "install", "--python", target, "--force", tool])
         if error is None:
             return StepResult(label, success=True)
         rollback = [uv, "tool", "install"]
         if old is not None:
             rollback.extend(["--python", old])
-        recovery = _install_error([*rollback, "--force", tool])
+        recovery = _run_install([*rollback, "--force", tool])
         if recovery is None:
             state = f"kept on python {old}" if old else "kept unpinned"
         else:
