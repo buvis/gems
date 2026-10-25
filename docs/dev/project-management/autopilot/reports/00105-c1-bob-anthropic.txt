@@ -1,0 +1,49 @@
+Review of PRD 00105 (`uv-tool-python`): no Critical or High issues. There are 2 Medium findings with a fix and 2 Medium items that need a named check. Most of the code is correct. A newer pin is left alone, a failed rollback is reported in full, and a broken receipt for one tool does not stop the others. All argv calls are made without a shell. All 12 rubric rules pass.
+
+The first Medium finding matters most on your own Mac. The receipt safety checks run before the pin comparison. Your editable `engram` install will therefore show a red failed step on every `sysup` run, even after you pin it to the current minor by hand. Nothing you do can clear it short of reinstalling `engram` as a plain package.
+
+[BOB] 🟡 A customized receipt that is already pinned to the global minor or newer still yields `success=False` on every run. `_pinned_minor` raises on customization before it reads `python`. On this Mac the editable `engram` install would go red forever, and pinning it by hand never clears it. | File: src/tools/sysup/capabilities/uv_tool_python.py:42 | Task: 1
+[BOB] ⚪ `_pinned_minor` and `UvToolPython.run` sit at exactly 50 lines. Commit 5026a1e0 got them there by squeezing lines (`skipped = newer = False`, a dropped blank line) instead of splitting either function. | File: src/tools/sysup/capabilities/uv_tool_python.py:109 | Task: 1
+[BOB] ⚪ The unsafe-receipt test checks only a non-empty message ending in `, skipping`. One generic message for every case would pass. The design says each failure kind (malformed receipt, wrong package name, customization, bad Python version) needs a message the user can tell apart. | File: tests/tools/sysup/test_uv_tool_python.py:269 | Task: 1
+[BOB] ⚪ The name `_install_error` does not start with a verb, but the function runs an install. | File: src/tools/sysup/capabilities/uv_tool_python.py:94 | Task: 1
+[BOB] ⚪ No test covers `subprocess.run` raising OSError when it tries to start `mise current python` or `uv tool dir`. | File: tests/tools/sysup/test_uv_tool_python.py:365 | Task: 1
+[BOB] ⚪ The migration sentence now claims `sysup mac` ran `uv-tool-python`. It never did. The test docstring makes the same claim. | File: docs/source/tools/sysup.rst:348 | Task: 3
+[BOB] 🟡 Every test uses a hand-made receipt. None matches what uv 0.13.5 actually writes (entrypoints with `install-path`, `[tool.options]`). If real receipts carry extra keys, every tool gets skipped as customized and the feature does nothing. | File: src/tools/sysup/capabilities/uv_tool_python.py:58 | Task: 1
+[BOB] 🟡 Full autocodex session logs and session-metadata files are committed. They include `creator_user_id`, `creator_account_id` and your private instruction text, and this repo may be public. | File: docs/dev/project-management/autopilot/autocodex-sessions/b947d712b2d14e8bbbfd958b3e74d040.jsonl | Task: general
+[BOB] ⚪ The feat commits 0bbe5e97 and a177d948 went in without CHANGELOG.md. The entry came later in the docs commit e47252fa, which breaks the same-commit changelog rule. | File: CHANGELOG.md:12 | Task: general
+[BOB] ⚪ The full suite needed isolated `XDG_STATE_HOME` and `BUVIS_CONFIG_DIR` values to pass. The klyreon lock tests and the postup collect test touch your real home state and config. Those tests predate this PRD. | File: N/A | Task: general
+[BOB] ⚪ A malformed receipt is skipped with a failure. The PRD's Risks section said to treat it as unpinned and re-pin it. The design doc changed this on purpose. | File: src/tools/sysup/capabilities/uv_tool_python.py:42 | Task: 1
+
+R1: pass
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass
+
+FIX:
+- Customized receipt already at the target or newer is reported red forever — src/tools/sysup/capabilities/uv_tool_python.py:42 — Read and compare the `python` value first. Run the package-name and customization checks only for tools that are about to be reinstalled. Move those checks into their own helper, for example `_check_reinstallable(tool, name)`, and call it from `run` before adding a tool to `moves`. Add a test: an editable or `--with` receipt that has `python = "3.14"`, with target 3.14, must produce no failure and no install.
+- Both functions sit exactly at the 50-line limit through squeezed lines — src/tools/sysup/capabilities/uv_tool_python.py:109 — The helper from the first fix makes `_pinned_minor` smaller. Pulling the tool listing out of `run` into `_list_tools(root)` restores room, and the squeezed lines can go back to normal form.
+- Failure messages are not pinned per kind — tests/tools/sysup/test_uv_tool_python.py:269 — Give each receipt case an expected substring ("missing tool table", "requirements identity", "customization", "entrypoint", "python selector", or the TOML error) and assert it is in `steps[0].message`.
+- Function name does not start with a verb — src/tools/sysup/capabilities/uv_tool_python.py:94 — Rename `_install_error` to `_run_install` and update its 3 callers.
+- Process-start OSError path is untested — tests/tools/sysup/test_uv_tool_python.py:365 — Add a test where `subprocess.run` raises `OSError("spawn denied")` for `["/bin/mise", "current", "python"]`. Assert exactly one failed `uv tool python` result containing the error text, and no install calls.
+- `sysup mac` is credited with a step it never had — docs/source/tools/sysup.rst:348 — Restore the original list and add "plus uv-tool-python before uv" after it. Reword the docstring at tests/tools/sysup/test_default_config.py:17 the same way.
+VERIFY:
+- Real uv receipts pass the safety check — Run `UV_TOOL_DIR=/tmp/uvt UV_TOOL_BIN_DIR=/tmp/uvb uv tool install --python 3.14 ruff`, then `UV_TOOL_DIR=/tmp/uvt uv run python -c "import os; from pathlib import Path; from sysup.capabilities.uv_tool_python import _pinned_minor; print(_pinned_minor(Path(os.environ['UV_TOOL_DIR'])/'ruff'/'uv-receipt.toml'))"`. Expect `3.14` and no exception. Repeat without `--python`; expect `None`. Then run `_pinned_minor` on each directory under `uv tool dir` on this Mac; `mempalace` should give `3.14`.
+- Logs with account IDs may be public — Run `gh repo view buvis/gems --json visibility` and `rg -l creator_account_id docs/dev/project-management`. If the repo is public, check `git check-ignore -v` on `docs/dev/project-management/autopilot/autocodex-sessions/b947d712b2d14e8bbbfd958b3e74d040.jsonl` and on `reports/00105-tess_1-session-metadata.jsonl`. Both should be ignored before anything is pushed.
+KNOWN:
+- Feat commits shipped without the changelog entry — Those commits are already in history. Fixing them means rewriting history, which needs a force push and your approval. The entry is present at HEAD.
+- klyreon and postup tests needed env isolation — That code is outside this diff and older than this PRD. The isolation was a test-environment workaround and no test was weakened. It belongs in a separate fix PRD.
+- Malformed receipts are skipped instead of re-pinned — The design doc made this change on purpose and recorded why. Planning rules let the design doc win over the PRD on contract details. A bare reinstall of a receipt it cannot read could throw away the user's install choices.
+
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass

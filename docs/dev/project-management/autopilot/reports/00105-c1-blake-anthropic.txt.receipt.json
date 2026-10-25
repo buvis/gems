@@ -1,0 +1,17 @@
+{
+  "provider": "claude",
+  "model_provider": "anthropic",
+  "lens": "blake",
+  "model": "opus",
+  "started": 1792921250.167883,
+  "completed": 1792921484.009944,
+  "output": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00105-c1-blake-anthropic.txt",
+  "sha256": "e3cfe6669c6d579897e83e37db6ceb524c323e7782ce41036908c10874b115fb",
+  "raw": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00105-c1-blake-anthropic-873c375a1d2b42b7aa373175d738642f.jsonl",
+  "raw_sha256": "31dc5e1df693f1414fd912312c76d60a33bb5709eedc44e76aaae0e8b96f27fb",
+  "thread_id": "913abfd2-723b-4f20-b1fd-c2d90d94239a",
+  "root": "/Users/bob/git/src/github.com/buvis/gems",
+  "prd": "00105-sysup-uv-tool-python-pin-v1.md",
+  "cycle": 1,
+  "implementation_fingerprint": "d1aa75c87e19c1ce69371b98016be04a061fe12c3bccf15bec1d0cbf0ba72652"
+}

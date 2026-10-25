@@ -1,8 +1,8 @@
 {
-  "fingerprint": "4a4d4b063de65bb21fab328c50d0ef7580689441f4f8305dbbd0d7d812e78592",
+  "fingerprint": "d1aa75c87e19c1ce69371b98016be04a061fe12c3bccf15bec1d0cbf0ba72652",
   "snapshot": {
     "prd": "00105-sysup-uv-tool-python-pin-v1.md",
-    "cycle": null,
+    "cycle": 1,
     "work_start_sha": "db6b1b434a88c84ce06d25e5773d0225d23de56b",
     "tasks": [
       {

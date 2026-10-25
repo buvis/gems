@@ -1,0 +1,41 @@
+I left the temporary docs build in place. The removal hook blocked `rm` twice, and the folder sits under `/tmp`, outside the repo.
+
+## Blind audit: PRD 00105 `uv-tool-python`
+
+**What I checked:** `ruff` and `mypy` are clean. The narrow tests pass (117 passed across `test_uv_tool_python.py`, `test_default_config.py` and `test_invariants.py`). `sphinx-build` exits 0. All 7 tests the PRD names exist. The capability is registered and wired at `order: 35`. I also ran `_pinned_minor` against this host's real receipts: `engram` raised `ValueError: unsupported requirement customization`, `huggingface-hub` came back unpinned, and `mempalace` came back as 3.14.
+
+[BLAKE] 🟠 `engram` gets skipped with `success=False` on every run and stays unpinned. The PRD names it as one of two motivating tools with compiled deps. Its real receipt is an editable install (`{name="engram", editable="/Users/bob/git/src/github.com/buvis/engram"}`), and the requirement allowlist (`name`, `extras`, `specifier`) rejects it. A failed step is red, so `exit_code` returns 1 and `sysup` exits 1 on every run on this host. The original batch failure in `uv tool upgrade --all` stays possible through `engram`. The skip itself is the right call: the PRD's `uv tool install --python X --force <name>` would swap the local editable checkout for a PyPI package. The real gap is the reinstall mechanism. `uv tool upgrade --python <target> <tool>` exists in the host uv and keeps the receipt's requirements; it is the likely fix | File: src/tools/sysup/capabilities/uv_tool_python.py:64 | Task: general
+
+[BLAKE] 🟡 This departs from the spec's error contract. The Risks section says "a receipt that fails to parse is treated as unpinned (so the tool is re-pinned)". The code instead skips any receipt it cannot parse, plus any receipt with a missing table, a version specifier, extras, constraints, overrides, excludes, non-empty options, a foreign entrypoint source, an unknown key or a non-numeric selector. Each one yields a red result. The changelog and docs describe this, but the PRD does not | File: src/tools/sysup/capabilities/uv_tool_python.py:42 | Task: 1
+
+[BLAKE] 🟡 The receipt check is an allowlist, so a future uv release that adds any receipt key (top level, or inside `options`) will make every tool red and unpinned. The capability would turn off loudly after a routine `uv` upgrade | File: src/tools/sysup/capabilities/uv_tool_python.py:48 | Task: 1
+
+[BLAKE] 🟡 PRD gap: rolling back an unpinned tool runs `uv tool install --force <tool>` with no `--python`. That re-resolves against uv's default interpreter, which may be the same new minor that just failed. So "kept unpinned" does not restore the prior interpreter. That interpreter is still on disk in `<tool>/pyvenv.cfg`. The code matches the spec here, and the docs admit the limit | File: src/tools/sysup/capabilities/uv_tool_python.py:165 | Task: 1
+
+[BLAKE] ⚪ The code adds an output message the spec does not have: `all uv tools pinned to python X or newer` when a pin is above the target. The spec defines only `all uv tools on python <target>` | File: src/tools/sysup/capabilities/uv_tool_python.py:149 | Task: 1
+
+[BLAKE] ⚪ The CHANGELOG entry does not use the wording the PRD gives. It leaves out the onnxruntime/cp315 rationale and the "can no longer make the upgrade unsatisfiable" claim. Given the skips, that omission is accurate | File: CHANGELOG.md:12 | Task: 4
+
+[BLAKE] ⚪ PRD defect: the acceptance commands `rg -c "uv-tool-python\|freestanding uv tool"` use `\|`, which rg treats as a literal `|`. The literal command prints nothing. The corrected `rg -c "uv-tool-python|freestanding uv tool|cp315" CHANGELOG.md` prints 1 | File: N/A | Task: 4
+
+[BLAKE] ⚪ PRD wording conflicts with itself. The success metric says the entry sits "between the `uv` entry and `mise`'s downstream steps", but the decided design is `order: 35`, before `uv`. The guard text also says "ok-framed skip … not a failure", then re-decides it as `success=False`. The code follows the decided versions | File: N/A | Task: general
+
+B1: fail
+B2: fail
+B3: pass
+B4: pass
+B5: fail
+B6: fail
+B7: pass
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass

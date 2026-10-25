@@ -1,0 +1,17 @@
+{
+  "provider": "claude",
+  "model_provider": "anthropic",
+  "lens": "bob",
+  "model": "opus",
+  "started": 1792921250.167579,
+  "completed": 1792921540.58222,
+  "output": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00105-c1-bob-anthropic.txt",
+  "sha256": "0a8fb9c021a18799b789bb8946f73026844c5db68332f9ae59b5792ca537369a",
+  "raw": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00105-c1-bob-anthropic-0cf0e12c97c84e11959da03159b8d54f.jsonl",
+  "raw_sha256": "23ae611837396298d0ec490ad95cc97f691e0e670c701f48a5669de0ee27de0d",
+  "thread_id": "80e8cc5c-cf80-451c-aaca-c25eca333cec",
+  "root": "/Users/bob/git/src/github.com/buvis/gems",
+  "prd": "00105-sysup-uv-tool-python-pin-v1.md",
+  "cycle": 1,
+  "implementation_fingerprint": "d1aa75c87e19c1ce69371b98016be04a061fe12c3bccf15bec1d0cbf0ba72652"
+}

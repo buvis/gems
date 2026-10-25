@@ -1,0 +1,27 @@
+[ALICE] 🟡 engram is one of the three host tools the PRD names. It is an editable install (`requirements = [{ name = "engram", editable = "..." }]`), and I confirmed `_pinned_minor` rejects that real receipt with the generic `unsupported requirement customization`. So on this host every sysup run reports a failed `uv-tool-python` step, and engram stays exposed to the cp315 drift the PRD exists to fix. Two fixes: name the rejected key in the message (e.g. `unsupported requirement customization: editable`), and record editable-install support as a deferred backlog item. Right now no PRD or deferral tracks it | File: src/tools/sysup/capabilities/uv_tool_python.py:70 | Task: 1
+[ALICE] 🟡 Simplification: the `allowed` set repeats the four key names that `dependency_keys` lists again at line 75. Define `dependency_keys` first and build `allowed = {"requirements", "python", "options", "entrypoints", *dependency_keys}`, so the two lists cannot drift apart | File: src/tools/sysup/capabilities/uv_tool_python.py:48 | Task: 1
+[ALICE] ⚪ The migration paragraph now lists `uv-tool-python` among the steps the removed `sysup mac` ran. That is false: the old command never pinned uv tools, and the `pipx-python` precedent left it out of this list. The edited line also runs past the paragraph's wrap width. Revert this hunk | File: docs/source/tools/sysup.rst:348 | Task: 3
+[ALICE] ⚪ `_install_error` runs a subprocess but has a noun name. Rename it with a verb, e.g. `_run_install`. It is not one of the names the contract fixes | File: src/tools/sysup/capabilities/uv_tool_python.py:94 | Task: 1
+[ALICE] ⚪ When the rollback fails, the message reads `reinstall on python <old> also failed: <rollback stderr>: <initial stderr>`. That is two unlabeled diagnostics joined by colons, in reverse order. Label them, e.g. `f"{state} ({recovery}); install on python {target} failed: {error}"` | File: src/tools/sysup/capabilities/uv_tool_python.py:172 | Task: 1
+[ALICE] ⚪ Pre-existing gap, out of scope: the sibling `pipx-python` capability is missing from the built-in capabilities table, which now lists `uv-tool-python` | File: docs/source/tools/sysup.rst:99 | Task: general
+
+Checks I ran:
+- The three test files (`test_uv_tool_python.py`, `test_default_config.py`, `test_invariants.py`): 117 passed.
+- `ruff check src/tools/sysup` plus both test files: clean.
+- `mypy src/tools/sysup`: clean.
+- `_pinned_minor` against the three real host receipts: mempalace returned `3.14`, huggingface-hub returned `None` (unpinned, so it gets moved), engram raised `ValueError: unsupported requirement customization`.
+
+`run` and `_pinned_minor` are both exactly 50 lines. The autopilot style checker only flags functions over 50, so R12 passes.
+
+R1: pass
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass
