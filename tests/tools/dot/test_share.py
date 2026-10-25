@@ -16,6 +16,7 @@ from dot.hostlinks.manifest import MANIFEST_PATH, read_manifest
 ATTRS_PRELUDE = "*.png binary\n*.jpg -text\n"
 PLAIN_ENTRY = IndexEntry(mode="100644", sha="a" * 40)
 LINK_ENTRY = IndexEntry(mode="120000", sha="b" * 40)
+ATTRS_ENTRY = IndexEntry(mode="100644", sha="c" * 40)
 
 
 def _index_read(*args: object, **kwargs: object) -> tuple[str, str]:
@@ -497,7 +498,7 @@ class TestCommandShareSuccess:
         assert errors == []
         assert [(link.target, link.source) for link in links] == [(".vimrc", ".local/.vimrc")]
 
-    def test_writes_attribute_before_check_then_renormalizes_then_stages(
+    def test_writes_attribute_before_check_then_stages_then_renormalizes(
         self,
         tmp_path: Path,
         shell: MagicMock,
@@ -529,10 +530,12 @@ class TestCommandShareSuccess:
         result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
 
         assert result.success, result.error
+        # The attribute file reaches the index before the target does, so no
+        # failure can stage a tokenized blob without the attribute that smudges it.
         assert order == [
             "check_attr:.zshrc:True",
-            "renormalize:.zshrc:True",
             "stage:.gitattributes:True",
+            "renormalize:.zshrc:True",
         ]
 
     def test_builds_default_git_service_from_shell_and_root(self, tmp_path: Path, shell: MagicMock) -> None:
@@ -602,8 +605,52 @@ class TestCommandShareRollback:
         assert result.error == "renormalize failed: cfg add exploded"
         assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
         assert target.read_bytes() == before
-        service.stage.assert_not_called()
-        service.restore_index_entry.assert_not_called()
+        # The attribute file was staged first, so the rollback drops it from the
+        # index again (None: it had no index entry before) and never touches the target.
+        service.stage.assert_called_once_with(".gitattributes")
+        service.restore_index_entry.assert_called_once_with(".gitattributes", None)
+
+    def test_renormalize_failure_restores_tracked_attributes_index_entry(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+    ) -> None:
+        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
+        service = make_service(
+            tracked={".zshrc", ".gitattributes"},
+            renormalize=CommandResult(success=False, error="cfg add exploded"),
+        )
+        service.capture_index_entry.side_effect = lambda path: ATTRS_ENTRY if path == ".gitattributes" else PLAIN_ENTRY
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert not result.success
+        assert result.error == "renormalize failed: cfg add exploded"
+        service.restore_index_entry.assert_called_once_with(".gitattributes", ATTRS_ENTRY)
+
+    def test_renormalize_failure_reports_failed_unstage_with_manual_step(
+        self,
+        tmp_path: Path,
+        shell: MagicMock,
+    ) -> None:
+        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
+        service = make_service(
+            tracked={".zshrc"},
+            renormalize=CommandResult(success=False, error="cfg add exploded"),
+            restore=CommandResult(success=False, error="update-index exploded"),
+        )
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert not result.success
+        assert result.error == (
+            "renormalize failed: cfg add exploded; "
+            "could not unstage .gitattributes (update-index exploded); "
+            "run 'dot unstage .gitattributes' before retrying"
+        )
+        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
 
     def test_never_restores_target_index_entry_on_stage_success(
         self,
@@ -657,20 +704,23 @@ class TestCommandShareFilesystemErrors:
         assert_index_untouched(service)
 
 
-class TestCommandShareStageFailureKeepsRegistration:
-    """A failed ``stage(.gitattributes)`` must not undo the share.
+class TestCommandShareStageFailureLeavesIndexUntouched:
+    """A failed ``stage(.gitattributes)`` fails the share before the index changes.
 
-    The command still succeeds (the attribute registration and the
-    renormalized index are already correct on disk) and warns the user to
-    finish staging by hand instead of rolling the share back.
+    The attribute file is staged before the target is renormalized, so a
+    stage failure can never leave a tokenized blob in the index without the
+    attribute that makes other hosts smudge it (review finding R2 on PRD
+    00099). The command restores the attribute text and reports the failure
+    instead of succeeding with a warning.
     """
 
-    def test_keeps_attribute_line_and_index_and_warns_to_add_attributes(
+    def test_fails_restores_attribute_text_and_never_renormalizes(
         self,
         tmp_path: Path,
         shell: MagicMock,
     ) -> None:
-        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        target = write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        before = target.read_bytes()
         write_file(tmp_path, ".gitattributes", ATTRS_PRELUDE)
         service = make_service(
             tracked={".zshrc"},
@@ -679,11 +729,25 @@ class TestCommandShareStageFailureKeepsRegistration:
 
         result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
 
-        assert result.success
-        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE + "/.zshrc filter=dot-host\n"
+        assert not result.success
+        assert result.error == "could not stage .gitattributes: cfg add failed"
+        assert (tmp_path / ".gitattributes").read_text() == ATTRS_PRELUDE
+        assert target.read_bytes() == before
+        service.renormalize.assert_not_called()
         service.restore_index_entry.assert_not_called()
-        assert result.warnings
-        assert "run 'dot add .gitattributes'" in result.warnings[0]
+
+    def test_removes_the_attribute_file_it_created(self, tmp_path: Path, shell: MagicMock) -> None:
+        write_file(tmp_path, ".zshrc", host_text(tmp_path, 1))
+        service = make_service(
+            tracked={".zshrc"},
+            stage=CommandResult(success=False, error="cfg add failed"),
+        )
+
+        result = CommandShare(shell, str(tmp_path), ".zshrc", git_service=service).execute()
+
+        assert not result.success
+        assert not (tmp_path / ".gitattributes").exists()
+        service.renormalize.assert_not_called()
 
 
 class TestCommandShareAttributeSymlinkRefusal:

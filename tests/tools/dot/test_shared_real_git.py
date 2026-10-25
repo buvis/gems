@@ -471,5 +471,7 @@ class TestIndexModeReadOnce:
         result = CommandShare(shell, str(host_a), ".zshrc").execute()
 
         assert result.success, result.error
-        ls_files_s_calls = [command for command in shell.commands if "ls-files -s" in command]
+        # Only the target counts: ``.gitattributes`` is captured once more so a
+        # failed renormalize can restore its index entry exactly.
+        ls_files_s_calls = [command for command in shell.commands if "ls-files -s" in command and ".zshrc" in command]
         assert len(ls_files_s_calls) == 1

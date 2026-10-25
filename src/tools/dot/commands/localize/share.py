@@ -253,7 +253,14 @@ class CommandShare:
         previous: str | None,
         data: bytes,
     ) -> CommandResult:
-        """Register the attribute, renormalize the target, then stage the attribute file."""
+        """Register the attribute, stage the attribute file, then renormalize the target.
+
+        The attribute file reaches the index before the target does, so no failure
+        can leave a tokenized blob staged without the attribute that makes other
+        hosts smudge it. The opposite half-state (attribute staged, target still
+        literal) is what every host already had before the share.
+        """
+        attrs_entry = self._git_service.capture_index_entry(ATTRIBUTES_PATH)
         try:
             atomic_write_text(attrs_path, self._attributes_text(previous))
         except OSError as exc:
@@ -269,10 +276,16 @@ class CommandShare:
             note = self._restore_attributes(attrs_path, previous)
             return CommandResult(success=False, error=_with_note(conflict, note))
 
+        staged = self._git_service.stage(ATTRIBUTES_PATH)
+        if not staged.success:
+            failure = f"could not stage {ATTRIBUTES_PATH}: {staged.error}"
+            note = self._restore_attributes(attrs_path, previous)
+            return CommandResult(success=False, error=_with_note(failure, note))
+
         renormalized = self._git_service.renormalize(self._target)
         if not renormalized.success:
             failure = f"renormalize failed: {renormalized.error}"
-            note = self._restore_attributes(attrs_path, previous)
+            note = self._rollback_registration(attrs_path, previous, attrs_entry)
             return CommandResult(success=False, error=_with_note(failure, note))
 
         count = count_home(data, str(self._root))
@@ -280,18 +293,28 @@ class CommandShare:
             output = f"shared {self._target}: {count} host value(s) replaced"
         else:
             output = f"no host value found in {self._target}; filter active for future writes"
-
-        staged = self._git_service.stage(ATTRIBUTES_PATH)
-        if not staged.success:
-            # A failed stage must not undo the attribute registration or the renormalized
-            # index: both are already correct on disk, so leave them and tell the user to
-            # finish staging by hand instead of rolling back a share that in fact succeeded.
-            warning = (
-                f"could not stage {ATTRIBUTES_PATH} ({staged.error}); run 'dot add {ATTRIBUTES_PATH}' to finish staging"
-            )
-            return CommandResult(success=True, output=output, warnings=[warning])
-
         return CommandResult(success=True, output=output, info=[f"staged {ATTRIBUTES_PATH}"])
+
+    def _rollback_registration(
+        self,
+        attrs_path: Path,
+        previous: str | None,
+        attrs_entry: IndexEntry | None,
+    ) -> str | None:
+        """Undo a staged registration: the attribute text on disk, then its index entry.
+
+        Returns:
+            The joined failure notes, None when both restores succeeded.
+        """
+        notes = [self._restore_attributes(attrs_path, previous)]
+        unstaged = self._git_service.restore_index_entry(ATTRIBUTES_PATH, attrs_entry)
+        if not unstaged.success:
+            notes.append(
+                f"could not unstage {ATTRIBUTES_PATH} ({unstaged.error}); "
+                f"run 'dot unstage {ATTRIBUTES_PATH}' before retrying"
+            )
+        joined = "; ".join(note for note in notes if note is not None)
+        return joined or None
 
     def _restore_attributes(self, attrs_path: Path, previous: str | None) -> str | None:
         """Put the attribute file back as it was, removing one this command created.
