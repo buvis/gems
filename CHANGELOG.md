@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-25
+
 ### Added
 
 - **sysup**: `uv-tool-python` runs before uv upgrades on macOS, moving supported plain freestanding uv tools with older numeric Python pins or no pin to the global mise Python minor. Equal and newer pins stay unchanged. Failed moves attempt rollback and report recovery failures; customized or malformed receipts are visibly skipped untouched and may still fail during later uv upgrades.
@@ -575,7 +577,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.14.2...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.0...HEAD
+[0.15.0]: https://github.com/buvis/gems/compare/gems-v0.14.2...gems-v0.15.0
 [0.14.2]: https://github.com/buvis/gems/compare/gems-v0.14.1...gems-v0.14.2
 [0.14.1]: https://github.com/buvis/gems/compare/gems-v0.14.0...gems-v0.14.1
 [0.14.0]: https://github.com/buvis/gems/compare/gems-v0.13.0...gems-v0.14.0
