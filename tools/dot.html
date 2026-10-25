@@ -421,8 +421,9 @@ dot<span class="w"> </span>commit<span class="w"> </span><span class="s2">"Share
 <p>What the command does:</p>
 <ol class="arabic simple">
 <li><p>Appends <code class="docutils literal notranslate"><span class="pre">/&lt;path&gt;</span> <span class="pre">filter=dot-host</span></code> to <code class="docutils literal notranslate"><span class="pre">&lt;dotfiles_root&gt;/.gitattributes</span></code>.</p></li>
-<li><p>Re-stages the file through the filter (<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span> <span class="pre">--renormalize</span></code>).</p></li>
-<li><p>Stages <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code>. Commit it together with the file.</p></li>
+<li><p>Stages <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code>.</p></li>
+<li><p>Re-stages the file through the filter (<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span> <span class="pre">--renormalize</span></code>). Commit
+both together.</p></li>
 </ol>
 <p>From then on git stores the reserved token <code class="docutils literal notranslate"><span class="pre">&#64;HOME&#64;</span></code> where this host’s home
 path stood, and writes the checking-out host’s own home path back into the work
@@ -475,17 +476,23 @@ path:</p>
 <li><p>resolves outside the dotfiles root</p></li>
 <li><p>is not tracked (run <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code> first)</p></li>
 <li><p>is a directory, or looks like a glob (<code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">?</span></code>, <code class="docutils literal notranslate"><span class="pre">[</span></code>)</p></li>
-<li><p>needs quoting in the attribute file (space, tab, <code class="docutils literal notranslate"><span class="pre">#</span></code>, <code class="docutils literal notranslate"><span class="pre">!</span></code>, <code class="docutils literal notranslate"><span class="pre">\</span></code>)</p></li>
+<li><p>needs quoting in the attribute file (space, tab, <code class="docutils literal notranslate"><span class="pre">#</span></code>, <code class="docutils literal notranslate"><span class="pre">!</span></code>, <code class="docutils literal notranslate"><span class="pre">\</span></code>, a
+newline or a carriage return)</p></li>
 <li><p>is a git-secret file, or is already listed in the <code class="docutils literal notranslate"><span class="pre">host-links</span></code> manifest</p></li>
 <li><p>is <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code> itself</p></li>
 <li><p>already has a <code class="docutils literal notranslate"><span class="pre">dot-host</span></code> filter line</p></li>
 <li><p>is a symlink, or is not a plain file in the index</p></li>
+<li><p>sits in a root whose <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code> is a symlink or not a regular file</p></li>
 <li><p>is tracked but missing from disk</p></li>
 <li><p>already contains <code class="docutils literal notranslate"><span class="pre">&#64;HOME&#64;</span></code></p></li>
 <li><p>is governed by a conflicting filter attribute from another attribute file</p></li>
 </ul>
-<p>Dot also rolls the attribute line (and the index entry) back when the
-renormalize or the staging step fails, and says so in the error.</p>
+<p>Dot stages the attribute line before it renormalizes the file, so a failed
+share never leaves a tokenized file in the index without its attribute. When
+staging fails, nothing has reached the index: dot restores the attribute file
+and reports the error. When the renormalize fails, dot restores the attribute
+file and unstages the line again; if that unstage itself fails, the error names
+<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">unstage</span> <span class="pre">.gitattributes</span></code> as the step to run by hand.</p>
 <p><strong>Unsharing.</strong> Delete the <code class="docutils literal notranslate"><span class="pre">/&lt;path&gt;</span> <span class="pre">filter=dot-host</span></code> line from
 <code class="docutils literal notranslate"><span class="pre">.gitattributes</span></code>, then renormalize the file so git stores it literally again:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dot<span class="w"> </span>run<span class="w"> </span>add<span class="w"> </span>--renormalize<span class="w"> </span>--<span class="w"> </span>.zshrc

@@ -343,8 +343,9 @@ entry. The work-tree layout is the same after sharing as before.
 What the command does:
 
 #. Appends ``/<path> filter=dot-host`` to ``<dotfiles_root>/.gitattributes``.
-#. Re-stages the file through the filter (``git add --renormalize``).
-#. Stages ``.gitattributes``. Commit it together with the file.
+#. Stages ``.gitattributes``.
+#. Re-stages the file through the filter (``git add --renormalize``). Commit
+   both together.
 
 From then on git stores the reserved token ``@HOME@`` where this host's home
 path stood, and writes the checking-out host's own home path back into the work
@@ -407,17 +408,23 @@ path:
 - resolves outside the dotfiles root
 - is not tracked (run ``dot add`` first)
 - is a directory, or looks like a glob (``*``, ``?``, ``[``)
-- needs quoting in the attribute file (space, tab, ``#``, ``!``, ``\``)
+- needs quoting in the attribute file (space, tab, ``#``, ``!``, ``\``, a
+  newline or a carriage return)
 - is a git-secret file, or is already listed in the ``host-links`` manifest
 - is ``.gitattributes`` itself
 - already has a ``dot-host`` filter line
 - is a symlink, or is not a plain file in the index
+- sits in a root whose ``.gitattributes`` is a symlink or not a regular file
 - is tracked but missing from disk
 - already contains ``@HOME@``
 - is governed by a conflicting filter attribute from another attribute file
 
-Dot also rolls the attribute line (and the index entry) back when the
-renormalize or the staging step fails, and says so in the error.
+Dot stages the attribute line before it renormalizes the file, so a failed
+share never leaves a tokenized file in the index without its attribute. When
+staging fails, nothing has reached the index: dot restores the attribute file
+and reports the error. When the renormalize fails, dot restores the attribute
+file and unstages the line again; if that unstage itself fails, the error names
+``dot unstage .gitattributes`` as the step to run by hand.
 
 **Unsharing.** Delete the ``/<path> filter=dot-host`` line from
 ``.gitattributes``, then renormalize the file so git stores it literally again:
