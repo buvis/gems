@@ -397,8 +397,12 @@ def apply_generated_options(model: type[BaseModel]) -> Callable[..., Any]:
     return decorator
 
 
-def _unwrap_optional(annotation: type) -> tuple[type, bool]:
-    """Unwrap Optional[X] / X | None to (X, True). Non-optional returns (annotation, False)."""
+def _unwrap_optional(annotation: Any) -> tuple[Any, bool]:
+    """Unwrap Optional[X] / X | None to (X, True). Non-optional returns (annotation, False).
+
+    The annotation is any type form (``str | None``, ``Literal[...]``), which is
+    what pydantic 2.14 types ``FieldInfo.annotation`` as, not a plain ``type``.
+    """
     origin = get_origin(annotation)
     if origin is Union or origin is types.UnionType:
         args = [a for a in get_args(annotation) if a is not type(None)]
