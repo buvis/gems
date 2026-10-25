@@ -48,3 +48,7 @@ No implementation tasks until attended triage.
 ## Success Criteria
 
 - This file is no longer under `docs/dev/project-management/prds/hold/`.
+
+## Triage
+
+Closed 2026-10-25 as the cycle-1 twin of `00100-triage-filter-driver-config-values-are-buvis-au-v1.md`: same finding, same decision, the `--` guard in the driver commands stays.

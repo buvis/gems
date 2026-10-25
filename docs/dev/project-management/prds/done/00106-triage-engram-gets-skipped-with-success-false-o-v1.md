@@ -48,3 +48,7 @@ No implementation tasks until attended triage.
 ## Success Criteria
 
 - This file is no longer under `docs/dev/project-management/prds/hold/`.
+
+## Triage
+
+Promoted 2026-10-25 to backlog PRD `00108-sysup-uv-tool-python-upgrade-in-place-v1.md`, which replaces the force reinstall with `uv tool upgrade --python <target> <tool>` and drops the receipt allowlist, so editable and otherwise customized installs move instead of ending every run red.

@@ -48,3 +48,7 @@ No implementation tasks until attended triage.
 ## Success Criteria
 
 - This file is no longer under `docs/dev/project-management/prds/hold/`.
+
+## Triage
+
+Closed 2026-10-25. This row is the `cap_regression` stall itself; its one regressed finding (R2, commit d19066d1) is fixed as recorded in `00104-triage-stage-failure-path-leaves-a-tokenized-bl-v1.md`, and PRD 00099 moved to `done/` with a triage section.

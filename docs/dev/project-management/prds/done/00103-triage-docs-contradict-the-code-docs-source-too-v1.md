@@ -48,3 +48,7 @@ No implementation tasks until attended triage.
 ## Success Criteria
 
 - This file is no longer under `docs/dev/project-management/prds/hold/`.
+
+## Triage
+
+Closed 2026-10-25, fixed on master by `fix(dot): stage the attribute before renormalizing a shared file`: `docs/source/tools/dot.rst` now lists the stage-first order under "What the command does", documents both failure paths in place of the old rollback sentence, and adds the newline/carriage-return and non-regular `.gitattributes` refusals.

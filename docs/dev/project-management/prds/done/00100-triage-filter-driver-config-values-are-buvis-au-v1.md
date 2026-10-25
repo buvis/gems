@@ -48,3 +48,7 @@ No implementation tasks until attended triage.
 ## Success Criteria
 
 - This file is no longer under `docs/dev/project-management/prds/hold/`.
+
+## Triage
+
+Closed 2026-10-25, the code wins. `dot filter clean -- %f` needs `--` so a leading-dash path is never read as an option, which is the PRD's own shell-unsafe-path requirement; the PRD text that pins the values without `--` was the stale side. `FILTER_CLEAN_VALUE` and `FILTER_SMUDGE_VALUE` in `src/tools/dot/git/filter_driver.py` stay as they are, and `test_share_succeeds_for_a_tracked_leading_dash_name` in `tests/tools/dot/test_shared_real_git.py` pins the behavior. The decision is recorded in PRD 00099's triage section.

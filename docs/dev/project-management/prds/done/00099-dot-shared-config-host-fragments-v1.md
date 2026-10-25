@@ -180,3 +180,12 @@ CHANGELOG.md
 - **Git apply semantics**: R11 is a real-Git gate, not an assumed property; any necessary fix remains within the shared service and named tests.
 - **Filter startup cost**: Accept per-file CLI startup for a few files; defer persistent process protocol or thin entry point until measured need.
 - **External dotfiles**: Implementation tests use temporary repositories; operator opt-in on live hosts remains a post-release action outside this PRD.
+
+## Triage (2026-10-25)
+
+Built, merged and changelogged in batch 202610121200; parked in `hold/` when review cycle 2 capped out with two HIGH findings (`cap_regression`, stubs 00100 to 00104). Resolved on 2026-10-25:
+
+- Stage failure (stubs 00104 and 00101): the clause above, "Attribute stage failure keeps the shared registration/index and returns a warning", is withdrawn. `CommandShare` stages `.gitattributes` before it renormalizes the target; a stage failure returns a failure with the attribute text restored, and a renormalize failure also restores the attribute's index entry. No path leaves a tokenized blob staged without its attribute. Fixed by `fix(dot): stage the attribute before renormalizing a shared file`.
+- Docs (stub 00103): `docs/source/tools/dot.rst` matches the code again, same commit.
+- Driver values (stubs 00100 and 00102): the configured driver commands keep `--` (`dot filter clean -- %f`, `dot filter smudge -- %f`); the values pinned without `--` in this PRD were the stale side of the conflict.
+- Review-2 R3 (dead `restore_index_entry`) is moot: the renormalize-failure rollback calls it again.
