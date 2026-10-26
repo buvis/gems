@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **sysup**: `uv-tool-python` now moves editable and otherwise customized uv tool installs with `uv tool upgrade --python`, so a host with an editable tool no longer ends every run red; only malformed receipts are skipped
+
 ## [0.15.0] - 2026-10-25
 
 ### Added

@@ -102,7 +102,7 @@ Capability                    Behaviour / inputs
 ``helm-repo-update``          ``helm repo update`` guarded by an empty-repo-list check
 ``nvim-mason``                headless Mason update probe; input ``timeout`` (default 600)
 ``pip-outdated``              per-interpreter (mise-managed, else PATH ``python3``) pip upgrade
-``uv-tool-python``            moves plain uv tool installs to the global mise Python minor; no inputs
+``uv-tool-python``            moves every uv tool install to the global mise Python minor with ``uv tool upgrade --python``; no inputs
 ``sudo-prime``                caches sudo credentials with a background refresher (``prime:``)
 ``gh-token-expiry``           gh token: expiration header + a private-repo grant probe; inputs ``config_dir``, ``probe``
 ``x509-expiry``               PEM file or TLS endpoint not-after; one of ``path`` / ``host``; needs the ``cryptography`` extra
@@ -112,14 +112,17 @@ An unknown capability name, or an unknown ``with`` input, is a config error
 reported clearly on load — never a stack trace.
 
 On macOS, ``uv-tool-python`` runs at order 35, before ``uv`` at order 40.
-For plain package installs with supported receipts, it reinstalls unpinned
-tools and tools with an older numeric Python pin on the global mise Python
-minor; equal and newer pins stay unchanged. A failed move attempts a reinstall
-on the prior minor, or without a pin if previously unpinned, and reports any
-rollback failure. Unpinned rollback does not guarantee the original interpreter
-or package version. Customized, malformed, missing, or unsupported receipts
-are visibly skipped and left untouched. The plan continues, so skipped tools
-may still fail during the later ``uv tool upgrade --all``.
+It runs ``uv tool upgrade --python <minor> <tool>`` for unpinned tools and tools
+with an older numeric Python pin, moving them to the global mise Python minor;
+equal and newer pins stay unchanged. The upgrade also bumps package versions,
+which the next ``uv tool upgrade --all`` would do anyway. Customized receipts
+(extras, specifiers, editable or URL sources) are moved in place, and the
+receipt file is never rewritten by sysup. A failed move attempts an upgrade on
+the prior minor, or without a pin if previously unpinned, and reports any
+rollback failure. Unpinned rollback does not guarantee the original
+interpreter. Malformed, missing, or unsupported-selector receipts are visibly
+skipped and left untouched. The plan continues, so skipped tools may still fail
+during the later ``uv tool upgrade --all``.
 
 Sharing across machines
 ~~~~~~~~~~~~~~~~~~~~~~~~~

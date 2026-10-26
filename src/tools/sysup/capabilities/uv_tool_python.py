@@ -35,53 +35,15 @@ def _global_minor(mise: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _normalize(name: str) -> str:
-    return re.sub(r"[-_.]+", "-", name.lower())
-
-
 def _pinned_minor(receipt_path: Path) -> str | None:
     with receipt_path.open("rb") as receipt:
         data = tomllib.load(receipt)
     tool = data.get("tool")
     if not isinstance(tool, dict):
         raise ValueError("missing tool table")
-    allowed = {
-        "requirements",
-        "python",
-        "constraints",
-        "overrides",
-        "excludes",
-        "build-constraint-dependencies",
-        "options",
-        "entrypoints",
-    }
-    if tool.keys() - allowed or tool.get("options", {}) != {}:
-        raise ValueError("unsupported receipt customization")
     requirements = tool.get("requirements")
-    if not isinstance(requirements, list) or len(requirements) != 1:
-        raise ValueError("unsupported requirements identity")
-    requirement = requirements[0]
-    if isinstance(requirement, dict):
-        if (
-            requirement.keys() - {"name", "extras", "specifier"}
-            or requirement.get("extras", []) != []
-            or requirement.get("specifier", "") != ""
-        ):
-            raise ValueError("unsupported requirement customization")
-        requirement = requirement.get("name")
-    name = _normalize(receipt_path.parent.name)
-    if not isinstance(requirement, str) or _normalize(requirement) != name:
-        raise ValueError("unsupported requirements identity")
-    dependency_keys = ("constraints", "overrides", "excludes", "build-constraint-dependencies")
-    if any(tool.get(key, []) != [] for key in dependency_keys):
-        raise ValueError("unsupported dependency customization")
-    entrypoints = tool.get("entrypoints", [])
-    if not isinstance(entrypoints, list):
-        raise ValueError("unsupported entrypoints")
-    for entrypoint in entrypoints:
-        source = entrypoint.get("from", "") if isinstance(entrypoint, dict) else None
-        if not isinstance(source, str) or (source and _normalize(source) != name):
-            raise ValueError("unsupported entrypoint source")
+    if not isinstance(requirements, list) or not requirements:
+        raise ValueError("missing requirements")
     if "python" not in tool:
         return None
     selector = tool["python"]
@@ -159,13 +121,13 @@ class UvToolPython:
 
     def _move(self: UvToolPython, uv: str, tool: str, old: str | None, target: str) -> StepResult:
         label = f"{tool} (python {old or 'unpinned'} -> {target})"
-        error = _run_install([uv, "tool", "install", "--python", target, "--force", tool])
+        error = _run_install([uv, "tool", "upgrade", "--python", target, tool])
         if error is None:
             return StepResult(label, success=True)
-        rollback = [uv, "tool", "install"]
+        rollback = [uv, "tool", "upgrade"]
         if old is not None:
             rollback.extend(["--python", old])
-        recovery = _run_install([*rollback, "--force", tool])
+        recovery = _run_install([*rollback, tool])
         if recovery is None:
             state = f"kept on python {old}" if old else "kept unpinned"
         else:
