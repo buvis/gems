@@ -115,9 +115,11 @@ On macOS, ``uv-tool-python`` runs at order 35, before ``uv`` at order 40.
 It runs ``uv tool upgrade --python <minor> <tool>`` for unpinned tools and tools
 with an older numeric Python pin, moving them to the global mise Python minor;
 equal and newer pins stay unchanged. The upgrade also bumps package versions,
-which the next ``uv tool upgrade --all`` would do anyway. Customized receipts
-(extras, specifiers, editable or URL sources) are moved in place, and the
-receipt file is never rewritten by sysup. A failed move attempts an upgrade on
+which the next ``uv tool upgrade --all`` would do anyway. The upgrade keeps the
+receipt's recorded requirements (an editable checkout, extras, constraints,
+index options) and only switches the interpreter, so customized receipts are
+moved in place. Sysup never edits the receipt; uv records the new interpreter
+in it on a successful move. A failed move attempts an upgrade on
 the prior minor, or without a pin if previously unpinned, and reports any
 rollback failure. Unpinned rollback does not guarantee the original
 interpreter. Malformed, missing, or unsupported-selector receipts are visibly

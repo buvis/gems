@@ -62,7 +62,7 @@ def _run_install(argv: list[str]) -> str | None:
 
 
 class UvToolPython:
-    """Move plain uv tool installations to the global mise Python minor."""
+    """Move uv tool installations to the global mise Python minor."""
 
     @property
     def inputs(self: UvToolPython) -> Mapping[str, object]:
