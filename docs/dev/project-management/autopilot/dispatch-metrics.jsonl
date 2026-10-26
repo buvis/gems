@@ -270,3 +270,23 @@
 {"kind":"handoff","site":"build","edge":"resume","at":1792922950,"phase":"build","prd":"00105-sysup-uv-tool-python-pin-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1792922962,"phase":"done","prd":"00105-sysup-uv-tool-python-pin-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1792923052,"phase":"done","prd":"00105-sysup-uv-tool-python-pin-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1793004249,"phase":"build","prd":"00108-sysup-uv-tool-python-upgrade-in-place-v1.md"}
+{"id":"79fc1a78","kind":"fast-track:tess","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004317,"prompt_bytes":55374}
+{"id":"79fc1a78","ended_at":1793004325,"elapsed_s":8,"outcome":"error","detail":"superseded: goal leaked impl bodies, re-rendered"}
+{"id":"b2896338","kind":"fast-track:tess","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004340,"prompt_bytes":52769}
+{"id":"b2896338","ended_at":1793004408,"elapsed_s":68,"outcome":"ok","detail":null}
+{"id":"6f8753a9","kind":"fast-track:ivan","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004427,"prompt_bytes":36515}
+{"id":"6f8753a9","ended_at":1793004493,"elapsed_s":66,"outcome":"ok","detail":null}
+{"id":"11703a58","kind":"fast-track:alice","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004731,"prompt_bytes":6153}
+{"id":"5d1918bd","kind":"fast-track:blake","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004732,"prompt_bytes":13472}
+{"id":"16f33a61","kind":"fast-track:eve","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004733,"prompt_bytes":3897}
+{"id":"273285c7","kind":"fast-track:bob","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004734,"prompt_bytes":9347}
+{"id":"bc178339","kind":"fast-track:carl","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004735,"prompt_bytes":6509}
+{"id":"bc178339","ended_at":1793004767,"elapsed_s":32,"outcome":"error","detail":"exit 1: copilot monthly quota exceeded (retry also failed)"}
+{"id":"11703a58","ended_at":1793004772,"elapsed_s":41,"outcome":"ok","detail":null}
+{"id":"5d1918bd","ended_at":1793004778,"elapsed_s":46,"outcome":"ok","detail":null}
+{"id":"273285c7","ended_at":1793004825,"elapsed_s":91,"outcome":"error","detail":"codex sandbox_apply: Operation not permitted, read nothing; substituting general-purpose subagent"}
+{"id":"bb53d615","kind":"fast-track:bob","task":"00108-sysup-uv-tool-python-upgrade-in-place-v1-c1","queued_at":1793004825,"prompt_bytes":9347}
+{"id":"bb53d615","ended_at":1793004892,"elapsed_s":67,"outcome":"ok","detail":null}
+{"id":"16f33a61","ended_at":1793005297,"elapsed_s":564,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1793005557,"phase":"done","prd":"00108-sysup-uv-tool-python-upgrade-in-place-v1.md"}
