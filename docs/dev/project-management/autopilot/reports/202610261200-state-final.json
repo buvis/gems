@@ -1,0 +1,48 @@
+{
+  "phase": "done",
+  "next_phase": "",
+  "schema_version": 1,
+  "batch": {
+    "id": "202610261200",
+    "mode": "autopilot",
+    "completed_prds": [
+      {
+        "filename": "00108-sysup-uv-tool-python-upgrade-in-place-v1.md",
+        "cycles": 1,
+        "autonomous_decisions": 0,
+        "escalated_decisions": 0,
+        "tasks_completed": 1,
+        "tasks_total": 1,
+        "lane": "fast-track",
+        "lane_reason": "card_sized",
+        "lane_effective": "fast-track",
+        "lane_escalated": null
+      }
+    ],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "parks_consecutive": 0
+  },
+  "prd_budget_since": "2026-10-26T08:44:09Z",
+  "prd": "00108-sysup-uv-tool-python-upgrade-in-place-v1.md",
+  "catchup_mode": "skip",
+  "design_mode": "skip",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "fast-track",
+  "lane_reason": "card_sized",
+  "lane_effective": "fast-track",
+  "work_start_sha": "d9ceafef2abffb0d1e2eb7639b805a7b53dccd9b",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "tasks": [],
+  "tasks_total": 0,
+  "tasks_completed": 0,
+  "phases_completed": [
+    "review"
+  ],
+  "contract_card": "step: build lane fast-track closed (00108 c1 committed, review-1 written) | invariants: state.json only via statectl/autopilot verbs; done gate finalizes PRD wip->done verified; no push in loop-style flow | next: done gate (references/phase-done.md) in a fresh session"
+}
