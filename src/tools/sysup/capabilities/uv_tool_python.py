@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import tomllib
+from buvis.pybase.filesystem import atomic_write_bytes
 
 from sysup.step_result import StepResult
 
@@ -18,6 +19,7 @@ __all__ = ["UvToolPython"]
 
 _MINOR = re.compile(r"^(\d+\.\d+)")
 _VERSION = re.compile(r"(\d+\.\d+)(?:\.\d+)?(?:(?:a|b|rc)\d+)?")
+_VENV_VERSION = re.compile(r"^version(?:_info)?\s*=\s*(\d+\.\d+)", re.MULTILINE)
 
 
 def _tool_dir(uv: str) -> Path:
@@ -51,6 +53,15 @@ def _pinned_minor(receipt_path: Path) -> str | None:
     if match is None:
         raise ValueError(f"unsupported python selector: {selector!r}")
     return match.group(1)
+
+
+def _env_minor(directory: Path) -> str | None:
+    # uv keeps the receipt's `python` as installed, so the environment is the only record of a move.
+    try:
+        match = _VENV_VERSION.search((directory / "pyvenv.cfg").read_text())
+    except (OSError, ValueError):
+        return None
+    return match.group(1) if match else None
 
 
 def _run_install(argv: list[str]) -> str | None:
@@ -102,7 +113,7 @@ class UvToolPython:
                 yield StepResult(directory.name, success=False, message=f"{exc}, skipping")
                 continue
             version = tuple(map(int, old.split("."))) if old is not None else None
-            if version is None or version < target_version:
+            if (version is None or version < target_version) and _env_minor(directory) != target:
                 moves.append((directory.name, old))
             newer |= version is not None and version > target_version
         if not moves:
@@ -117,13 +128,23 @@ class UvToolPython:
             yield StepResult(label, success=False, message=f"uv python install {target} failed: {error}")
             return
         for tool, old in moves:
-            yield self._move(uv, tool, old, target)
+            yield self._move(uv, tool, old, target, root / tool / "uv-receipt.toml")
 
-    def _move(self: UvToolPython, uv: str, tool: str, old: str | None, target: str) -> StepResult:
+    def _move(self: UvToolPython, uv: str, tool: str, old: str | None, target: str, receipt: Path) -> StepResult:
         label = f"{tool} (python {old or 'unpinned'} -> {target})"
+        try:
+            saved = receipt.read_bytes()
+        except OSError:
+            saved = None
         error = _run_install([uv, "tool", "upgrade", "--python", target, tool])
         if error is None:
             return StepResult(label, success=True)
+        # uv deletes the whole tool directory, receipt included, before it syncs the new environment.
+        if saved is not None and not receipt.exists():
+            try:
+                atomic_write_bytes(receipt, saved)
+            except OSError as exc:
+                return StepResult(label, success=False, message=f"receipt restore failed: {exc}: {error}")
         rollback = [uv, "tool", "upgrade"]
         if old is not None:
             rollback.extend(["--python", old])

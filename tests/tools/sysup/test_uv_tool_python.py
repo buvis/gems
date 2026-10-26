@@ -23,8 +23,23 @@ class TestUvToolPython:
         return path
 
     @staticmethod
-    def _fake_run(mocker, root, *, current="3.14.6\n", current_code=0, directory_code=0, directory=None, outcomes=None):
+    def _venv(root, tool, version, *, key="version_info"):
+        (root / tool / "pyvenv.cfg").write_text(f"home = /py/bin\nimplementation = CPython\n{key} = {version}\n")
+
+    @staticmethod
+    def _fake_run(
+        mocker,
+        root,
+        *,
+        current="3.14.6\n",
+        current_code=0,
+        directory_code=0,
+        directory=None,
+        outcomes=None,
+        effects=None,
+    ):
         pending = {tuple(argv): list(values) for argv, values in (outcomes or {}).items()}
+        effects = {tuple(argv): effect for argv, effect in (effects or {}).items()}
 
         def run(argv, **kwargs):
             assert isinstance(argv, list)
@@ -40,6 +55,8 @@ class TestUvToolPython:
                     argv, directory_code, str(root) if directory is None else directory, ""
                 )
             assert argv[:3] in (["/bin/uv", "python", "install"], ["/bin/uv", "tool", "upgrade"])
+            if tuple(argv) in effects:
+                effects[tuple(argv)]()
             result = pending.get(tuple(argv), [(0, "")]).pop(0)
             if isinstance(result, OSError):
                 raise result
@@ -156,6 +173,71 @@ class TestUvToolPython:
             ["/bin/uv", "tool", "upgrade", "--python", "3.14", "zulu"],
         ]
         assert receipt.read_bytes() == original
+
+    @pytest.mark.parametrize("old", [None, "3.13"])
+    def test_restores_receipt_that_failed_move_deleted_before_rolling_back(self, mocker, tmp_path, old) -> None:
+        root = tmp_path / "tools"
+        receipt = self._receipt(root, "alpha", python=old)
+        original = receipt.read_bytes()
+        target = ("/bin/uv", "tool", "upgrade", "--python", "3.14", "alpha")
+        rollback = (
+            ("/bin/uv", "tool", "upgrade", "--python", old, "alpha") if old else ("/bin/uv", "tool", "upgrade", "alpha")
+        )
+        seen = []
+        self._fake_run(
+            mocker,
+            root,
+            outcomes={target: [(1, "sync failed")]},
+            effects={target: receipt.unlink, rollback: lambda: seen.append(receipt.read_bytes())},
+        )
+
+        steps = list(UvToolPython().run())
+
+        assert [step.success for step in steps] == [False]
+        assert seen == [original]
+        assert receipt.read_bytes() == original
+
+    def test_reports_unrestorable_receipt_instead_of_rolling_back(self, mocker, tmp_path) -> None:
+        root = tmp_path / "tools"
+        receipt = self._receipt(root, "alpha", python="3.13")
+        target = ("/bin/uv", "tool", "upgrade", "--python", "3.14", "alpha")
+        mock_run = self._fake_run(
+            mocker, root, outcomes={target: [(1, "sync failed")]}, effects={target: receipt.unlink}
+        )
+        mocker.patch("sysup.capabilities.uv_tool_python.atomic_write_bytes", side_effect=OSError("disk full"))
+
+        steps = list(UvToolPython().run())
+
+        assert [step.success for step in steps] == [False]
+        assert "receipt restore failed: disk full" in steps[0].message
+        assert "sync failed" in steps[0].message
+        assert self._installs(mock_run) == [list(target)]
+
+    @pytest.mark.parametrize("python", [None, "3.13"])
+    @pytest.mark.parametrize(("key", "version"), [("version_info", "3.14.8"), ("version", "3.14.2")])
+    def test_skips_tool_whose_environment_is_already_on_target(self, mocker, tmp_path, python, key, version) -> None:
+        root = tmp_path / "tools"
+        self._receipt(root, "gita", python=python)
+        self._venv(root, "gita", version, key=key)
+        mock_run = self._fake_run(mocker, root)
+
+        steps = list(UvToolPython().run())
+
+        assert [(step.success, step.message) for step in steps] == [(True, "all uv tools on python 3.14")]
+        assert self._installs(mock_run) == []
+
+    @pytest.mark.parametrize("cfg", ["3.13.9", None])
+    def test_moves_tool_whose_environment_is_not_on_target(self, mocker, tmp_path, cfg) -> None:
+        root = tmp_path / "tools"
+        self._receipt(root, "gita")
+        if cfg:
+            self._venv(root, "gita", cfg)
+        mock_run = self._fake_run(mocker, root)
+
+        steps = list(UvToolPython().run())
+
+        assert [(step.label, step.success) for step in steps] == [("gita (python unpinned -> 3.14)", True)]
+        assert self._installs(mock_run) == [["/bin/uv", "tool", "upgrade", "--python", "3.14", "gita"]]
 
     @pytest.mark.parametrize("kind", ["absent", "empty", "metadata"])
     def test_no_tools_is_a_noop(self, mocker, tmp_path, kind) -> None:
