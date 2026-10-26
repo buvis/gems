@@ -39,7 +39,7 @@ class TestUvToolPython:
                 return subprocess.CompletedProcess(
                     argv, directory_code, str(root) if directory is None else directory, ""
                 )
-            assert argv[:3] in (["/bin/uv", "python", "install"], ["/bin/uv", "tool", "install"])
+            assert argv[:3] in (["/bin/uv", "python", "install"], ["/bin/uv", "tool", "upgrade"])
             result = pending.get(tuple(argv), [(0, "")]).pop(0)
             if isinstance(result, OSError):
                 raise result
@@ -50,7 +50,7 @@ class TestUvToolPython:
 
     @staticmethod
     def _installs(mock_run):
-        return [call.args[0] for call in mock_run.call_args_list if call.args[0][1:3] == ["tool", "install"]]
+        return [call.args[0] for call in mock_run.call_args_list if call.args[0][1:3] == ["tool", "upgrade"]]
 
     @pytest.mark.parametrize("target", ["3.10", "3.14"])
     @pytest.mark.parametrize("structured", [False, True])
@@ -68,9 +68,7 @@ class TestUvToolPython:
             (f"gita (python unpinned -> {target})", True),
             (f"gita-extra (python unpinned -> {target})", True),
         ]
-        installs = [
-            ["/bin/uv", "tool", "install", "--python", target, "--force", tool] for tool in ("gita", "gita-extra")
-        ]
+        installs = [["/bin/uv", "tool", "upgrade", "--python", target, tool] for tool in ("gita", "gita-extra")]
         assert self._installs(mock_run) == installs
         calls = [call.args[0] for call in mock_run.call_args_list]
         interpreter = ["/bin/uv", "python", "install", target]
@@ -94,8 +92,8 @@ class TestUvToolPython:
             (f"zulu (python {minor} -> {target})", True),
         ]
         assert self._installs(mock_run) == [
-            ["/bin/uv", "tool", "install", "--python", target, "--force", "alpha"],
-            ["/bin/uv", "tool", "install", "--python", target, "--force", "zulu"],
+            ["/bin/uv", "tool", "upgrade", "--python", target, "alpha"],
+            ["/bin/uv", "tool", "upgrade", "--python", target, "zulu"],
         ]
 
     @pytest.mark.parametrize(
@@ -130,11 +128,9 @@ class TestUvToolPython:
         receipt = self._receipt(root, "alpha", python=old)
         original = receipt.read_bytes()
         self._receipt(root, "zulu", python="3.11")
-        target = ("/bin/uv", "tool", "install", "--python", "3.14", "--force", "alpha")
+        target = ("/bin/uv", "tool", "upgrade", "--python", "3.14", "alpha")
         rollback = (
-            ("/bin/uv", "tool", "install", "--python", old, "--force", "alpha")
-            if old
-            else ("/bin/uv", "tool", "install", "--force", "alpha")
+            ("/bin/uv", "tool", "upgrade", "--python", old, "alpha") if old else ("/bin/uv", "tool", "upgrade", "alpha")
         )
         mock_run = self._fake_run(mocker, root, outcomes={target: [initial], rollback: [recovery]})
 
@@ -157,7 +153,7 @@ class TestUvToolPython:
         assert self._installs(mock_run) == [
             list(target),
             list(rollback),
-            ["/bin/uv", "tool", "install", "--python", "3.14", "--force", "zulu"],
+            ["/bin/uv", "tool", "upgrade", "--python", "3.14", "zulu"],
         ]
         assert receipt.read_bytes() == original
 
@@ -247,21 +243,6 @@ class TestUvToolPython:
             '[other]\npython = "3.13"\n',
             '[tool]\npython = "3.13"\n',
             "[tool]\nrequirements = []\n",
-            '[tool]\nrequirements = ["gita-extra"]\n',
-            '[tool]\nrequirements = ["gita", "beets"]\n',
-            '[tool]\nrequirements = ["gita==1.0"]\n',
-            '[tool]\nrequirements = [{name = "gita", extras = ["web"]}]\n',
-            '[tool]\nrequirements = [{name = "gita", specifier = ">=1"}]\n',
-            '[tool]\nrequirements = [{name = "gita", url = "https://example.org/gita.whl"}]\n',
-            '[tool]\nrequirements = [{name = "gita", future = false}]\n',
-            '[tool]\nrequirements = ["gita"]\nconstraints = ["beets<2"]\n',
-            '[tool]\nrequirements = ["gita"]\noverrides = ["beets"]\n',
-            '[tool]\nrequirements = ["gita"]\nexcludes = ["beets"]\n',
-            '[tool]\nrequirements = ["gita"]\nbuild-constraint-dependencies = ["beets"]\n',
-            '[tool]\nrequirements = ["gita"]\noptions = {index = "https://example.org"}\n',
-            '[tool]\nrequirements = ["gita"]\nentrypoints = [{name = "gita", from = "gita-extra"}]\n',
-            '[tool]\nrequirements = ["gita"]\nfuture = []\n',
-            '[tool]\nrequirements = ["gita"]\nfuture = false\n',
             '[tool]\nrequirements = ["gita"]\npython = 314\n',
             '[tool]\nrequirements = ["gita"]\npython = false\n',
         ],
@@ -279,8 +260,40 @@ class TestUvToolPython:
         assert steps[0].label == "gita"
         assert steps[0].message.endswith(", skipping")
         assert steps[0].message.removesuffix(", skipping").strip()
-        assert self._installs(mock_run) == [["/bin/uv", "tool", "install", "--python", "3.14", "--force", "zulu"]]
+        assert self._installs(mock_run) == [["/bin/uv", "tool", "upgrade", "--python", "3.14", "zulu"]]
         assert unsafe.read_text() == receipt
+
+    @pytest.mark.parametrize(
+        "receipt",
+        [
+            '[tool]\nrequirements = [{name = "gita", editable = "/src/gita"}]\n',
+            '[tool]\nrequirements = [{name = "gita", extras = ["web"]}]\n',
+            '[tool]\nrequirements = [{name = "gita", specifier = ">=1"}]\n',
+            '[tool]\nrequirements = [{name = "gita", url = "https://example.org/gita.whl"}]\n',
+            '[tool]\nrequirements = ["gita==1.0"]\n',
+            '[tool]\nrequirements = ["gita", "beets"]\n',
+            '[tool]\nrequirements = ["gita-extra"]\n',
+            '[tool]\nrequirements = ["gita"]\nconstraints = ["beets<2"]\n',
+            '[tool]\nrequirements = ["gita"]\noverrides = ["beets"]\n',
+            '[tool]\nrequirements = ["gita"]\nexcludes = ["beets"]\n',
+            '[tool]\nrequirements = ["gita"]\nbuild-constraint-dependencies = ["beets"]\n',
+            '[tool]\nrequirements = ["gita"]\noptions = {index = "https://example.org"}\n',
+            '[tool]\nrequirements = ["gita"]\nentrypoints = [{name = "gita", from = "gita-extra"}]\n',
+            '[tool]\nrequirements = ["gita"]\nfuture = []\n',
+        ],
+    )
+    def test_moves_customized_receipts_in_place(self, mocker, tmp_path, receipt) -> None:
+        root = tmp_path / "tools"
+        customized = self._receipt(root, "gita")
+        customized.write_text(receipt)
+        original = customized.read_bytes()
+        mock_run = self._fake_run(mocker, root)
+
+        steps = list(UvToolPython().run())
+
+        assert [(step.label, step.success) for step in steps] == [("gita (python unpinned -> 3.14)", True)]
+        assert self._installs(mock_run) == [["/bin/uv", "tool", "upgrade", "--python", "3.14", "gita"]]
+        assert customized.read_bytes() == original
 
     @pytest.mark.parametrize(
         "selector",
@@ -347,7 +360,7 @@ class TestUvToolPython:
         steps = list(UvToolPython().run())
 
         assert [(step.label, step.success) for step in steps] == [("gita (python unpinned -> 3.14)", True)]
-        assert self._installs(mock_run) == [["/bin/uv", "tool", "install", "--python", "3.14", "--force", "gita"]]
+        assert self._installs(mock_run) == [["/bin/uv", "tool", "upgrade", "--python", "3.14", "gita"]]
 
     def test_missing_receipt_is_visible_and_does_not_prevent_later_tool(self, mocker, tmp_path) -> None:
         root = tmp_path / "tools"
