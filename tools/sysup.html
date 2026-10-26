@@ -264,10 +264,11 @@ equal and newer pins stay unchanged. The upgrade also bumps package versions,
 which the next <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">upgrade</span> <span class="pre">--all</span></code> would do anyway. The upgrade keeps the
 receipt’s recorded requirements (an editable checkout, extras, constraints,
 index options) and only switches the interpreter, so customized receipts are
-moved in place. Sysup never edits the receipt; uv records the new interpreter
-in it on a successful move. A failed move attempts an upgrade on
-the prior minor, or without a pin if previously unpinned, and reports any
-rollback failure. Unpinned rollback does not guarantee the original
+moved in place. uv leaves the receipt’s <code class="docutils literal notranslate"><span class="pre">python</span></code> pin as it was after a move,
+so sysup also reads the Python minor of the tool’s environment and skips tools
+already on the global minor. A failed move makes uv delete the receipt, so sysup
+restores it, then attempts an upgrade on the prior minor, or without a pin if
+previously unpinned, and reports any restore or rollback failure. Unpinned rollback does not guarantee the original
 interpreter. Malformed, missing, or unsupported-selector receipts are visibly
 skipped and left untouched. The plan continues, so skipped tools may still fail
 during the later <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">tool</span> <span class="pre">upgrade</span> <span class="pre">--all</span></code>.</p>
