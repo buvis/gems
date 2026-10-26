@@ -290,3 +290,5 @@
 {"id":"bb53d615","ended_at":1793004892,"elapsed_s":67,"outcome":"ok","detail":null}
 {"id":"16f33a61","ended_at":1793005297,"elapsed_s":564,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"leave","at":1793005557,"phase":"done","prd":"00108-sysup-uv-tool-python-upgrade-in-place-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1793021946,"phase":"done","prd":"00108-sysup-uv-tool-python-upgrade-in-place-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1793022068,"phase":"done","prd":"00108-sysup-uv-tool-python-upgrade-in-place-v1.md"}

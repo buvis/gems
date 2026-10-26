@@ -20,6 +20,11 @@ Generated: 2026-10-24
 
 ## Active Work
 
+### Batch 202610261200
+- [x] `00108-sysup-uv-tool-python-upgrade-in-place-v1.md` (1 cycle)
+
+Observations: Fast-track lane. `uv tool upgrade --python` now moves customized receipts in place. One VERIFY left open by the doubt lens (Eve): whether `uv tool upgrade --python` can delete a tool's receipt before a failed sync completes, leaving rollback without a receipt to restore, and whether the upgraded receipt records the new interpreter — unverified against uv 0.13.5 behavior; also open: add a `future=false` + pinned-customized case to `test_moves_customized_receipts_in_place` and fold `test_accepts_plain_receipts_with_harmless_metadata` into it. Batch drained - both `wip/` and `backlog/` are empty.
+
 ### Batch 202610242315
 - [x] `00105-sysup-uv-tool-python-pin-v1.md` (1 cycle)
 

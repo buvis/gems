@@ -3,6 +3,7 @@
   "items": [
     {
       "type": "verify-open",
+      "issue": "Eve VERIFY: uv tool upgrade --python receipt handling unverified against uv 0.13.5 upgrade_tool/create_environment behavior",
       "detail": "Eve VERIFY: (1) uv tool upgrade --python may delete the tool dir (receipt included) before syncing, so a failed sync leaves both rollback upgrades failing with a missing receipt; check uv 0.13.5 upgrade_tool/create_environment, then snapshot+restore the receipt if confirmed. (2) PRD unverified claim that the upgrade records the new interpreter in the receipt: run uv tool upgrade --python 3.14 huggingface-hub, check python = 3.14 in its receipt, second sysup must print all uv tools on python 3.14. Also open: add future=false receipts and a pinned customized case to test_moves_customized_receipts_in_place; fold test_accepts_plain_receipts_with_harmless_metadata into it.",
       "prd": "00108-sysup-uv-tool-python-upgrade-in-place-v1.md"
     }
