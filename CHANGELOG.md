@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-10-27
+
 ### Fixed
 
 - **sysup**: `uv-tool-python` now moves editable and otherwise customized uv tool installs with `uv tool upgrade --python`, so a host with an editable tool no longer ends every run red; only malformed receipts are skipped; tools already on the global minor are left alone, and a failed move restores the receipt uv deleted before rolling back
@@ -581,7 +583,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.1...HEAD
+[0.15.1]: https://github.com/buvis/gems/compare/gems-v0.15.0...gems-v0.15.1
 [0.15.0]: https://github.com/buvis/gems/compare/gems-v0.14.2...gems-v0.15.0
 [0.14.2]: https://github.com/buvis/gems/compare/gems-v0.14.1...gems-v0.14.2
 [0.14.1]: https://github.com/buvis/gems/compare/gems-v0.14.0...gems-v0.14.1
