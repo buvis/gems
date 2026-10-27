@@ -12,6 +12,9 @@ commands:
     order: 10
     when: { os: darwin, check: brew }
     sudo: true
+    # Homebrew resets the sudo ticket before its first sudo call, so a cask
+    # upgrade prompts for a password; captured mode hid that prompt.
+    interactive: true
     steps:
       - [brew, update]
       - [brew, upgrade]
@@ -91,7 +94,7 @@ commands:
       - [sudo, snap, refresh]
 
 # Session-level capabilities that run before any command. sudo priming caches
-# credentials up front so brew casks don't prompt mid-run (former mac behaviour).
+# credentials up front for sudo argv steps; Homebrew resets the ticket itself.
 prime:
   - sudo-prime
 

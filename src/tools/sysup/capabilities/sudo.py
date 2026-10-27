@@ -33,9 +33,10 @@ class SudoPrime:
         return iter(())
 
     def prime(self: SudoPrime) -> Callable[[], None]:
-        """Cache sudo credentials upfront so brew casks don't prompt mid-run.
+        """Cache sudo credentials upfront so sudo steps don't prompt mid-run.
 
-        Returns a stop callback for the background refresher that keeps the
+        Homebrew resets the ticket before its first sudo call, so brew still
+        prompts for itself. Returns a stop callback for the background refresher that keeps the
         ticket fresh past sudo's 5-minute timeout. A missing sudo or a declined
         prompt is not an error: later steps then prompt as before.
         """

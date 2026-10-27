@@ -104,6 +104,14 @@ class TestDefaultConfigEquivalence:
         cfg = load_config()
         assert cfg.commands["npm-check"].interactive is True
 
+    def test_brew_is_interactive_so_its_sudo_prompt_is_visible(self, mocker) -> None:
+        """Homebrew resets the sudo ticket before its first sudo call, so a cask
+        upgrade prompts for a password; captured mode hides that prompt behind
+        the spinner and the run appears to hang."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        assert cfg.commands["brew"].interactive is True
+
     def test_apt_uses_sudo_argv(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()

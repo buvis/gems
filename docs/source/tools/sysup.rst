@@ -161,6 +161,7 @@ An entry that sets ``sudo: true``, or any of whose steps' argv starts with
       brew:
         order: 10
         sudo: true          # at least one cask needs sudo partway through
+        interactive: true   # brew resets the ticket, so its prompt must be visible
         steps:
           - [brew, upgrade]
 
@@ -174,6 +175,12 @@ entries cannot leak the background thread. At the prompt:
 * press **Ctrl-D** to skip priming — later sudo-needing steps then prompt for
   themselves as before, exactly as if priming were never configured;
 * press **Ctrl-C** to abort the whole run.
+
+Homebrew resets the sudo ticket before its first sudo call (``sudo
+--reset-timestamp``), so priming does not carry over to ``brew upgrade``: a cask
+that needs sudo prompts for the password again. The bundled ``brew`` entry
+therefore sets ``interactive: true``, so that prompt shows in the terminal. In
+captured mode the spinner hides it and the run appears to hang.
 
 A missing ``sudo`` binary or a declined prompt is not an error — it is the
 same as skipping priming. Each sudo-needing argv step still only inherits its

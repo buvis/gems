@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **sysup**: the bundled `brew` step runs interactively, so the sudo password prompt Homebrew raises for casks is visible instead of hiding behind the spinner and freezing the run
+
 ## [0.15.1] - 2026-10-27
 
 ### Fixed
