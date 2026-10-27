@@ -301,6 +301,7 @@ dotfiles repo; keep a separate backup of anything only it holds.</p>
 <span class="w">  </span><span class="nt">brew</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 <span class="w">    </span><span class="nt">sudo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">          </span><span class="c1"># at least one cask needs sudo partway through</span>
+<span class="w">    </span><span class="nt">interactive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">   </span><span class="c1"># brew resets the ticket, so its prompt must be visible</span>
 <span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">upgrade</span><span class="p p-Indicator">]</span>
 </pre></div>
@@ -316,6 +317,11 @@ entries cannot leak the background thread. At the prompt:</p>
 themselves as before, exactly as if priming were never configured;</p></li>
 <li><p>press <strong>Ctrl-C</strong> to abort the whole run.</p></li>
 </ul>
+<p>Homebrew resets the sudo ticket before its first sudo call (<code class="docutils literal notranslate"><span class="pre">sudo</span>
+<span class="pre">--reset-timestamp</span></code>), so priming does not carry over to <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">upgrade</span></code>: a cask
+that needs sudo prompts for the password again. The bundled <code class="docutils literal notranslate"><span class="pre">brew</span></code> entry
+therefore sets <code class="docutils literal notranslate"><span class="pre">interactive:</span> <span class="pre">true</span></code>, so that prompt shows in the terminal. In
+captured mode the spinner hides it and the run appears to hang.</p>
 <p>A missing <code class="docutils literal notranslate"><span class="pre">sudo</span></code> binary or a declined prompt is not an error — it is the
 same as skipping priming. Each sudo-needing argv step still only inherits its
 own child’s stdin when it runs (the <code class="docutils literal notranslate"><span class="pre">interactive</span></code> scope is per step, not
