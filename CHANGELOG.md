@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.2] - 2026-10-28
+
 ### Fixed
 
 - **sysup**: the bundled `brew` step runs interactively, so the sudo password prompt Homebrew raises for casks is visible instead of hiding behind the spinner and freezing the run
@@ -587,7 +589,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.2...HEAD
+[0.15.2]: https://github.com/buvis/gems/compare/gems-v0.15.1...gems-v0.15.2
 [0.15.1]: https://github.com/buvis/gems/compare/gems-v0.15.0...gems-v0.15.1
 [0.15.0]: https://github.com/buvis/gems/compare/gems-v0.14.2...gems-v0.15.0
 [0.14.2]: https://github.com/buvis/gems/compare/gems-v0.14.1...gems-v0.14.2
