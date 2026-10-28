@@ -69,9 +69,10 @@ explicitly disabled.
 Per-entry envelope
 ~~~~~~~~~~~~~~~~~~~
 
-Every entry is exactly one of a ``run`` entry (``steps``: a list of argv arrays,
-executed in order with early-abort, no shell) or a ``use`` entry (``use``: a
-named built-in capability, with optional ``with`` inputs). Common fields:
+Every entry is exactly one of a ``run`` entry (``steps``: a list of steps, each
+a bare argv array or an ``{argv, env}`` object, executed in order with
+early-abort, no shell) or a ``use`` entry (``use``: a named built-in
+capability, with optional ``with`` inputs). Common fields:
 
 ============================  ==============================================================
 Field                         Meaning
@@ -84,23 +85,23 @@ Field                         Meaning
 ``timeout``                   seconds; ``null`` = no timeout
 ``continue_on_error``         if true, a failed step does not abort the entry (default false)
 ``tags``                      list of strings for ``--tag`` filtering
-``env``                       mapping merged over the parent environment for every step
-                              of the entry; ``~`` in a value is expanded (default none)
 ============================  ==============================================================
 
 Only ``$${VAR}`` / ``${VAR}`` substitution applies to ``steps`` values (from the
 config loader); there is no shell, so no other expansion happens. Use
 ``$${VAR}`` to pass a literal ``${VAR}`` through. A shell-style
-``VAR=1 brew upgrade`` prefix is therefore not an argv step; set it with
-``env`` instead:
+``VAR=1 brew upgrade`` prefix is therefore not an argv step; write that step as
+an object whose ``env`` is merged over the parent environment for that step
+only (``~`` in a value is expanded). This is the same shape as a refresh
+command, minus ``stdin``:
 
 .. code-block:: yaml
 
     brew:
-      env: { HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS: "1" }
       steps:
         - [brew, update]
-        - [brew, upgrade, --quiet]
+        - argv: [brew, upgrade, --quiet]
+          env: { HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS: "1" }
         - [brew, cleanup]
 
 Built-in capabilities

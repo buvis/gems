@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **sysup**: run entries accept `env:`, a mapping merged over the parent environment for every step of the entry (`~` in values is expanded), so a `VAR=1 tool upgrade` shell prefix has a config equivalent
+- **sysup**: a step in a run entry may be written as `{argv: [...], env: {...}}` instead of a bare argv list; `env` is merged over the parent environment for that step only (`~` in values is expanded), the same shape refresh commands already use, so a `VAR=1 tool upgrade` shell prefix has a config equivalent. An empty step is now rejected when the config loads instead of failing mid-run
 
 ### Changed
 

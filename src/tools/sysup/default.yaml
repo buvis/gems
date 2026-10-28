@@ -15,12 +15,12 @@ commands:
     # Homebrew resets the sudo ticket before its first sudo call, so a cask
     # upgrade prompts for a password; captured mode hid that prompt.
     interactive: true
-    # Casks that update themselves (browsers, editors) are left to their own
-    # updater instead of being reinstalled on every run.
-    env: { HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS: "1" }
     steps:
       - [brew, update]
-      - [brew, upgrade, --quiet]
+      # Casks that update themselves (browsers, editors) are left to their own
+      # updater instead of being reinstalled on every run.
+      - argv: [brew, upgrade, --quiet]
+        env: { HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS: "1" }
       - [brew, cleanup]
 
   npm-check:

@@ -12,7 +12,7 @@ from sysup.config import ExpiryItem, NtfySpec, SysupCommand, SysupConfig, load_c
 class TestSysupCommandModel:
     def test_run_entry_validates(self) -> None:
         cmd = SysupCommand.model_validate({"steps": [["brew", "update"]]})
-        assert cmd.steps == (("brew", "update"),)
+        assert cmd.steps[0].argv == ("brew", "update")
         assert cmd.use is None
         assert cmd.enabled is True
         assert cmd.order == 100
@@ -29,6 +29,24 @@ class TestSysupCommandModel:
         """A config predating the `sudo` field must keep loading unchanged."""
         cmd = SysupCommand.model_validate({"order": 10, "enabled": True, "steps": [["brew", "update"]]})
         assert cmd.sudo is False
+
+    def test_step_object_carries_env_and_bare_list_is_sugar(self) -> None:
+        cmd = SysupCommand.model_validate(
+            {"steps": [["brew", "update"], {"argv": ["brew", "upgrade"], "env": {"HOMEBREW_NO_AUTO_UPDATE": "1"}}]}
+        )
+        assert cmd.steps[0].argv == ("brew", "update")
+        assert cmd.steps[0].env == {}
+        assert cmd.steps[1].argv == ("brew", "upgrade")
+        assert cmd.steps[1].env == {"HOMEBREW_NO_AUTO_UPDATE": "1"}
+
+    def test_empty_step_is_rejected_at_load(self) -> None:
+        with pytest.raises(ValueError, match="at least 1"):
+            SysupCommand.model_validate({"steps": [[]]})
+
+    def test_step_cannot_take_refresh_only_stdin(self) -> None:
+        """A pasted secret is a refresh concern; an ordinary step has no prompt."""
+        with pytest.raises(ValueError, match="stdin"):
+            SysupCommand.model_validate({"steps": [{"argv": ["gh", "auth"], "stdin": "secret"}]})
 
     def test_use_entry_validates(self) -> None:
         cmd = SysupCommand.model_validate({"use": "pip-outdated"})
@@ -139,7 +157,11 @@ class TestLoadConfig:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
         cfg = load_config()
         assert cfg.commands["brew"].order == 999
-        assert cfg.commands["brew"].steps == (("brew", "update"), ("brew", "upgrade", "--quiet"), ("brew", "cleanup"))
+        assert [s.argv for s in cfg.commands["brew"].steps] == [
+            ("brew", "update"),
+            ("brew", "upgrade", "--quiet"),
+            ("brew", "cleanup"),
+        ]
         assert "custom-tool" in cfg.commands
         assert "mise" in cfg.commands  # bundled key survives
 
@@ -221,8 +243,8 @@ class TestLoadConfig:
         )
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
         cfg = load_config()
-        assert cfg.commands["subst"].steps == (("mytool", "run"),)
-        assert cfg.commands["literal"].steps == (("echo", "${NOT_EXPANDED}"),)
+        assert cfg.commands["subst"].steps[0].argv == ("mytool", "run")
+        assert cfg.commands["literal"].steps[0].argv == ("echo", "${NOT_EXPANDED}")
 
 
 class TestLoadConfigPriorityOrdering:

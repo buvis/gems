@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import os
 import re
 import shutil
 import subprocess
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from pathlib import Path
 
-    from sysup.config import ExpiryItem, SysupCommand, SysupConfig
+    from sysup.config import ExpiryItem, StepSpec, SysupCommand, SysupConfig
     from sysup.runlog import RunLog
 
 __all__ = ["Runner", "classify_expiry"]
@@ -37,7 +36,7 @@ def _scan_errors(stdout: str, stderr: str) -> list[str]:
 
 def _should_prime(selected: list[tuple[str, SysupCommand]]) -> bool:
     def _needs_sudo(command: SysupCommand) -> bool:
-        return command.sudo or any(argv and argv[0] == "sudo" for argv in (command.steps or ()))
+        return command.sudo or any(step.argv[0] == "sudo" for step in (command.steps or ()))
 
     return sys.stdin.isatty() and any(_needs_sudo(command) for _, command in selected)
 
@@ -50,14 +49,6 @@ class _ArgvOutcome:
     exit_code: int | None = None
     timed_out: bool = False
     timeout_s: float | None = None
-
-
-def _child_env(command: SysupCommand) -> dict[str, str] | None:
-    """Parent environment with the entry's ``env`` merged on top (``~`` expanded), or
-    ``None`` to inherit untouched when the entry sets nothing."""
-    if not command.env:
-        return None
-    return {**os.environ, **{key: os.path.expanduser(value) for key, value in command.env.items()}}
 
 
 def _as_text(value: bytes | str | None) -> str:
@@ -226,20 +217,20 @@ class Runner:
         steps = command.steps or ()
 
         if self._dry_run:
-            rendered = "; ".join(" ".join(step) for step in steps)
+            rendered = "; ".join(" ".join(step.argv) for step in steps)
             yield StepResult(name, success=True, message=f"would run: {rendered}", command=name)
             return
 
         failures: list[StepResult] = []
         error_count = 0
-        for argv in steps:
-            outcome = self._run_argv(name, list(argv), command)
+        for step in steps:
+            outcome = self._run_argv(name, step, command)
             if self._log is not None:
                 really_captured = not command.interactive and (outcome.exit_code is not None or outcome.timed_out)
                 runlog.append_step(
                     self._log,
                     name,
-                    " ".join(argv),
+                    " ".join(step.argv),
                     captured=really_captured,
                     status=outcome.result.status,
                     exit_code=outcome.exit_code,
@@ -270,35 +261,33 @@ class Runner:
         else:
             yield StepResult(name, success=True, command=name)
 
-    def _run_argv(self: Runner, name: str, argv: list[str], command: SysupCommand) -> _ArgvOutcome:
-        if not argv:
-            return _ArgvOutcome(result=StepResult(name, success=False, message="empty step", command=name))
-
-        binary = argv[0]
+    def _run_argv(self: Runner, name: str, step: StepSpec, command: SysupCommand) -> _ArgvOutcome:
+        binary = step.argv[0]
         binary_path = shutil.which(binary)
         if binary_path is None:
             return _ArgvOutcome(
                 result=StepResult(name, success=False, message=f"{binary} not found, skipping", command=name)
             )
-        resolved = [binary_path, *argv[1:]]
-        status_cm = contextlib.nullcontext() if command.interactive else console.status(f"{name}: {' '.join(argv)}")
+        resolved = [binary_path, *step.argv[1:]]
+        env = step.child_env()
+        label = f"{name}: {' '.join(step.argv)}"
+        status_cm = contextlib.nullcontext() if command.interactive else console.status(label)
 
         if command.interactive:
-            return self._run_argv_interactive(name, resolved, command, status_cm)
-        return self._run_argv_captured(name, resolved, command, status_cm)
+            return self._run_argv_interactive(name, resolved, env, command, status_cm)
+        return self._run_argv_captured(name, resolved, env, command, status_cm)
 
     def _run_argv_interactive(
         self: Runner,
         name: str,
         resolved: list[str],
+        env: dict[str, str],
         command: SysupCommand,
         status_cm: contextlib.AbstractContextManager[object],
     ) -> _ArgvOutcome:
         with status_cm:
             try:
-                interactive_result = subprocess.run(
-                    resolved, check=False, timeout=command.timeout, env=_child_env(command)
-                )
+                interactive_result = subprocess.run(resolved, check=False, timeout=command.timeout, env=env)
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)
         if interactive_result.returncode == 0:
@@ -316,18 +305,14 @@ class Runner:
         self: Runner,
         name: str,
         resolved: list[str],
+        env: dict[str, str],
         command: SysupCommand,
         status_cm: contextlib.AbstractContextManager[object],
     ) -> _ArgvOutcome:
         with status_cm:
             try:
                 proc = subprocess.run(
-                    resolved,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=command.timeout,
-                    env=_child_env(command),
+                    resolved, capture_output=True, text=True, check=False, timeout=command.timeout, env=env
                 )
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)

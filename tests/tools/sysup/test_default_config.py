@@ -70,7 +70,7 @@ class TestDefaultConfigEquivalence:
         assert entry.use == "uv-tool-python"
         uv = cfg.commands["uv"]
         assert uv.order == 40
-        assert uv.steps == (("uv", "python", "upgrade"), ("uv", "tool", "upgrade", "--all"))
+        assert [s.argv for s in uv.steps] == [("uv", "python", "upgrade"), ("uv", "tool", "upgrade", "--all")]
 
     def test_pip_runs_between_npm_check_and_uv_on_darwin(self, mocker) -> None:
         """1.4: the former mac->pip in-code delegation is now an independent entry
@@ -86,26 +86,28 @@ class TestDefaultConfigEquivalence:
     def test_brew_is_a_run_entry_with_early_abort_sequence(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
-        assert cfg.commands["brew"].steps == (
+        assert [s.argv for s in cfg.commands["brew"].steps] == [
             ("brew", "update"),
             ("brew", "upgrade", "--quiet"),
             ("brew", "cleanup"),
-        )
+        ]
 
     def test_brew_upgrade_leaves_self_updating_casks_alone(self, mocker) -> None:
         """Casks that update themselves (browsers, editors) are skipped by
-        `brew upgrade` through Homebrew's own switch; sysup sets it per run so
-        the user's shell does not have to."""
+        `brew upgrade` through Homebrew's own switch; sysup sets it on that one
+        step so the user's shell does not have to."""
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
-        assert cfg.commands["brew"].env == {"HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS": "1"}
+        update, upgrade, cleanup = cfg.commands["brew"].steps
+        assert upgrade.env == {"HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS": "1"}
+        assert update.env == cleanup.env == {}
 
     def test_mise_self_update_never_waits_for_a_prompt(self, mocker) -> None:
         """sysup captures mise's output, so a confirmation prompt can never be
         answered and the step fails with "self-update cancelled"."""
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
-        assert cfg.commands["mise"].steps[0] == ("mise", "self-update", "--yes")
+        assert cfg.commands["mise"].steps[0].argv == ("mise", "self-update", "--yes")
 
     def test_npm_check_is_interactive(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
@@ -123,11 +125,11 @@ class TestDefaultConfigEquivalence:
     def test_apt_uses_sudo_argv(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
-        assert cfg.commands["apt"].steps == (
+        assert [s.argv for s in cfg.commands["apt"].steps] == [
             ("sudo", "apt", "update"),
             ("sudo", "apt", "upgrade", "-y"),
             ("sudo", "apt", "autoremove", "-y"),
-        )
+        ]
 
     def test_brew_has_sudo_flag_set(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
