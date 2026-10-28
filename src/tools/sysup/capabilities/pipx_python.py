@@ -29,9 +29,10 @@ class PipxPython:
     """Move mise pipx tools pinned to uv-managed python onto the global mise python minor.
 
     Only entries whose ``uvx_args`` carry ``--managed-python --python X.Y`` are
-    touched. Each stale pin is rewritten in the mise config and the tool is
-    reinstalled; a tool that fails to install on the new minor is reverted to
-    its old pin and reinstalled there, so one bad wheel never leaves it broken.
+    touched, in the mise config and in its ``config.local.toml`` sibling. Each
+    stale pin is rewritten in the file it came from and the tool is reinstalled;
+    a tool that fails to install on the new minor is reverted to its old pin and
+    reinstalled there, so one bad wheel never leaves it broken.
     """
 
     @property
@@ -54,7 +55,12 @@ class PipxPython:
             yield StepResult("pipx python", success=False, message="no global mise python version, skipping")
             return
 
-        stale = [(m.group(1), m.group(2)) for m in _PIN.finditer(path.read_text()) if m.group(2) != target]
+        # mise reads config.local.toml beside config.toml, so pins can live in either.
+        local = path.with_name(f"{path.stem}.local{path.suffix}")
+        files = [p for p in (path, local) if p.is_file()]
+        stale = [
+            (p, m.group(1), m.group(2)) for p in files for m in _PIN.finditer(p.read_text()) if m.group(2) != target
+        ]
         if not stale:
             yield StepResult("pipx python", success=True, message=f"all pinned pipx tools on python {target}")
             return
@@ -65,8 +71,8 @@ class PipxPython:
             yield StepResult("pipx python", success=False, message=f"uv python install {target} failed: {message}")
             return
 
-        for tool, old in stale:
-            yield self._move(mise, path, tool, old, target)
+        for file, tool, old in stale:
+            yield self._move(mise, file, tool, old, target)
 
     def _global_minor(self: PipxPython, mise: str) -> str | None:
         # Run from $HOME so a project-local python pin can't redefine the target.

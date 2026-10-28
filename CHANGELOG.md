@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **sysup**: the bundled `brew upgrade` passes `--no-ask`, so Homebrew no longer stops the run with a "Do you want to proceed with the upgrade?" prompt now that the step is interactive
+- **sysup**: the pipx-python step also walks `config.local.toml` beside the mise config, so pipx tools kept in the machine-local file follow the global python minor bump too
 
 ## [0.15.2] - 2026-10-28
 
