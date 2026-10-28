@@ -50,6 +50,24 @@ class TestPipxPython:
         assert ["/bin/uv", "python", "install", "3.14"] in calls
         assert ["/bin/mise", "install", "-f", "pipx:gita"] in calls
 
+    def test_moves_stale_pins_in_config_local_sibling(self, mocker, tmp_path) -> None:
+        config = tmp_path / "config.toml"
+        config.write_text(CONFIG.replace("--python 3.13", "--python 3.14"))
+        local = tmp_path / "config.local.toml"
+        local.write_text(
+            '[tools]\n"pipx:yt-dlp" = { version = "latest", uvx_args = "--managed-python --python 3.13" }\n'
+        )
+        mock_run = self._fake_run(mocker)
+
+        steps = list(PipxPython().run(config=str(config)))
+
+        assert [s.label for s in steps] == ["pipx:yt-dlp (python 3.13 -> 3.14)"]
+        assert steps[0].success is True
+        assert "--managed-python --python 3.14" in local.read_text()
+        assert "--python 3.13" not in local.read_text()
+        assert config.read_text() == CONFIG.replace("--python 3.13", "--python 3.14")
+        assert ["/bin/mise", "install", "-f", "pipx:yt-dlp"] in [c.args[0] for c in mock_run.call_args_list]
+
     def test_leaves_unmanaged_and_current_entries_untouched(self, mocker, tmp_path) -> None:
         config = tmp_path / "config.toml"
         config.write_text(CONFIG)

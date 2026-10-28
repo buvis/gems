@@ -173,7 +173,7 @@ class TestLoadConfig:
         assert cfg.commands["brew"].order == 999
         assert [s.label for s in cfg.commands["brew"].steps] == [
             "brew update",
-            "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet",
+            "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet --no-ask",
             "brew cleanup",
         ]
         assert "custom-tool" in cfg.commands

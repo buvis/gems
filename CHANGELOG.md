@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **sysup**: the bundled entries are written as shell lines; `brew` upgrades with `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1` and `--quiet`, leaving self-updating casks to their own updater; sudo priming triggers on any step that invokes `sudo`, not only one whose argv starts with it
 
+## [0.15.3] - 2026-10-28
+
+### Fixed
+
+- **sysup**: the bundled `brew upgrade` passes `--no-ask`, so Homebrew no longer stops the run with a "Do you want to proceed with the upgrade?" prompt now that the step is interactive
+- **sysup**: the pipx-python step also walks `config.local.toml` beside the mise config, so pipx tools kept in the machine-local file follow the global python minor bump too
+
 ## [0.15.2] - 2026-10-28
 
 ### Fixed
@@ -597,7 +604,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.2...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.3...HEAD
+[0.15.3]: https://github.com/buvis/gems/compare/gems-v0.15.2...gems-v0.15.3
 [0.15.2]: https://github.com/buvis/gems/compare/gems-v0.15.1...gems-v0.15.2
 [0.15.1]: https://github.com/buvis/gems/compare/gems-v0.15.0...gems-v0.15.1
 [0.15.0]: https://github.com/buvis/gems/compare/gems-v0.14.2...gems-v0.15.0

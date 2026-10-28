@@ -88,7 +88,7 @@ class TestDefaultConfigEquivalence:
         cfg = load_config()
         assert [s.label for s in cfg.commands["brew"].steps] == [
             "brew update",
-            "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet",
+            "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet --no-ask",
             "brew cleanup",
         ]
 
