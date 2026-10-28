@@ -13,11 +13,12 @@ commands:
     when: { os: darwin, check: brew }
     sudo: true
     # Homebrew resets the sudo ticket before its first sudo call, so a cask
-    # upgrade prompts for a password; captured mode hid that prompt.
+    # upgrade prompts for a password; captured mode hid that prompt. A TTY also
+    # turns on brew's "proceed with the upgrade?" prompt, hence --no-ask.
     interactive: true
     steps:
       - [brew, update]
-      - [brew, upgrade]
+      - [brew, upgrade, --no-ask]
       - [brew, cleanup]
 
   npm-check:

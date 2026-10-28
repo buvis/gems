@@ -88,7 +88,7 @@ class TestDefaultConfigEquivalence:
         cfg = load_config()
         assert cfg.commands["brew"].steps == (
             ("brew", "update"),
-            ("brew", "upgrade"),
+            ("brew", "upgrade", "--no-ask"),
             ("brew", "cleanup"),
         )
 
