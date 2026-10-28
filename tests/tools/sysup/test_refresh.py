@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import subprocess
 
+import pytest
+
 from sysup.config import RefreshSpec
 from sysup.refresh import run_refresh
 
@@ -10,11 +12,19 @@ def _ok(returncode: int = 0) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(args=[], returncode=returncode, stdout="", stderr="")
 
 
-def _spec(commands: list[dict[str, object]], instructions: str = "do it") -> RefreshSpec:
+def _spec(commands: list[object], instructions: str = "do it") -> RefreshSpec:
     return RefreshSpec.model_validate({"instructions": instructions, "commands": commands})
 
 
 class TestRunRefresh:
+    def test_shell_line_command_runs_through_bash(self, mocker) -> None:
+        mocker.patch("sysup.refresh.shutil.which", side_effect=lambda n: "/bin/" + n)
+        run = mocker.patch("sysup.refresh.subprocess.run", return_value=_ok())
+
+        run_refresh("item", _spec(["gh auth status | head -1"]), lambda: "tok")
+
+        assert run.call_args.args[0] == ["/bin/bash", "-ec", "gh auth status | head -1"]
+
     def test_secret_goes_only_to_stdin_of_the_declaring_command(self, mocker) -> None:
         mocker.patch("sysup.refresh.shutil.which", side_effect=lambda n: "/bin/" + n)
         run = mocker.patch("sysup.refresh.subprocess.run", return_value=_ok())
@@ -79,21 +89,20 @@ class TestRunRefresh:
         env = run.call_args.kwargs["env"]
         assert env["GH_CONFIG_DIR"] == str(tmp_path / ".config/gh-agent")
 
-    def test_gh_refresh_ignores_ambient_auth_and_host(self, mocker, monkeypatch, tmp_path) -> None:
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["gh", "auth", "login", "--hostname", "github.com", "--with-token", "--insecure-storage"],
+            "gh auth login --hostname github.com --with-token --insecure-storage",
+        ],
+    )
+    def test_gh_refresh_ignores_ambient_auth_and_host(self, mocker, monkeypatch, tmp_path, argv: object) -> None:
         for name in ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GH_HOST"):
             monkeypatch.setenv(name, f"synthetic-{name}")
         monkeypatch.setenv("HOME", str(tmp_path))
         mocker.patch("sysup.refresh.shutil.which", side_effect=lambda n: "/bin/" + n)
         run = mocker.patch("sysup.refresh.subprocess.run", return_value=_ok())
-        spec = _spec(
-            [
-                {
-                    "argv": ["gh", "auth", "login", "--hostname", "github.com", "--with-token", "--insecure-storage"],
-                    "env": {"GH_CONFIG_DIR": "~/.config/gh-agent"},
-                    "stdin": "secret",
-                }
-            ]
-        )
+        spec = _spec([{"argv": argv, "env": {"GH_CONFIG_DIR": "~/.config/gh-agent"}, "stdin": "secret"}])
 
         run_refresh("gh-agent", spec, lambda: "tok")
 
@@ -102,8 +111,7 @@ class TestRunRefresh:
         for name in ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GH_HOST"):
             assert name not in env
         assert env["GH_CONFIG_DIR"] == str(tmp_path / ".config/gh-agent")
-        assert "--hostname" in call.args[0]
-        assert call.args[0][call.args[0].index("--hostname") + 1] == "github.com"
+        assert "--hostname github.com" in " ".join(call.args[0])
         assert call.kwargs["input"] == "tok"
         import os
 

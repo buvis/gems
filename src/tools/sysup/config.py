@@ -53,19 +53,40 @@ class NtfySpec(BaseModel):
     credentials_file: str | None = None
 
 
-def _argv_as_step(value: object) -> object:
-    """Accept a bare argv list as sugar for ``{argv: [...]}``."""
-    return {"argv": value} if isinstance(value, (list, tuple)) else value
+_SHELL = ("bash", "-ec")
+
+
+def _shell_or_argv(value: object) -> object:
+    """A string is one ``bash -ec`` script; anything else is argv as given."""
+    if not isinstance(value, str):
+        return value
+    if not value.strip():
+        msg = "a shell step cannot be empty"
+        raise ValueError(msg)
+    return [*_SHELL, value]
+
+
+def _as_step(value: object) -> object:
+    """Accept a bare shell line or argv list as sugar for ``{argv: <value>}``."""
+    return {"argv": value} if isinstance(value, (str, list, tuple)) else value
 
 
 class StepSpec(BaseModel):
     """One program to spawn: ``argv`` plus ``env`` merged over the parent
-    environment. Shared by run-entry steps and refresh commands."""
+    environment. A string ``argv`` is a shell line run by ``bash -ec``. Shared
+    by run-entry steps and refresh commands."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    argv: tuple[str, ...] = Field(..., min_length=1)
+    argv: Annotated[tuple[str, ...], BeforeValidator(_shell_or_argv)] = Field(..., min_length=1)
     env: dict[str, str] = {}
+
+    @property
+    def label(self: StepSpec) -> str:
+        """The step as written: a shell line's text, else its argv joined."""
+        if len(self.argv) == 3 and self.argv[:2] == _SHELL:
+            return self.argv[2]
+        return " ".join(self.argv)
 
     def child_env(self: StepSpec) -> dict[str, str]:
         """Return the parent environment with ``env`` merged on top, ``~`` expanded.
@@ -77,8 +98,8 @@ class StepSpec(BaseModel):
 
 class SysupCommand(BaseModel):
     """One updater entry: exactly one of ``steps`` (a sequence of :class:`StepSpec`,
-    each written as a bare argv list or an ``{argv, env}`` object) or ``use``
-    (named capability + optional ``with:`` inputs)."""
+    each written as a shell line, a bare argv list or an ``{argv, env}`` object)
+    or ``use`` (named capability + optional ``with:`` inputs)."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -90,7 +111,7 @@ class SysupCommand(BaseModel):
     continue_on_error: bool = False
     sudo: bool = False
     tags: tuple[str, ...] = ()
-    steps: tuple[Annotated[StepSpec, BeforeValidator(_argv_as_step)], ...] | None = None
+    steps: tuple[Annotated[StepSpec, BeforeValidator(_as_step)], ...] | None = None
     use: str | None = None
     with_: dict[str, object] = Field(default_factory=dict, alias="with")
     needs: tuple[str, ...] = ()
@@ -113,7 +134,7 @@ class RefreshSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     instructions: str
-    commands: tuple[RefreshCommand, ...] = ()
+    commands: tuple[Annotated[RefreshCommand, BeforeValidator(_as_step)], ...] = ()
 
 
 class ExpiryItem(BaseModel):

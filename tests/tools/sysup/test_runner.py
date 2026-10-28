@@ -160,6 +160,15 @@ class TestRunnerRunEntries:
 
         assert mock_run.call_args_list[0].kwargs["env"] == dict(os.environ)
 
+    def test_shell_line_step_spawns_bash_with_the_line_as_its_script(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        line = "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet"
+
+        list(Runner(_cfg()).run([("brew", _cmd(steps=[line]))]))
+
+        assert mock_run.call_args.args[0] == ["/bin/bash", "-ec", line]
+
 
 class TestRunnerUseEntries:
     def test_use_entry_yields_capability_steps(self, mocker) -> None:
@@ -410,6 +419,18 @@ class TestShouldPrime:
         cmd = _cmd(steps=[["brew", "update"], ["sudo", "something"]])
         assert _should_prime([("brew", cmd)]) is True
 
+    def test_sudo_anywhere_in_a_shell_line_triggers_prime(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        assert _should_prime([("apt", _cmd(steps=["apt list --upgradable && sudo apt upgrade -y"]))]) is True
+
+    def test_sudo_inside_another_word_does_not_trigger_prime(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        assert _should_prime([("brew", _cmd(steps=["brew install sudo-touchid"]))]) is False
+
 
 class TestRunnerStatusContexts:
     def test_captured_step_wrapped_in_status(self, mocker) -> None:
@@ -512,6 +533,13 @@ class TestRunnerDryRun:
         assert prime_cap.prime.call_count == 0
         assert steps[0].success is True
         assert "would run" in steps[0].message
+
+    def test_dry_run_renders_steps_as_written(self) -> None:
+        cmd = _cmd(steps=["brew update", ["brew", "cleanup"]])
+
+        steps = list(Runner(_cfg(), dry_run=True).run([("brew", cmd)]))
+
+        assert steps[0].message == "would run: brew update; brew cleanup"
 
     def test_dry_run_use_entry_reports_without_calling(self, mocker) -> None:
         cap = mocker.MagicMock()

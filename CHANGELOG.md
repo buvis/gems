@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **sysup**: a step in a run entry may be written as `{argv: [...], env: {...}}` instead of a bare argv list; `env` is merged over the parent environment for that step only (`~` in values is expanded), the same shape refresh commands already use, so a `VAR=1 tool upgrade` shell prefix has a config equivalent. An empty step is now rejected when the config loads instead of failing mid-run
+- **sysup**: a step in a run entry, and a refresh command, may be written as a plain shell line such as `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet`, run by `bash -ec`, so variables, pipes, `&&` and `VAR=1 cmd` prefixes work as typed; an argv array still runs without a shell, and either may be an `{argv, env}` object whose `env` is merged over the parent environment for that step only (`~` expanded). An empty step is rejected when the config loads instead of failing mid-run
 
 ### Changed
 
-- **sysup**: the bundled `brew` entry upgrades with `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1` and `--quiet`, leaving self-updating casks to their own updater
+- **sysup**: the bundled entries are written as shell lines; `brew` upgrades with `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1` and `--quiet`, leaving self-updating casks to their own updater; sudo priming triggers on any step that invokes `sudo`, not only one whose argv starts with it
 
 ## [0.15.2] - 2026-10-28
 

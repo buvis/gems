@@ -36,7 +36,7 @@ def _scan_errors(stdout: str, stderr: str) -> list[str]:
 
 def _should_prime(selected: list[tuple[str, SysupCommand]]) -> bool:
     def _needs_sudo(command: SysupCommand) -> bool:
-        return command.sudo or any(step.argv[0] == "sudo" for step in (command.steps or ()))
+        return command.sudo or any("sudo" in step.label.split() for step in (command.steps or ()))
 
     return sys.stdin.isatty() and any(_needs_sudo(command) for _, command in selected)
 
@@ -217,7 +217,7 @@ class Runner:
         steps = command.steps or ()
 
         if self._dry_run:
-            rendered = "; ".join(" ".join(step.argv) for step in steps)
+            rendered = "; ".join(step.label for step in steps)
             yield StepResult(name, success=True, message=f"would run: {rendered}", command=name)
             return
 
@@ -230,7 +230,7 @@ class Runner:
                 runlog.append_step(
                     self._log,
                     name,
-                    " ".join(step.argv),
+                    step.label,
                     captured=really_captured,
                     status=outcome.result.status,
                     exit_code=outcome.exit_code,
@@ -270,7 +270,7 @@ class Runner:
             )
         resolved = [binary_path, *step.argv[1:]]
         env = step.child_env()
-        label = f"{name}: {' '.join(step.argv)}"
+        label = f"{name}: {step.label}"
         status_cm = contextlib.nullcontext() if command.interactive else console.status(label)
 
         if command.interactive:

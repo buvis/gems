@@ -42,16 +42,16 @@ explicitly disabled.
       brew:
         order: 10                       # entries run in ascending order
         when: { os: darwin, check: brew }
-        steps:                          # run entry: argv arrays, early-abort
-          - [brew, update]
-          - [brew, upgrade]
-          - [brew, cleanup]
+        steps:                          # run entry: shell lines, early-abort
+          - brew update
+          - brew upgrade
+          - brew cleanup
 
       npm-check:
         order: 20
         when: { check: npm-check }
         interactive: true               # inherit stdio instead of capturing
-        steps: [[npm-check, -gu]]
+        steps: [npm-check -gu]
 
       python-packages:
         order: 30
@@ -69,9 +69,9 @@ explicitly disabled.
 Per-entry envelope
 ~~~~~~~~~~~~~~~~~~~
 
-Every entry is exactly one of a ``run`` entry (``steps``: a list of steps, each
-a bare argv array or an ``{argv, env}`` object, executed in order with
-early-abort, no shell) or a ``use`` entry (``use``: a named built-in
+Every entry is exactly one of a ``run`` entry (``steps``: a list of steps
+executed in order with early-abort, each a shell line run by ``bash -ec`` or an
+argv array run with no shell) or a ``use`` entry (``use``: a named built-in
 capability, with optional ``with`` inputs). Common fields:
 
 ============================  ==============================================================
@@ -87,22 +87,32 @@ Field                         Meaning
 ``tags``                      list of strings for ``--tag`` filtering
 ============================  ==============================================================
 
-Only ``$${VAR}`` / ``${VAR}`` substitution applies to ``steps`` values (from the
-config loader); there is no shell, so no other expansion happens. Use
-``$${VAR}`` to pass a literal ``${VAR}`` through. A shell-style
-``VAR=1 brew upgrade`` prefix is therefore not an argv step; write that step as
-an object whose ``env`` is merged over the parent environment for that step
-only (``~`` in a value is expanded). This is the same shape as a refresh
-command, minus ``stdin``:
+A string step is one ``bash -ec`` script, so variables, ``$(...)``, pipes,
+globs, ``&&`` and a ``VAR=1 cmd`` prefix all work as typed, and ``-e`` stops a
+multi-command step at its first failure. An argv array runs that one program
+directly, with no shell. Either form may be written as an object to add
+``env``, merged over the parent environment for that step only (``~`` in a
+value is expanded); this is the same shape as a refresh command, minus
+``stdin``:
 
 .. code-block:: yaml
 
     brew:
       steps:
-        - [brew, update]
-        - argv: [brew, upgrade, --quiet]
-          env: { HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS: "1" }
-        - [brew, cleanup]
+        - brew update
+        - HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet
+        - [brew, cleanup]                       # exact argv, no shell
+        - argv: brew doctor
+          env: { HOMEBREW_NO_AUTO_UPDATE: "1" }
+
+The config loader expands ``${NAME}`` and ``${NAME:-default}`` in every value
+before bash sees it, from sysup's own environment, and an unset ``${NAME}``
+without a default fails the load. Inside a script that means ``$HOME`` reaches
+bash untouched while ``${HOME}`` is expanded at load (same value); a variable
+set inside the step must be written ``$cfg``, not ``${cfg}``; and forms the
+loader does not recognise (``${x%.txt}``, ``${#x}``, ``${x//a/b}``) fail the
+load as missing variables. Write ``$${...}`` to pass any ``${...}`` to bash
+unchanged.
 
 Built-in capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -158,7 +168,7 @@ than its shared twin, so it overrides per-key while staying untracked.
         enabled: false        # this box has no helm repos — skip it here only
       work-vpn:
         order: 5
-        steps: [[sudo, work-vpn-refresh]]
+        steps: [sudo work-vpn-refresh]
 
 Because ``*.local.yaml`` is deliberately untracked, it is not backed up by the
 dotfiles repo; keep a separate backup of anything only it holds.
@@ -166,7 +176,7 @@ dotfiles repo; keep a separate backup of anything only it holds.
 Priming sudo
 -------------
 
-An entry that sets ``sudo: true``, or any of whose steps' argv starts with
+An entry that sets ``sudo: true``, or any of whose steps contains the word
 ``sudo``, needs a cached sudo ticket:
 
 .. code-block:: yaml
@@ -177,7 +187,7 @@ An entry that sets ``sudo: true``, or any of whose steps' argv starts with
         sudo: true          # at least one cask needs sudo partway through
         interactive: true   # brew resets the ticket, so its prompt must be visible
         steps:
-          - [brew, upgrade]
+          - brew upgrade
 
 Priming only runs when stdin is a TTY and at least one selected entry needs
 sudo; ``--list`` and ``--dry-run`` never prime. Before the first command runs,
@@ -197,7 +207,7 @@ therefore sets ``interactive: true``, so that prompt shows in the terminal. In
 captured mode the spinner hides it and the run appears to hang.
 
 A missing ``sudo`` binary or a declined prompt is not an error — it is the
-same as skipping priming. Each sudo-needing argv step still only inherits its
+same as skipping priming. Each sudo-needing step still only inherits its
 own child's stdin when it runs (the ``interactive`` scope is per step, not
 shared across the whole run), so priming only ever affects whether that step
 is prompted again.
@@ -211,7 +221,7 @@ before its first command: ``$XDG_STATE_HOME/sysup/logs``, falling back to
 ``YYYYMMDDTHHMMSSZ.log``; a same-second collision (two runs starting in the
 same second) appends a ``-1``, ``-2``, ... suffix, first available name wins.
 Older log files beyond the **newest 10** are deleted at the start of each run.
-A captured step's section records its argv, exit code, and stdout/stderr
+A captured step's section records the step as written, exit code, and stdout/stderr
 verbatim; a timed-out step records the timeout instead of an exit code; a
 ``use:`` capability or an ``interactive`` step records only its status, since
 nothing was captured. If the log itself cannot be written — directory
@@ -221,7 +231,7 @@ error instead of continuing silently (stop-on-log-failure).
 ``sysup`` prints the log's path after every run that reaches one, clean,
 amber or red, e.g. ``full log: ~/.local/state/sysup/logs/20261019T120000Z.log``.
 
-Within a ``run:`` entry's ``steps``, each argv step's captured stdout and
+Within a ``run:`` entry's ``steps``, each step's captured stdout and
 stderr are scanned for lines starting with ``error:`` (case-insensitive,
 leading whitespace ignored) — this strict heuristic fires even when the step
 exits 0, catching tools that report an error without a nonzero exit. Up to 5
@@ -356,7 +366,8 @@ presents. It needs the optional ``cryptography`` extra
 * it refuses with ``sysup refresh needs a terminal`` (exit 1) when stdin is not
   a TTY, and runs nothing;
 * it prints the item's instructions, waits for Enter, then runs the refresh
-  procedure's commands in order, stopping at the first failure;
+  procedure's commands (the same shapes as ``steps``, plus ``stdin``) in order,
+  stopping at the first failure;
 * a command declaring ``stdin: secret`` receives the pasted secret **only** on
   its standard input — never on argv, in the environment, in logs, in state or
   in a notification — and the secret is dropped immediately after the call; a

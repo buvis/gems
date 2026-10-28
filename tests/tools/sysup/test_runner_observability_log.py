@@ -117,6 +117,15 @@ class TestObservabilityStepLog:
         assert "=== brew: brew update (exit 0) ===\nfetched 3 formulae\n" in text
         assert "=== brew: brew upgrade (exit 0) ===\nupgraded jq\nnote: done" in text
 
+    def test_shell_line_step_is_logged_as_written_not_as_bash_argv(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch("sysup.runner.subprocess.run", return_value=_proc(stdout="ok"))
+        runner = Runner(_cfg())
+
+        list(runner.run([("brew", _cmd(steps=["HOMEBREW_NO_AUTO_UPDATE=1 brew update"]))]))
+
+        assert "=== brew: HOMEBREW_NO_AUTO_UPDATE=1 brew update (exit 0) ===\nok\n" in _log_text(runner)
+
 
 class TestObservabilityUseLog:
     @staticmethod

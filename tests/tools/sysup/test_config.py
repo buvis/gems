@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from buvis.pybase.result import FatalError
 
-from sysup.config import ExpiryItem, NtfySpec, SysupCommand, SysupConfig, load_config
+from sysup.config import ExpiryItem, NtfySpec, RefreshSpec, SysupCommand, SysupConfig, load_config
 
 
 class TestSysupCommandModel:
@@ -39,9 +39,23 @@ class TestSysupCommandModel:
         assert cmd.steps[1].argv == ("brew", "upgrade")
         assert cmd.steps[1].env == {"HOMEBREW_NO_AUTO_UPDATE": "1"}
 
-    def test_empty_step_is_rejected_at_load(self) -> None:
-        with pytest.raises(ValueError, match="at least 1"):
-            SysupCommand.model_validate({"steps": [[]]})
+    def test_string_step_is_a_bash_script_and_label_is_the_line_as_written(self) -> None:
+        line = "VAR=1 brew upgrade --quiet | tee log"
+        cmd = SysupCommand.model_validate({"steps": [line, ["brew", "cleanup"]]})
+        assert cmd.steps[0].argv == ("bash", "-ec", line)
+        assert cmd.steps[0].label == line
+        assert cmd.steps[1].argv == ("brew", "cleanup")
+        assert cmd.steps[1].label == "brew cleanup"
+
+    def test_step_object_argv_may_be_a_shell_line(self) -> None:
+        cmd = SysupCommand.model_validate({"steps": [{"argv": "brew doctor", "env": {"HOMEBREW_NO_AUTO_UPDATE": "1"}}]})
+        assert cmd.steps[0].argv == ("bash", "-ec", "brew doctor")
+        assert cmd.steps[0].env == {"HOMEBREW_NO_AUTO_UPDATE": "1"}
+
+    @pytest.mark.parametrize("empty", [[], "", "  "])
+    def test_empty_step_is_rejected_at_load(self, empty: object) -> None:
+        with pytest.raises(ValueError, match="empty|at least 1"):
+            SysupCommand.model_validate({"steps": [empty]})
 
     def test_step_cannot_take_refresh_only_stdin(self) -> None:
         """A pasted secret is a refresh concern; an ordinary step has no prompt."""
@@ -157,10 +171,10 @@ class TestLoadConfig:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
         cfg = load_config()
         assert cfg.commands["brew"].order == 999
-        assert [s.argv for s in cfg.commands["brew"].steps] == [
-            ("brew", "update"),
-            ("brew", "upgrade", "--quiet"),
-            ("brew", "cleanup"),
+        assert [s.label for s in cfg.commands["brew"].steps] == [
+            "brew update",
+            "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet",
+            "brew cleanup",
         ]
         assert "custom-tool" in cfg.commands
         assert "mise" in cfg.commands  # bundled key survives
@@ -239,12 +253,18 @@ class TestLoadConfig:
                 order: 6
                 steps:
                   - ["echo", "$${NOT_EXPANDED}"]
+              shell:
+                order: 7
+                steps:
+                  - echo "${SYSUP_TEST_TOOL}" $${LATER}
             """,
         )
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
         cfg = load_config()
         assert cfg.commands["subst"].steps[0].argv == ("mytool", "run")
         assert cfg.commands["literal"].steps[0].argv == ("echo", "${NOT_EXPANDED}")
+        # The loader expands first; `$${...}` is how a `${...}` reaches bash.
+        assert cfg.commands["shell"].steps[0].label == 'echo "mytool" ${LATER}'
 
 
 class TestLoadConfigPriorityOrdering:
@@ -312,6 +332,13 @@ class TestExpiryRegistry:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
         cfg = load_config()
         assert cfg.expiry["gh-agent"].enabled is False
+
+    def test_refresh_commands_take_the_same_shapes_as_steps(self) -> None:
+        commands = ["gh auth status", {"argv": "gh auth login --with-token", "stdin": "secret"}]
+        spec = RefreshSpec.model_validate({"instructions": "x", "commands": commands})
+        assert spec.commands[0].argv == ("bash", "-ec", "gh auth status")
+        assert spec.commands[1].label == "gh auth login --with-token"
+        assert spec.commands[1].stdin == "secret"
 
     def test_unknown_expiry_capability_rejected(self, mocker, tmp_path: Path) -> None:
         user = tmp_path / "buvis-sysup.yaml"
