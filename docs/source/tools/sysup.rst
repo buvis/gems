@@ -117,7 +117,7 @@ unchanged.
 Built-in capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The stateful updaters that config cannot express as plain argv ship as
+The stateful updaters that config cannot express as plain steps ship as
 code-owned capabilities, referenced by name:
 
 ============================  ================================================================
