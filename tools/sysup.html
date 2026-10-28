@@ -154,16 +154,16 @@ explicitly disabled.</p>
 <span class="w">  </span><span class="nt">brew</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w">                       </span><span class="c1"># entries run in ascending order</span>
 <span class="w">    </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> os</span><span class="p">:</span><span class="w"> </span><span class="nv">darwin</span><span class="p p-Indicator">,</span><span class="nt"> check</span><span class="p">:</span><span class="w"> </span><span class="nv">brew</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">                          </span><span class="c1"># run entry: argv arrays, early-abort</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">update</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">upgrade</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cleanup</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">                          </span><span class="c1"># run entry: shell lines, early-abort</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brew update</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brew upgrade</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brew cleanup</span>
 
 <span class="w">  </span><span class="nt">npm-check</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
 <span class="w">    </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> check</span><span class="p">:</span><span class="w"> </span><span class="nv">npm-check</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">    </span><span class="nt">interactive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># inherit stdio instead of capturing</span>
-<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">npm-check</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-gu</span><span class="p p-Indicator">]]</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">npm-check -gu</span><span class="p p-Indicator">]</span>
 
 <span class="w">  </span><span class="nt">python-packages</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
@@ -181,9 +181,11 @@ explicitly disabled.</p>
 </div>
 <section id="per-entry-envelope">
 <h3>Per-entry envelope<a class="headerlink" href="#per-entry-envelope" title="Link to this heading"></a></h3>
-<p>Every entry is exactly one of a <code class="docutils literal notranslate"><span class="pre">run</span></code> entry (<code class="docutils literal notranslate"><span class="pre">steps</span></code>: a list of argv arrays,
-executed in order with early-abort, no shell) or a <code class="docutils literal notranslate"><span class="pre">use</span></code> entry (<code class="docutils literal notranslate"><span class="pre">use</span></code>: a
-named built-in capability, with optional <code class="docutils literal notranslate"><span class="pre">with</span></code> inputs). Common fields:</p>
+<p>Every entry is exactly one of a <code class="docutils literal notranslate"><span class="pre">run</span></code> entry (<code class="docutils literal notranslate"><span class="pre">steps</span></code>: a list of steps
+executed in order with early-abort, each a shell line run by
+<code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">-eo</span> <span class="pre">pipefail</span> <span class="pre">-c</span></code> or an argv array run with no shell) or a <code class="docutils literal notranslate"><span class="pre">use</span></code> entry
+(<code class="docutils literal notranslate"><span class="pre">use</span></code>: a named built-in
+capability, with optional <code class="docutils literal notranslate"><span class="pre">with</span></code> inputs). Common fields:</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Field</p></th>
@@ -207,7 +209,9 @@ named built-in capability, with optional <code class="docutils literal notransla
 <td><p>inherit stdio instead of capturing (default false)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timeout</span></code></p></td>
-<td><p>seconds; <code class="docutils literal notranslate"><span class="pre">null</span></code> = no timeout</p></td>
+<td><p>seconds; <code class="docutils literal notranslate"><span class="pre">null</span></code> = no timeout. Kills the spawned process only: in a
+multi-command shell line that is bash, and the command it was waiting on
+may keep running</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">continue_on_error</span></code></p></td>
 <td><p>if true, a failed step does not abort the entry (default false)</p></td>
@@ -217,13 +221,46 @@ named built-in capability, with optional <code class="docutils literal notransla
 </tr>
 </tbody>
 </table>
-<p>Only <code class="docutils literal notranslate"><span class="pre">$${VAR}</span></code> / <code class="docutils literal notranslate"><span class="pre">${VAR}</span></code> substitution applies to <code class="docutils literal notranslate"><span class="pre">steps</span></code> values (from the
-config loader); there is no shell, so no other expansion happens. Use
-<code class="docutils literal notranslate"><span class="pre">$${VAR}</span></code> to pass a literal <code class="docutils literal notranslate"><span class="pre">${VAR}</span></code> through.</p>
+<p>A string step is one <code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">-eo</span> <span class="pre">pipefail</span> <span class="pre">-c</span></code> script, so variables, <code class="docutils literal notranslate"><span class="pre">$(...)</span></code>,
+pipes, globs, <code class="docutils literal notranslate"><span class="pre">&amp;&amp;</span></code> and a <code class="docutils literal notranslate"><span class="pre">VAR=1</span> <span class="pre">cmd</span></code> prefix all work as typed; <code class="docutils literal notranslate"><span class="pre">-e</span></code> stops a
+multi-command step at its first failure and <code class="docutils literal notranslate"><span class="pre">pipefail</span></code> makes a failing
+command anywhere in a pipe fail the step. An argv array runs that one program
+directly, with no shell. Either form may be written as an object to add
+<code class="docutils literal notranslate"><span class="pre">env</span></code>, merged over the parent environment for that step only (<code class="docutils literal notranslate"><span class="pre">~</span></code> in a
+value is expanded); this is the same shape as a refresh command, minus
+<code class="docutils literal notranslate"><span class="pre">stdin</span></code>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">brew</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brew update</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cleanup</span><span class="p p-Indicator">]</span><span class="w">                       </span><span class="c1"># exact argv, no shell</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">argv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brew doctor</span>
+<span class="w">      </span><span class="nt">env</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> HOMEBREW_NO_AUTO_UPDATE</span><span class="p">:</span><span class="w"> </span><span class="s">"1"</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</pre></div>
+</div>
+<p>The config loader expands <code class="docutils literal notranslate"><span class="pre">${NAME}</span></code> and <code class="docutils literal notranslate"><span class="pre">${NAME:-default}</span></code> in every value
+before bash sees it, from sysup’s own environment, and an unset <code class="docutils literal notranslate"><span class="pre">${NAME}</span></code>
+without a default fails the load. Inside a script that means <code class="docutils literal notranslate"><span class="pre">$HOME</span></code> reaches
+bash untouched while <code class="docutils literal notranslate"><span class="pre">${HOME}</span></code> is expanded at load (same value); a variable
+set inside the step must be written <code class="docutils literal notranslate"><span class="pre">$cfg</span></code>, not <code class="docutils literal notranslate"><span class="pre">${cfg}</span></code>; and forms the
+loader does not recognise (<code class="docutils literal notranslate"><span class="pre">${x%.txt}</span></code>, <code class="docutils literal notranslate"><span class="pre">${#x}</span></code>, <code class="docutils literal notranslate"><span class="pre">${x//a/b}</span></code>) fail the
+load as missing variables. Write <code class="docutils literal notranslate"><span class="pre">$${...}</span></code> to pass any <code class="docutils literal notranslate"><span class="pre">${...}</span></code> to bash
+unchanged.</p>
+<p>YAML reads the line before sysup does. Quote a line that contains <code class="docutils literal notranslate"><span class="pre">:</span> <span class="pre">``</span> <span class="pre">or</span>
+<span class="pre">``</span> <span class="pre">#</span></code> or starts with <code class="docutils literal notranslate"><span class="pre">[</span></code>, <code class="docutils literal notranslate"><span class="pre">{</span></code>, <code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">&amp;</span></code>, <code class="docutils literal notranslate"><span class="pre">!</span></code>, <code class="docutils literal notranslate"><span class="pre">%</span></code> or <code class="docutils literal notranslate"><span class="pre">&#64;</span></code>, and
+write a multi-line script as a block scalar:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">herdr</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"echo</span><span class="nv"> </span><span class="s">done:</span><span class="nv"> </span><span class="s">ok"</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">cfg="$HOME/.config/herdr"</span>
+<span class="w">      </span><span class="no">touch "$cfg/plugins.txt"</span>
+</pre></div>
+</div>
 </section>
 <section id="built-in-capabilities">
 <h3>Built-in capabilities<a class="headerlink" href="#built-in-capabilities" title="Link to this heading"></a></h3>
-<p>The stateful updaters that config cannot express as plain argv ship as
+<p>The stateful updaters that config cannot express as plain steps ship as
 code-owned capabilities, referenced by name:</p>
 <table class="docutils align-default">
 <thead>
@@ -286,7 +323,7 @@ than its shared twin, so it overrides per-key while staying untracked.</p>
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">        </span><span class="c1"># this box has no helm repos — skip it here only</span>
 <span class="w">  </span><span class="nt">work-vpn</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">sudo</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">work-vpn-refresh</span><span class="p p-Indicator">]]</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">sudo work-vpn-refresh</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
 <p>Because <code class="docutils literal notranslate"><span class="pre">*.local.yaml</span></code> is deliberately untracked, it is not backed up by the
@@ -295,7 +332,7 @@ dotfiles repo; keep a separate backup of anything only it holds.</p>
 </section>
 <section id="priming-sudo">
 <h2>Priming sudo<a class="headerlink" href="#priming-sudo" title="Link to this heading"></a></h2>
-<p>An entry that sets <code class="docutils literal notranslate"><span class="pre">sudo:</span> <span class="pre">true</span></code>, or any of whose steps’ argv starts with
+<p>An entry that sets <code class="docutils literal notranslate"><span class="pre">sudo:</span> <span class="pre">true</span></code>, or any of whose steps contains the word
 <code class="docutils literal notranslate"><span class="pre">sudo</span></code>, needs a cached sudo ticket:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">commands</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">brew</span><span class="p">:</span>
@@ -303,7 +340,7 @@ dotfiles repo; keep a separate backup of anything only it holds.</p>
 <span class="w">    </span><span class="nt">sudo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">          </span><span class="c1"># at least one cask needs sudo partway through</span>
 <span class="w">    </span><span class="nt">interactive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">   </span><span class="c1"># brew resets the ticket, so its prompt must be visible</span>
 <span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">brew</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">upgrade</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">--no-ask</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brew upgrade --no-ask</span>
 </pre></div>
 </div>
 <p>Priming only runs when stdin is a TTY and at least one selected entry needs
@@ -325,7 +362,7 @@ captured mode the spinner hides it and the run appears to hang. On a TTY
 Homebrew also asks “Do you want to proceed with the upgrade?”, so the entry
 passes <code class="docutils literal notranslate"><span class="pre">--no-ask</span></code>.</p>
 <p>A missing <code class="docutils literal notranslate"><span class="pre">sudo</span></code> binary or a declined prompt is not an error — it is the
-same as skipping priming. Each sudo-needing argv step still only inherits its
+same as skipping priming. Each sudo-needing step still only inherits its
 own child’s stdin when it runs (the <code class="docutils literal notranslate"><span class="pre">interactive</span></code> scope is per step, not
 shared across the whole run), so priming only ever affects whether that step
 is prompted again.</p>
@@ -338,7 +375,7 @@ before its first command: <code class="docutils literal notranslate"><span class
 <code class="docutils literal notranslate"><span class="pre">YYYYMMDDTHHMMSSZ.log</span></code>; a same-second collision (two runs starting in the
 same second) appends a <code class="docutils literal notranslate"><span class="pre">-1</span></code>, <code class="docutils literal notranslate"><span class="pre">-2</span></code>, … suffix, first available name wins.
 Older log files beyond the <strong>newest 10</strong> are deleted at the start of each run.
-A captured step’s section records its argv, exit code, and stdout/stderr
+A captured step’s section records the step as written, exit code, and stdout/stderr
 verbatim; a timed-out step records the timeout instead of an exit code; a
 <code class="docutils literal notranslate"><span class="pre">use:</span></code> capability or an <code class="docutils literal notranslate"><span class="pre">interactive</span></code> step records only its status, since
 nothing was captured. If the log itself cannot be written — directory
@@ -346,7 +383,7 @@ creation, file creation, or a write/flush failure — the run stops with an
 error instead of continuing silently (stop-on-log-failure).</p>
 <p><code class="docutils literal notranslate"><span class="pre">sysup</span></code> prints the log’s path after every run that reaches one, clean,
 amber or red, e.g. <code class="docutils literal notranslate"><span class="pre">full</span> <span class="pre">log:</span> <span class="pre">~/.local/state/sysup/logs/20261019T120000Z.log</span></code>.</p>
-<p>Within a <code class="docutils literal notranslate"><span class="pre">run:</span></code> entry’s <code class="docutils literal notranslate"><span class="pre">steps</span></code>, each argv step’s captured stdout and
+<p>Within a <code class="docutils literal notranslate"><span class="pre">run:</span></code> entry’s <code class="docutils literal notranslate"><span class="pre">steps</span></code>, each step’s captured stdout and
 stderr are scanned for lines starting with <code class="docutils literal notranslate"><span class="pre">error:</span></code> (case-insensitive,
 leading whitespace ignored) — this strict heuristic fires even when the step
 exits 0, catching tools that report an error without a nonzero exit. Up to 5
@@ -464,7 +501,8 @@ presents. It needs the optional <code class="docutils literal notranslate"><span
 <li><p>it refuses with <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">refresh</span> <span class="pre">needs</span> <span class="pre">a</span> <span class="pre">terminal</span></code> (exit 1) when stdin is not
 a TTY, and runs nothing;</p></li>
 <li><p>it prints the item’s instructions, waits for Enter, then runs the refresh
-procedure’s commands in order, stopping at the first failure;</p></li>
+procedure’s commands (the same shapes as <code class="docutils literal notranslate"><span class="pre">steps</span></code>, plus <code class="docutils literal notranslate"><span class="pre">stdin</span></code>) in order,
+stopping at the first failure;</p></li>
 <li><p>a command declaring <code class="docutils literal notranslate"><span class="pre">stdin:</span> <span class="pre">secret</span></code> receives the pasted secret <strong>only</strong> on
 its standard input — never on argv, in the environment, in logs, in state or
 in a notification — and the secret is dropped immediately after the call; a
