@@ -21,13 +21,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from pathlib import Path
 
-    from sysup.config import ExpiryItem, SysupCommand, SysupConfig
+    from sysup.config import ExpiryItem, StepSpec, SysupCommand, SysupConfig
     from sysup.runlog import RunLog
 
 __all__ = ["Runner", "classify_expiry"]
 
 _MAX_PRINTED_ERRORS = 5
 _ERROR_LINE = re.compile(r"^\s*error:", re.IGNORECASE)
+# `sudo` as its own word, also right after a shell separator (`;sudo`, `&&sudo`,
+# `|sudo`, `$(sudo`); over-matching only costs a spare password prompt.
+_SUDO_WORD = re.compile(r"(^|[\s;&|(`])sudo($|[\s;&|)])")
 
 
 def _scan_errors(stdout: str, stderr: str) -> list[str]:
@@ -36,7 +39,7 @@ def _scan_errors(stdout: str, stderr: str) -> list[str]:
 
 def _should_prime(selected: list[tuple[str, SysupCommand]]) -> bool:
     def _needs_sudo(command: SysupCommand) -> bool:
-        return command.sudo or any(argv and argv[0] == "sudo" for argv in (command.steps or ()))
+        return command.sudo or any(_SUDO_WORD.search(step.label) for step in (command.steps or ()))
 
     return sys.stdin.isatty() and any(_needs_sudo(command) for _, command in selected)
 
@@ -217,20 +220,20 @@ class Runner:
         steps = command.steps or ()
 
         if self._dry_run:
-            rendered = "; ".join(" ".join(step) for step in steps)
+            rendered = "; ".join(step.label for step in steps)
             yield StepResult(name, success=True, message=f"would run: {rendered}", command=name)
             return
 
         failures: list[StepResult] = []
         error_count = 0
-        for argv in steps:
-            outcome = self._run_argv(name, list(argv), command)
+        for step in steps:
+            outcome = self._run_argv(name, step, command)
             if self._log is not None:
                 really_captured = not command.interactive and (outcome.exit_code is not None or outcome.timed_out)
                 runlog.append_step(
                     self._log,
                     name,
-                    " ".join(argv),
+                    step.label,
                     captured=really_captured,
                     status=outcome.result.status,
                     exit_code=outcome.exit_code,
@@ -261,33 +264,36 @@ class Runner:
         else:
             yield StepResult(name, success=True, command=name)
 
-    def _run_argv(self: Runner, name: str, argv: list[str], command: SysupCommand) -> _ArgvOutcome:
-        if not argv:
-            return _ArgvOutcome(result=StepResult(name, success=False, message="empty step", command=name))
-
-        binary = argv[0]
+    def _run_argv(self: Runner, name: str, step: StepSpec, command: SysupCommand) -> _ArgvOutcome:
+        binary = step.argv[0]
         binary_path = shutil.which(binary)
         if binary_path is None:
             return _ArgvOutcome(
                 result=StepResult(name, success=False, message=f"{binary} not found, skipping", command=name)
             )
-        resolved = [binary_path, *argv[1:]]
-        status_cm = contextlib.nullcontext() if command.interactive else console.status(f"{name}: {' '.join(argv)}")
+        resolved = [binary_path, *step.argv[1:]]
+        env = step.child_env()
+        # ponytail: a timeout kills this process only. For a multi-command shell
+        # line that is bash, and the command it was waiting on survives. Upgrade
+        # path: Popen with start_new_session=True and killpg on TimeoutExpired.
+        label = f"{name}: {step.label}"
+        status_cm = contextlib.nullcontext() if command.interactive else console.status(label)
 
         if command.interactive:
-            return self._run_argv_interactive(name, resolved, command, status_cm)
-        return self._run_argv_captured(name, resolved, command, status_cm)
+            return self._run_argv_interactive(name, resolved, env, command, status_cm)
+        return self._run_argv_captured(name, resolved, env, command, status_cm)
 
     def _run_argv_interactive(
         self: Runner,
         name: str,
         resolved: list[str],
+        env: dict[str, str],
         command: SysupCommand,
         status_cm: contextlib.AbstractContextManager[object],
     ) -> _ArgvOutcome:
         with status_cm:
             try:
-                interactive_result = subprocess.run(resolved, check=False, timeout=command.timeout)
+                interactive_result = subprocess.run(resolved, check=False, timeout=command.timeout, env=env)
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)
         if interactive_result.returncode == 0:
@@ -305,12 +311,15 @@ class Runner:
         self: Runner,
         name: str,
         resolved: list[str],
+        env: dict[str, str],
         command: SysupCommand,
         status_cm: contextlib.AbstractContextManager[object],
     ) -> _ArgvOutcome:
         with status_cm:
             try:
-                proc = subprocess.run(resolved, capture_output=True, text=True, check=False, timeout=command.timeout)
+                proc = subprocess.run(
+                    resolved, capture_output=True, text=True, check=False, timeout=command.timeout, env=env
+                )
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)
         if proc.returncode == 0:

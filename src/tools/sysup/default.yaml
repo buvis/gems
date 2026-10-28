@@ -17,16 +17,18 @@ commands:
     # turns on brew's "proceed with the upgrade?" prompt, hence --no-ask.
     interactive: true
     steps:
-      - [brew, update]
-      - [brew, upgrade, --no-ask]
-      - [brew, cleanup]
+      - brew update
+      # Casks that update themselves (browsers, editors) are left to their own
+      # updater instead of being reinstalled on every run.
+      - HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet --no-ask
+      - brew cleanup
 
   npm-check:
     order: 20
     when: { os: darwin, check: npm-check }
     interactive: true
     steps:
-      - [npm-check, -gu]
+      - npm-check -gu
 
   python-packages:
     order: 30
@@ -43,8 +45,8 @@ commands:
     order: 40
     when: { os: darwin, check: uv }
     steps:
-      - [uv, python, upgrade]
-      - [uv, tool, upgrade, --all]
+      - uv python upgrade
+      - uv tool upgrade --all
 
   helm:
     order: 50
@@ -58,8 +60,8 @@ commands:
     order: 60
     when: { os: darwin, check: mise }
     steps:
-      - [mise, self-update, --yes]
-      - [mise, upgrade]
+      - mise self-update --yes
+      - mise upgrade
 
   # Moves mise pipx tools pinned with `--managed-python --python X.Y` onto the
   # global mise python minor. After `mise upgrade` so it sees the new global
@@ -84,18 +86,18 @@ commands:
     order: 10
     when: { os: linux, check: apt }
     steps:
-      - [sudo, apt, update]
-      - [sudo, apt, upgrade, -y]
-      - [sudo, apt, autoremove, -y]
+      - sudo apt update
+      - sudo apt upgrade -y
+      - sudo apt autoremove -y
 
   snap:
     order: 20
     when: { os: linux, check: snap }
     steps:
-      - [sudo, snap, refresh]
+      - sudo snap refresh
 
 # Session-level capabilities that run before any command. sudo priming caches
-# credentials up front for sudo argv steps; Homebrew resets the ticket itself.
+# credentials up front for steps that invoke sudo; Homebrew resets the ticket itself.
 prime:
   - sudo-prime
 
@@ -119,6 +121,6 @@ expiry:
            Actions (read), Commit statuses (read), Contents (read), Metadata (read).
         5. Generate the token, copy it, and paste it at the prompt below.
       commands:
-        - argv: [gh, auth, login, --hostname, github.com, --with-token, --insecure-storage]
+        - argv: gh auth login --hostname github.com --with-token --insecure-storage
           env: { GH_CONFIG_DIR: ~/.config/gh-agent }
           stdin: secret

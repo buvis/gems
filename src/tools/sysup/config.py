@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import yaml
 from buvis.pybase.configuration import ConfigurationLoader
 from buvis.pybase.result import FatalError
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError, model_validator
 
 from sysup.capabilities import CAPABILITIES, EXPIRY_CAPABILITIES
 
@@ -17,6 +18,7 @@ __all__ = [
     "NtfySpec",
     "RefreshCommand",
     "RefreshSpec",
+    "StepSpec",
     "SysupCommand",
     "SysupConfig",
     "WhenSpec",
@@ -51,9 +53,61 @@ class NtfySpec(BaseModel):
     credentials_file: str | None = None
 
 
+_SHELL = ("bash", "-eo", "pipefail", "-c")
+
+
+def _shell_or_argv(value: object) -> object:
+    """A string is one ``bash -eo pipefail -c`` script; anything else is argv as given."""
+    if not isinstance(value, str):
+        return value
+    if not value.strip():
+        msg = "a shell step cannot be empty"
+        raise ValueError(msg)
+    return [*_SHELL, value]
+
+
+def _as_step(value: object) -> object:
+    """Accept a bare shell line or argv list as sugar for ``{argv: <value>}``."""
+    if isinstance(value, (str, list, tuple)):
+        return {"argv": value}
+    if isinstance(value, dict) and "argv" not in value:
+        msg = (
+            "a step is a shell line, an argv list or an {argv, env} object; "
+            "quote a shell line that contains ': ' or ' #'"
+        )
+        raise ValueError(msg)
+    return value
+
+
+class StepSpec(BaseModel):
+    """One program to spawn: ``argv`` plus ``env`` merged over the parent
+    environment. A string ``argv`` is a shell line run by ``bash -eo pipefail -c``.
+    Shared by run-entry steps and refresh commands."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, coerce_numbers_to_str=True)
+
+    argv: Annotated[tuple[str, ...], BeforeValidator(_shell_or_argv)] = Field(..., min_length=1)
+    env: dict[str, str] = {}
+
+    @property
+    def label(self: StepSpec) -> str:
+        """The step as written: a shell line's text, else its argv joined."""
+        if len(self.argv) == len(_SHELL) + 1 and self.argv[: len(_SHELL)] == _SHELL:
+            return self.argv[-1]
+        return " ".join(self.argv)
+
+    def child_env(self: StepSpec) -> dict[str, str]:
+        """Return the parent environment with ``env`` merged on top, ``~`` expanded.
+
+        ``os.environ`` itself is never mutated.
+        """
+        return {**os.environ, **{key: os.path.expanduser(value) for key, value in self.env.items()}}
+
+
 class SysupCommand(BaseModel):
-    """One updater entry: exactly one of ``steps`` (argv sequence) or ``use``
-    (named capability + optional ``with:`` inputs)."""
+    """One updater entry: exactly one of ``steps`` (a sequence of :class:`StepSpec`,
+    each written as a shell line, a bare argv list or an ``{argv, env}`` object)
+    or ``use`` (named capability + optional ``with:`` inputs)."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -65,7 +119,7 @@ class SysupCommand(BaseModel):
     continue_on_error: bool = False
     sudo: bool = False
     tags: tuple[str, ...] = ()
-    steps: tuple[tuple[str, ...], ...] | None = None
+    steps: tuple[Annotated[StepSpec, BeforeValidator(_as_step)], ...] | None = None
     use: str | None = None
     with_: dict[str, object] = Field(default_factory=dict, alias="with")
     needs: tuple[str, ...] = ()
@@ -78,11 +132,9 @@ class SysupCommand(BaseModel):
         return self
 
 
-class RefreshCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+class RefreshCommand(StepSpec):
+    """A :class:`StepSpec` that may also take the pasted secret on stdin."""
 
-    argv: tuple[str, ...] = Field(..., min_length=1)
-    env: dict[str, str] = {}
     stdin: Literal["secret"] | None = None
 
 
@@ -90,7 +142,7 @@ class RefreshSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     instructions: str
-    commands: tuple[RefreshCommand, ...] = ()
+    commands: tuple[Annotated[RefreshCommand, BeforeValidator(_as_step)], ...] = ()
 
 
 class ExpiryItem(BaseModel):

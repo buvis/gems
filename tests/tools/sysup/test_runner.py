@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 
 import pytest
@@ -131,6 +132,42 @@ class TestRunnerRunEntries:
         list(Runner(_cfg()).run([("multi", cmd)]))
 
         assert which.call_count == 3
+
+    @pytest.mark.parametrize("interactive", [False, True])
+    def test_step_env_is_merged_over_parent_environment_for_that_step_only(self, mocker, interactive: bool) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch.dict("os.environ", {"INHERITED": "yes"})
+        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        upgrade = {"argv": ["brew", "upgrade", "--quiet"], "env": {"HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS": "1"}}
+        upgrade["env"]["CFG"] = "~/x"
+        cmd = _cmd(interactive=interactive, steps=[["brew", "update"], upgrade])
+
+        list(Runner(_cfg()).run([("brew", cmd)]))
+
+        assert mock_run.call_count == 2
+        update_env, upgrade_env = (call.kwargs["env"] for call in mock_run.call_args_list)
+        assert update_env["INHERITED"] == "yes"
+        assert "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS" not in update_env
+        assert upgrade_env["INHERITED"] == "yes"
+        assert upgrade_env["HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS"] == "1"
+        assert upgrade_env["CFG"] == os.path.expanduser("~/x")
+
+    def test_bare_argv_step_inherits_parent_environment_unchanged(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+
+        list(Runner(_cfg()).run([("brew", _cmd(steps=[["brew", "update"]]))]))
+
+        assert mock_run.call_args_list[0].kwargs["env"] == dict(os.environ)
+
+    def test_shell_line_step_spawns_bash_with_the_line_as_its_script(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        line = "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet"
+
+        list(Runner(_cfg()).run([("brew", _cmd(steps=[line]))]))
+
+        assert mock_run.call_args.args[0] == ["/bin/bash", "-eo", "pipefail", "-c", line]
 
 
 class TestRunnerUseEntries:
@@ -382,6 +419,28 @@ class TestShouldPrime:
         cmd = _cmd(steps=[["brew", "update"], ["sudo", "something"]])
         assert _should_prime([("brew", cmd)]) is True
 
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "apt list --upgradable && sudo apt upgrade -y",
+            "apt list --upgradable;sudo apt upgrade -y",
+            "apt list --upgradable &&sudo apt upgrade -y",
+            "echo y | sudo tee /etc/x",
+            "echo $(sudo -n true)",
+        ],
+    )
+    def test_sudo_anywhere_in_a_shell_line_triggers_prime(self, mocker, line: str) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        assert _should_prime([("apt", _cmd(steps=[line]))]) is True
+
+    def test_sudo_inside_another_word_does_not_trigger_prime(self, mocker) -> None:
+        from sysup.runner import _should_prime
+
+        mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
+        assert _should_prime([("brew", _cmd(steps=["brew install sudo-touchid"]))]) is False
+
 
 class TestRunnerStatusContexts:
     def test_captured_step_wrapped_in_status(self, mocker) -> None:
@@ -429,7 +488,7 @@ class TestRunnerTimeout:
 
         outcomes = []
         runner = Runner(_cfg())
-        outcome = runner._run_argv("mise", ["mise", "self-update"], cmd)
+        outcome = runner._run_argv("mise", cmd.steps[0], cmd)
         outcomes.append(outcome)
 
         assert outcomes[0].timed_out is True
@@ -446,7 +505,7 @@ class TestRunnerTimeout:
         mocker.patch("sysup.runner.subprocess.run", side_effect=exc)
         cmd = _cmd(interactive=True, steps=[["npm-check", "-gu"]], timeout=10)
 
-        outcome = Runner(_cfg())._run_argv("npm-check", ["npm-check", "-gu"], cmd)
+        outcome = Runner(_cfg())._run_argv("npm-check", cmd.steps[0], cmd)
 
         assert outcome.timed_out is True
         assert outcome.exit_code is None
@@ -460,7 +519,7 @@ class TestRunnerTimeout:
         )
         cmd = _cmd(steps=[["brew", "update"]])
 
-        outcome = Runner(_cfg())._run_argv("brew", ["brew", "update"], cmd)
+        outcome = Runner(_cfg())._run_argv("brew", cmd.steps[0], cmd)
 
         assert outcome.timed_out is False
         assert outcome.exit_code == 0
@@ -484,6 +543,13 @@ class TestRunnerDryRun:
         assert prime_cap.prime.call_count == 0
         assert steps[0].success is True
         assert "would run" in steps[0].message
+
+    def test_dry_run_renders_steps_as_written(self) -> None:
+        cmd = _cmd(steps=["brew update", ["brew", "cleanup"]])
+
+        steps = list(Runner(_cfg(), dry_run=True).run([("brew", cmd)]))
+
+        assert steps[0].message == "would run: brew update; brew cleanup"
 
     def test_dry_run_use_entry_reports_without_calling(self, mocker) -> None:
         cap = mocker.MagicMock()
@@ -550,7 +616,6 @@ class TestRunnerCommandStamping:
             ({"steps": [["tool"]]}, 0, "/bin/tool"),
             ({"steps": [["tool"]]}, 1, "/bin/tool"),
             ({"steps": [["tool"]]}, 0, None),
-            ({"steps": [[]]}, 0, "/bin/tool"),
             ({"steps": [["tool"]], "interactive": True}, 0, "/bin/tool"),
             ({"steps": [["tool"]], "interactive": True}, 3, "/bin/tool"),
             ({"steps": [["tool"], ["tool"]], "continue_on_error": True}, 0, "/bin/tool"),

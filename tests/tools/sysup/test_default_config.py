@@ -70,7 +70,7 @@ class TestDefaultConfigEquivalence:
         assert entry.use == "uv-tool-python"
         uv = cfg.commands["uv"]
         assert uv.order == 40
-        assert uv.steps == (("uv", "python", "upgrade"), ("uv", "tool", "upgrade", "--all"))
+        assert [s.label for s in uv.steps] == ["uv python upgrade", "uv tool upgrade --all"]
 
     def test_pip_runs_between_npm_check_and_uv_on_darwin(self, mocker) -> None:
         """1.4: the former mac->pip in-code delegation is now an independent entry
@@ -86,18 +86,37 @@ class TestDefaultConfigEquivalence:
     def test_brew_is_a_run_entry_with_early_abort_sequence(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
-        assert cfg.commands["brew"].steps == (
-            ("brew", "update"),
-            ("brew", "upgrade", "--no-ask"),
-            ("brew", "cleanup"),
-        )
+        assert [s.label for s in cfg.commands["brew"].steps] == [
+            "brew update",
+            "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet --no-ask",
+            "brew cleanup",
+        ]
+
+    def test_brew_upgrade_leaves_self_updating_casks_alone(self, mocker) -> None:
+        """Casks that update themselves (browsers, editors) are skipped by
+        `brew upgrade` through Homebrew's own switch, set as a shell prefix on
+        that one step only."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        update, upgrade, cleanup = cfg.commands["brew"].steps
+        assert upgrade.label.startswith("HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade")
+        assert "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS" not in update.label + cleanup.label
+
+    def test_bundled_steps_are_shell_lines(self, mocker) -> None:
+        """The bundled default shows the preferred spelling: every step is one
+        `bash -eo pipefail -c` line, never an argv array."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        for name, command in cfg.commands.items():
+            for step in command.steps or ():
+                assert step.argv[:4] == ("bash", "-eo", "pipefail", "-c"), name
 
     def test_mise_self_update_never_waits_for_a_prompt(self, mocker) -> None:
         """sysup captures mise's output, so a confirmation prompt can never be
         answered and the step fails with "self-update cancelled"."""
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
-        assert cfg.commands["mise"].steps[0] == ("mise", "self-update", "--yes")
+        assert cfg.commands["mise"].steps[0].label == "mise self-update --yes"
 
     def test_npm_check_is_interactive(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
@@ -112,14 +131,14 @@ class TestDefaultConfigEquivalence:
         cfg = load_config()
         assert cfg.commands["brew"].interactive is True
 
-    def test_apt_uses_sudo_argv(self, mocker) -> None:
+    def test_apt_invokes_sudo_in_every_step(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
-        assert cfg.commands["apt"].steps == (
-            ("sudo", "apt", "update"),
-            ("sudo", "apt", "upgrade", "-y"),
-            ("sudo", "apt", "autoremove", "-y"),
-        )
+        assert [s.label for s in cfg.commands["apt"].steps] == [
+            "sudo apt update",
+            "sudo apt upgrade -y",
+            "sudo apt autoremove -y",
+        ]
 
     def test_brew_has_sudo_flag_set(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
@@ -127,7 +146,7 @@ class TestDefaultConfigEquivalence:
         assert cfg.commands["brew"].sudo is True
 
     def test_apt_and_snap_do_not_set_sudo_flag(self, mocker) -> None:
-        """apt/snap invoke sudo via argv, not the flag — the flag stays default."""
+        """apt/snap invoke sudo inside their steps, not via the flag — the flag stays default."""
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
         assert cfg.commands["apt"].sudo is False
@@ -147,4 +166,5 @@ class TestDefaultExpiryTemplate:
         assert "probe" not in item.with_
         assert item.refresh is not None
         assert item.refresh.commands[0].stdin == "secret"
+        assert item.refresh.commands[0].label == "gh auth login --hostname github.com --with-token --insecure-storage"
         assert "gh-agent" not in cfg.commands

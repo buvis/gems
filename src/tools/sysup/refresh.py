@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 from typing import TYPE_CHECKING
@@ -52,8 +51,8 @@ def run_refresh(name: str, spec: RefreshSpec, read_secret: Callable[[], str]) ->
         if binary is None:
             return StepResult(name, success=False, message=f"{command.argv[0]} not found", kind="item")
 
-        env = {**os.environ, **{key: os.path.expanduser(value) for key, value in command.env.items()}}
-        if command.argv[0] == "gh" and "GH_CONFIG_DIR" in command.env:
+        env = command.child_env()
+        if "gh" in command.label.split() and "GH_CONFIG_DIR" in command.env:
             for override in _GH_AMBIENT_OVERRIDES:
                 env.pop(override, None)
 
@@ -66,7 +65,7 @@ def run_refresh(name: str, spec: RefreshSpec, read_secret: Callable[[], str]) ->
             returncode = subprocess.run(resolved, env=env, check=False).returncode
 
         if returncode != 0:
-            joined = " ".join(command.argv)
-            return StepResult(name, success=False, message=f"{joined} failed: exit code {returncode}", kind="item")
+            message = f"{command.label} failed: exit code {returncode}"
+            return StepResult(name, success=False, message=message, kind="item")
 
     return StepResult(name, success=True, message=f"{name}: refresh commands completed", kind="item")
