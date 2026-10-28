@@ -65,6 +65,7 @@ class SysupCommand(BaseModel):
     continue_on_error: bool = False
     sudo: bool = False
     tags: tuple[str, ...] = ()
+    env: dict[str, str] = {}
     steps: tuple[tuple[str, ...], ...] | None = None
     use: str | None = None
     with_: dict[str, object] = Field(default_factory=dict, alias="with")

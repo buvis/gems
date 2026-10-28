@@ -139,7 +139,7 @@ class TestLoadConfig:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
         cfg = load_config()
         assert cfg.commands["brew"].order == 999
-        assert cfg.commands["brew"].steps == (("brew", "update"), ("brew", "upgrade"), ("brew", "cleanup"))
+        assert cfg.commands["brew"].steps == (("brew", "update"), ("brew", "upgrade", "--quiet"), ("brew", "cleanup"))
         assert "custom-tool" in cfg.commands
         assert "mise" in cfg.commands  # bundled key survives
 

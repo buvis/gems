@@ -84,11 +84,24 @@ Field                         Meaning
 ``timeout``                   seconds; ``null`` = no timeout
 ``continue_on_error``         if true, a failed step does not abort the entry (default false)
 ``tags``                      list of strings for ``--tag`` filtering
+``env``                       mapping merged over the parent environment for every step
+                              of the entry; ``~`` in a value is expanded (default none)
 ============================  ==============================================================
 
 Only ``$${VAR}`` / ``${VAR}`` substitution applies to ``steps`` values (from the
 config loader); there is no shell, so no other expansion happens. Use
-``$${VAR}`` to pass a literal ``${VAR}`` through.
+``$${VAR}`` to pass a literal ``${VAR}`` through. A shell-style
+``VAR=1 brew upgrade`` prefix is therefore not an argv step; set it with
+``env`` instead:
+
+.. code-block:: yaml
+
+    brew:
+      env: { HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS: "1" }
+      steps:
+        - [brew, update]
+        - [brew, upgrade, --quiet]
+        - [brew, cleanup]
 
 Built-in capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~

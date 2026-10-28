@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **sysup**: run entries accept `env:`, a mapping merged over the parent environment for every step of the entry (`~` in values is expanded), so a `VAR=1 tool upgrade` shell prefix has a config equivalent
+
+### Changed
+
+- **sysup**: the bundled `brew` entry upgrades with `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1` and `--quiet`, leaving self-updating casks to their own updater
+
 ## [0.15.2] - 2026-10-28
 
 ### Fixed

@@ -88,9 +88,17 @@ class TestDefaultConfigEquivalence:
         cfg = load_config()
         assert cfg.commands["brew"].steps == (
             ("brew", "update"),
-            ("brew", "upgrade"),
+            ("brew", "upgrade", "--quiet"),
             ("brew", "cleanup"),
         )
+
+    def test_brew_upgrade_leaves_self_updating_casks_alone(self, mocker) -> None:
+        """Casks that update themselves (browsers, editors) are skipped by
+        `brew upgrade` through Homebrew's own switch; sysup sets it per run so
+        the user's shell does not have to."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        assert cfg.commands["brew"].env == {"HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS": "1"}
 
     def test_mise_self_update_never_waits_for_a_prompt(self, mocker) -> None:
         """sysup captures mise's output, so a confirmation prompt can never be

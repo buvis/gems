@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import re
 import shutil
 import subprocess
@@ -49,6 +50,14 @@ class _ArgvOutcome:
     exit_code: int | None = None
     timed_out: bool = False
     timeout_s: float | None = None
+
+
+def _child_env(command: SysupCommand) -> dict[str, str] | None:
+    """Parent environment with the entry's ``env`` merged on top (``~`` expanded), or
+    ``None`` to inherit untouched when the entry sets nothing."""
+    if not command.env:
+        return None
+    return {**os.environ, **{key: os.path.expanduser(value) for key, value in command.env.items()}}
 
 
 def _as_text(value: bytes | str | None) -> str:
@@ -287,7 +296,9 @@ class Runner:
     ) -> _ArgvOutcome:
         with status_cm:
             try:
-                interactive_result = subprocess.run(resolved, check=False, timeout=command.timeout)
+                interactive_result = subprocess.run(
+                    resolved, check=False, timeout=command.timeout, env=_child_env(command)
+                )
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)
         if interactive_result.returncode == 0:
@@ -310,7 +321,14 @@ class Runner:
     ) -> _ArgvOutcome:
         with status_cm:
             try:
-                proc = subprocess.run(resolved, capture_output=True, text=True, check=False, timeout=command.timeout)
+                proc = subprocess.run(
+                    resolved,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=command.timeout,
+                    env=_child_env(command),
+                )
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)
         if proc.returncode == 0:

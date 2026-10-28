@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 
 import pytest
@@ -131,6 +132,34 @@ class TestRunnerRunEntries:
         list(Runner(_cfg()).run([("multi", cmd)]))
 
         assert which.call_count == 3
+
+    @pytest.mark.parametrize("interactive", [False, True])
+    def test_env_is_merged_over_parent_environment_for_every_step(self, mocker, interactive: bool) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mocker.patch.dict("sysup.runner.os.environ", {"INHERITED": "yes"})
+        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        cmd = _cmd(
+            interactive=interactive,
+            env={"HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS": "1", "CFG": "~/x"},
+            steps=[["brew", "update"], ["brew", "upgrade", "--quiet"]],
+        )
+
+        list(Runner(_cfg()).run([("brew", cmd)]))
+
+        assert mock_run.call_count == 2
+        for call in mock_run.call_args_list:
+            env = call.kwargs["env"]
+            assert env["HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS"] == "1"
+            assert env["INHERITED"] == "yes"
+            assert env["CFG"] == os.path.expanduser("~/x")
+
+    def test_no_env_inherits_parent_environment_unchanged(self, mocker) -> None:
+        mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
+        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+
+        list(Runner(_cfg()).run([("brew", _cmd(steps=[["brew", "update"]]))]))
+
+        assert mock_run.call_args_list[0].kwargs.get("env") is None
 
 
 class TestRunnerUseEntries:
