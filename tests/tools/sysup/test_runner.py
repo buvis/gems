@@ -167,7 +167,7 @@ class TestRunnerRunEntries:
 
         list(Runner(_cfg()).run([("brew", _cmd(steps=[line]))]))
 
-        assert mock_run.call_args.args[0] == ["/bin/bash", "-ec", line]
+        assert mock_run.call_args.args[0] == ["/bin/bash", "-eo", "pipefail", "-c", line]
 
 
 class TestRunnerUseEntries:
@@ -419,11 +419,21 @@ class TestShouldPrime:
         cmd = _cmd(steps=[["brew", "update"], ["sudo", "something"]])
         assert _should_prime([("brew", cmd)]) is True
 
-    def test_sudo_anywhere_in_a_shell_line_triggers_prime(self, mocker) -> None:
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "apt list --upgradable && sudo apt upgrade -y",
+            "apt list --upgradable;sudo apt upgrade -y",
+            "apt list --upgradable &&sudo apt upgrade -y",
+            "echo y | sudo tee /etc/x",
+            "echo $(sudo -n true)",
+        ],
+    )
+    def test_sudo_anywhere_in_a_shell_line_triggers_prime(self, mocker, line: str) -> None:
         from sysup.runner import _should_prime
 
         mocker.patch("sysup.runner.sys.stdin.isatty", return_value=True)
-        assert _should_prime([("apt", _cmd(steps=["apt list --upgradable && sudo apt upgrade -y"]))]) is True
+        assert _should_prime([("apt", _cmd(steps=[line]))]) is True
 
     def test_sudo_inside_another_word_does_not_trigger_prime(self, mocker) -> None:
         from sysup.runner import _should_prime

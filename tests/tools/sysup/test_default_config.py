@@ -104,12 +104,12 @@ class TestDefaultConfigEquivalence:
 
     def test_bundled_steps_are_shell_lines(self, mocker) -> None:
         """The bundled default shows the preferred spelling: every step is one
-        `bash -ec` line, never an argv array."""
+        `bash -eo pipefail -c` line, never an argv array."""
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
         for name, command in cfg.commands.items():
             for step in command.steps or ():
-                assert step.argv[:2] == ("bash", "-ec"), name
+                assert step.argv[:4] == ("bash", "-eo", "pipefail", "-c"), name
 
     def test_mise_self_update_never_waits_for_a_prompt(self, mocker) -> None:
         """sysup captures mise's output, so a confirmation prompt can never be

@@ -23,7 +23,7 @@ class TestRunRefresh:
 
         run_refresh("item", _spec(["gh auth status | head -1"]), lambda: "tok")
 
-        assert run.call_args.args[0] == ["/bin/bash", "-ec", "gh auth status | head -1"]
+        assert run.call_args.args[0] == ["/bin/bash", "-eo", "pipefail", "-c", "gh auth status | head -1"]
 
     def test_secret_goes_only_to_stdin_of_the_declaring_command(self, mocker) -> None:
         mocker.patch("sysup.refresh.shutil.which", side_effect=lambda n: "/bin/" + n)

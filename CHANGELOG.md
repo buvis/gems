@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **sysup**: a step in a run entry, and a refresh command, may be written as a plain shell line such as `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet`, run by `bash -ec`, so variables, pipes, `&&` and `VAR=1 cmd` prefixes work as typed; an argv array still runs without a shell, and either may be an `{argv, env}` object whose `env` is merged over the parent environment for that step only (`~` expanded). An empty step is rejected when the config loads instead of failing mid-run
+- **sysup**: a step in a run entry, and a refresh command, may be written as a plain shell line such as `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet`, run by `bash -eo pipefail -c`, so variables, pipes, `&&` and `VAR=1 cmd` prefixes work as typed and a failing command anywhere in a pipe fails the step; an argv array still runs without a shell, and either may be an `{argv, env}` object whose `env` is merged over the parent environment for that step only (`~` expanded). An empty step is rejected when the config loads instead of failing mid-run
 
 ### Changed
 

@@ -44,8 +44,9 @@ Requirements elicited in a dashboard session on 2026-09-26. Four foundational
 decisions confirmed by the user:
 1. Composition model → **keyed map, deep-merged**.
 2. Entry shape → **argv list with a `steps:` array per entry** (no shell).
-   *Reversed 2026-10-28 (branch `feature/sysup-set-env`): a step is a `bash -ec`
-   line by default; the argv list stays as the opt-in no-shell form. The user's
+   *Reversed 2026-10-28 (branch `feature/sysup-set-env`): a step is a
+   `bash -eo pipefail -c` line by default; the argv list stays as the opt-in
+   no-shell form. The user's
    own config had grown `sh -ec` script steps, so "no shell" had only moved the
    shell into the data. A task runner typed by its operator wants shell lines
    (make, just, mise, topgrade). The loader's `${VAR}` expansion is now the first

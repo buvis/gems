@@ -8,6 +8,8 @@ from buvis.pybase.result import FatalError
 
 from sysup.config import ExpiryItem, NtfySpec, RefreshSpec, SysupCommand, SysupConfig, load_config
 
+_BASH = ("bash", "-eo", "pipefail", "-c")
+
 
 class TestSysupCommandModel:
     def test_run_entry_validates(self) -> None:
@@ -39,18 +41,23 @@ class TestSysupCommandModel:
         assert cmd.steps[1].argv == ("brew", "upgrade")
         assert cmd.steps[1].env == {"HOMEBREW_NO_AUTO_UPDATE": "1"}
 
-    def test_string_step_is_a_bash_script_and_label_is_the_line_as_written(self) -> None:
+    def test_string_step_runs_under_bash_with_errexit_and_pipefail(self) -> None:
         line = "VAR=1 brew upgrade --quiet | tee log"
         cmd = SysupCommand.model_validate({"steps": [line, ["brew", "cleanup"]]})
-        assert cmd.steps[0].argv == ("bash", "-ec", line)
+        assert cmd.steps[0].argv == (*_BASH, line)
         assert cmd.steps[0].label == line
         assert cmd.steps[1].argv == ("brew", "cleanup")
         assert cmd.steps[1].label == "brew cleanup"
 
-    def test_step_object_argv_may_be_a_shell_line(self) -> None:
-        cmd = SysupCommand.model_validate({"steps": [{"argv": "brew doctor", "env": {"HOMEBREW_NO_AUTO_UPDATE": "1"}}]})
-        assert cmd.steps[0].argv == ("bash", "-ec", "brew doctor")
+    def test_step_object_argv_may_be_a_shell_line_and_env_numbers_become_strings(self) -> None:
+        cmd = SysupCommand.model_validate({"steps": [{"argv": "brew doctor", "env": {"HOMEBREW_NO_AUTO_UPDATE": 1}}]})
+        assert cmd.steps[0].argv == (*_BASH, "brew doctor")
         assert cmd.steps[0].env == {"HOMEBREW_NO_AUTO_UPDATE": "1"}
+
+    def test_unquoted_colon_in_a_shell_line_gets_a_quoting_hint(self) -> None:
+        """YAML turns `- echo done: ok` into a one-key mapping; name the trap."""
+        with pytest.raises(ValueError, match="quote a shell line"):
+            SysupCommand.model_validate({"steps": [{"echo done": "ok"}]})
 
     @pytest.mark.parametrize("empty", [[], "", "  "])
     def test_empty_step_is_rejected_at_load(self, empty: object) -> None:
@@ -336,7 +343,7 @@ class TestExpiryRegistry:
     def test_refresh_commands_take_the_same_shapes_as_steps(self) -> None:
         commands = ["gh auth status", {"argv": "gh auth login --with-token", "stdin": "secret"}]
         spec = RefreshSpec.model_validate({"instructions": "x", "commands": commands})
-        assert spec.commands[0].argv == ("bash", "-ec", "gh auth status")
+        assert spec.commands[0].argv == (*_BASH, "gh auth status")
         assert spec.commands[1].label == "gh auth login --with-token"
         assert spec.commands[1].stdin == "secret"
 

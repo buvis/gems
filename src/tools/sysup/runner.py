@@ -28,6 +28,9 @@ __all__ = ["Runner", "classify_expiry"]
 
 _MAX_PRINTED_ERRORS = 5
 _ERROR_LINE = re.compile(r"^\s*error:", re.IGNORECASE)
+# `sudo` as its own word, also right after a shell separator (`;sudo`, `&&sudo`,
+# `|sudo`, `$(sudo`); over-matching only costs a spare password prompt.
+_SUDO_WORD = re.compile(r"(^|[\s;&|(`])sudo($|[\s;&|)])")
 
 
 def _scan_errors(stdout: str, stderr: str) -> list[str]:
@@ -36,7 +39,7 @@ def _scan_errors(stdout: str, stderr: str) -> list[str]:
 
 def _should_prime(selected: list[tuple[str, SysupCommand]]) -> bool:
     def _needs_sudo(command: SysupCommand) -> bool:
-        return command.sudo or any("sudo" in step.label.split() for step in (command.steps or ()))
+        return command.sudo or any(_SUDO_WORD.search(step.label) for step in (command.steps or ()))
 
     return sys.stdin.isatty() and any(_needs_sudo(command) for _, command in selected)
 
@@ -270,6 +273,9 @@ class Runner:
             )
         resolved = [binary_path, *step.argv[1:]]
         env = step.child_env()
+        # ponytail: a timeout kills this process only. For a multi-command shell
+        # line that is bash, and the command it was waiting on survives. Upgrade
+        # path: Popen with start_new_session=True and killpg on TimeoutExpired.
         label = f"{name}: {step.label}"
         status_cm = contextlib.nullcontext() if command.interactive else console.status(label)
 

@@ -53,11 +53,11 @@ class NtfySpec(BaseModel):
     credentials_file: str | None = None
 
 
-_SHELL = ("bash", "-ec")
+_SHELL = ("bash", "-eo", "pipefail", "-c")
 
 
 def _shell_or_argv(value: object) -> object:
-    """A string is one ``bash -ec`` script; anything else is argv as given."""
+    """A string is one ``bash -eo pipefail -c`` script; anything else is argv as given."""
     if not isinstance(value, str):
         return value
     if not value.strip():
@@ -68,15 +68,23 @@ def _shell_or_argv(value: object) -> object:
 
 def _as_step(value: object) -> object:
     """Accept a bare shell line or argv list as sugar for ``{argv: <value>}``."""
-    return {"argv": value} if isinstance(value, (str, list, tuple)) else value
+    if isinstance(value, (str, list, tuple)):
+        return {"argv": value}
+    if isinstance(value, dict) and "argv" not in value:
+        msg = (
+            "a step is a shell line, an argv list or an {argv, env} object; "
+            "quote a shell line that contains ': ' or ' #'"
+        )
+        raise ValueError(msg)
+    return value
 
 
 class StepSpec(BaseModel):
     """One program to spawn: ``argv`` plus ``env`` merged over the parent
-    environment. A string ``argv`` is a shell line run by ``bash -ec``. Shared
-    by run-entry steps and refresh commands."""
+    environment. A string ``argv`` is a shell line run by ``bash -eo pipefail -c``.
+    Shared by run-entry steps and refresh commands."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, coerce_numbers_to_str=True)
 
     argv: Annotated[tuple[str, ...], BeforeValidator(_shell_or_argv)] = Field(..., min_length=1)
     env: dict[str, str] = {}
@@ -84,8 +92,8 @@ class StepSpec(BaseModel):
     @property
     def label(self: StepSpec) -> str:
         """The step as written: a shell line's text, else its argv joined."""
-        if len(self.argv) == 3 and self.argv[:2] == _SHELL:
-            return self.argv[2]
+        if len(self.argv) == len(_SHELL) + 1 and self.argv[: len(_SHELL)] == _SHELL:
+            return self.argv[-1]
         return " ".join(self.argv)
 
     def child_env(self: StepSpec) -> dict[str, str]:

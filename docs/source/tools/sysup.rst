@@ -70,8 +70,9 @@ Per-entry envelope
 ~~~~~~~~~~~~~~~~~~~
 
 Every entry is exactly one of a ``run`` entry (``steps``: a list of steps
-executed in order with early-abort, each a shell line run by ``bash -ec`` or an
-argv array run with no shell) or a ``use`` entry (``use``: a named built-in
+executed in order with early-abort, each a shell line run by
+``bash -eo pipefail -c`` or an argv array run with no shell) or a ``use`` entry
+(``use``: a named built-in
 capability, with optional ``with`` inputs). Common fields:
 
 ============================  ==============================================================
@@ -82,14 +83,17 @@ Field                         Meaning
 ``when.os``                   ``darwin`` / ``linux`` / ``win32``; skipped on a non-match
 ``when.check``                binary name; skipped (reported) if ``shutil.which`` misses it
 ``interactive``               inherit stdio instead of capturing (default false)
-``timeout``                   seconds; ``null`` = no timeout
+``timeout``                   seconds; ``null`` = no timeout. Kills the spawned process only: in a
+                              multi-command shell line that is bash, and the command it was waiting on
+                              may keep running
 ``continue_on_error``         if true, a failed step does not abort the entry (default false)
 ``tags``                      list of strings for ``--tag`` filtering
 ============================  ==============================================================
 
-A string step is one ``bash -ec`` script, so variables, ``$(...)``, pipes,
-globs, ``&&`` and a ``VAR=1 cmd`` prefix all work as typed, and ``-e`` stops a
-multi-command step at its first failure. An argv array runs that one program
+A string step is one ``bash -eo pipefail -c`` script, so variables, ``$(...)``,
+pipes, globs, ``&&`` and a ``VAR=1 cmd`` prefix all work as typed; ``-e`` stops a
+multi-command step at its first failure and ``pipefail`` makes a failing
+command anywhere in a pipe fail the step. An argv array runs that one program
 directly, with no shell. Either form may be written as an object to add
 ``env``, merged over the parent environment for that step only (``~`` in a
 value is expanded); this is the same shape as a refresh command, minus
@@ -113,6 +117,19 @@ set inside the step must be written ``$cfg``, not ``${cfg}``; and forms the
 loader does not recognise (``${x%.txt}``, ``${#x}``, ``${x//a/b}``) fail the
 load as missing variables. Write ``$${...}`` to pass any ``${...}`` to bash
 unchanged.
+
+YAML reads the line before sysup does. Quote a line that contains ``: `` or
+`` #`` or starts with ``[``, ``{``, ``*``, ``&``, ``!``, ``%`` or ``@``, and
+write a multi-line script as a block scalar:
+
+.. code-block:: yaml
+
+    herdr:
+      steps:
+        - "echo done: ok"
+        - |
+          cfg="$HOME/.config/herdr"
+          touch "$cfg/plugins.txt"
 
 Built-in capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~
