@@ -1,0 +1,71 @@
+{
+  "phase": "build",
+  "next_phase": "build",
+  "schema_version": 1,
+  "batch": {
+    "id": "202610292344",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    }
+  },
+  "prd_budget_since": "2026-10-29T22:44:30Z",
+  "prd": "00107-backup-per-instance-excludes-v1.md",
+  "catchup_mode": "skip",
+  "design_mode": "skip",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "fast-track",
+  "lane_reason": "card_sized",
+  "lane_effective": "fast-track",
+  "work_start_sha": "4becb45eb3c0949544dfeec5ed3db3424bcbc4d5",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "tasks": [
+    {
+      "name": "00107-backup-per-instance-excludes-v1-c1",
+      "id": "1",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "sonnet",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "launcher": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "test_writer_model": "gpt-6.1-sol",
+          "test_writer_provider": "openai",
+          "implementation_agent": "/root/ivan",
+          "test_writer_agent": "/root/tess",
+          "red_check_exit_code": 1,
+          "red_check_counts": {
+            "failed": 15,
+            "passed": 3,
+            "deselected": 4
+          }
+        }
+      ]
+    }
+  ],
+  "tasks_total": 1,
+  "autonomous_decisions": [
+    {
+      "issue": "Fast-track source combines build and completion review",
+      "action": "Preserve card test-author/Ivan work; hand off with tasks_done to fresh provider-routed Alice/Blake/Bob review",
+      "reason": "Operator host contract requires fresh work/review boundary for every lane; native sonnet gpt-6.1-sol/medium has independent Anthropic route",
+      "cycle": 1,
+      "severity": "low"
+    }
+  ],
+  "cycle": 1,
+  "tasks_completed": 1
+}

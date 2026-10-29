@@ -1,0 +1,12 @@
+{
+  "batch_id": "202610292344",
+  "items": [
+    {
+      "type": "stall",
+      "site": "fast_track_blocked",
+      "detail": "fast-track/00107-backup-per-instance-excludes-v1-c1: suite red: 5754 passed, 3 failed, 16 skipped, 1 xfailed, exit 1; failures in klyreon Git identity and postup repository discovery; backup 142 passed; commits 74e19c78 and 182e9bd3 retained; see reports/00107-backup-per-instance-excludes-v1-build.md and build-state/model audits; completion review not run",
+      "op_id": "b1aea81bd8b5",
+      "prd": "00107-backup-per-instance-excludes-v1.md"
+    }
+  ]
+}

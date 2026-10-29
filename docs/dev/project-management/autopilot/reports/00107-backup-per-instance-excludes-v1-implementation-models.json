@@ -1,0 +1,40 @@
+{
+  "fingerprint": "30ca542e3093683964fdc7cefac4d55606854e7e3f09a8921c22d6353b37c598",
+  "snapshot": {
+    "prd": "00107-backup-per-instance-excludes-v1.md",
+    "cycle": 1,
+    "work_start_sha": "4becb45eb3c0949544dfeec5ed3db3424bcbc4d5",
+    "tasks": [
+      {
+        "id": "1",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/autocodex-sessions/00107-tess-native.jsonl",
+      "line": 10,
+      "sha256": "5eab4d8adb6e696b3b264c4da67d8104550fc06d24ca74e4a78f36a279d58b27"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/autocodex-sessions/00107-ivan-native.jsonl",
+      "line": 10,
+      "sha256": "015c793a1b8a8f37adfce6503f983ccf40fdca23f4979aa940a1fe30bda5f52a"
+    }
+  ]
+}
