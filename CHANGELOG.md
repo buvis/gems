@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-29
+
 ### Added
 
 - **sysup**: a step in a run entry, and a refresh command, may be written as a plain shell line such as `HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet`, run by `bash -eo pipefail -c`, so variables, pipes, `&&` and `VAR=1 cmd` prefixes work as typed and a failing command anywhere in a pipe fails the step; an argv array still runs without a shell, and either may be an `{argv, env}` object whose `env` is merged over the parent environment for that step only (`~` expanded). An empty step is rejected when the config loads instead of failing mid-run
@@ -604,7 +606,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.15.3...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.16.0...HEAD
+[0.16.0]: https://github.com/buvis/gems/compare/gems-v0.15.3...gems-v0.16.0
 [0.15.3]: https://github.com/buvis/gems/compare/gems-v0.15.2...gems-v0.15.3
 [0.15.2]: https://github.com/buvis/gems/compare/gems-v0.15.1...gems-v0.15.2
 [0.15.1]: https://github.com/buvis/gems/compare/gems-v0.15.0...gems-v0.15.1
