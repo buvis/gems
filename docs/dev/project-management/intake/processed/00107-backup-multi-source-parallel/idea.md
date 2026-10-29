@@ -1,6 +1,6 @@
 # backup: multi-source parallel archiving with progress and no-clobber
 
-Status: intake, discovery done, awaiting discovery review. Recorded 2026-10-12,
+Status: processed, specced as PRDs 00107, 00109, 00110, 00111, 00112. Recorded 2026-10-12,
 salvaged from the stale `feature/add-local-backup-capabilities` worktree on
 2026-10-25 (renumbered from 00092, which PRD 00092 sysup attention layer took).
 

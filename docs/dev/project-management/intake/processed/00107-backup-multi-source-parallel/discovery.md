@@ -2,7 +2,7 @@
 
 ## Classification
 
-Depth: comprehensive | Date: 2026-10-12 | Status: ready for discovery review
+Depth: comprehensive | Date: 2026-10-12 | Status: processed, specced as PRDs 00107, 00109, 00110, 00111, 00112
 
 Source: `idea.md` beside this file. Renumbered from 00092 on 2026-10-25 when
 salvaged from the stale `feature/add-local-backup-capabilities` worktree.
@@ -265,3 +265,44 @@ Return nonzero for the interrupted run.
 - Multi-instance selection already exists; no replacement job-list mechanism is needed.
 - Existing integrity and exclude behavior must be preserved.
 - Compressed archive growth is not a reliable completion percentage.
+
+## Decisions after discovery (2026-10-29)
+
+These override the answers above; the PRDs follow this section.
+
+- **Q4 replaced**: no no-clobber and no `--force`. An existing resolved output is replaced, but only after the new archive is complete (atomic publication; a failed or skipped run leaves the prior output untouched). Two selected instances resolving to one output are rejected before writing (PRD 00110).
+- **Q6 replaced**: a missing source root is a skip (success, reported with its reason), not a failure. A source that exists but is not a directory still fails (PRD 00109).
+- **Added gap**: per-instance excludes, because the single global list drops `build`, `dist`, `out`, `target`, `.cache` directories from every tree (PRD 00107).
+- **Staging**: one PRD per capability group, in order: 00107 per-instance excludes, 00109 bundle items + skip outcomes + replace-after-complete, 00110 `--plan` + output resolution, 00111 `--jobs` + cancellation, 00112 progress + `--quiet`.
+
+## Late elicitation pass (2026-10-29, superseded)
+
+A second `/elicit-requirements` run on the same day, in a session that had
+not yet seen the create-prd pass above, asked three more questions. The
+backup code was unchanged since this doc was written (last touch 1c68155f,
+2026-09-27), so no other section needed a refresh. Where an answer differs
+from the staging above, the staging wins; the user confirmed that after
+seeing both.
+
+### Q12: One PRD or a sequenced set?
+
+**Answer**: three sequenced PRDs (bundles + skip semantics; no-clobber +
+`--plan`; `--jobs` + progress + cancellation). Superseded by the five-PRD
+staging above, which the user kept: it carves per-instance excludes out as
+00107 and splits progress (00112) from parallelism (00111); the dependency
+order is the same.
+
+### Q13: How is a bundle configured?
+
+**Answer**: optional `items:` on `tar-archive`, literal paths relative to
+`source`; omission keeps whole-tree behavior and layout; absolute paths,
+`..` and an empty list rejected at load; overlaps deduplicated; global
+excludes and `.bkpignore` still apply inside selected items. Rejected: a
+separate `tar-bundle` capability (duplicates walk, exclude and engine code)
+and glob items (a glob matching nothing is indistinguishable from a typo).
+Consistent with PRD 00109.
+
+### Q14: When should the PRDs land?
+
+**Answer**: next autopilot batch, in staging order. Consistent with the five
+PRDs sitting in `prds/backlog/`.
