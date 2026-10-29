@@ -11,6 +11,17 @@ class ArchiveMeta(NamedTuple):
     total_bytes: int
 
 
+class PlanEntry(NamedTuple):
+    """One backup plan entry with its preview status and replacement flag."""
+
+    label: str
+    source: str
+    out: str
+    status: str
+    reason: str
+    replaces: bool
+
+
 class StepResult:
     """Structured outcome of one capability step.
 
