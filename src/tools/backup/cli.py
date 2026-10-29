@@ -17,13 +17,15 @@ if TYPE_CHECKING:
 
 
 def _report_step(step: StepResult) -> None:
-    if step.success:
+    if step.skipped:
+        console.warning(step.message or f"{step.label} skipped")
+    elif step.success:
         console.success(step.message or f"{step.label} archived")
     else:
         console.failure(step.message or f"{step.label} failed")
 
 
-def _report_steps(steps: Iterable[StepResult]) -> bool:
+def _report_steps(steps: Iterable[StepResult], *, dry_run: bool = False) -> bool:
     """Render every step (success and failure) and report whether any failed.
 
     All steps are rendered before the caller acts on the return, so the user
@@ -31,12 +33,18 @@ def _report_steps(steps: Iterable[StepResult]) -> bool:
     when at least one step failed, so the CLI layer can exit nonzero (a cron job
     treating an incomplete backup as success is the bug this closes).
     """
-    any_failed = False
+    archived = skipped = failed = 0
     for step in steps:
         _report_step(step)
         if not step.success:
-            any_failed = True
-    return any_failed
+            failed += 1
+        elif step.skipped:
+            skipped += 1
+        else:
+            archived += 1
+    verb = "previewed" if dry_run else "archived"
+    console.info(f"{verb} {archived}, skipped {skipped}, failed {failed}")
+    return failed > 0
 
 
 def _parse_only(only: tuple[str, ...]) -> set[str]:
@@ -163,7 +171,7 @@ def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_
     from backup.runner import Runner
 
     try:
-        return _report_steps(Runner(cfg, dry_run=dry_run).run(plan))
+        return _report_steps(Runner(cfg, dry_run=dry_run).run(plan), dry_run=dry_run)
     except FatalError as exc:
         console.panic(str(exc))
         return True  # unreachable: panic exits, but keeps the type honest

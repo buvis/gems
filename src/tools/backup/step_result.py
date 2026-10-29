@@ -17,7 +17,7 @@ class StepResult:
     ``label`` names the instance, ``success`` is the verdict, and ``message`` is
     a human-readable line the CLI renders via ``console``. ``archive`` carries
     the produced/previewed archive facts, or ``None`` for a step that produces
-    no archive.
+    no archive. ``skipped`` marks a successful step that has nothing to archive.
     """
 
     def __init__(
@@ -26,11 +26,14 @@ class StepResult:
         success: bool,
         message: str = "",
         archive: ArchiveMeta | None = None,
+        *,
+        skipped: bool = False,
     ) -> None:
         self.label = label
         self.success = success
         self.message = message
         self.archive = archive
+        self.skipped = skipped
 
     @property
     def out_path(self: StepResult) -> str | None:

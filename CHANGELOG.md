@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **backup**: optional `items` bundle literal source-relative files and directories into one archive, preserving empty directories and symlinks while applying inherited exclusions and `.bkpignore` rules.
 - **backup**: per-instance `inherit_excludes`, `exclude_remove` and `exclude_add` control inherited exclusions for archives and `--show-excludes`.
+
+### Changed
+
+- **backup**: missing sources and bundles with no surviving members now warn and skip without touching previous archives; each run reports archived or previewed, skipped, and failed step counts. Existing non-directory sources and unreadable selected files still fail.
 
 ### Fixed
 

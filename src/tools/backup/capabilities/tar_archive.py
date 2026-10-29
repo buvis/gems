@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -70,7 +71,7 @@ class TarArchive:
 
     @property
     def inputs(self: TarArchive) -> Mapping[str, object]:
-        return {"source": "", "out": "", "engine": _ENGINE_PYTHON}
+        return {"source": "", "out": "", "engine": _ENGINE_PYTHON, "items": None}
 
     def run(self: TarArchive, **kwargs: object) -> Iterator[StepResult]:
         label = _require_str(kwargs, "label", default="tar-archive")
@@ -80,11 +81,9 @@ class TarArchive:
         excludes = _as_str_tuple(kwargs.get("excludes", ()))
         dry_run = bool(kwargs.get("dry_run", False))
 
-        if not source_raw:
-            yield StepResult(label, success=False, message="no source configured")
-            return
-        if not out_raw:
-            yield StepResult(label, success=False, message="no out path configured")
+        if not source_raw or not out_raw:
+            message = "no source configured" if not source_raw else "no out path configured"
+            yield StepResult(label, success=False, message=message)
             return
 
         # Normalize `.`/`..` LEXICALLY (os.path.normpath, not resolve()) before
@@ -105,7 +104,9 @@ class TarArchive:
             return
 
         if not source.is_dir():
-            yield StepResult(label, success=False, message=f"source not found: {source}")
+            missing_source = not source.exists()
+            reason = "source not found" if missing_source else "source is not a directory"
+            yield StepResult(label, success=missing_source, message=f"{reason}: {source}", skipped=missing_source)
             return
 
         containment = _reject_out_inside_source(label, source, out)
@@ -114,13 +115,31 @@ class TarArchive:
             return
 
         base_state = ExcludeState(base_excludes=frozenset(excludes))
-        walk = _walk_tree(source, base_state)
+        missing: list[str] = []
+        bundle = "items" in kwargs
+        if bundle:
+            try:
+                selected = _normalize_items(source, _as_str_tuple(kwargs["items"]))
+            except ValueError as exc:
+                yield StepResult(label, success=False, message=str(exc))
+                return
+            walk, missing = _select_items(source, base_state, selected)
+            if not walk.files:
+                message = "no selected items to archive"
+                if missing:
+                    message += f"; missing items: {', '.join(missing)}"
+                yield StepResult(label, success=True, message=message, skipped=True)
+                return
+        else:
+            walk = _walk_tree(source, base_state)
 
         if dry_run:
-            yield self._dry_run_result(label, out, walk)
-            return
-
-        yield self._archive_result(label, source, out, walk, engine)
+            result = self._dry_run_result(label, out, walk)
+        else:
+            result = self._archive_result(label, source if bundle else source.parent, out, walk, engine)
+        if missing:
+            result.message += f"; missing items: {', '.join(missing)}"
+        yield result
 
     @staticmethod
     def _dry_run_result(label: str, out: Path, walk: WalkResult) -> StepResult:
@@ -137,16 +156,16 @@ class TarArchive:
         )
 
     @staticmethod
-    def _archive_result(label: str, source: Path, out: Path, walk: WalkResult, engine: str) -> StepResult:
+    def _archive_result(label: str, arcbase: Path, out: Path, walk: WalkResult, engine: str) -> StepResult:
         out.parent.mkdir(parents=True, exist_ok=True)
         note = ""
         if engine == _ENGINE_SYSTEM_TAR:
-            fallback = _write_archive_system_tar(out, source, walk.files)
+            fallback = _write_archive_system_tar(out, arcbase, walk.files)
             if fallback is not None:
-                _write_archive(out, source, walk.files)
+                _write_archive(out, arcbase, walk.files)
                 note = f" (system-tar unavailable: {fallback}; used python engine)"
         else:
-            _write_archive(out, source, walk.files)
+            _write_archive(out, arcbase, walk.files)
         size = out.stat().st_size
         return StepResult(
             label,
@@ -180,7 +199,65 @@ def _reject_out_inside_source(label: str, source: Path, out: Path) -> StepResult
     return None
 
 
-def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
+def _normalize_items(source: Path, items: tuple[str, ...]) -> list[Path]:
+    """Validate literal item paths and remove duplicate selected subtrees."""
+    if not items:
+        raise ValueError("items must not be empty")
+    selected: list[Path] = []
+    for item in items:
+        relative = Path(os.path.normpath(item))
+        if not item or relative.is_absolute() or relative == Path(".") or relative.parts[0].startswith(".."):
+            raise ValueError(f"invalid item '{item}': must be a relative path inside the source")
+        for parent in reversed(relative.parents):
+            if parent != Path(".") and (source / parent).is_symlink():
+                raise ValueError(f"item '{item}' passes through symlink '{parent.as_posix()}'")
+        if relative not in selected and not any(parent in selected for parent in relative.parents):
+            selected = [path for path in selected if relative not in path.parents]
+            selected.append(relative)
+    return selected
+
+
+def _select_items(source: Path, base_state: ExcludeState, selected: list[Path]) -> tuple[WalkResult, list[str]]:
+    """Select bundle members using source-relative excludes and ancestor rules."""
+    files: list[Path] = []
+    missing: list[str] = []
+    total_bytes = file_count = 0
+    states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
+    applied: list[str] = []
+    for relative in selected:
+        path = source / relative
+        if not os.path.lexists(path):
+            missing.append(relative.as_posix())
+            continue
+        metadata = path.lstat()
+        state = states[str(source)]
+        for index, component in enumerate(relative.parts):
+            ancestor = source.joinpath(*relative.parts[: index + 1])
+            relpath = ancestor.relative_to(source).as_posix()
+            if state.is_excluded(component, relpath):
+                break
+            if index < len(relative.parts) - 1:
+                state = state_for_directory(ancestor, state)
+                states[str(ancestor)] = state
+                continue
+            if stat.S_ISDIR(metadata.st_mode):
+                subtree = _walk_tree(path, state, root=source)
+                files.extend(subtree.files)
+                file_count += subtree.file_count
+                total_bytes += subtree.total_bytes
+                applied.extend(subtree.applied)
+            elif component != BKPIGNORE_FILENAME:
+                if stat.S_ISREG(metadata.st_mode):
+                    file_count += 1
+                    total_bytes += metadata.st_size
+                    files.append(path)
+                elif stat.S_ISLNK(metadata.st_mode):
+                    files.append(path)
+    rules = list(dict.fromkeys([*_collect_applied(states), *applied]))
+    return WalkResult(files, total_bytes, rules, file_count), missing
+
+
+def _walk_tree(source: Path, base_state: ExcludeState, *, root: Path | None = None) -> WalkResult:
     """Walk ``source`` top-down, applying global excludes + path-scoped ``.bkpignore``.
 
     The exclude state at each directory is the ancestors' state layered with
@@ -191,6 +268,8 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
     symlinks: list[Path] = []
     dirs: list[Path] = []
     total_bytes = 0
+    if root is None:
+        root = source
     states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
 
     for dirpath, dirnames, filenames in os.walk(source, onerror=_raise_walk_error):
@@ -205,7 +284,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
         kept_dirs: list[str] = []
         for dirname in dirnames:
             child = os.path.join(dirpath, dirname)
-            relpath = os.path.relpath(child, source).replace(os.sep, "/")
+            relpath = os.path.relpath(child, root).replace(os.sep, "/")
             if state.is_excluded(dirname, relpath):
                 continue
             # A directory symlink: os.walk (followlinks=False) will not descend
@@ -225,7 +304,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             if filename == BKPIGNORE_FILENAME:
                 continue
             file_path = Path(dirpath) / filename
-            relpath = os.path.relpath(file_path, source).replace(os.sep, "/")
+            relpath = os.path.relpath(file_path, root).replace(os.sep, "/")
             if state.is_excluded(filename, relpath):
                 continue
             # Archive a symlink as the link itself (not its target), matching the
@@ -270,17 +349,16 @@ def _collect_applied(states: dict[str, ExcludeState]) -> list[str]:
     return seen
 
 
-def _write_archive(out: Path, source: Path, files: Iterable[Path]) -> None:
+def _write_archive(out: Path, arcbase: Path, files: Iterable[Path]) -> None:
     """Stream a ``w:gz`` tarball of ``files`` to ``out`` atomically, ``chmod 600``.
 
     Replicates ``pybase.filesystem.atomic_write``'s tempfile + fsync +
     ``os.replace`` guarantee, but streams tar output straight into the temp file
     (a large tarball must never be built in memory, which the byte-oriented
     ``atomic_write_bytes`` would require). Archive names are stored relative to
-    ``source``'s parent, so entries are prefixed with ``source.name`` — matching
-    the wrapped script's ``-C dirname basename`` layout.
+    ``arcbase``: the source's parent for whole trees, or the source itself for
+    selected items.
     """
-    arcbase = source.parent
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
     tmp_path = Path(tmp_name)
     try:
@@ -299,14 +377,14 @@ def _write_archive(out: Path, source: Path, files: Iterable[Path]) -> None:
         raise
 
 
-def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) -> str | None:
+def _write_archive_system_tar(out: Path, arcbase: Path, files: Iterable[Path]) -> str | None:
     """Archive ``files`` via system ``tar --null -T -``, atomically, ``chmod 600``.
 
     Python still owns selection: ``files`` is the exact include list the walk
     produced (surviving directories, files, and symlinks — so ``.bkpignore``
     path-scoping and empty-directory preservation hold). The paths, relative
-    to ``source.parent``, are joined with NUL bytes and streamed to
-    ``tar -C <source.parent> --no-recursion --null -T - -czf <tmp>`` on stdin.
+    to ``arcbase``, are joined with NUL bytes and streamed to
+    ``tar -C <arcbase> --no-recursion --null -T - -czf <tmp>`` on stdin.
     ``--no-recursion`` keeps the filtered list authoritative — a listed directory
     is archived as a bare entry, not re-expanded (which would re-add contents the
     walk excluded). NUL delimiting
@@ -325,7 +403,6 @@ def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) ->
     if tar_bin is None:
         return "tar not found on PATH"
 
-    arcbase = source.parent
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
     os.close(fd)
     tmp_path = Path(tmp_name)

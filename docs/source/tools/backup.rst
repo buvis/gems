@@ -66,13 +66,43 @@ Field                         Meaning
 ``inherit_excludes``          inherit global excludes (default true)
 ``exclude_remove``            exact inherited patterns to remove (default empty list)
 ``exclude_add``               patterns to append for this instance (default empty list)
-``with``                      capability inputs (``source``, ``out``, ``engine``)
+``with``                      capability inputs (``source``, ``out``, ``engine``, ``items``)
 ============================  ==============================================================
 
 The ``out`` value supports ``strftime`` codes (e.g. ``%Y%m%d-%H%M%S``), expanded
 at archive time. An unknown capability name, an unknown ``with`` input, or an
 unknown ``engine`` value is a config/step error reported clearly — never a stack
 trace.
+
+Selected items
+~~~~~~~~~~~~~~
+
+Omit ``items`` to archive the whole source tree, with member names prefixed by
+the source directory's name. Set ``items`` to bundle selected files and
+directories, with member names relative to ``source``:
+
+.. code-block:: yaml
+
+    instances:
+      settings:
+        use: tar-archive
+        with:
+          source: ~
+          out: /Volumes/Backup/settings.tar.gz
+          items: [.gitconfig, .config/tool]
+
+Items are literal relative paths, without glob expansion. Redundant separators
+and ``.`` components are normalized; duplicate items and children of a selected
+directory are included only once. Empty lists, empty paths, absolute paths,
+paths normalizing to ``.``, and paths beginning with ``..`` are errors.
+An item cannot pass through a symlink directory. A final symlink, including a
+broken one, is archived as a link without following its target.
+
+Excludes still match source-relative paths or basenames. Ancestor and selected
+directory ``.bkpignore`` files apply with the same pruning and precedence as a
+whole-tree backup. Missing items are listed in the result while present items
+are archived. An unreadable selected file or one that disappears after its
+presence check fails the step.
 
 The global ``excludes`` list layers via the 00080 ``excludes+`` / ``excludes-``
 directives, so a lower layer extends or trims the shared list without re-listing
@@ -150,4 +180,18 @@ Engine                        Behaviour
 
 Both engines write the archive atomically (temp file, ``fsync``, ``chmod 600``,
 ``os.replace``), so a crash or ``ENOSPC`` never leaves a partial ``.tar.gz`` at
-the final path.
+the final path. An existing archive is replaced only after the new archive is
+complete. Writer failures remove temporary files and preserve the existing
+archive.
+
+Run outcomes
+~~~~~~~~~~~~
+
+A missing source or a bundle with no surviving selected members is skipped,
+including during ``--dry-run``. An existing source that is not a directory
+fails. Skipped steps print a warning with the reason and leave any existing
+archive untouched.
+
+Every run ends with ``archived N, skipped N, failed N``; dry runs use
+``previewed`` instead of ``archived``. Counts refer to steps, including an empty
+run's zero counts. Skips succeed; failed steps make the command exit nonzero.
