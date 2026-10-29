@@ -11,12 +11,41 @@ import pytest
 
 from backup.capabilities import Capability
 from backup.capabilities.tar_archive import TarArchive, _expand_stamp
+from backup.config import BackupConfig
+from backup.runner import Runner
 from backup.step_result import PlanEntry
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from pytest_mock import MockerFixture
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize("existing", [False, True])
+def test_duplicate_outputs_rejected_before_writing(tmp_path: Path, dry_run: bool, existing: bool) -> None:
+    out = tmp_path / "shared.tar.gz"
+    if existing:
+        out.write_bytes(b"preserve existing archive")
+    instances = {}
+    for name in ("notes", "notes-copy"):
+        source = tmp_path / name
+        source.mkdir()
+        (source / "tiny.txt").write_bytes(name.encode())
+        instances[name] = {"use": "tar-archive", "with": {"source": str(source), "out": str(out)}}
+    cfg = BackupConfig.model_validate({"instances": instances})
+
+    results = list(Runner(cfg, dry_run=dry_run).run(list(cfg.instances.items())))
+
+    assert len(results) == 2
+    assert {result.label for result in results} == {"notes", "notes-copy"}
+    for result in results:
+        other = "notes-copy" if result.label == "notes" else "notes"
+        assert result.success is False
+        assert result.message == f"output '{out}' is also the output of '{other}'"
+    assert out.exists() is existing
+    if existing:
+        assert out.read_bytes() == b"preserve existing archive"
 
 
 class TestPlanEntry:
