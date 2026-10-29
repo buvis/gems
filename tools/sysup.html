@@ -209,9 +209,12 @@ capability, with optional <code class="docutils literal notranslate"><span class
 <td><p>inherit stdio instead of capturing (default false)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timeout</span></code></p></td>
-<td><p>seconds; <code class="docutils literal notranslate"><span class="pre">null</span></code> = no timeout. Kills the spawned process only: in a
-multi-command shell line that is bash, and the command it was waiting on
-may keep running</p></td>
+<td><p>seconds; <code class="docutils literal notranslate"><span class="pre">null</span></code> = no timeout. A captured step with a timeout runs in
+its own process group and dies whole; it cannot read the terminal (a
+prompt stops it until the timeout) and a command it runs as root through
+<code class="docutils literal notranslate"><span class="pre">sudo</span></code> survives. An interactive step shares the terminal’s group, so
+there only bash is killed and the command it was waiting on in a
+multi-command shell line may keep running</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">continue_on_error</span></code></p></td>
 <td><p>if true, a failed step does not abort the entry (default false)</p></td>
