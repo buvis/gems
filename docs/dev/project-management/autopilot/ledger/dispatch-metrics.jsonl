@@ -298,3 +298,9 @@
 {"id":"2029bfe3","kind":"fast-track:ivan","task":"00107-backup-per-instance-excludes-v1-c1","queued_at":1793314182,"prompt_bytes":33699}
 {"id":"2029bfe3","ended_at":1793314290,"elapsed_s":108,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"leave","at":1793314591,"phase":"build","prd":"00107-backup-per-instance-excludes-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1793314636,"phase":"build","prd":"00109-backup-bundle-items-and-skip-outcomes-v1.md"}
+{"id":"f136dd3d","kind":"fast-track:tess","task":"00109-backup-bundle-items-and-skip-outcomes-v1-c1","queued_at":1793314771,"prompt_bytes":55582}
+{"id":"f136dd3d","ended_at":1793315119,"elapsed_s":348,"outcome":"ok","detail":null}
+{"id":"328ad5f6","kind":"fast-track:ivan","task":"00109-backup-bundle-items-and-skip-outcomes-v1-c1","queued_at":1793315177,"prompt_bytes":49229}
+{"id":"328ad5f6","ended_at":1793315486,"elapsed_s":309,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1793315845,"phase":"build","prd":"00109-backup-bundle-items-and-skip-outcomes-v1.md"}

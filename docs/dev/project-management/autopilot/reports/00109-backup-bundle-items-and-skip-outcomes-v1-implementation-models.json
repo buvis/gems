@@ -1,0 +1,40 @@
+{
+  "fingerprint": "c0313d592ac9e1797b09f77430d6b4b02bbcba0a35f5810dab513a891de7638a",
+  "snapshot": {
+    "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md",
+    "cycle": 1,
+    "work_start_sha": "5a3ab34deb025e2a4223f9af876ec0256c2de177",
+    "tasks": [
+      {
+        "id": "1",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00109-tess-model-metadata.jsonl",
+      "line": 2,
+      "sha256": "6291e8ef399a4ae3a542cca8186c1d3e3fe123f6bd1fe91df5997b8e43702a2b"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00109-ivan-model-metadata.jsonl",
+      "line": 2,
+      "sha256": "a3dd1bdc393a2e00c7d98b1ac002cc0b255bbb7993ba77be0477f607dfa42698"
+    }
+  ]
+}
