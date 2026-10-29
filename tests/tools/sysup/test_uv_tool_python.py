@@ -291,33 +291,6 @@ class TestUvToolPython:
         assert run.call_args_list == []
 
     @pytest.mark.parametrize(
-        "requirements",
-        [
-            '["gita"]',
-            '[{name = "GITA"}]',
-            '[{name = "gita", extras = [], specifier = ""}]',
-        ],
-    )
-    def test_accepts_plain_receipts_with_harmless_metadata(self, mocker, tmp_path, requirements) -> None:
-        root = tmp_path / "tools"
-        self._receipt(
-            root,
-            "gita",
-            requirement=requirements,
-            extra=(
-                "constraints = []\noverrides = []\nexcludes = []\nbuild-constraint-dependencies = []\noptions = {}\n"
-                'entrypoints = [{name = "gita", from = "GITA"}]\n'
-            ),
-        )
-        self._receipt(root, "my-tool", requirement='[{name = "My_tool"}]')
-        mock_run = self._fake_run(mocker, root)
-
-        steps = list(UvToolPython().run())
-
-        assert [step.success for step in steps] == [True, True]
-        assert [argv[-1] for argv in self._installs(mock_run)] == ["gita", "my-tool"]
-
-    @pytest.mark.parametrize(
         "receipt",
         [
             "",
@@ -345,13 +318,21 @@ class TestUvToolPython:
         assert self._installs(mock_run) == [["/bin/uv", "tool", "upgrade", "--python", "3.14", "zulu"]]
         assert unsafe.read_text() == receipt
 
+    @pytest.mark.parametrize("pin", [None, "3.12"])
     @pytest.mark.parametrize(
         "receipt",
         [
+            '[tool]\nrequirements = ["gita"]\n',
+            '[tool]\nrequirements = [{name = "GITA"}]\n',
+            '[tool]\nrequirements = [{name = "My_tool"}]\n',
+            '[tool]\nrequirements = [{name = "gita", extras = [], specifier = ""}]\n',
+            '[tool]\nrequirements = ["gita"]\nconstraints = []\noverrides = []\nexcludes = []\n'
+            'build-constraint-dependencies = []\noptions = {}\nentrypoints = [{name = "gita", from = "GITA"}]\n',
             '[tool]\nrequirements = [{name = "gita", editable = "/src/gita"}]\n',
             '[tool]\nrequirements = [{name = "gita", extras = ["web"]}]\n',
             '[tool]\nrequirements = [{name = "gita", specifier = ">=1"}]\n',
             '[tool]\nrequirements = [{name = "gita", url = "https://example.org/gita.whl"}]\n',
+            '[tool]\nrequirements = [{name = "gita", future = false}]\n',
             '[tool]\nrequirements = ["gita==1.0"]\n',
             '[tool]\nrequirements = ["gita", "beets"]\n',
             '[tool]\nrequirements = ["gita-extra"]\n',
@@ -362,20 +343,21 @@ class TestUvToolPython:
             '[tool]\nrequirements = ["gita"]\noptions = {index = "https://example.org"}\n',
             '[tool]\nrequirements = ["gita"]\nentrypoints = [{name = "gita", from = "gita-extra"}]\n',
             '[tool]\nrequirements = ["gita"]\nfuture = []\n',
+            '[tool]\nrequirements = ["gita"]\nfuture = false\n',
         ],
     )
-    def test_moves_customized_receipts_in_place(self, mocker, tmp_path, receipt) -> None:
+    def test_moves_every_well_formed_receipt_in_place(self, mocker, tmp_path, receipt, pin) -> None:
         root = tmp_path / "tools"
-        customized = self._receipt(root, "gita")
-        customized.write_text(receipt)
-        original = customized.read_bytes()
+        path = self._receipt(root, "gita")
+        path.write_text(receipt + (f'python = "{pin}"\n' if pin else ""))
+        original = path.read_bytes()
         mock_run = self._fake_run(mocker, root)
 
         steps = list(UvToolPython().run())
 
-        assert [(step.label, step.success) for step in steps] == [("gita (python unpinned -> 3.14)", True)]
+        assert [(step.label, step.success) for step in steps] == [(f"gita (python {pin or 'unpinned'} -> 3.14)", True)]
         assert self._installs(mock_run) == [["/bin/uv", "tool", "upgrade", "--python", "3.14", "gita"]]
-        assert customized.read_bytes() == original
+        assert path.read_bytes() == original
 
     @pytest.mark.parametrize(
         "selector",

@@ -26,7 +26,7 @@ Generated: 2026-10-29
 - sysup step shape normalization (string/list/object -> argv + `label`) is a config-layer concern (`StepSpec`); `runner.py` only sees resolved argv, the child env and the label used for dry-run and the run log. The timeout ceiling above lives in the runner because that is where the spawn seam is.
 
 ## Active Work
-- No active autopilot batch: `autopilot/state.json` is absent, `prds/wip/` and `prds/backlog/` do not exist, `hold/` is empty. Last batch 202610261200 (00108) drained; its one deferred VERIFY is resolved (210e674c), but the test follow-ups it named stay open: add `future=false` + pinned-customized cases to `test_moves_customized_receipts_in_place` and fold `test_accepts_plain_receipts_with_harmless_metadata` into it.
+- No active autopilot batch: `autopilot/state.json` is absent, `prds/wip/` and `prds/backlog/` do not exist, `hold/` is empty. Last batch 202610261200 (00108) drained; its one deferred VERIFY is resolved (210e674c) and its test follow-ups closed 2026-10-29: `test_moves_every_well_formed_receipt_in_place` covers every receipt shape, pinned or not, including the two `future = false` receipts 00105 used to skip.
 - Last shipped work: sysup shell-line steps (PR #253, merged 2026-10-28), released as gems-v0.16.0 on 2026-10-29 (tag pushed, publish run in flight at catchup time).
 - #252 (timeout orphaning from that PR's review) fixed 2026-10-29 for captured steps; the interactive residual is recorded in the invariants.
 - Intake pending: `intake/new/00107-backup-multi-source-parallel/` (idea + discovery, no PRD yet).
