@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import tarfile
 from datetime import datetime
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
@@ -150,13 +152,106 @@ class TestPlanEntry:
 
 class TestCapabilityPlan:
     def test_capability_requires_plan_as_well_as_run(self) -> None:
-        run_only = SimpleNamespace(run=lambda **kwargs: iter(()))
-        plan_only = SimpleNamespace(plan=lambda **kwargs: PlanEntry("", "", "", "run", "", False))
+        run_only = SimpleNamespace(inputs={}, run=lambda **kwargs: iter(()))
+        plan_only = SimpleNamespace(inputs={}, plan=lambda **kwargs: PlanEntry("", "", "", "run", "", False))
+        complete = SimpleNamespace(inputs={}, run=run_only.run, plan=plan_only.plan)
 
         assert isinstance(TarArchive(), Capability)
+        assert isinstance(complete, Capability)
         assert not isinstance(run_only, Capability)
         assert not isinstance(plan_only, Capability)
         assert not isinstance(SimpleNamespace(), Capability)
+
+    def test_capability_declares_accepted_inputs_and_defaults(self) -> None:
+        assert TarArchive().inputs == {
+            "source": "",
+            "out": "",
+            "engine": "python-tarfile",
+            "items": None,
+        }
+
+    @pytest.mark.parametrize("existing", [False, True])
+    def test_capability_plan_skips_independently_named_missing_source(self, tmp_path: Path, existing: bool) -> None:
+        source = tmp_path / f"unavailable-{uuid4().hex}"
+        out = tmp_path / "untouched.tar.gz"
+        if existing:
+            out.write_bytes(b"keep independent output")
+
+        entry = TarArchive().plan(source=str(source), out=str(out), label="independent-source")
+
+        assert entry == PlanEntry(
+            "independent-source", str(source), str(out), "skip", f"source not found: {source}", existing
+        )
+        assert not source.exists()
+        assert out.exists() is existing
+        if existing:
+            assert out.read_bytes() == b"keep independent output"
+
+    @pytest.mark.parametrize("prefix", ["unregistered", "tar-engine"])
+    def test_capability_plan_rejects_independently_named_unknown_engine(self, tmp_path: Path, prefix: str) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        out = tmp_path / "archive.tar.gz"
+        engine = f"{prefix}-{uuid4().hex}"
+
+        entry = TarArchive().plan(source=str(source), out=str(out), label="unknown-engine", engine=engine)
+
+        assert entry == PlanEntry("unknown-engine", str(source), str(out), "fail", entry.reason, False)
+        assert isinstance(entry.reason, str) and entry.reason
+        assert not out.exists()
+
+    @pytest.mark.parametrize("inside_source", [False, True])
+    def test_capability_plan_resolves_output_parent_symlink_before_containment_check(
+        self, tmp_path: Path, inside_source: bool
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        external = tmp_path / "external"
+        external.mkdir()
+        target = source if inside_source else external
+        alias = tmp_path / "destination-alias"
+        alias.symlink_to(target, target_is_directory=True)
+        out = alias / "archive.tar.gz"
+
+        entry = TarArchive().plan(source=str(source), out=str(out), label="symlink-output")
+
+        assert entry.status == ("fail" if inside_source else "run")
+        assert entry.label == "symlink-output"
+        assert entry.source == str(source)
+        assert entry.replaces is False
+        if inside_source:
+            assert isinstance(entry.reason, str) and entry.reason
+        assert not out.exists()
+        assert alias.is_symlink()
+
+    @pytest.mark.parametrize(
+        ("templates", "status"),
+        [
+            (["{name}"], "run"),
+            (["{name}-copy"], "skip"),
+            (["copy-{name}"], "skip"),
+            (["nested/{name}"], "skip"),
+            (["missing-first", "{name}"], "run"),
+            (["{name}", "missing-last"], "run"),
+        ],
+    )
+    def test_capability_plan_checks_independently_named_items_and_missing_lookalikes(
+        self, tmp_path: Path, templates: list[str], status: str
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        name = f"record-{uuid4().hex}"
+        (source / name).write_bytes(b"independent selected content")
+        items = [template.format(name=name) for template in templates]
+        out = tmp_path / "archive.tar.gz"
+
+        entry = TarArchive().plan(source=str(source), out=str(out), label="independent-items", items=items)
+
+        assert entry == PlanEntry("independent-items", str(source), str(out), status, entry.reason, False)
+        if status == "skip":
+            assert isinstance(entry.reason, str) and entry.reason
+        assert (source / name).read_bytes() == b"independent selected content"
+        assert not out.exists()
 
     @pytest.mark.parametrize(
         ("name", "label", "engine", "existing"),
@@ -375,7 +470,7 @@ class TestCapabilityPlan:
 
     @pytest.mark.parametrize("engine", ["python-tarfile", "system-tar"])
     @pytest.mark.parametrize("items", [None, ["selected", "selected/child"]])
-    def test_capability_plan_does_not_walk_read_write_or_invoke_archive_engines(
+    def test_plan_does_not_walk_tree(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, items: list[str] | None
     ) -> None:
         source = tmp_path / "source"
@@ -438,24 +533,59 @@ class TestStampExpansion:
 
         assert actual == now.strftime(pattern)
 
+    @pytest.mark.parametrize("pattern", ["archive-%j.tar.gz", "archive-%a.tar.gz", "archive-%%Y.tar.gz"])
+    @pytest.mark.parametrize("now", [datetime(2024, 2, 29, 6, 7, 8), datetime(2027, 12, 31, 21, 22, 23)])
+    def test_stamp_expansion_preserves_strftime_directives_beyond_calendar_digits(
+        self, pattern: str, now: datetime
+    ) -> None:
+        assert _expand_stamp(pattern, now) == now.strftime(pattern)
+
     @pytest.mark.parametrize(
-        ("now", "filename"),
+        ("now", "label"),
         [
-            (datetime(2026, 12, 31, 23, 59, 59), "archive-20261231-235959.tar.gz"),
-            (datetime(2027, 1, 1, 0, 0, 1), "archive-20270101-000001.tar.gz"),
+            (datetime(2026, 12, 31, 23, 59, 59), "vault-primary"),
+            (datetime(2027, 1, 1, 0, 0, 1), "camera-secondary"),
         ],
     )
     def test_capability_plan_passes_now_to_output_stamp_expansion(
-        self, tmp_path: Path, now: datetime, filename: str
+        self, tmp_path: Path, now: datetime, label: str
     ) -> None:
         source = tmp_path / "source"
         source.mkdir()
-        pattern = str(tmp_path / "archive-%Y%m%d-%H%M%S.tar.gz")
-        out = tmp_path / filename
+        filename_pattern = "archive-%Y%m%d-%H%M%S.tar.gz"
+        pattern = str(tmp_path / filename_pattern)
+        out = tmp_path / now.strftime(filename_pattern)
         out.write_bytes(b"keep")
 
-        entry = TarArchive().plan(source=str(source), out=pattern, label=filename, now=now)
+        entry = TarArchive().plan(source=str(source), out=pattern, label=label, now=now)
 
-        assert entry == PlanEntry(filename, str(source), str(out), "run", entry.reason, True)
+        assert entry == PlanEntry(label, str(source), str(out), "run", entry.reason, True)
         assert out.read_bytes() == b"keep"
-        assert not (tmp_path / "archive-%Y%m%d-%H%M%S.tar.gz").exists()
+        assert not (tmp_path / filename_pattern).exists()
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    @pytest.mark.parametrize("now", [datetime(2024, 2, 29, 6, 7, 8), datetime(2027, 12, 31, 21, 22, 23)])
+    def test_capability_run_passes_now_to_archive_stamp_for_normal_and_dry_run(
+        self, tmp_path: Path, now: datetime, dry_run: bool
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        (source / "tiny.txt").write_bytes(b"clock-selected content")
+        filename_pattern = "archive-%Y%m%d-%H%M%S.tar.gz"
+        pattern = str(tmp_path / filename_pattern)
+        expected = tmp_path / now.strftime(filename_pattern)
+
+        steps = list(
+            TarArchive().run(source=str(source), out=pattern, label="unrelated-label", now=now, dry_run=dry_run)
+        )
+
+        assert len(steps) == 1
+        assert steps[0].success is True
+        assert steps[0].out_path == str(expected)
+        assert expected.exists() is (not dry_run)
+        assert not (tmp_path / filename_pattern).exists()
+        if not dry_run:
+            with tarfile.open(expected, "r:gz") as archive:
+                member = archive.extractfile("source/tiny.txt")
+                assert member is not None
+                assert member.read() == b"clock-selected content"
