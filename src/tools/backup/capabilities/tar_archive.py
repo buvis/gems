@@ -9,14 +9,14 @@ import tarfile
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from backup.shared.bkpignore import (
     BKPIGNORE_FILENAME,
     ExcludeState,
     state_for_directory,
 )
-from backup.step_result import ArchiveMeta, StepResult
+from backup.step_result import ArchiveMeta, PlanEntry, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
@@ -73,6 +73,40 @@ class TarArchive:
     def inputs(self: TarArchive) -> Mapping[str, object]:
         return {"source": "", "out": "", "engine": _ENGINE_PYTHON, "items": None}
 
+    def plan(self: TarArchive, **kwargs: object) -> PlanEntry:
+        label = _require_str(kwargs, "label", default="tar-archive")
+        source = Path(os.path.normpath(Path(_require_str(kwargs, "source")).expanduser()))
+        out = Path(_expand_stamp(_require_str(kwargs, "out"), cast("datetime | None", kwargs.get("now")))).expanduser()
+        engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON)
+        replaces = out.exists()
+        status = "run"
+        reason = ""
+
+        if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
+            status = "fail"
+            reason = f"unknown engine '{engine}'; expected {_ENGINE_PYTHON} or {_ENGINE_SYSTEM_TAR}"
+        elif not source.is_dir():
+            missing = not source.exists()
+            status = "skip" if missing else "fail"
+            reason = f"{'source not found' if missing else 'source is not a directory'}: {source}"
+        else:
+            containment = _reject_out_inside_source(label, source, out)
+            if containment is not None:
+                status = "fail"
+                reason = containment.message
+            elif "items" in kwargs:
+                try:
+                    selected = _normalize_items(source, _as_str_tuple(kwargs["items"]))
+                except ValueError as exc:
+                    status = "fail"
+                    reason = str(exc)
+                else:
+                    if not any(os.path.lexists(source / item) for item in selected):
+                        status = "skip"
+                        reason = "no selected items to archive"
+
+        return PlanEntry(label, str(source), str(out), status, reason, replaces)
+
     def run(self: TarArchive, **kwargs: object) -> Iterator[StepResult]:
         label = _require_str(kwargs, "label", default="tar-archive")
         source_raw = _require_str(kwargs, "source")
@@ -93,7 +127,7 @@ class TarArchive:
         # collapses the segments without following symlinks, so the
         # symlink-confinement guarantee is untouched.
         source = Path(os.path.normpath(Path(source_raw).expanduser()))
-        out = Path(_expand_stamp(out_raw)).expanduser()
+        out = Path(_expand_stamp(out_raw, cast("datetime | None", kwargs.get("now")))).expanduser()
 
         if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
             yield StepResult(
@@ -447,8 +481,8 @@ def _require_str(kwargs: Mapping[str, object], key: str, *, default: str = "") -
     return value if isinstance(value, str) else default
 
 
-def _expand_stamp(pattern: str) -> str:
-    """Expand ``strftime`` codes in an ``out`` pattern against the current time.
+def _expand_stamp(pattern: str, now: datetime | None = None) -> str:
+    """Expand ``strftime`` codes in an ``out`` pattern against the supplied or current time.
 
     A pattern like ``git-src-%Y%m%d-%H%M%S.tar.gz`` becomes a timestamped name
     at archive time, reproducing the wrapped script's ``date +%Y%m%d-%H%M%S``
@@ -456,7 +490,7 @@ def _expand_stamp(pattern: str) -> str:
     """
     if "%" not in pattern:
         return pattern
-    return datetime.now().strftime(pattern)
+    return (now if now is not None else datetime.now()).strftime(pattern)
 
 
 def _as_str_tuple(value: object) -> tuple[str, ...]:

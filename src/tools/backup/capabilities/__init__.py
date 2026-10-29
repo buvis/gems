@@ -7,7 +7,7 @@ from backup.capabilities.tar_archive import TarArchive
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
-    from backup.step_result import StepResult
+    from backup.step_result import PlanEntry, StepResult
 
 __all__ = ["CAPABILITIES", "Capability"]
 
@@ -26,6 +26,8 @@ class Capability(Protocol):
 
     @property
     def inputs(self: Capability) -> Mapping[str, object]: ...
+
+    def plan(self: Capability, **kwargs: object) -> PlanEntry: ...
 
     def run(self: Capability, **kwargs: object) -> Iterator[StepResult]: ...
 
