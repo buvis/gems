@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from buvis.pybase.adapters import console
 from buvis.pybase.result import FatalError
@@ -60,6 +62,37 @@ def _as_text(value: bytes | str | None) -> str:
     if isinstance(value, str):
         return value
     return value.decode(errors="replace")
+
+
+def _run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    """``subprocess.run`` whose timeout stops the whole step, not bash alone.
+
+    A captured step with a timeout gets its own process group, so a
+    multi-command shell line dies as one; Ctrl-C is forwarded to that group
+    because the terminal no longer signals it. Everything else stays in the
+    terminal's group: an interactive step must read the tty, and without a
+    timeout there is nothing to kill. A command running as root through sudo
+    cannot be signaled by a plain user and survives either way.
+    """
+    # ponytail: root members survive; `sudo -n kill -- -<pgid>` would reach
+    # them off the primed ticket if that ever matters.
+    timeout = kwargs.pop("timeout", None)
+    kwargs.pop("check", None)
+    capture = kwargs.pop("capture_output", False)
+    if capture:
+        kwargs.update(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    own_group = capture and timeout is not None and sys.platform != "win32"
+    with subprocess.Popen(argv, process_group=0 if own_group else None, **kwargs) as proc:
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except BaseException as exc:
+            if own_group:
+                sig = signal.SIGINT if isinstance(exc, KeyboardInterrupt) else signal.SIGKILL
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.killpg(proc.pid, sig)
+            proc.kill()
+            raise
+    return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr)
 
 
 def _timeout_outcome(name: str, timeout: float | None, exc: subprocess.TimeoutExpired) -> _ArgvOutcome:
@@ -273,9 +306,6 @@ class Runner:
             )
         resolved = [binary_path, *step.argv[1:]]
         env = step.child_env()
-        # ponytail: a timeout kills this process only. For a multi-command shell
-        # line that is bash, and the command it was waiting on survives. Upgrade
-        # path: Popen with start_new_session=True and killpg on TimeoutExpired.
         label = f"{name}: {step.label}"
         status_cm = contextlib.nullcontext() if command.interactive else console.status(label)
 
@@ -293,7 +323,7 @@ class Runner:
     ) -> _ArgvOutcome:
         with status_cm:
             try:
-                interactive_result = subprocess.run(resolved, check=False, timeout=command.timeout, env=env)
+                interactive_result = _run(resolved, check=False, timeout=command.timeout, env=env)
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)
         if interactive_result.returncode == 0:
@@ -317,9 +347,7 @@ class Runner:
     ) -> _ArgvOutcome:
         with status_cm:
             try:
-                proc = subprocess.run(
-                    resolved, capture_output=True, text=True, check=False, timeout=command.timeout, env=env
-                )
+                proc = _run(resolved, capture_output=True, text=True, check=False, timeout=command.timeout, env=env)
             except subprocess.TimeoutExpired as exc:
                 return _timeout_outcome(name, command.timeout, exc)
         if proc.returncode == 0:

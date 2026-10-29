@@ -33,7 +33,7 @@ class TestObservabilityRepeatsAndContinue:
 
         assert _scan_errors("error: x\nerror: x", "error: x") == ["error: x"] * 3
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_proc(stdout="error: x\nerror: x", stderr="error: x"))
+        mocker.patch("sysup.runner._run", return_value=_proc(stdout="error: x\nerror: x", stderr="error: x"))
         failure = mocker.patch("sysup.runner.console.failure")
 
         steps = list(Runner(_cfg()).run([("brew", _cmd(steps=[["brew", "upgrade"]]))]))
@@ -56,7 +56,7 @@ class TestObservabilityRepeatsAndContinue:
     )
     def test_continue_on_error_yields_exactly_one_final_result(self, mocker, outputs, status, printed) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
+        mock_run = mocker.patch("sysup.runner._run", side_effect=outputs)
         failure = mocker.patch("sysup.runner.console.failure")
         cmd = _cmd(continue_on_error=True, steps=[["a"], ["b"], ["c"]])
 
@@ -82,7 +82,7 @@ class TestObservabilityStepLog:
         self, mocker, options, binary, returncode: int, marker
     ) -> None:
         mocker.patch("sysup.runner.shutil.which", return_value=binary)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_proc(returncode))
+        mocker.patch("sysup.runner._run", return_value=_proc(returncode))
         runner = Runner(_cfg())
 
         list(runner.run([("tool", _cmd(steps=[["npm-check", "-gu"]], **options))]))
@@ -95,7 +95,7 @@ class TestObservabilityStepLog:
     def test_timed_out_step_logged_with_timeout_marker_and_partial_output(self, mocker) -> None:
         exc = subprocess.TimeoutExpired(cmd=["mise"], timeout=30, output=b"partial-out", stderr=b"partial-err")
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=exc)
+        mocker.patch("sysup.runner._run", side_effect=exc)
         runner = Runner(_cfg())
 
         steps = list(runner.run([("mise", _cmd(steps=[["mise", "self-update"]], timeout=30))]))
@@ -108,7 +108,7 @@ class TestObservabilityStepLog:
     def test_successful_steps_logged_with_exit_zero_and_output(self, mocker) -> None:
         outputs = [_proc(stdout="fetched 3 formulae"), _proc(stdout="upgraded jq", stderr="note: done")]
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
+        mocker.patch("sysup.runner._run", side_effect=outputs)
         runner = Runner(_cfg())
 
         list(runner.run([("brew", _cmd(steps=[["brew", "update"], ["brew", "upgrade"]]))]))
@@ -119,7 +119,7 @@ class TestObservabilityStepLog:
 
     def test_shell_line_step_is_logged_as_written_not_as_bash_argv(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_proc(stdout="ok"))
+        mocker.patch("sysup.runner._run", return_value=_proc(stdout="ok"))
         runner = Runner(_cfg())
 
         list(runner.run([("brew", _cmd(steps=["HOMEBREW_NO_AUTO_UPDATE=1 brew update"]))]))

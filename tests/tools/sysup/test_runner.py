@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import os
+import signal
 import subprocess
+import time
 
 import pytest
 from buvis.pybase.result import FatalError
@@ -28,7 +31,7 @@ class TestRunnerRunEntries:
 
     def test_run_entry_all_steps_succeed_single_result(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        mocker.patch("sysup.runner._run", return_value=self._ok())
         cmd = _cmd(steps=[["brew", "update"], ["brew", "upgrade"], ["brew", "cleanup"]])
 
         steps = list(Runner(_cfg()).run([("brew", cmd)]))
@@ -39,7 +42,7 @@ class TestRunnerRunEntries:
 
     def test_run_entry_aborts_on_first_failure(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run")
+        mock_run = mocker.patch("sysup.runner._run")
         mock_run.side_effect = [
             self._ok(returncode=1, stderr="boom"),
             self._ok(),
@@ -56,7 +59,7 @@ class TestRunnerRunEntries:
 
     def test_continue_on_error_keeps_going(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run")
+        mock_run = mocker.patch("sysup.runner._run")
         mock_run.side_effect = [self._ok(returncode=1, stderr="x"), self._ok()]
         cmd = _cmd(continue_on_error=True, steps=[["a"], ["b"]])
 
@@ -68,7 +71,7 @@ class TestRunnerRunEntries:
 
     def test_continue_on_error_prints_and_retains_every_failure(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run")
+        mock_run = mocker.patch("sysup.runner._run")
         mock_run.side_effect = [
             self._ok(returncode=1, stderr="first boom"),
             self._ok(returncode=1, stderr="second boom"),
@@ -92,7 +95,7 @@ class TestRunnerRunEntries:
 
     def test_interactive_inherits_stdio_exit_code_only(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        mock_run = mocker.patch("sysup.runner._run", return_value=self._ok())
         cmd = _cmd(interactive=True, steps=[["npm-check", "-gu"]])
 
         steps = list(Runner(_cfg()).run([("npm-check", cmd)]))
@@ -105,7 +108,7 @@ class TestRunnerRunEntries:
 
     def test_interactive_failure_reports_exit_code(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=self._ok(returncode=3))
+        mocker.patch("sysup.runner._run", return_value=self._ok(returncode=3))
         cmd = _cmd(interactive=True, steps=[["npm-check", "-gu"]])
 
         steps = list(Runner(_cfg()).run([("npm-check", cmd)]))
@@ -115,7 +118,7 @@ class TestRunnerRunEntries:
 
     def test_missing_binary_is_reported_not_run(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", return_value=None)
-        mock_run = mocker.patch("sysup.runner.subprocess.run")
+        mock_run = mocker.patch("sysup.runner._run")
         cmd = _cmd(steps=[["ghost"]])
 
         steps = list(Runner(_cfg()).run([("ghost", cmd)]))
@@ -126,7 +129,7 @@ class TestRunnerRunEntries:
 
     def test_per_step_which_called_each_step(self, mocker) -> None:
         which = mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        mocker.patch("sysup.runner._run", return_value=self._ok())
         cmd = _cmd(continue_on_error=True, steps=[["a"], ["b"], ["c"]])
 
         list(Runner(_cfg()).run([("multi", cmd)]))
@@ -137,7 +140,7 @@ class TestRunnerRunEntries:
     def test_step_env_is_merged_over_parent_environment_for_that_step_only(self, mocker, interactive: bool) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         mocker.patch.dict("os.environ", {"INHERITED": "yes"})
-        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        mock_run = mocker.patch("sysup.runner._run", return_value=self._ok())
         upgrade = {"argv": ["brew", "upgrade", "--quiet"], "env": {"HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS": "1"}}
         upgrade["env"]["CFG"] = "~/x"
         cmd = _cmd(interactive=interactive, steps=[["brew", "update"], upgrade])
@@ -154,7 +157,7 @@ class TestRunnerRunEntries:
 
     def test_bare_argv_step_inherits_parent_environment_unchanged(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        mock_run = mocker.patch("sysup.runner._run", return_value=self._ok())
 
         list(Runner(_cfg()).run([("brew", _cmd(steps=[["brew", "update"]]))]))
 
@@ -162,7 +165,7 @@ class TestRunnerRunEntries:
 
     def test_shell_line_step_spawns_bash_with_the_line_as_its_script(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        mock_run = mocker.patch("sysup.runner._run", return_value=self._ok())
         line = "HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --quiet"
 
         list(Runner(_cfg()).run([("brew", _cmd(steps=[line]))]))
@@ -228,7 +231,7 @@ class TestRunnerPrime:
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         mocker.patch(
-            "sysup.runner.subprocess.run",
+            "sysup.runner._run",
             side_effect=lambda *a, **k: (
                 order.append("step") or subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
             ),
@@ -249,7 +252,7 @@ class TestRunnerPrime:
         prime_cap.prime.return_value = lambda: stopped.append(True)
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=KeyboardInterrupt())
+        mocker.patch("sysup.runner._run", side_effect=KeyboardInterrupt())
         cmd = _cmd(steps=[["brew", "update"]], sudo=True)
 
         with pytest.raises(KeyboardInterrupt):
@@ -264,7 +267,7 @@ class TestRunnerPrime:
         prime_cap = mocker.MagicMock(spec=SudoPrime)
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(steps=[["brew", "update"]], sudo=True)
 
         list(Runner(_cfg(prime=("sudo-prime",))).run([("brew", cmd)]))
@@ -278,7 +281,7 @@ class TestRunnerPrime:
         prime_cap = mocker.MagicMock(spec=SudoPrime)
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(steps=[["brew", "update"]])
 
         list(Runner(_cfg(prime=("sudo-prime",))).run([("brew", cmd)]))
@@ -293,7 +296,7 @@ class TestRunnerPrime:
         prime_cap.prime.return_value = lambda: None
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(steps=[["sudo", "apt", "update"]])
 
         list(Runner(_cfg(prime=("sudo-prime",))).run([("apt", cmd)]))
@@ -304,7 +307,7 @@ class TestRunnerPrime:
 class TestRunnerLogWiring:
     def test_run_opens_and_closes_log_with_plan_names(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(steps=[["brew", "update"]])
 
         runner = Runner(_cfg())
@@ -327,7 +330,7 @@ class TestRunnerLogWiring:
     def test_log_open_failure_propagates_as_fatal(self, mocker) -> None:
         mocker.patch("sysup.runner.runlog.open_run_log", side_effect=FatalError("could not create run log"))
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        run_mock = mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(steps=[["brew", "update"]])
 
         with pytest.raises(FatalError, match="could not create run log"):
@@ -338,7 +341,7 @@ class TestRunnerLogWiring:
     def test_prune_failure_spawns_no_updates(self, mocker) -> None:
         mocker.patch("sysup.runner.runlog.prune", side_effect=FatalError("could not list run-log directory"))
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        run_mock = mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(steps=[["brew", "update"]])
 
         with pytest.raises(FatalError, match="could not list run-log directory"):
@@ -348,7 +351,7 @@ class TestRunnerLogWiring:
 
     def test_append_failure_stops_further_spawns_even_with_continue_on_error(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        run_mock = mocker.patch("sysup.runner._run", return_value=_ok())
         mocker.patch("sysup.runner.runlog.append_step", side_effect=FatalError("could not write run log"))
         cmd = _cmd(steps=[["brew", "update"], ["mise", "upgrade"]], continue_on_error=True)
 
@@ -364,7 +367,7 @@ class TestRunnerLogWiring:
         mocker.patch("sysup.runner._should_prime", return_value=True)
         close = mocker.patch("sysup.runner.runlog.close")
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        run_mock = mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        run_mock = mocker.patch("sysup.runner._run", return_value=_ok())
         mocker.patch("sysup.runner.runlog.append_step", side_effect=FatalError("could not write run log"))
         cmd = _cmd(steps=[["brew", "update"], ["mise", "upgrade"]])
 
@@ -378,7 +381,7 @@ class TestRunnerLogWiring:
     def test_close_called_even_when_entry_raises(self, mocker) -> None:
         close = mocker.patch("sysup.runner.runlog.close")
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=KeyboardInterrupt())
+        mocker.patch("sysup.runner._run", side_effect=KeyboardInterrupt())
         cmd = _cmd(steps=[["brew", "update"]])
 
         with pytest.raises(KeyboardInterrupt):
@@ -448,7 +451,7 @@ class TestRunnerStatusContexts:
         status.return_value.__enter__ = mocker.Mock(return_value=None)
         status.return_value.__exit__ = mocker.Mock(return_value=False)
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(steps=[["brew", "update"]])
 
         list(Runner(_cfg()).run([("brew", cmd)]))
@@ -458,7 +461,7 @@ class TestRunnerStatusContexts:
     def test_interactive_step_not_wrapped_in_status(self, mocker) -> None:
         status = mocker.patch("sysup.runner.console.status")
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_ok())
+        mocker.patch("sysup.runner._run", return_value=_ok())
         cmd = _cmd(interactive=True, steps=[["npm-check", "-gu"]])
 
         list(Runner(_cfg()).run([("npm-check", cmd)]))
@@ -483,7 +486,7 @@ class TestRunnerTimeout:
     def test_captured_timeout_reports_no_exit_code_and_partial_output(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         exc = subprocess.TimeoutExpired(cmd=["mise"], timeout=30, output=b"partial-out", stderr=b"partial-err")
-        mocker.patch("sysup.runner.subprocess.run", side_effect=exc)
+        mocker.patch("sysup.runner._run", side_effect=exc)
         cmd = _cmd(steps=[["mise", "self-update"]], timeout=30)
 
         outcomes = []
@@ -502,7 +505,7 @@ class TestRunnerTimeout:
     def test_interactive_timeout_reports_no_exit_code(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         exc = subprocess.TimeoutExpired(cmd=["npm-check"], timeout=10)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=exc)
+        mocker.patch("sysup.runner._run", side_effect=exc)
         cmd = _cmd(interactive=True, steps=[["npm-check", "-gu"]], timeout=10)
 
         outcome = Runner(_cfg())._run_argv("npm-check", cmd.steps[0], cmd)
@@ -511,10 +514,72 @@ class TestRunnerTimeout:
         assert outcome.exit_code is None
         assert outcome.result.success is False
 
+    def test_captured_timeout_kills_the_command_bash_was_waiting_on(self, tmp_path) -> None:
+        pidfile = tmp_path / "pid"
+        cmd = _cmd(steps=[f"sleep 30 & echo $! > '{pidfile}'; wait"], timeout=2)
+
+        outcome = Runner(_cfg())._run_argv("sleeper", cmd.steps[0], cmd)
+
+        pid = int(pidfile.read_text() or 0) if pidfile.exists() else 0
+        try:
+            assert pid, "bash died before it could record its child"
+            assert outcome.timed_out is True
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    return
+                time.sleep(0.05)
+            pytest.fail(f"sleep {pid} outlived the timeout that killed bash")
+        finally:
+            if pid:
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(pid, signal.SIGKILL)
+
+    @staticmethod
+    def _fake_popen(mocker, failure: BaseException) -> object:
+        proc = mocker.patch("sysup.runner.subprocess.Popen").return_value.__enter__.return_value
+        proc.pid = 4242
+        proc.communicate.side_effect = failure
+        return proc
+
+    def test_ctrl_c_is_forwarded_to_the_captured_step_group(self, mocker) -> None:
+        from sysup.runner import _run
+
+        self._fake_popen(mocker, KeyboardInterrupt())
+        killpg = mocker.patch("sysup.runner.os.killpg")
+
+        with pytest.raises(KeyboardInterrupt):
+            _run(["brew", "upgrade"], capture_output=True, text=True, check=False, timeout=5, env={})
+
+        killpg.assert_called_once_with(4242, signal.SIGINT)
+
+    def test_root_member_blocking_the_group_kill_still_reports_a_timeout(self, mocker) -> None:
+        from sysup.runner import _run
+
+        proc = self._fake_popen(mocker, subprocess.TimeoutExpired(cmd=["bash"], timeout=5))
+        mocker.patch("sysup.runner.os.killpg", side_effect=PermissionError())
+
+        with pytest.raises(subprocess.TimeoutExpired):
+            _run(["bash", "-c", "sudo apt upgrade"], capture_output=True, text=True, check=False, timeout=5, env={})
+
+        proc.kill.assert_called_once()
+
+    def test_step_without_timeout_stays_in_the_terminal_group(self, mocker) -> None:
+        from sysup.runner import _run
+
+        popen = mocker.patch("sysup.runner.subprocess.Popen")
+        popen.return_value.__enter__.return_value.communicate.return_value = ("", "")
+
+        _run(["brew", "update"], capture_output=True, text=True, check=False, timeout=None, env={})
+
+        assert popen.call_args.kwargs["process_group"] is None
+
     def test_no_timeout_configured_outcome_carries_exit_code(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         mocker.patch(
-            "sysup.runner.subprocess.run",
+            "sysup.runner._run",
             return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out", stderr=""),
         )
         cmd = _cmd(steps=[["brew", "update"]])
@@ -532,7 +597,7 @@ class TestRunnerDryRun:
 
         prime_cap = mocker.MagicMock(spec=SudoPrime)
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
-        mock_run = mocker.patch("sysup.runner.subprocess.run")
+        mock_run = mocker.patch("sysup.runner._run")
         mock_which = mocker.patch("sysup.runner.shutil.which")
         cmd = _cmd(steps=[["brew", "update"]])
 
@@ -567,7 +632,7 @@ class TestRunnerCommandStamping:
     def test_results_carry_command_name(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", return_value="/bin/tool")
         mocker.patch(
-            "sysup.runner.subprocess.run",
+            "sysup.runner._run",
             return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
         )
         steps = list(Runner(_cfg()).run([("entry-name", _cmd(steps=[["tool"]]))]))
@@ -625,7 +690,7 @@ class TestRunnerCommandStamping:
     def test_own_results_stamp_every_run_success_and_failure(self, mocker, options, returncode: int, binary) -> None:
         mocker.patch("sysup.runner.shutil.which", return_value=binary)
         mocker.patch(
-            "sysup.runner.subprocess.run",
+            "sysup.runner._run",
             return_value=subprocess.CompletedProcess(args=[], returncode=returncode, stdout="", stderr="boom"),
         )
         steps = list(Runner(_cfg()).run([("entry-name", _cmd(**options))]))
@@ -707,7 +772,7 @@ class TestRunnerItems:
         mocker.patch.dict("sysup.runner.CAPABILITIES", {"sudo-prime": prime_cap})
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         mocker.patch(
-            "sysup.runner.subprocess.run",
+            "sysup.runner._run",
             side_effect=lambda *a, **k: order.append("step") or self._ok(),
         )
         cfg = _expiry_cfg(
@@ -748,7 +813,7 @@ class TestRunnerItems:
         cap = mocker.MagicMock()
         cap.expires_at.return_value = datetime(2020, 1, 1, tzinfo=timezone.utc)
         mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
-        run = mocker.patch("sysup.runner.subprocess.run")
+        run = mocker.patch("sysup.runner._run")
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         cfg = _expiry_cfg(
             {"gh-agent": {"use": "gh-token-expiry", "with": {"config_dir": "/c", "probe": "repos/x/y"}}},
@@ -766,7 +831,7 @@ class TestRunnerItems:
         cap = mocker.MagicMock()
         cap.expires_at.return_value = "grant broken: ..."
         mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
-        run = mocker.patch("sysup.runner.subprocess.run")
+        run = mocker.patch("sysup.runner._run")
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         cfg = _expiry_cfg(
             {"gh-agent": {"use": "gh-token-expiry", "with": {"config_dir": "/c", "probe": "repos/x/y"}}},
@@ -785,7 +850,7 @@ class TestRunnerItems:
         cap = mocker.MagicMock()
         cap.expires_at.return_value = datetime.now(timezone.utc) + timedelta(days=10)
         mocker.patch.dict("sysup.runner.EXPIRY_CAPABILITIES", {"gh-token-expiry": cap})
-        run = mocker.patch("sysup.runner.subprocess.run", return_value=self._ok())
+        run = mocker.patch("sysup.runner._run", return_value=self._ok())
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
         cfg = _expiry_cfg(
             {"gh-agent": {"use": "gh-token-expiry", "with": {"config_dir": "/c", "probe": "repos/x/y"}}},
@@ -836,7 +901,7 @@ class TestObservabilityRunSteps:
     def test_prints_at_most_five_matches_then_overflow(self, mocker, count: int) -> None:
         lines = [f"error: e{i}" for i in range(1, count + 1)]
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", return_value=_proc(stdout="\n".join(lines)))
+        mocker.patch("sysup.runner._run", return_value=_proc(stdout="\n".join(lines)))
         failure = mocker.patch("sysup.runner.console.failure")
 
         steps = list(Runner(_cfg()).run([("brew", _cmd(steps=[["brew", "upgrade"]]))]))
@@ -851,7 +916,7 @@ class TestObservabilityRunSteps:
         events: list[str] = []
         outputs = iter([_proc(), _proc(stderr="error: mid"), _proc()])
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=lambda *a, **k: events.append("spawn") or next(outputs))
+        mocker.patch("sysup.runner._run", side_effect=lambda *a, **k: events.append("spawn") or next(outputs))
         mocker.patch("sysup.runner.console.failure", side_effect=lambda msg: events.append(msg))
 
         list(Runner(_cfg()).run([("tool", _cmd(steps=[["a"], ["b"], ["c"]]))]))
@@ -861,7 +926,7 @@ class TestObservabilityRunSteps:
     def test_clean_last_step_keeps_warning_from_earlier_steps(self, mocker) -> None:
         outputs = [_proc(stdout="error: one"), _proc(stdout="Error: two", stderr="error: three"), _proc(stdout="done")]
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
+        mocker.patch("sysup.runner._run", side_effect=outputs)
         mocker.patch("sysup.runner.console.failure")
 
         steps = list(Runner(_cfg()).run([("mise", _cmd(steps=[["a"], ["b"], ["c"]]))]))
@@ -870,7 +935,7 @@ class TestObservabilityRunSteps:
 
     def test_failure_dominates_earlier_error_lines(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=[_proc(stdout="error: w"), _proc(1, stderr="kaput")])
+        mocker.patch("sysup.runner._run", side_effect=[_proc(stdout="error: w"), _proc(1, stderr="kaput")])
         failure = mocker.patch("sysup.runner.console.failure")
 
         steps = list(Runner(_cfg()).run([("brew", _cmd(steps=[["a"], ["b"]]))]))
@@ -882,7 +947,7 @@ class TestObservabilityRunSteps:
 
     def test_failed_step_output_is_not_scanned_and_result_arrives_before_next_spawn(self, mocker) -> None:
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mock_run = mocker.patch("sysup.runner.subprocess.run", side_effect=[_proc(2, "error: out", "error: bad")])
+        mock_run = mocker.patch("sysup.runner._run", side_effect=[_proc(2, "error: out", "error: bad")])
         failure = mocker.patch("sysup.runner.console.failure")
 
         gen = Runner(_cfg()).run([("brew", _cmd(steps=[["a"], ["b"]]))])
@@ -897,7 +962,7 @@ class TestObservabilityRunSteps:
     def test_every_failed_step_keeps_its_output_in_the_log(self, mocker) -> None:
         outputs = [_proc(1, stdout="alpha-out", stderr="alpha-boom"), _proc(2, stderr="beta-boom")]
         mocker.patch("sysup.runner.shutil.which", side_effect=lambda n: "/bin/" + n)
-        mocker.patch("sysup.runner.subprocess.run", side_effect=outputs)
+        mocker.patch("sysup.runner._run", side_effect=outputs)
         runner = Runner(_cfg())
 
         steps = list(runner.run([("multi", _cmd(continue_on_error=True, steps=[["a", "x"], ["b"]]))]))

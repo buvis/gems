@@ -83,9 +83,12 @@ Field                         Meaning
 ``when.os``                   ``darwin`` / ``linux`` / ``win32``; skipped on a non-match
 ``when.check``                binary name; skipped (reported) if ``shutil.which`` misses it
 ``interactive``               inherit stdio instead of capturing (default false)
-``timeout``                   seconds; ``null`` = no timeout. Kills the spawned process only: in a
-                              multi-command shell line that is bash, and the command it was waiting on
-                              may keep running
+``timeout``                   seconds; ``null`` = no timeout. A captured step with a timeout runs in
+                              its own process group and dies whole; it cannot read the terminal (a
+                              prompt stops it until the timeout) and a command it runs as root through
+                              ``sudo`` survives. An interactive step shares the terminal's group, so
+                              there only bash is killed and the command it was waiting on in a
+                              multi-command shell line may keep running
 ``continue_on_error``         if true, a failed step does not abort the entry (default false)
 ``tags``                      list of strings for ``--tag`` filtering
 ============================  ==============================================================
