@@ -63,6 +63,9 @@ Field                         Meaning
 ``enabled``                   set ``false`` to skip a merged/bundled instance (default true)
 ``order``                     integer; instances run ascending (default 100)
 ``tags``                      list of strings for ``--tag`` filtering
+``inherit_excludes``          inherit global excludes (default true)
+``exclude_remove``            exact inherited patterns to remove (default empty list)
+``exclude_add``               patterns to append for this instance (default empty list)
 ``with``                      capability inputs (``source``, ``out``, ``engine``)
 ============================  ==============================================================
 
@@ -81,11 +84,43 @@ it:
     excludes+: [scratch-notes]   # add to the inherited list
     excludes-: [target]          # drop a default on this box only
 
+Instance exclusions
+~~~~~~~~~~~~~~~~~~~
+
+Set ``inherit_excludes``, ``exclude_remove`` and ``exclude_add`` beside ``with``,
+not inside it:
+
+.. code-block:: yaml
+
+    instances:
+      documents:
+        use: tar-archive
+        inherit_excludes: false
+        exclude_add: [scratch, sub/cache]
+        with:
+          source: ~/Documents
+          out: ~/backups/documents.tar.gz
+      git-src:
+        exclude_remove: [target]
+        exclude_add: [logs]
+
+Resolution starts with the merged global ``excludes`` list, or an empty list
+when ``inherit_excludes: false``. It removes exact strings in ``exclude_remove``,
+then appends ``exclude_add``. Duplicates keep their first occurrence in order.
+An addition can therefore restore a removed pattern. Other instances and the
+global list are unchanged.
+
+A basename pattern such as ``scratch`` matches that name at any depth, without
+matching ``scratchpad``. A pattern containing ``/``, such as ``sub/cache``, is
+relative to the source root: it excludes that subtree, not ``outer/sub/cache``
+or ``sub/cache-notes``. ``--show-excludes NAME`` prints this effective instance
+list; ``--for PATH`` also resolves the path's ``.bkpignore`` rules on top of it.
+
 ``.bkpignore`` files
 ~~~~~~~~~~~~~~~~~~~~~
 
-Beyond the global list, a ``.bkpignore`` file placed in any directory of a
-source tree tunes exclusions for that subtree only, gitignore-style:
+Beyond the effective instance list, a ``.bkpignore`` file placed in any directory
+of a source tree tunes exclusions for that subtree only, gitignore-style:
 
 - A bare line adds an exclude for that subtree.
 - A ``!pattern`` line un-ignores — it re-includes a path the global default

@@ -69,10 +69,10 @@ def _apply_overrides(instance: BackupInstance, source: str, out: str) -> BackupI
 def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> bool:
     """Print the resolved exclude set for ``instance_name`` under ``--for`` path.
 
-    Renders the global exclude set (already post-``excludes+`` / ``excludes-``)
+    Renders the instance exclude set (after inheritance, removals and additions)
     and, when ``for_path`` is given, the ``.bkpignore`` add / ``!``-unignore
     rules effective under that path — resolved with the same layering the
-    archive walk uses. Writes no archive. Without ``--for`` prints the global
+    archive walk uses. Writes no archive. Without ``--for`` prints the instance
     set only and notes that path-dependent ``.bkpignore`` rules are omitted.
 
     Returns ``True`` on a terminal validation failure (unknown instance, or an
@@ -82,6 +82,7 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> bool
     """
     from pathlib import Path
 
+    from backup.config import effective_excludes
     from backup.shared.bkpignore import ExcludeState, resolve_state_for_path
 
     instance = cfg.instances.get(instance_name)
@@ -89,8 +90,9 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> bool
         console.failure(f"unknown instance '{instance_name}'")
         return True
 
-    console.info(f"resolved global excludes for '{instance_name}':")
-    for pattern in sorted(cfg.excludes):
+    excludes = effective_excludes(cfg, instance)
+    console.info(f"resolved excludes for '{instance_name}':")
+    for pattern in excludes:
         console.info(f"  {pattern}")
 
     if not for_path:
@@ -104,7 +106,7 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> bool
 
     source = Path(source_raw).expanduser()
     target = Path(for_path).expanduser()
-    base_state = ExcludeState(base_excludes=frozenset(cfg.excludes))
+    base_state = ExcludeState(base_excludes=frozenset(excludes))
     state = resolve_state_for_path(source, base_state, target)
 
     console.info(f".bkpignore rules effective under {target}:")

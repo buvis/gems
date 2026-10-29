@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **backup**: per-instance `inherit_excludes`, `exclude_remove` and `exclude_add` control inherited exclusions for archives and `--show-excludes`.
+
 ### Fixed
 
 - **sysup**: a `timeout` on a captured multi-command shell step now stops the whole step; before, only bash died and the command it was waiting on kept running. Such a step runs in its own process group, so Ctrl-C is forwarded to it, a terminal prompt it raises stops it until the timeout, and a command it runs as root through `sudo` is still out of reach and survives. Interactive steps and steps without a timeout are unchanged

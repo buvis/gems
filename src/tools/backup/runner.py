@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from buvis.pybase.result import FatalError
 
 from backup.capabilities import CAPABILITIES
+from backup.config import effective_excludes
 from backup.step_result import StepResult
 
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ class Runner:
     """Execute selected backup instances, yielding a :class:`StepResult` per step.
 
     Each instance invokes its registered capability with the instance's ``with:``
-    inputs plus the runtime context the capability needs: the resolved global
+    inputs plus the runtime context the capability needs: the resolved instance
     ``excludes`` list, the instance ``label``, and the ``dry_run`` flag. Under
     ``dry_run`` the capability itself previews (walks + reports) without writing.
     """
@@ -41,7 +42,7 @@ class Runner:
         call_kwargs: dict[str, object] = {
             **instance.with_,
             "label": name,
-            "excludes": list(self._cfg.excludes),
+            "excludes": list(effective_excludes(self._cfg, instance)),
             "dry_run": self._dry_run,
         }
         try:

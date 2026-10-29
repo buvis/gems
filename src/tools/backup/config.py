@@ -17,6 +17,7 @@ __all__ = [
     "BackupConfig",
     "BackupInstance",
     "applicable_instances",
+    "effective_excludes",
     "load_config",
 ]
 
@@ -67,6 +68,9 @@ class BackupInstance(BaseModel):
     enabled: bool = True
     order: int = 100
     tags: tuple[str, ...] = ()
+    inherit_excludes: bool = True
+    exclude_add: tuple[str, ...] = ()
+    exclude_remove: tuple[str, ...] = ()
     with_: dict[str, object] = Field(default_factory=dict, alias="with")
 
 
@@ -82,6 +86,13 @@ class BackupConfig(BaseModel):
 
     instances: dict[str, BackupInstance] = {}
     excludes: tuple[str, ...] = ()
+
+
+def effective_excludes(cfg: BackupConfig, instance: BackupInstance) -> tuple[str, ...]:
+    """Resolve inherited excludes, exact removals, then additions in order."""
+    inherited = cfg.excludes if instance.inherit_excludes else ()
+    remaining = (pattern for pattern in inherited if pattern not in instance.exclude_remove)
+    return tuple(dict.fromkeys((*remaining, *instance.exclude_add)))
 
 
 def _validate_capabilities(cfg: BackupConfig) -> None:
