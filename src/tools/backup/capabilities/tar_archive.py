@@ -148,6 +148,18 @@ class TarArchive:
             yield containment
             return
 
+        yield from self._run_validated(source, out, excludes, dry_run, kwargs)
+
+    def _run_validated(
+        self: TarArchive,
+        source: Path,
+        out: Path,
+        excludes: tuple[str, ...],
+        dry_run: bool,
+        kwargs: dict[str, object],
+    ) -> Iterator[StepResult]:
+        label = _require_str(kwargs, "label", default="tar-archive")
+        engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON) or _ENGINE_PYTHON
         base_state = ExcludeState(base_excludes=frozenset(excludes))
         missing: list[str] = []
         bundle = "items" in kwargs
