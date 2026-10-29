@@ -29,7 +29,7 @@ Generated: 2026-10-29
 - No active autopilot batch: `autopilot/state.json` is absent, `prds/wip/` and `prds/backlog/` do not exist, `hold/` is empty. Last batch 202610261200 (00108) drained; its one deferred VERIFY is resolved (210e674c) and its test follow-ups closed 2026-10-29: `test_moves_every_well_formed_receipt_in_place` covers every receipt shape, pinned or not, including the two `future = false` receipts 00105 used to skip.
 - Last shipped work: sysup shell-line steps (PR #253, merged 2026-10-28), released as gems-v0.16.0 on 2026-10-29 (tag pushed, publish run in flight at catchup time).
 - #252 (timeout orphaning from that PR's review) fixed 2026-10-29 for captured steps; the interactive residual is recorded in the invariants.
-- Intake pending: `intake/new/00107-backup-multi-source-parallel/` (idea + discovery, no PRD yet).
+- Backup intake 00107 was specced on 2026-10-29 into five sequenced backlog PRDs: 00107 per-instance excludes, 00109 bundle `items` + skip outcomes + replace-after-complete, 00110 `--plan` + once-per-run output resolution, 00111 `--jobs` + cancellation, 00112 progress + `--quiet`. Two discovery answers were reversed at that point (no no-clobber or `--force`; a missing source root skips rather than fails). At the time of writing the five PRDs and the intake move to `processed/` were still uncommitted in the worktree, written by a session other than the one refreshing this capsule. Next gate: `/review-prd-backlog` before the batch.
 
 ### Batch 202610261200
 - [x] `00108-sysup-uv-tool-python-upgrade-in-place-v1.md` (1 cycle)
