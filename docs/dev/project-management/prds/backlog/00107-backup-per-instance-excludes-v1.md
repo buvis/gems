@@ -46,7 +46,7 @@ Let each instance trim, extend or ignore the global exclude list.
 - **Description**: The runner and `--show-excludes` use the effective list.
 - **Inputs**: selected instance.
 - **Outputs**: the capability receives the effective list as `excludes`; `--show-excludes <instance>` prints it and resolves `.bkpignore` rules from it.
-- **Behavior**: `--show-excludes` header stays `resolved global excludes for '<name>':` replaced by `resolved excludes for '<name>':` (the list is no longer only global).
+- **Behavior**: the `--show-excludes` header changes from `resolved global excludes for '<name>':` to `resolved excludes for '<name>':` (the list is no longer only global).
 
 ## Structural Decomposition
 
@@ -74,6 +74,7 @@ CHANGELOG.md                               # Maps to: documentation
 - **Maps to capability**: Instance-level exclude control
 - **Responsibility**: Use `effective_excludes` where `cfg.excludes` is used today.
 - **Location**: `src/tools/backup/runner.py`, `src/tools/backup/cli.py`
+- **Exports**: none new.
 
 ## Dependency Graph
 

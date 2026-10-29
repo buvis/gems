@@ -1,6 +1,6 @@
 ---
 catchup: skip
-design: skip
+design: run
 default_model: opus
 model_tier_rationale: concurrency, cancellation and subprocess lifecycle decide correctness
 ---
@@ -29,7 +29,7 @@ Run up to N instances at once.
 
 #### Feature: `--jobs`
 - **Description**: CLI option and `Runner` parameter for the worker count.
-- **Inputs**: `--jobs N` (`click.IntRange(min=1)`, default 3); `Runner(cfg, dry_run=..., jobs=N)`.
+- **Inputs**: `--jobs N` (a plain `int` option, default 3; the callback rejects a value below 1 with `console.failure("--jobs must be at least 1")` followed by `raise SystemExit(1)`, never a Click parse-time validator, per the AGENTS.md Click validation rule); `Runner(cfg, dry_run=..., jobs=N)`.
 - **Outputs**: instances run on a `concurrent.futures.ThreadPoolExecutor(max_workers=jobs)` in `(order, name)` submit order; `--jobs 1` is sequential.
 - **Behavior**: order is launch priority only, not a completion barrier. Results are yielded to the caller in completion order, from the calling thread only; workers never write to the console. A worker exception becomes a failed `StepResult` for that instance and does not stop the others. Instances rejected by PRD 00110's duplicate check are never submitted.
 
@@ -40,12 +40,12 @@ Stop everything cleanly on interrupt.
 - **Description**: A `threading.Event` named `cancel` is passed to every capability call as the kwarg `cancel`.
 - **Inputs**: `cancel: threading.Event`.
 - **Outputs**: raising `ArchiveCancelled` (new exception in `src/tools/backup/capabilities/tar_archive.py`) from the Python writer, checked before each member is added, after which the existing `except BaseException` cleanup removes the temp file.
-- **Behavior**: the system-tar writer starts tar with `subprocess.Popen` and waits with a loop of `process.communicate(input=..., timeout=0.2)` retries, checking `cancel` between retries; on cancel it calls `process.terminate()`, then `process.kill()` if it has not exited after 5 seconds, waits, removes the temp file, and raises `ArchiveCancelled`. `ArchiveCancelled` is not turned into a fallback to the Python engine.
+- **Behavior**: the system-tar writer starts tar with `subprocess.Popen` and waits with a loop of `process.communicate(timeout=0.2)` retries, passing `input=` on the first call only (a later call with `input` raises `ValueError`), checking `cancel` between retries; on cancel it calls `process.terminate()`, then `process.kill()` if it has not exited after 5 seconds, waits, removes the temp file, and raises `ArchiveCancelled`. `ArchiveCancelled` is not turned into a fallback to the Python engine.
 
 #### Feature: Interrupt handling
 - **Description**: Ctrl-C in the CLI stops the run.
 - **Inputs**: `KeyboardInterrupt` in the calling thread while waiting for results.
-- **Outputs**: `cancel` set; no new instance starts (`executor.shutdown(wait=True, cancel_futures=True)`); every still-active writer cleans up; completed archives and prior outputs are untouched; the CLI prints `console.failure("interrupted: ...")` naming the instances that did not finish, and exits 130.
+- **Outputs**: `cancel` set; no new instance starts (`executor.shutdown(wait=True, cancel_futures=True)`); every still-active writer cleans up; completed archives and prior outputs are untouched; the CLI prints `console.failure("interrupted: ...")` naming the instances that did not finish, and exits 130 via `raise SystemExit(130)`, the pattern `src/tools/backup/cli.py` already uses for its nonzero exits.
 - **Behavior**: an interrupted instance yields `StepResult(name, success=False, message="cancelled")`. `Runner.run` re-raises nothing; it ends after yielding the cancelled results and exposes `Runner.interrupted: bool` so the CLI can pick exit 130.
 
 ## Structural Decomposition
@@ -113,7 +113,7 @@ CHANGELOG.md                                   # Maps to: documentation
 **Goal**: CLI exposes it and it is documented.
 
 **Tasks**:
-- [ ] Add `--jobs` and the exit-130 path to `src/tools/backup/cli.py` (depends on: Phase 1) - Acceptance: `uv run pytest tests/tools/backup/test_parallel_runner.py -k cli -q` passes, including `--jobs 0` exiting 2 (click usage error).
+- [ ] Add `--jobs` and the exit-130 path to `src/tools/backup/cli.py` (depends on: Phase 1) - Acceptance: `uv run pytest tests/tools/backup/test_parallel_runner.py -k cli -q` passes, including `--jobs 0` exiting 1 with `--jobs must be at least 1` in the console output.
 - [ ] Document `--jobs`, ordering and Ctrl-C behaviour in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md` (depends on: Phase 1) - Acceptance: `rg -c "\-\-jobs" docs/source/tools/backup.rst CHANGELOG.md` prints a count of at least 1 for each file.
 
 **Exit Criteria**: `uv run pytest tests/tools/backup -q` passes (including `tests/tools/backup/test_invariants.py`: no `print(`, `sys.exit`, `console.panic` in library files); `uv run ruff check src/tools/backup tests/tools/backup` and `uv run mypy src/tools/backup` are clean.

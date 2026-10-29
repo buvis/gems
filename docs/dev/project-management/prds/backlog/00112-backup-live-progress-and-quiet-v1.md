@@ -1,6 +1,6 @@
 ---
 catchup: skip
-design: skip
+design: run
 default_model: opus
 model_tier_rationale: progress events cross worker threads into the calling thread; ordering and honest percentages decide correctness
 ---
@@ -79,16 +79,19 @@ CHANGELOG.md                                   # Maps to: documentation
 - **Maps to capability**: Progress events
 - **Responsibility**: emit events from both engines.
 - **Location**: `src/tools/backup/capabilities/tar_archive.py`
+- **Exports**: none new; `TarArchive.run` gains the `progress` kwarg.
 
 ### Module: runner
 - **Maps to capability**: Progress events
 - **Responsibility**: queue and deliver events on the calling thread.
 - **Location**: `src/tools/backup/runner.py`
+- **Exports**: none new; `Runner.__init__` gains the `on_progress` kwarg.
 
 ### Module: cli
 - **Maps to capability**: Terminal rendering
 - **Responsibility**: `--quiet`, status line formatting.
 - **Location**: `src/tools/backup/cli.py`
+- **Exports**: none new.
 
 ## Dependency Graph
 

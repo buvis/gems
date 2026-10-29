@@ -109,6 +109,7 @@ CHANGELOG.md                                          # Maps to: documentation
 - **Maps to capability**: Skipped outcomes
 - **Responsibility**: render skips and the summary.
 - **Location**: `src/tools/backup/cli.py`
+- **Exports**: none new.
 
 ## Dependency Graph
 

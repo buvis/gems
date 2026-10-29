@@ -91,6 +91,7 @@ CHANGELOG.md                                 # Maps to: documentation
 - **Maps to capability**: Plan preview
 - **Responsibility**: `--plan` option and rendering.
 - **Location**: `src/tools/backup/cli.py`
+- **Exports**: none new.
 
 ## Dependency Graph
 
