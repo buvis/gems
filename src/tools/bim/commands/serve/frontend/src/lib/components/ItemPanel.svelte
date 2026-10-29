@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ItemViewSpec, PropertyDef, ActionSpec, ZettelData } from '$lib/api';
-	import { fetchZettel, patchZettel } from '$lib/api';
+	import type { ItemViewSpec, PropertyDef, ActionSpec, ZettelData } from '#lib/api.ts';
+	import { fetchZettel, patchZettel } from '#lib/api.ts';
 	import PropertyField from './PropertyField.svelte';
 	import MarkdownEditor from './MarkdownEditor.svelte';
 	import ActionBar from './ActionBar.svelte';

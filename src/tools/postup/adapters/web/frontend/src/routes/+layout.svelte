@@ -2,9 +2,9 @@
 	import '../app.css';
 	import { setContext } from 'svelte';
 	import { page } from '$app/state';
-	import { loadPayload } from '$lib/payload.js';
-	import { allTodos, quadrant, aggregate, slug, ago } from '$lib/derive.js';
-	import { pruneDone, isStorageBlocked } from '$lib/done.js';
+	import { loadPayload } from '#lib/payload.js';
+	import { allTodos, quadrant, aggregate, slug, ago } from '#lib/derive.js';
+	import { pruneDone, isStorageBlocked } from '#lib/done.js';
 
 	let { children } = $props();
 

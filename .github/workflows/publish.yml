@@ -40,6 +40,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # hatch_build.py builds the SvelteKit frontends; kit 3 needs Node >=22.17.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.17"
+
       - name: Install build deps
         run: uv pip install --system maturin tomli
 

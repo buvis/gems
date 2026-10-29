@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PropertyDef } from '$lib/api';
+	import type { PropertyDef } from '#lib/api.ts';
 	import TextWidget from './widgets/TextWidget.svelte';
 	import DateWidget from './widgets/DateWidget.svelte';
 	import CheckboxWidget from './widgets/CheckboxWidget.svelte';
