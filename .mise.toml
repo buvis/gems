@@ -1,5 +1,5 @@
 [tools]
-node = "22.17"  # SvelteKit 3 frontends need Node >=22.17
+node = "22.23"  # SvelteKit 3 frontends need Node >=22.17
 
 [env]
 _.path = ["tools"]          # project-local command shims on PATH (tools/lib is NOT on PATH)
