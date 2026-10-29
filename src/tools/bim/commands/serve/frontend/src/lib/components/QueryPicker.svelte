@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { queries, activeQuery } from '$lib/stores';
+	import { queries, activeQuery } from '#lib/stores.ts';
 
 	interface Props {
 		onselect: (name: string) => void;

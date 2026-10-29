@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { fetchQueries, execQuery, patchZettel } from '$lib/api';
-	import type { ExecResult } from '$lib/api';
-	import { connectSSE, onFileChange, disconnectSSE } from '$lib/sse';
-	import { queries, activeQuery, queryResult, loading, error, selectedRow } from '$lib/stores';
-	import QueryPicker from '$lib/components/QueryPicker.svelte';
-	import DataTable from '$lib/components/DataTable.svelte';
-	import KanbanBoard from '$lib/components/KanbanBoard.svelte';
-	import ItemPanel from '$lib/components/ItemPanel.svelte';
-	import ActionBar from '$lib/components/ActionBar.svelte';
+	import { fetchQueries, execQuery, patchZettel } from '#lib/api.ts';
+	import type { ExecResult } from '#lib/api.ts';
+	import { connectSSE, onFileChange, disconnectSSE } from '#lib/sse.ts';
+	import { queries, activeQuery, queryResult, loading, error, selectedRow } from '#lib/stores.ts';
+	import QueryPicker from '#lib/components/QueryPicker.svelte';
+	import DataTable from '#lib/components/DataTable.svelte';
+	import KanbanBoard from '#lib/components/KanbanBoard.svelte';
+	import ItemPanel from '#lib/components/ItemPanel.svelte';
+	import ActionBar from '#lib/components/ActionBar.svelte';
 
 	let unsubSSE: (() => void) | null = null;
 

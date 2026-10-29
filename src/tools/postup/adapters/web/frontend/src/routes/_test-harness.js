@@ -6,11 +6,11 @@
 // @testing-library/svelte `context` option — so each view test drives a real
 // component against a real payload state, exactly as the layout would feed it.
 import { render } from '@testing-library/svelte';
-import { toState } from '$lib/payload.js';
+import { toState } from '#lib/payload.js';
 
 /**
  * Build the `portfolio` context Map a route expects.
- * @param {import('$lib/payload.js').PayloadState} state
+ * @param {import('#lib/payload.js').PayloadState} state
  * @returns {Map<string, { readonly state: any }>}
  */
 export function portfolioContext(state) {

@@ -1,6 +1,6 @@
 <script>
 	import { getContext } from 'svelte';
-	import { slug, ciFailing, attention, diffSinceLast } from '$lib/derive.js';
+	import { slug, ciFailing, attention, diffSinceLast } from '#lib/derive.js';
 
 	const portfolio = getContext('portfolio');
 	const payload = $derived(portfolio.state.payload);

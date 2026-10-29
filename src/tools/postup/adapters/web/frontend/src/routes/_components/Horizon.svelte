@@ -1,5 +1,5 @@
 <script>
-	import { slug, attentionHorizon } from '$lib/derive.js';
+	import { slug, attentionHorizon } from '#lib/derive.js';
 
 	// The attention horizon presented as a ranked strip (PRD 00066). Ranking
 	// lives in derive's attentionHorizon; this only renders it. The SPA drew this

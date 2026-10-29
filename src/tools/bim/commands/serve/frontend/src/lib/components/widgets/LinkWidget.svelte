@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { openFile } from '$lib/api';
+	import { openFile } from '#lib/api.ts';
 
 	interface Props {
 		value: unknown;

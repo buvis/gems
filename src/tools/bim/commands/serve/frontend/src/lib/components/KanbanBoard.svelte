@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Column, PropertyDef } from '$lib/api';
+	import type { Column, PropertyDef } from '#lib/api.ts';
 	import TextWidget from './widgets/TextWidget.svelte';
 	import TagsWidget from './widgets/TagsWidget.svelte';
 

@@ -1,7 +1,7 @@
 <script>
 	import { getContext } from 'svelte';
-	import { allTodos, safeUrl } from '$lib/derive.js';
-	import { loadDone, saveDone } from '$lib/done.js';
+	import { allTodos, safeUrl } from '#lib/derive.js';
+	import { loadDone, saveDone } from '#lib/done.js';
 
 	const portfolio = getContext('portfolio');
 	const payload = $derived(portfolio.state.payload);

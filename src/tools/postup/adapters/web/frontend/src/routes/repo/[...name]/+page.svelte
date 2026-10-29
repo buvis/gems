@@ -1,7 +1,7 @@
 <script>
 	import { getContext } from 'svelte';
 	import { page } from '$app/state';
-	import { slug } from '$lib/derive.js';
+	import { slug } from '#lib/derive.js';
 	import RepoDetail from './RepoDetail.svelte';
 
 	const portfolio = getContext('portfolio');

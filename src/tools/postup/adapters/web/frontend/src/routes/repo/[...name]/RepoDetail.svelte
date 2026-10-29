@@ -1,5 +1,5 @@
 <script>
-	import { slug, epicsFor, isDepBot, daysAgo, ago, ciFailing, wipItems, attention, safeUrl } from '$lib/derive.js';
+	import { slug, epicsFor, isDepBot, daysAgo, ago, ciFailing, wipItems, attention, safeUrl } from '#lib/derive.js';
 
 	// Prop-driven so it renders one repo's whole slice from a payload slice alone
 	// — the route resolves the repo by slug and hands it here, and a test can

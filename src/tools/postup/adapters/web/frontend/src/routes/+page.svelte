@@ -12,8 +12,8 @@
 		trendSeries,
 		ago,
 		safeUrl
-	} from '$lib/derive.js';
-	import { loadDone } from '$lib/done.js';
+	} from '#lib/derive.js';
+	import { loadDone } from '#lib/done.js';
 	import Horizon from './_components/Horizon.svelte';
 	import Sparkline from './_components/Sparkline.svelte';
 

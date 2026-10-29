@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ActionSpec } from '$lib/api';
-	import { execAction } from '$lib/api';
+	import type { ActionSpec } from '#lib/api.ts';
+	import { execAction } from '#lib/api.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 
 	interface Props {
