@@ -1,0 +1,21 @@
+[ALICE] 🟠 `Runner.run` now calls `_plan`/`capability.plan` before `_run_instance` and outside its `try/except` (src/tools/backup/runner.py:36). Any OSError from the new metadata checks escapes the generator: `out.exists()`, `is_dir`, `is_symlink`, or a RuntimeError from `resolve` on a symlink loop. `_run_plan` in src/tools/backup/cli.py catches only `FatalError`, so the user sees a raw traceback and every other selected instance is skipped. I reproduced it with one instance whose `out` sits under a chmod-000 dir, plus one good instance. At base 7f4b462 that step fails ("bad failed: [Errno 13] …") and the good instance still archives. At HEAD the run dies with PermissionError and no archive is written. `--plan` crashes the same way. No test covers this. Fix: catch per instance in `_plan` and turn the error into a `fail` entry, the same way `_run_instance` handles it. | File: src/tools/backup/runner.py:36 | Task: 3
+[ALICE] 🟡 `TarArchive.plan` resolves `engine` without `run`'s `or _ENGINE_PYTHON` fallback. `engine: ""` now plans as `fail "unknown engine ''"`, and `Runner.run` stops on any plan `fail`. So a config that base archived with python-tarfile (reproduced) now fails in run and in `--dry-run`. That breaks the PRD rule "`--dry-run` is unchanged". | File: src/tools/backup/capabilities/tar_archive.py:80 | Task: 2
+[ALICE] 🟡 `plan` lacks `run`'s "no source configured" / "no out path configured" guard. An empty `source` plans as `run` with source `.` (the cwd) and exits 0, while the real run fails (reproduced). An empty `out` resolves to `.` with `[replaces existing]`, and two empty outs get reported as a duplicate collision. The preview does not match what a run would do. | File: src/tools/backup/capabilities/tar_archive.py:78 | Task: 2
+[ALICE] 🟡 Simplification: `plan` copies `run`'s pre-walk checks one by one: the engine check with the message repeated word for word at tar_archive.py:87 and :136, the source is_dir/exists branch, the containment check, and `_normalize_items`. That copy is how the two drifts above crept in. Move the checks into one shared validator that returns (status, reason) and call it from both `plan` and `run`. | File: src/tools/backup/capabilities/tar_archive.py:76 | Task: 2
+[ALICE] 🟡 Simplification: `Runner._plan` (runner.py:54-59) and `_run_instance` (runner.py:82-88) build the same `call_kwargs` dict; only `dry_run` differs. Use one `_call_kwargs(name, instance, now)` helper and add `dry_run` at the call site. | File: src/tools/backup/runner.py:54 | Task: 3
+[ALICE] ⚪ `_plan` tests `capability is None` twice (runner.py:51 and :62, the second with `continue`). Move `outputs.setdefault(...)` into the `else` branch and drop the second check. | File: src/tools/backup/runner.py:62 | Task: 3
+[ALICE] ⚪ `_run_validated` re-reads `label` and `engine` from kwargs (tar_archive.py:161-162), though `run` already computed both. Pass them as parameters instead. | File: src/tools/backup/capabilities/tar_archive.py:161 | Task: 2
+[ALICE] ⚪ The test builds its expected `reason` by calling `TarArchive().plan(...)`, the code under test, so it can never catch a wrong reason on a `run` row. Assert `""` instead. | File: tests/tools/backup/test_plan_runner.py:237 | Task: 3
+
+R1: pass
+R2: pass
+R3: pass
+R4: fail
+R6: pass
+R7: pass
+R8: pass
+R9: fail
+R10: fail
+R11: pass
+R12: pass
+R13: pass

@@ -1,0 +1,31 @@
+[BLAKE] 🟠 Planning now runs before every normal run and dry-run, and nothing guards it. One instance whose source or out path raises an `OSError` on `stat` (for example, a parent dir with no read access gives `PermissionError` from `is_dir()` or `exists()`) aborts the whole run before any instance archives. The error then reaches the user as a raw traceback, because `_run_plan` catches only `FatalError`. Before this change the runner caught the exception and turned it into one failed step, which is still what the `Capability` docstring promises. I reproduced it: with a healthy `a-good` and an unreadable `b-locked`, both `--plan` and a plain run exited 1 with an uncaught `PermissionError`, and `good.tgz` was never written. This also breaks "`--dry-run` is unchanged". | File: src/tools/backup/runner.py:36 | Task: general
+[BLAKE] 🟠 The calls that raise are `out.exists()`, `source.is_dir()` and the `is_symlink()` calls in `_normalize_items` during planning, and `_plan` has no try/except for them, so an `OSError` from one instance kills the batch. Same root cause as the finding above. | File: src/tools/backup/capabilities/tar_archive.py:81 | Task: general
+[BLAKE] 🟡 `plan` and `run` treat an empty engine differently. `plan` reads `engine` without the `or _ENGINE_PYTHON` fallback that `run` uses (tar_archive.py:114). So `engine: ""` makes `plan` say `fail` ("unknown engine ''") while `TarArchive.run` archives with the python engine. `Runner.run` now skips any instance `plan` marks as failed, so a config that used to run now fails in both normal runs and `--dry-run`. Reproduced. | File: src/tools/backup/capabilities/tar_archive.py:80 | Task: general
+[BLAKE] 🟡 `plan` reports `run` for an instance whose run is certain to fail. An empty `source` becomes `.` (the cwd, which is a directory), so `plan` says `run . -> <out>` while `run` fails with "no source configured". An empty `out` becomes `.`, so `plan` says `run ... -> .  [replaces existing]` while `run` fails with "no out path configured". The preview is not safe for misconfigured instances. Reproduced. | File: src/tools/backup/capabilities/tar_archive.py:78 | Task: general
+[BLAKE] ⚪ The duplicate check compares paths as text only, as the spec says. It misses two names for one file on case-insensitive APFS (`~/Backup/x.tgz` vs `~/backup/x.tgz`) and a relative vs absolute spelling of the same file (`x.tgz` vs `$PWD/x.tgz`). So two instances can still write one archive and race. The docs mention only symlinks as not resolved. | File: src/tools/backup/runner.py:64 | Task: general
+
+B1: fail
+B2: pass
+B3: pass
+B4: pass
+B5: pass
+B6: pass
+B7: pass
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: fail
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass
+
+What I checked:
+- **Tests:** `tests/tools/backup/test_plan.py` passes (105 tests). The `-k "runner or duplicate"` subset passes (4 selected) and the `-k cli` subset passes (1 selected).
+- **Spec match:** the `PlanEntry` fields, row format, duplicate message, the `--plan`/`--dry-run` mutual exclusion, the one-timestamp-per-run rule, the docs and the CHANGELOG entry all match the spec.
+- **Vacuous rules:** B17, B18 and B19 pass only because the PRD has no Phase 3 and no out-of-scope section.
+- **Temp leftovers:** my probe runs left a few small `blake-*` folders in the macOS temp dir. They are harmless, and I deleted only my two probe scripts.

@@ -362,3 +362,7 @@
 {"id":"6db08bb3","kind":"ivan","task":"5","queued_at":1793321278,"prompt_bytes":18457}
 {"id":"6db08bb3","ended_at":1793322400,"elapsed_s":1122,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"leave","at":1793328014,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793328346,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
+{"id":"5941fa83","kind":"bob","task":"review-00110-c1-20261030","queued_at":1793328835,"prompt_bytes":9532}
+{"id":"5941fa83","ended_at":1793329419,"elapsed_s":584,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1793329654,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
