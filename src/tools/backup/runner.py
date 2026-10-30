@@ -45,9 +45,11 @@ class Runner:
 
     def _plan(self: Runner, selected: list[tuple[str, BackupInstance]], now: datetime) -> list[PlanEntry]:
         entries = []
+        keys: list[str | None] = []
         outputs: dict[str, list[str]] = {}
         for name, instance in selected:
             capability = CAPABILITIES.get(instance.use)
+            key: str | None = None
             if capability is None:  # pragma: no cover - load_config validates this
                 entry = PlanEntry(name, "", "", "fail", f"unknown capability '{instance.use}'", False)
             else:
@@ -57,17 +59,23 @@ class Runner:
                     "excludes": list(effective_excludes(self._cfg, instance)),
                     "now": now,
                 }
-                entry = capability.plan(**call_kwargs)
+                try:
+                    entry = capability.plan(**call_kwargs)
+                except FatalError:
+                    raise
+                except Exception as exc:
+                    # keep the configured output so duplicate detection still sees it
+                    # (resolved with the run-wide timestamp, like the capability does)
+                    configured = now.strftime(str(instance.with_.get("out", "")))
+                    entry = PlanEntry(name, "", configured, "fail", f"{name} failed: {exc}", False)
+                key = os.path.normpath(os.path.expanduser(entry.out))
+                outputs.setdefault(key, []).append(name)
             entries.append(entry)
-            if capability is None:
-                continue
-            out = os.path.normpath(os.path.expanduser(entry.out))
-            outputs.setdefault(out, []).append(name)
+            keys.append(key)
 
-        for index, entry in enumerate(entries):
-            out = os.path.normpath(os.path.expanduser(entry.out))
-            names = outputs.get(out, [])
-            if len(names) > 1:
+        for index, (entry, out) in enumerate(zip(entries, keys, strict=True)):
+            if out is not None and len(outputs[out]) > 1:
+                names = outputs[out]
                 others = ", ".join(sorted(name for name in names if name != entry.label))
                 entries[index] = entry._replace(
                     out=out,
