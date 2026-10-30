@@ -662,13 +662,14 @@ class TestCliParallelJobs:
     def test_cli_rejects_invalid_jobs_before_loading_config_or_early_modes(
         self, tmp_path: Path, jobs: int, mode: list[str]
     ) -> None:
-        missing = tmp_path / "missing.yaml"
+        invalid = tmp_path / "invalid.yaml"
+        invalid.write_text("instances:\n  broken:\n    use: missing-probe\n")
         result = CliRunner().invoke(
-            cli, ["--config-dir", str(tmp_path), "--config", str(missing), "--jobs", str(jobs), *mode]
+            cli, ["--config-dir", str(tmp_path), "--config", str(invalid), "--jobs", str(jobs), *mode]
         )
         assert result.exit_code == 1, result.output
         assert "--jobs must be at least 1" in result.output
-        assert str(missing) not in result.output
+        assert "missing-probe" not in result.output
         assert "Usage:" not in result.output
 
     @pytest.mark.parametrize("arguments,expected", [([], 3), (["--jobs", "1"], 1), (["--jobs", "2"], 2)])
