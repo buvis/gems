@@ -1,0 +1,25 @@
+{
+  "session": "01a18c42-322d-79e3-a23f-9a31178bd82d",
+  "final": [],
+  "terminal_events": [
+    {
+      "timestamp": "2026-10-30T10:02:36.543Z",
+      "ordinal": 21,
+      "type": "event_msg",
+      "payload": {
+        "type": "task_complete",
+        "root_turn_id": "01a18c29-2662-7540-acf7-c95a169d863f",
+        "turn_id": "01a18c42-3258-7612-98b1-743e995fc1da",
+        "last_agent_message": null,
+        "error": {
+          "message": "This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request. If you\u2019re doing authorized security work that requires more cyber permissive safeguards, apply for Daybreak access via https://platform.openai.com/settings/organization/status-and-access before retrying.",
+          "codex_error_info": "cyber_policy"
+        },
+        "started_at": 1793354510,
+        "completed_at": 1793354556,
+        "duration_ms": 45603,
+        "time_to_first_token_ms": 23126
+      }
+    }
+  ]
+}

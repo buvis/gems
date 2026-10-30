@@ -1,0 +1,11 @@
+2026-10-30T09:34:44.800475Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: [Fact-Forcing Gate]
+
+Before the first Bash command this session, present these facts:
+
+1. The current user request in one sentence
+2. What this specific command verifies or produces
+
+Present the facts, then retry the same operation.. Command: cat ~/.claude/AGENTS.md; cat AGENTS.md; cat /Users/bob/.claude/plugins/cache/buvis-plugins/autopilot/0.10.0/skills/run-autopilot/SKILL.md
+2026-10-30T10:28:38.869131Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"The automatic permission approval review did not finish before its deadline. Do not assume the action is unsafe based on the timeout alone. You may retry once, or ask the user for guidance or explicit approval.\")" }
+2026-10-30T10:30:13.536158Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"The automatic permission approval review did not finish before its deadline. Do not assume the action is unsafe based on the timeout alone. You may retry once, or ask the user for guidance or explicit approval.\")" }
+2026-10-30T10:31:56.823459Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"The automatic permission approval review did not finish before its deadline. Do not assume the action is unsafe based on the timeout alone. You may retry once, or ask the user for guidance or explicit approval.\")" }
