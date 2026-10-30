@@ -1,0 +1,7 @@
+CLOSURE | resolved | 🟠 `Runner.run` now calls `_plan`/`capability.plan` before `_run_instance` and outside its `try/except`; any OSError or RuntimeError from the metadata checks escapes the generator, skips every other instance, and crashes `--plan` | `_plan` now wraps `capability.plan(**call_kwargs)` in `try/except Exception` and builds a `fail` PlanEntry. `except FatalError: raise` keeps FatalError propagation. The recorded run covers plan, run and dry-run with OSError, PermissionError and RuntimeError, and asserts the unaffected instances still archive.
+
+CLOSURE | resolved | ⚪ `_plan` tests `capability is None` twice and computes `os.path.normpath(os.path.expanduser(entry.out))` twice per entry | The second `capability is None`/`continue` check is gone. The key is computed once in the first loop (`key = os.path.normpath(os.path.expanduser(entry.out))`) and reused in the second loop through the `keys` list.
+
+LOW | tests/tools/backup/test_plan_errors.py:~185 | `test_runner_rejects_timestamp_output_collisions_when_source_metadata_fails` runs 52 lines, over the 50-line function limit, and the style gate retained the violation | Move the plan-vs-run assertion blocks into a small helper, or split the collision assertions from the independent-instance assertions.
+
+LOW | src/tools/backup/runner.py:48 | The parallel `keys` list, read back with `zip(..., strict=True)`, adds a second structure to keep in step with `entries` | Optional: store each normalized key in a dict keyed by entry index, or reuse `outputs` directly. This is not worth a retry.

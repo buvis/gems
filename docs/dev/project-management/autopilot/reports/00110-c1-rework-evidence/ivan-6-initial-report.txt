@@ -1,0 +1,12 @@
+All 51 tests in `tests/tools/backup/test_plan_errors.py` pass (exit 0). I ran only that file, so the rest of the suite is untested.
+
+In `Runner._plan`, an exception from `capability.plan()` now fails only that instance. The failed entry keeps the instance's configured `out`, so duplicate-output detection still sees it. `FatalError` still propagates. The normalized output key is now computed once per entry, and the repeated capability-is-None check is gone. I added a Fixed entry for `backup` to `CHANGELOG.md`.
+
+ASSUMPTIONS:
+- A failed plan entry takes its output from `instance.with_["out"]`, because the capability gave none. If a capability's output path is templated or comes from a different key, duplicate detection for that failed entry could differ.
+- The failure reason is `"{name} failed: {exc}"`, matching the existing `_run_instance` format.
+- The Fixed bullet is worded by me, since no entry text was given.
+
+FILES_TOUCHED:
+src/tools/backup/runner.py
+CHANGELOG.md

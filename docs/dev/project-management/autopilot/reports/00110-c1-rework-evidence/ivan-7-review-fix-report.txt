@@ -1,0 +1,14 @@
+`TarArchive.plan` and `.run` now share one input path, and the two verification paths pass (64 passed). Ruff is clean on `tar_archive.py`.
+
+The tests already passed before I touched anything. This change only closes the duplication gap from the closure note.
+
+- **Helpers:** I added three module-level helpers in `src/tools/backup/capabilities/tar_archive.py`.
+  - `_parse_inputs` parses label, engine (empty falls back to the python engine), raw source and out, and `now`, once.
+  - `_missing_input` returns "no source configured" or "no out path configured".
+  - `_resolve_paths` does the normpath, stamp expansion and `expanduser`.
+- **Callers:** `plan` and `run` both use them. `_run_validated` still takes label and engine already parsed.
+- **Runner and changelog:** `runner.py` is unchanged. The existing `CHANGELOG.md` Fixed entry (line 23) already describes the empty-engine and empty-path behavior, so I left it as is.
+
+ASSUMPTIONS: none
+FILES_TOUCHED:
+src/tools/backup/capabilities/tar_archive.py

@@ -1,0 +1,14 @@
+Task6 targeted test strengthening complete.
+Changed only tests/tools/backup/test_plan_errors.py plus this requested report.
+Retained every existing test and assertion; no implementation modules read or edited.
+Added 18 timestamp/literal duplicate-output regression cases: plan/run/dry-run, OSError/PermissionError/RuntimeError during stamped source metadata, and fixed instants around year rollover.
+Used the authorized sample's per-call Runner clock patch and separate capability fallback clock.
+Assertions require both colliding entries to fail with duplicate diagnostics, no collision output directory/writes, and independent planning/execution including archive member content.
+Only worker test run: uv run pytest tests/tools/backup/test_plan_errors.py -q --tb=line
+Result: 18 failed, 51 passed in 0.28s; exit code 1.
+All 18 added cases expose the requested regression: stamped metadata failure retains the metadata-error diagnostic instead of rejecting the timestamp-expanded collision.
+Production repair is outside this test-only task.
+Coordinator independently confirmed 18 failed/51 passed and committed the test after formatting.
+Size concern sent to coordinator: formatter expanded new test to 52 lines including signature; body remains below 50. Suggested compact config preparation to meet literal whole-function limit.
+abort_reason: none
+ASSUMPTIONS: none

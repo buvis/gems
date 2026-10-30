@@ -366,3 +366,33 @@
 {"id":"5941fa83","kind":"bob","task":"review-00110-c1-20261030","queued_at":1793328835,"prompt_bytes":9532}
 {"id":"5941fa83","ended_at":1793329419,"elapsed_s":584,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1793329654,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793329799,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
+{"id":"007788b9","kind":"tess","task":"6","queued_at":1793329938,"prompt_bytes":25369}
+{"id":"007788b9","ended_at":1793330131,"elapsed_s":193,"outcome":"ok","detail":"Explicit native OpenAI gpt-6.1-sol medium; agent /root/rework/tess6; report docs/dev/tmp/tess-6-report.txt"}
+{"id":"af4fc61e","kind":"ivan","task":"6","queued_at":1793330147,"prompt_bytes":26402}
+{"id":"af4fc61e","ended_at":1793330214,"elapsed_s":67,"outcome":"ok","detail":"Observed claude-sonnet-5-5 medium in pinned session bd4c4e3c-4ba7-44f6-ba73-8849e1c5c060"}
+{"id":"7f00e7de","kind":"tess","task":"6","queued_at":1793330274,"prompt_bytes":4576}
+{"id":"cf5ef52e","kind":"ivan","task":"6","queued_at":1793330416,"prompt_bytes":29823}
+{"id":"7f00e7de","ended_at":1793330430,"elapsed_s":156,"outcome":"ok","detail":"OpenAI gpt-6.1-sol medium; agent /root/rework/tess6_boundary; 18 red timestamp cases"}
+{"id":"cf5ef52e","ended_at":1793330487,"elapsed_s":71,"outcome":"ok","detail":"Task6 same-tier repair completed; pinned Claude session3f43a765-6b5e-4556-8892-b7f45f51aaf3"}
+{"id":"c8688f8b","kind":"ivan","task":"6","queued_at":1793330532,"prompt_bytes":18850}
+{"id":"c8688f8b","ended_at":1793330599,"elapsed_s":67,"outcome":"ok","detail":"Style fixer returned no edits; style violation retained per one-shot cap"}
+{"id":"1f506082","kind":"pat","task":"6","queued_at":1793330602,"prompt_bytes":20345}
+{"id":"1f506082","ended_at":1793330683,"elapsed_s":81,"outcome":"ok","detail":"Pat claude-sonnet-5-5 high observed; both task6 closures resolved; LOW only"}
+{"id":"9f056b48","kind":"tess","task":"7","queued_at":1793330742,"prompt_bytes":26118}
+{"id":"9f056b48","ended_at":1793330989,"elapsed_s":247,"outcome":"ok","detail":"Explicit native OpenAI gpt-6.1-sol medium; task7 tests21failed37passed"}
+{"id":"215fbc63","kind":"ivan","task":"7","queued_at":1793331022,"prompt_bytes":28193}
+{"id":"215fbc63","ended_at":1793331139,"elapsed_s":117,"outcome":"ok","detail":"Actual claude-sonnet-5-5 medium; worker used87 filtered tests, coordinator will run exact58 task tests"}
+{"id":"40f4cbc0","kind":"ivan","task":"7","queued_at":1793331186,"prompt_bytes":29134}
+{"id":"40f4cbc0","ended_at":1793331279,"elapsed_s":93,"outcome":"ok","detail":"Actual claude-sonnet-5-5 medium; exact58regressions pass; hook repair5args"}
+{"id":"fa4a9d19","kind":"pat","task":"7","queued_at":1793331318,"prompt_bytes":21042}
+{"id":"fa4a9d19","ended_at":1793331376,"elapsed_s":58,"outcome":"ok","detail":"Pat7 all3closuresresolved; LOW duplication only"}
+{"id":"b5174252","kind":"tess","task":"7","queued_at":1793331722,"prompt_bytes":5191}
+{"id":"b5174252","ended_at":1793331937,"elapsed_s":215,"outcome":"ok","detail":"OpenAI gpt-6.1-sol medium; isolated legacy contract correction6casespass"}
+{"id":"499b9de3","kind":"pat","task":"7","queued_at":1793332007,"prompt_bytes":3231}
+{"id":"499b9de3","ended_at":1793332181,"elapsed_s":174,"outcome":"ok","detail":"Pat7 delta2 accepted test contract but unresolved original input-setup duplication; final allowed cycle repair follows"}
+{"id":"c78cf62f","kind":"ivan","task":"7","queued_at":1793332238,"prompt_bytes":29781}
+{"id":"c78cf62f","ended_at":1793333079,"elapsed_s":841,"outcome":"ok","detail":"Existing completed closure repair retrieved after coordinator recovery; no redispatch"}
+{"id":"9051dc7d","kind":"pat","task":"7","queued_at":1793333543,"prompt_bytes":7783}
+{"id":"9051dc7d","ended_at":1793333817,"elapsed_s":274,"outcome":"ok","detail":"Final Pat3 both closure gaps resolved, NO FINDINGS"}
+{"kind":"handoff","site":"review","edge":"leave","at":1793334616,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
