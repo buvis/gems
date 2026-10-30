@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a18ee9-3697-7b43-a7a4-7d50b3f149b6"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"clamping SessionEnd hook timeout to 3s in /Users/bob/.codex/hooks.json"}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"You requested a launcher health check. The command checks inherited Seatbelt plus read-only git execution."}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"The command was blocked before execution by the PreToolUse “Fact-Forcing Gate,” which requested a facts statement and retry despite the preceding statement.\n\nNo probe output was produced. No retries or other checks were performed."}}
+{"type":"turn.completed","usage":{"input_tokens":53315,"cached_input_tokens":39680,"cache_write_input_tokens":0,"output_tokens":268,"reasoning_output_tokens":0}}
