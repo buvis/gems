@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import os
+import queue
+import threading
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import FatalError
 
 from backup.capabilities import CAPABILITIES
+from backup.capabilities.tar_archive import ArchiveCancelled
 from backup.config import effective_excludes
 from backup.step_result import PlanEntry, StepResult
 
@@ -27,18 +32,114 @@ class Runner:
     ``dry_run`` the capability itself previews (walks + reports) without writing.
     """
 
-    def __init__(self: Runner, cfg: BackupConfig, *, dry_run: bool = False) -> None:
+    def __init__(self: Runner, cfg: BackupConfig, *, dry_run: bool = False, jobs: int = 3) -> None:
+        if jobs < 1:
+            raise ValueError("jobs must be at least 1")
         self._cfg = cfg
         self._dry_run = dry_run
+        self._jobs = jobs
+        self._cancel: threading.Event | None = None
+        self._cancelled: set[str] = set()
+        self._cancelled_lock = threading.Lock()
+        self.interrupted = False
+        self.cancelled_names: tuple[str, ...] = ()
+
+    def request_cancel(self: Runner) -> None:
+        """Signal cancellation without waiting for workers or rendering output."""
+        self.interrupted = True
+        if self._cancel is not None:
+            self._cancel.set()
 
     def run(self: Runner, selected: list[tuple[str, BackupInstance]]) -> Iterator[StepResult]:
+        self.interrupted = False
+        self.cancelled_names = ()
+        self._cancelled.clear()
+        cancel = threading.Event()
+        self._cancel = cancel
         now = datetime.now()
-        entries = self._plan(selected, now)
-        for (name, instance), entry in zip(selected, entries, strict=True):
-            if entry.status == "fail":
-                yield StepResult(name, success=False, message=entry.reason)
-            else:
-                yield from self._run_instance(name, instance, now)
+        ordered = sorted(selected, key=lambda item: (item[1].order, item[0]))
+        remaining = deque(ordered)
+        ready: deque[StepResult] = deque()
+        finished = False
+        try:
+            try:
+                entries = self._plan(selected, now)
+                failures = {
+                    name: entry.reason
+                    for (name, _), entry in zip(selected, entries, strict=True)
+                    if entry.status == "fail"
+                }
+                ready.extend(StepResult(name, success=False, message=reason) for name, reason in failures.items())
+                remaining = deque((name, instance) for name, instance in ordered if name not in failures)
+            except KeyboardInterrupt:
+                self.request_cancel()
+
+            yield from self._execute(remaining, ready, now, cancel)
+            finished = True
+        finally:
+            if not finished:
+                cancel.set()
+            self.cancelled_names = tuple(name for name, _ in ordered if name in self._cancelled)
+            self._cancel = None
+
+    def _execute(
+        self: Runner,
+        remaining: deque[tuple[str, BackupInstance]],
+        ready: deque[StepResult],
+        now: datetime,
+        cancel: threading.Event,
+    ) -> Iterator[StepResult]:
+        completed: queue.Queue[Future[list[StepResult]]] = queue.Queue()
+        pending: dict[Future[list[StepResult]], str] = {}
+        executor: ThreadPoolExecutor | None = None
+        finished = False
+        try:
+            while ready or remaining or pending:
+                try:
+                    if cancel.is_set():
+                        if executor is not None:
+                            self._shutdown(executor)
+                            executor = None
+                        ready.extend(self._cancelled_result(name) for name, _ in remaining)
+                        remaining.clear()
+
+                    if ready:
+                        yield ready.popleft()
+                        continue
+
+                    while remaining and len(pending) < self._jobs and not cancel.is_set():
+                        if executor is None:
+                            executor = ThreadPoolExecutor(max_workers=self._jobs)
+                        name, instance = remaining.popleft()
+                        future = executor.submit(self._run_instance, name, instance, now, cancel)
+                        pending[future] = name
+                        future.add_done_callback(completed.put)
+
+                    if pending:
+                        future = completed.get()
+                        name = pending.pop(future)
+                        ready.extend([self._cancelled_result(name)] if future.cancelled() else future.result())
+                except KeyboardInterrupt:
+                    self.request_cancel()
+            finished = True
+        finally:
+            if not finished:
+                cancel.set()
+            if executor is not None:
+                self._shutdown(executor)
+
+    def _shutdown(self: Runner, executor: ThreadPoolExecutor) -> None:
+        while True:
+            try:
+                executor.shutdown(wait=True, cancel_futures=True)
+                return
+            except KeyboardInterrupt:
+                self.request_cancel()
+
+    def _cancelled_result(self: Runner, name: str) -> StepResult:
+        with self._cancelled_lock:
+            self._cancelled.add(name)
+        return StepResult(name, success=False, message="cancelled")
 
     def plan(self: Runner, selected: list[tuple[str, BackupInstance]]) -> list[PlanEntry]:
         return self._plan(selected, datetime.now())
@@ -85,7 +186,11 @@ class Runner:
                 )
         return entries
 
-    def _run_instance(self: Runner, name: str, instance: BackupInstance, now: datetime) -> Iterator[StepResult]:
+    def _run_instance(
+        self: Runner, name: str, instance: BackupInstance, now: datetime, cancel: threading.Event
+    ) -> list[StepResult]:
+        if cancel.is_set():
+            return [self._cancelled_result(name)]
         capability = CAPABILITIES[instance.use]
 
         call_kwargs: dict[str, object] = {
@@ -94,10 +199,11 @@ class Runner:
             "excludes": list(effective_excludes(self._cfg, instance)),
             "dry_run": self._dry_run,
             "now": now,
+            "cancel": cancel,
         }
         try:
-            yield from capability.run(**call_kwargs)
-        except FatalError:
-            raise
+            return list(capability.run(**call_kwargs))
+        except ArchiveCancelled:
+            return [self._cancelled_result(name)]
         except Exception as exc:
-            yield StepResult(name, success=False, message=f"{name} failed: {exc}")
+            return [StepResult(name, success=False, message=f"{name} failed: {exc}")]
