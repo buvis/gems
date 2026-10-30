@@ -43,6 +43,24 @@ def _assert_output(out: Path, previous: bytes | None) -> None:
         assert out.read_bytes() == previous
 
 
+def _require_archive_fsync_before_publication(monkeypatch: pytest.MonkeyPatch) -> None:
+    synced: set[tuple[int, int]] = set()
+    real_fsync, real_replace = os.fsync, os.replace
+
+    def sync(fd: int) -> None:
+        real_fsync(fd)
+        stat = os.fstat(fd)
+        synced.add((stat.st_dev, stat.st_ino))
+
+    def replace(source: str | os.PathLike[str], destination: str | os.PathLike[str]) -> None:
+        stat = os.stat(source)
+        assert (stat.st_dev, stat.st_ino) in synced, "archive must be fsynced before publication"
+        real_replace(source, destination)
+
+    monkeypatch.setattr(os, "fsync", sync)
+    monkeypatch.setattr(os, "replace", replace)
+
+
 def _stub_tar(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, stubborn: bool = False, complete: bool = False
 ) -> Path:
@@ -251,6 +269,7 @@ class TestSystemArchiveCancellation:
             return real_communicate(child, **kwargs)
 
         monkeypatch.setattr(Popen, "communicate", communicate)
+        _require_archive_fsync_before_publication(monkeypatch)
         assert _write_archive_system_tar(out, tmp_path, files, cancel=threading.Event()) is None
         assert marker.exists()
         assert len(calls) >= 2
@@ -270,6 +289,32 @@ class TestSystemArchiveCancellation:
             pipe is not None and pipe.closed
             for pipe in (tar_children[0].stdin, tar_children[0].stdout, tar_children[0].stderr)
         )
+
+    @pytest.mark.parametrize("member_count", [0, 2])
+    def test_cancel_cleans_before_spawn_when_member_iteration_sets_event(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        member_count: int,
+    ) -> None:
+        files = _members(tmp_path)[:member_count]
+        out = tmp_path / "out.tar.gz"
+        out.write_bytes(b"last usable backup")
+        before = set(tmp_path.iterdir())
+        cancel = threading.Event()
+
+        def selected() -> Iterator[Path]:
+            yield from files
+            cancel.set()
+
+        def unexpected_spawn(*args: object, **kwargs: object) -> None:
+            pytest.fail("member-iteration cancellation must prevent starting tar")
+
+        monkeypatch.setattr(subprocess, "Popen", unexpected_spawn)
+        with pytest.raises(ArchiveCancelled):
+            _write_archive_system_tar(out, tmp_path, selected(), cancel=cancel)
+        assert out.read_bytes() == b"last usable backup"
+        assert set(tmp_path.iterdir()) == before
 
     @pytest.mark.parametrize("member_count", [0, 2])
     def test_cancel_cleans_after_child_exits_without_publishing(
