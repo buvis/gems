@@ -19,6 +19,8 @@ class TestParallelRunnerLifecycle:
     ) -> None:
         probe = CapabilityProbe(("alpha", "alpha-copy"))
         cfg = configure(monkeypatch, probe)
+        global_excludes = cfg.excludes
+        instance_excludes = {name: instance.exclude_add for name, instance in cfg.instances.items()}
         original = {name: ["global-exclude", f"{name}-exclude"] for name in cfg.instances}
 
         def mutate_local(kwargs: dict[str, object]) -> Iterator[StepResult]:
@@ -44,8 +46,10 @@ class TestParallelRunnerLifecycle:
             assert call["out"] == f"/output/{name}.tgz"
             assert call["dry_run"] is dry_run
             assert call["excludes"] == [*original[name], name]
-            assert cfg.instances[name].exclude_add == [f"{name}-exclude"]
-            assert cfg.excludes == ["global-exclude"]
+            assert cfg.instances[name].exclude_add == instance_excludes[name]
+            assert isinstance(cfg.instances[name].exclude_add, tuple)
+        assert cfg.excludes == global_excludes
+        assert isinstance(cfg.excludes, tuple)
 
     @pytest.mark.parametrize("dry_run", [False, True])
     def test_instance_runtime_values_override_with_options_and_pre_cancel_prevents_invocation(
