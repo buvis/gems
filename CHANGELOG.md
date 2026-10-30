@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **backup**: archive creation supports cooperative cancellation for Python and system tar, cleaning temporary files and stopping tar without replacing a completed backup.
 - **backup**: `--plan` previews metadata-only run/skip/fail decisions, reasons and existing-output replacement markers; selected outputs share one timestamp and colliding paths are rejected before plan, run or dry-run execution.
 - **backup**: optional `items` bundle literal source-relative files and directories into one archive, preserving empty directories and symlinks while applying inherited exclusions and `.bkpignore` rules.
 - **backup**: per-instance `inherit_excludes`, `exclude_remove` and `exclude_add` control inherited exclusions for archives and `--show-excludes`.

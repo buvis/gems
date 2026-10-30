@@ -19,13 +19,23 @@ from backup.shared.bkpignore import (
 from backup.step_result import ArchiveMeta, PlanEntry, StepResult
 
 if TYPE_CHECKING:
+    import threading
     from collections.abc import Iterable, Iterator, Mapping
 
-__all__ = ["TarArchive", "WalkResult"]
+__all__ = ["ArchiveCancelled", "TarArchive", "WalkResult"]
 
 _ARCHIVE_MODE = 0o600
 _ENGINE_PYTHON = "python-tarfile"
 _ENGINE_SYSTEM_TAR = "system-tar"
+
+
+class ArchiveCancelled(Exception):
+    """Archive creation stopped before publication."""
+
+
+def _check_cancel(cancel: threading.Event | None) -> None:
+    if cancel is not None and cancel.is_set():
+        raise ArchiveCancelled
 
 
 class WalkResult:
@@ -111,6 +121,7 @@ class TarArchive:
         return PlanEntry(label, str(source), str(out), status, reason, replaces)
 
     def run(self: TarArchive, **kwargs: object) -> Iterator[StepResult]:
+        _check_cancel(cast("threading.Event | None", kwargs.get("cancel")))
         label, engine, source_raw, out_raw, now = _parse_inputs(kwargs)
         message = _missing_input(source_raw, out_raw)
         if message:
@@ -148,6 +159,8 @@ class TarArchive:
         out: Path,
         kwargs: dict[str, object],
     ) -> Iterator[StepResult]:
+        cancel = cast("threading.Event | None", kwargs.get("cancel"))
+        _check_cancel(cancel)
         dry_run = bool(kwargs.get("dry_run", False))
         base_state = ExcludeState(base_excludes=frozenset(_as_str_tuple(kwargs.get("excludes", ()))))
         missing: list[str] = []
@@ -159,6 +172,7 @@ class TarArchive:
                 yield StepResult(label, success=False, message=str(exc))
                 return
             walk, missing = _select_items(source, base_state, selected)
+            _check_cancel(cancel)
             if not walk.files:
                 message = "no selected items to archive"
                 if missing:
@@ -167,11 +181,12 @@ class TarArchive:
                 return
         else:
             walk = _walk_tree(source, base_state)
+            _check_cancel(cancel)
 
         if dry_run:
             result = self._dry_run_result(label, out, walk)
         else:
-            result = self._archive_result(label, source if bundle else source.parent, out, walk, engine)
+            result = self._archive_result(label, source if bundle else source.parent, out, walk, engine, cancel=cancel)
         if missing:
             result.message += f"; missing items: {', '.join(missing)}"
         yield result
@@ -191,16 +206,19 @@ class TarArchive:
         )
 
     @staticmethod
-    def _archive_result(label: str, arcbase: Path, out: Path, walk: WalkResult, engine: str) -> StepResult:
+    def _archive_result(  # noqa: PLR0913 — retain archive context plus keyword-only cancellation
+        label: str, arcbase: Path, out: Path, walk: WalkResult, engine: str, *, cancel: threading.Event | None = None
+    ) -> StepResult:
+        _check_cancel(cancel)
         out.parent.mkdir(parents=True, exist_ok=True)
         note = ""
         if engine == _ENGINE_SYSTEM_TAR:
-            fallback = _write_archive_system_tar(out, arcbase, walk.files)
+            fallback = _write_archive_system_tar(out, arcbase, walk.files, cancel=cancel)
             if fallback is not None:
-                _write_archive(out, arcbase, walk.files)
+                _write_archive(out, arcbase, walk.files, cancel=cancel)
                 note = f" (system-tar unavailable: {fallback}; used python engine)"
         else:
-            _write_archive(out, arcbase, walk.files)
+            _write_archive(out, arcbase, walk.files, cancel=cancel)
         size = out.stat().st_size
         return StepResult(
             label,
@@ -384,7 +402,7 @@ def _collect_applied(states: dict[str, ExcludeState]) -> list[str]:
     return seen
 
 
-def _write_archive(out: Path, arcbase: Path, files: Iterable[Path]) -> None:
+def _write_archive(out: Path, arcbase: Path, files: Iterable[Path], *, cancel: threading.Event | None = None) -> None:
     """Stream a ``w:gz`` tarball of ``files`` to ``out`` atomically, ``chmod 600``.
 
     Replicates ``pybase.filesystem.atomic_write``'s tempfile + fsync +
@@ -394,6 +412,7 @@ def _write_archive(out: Path, arcbase: Path, files: Iterable[Path]) -> None:
     ``arcbase``: the source's parent for whole trees, or the source itself for
     selected items.
     """
+    _check_cancel(cancel)
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
     tmp_path = Path(tmp_name)
     try:
@@ -401,10 +420,13 @@ def _write_archive(out: Path, arcbase: Path, files: Iterable[Path]) -> None:
             os.fchmod(fd, _ARCHIVE_MODE)
             with tarfile.open(fileobj=raw, mode="w:gz") as tar:
                 for file_path in files:
+                    _check_cancel(cancel)
                     arcname = file_path.relative_to(arcbase)
                     tar.add(str(file_path), arcname=str(arcname), recursive=False)
+                _check_cancel(cancel)
             raw.flush()
             os.fsync(raw.fileno())
+        _check_cancel(cancel)
         os.replace(tmp_path, out)
     except BaseException:
         with contextlib.suppress(OSError):
@@ -412,28 +434,19 @@ def _write_archive(out: Path, arcbase: Path, files: Iterable[Path]) -> None:
         raise
 
 
-def _write_archive_system_tar(out: Path, arcbase: Path, files: Iterable[Path]) -> str | None:
+def _write_archive_system_tar(
+    out: Path, arcbase: Path, files: Iterable[Path], *, cancel: threading.Event | None = None
+) -> str | None:
     """Archive ``files`` via system ``tar --null -T -``, atomically, ``chmod 600``.
 
-    Python still owns selection: ``files`` is the exact include list the walk
-    produced (surviving directories, files, and symlinks — so ``.bkpignore``
-    path-scoping and empty-directory preservation hold). The paths, relative
-    to ``arcbase``, are joined with NUL bytes and streamed to
-    ``tar -C <arcbase> --no-recursion --null -T - -czf <tmp>`` on stdin.
-    ``--no-recursion`` keeps the filtered list authoritative — a listed directory
-    is archived as a bare entry, not re-expanded (which would re-add contents the
-    walk excluded). NUL delimiting
-    (both GNU tar and macOS bsdtar support ``--null``) means a filename
-    containing a newline can never split into an extra ``-T`` line and inject an
-    outside/absolute path. The gzip output lands in a sibling temp file, is
-    ``fsync``ed and ``chmod 600``ed, then ``os.replace``d into ``out``,
-    preserving the Python engine's atomicity and durability guarantee.
+    Python owns selection; nonrecursive, NUL-delimited paths preserve the exact
+    member list, including empty directories and filenames containing newlines.
+    The sibling temp archive is fsynced before atomic publication.
 
     Returns:
-        ``None`` when the archive was written successfully; otherwise a short
-        reason string so the caller can fall back to the Python engine and note
-        why. A partial temp archive is always cleaned up.
+        ``None`` on success, otherwise a reason for Python fallback.
     """
+    _check_cancel(cancel)
     tar_bin = shutil.which("tar")
     if tar_bin is None:
         return "tar not found on PATH"
@@ -441,25 +454,16 @@ def _write_archive_system_tar(out: Path, arcbase: Path, files: Iterable[Path]) -
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
     os.close(fd)
     tmp_path = Path(tmp_name)
-    # NUL-delimited list on stdin: a NUL cannot occur in a POSIX path component,
-    # so no filename (even one containing a newline) can inject an extra entry.
-    filelist = b"".join(os.fsencode(file_path.relative_to(arcbase)) + b"\0" for file_path in files)
+    published = False
     try:
-        # bsdtar (macOS) otherwise stores AppleDouble (``._name``) metadata
-        # members that the Python engine never produces; COPYFILE_DISABLE
-        # suppresses them and is a no-op for GNU tar on Linux.
-        env = {**os.environ, "COPYFILE_DISABLE": "1"}
-        completed = subprocess.run(
-            [tar_bin, "-C", str(arcbase), "--no-recursion", "--null", "-czf", str(tmp_path), "-T", "-"],
-            input=filelist,
-            capture_output=True,
-            check=False,
-            env=env,
-        )
-        if completed.returncode != 0:
-            stderr = completed.stderr.decode("utf-8", "replace").strip().splitlines()
-            detail = stderr[-1] if stderr else f"exit {completed.returncode}"
-            return f"tar exited {completed.returncode}: {detail}"
+        filelist = b"".join(os.fsencode(file_path.relative_to(arcbase)) + b"\0" for file_path in files)
+        _check_cancel(cancel)
+        returncode, stderr_bytes = _run_system_tar(tar_bin, arcbase, tmp_path, filelist, cancel=cancel)
+        _check_cancel(cancel)
+        if returncode != 0:
+            stderr = stderr_bytes.decode("utf-8", "replace").strip().splitlines()
+            detail = stderr[-1] if stderr else f"exit {returncode}"
+            return f"tar exited {returncode}: {detail}"
         # Match the Python engine's durability: fsync the finished temp archive
         # before atomically swapping it into place.
         archive_fd = os.open(str(tmp_path), os.O_RDONLY)
@@ -468,13 +472,70 @@ def _write_archive_system_tar(out: Path, arcbase: Path, files: Iterable[Path]) -
         finally:
             os.close(archive_fd)
         os.chmod(tmp_path, _ARCHIVE_MODE)
+        _check_cancel(cancel)
         os.replace(tmp_path, out)
+        published = True
     except OSError as exc:
         return f"tar invocation failed: {exc}"
     finally:
         with contextlib.suppress(OSError):
             tmp_path.unlink(missing_ok=True)
+        if not published:
+            _check_cancel(cancel)
     return None
+
+
+def _run_system_tar(
+    tar_bin: str, arcbase: Path, tmp_path: Path, filelist: bytes, *, cancel: threading.Event | None
+) -> tuple[int | None, bytes]:
+    """Run tar with cancellable communication and unconditional process cleanup."""
+    # bsdtar (macOS) otherwise stores AppleDouble (``._name``) metadata
+    # members that the Python engine never produces; COPYFILE_DISABLE
+    # suppresses them and is a no-op for GNU tar on Linux.
+    env = {**os.environ, "COPYFILE_DISABLE": "1"}
+    process = subprocess.Popen(
+        [tar_bin, "-C", str(arcbase), "--no-recursion", "--null", "-czf", str(tmp_path), "-T", "-"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        first_communication = True
+        while True:
+            _check_cancel(cancel)
+            try:
+                if first_communication:
+                    first_communication = False
+                    _, stderr_bytes = process.communicate(input=filelist, timeout=0.2)
+                else:
+                    _, stderr_bytes = process.communicate(timeout=0.2)
+                _check_cancel(cancel)
+                return process.returncode, stderr_bytes
+            except subprocess.TimeoutExpired:
+                continue
+    finally:
+        _cleanup_tar_process(process)
+
+
+def _cleanup_tar_process(process: subprocess.Popen[bytes]) -> None:
+    """Stop and reap a live tar child, then close all owned pipes."""
+    try:
+        if process.poll() is None:
+            with contextlib.suppress(ProcessLookupError):
+                process.terminate()
+            try:
+                process.communicate(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                with contextlib.suppress(ProcessLookupError):
+                    process.kill()
+                process.communicate()
+    finally:
+        for pipe in (process.stdin, process.stdout, process.stderr):
+            if pipe is not None:
+                with contextlib.suppress(OSError):
+                    pipe.close()
 
 
 def _parse_inputs(kwargs: Mapping[str, object]) -> tuple[str, str, str, str, datetime | None]:
