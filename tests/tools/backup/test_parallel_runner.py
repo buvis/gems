@@ -24,7 +24,7 @@ from backup.capabilities.tar_archive import (
     _write_archive,
     _write_archive_system_tar,
 )
-from backup.cli import cli
+from backup.cli import cli, console
 from backup.runner import Runner
 from backup.step_result import StepResult
 from tests.tools.backup.parallel_runner_helpers import PRIORITY, WAIT, CapabilityProbe, Consumption, configure
@@ -687,6 +687,8 @@ class TestCliParallelJobs:
         payload["instances"]["git-src"] = {"use": "tar-archive", "enabled": False}
         path = tmp_path / "jobs.yaml"
         path.write_text(json.dumps(payload), encoding="utf-8")
+        messages: list[str] = []
+        monkeypatch.setattr(console, "info", messages.append)
         failures: list[BaseException] = []
 
         def release_batch() -> None:
@@ -716,6 +718,8 @@ class TestCliParallelJobs:
         assert all(row["dry_run"] is dry_run for row in probe.calls)
         assert all(row["token"] == f"token-{row['label']}" for row in probe.calls)
         assert probe.active == 0
+        verb = "previewed" if dry_run else "archived"
+        assert messages[-1] == f"{verb} 5, skipped 0, failed 0"
 
     @pytest.mark.parametrize("name", ["alpha", "alpha-copy"])
     def test_cli_plan_keeps_writers_and_executor_unused_with_jobs(

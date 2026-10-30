@@ -18,7 +18,7 @@ ORDERS = {"alpha": 10, "alpha-copy": 10, "delta": 20, "gamma": 30, "omega": 40}
 
 
 class CapabilityProbe:
-    inputs: dict[str, object] = {}
+    inputs: dict[str, object] = {"source": "", "out": "", "token": ""}
 
     def __init__(self, names: tuple[str, ...] = NAMES) -> None:
         self.started = {name: threading.Event() for name in names}

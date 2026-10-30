@@ -42,15 +42,17 @@ def _rows() -> list[StepResult]:
 
 @pytest.mark.parametrize("target", ["step", "summary"])
 @pytest.mark.parametrize("repetitions", [1, 2])
+@pytest.mark.parametrize("skipped", [False, True])
 def test_cli_report_retries_interrupted_render_without_losing_steps_or_double_counting(
-    monkeypatch: pytest.MonkeyPatch, target: str, repetitions: int
+    monkeypatch: pytest.MonkeyPatch, target: str, repetitions: int, skipped: bool
 ) -> None:
-    baseline: Transcript = []
-    _capture_console(monkeypatch, baseline)
-    assert _report_steps(iter(_rows())) is True
-    assert any("alpha-copy" in line for _, line in baseline)
-    assert any("published alpha" in line for _, line in baseline)
-    interrupted_line = baseline[0] if target == "step" else baseline[-1]
+    rows = _rows()
+    expected: Transcript = [("success", "published alpha"), ("failure", "failed alpha-copy")]
+    if skipped:
+        rows.append(StepResult("omega", True, "skipped omega", skipped=True))
+        expected.append(("warning", "skipped omega"))
+    expected.append(("info", f"archived 1, skipped {int(skipped)}, failed 1"))
+    interrupted_line = expected[0] if target == "step" else expected[-1]
     observed: Transcript = []
     cancellations: list[str] = []
     attempts = 0
@@ -62,8 +64,8 @@ def test_cli_report_retries_interrupted_render_without_losing_steps_or_double_co
             raise KeyboardInterrupt
 
     _capture_console(monkeypatch, observed, interrupt)
-    assert _report_steps(iter(_rows()), on_interrupt=lambda: cancellations.append("cancel")) is True
-    assert observed == baseline
+    assert _report_steps(iter(rows), on_interrupt=lambda: cancellations.append("cancel")) is True
+    assert observed == expected
     assert cancellations == ["cancel"] * repetitions
     assert attempts == repetitions
 
@@ -258,3 +260,46 @@ def test_cli_preserves_success_failure_and_unknown_selector_exit_codes(
         assert any(selector in line for _, line in transcript)
     assert not any(line.startswith("interrupted:") for _, line in transcript)
     assert probe.active == 0
+
+
+def test_cli_loads_ordinary_yaml_and_keeps_standard_options_available(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    probe = CapabilityProbe(("alpha",))
+    configure(monkeypatch, probe)
+    probe.release_all()
+    path = tmp_path / "ordinary.yaml"
+    path.write_text(
+        "instances:\n"
+        "  git-src:\n    use: tar-archive\n    enabled: false\n"
+        "  alpha:\n    use: parallel-probe\n    with:\n"
+        "      source: /source/alpha\n      out: /output/alpha.tgz\n      token: token-alpha\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(path)])
+    assert result.exit_code == 0, (result.output, result.exception)
+    assert len(probe.calls) == 1
+    assert probe.calls[0]["source"] == "/source/alpha"
+    assert probe.calls[0]["out"] == "/output/alpha.tgz"
+    assert probe.calls[0]["token"] == "token-alpha"
+    help_result = CliRunner().invoke(cli, ["--help"])
+    assert help_result.exit_code == 0, help_result.output
+    for option in ("--version", "--config", "--config-dir", "--log-level", "--debug", "--update", "--jobs"):
+        assert option in help_result.output
+
+
+def test_cli_rejects_unknown_capability_inputs_before_running_writers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    probe = CapabilityProbe(("alpha",))
+    cfg = configure(monkeypatch, probe)
+    probe.release_all()
+    payload = cfg.model_dump(by_alias=True)
+    payload["instances"]["git-src"] = {"use": "tar-archive", "enabled": False}
+    payload["instances"]["alpha"]["with"]["unsupported_input"] = "unexpected"
+    path = tmp_path / "unknown-input.yaml"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(path)])
+    assert result.exit_code == 1, (result.output, result.exception)
+    assert "unsupported_input" in result.output
+    assert probe.calls == []
