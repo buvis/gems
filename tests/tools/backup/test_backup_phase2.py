@@ -52,7 +52,7 @@ class TestSourceOutOverride:
         def _fake_run(self, selected):
             name, instance = selected[0]
             captured["with_"] = dict(instance.with_)
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),
@@ -69,7 +69,7 @@ class TestSourceOutOverride:
 
         def _fake_run(self, selected):
             captured["with_"] = dict(selected[0][1].with_)
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,11 +11,16 @@ from click.testing import CliRunner
 
 from backup.cli import cli
 from backup.config import BackupConfig
+from backup.runner import Runner
 from backup.step_result import StepResult
 
 
 def _cfg(instances: dict[str, dict[str, object]]) -> BackupConfig:
     return BackupConfig.model_validate({"instances": instances})
+
+
+def _steps(*steps: StepResult) -> Generator[StepResult, None, None]:
+    yield from steps
 
 
 class TestBackupCliShape:
@@ -39,7 +45,7 @@ class TestBackupCliRun:
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
             patch(
                 "backup.runner.Runner.run",
-                return_value=iter([StepResult("git-src", True, "archived 3 files -> /x (99 bytes)")]),
+                return_value=_steps(StepResult("git-src", True, "archived 3 files -> /x (99 bytes)")),
             ),
         ):
             result = runner.invoke(cli, [])
@@ -53,7 +59,7 @@ class TestBackupCliRun:
 
         def _fake_run(self, selected):
             captured["selected"] = [n for n, _ in selected]
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),
@@ -76,7 +82,7 @@ class TestBackupCliRun:
 
         def _fake_run(self, selected):
             captured["selected"] = [n for n, _ in selected]
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),
@@ -92,7 +98,7 @@ class TestBackupCliRun:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
-            patch("backup.runner.Runner.run", return_value=iter([])),
+            patch("backup.runner.Runner.run", return_value=_steps()),
         ):
             result = runner.invoke(cli, ["--only", "nope"])
         # an unknown --only name now fails the run (was exit 0): a mistyped
@@ -133,8 +139,8 @@ class TestBackupCliDryRun:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=plan),
-            patch("backup.runner.Runner.__init__", return_value=None) as mock_init,
-            patch("backup.runner.Runner.run", return_value=iter([])),
+            patch("backup.runner.Runner.__init__", autospec=True, side_effect=Runner.__init__) as mock_init,
+            patch("backup.runner.Runner.run", return_value=_steps()),
         ):
             result = runner.invoke(cli, ["--dry-run"])
         assert result.exit_code == 0
@@ -163,11 +169,9 @@ class TestBackupCliExitCode:
             patch("backup.config.applicable_instances", return_value=plan),
             patch(
                 "backup.runner.Runner.run",
-                return_value=iter(
-                    [
-                        StepResult("a", False, "a failed: source not found"),
-                        StepResult("b", True, "archived 2 files -> /x"),
-                    ],
+                return_value=_steps(
+                    StepResult("a", False, "a failed: source not found"),
+                    StepResult("b", True, "archived 2 files -> /x"),
                 ),
             ),
         ):
@@ -184,7 +188,7 @@ class TestBackupCliExitCode:
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
             patch(
                 "backup.runner.Runner.run",
-                return_value=iter([StepResult("git-src", True, "archived 3 files -> /x")]),
+                return_value=_steps(StepResult("git-src", True, "archived 3 files -> /x")),
             ),
         ):
             result = runner.invoke(cli, [])
@@ -253,7 +257,7 @@ class TestOnlyUnknownExitCode:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
-            patch("backup.runner.Runner.run", return_value=iter([])) as mock_run,
+            patch("backup.runner.Runner.run", return_value=_steps()) as mock_run,
         ):
             result = runner.invoke(cli, ["--only", "typo"])
         assert result.exit_code != 0
@@ -267,7 +271,7 @@ class TestOnlyUnknownExitCode:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=plan),
-            patch("backup.runner.Runner.run", return_value=iter([StepResult("git-src", True, "archived 1 -> /x")])),
+            patch("backup.runner.Runner.run", return_value=_steps(StepResult("git-src", True, "archived 1 -> /x"))),
         ):
             result = runner.invoke(cli, ["--only", "git-src,typo"])
         assert result.exit_code != 0
