@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tarfile
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,8 @@ from backup.runner import Runner
 
 if TYPE_CHECKING:
     from os import stat_result
+
+    from pytest_mock import MockerFixture
 
 
 def _config(tmp_path: Path, outputs: dict[str, Path]) -> BackupConfig:
@@ -174,3 +177,60 @@ def test_runner_keeps_empty_selection_empty_without_planning_unselected_instance
     for name, out in outputs.items():
         assert not out.exists()
         assert (tmp_path / "sources" / name / "tiny.txt").read_bytes() == name.encode()
+
+
+@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
+@pytest.mark.parametrize("error_type", [OSError, PermissionError, RuntimeError])
+@pytest.mark.parametrize("now", [datetime(2026, 12, 31, 23, 59, 59), datetime(2027, 1, 1, 0, 0, 1)])
+def test_runner_rejects_timestamp_output_collisions_when_source_metadata_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    mode: str,
+    error_type: type[Exception],
+    now: datetime,
+) -> None:
+    pattern = "archive-%Y%m%d-%H%M%S.tar.gz"
+    shared = tmp_path / "colliding" / now.strftime(pattern)
+    independent = tmp_path / "independent" / "archive.tar.gz"
+    cfg = _config(
+        tmp_path,
+        {
+            "stamped": tmp_path / "colliding" / pattern,
+            "literal": shared,
+            "independent": independent,
+        },
+    )
+    clock = mocker.patch("backup.runner.datetime", autospec=True)
+    clock.now.return_value = now
+    fallback = mocker.patch("backup.capabilities.tar_archive.datetime", autospec=True)
+    fallback.now.return_value = datetime(2001, 6, 7, 8, 9, 10)
+    runner = Runner(cfg, dry_run=mode == "dry-run")
+    with monkeypatch.context() as patch:
+        _fail_metadata(patch, {tmp_path / "sources" / "stamped": error_type("stamped source metadata")})
+        selected = list(cfg.instances.items())
+        results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
+    assert [result.label for result in results] == ["stamped", "literal", "independent"]
+    for result in results[:2]:
+        other = "literal" if result.label == "stamped" else "stamped"
+        message = f"output '{shared}' is also the output of '{other}'"
+        if mode == "plan":
+            assert result.status == "fail"
+            assert result.reason == message
+            assert result.out == str(shared)
+        else:
+            assert result.success is False
+            assert result.skipped is False
+            assert result.message == message
+    if mode == "plan":
+        assert results[2].status == "run"
+        assert results[2].out == str(independent)
+    else:
+        assert results[2].success is True
+        assert results[2].skipped is False
+        assert results[2].out_path == str(independent)
+    assert not shared.parent.exists()
+    assert independent.exists() is (mode == "run")
+    assert independent.parent.exists() is (mode == "run")
+    if mode == "run":
+        _assert_archive(independent, "independent")
