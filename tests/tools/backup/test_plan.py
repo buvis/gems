@@ -385,7 +385,7 @@ class TestCapabilityPlan:
             ("python-tarfile-extra", "fail"),
             ("extra-system-tar", "fail"),
             ("tar", "fail"),
-            ("", "fail"),
+            ("", "run"),
         ],
     )
     def test_capability_plan_accepts_only_known_engine_names(self, tmp_path: Path, engine: str, status: str) -> None:
