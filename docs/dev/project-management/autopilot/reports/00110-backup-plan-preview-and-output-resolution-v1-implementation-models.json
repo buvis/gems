@@ -1,8 +1,8 @@
 {
-  "fingerprint": "2cdd70d7aa706f47f33ff064b15de9f67f138398584edcf02ec84c8e2d1bb409",
+  "fingerprint": "3baeaf4a31599a806cbd25f0d3e27604f27d3390f810d61c590957c5b62d3c44",
   "snapshot": {
     "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
-    "cycle": 1,
+    "cycle": 2,
     "work_start_sha": "7f4b462f1275c9306d7cc452cb2024a429f2c371",
     "tasks": [
       {
@@ -75,6 +75,37 @@
             "actual_model": "gpt-6.1-sol",
             "actual_provider": "openai",
             "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "6",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "7",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
+            "outcome": "completed"
+          },
+          {
+            "attempt": 2,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
             "outcome": "completed"
           }
         ]
@@ -217,6 +248,78 @@
       "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_5-metadata.jsonl",
       "line": 2,
       "sha256": "806e91aca61e8bb09c55d32228bfd7a4f464bbae12506ab06587d38149b70904"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess7_contract-metadata.jsonl",
+      "line": 2,
+      "sha256": "0c591eae85ceb617302cea6408fa278fafdc4b73f2c32710f25d6f42a34756f7"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess6-metadata.jsonl",
+      "line": 2,
+      "sha256": "fc59c64ea1d138144b199a7e95fc0c94caad9f845b11a109ecaf799c480730b7"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess6_boundary-metadata.jsonl",
+      "line": 2,
+      "sha256": "e19690fa29858cf3643b94de1bb0bb6e2210618141ba79f358c58635c46dc700"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess7-metadata.jsonl",
+      "line": 2,
+      "sha256": "dc209631d72017967b0ea121aff81b09b983829cbac8567459fa176bec84c5d7"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-6-initial-metadata.jsonl",
+      "line": 4,
+      "sha256": "df570d4442a5dfcdd7bb57d1c7db24d081fc65b262053e5285cd7da7410d9bfd"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-6-retry-1-metadata.jsonl",
+      "line": 3,
+      "sha256": "a4883ce67ef115e6cbe26cc3c02922221ebf3b993840128130f3c319a2cc87d8"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-metadata.jsonl",
+      "line": 4,
+      "sha256": "94d514490a61c6e9349a6ffe08b2dd48253109f3e87a8ea214b41b05fdef4c22"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-retry-1-metadata.jsonl",
+      "line": 3,
+      "sha256": "1aeee2e14725bf5a087b51e6fc2107ea62e24988f73510f5e39eb55629a21c2f"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-review-fix-metadata.jsonl",
+      "line": 6,
+      "sha256": "db251dcf769ee12761a79d5195552a286f2c9e05e65fe3245a22010b934d07f3"
     }
   ]
 }

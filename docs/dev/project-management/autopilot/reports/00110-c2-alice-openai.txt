@@ -1,0 +1,16 @@
+[ALICE] 🟡 Simplification: the record test repeats field checks through indexes, slicing, equality and `_make`. Keep `_fields`, tuple values and named-field assertions; remove redundant NamedTuple checks. | File: tests/tools/backup/test_plan.py:115 | Task: 1
+[ALICE] ⚪ With `source=""` and an existing regular output file, `plan()` hardcodes `replaces=False`, omitting the required replacement marker. Derive it from the configured output and add an assertion. | File: src/tools/backup/capabilities/tar_archive.py:83 | Task: 7
+[ALICE] ⚪ The new timestamp-collision test is 52 lines according to the supplied AST counts, exceeding the 50-line limit. | File: tests/tools/backup/test_plan_errors.py:185 | Task: 6
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: fail
+R10: pass
+R11: pass
+R12: fail
+R13: pass

@@ -62,5 +62,45 @@
     "issue": "Known limitation: the plan's item check ignores exclusions. If every present item is excluded, the plan shows `run` but the actual run skips. The PRD specifies a lexists-only check.",
     "file": "src/tools/backup/capabilities/tar_archive.py:76",
     "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Simplification: in `plan`'s missing-input branch, `out_text = _expand_stamp(out_raw, now) if out_raw else \"\"` has a redundant conditional, because `_expand_stamp(\"\")` already returns `\"\"`. Use `out_text = _expand_stamp(out_raw, now)`.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:81",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Missing sources bypass item validation and output containment checks: `items=['../escape']` or an output inside the missing source produces `skip` and exit 0, although the spec requires `fail`.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:91",
+    "reason": "single-voice; fixtures confirm missing source skips before item/containment validation. No write occurs; existing missing-source behavior and PRD status precedence are ambiguous."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The acceptance commands pass but test less than they appear to. In `test_plan.py`, `-k runner` matches no test (only the duplicate tests run), and `-k cli` selects one test that checks neither the line format nor the mutual-exclusion message. Those checks live in test_plan_cli.py and test_plan_runner.py, which the spec's file layout says should be `test_plan.py`.",
+    "file": "tests/tools/backup/test_plan.py",
+    "reason": "single-voice; required assertions exist in dedicated test_plan_cli.py/test_plan_runner.py and whole backup suite covers them."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "2 touched test(s) pass against the pre-change code: test_runner_keeps_empty_selection_empty_without_planning_unselected_instances. Bob also notes duplicated empty-selection tests across three files.",
+    "file": "tests/tools/backup/test_plan_errors.py:164",
+    "reason": "single-voice reviewer; mechanical replay is retained explicitly. Empty selection is an unchanged run/dry-run contract, so passing base is expected and does not prove the plan variant tautological."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "26 touched test(s) pass against the pre-change code: test_empty_paths_fail_without_using_cwd_or_changing_artifacts +20 more.",
+    "file": "tests/tools/backup/test_plan_validation.py:58",
+    "reason": "Behavior-preserving regression guards: PRD requires dry-run unchanged; these cases preserve base input/engine/fatal behavior and target cycle1 drift. Mechanical fact retained, not silently dropped."
   }
 ]

@@ -1,0 +1,45 @@
+Prior findings: R1 is resolved (`runner.py:66` catches the error per instance, turns it into a fail entry and re-raises FatalError). R2 is resolved (`_parse_inputs` falls back to python on an empty engine). R3 is resolved (`plan` calls `_missing_input`, and an empty `out` gets no duplicate key). R6 and R7 are resolved (the key is computed once, and `_run_validated` takes `label` and `engine` as parameters). R4, R5 and R8 to R13 are settled, so I did not raise them again.
+
+[BOB] 🟡 `_fail_metadata` fakes metadata errors by patching `Path.stat`. On Python 3.13+, `Path.exists()` and `Path.is_dir()` call `os.path.exists` and `os.path.isdir`. Those skip `Path.stat` and return False on an OSError. So the isolation, duplicate and FatalError tests in this file may fail on the 3.13 and 3.14 CI cells while they pass locally | File: tests/tools/backup/test_plan_errors.py:30 | Task: 6
+[BOB] 🟡 Two new `### Fixed` lines describe bugs in the unreleased `--plan` code from this same PRD (metadata-error isolation, and the empty engine/source/out handling in plans). No released version had these bugs, so the release notes would list fixes for bugs users never saw | File: CHANGELOG.md:22 | Task: 6
+[BOB] 🟡 `TestPlanEntry` tests stdlib NamedTuple behavior, not backup rules: keyword order (:126), immutability (:164), `_replace` (:172) and constructor TypeError (:205). The test at :94 already pins the PRD contract (six fields, in order) | File: tests/tools/backup/test_plan.py:126 | Task: 1
+[BOB] ⚪ The empty selection is tested three times with the same shape (test_plan_errors.py:164, test_plan_runner.py:197, test_plan_validation.py:217). The run and dry-run variants pass against base and could not fail on any plausible implementation (fail-first [MECH]) | File: tests/tools/backup/test_plan_errors.py:164 | Task: 6
+[BOB] ⚪ The `_plan` except handler recomputes the stamp with a bare `now.strftime(...)`. If the caught error came from stamp expansion itself (a ValueError from an embedded NUL or a lone surrogate in `out`), the handler raises it again, out of `_plan`. The whole run then aborts with a traceback. At base, the same input gave one failed step | File: src/tools/backup/runner.py:69 | Task: 6
+[BOB] ⚪ The fallback entry sets `source=""`, so the `--plan` row reads `blocked  fail   -> <out>` and the configured source is missing | File: src/tools/backup/runner.py:70 | Task: 6
+[BOB] ⚪ The missing-input branch of `plan` hard-codes `replaces=False` and builds `out` without `expanduser`. Every other row uses `_resolve_paths` and `out.exists()`. So a row with an empty source and an existing `~/x.tgz` shows `~/x.tgz` and no `[replaces existing]`, while the invalid-items fail row does show the marker | File: src/tools/backup/capabilities/tar_archive.py:81 | Task: 7
+[BOB] ⚪ Fail-first replay: 26 touched tests in this file pass against base | File: tests/tools/backup/test_plan_validation.py:58 | Task: 7
+
+FIX:
+- CHANGELOG Fixed lines for bugs that never shipped — CHANGELOG.md:22 — delete both new `### Fixed` backup lines; the `### Added` `--plan` line already covers the feature.
+- NamedTuple framework tests — tests/tools/backup/test_plan.py:126 — delete the tests at :126, :164, :172 and :205; keep :94.
+- Empty selection tested three times — tests/tools/backup/test_plan_errors.py:164 — keep one parametrized test (plan/run/dry-run); delete test_plan_runner.py:197 and test_plan_validation.py:217.
+- Fallback stamp can raise inside the except handler — src/tools/backup/runner.py:69 — wrap it: `try: configured = now.strftime(raw) except ValueError: configured = raw`.
+- Fallback row drops the configured source — src/tools/backup/runner.py:70 — pass `str(instance.with_.get("source", ""))` instead of `""`.
+- Missing-input row has wrong `replaces` and an unexpanded `out` — src/tools/backup/capabilities/tar_archive.py:81 — when `out_raw` is set, build `out = Path(_expand_stamp(out_raw, now)).expanduser()` and pass `out.exists()` as `replaces`.
+
+VERIFY:
+- Is the `Path.stat` patch bypassed on Python 3.13+? — run `uv run --python 3.14 python -c "import inspect, pathlib; print(inspect.getsource(pathlib.Path.exists)); print(inspect.getsource(pathlib.Path.is_dir))"`. If the output shows `os.path.exists`/`os.path.isdir`, run `uv run --python 3.13 pytest tests/tools/backup/test_plan_errors.py -q` and the same with `--python 3.14`. If those are red, make the fake raise from `Path.resolve` or from the target instance's `TarArchive.plan` instead of from `Path.stat`.
+
+KNOWN:
+- The other 24 run/dry-run tests in test_plan_validation.py that pass at base — they are regression guards for the PRD rule "`--dry-run` is unchanged" (empty engine, empty source/out, engine lookalikes, fatal propagation). Base passes them by design, and they fail against the cycle-1 code that broke that rule.
+
+R1: pass
+R2: fail
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass
+
+```
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass
+```

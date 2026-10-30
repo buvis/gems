@@ -1,0 +1,16 @@
+2026-10-30T04:31:15.568869Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: [Fact-Forcing Gate]
+
+Before the first Bash command this session, present these facts:
+
+1. The current user request in one sentence
+2. What this specific command verifies or produces
+
+Present the facts, then retry the same operation.. Command: cat ~/.claude/AGENTS.md; cat AGENTS.md; cat /Users/bob/.claude/plugins/cache/buvis-plugins/autopilot/0.10.0/skills/run-autopilot/SKILL.md
+2026-10-30T04:35:16.573164Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: BLOCKED: shell redirects into docs/dev/project-management/ or docs/dev/tmp/ are not allowed.
+
+Use the Write tool for development artifacts.
+See ~/.claude/rules/working-documents.md.. Command: PYTHONPATH=/Users/bob/.claude/plugins/cache/buvis-plugins/autopilot/0.10.0/skills/run-autopilot python3 -m cli review-stage --cycle-id 00110-c2 --state docs/dev/project-management/autopilot/state.json --gate-command 'python3 /Users/bob/git/src/github.com/buvis/gems/docs/dev/tmp/verify_00110_c2.py -q --tb=line' --roster alice,blake,bob --since 7f4b462f1275c9306d7cc452cb2024a429f2c371 --replay-cmd 'uv run pytest' --settled-ledger /Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-ledger.json --prior-findings /Users/bob/git/src/github.com/buvis/gems/docs/dev/tmp/prior-findings-00110-c2.md > docs/dev/tmp/00110-c2-stage.json 2> docs/dev/tmp/00110-c2-stage.stderr
+2026-10-30T04:49:04.202576Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: BLOCKED: shell redirects into docs/dev/project-management/ or docs/dev/tmp/ are not allowed.
+
+Use the Write tool for development artifacts.
+See ~/.claude/rules/working-documents.md.. Command: uv run --python 3.14 --with pytest-mock pytest tests/tools/backup -q --tb=line > docs/dev/tmp/00110-c2-python314.log 2>&1

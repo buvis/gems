@@ -1,0 +1,142 @@
+Command: uv run --python 3.14 --with pytest-mock pytest tests/tools/backup -q --tb=line
+Exit: 1
+........................................................................ [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 41%]
+........................................................................ [ 55%]
+.............FFFFFFFFFFFFFFFFFF..................FFFFFFFFFFFF........... [ 69%]
+........................................................................ [ 83%]
+........................................................................ [ 97%]
+...........                                                              [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert 'run' == 'fail'
+      
+      - fail
+      + run
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:71: AssertionError: assert 'run' == 'fail'
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d0318d0>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d0315c0>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   AssertionError: assert 'run' == 'fail'
+      
+      - fail
+      + run
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:71: AssertionError: assert 'run' == 'fail'
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d032900>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d0332a0>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   AssertionError: assert 'run' == 'fail'
+      
+      - fail
+      + run
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:71: AssertionError: assert 'run' == 'fail'
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10cc49ef0>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d032660>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   AssertionError: assert 'run' == 'fail'
+      
+      - fail
+      + run
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:71: AssertionError: assert 'run' == 'fail'
+E   AssertionError: assert not True
+     +  where True = exists()
+     +    where exists = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1332/test_runner_isolates_metadata_10/archives/blocked/daily.tar.gz').exists
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:77: AssertionError: assert not True
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d0308a0>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   AssertionError: assert 'run' == 'fail'
+      
+      - fail
+      + run
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:71: AssertionError: assert 'run' == 'fail'
+E   AssertionError: assert not True
+     +  where True = exists()
+     +    where exists = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1332/test_runner_isolates_metadata_13/archives/blocked/daily.tar.gz').exists
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:77: AssertionError: assert not True
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d12c980>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   AssertionError: assert 'run' == 'fail'
+      
+      - fail
+      + run
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:71: AssertionError: assert 'run' == 'fail'
+E   AssertionError: assert not True
+     +  where True = exists()
+     +    where exists = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1332/test_runner_isolates_metadata_16/archives/blocked/daily.tar.gz').exists
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:77: AssertionError: assert not True
+E   assert True is False
+     +  where True = <backup.step_result.StepResult object at 0x10d0307c0>.success
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:74: assert True is False
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   AssertionError: assert not True
+     +  where True = exists()
+     +    where exists = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1332/test_runner_propagates_the_ori7/notes.tar.gz').exists
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:160: AssertionError: assert not True
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+E   AssertionError: assert not True
+     +  where True = exists()
+     +    where exists = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1332/test_runner_propagates_the_ori10/notes.tar.gz').exists
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:160: AssertionError: assert not True
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:152: Failed: DID NOT RAISE FatalError
+=========================== short test summary info ============================
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-OSError-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-OSError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-OSError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-PermissionError-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-PermissionError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-PermissionError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-RuntimeError-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-RuntimeError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-RuntimeError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-OSError-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-OSError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-OSError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-PermissionError-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-PermissionError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-PermissionError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-RuntimeError-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-RuntimeError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-RuntimeError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[source-backup storage unavailable-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[source-backup storage unavailable-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[source-backup storage unavailable-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[source-backup permission fatal-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[source-backup permission fatal-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[source-backup permission fatal-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[out-backup storage unavailable-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[out-backup storage unavailable-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[out-backup storage unavailable-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[out-backup permission fatal-plan]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[out-backup permission fatal-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_propagates_the_original_fatal_metadata_error[out-backup permission fatal-dry-run]
+30 failed, 485 passed in 4.97s
+
+

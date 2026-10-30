@@ -1,0 +1,17 @@
+{
+  "provider": "claude",
+  "model_provider": "anthropic",
+  "lens": "blake",
+  "model": "opus",
+  "started": 1793335246.367497,
+  "completed": 1793335477.036959,
+  "output": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00110-c2-blake-anthropic.txt",
+  "sha256": "7388311944ca3fe50a968ab317b5a889917f8ef041232ded37f46c29c0eeffb1",
+  "raw": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00110-c2-blake-anthropic-6504d550bc1f43d89f2607f8bdd58751.jsonl",
+  "raw_sha256": "4faaf4129a0eabf05fa46dfa31e19c861176947a58afab31e200534717410814",
+  "thread_id": "5fdbe5a9-72a0-44b9-a676-6ff3d3d3cf9d",
+  "root": "/Users/bob/git/src/github.com/buvis/gems",
+  "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+  "cycle": 2,
+  "implementation_fingerprint": "3baeaf4a31599a806cbd25f0d3e27604f27d3390f810d61c590957c5b62d3c44"
+}

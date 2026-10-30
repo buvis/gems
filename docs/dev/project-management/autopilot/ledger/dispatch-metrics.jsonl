@@ -396,3 +396,7 @@
 {"id":"9051dc7d","kind":"pat","task":"7","queued_at":1793333543,"prompt_bytes":7783}
 {"id":"9051dc7d","ended_at":1793333817,"elapsed_s":274,"outcome":"ok","detail":"Final Pat3 both closure gaps resolved, NO FINDINGS"}
 {"kind":"handoff","site":"review","edge":"leave","at":1793334616,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793334899,"phase":"review","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}
+{"id":"6cdba2e1","kind":"bob","task":"review-00110-c2","queued_at":1793335166,"prompt_bytes":22103}
+{"id":"6cdba2e1","ended_at":1793336085,"elapsed_s":919,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1793336162,"phase":"paused","prd":"00110-backup-plan-preview-and-output-resolution-v1.md"}

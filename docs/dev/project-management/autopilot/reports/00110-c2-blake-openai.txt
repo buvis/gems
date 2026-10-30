@@ -1,0 +1,22 @@
+[BLAKE] 🟡 Missing sources bypass item validation and output containment checks: `items=['../escape']` or an output inside the missing source produces `skip` and exit 0, although the spec requires `fail`. | File: src/tools/backup/capabilities/tar_archive.py:91 | Task: general
+[BLAKE] ⚪ An empty source with an existing output returns `replaces=False`, omitting the required replacement marker from the failed plan row. | File: src/tools/backup/capabilities/tar_archive.py:82 | Task: general
+
+B1: fail
+B2: pass
+B3: fail
+B4: pass
+B5: fail
+B6: pass
+B7: pass
+B8: pass
+B9: pass
+B10: fail
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass
