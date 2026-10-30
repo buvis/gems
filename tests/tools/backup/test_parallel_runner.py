@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import signal
@@ -15,6 +16,7 @@ from unittest.mock import call, create_autospec
 
 import pytest
 from buvis.pybase.result import FatalError
+from click.testing import CliRunner
 
 from backup.capabilities.tar_archive import (
     ArchiveCancelled,
@@ -22,6 +24,7 @@ from backup.capabilities.tar_archive import (
     _write_archive,
     _write_archive_system_tar,
 )
+from backup.cli import cli
 from backup.runner import Runner
 from backup.step_result import StepResult
 from tests.tools.backup.parallel_runner_helpers import PRIORITY, WAIT, CapabilityProbe, Consumption, configure
@@ -582,6 +585,7 @@ class TestParallelRunner:
         assert {row.label for row in results if not row.success} == {"alpha-copy", "omega"}
         assert len(results) == 3
         assert not probe.started["omega"].is_set()
+
         assert runner.interrupted is True
         assert runner.cancelled_names == ("alpha-copy", "omega")
         assert probe.active == 0
@@ -650,3 +654,90 @@ class TestParallelRunner:
         assert cleaned.is_set()
         assert probe.active == 0
         assert not probe.started["omega"].is_set()
+
+
+class TestCliParallelJobs:
+    @pytest.mark.parametrize("jobs", [0, -2])
+    @pytest.mark.parametrize("mode", [[], ["--list"], ["--plan"], ["--dry-run"]])
+    def test_cli_rejects_invalid_jobs_before_loading_config_or_early_modes(
+        self, tmp_path: Path, jobs: int, mode: list[str]
+    ) -> None:
+        missing = tmp_path / "missing.yaml"
+        result = CliRunner().invoke(
+            cli, ["--config-dir", str(tmp_path), "--config", str(missing), "--jobs", str(jobs), *mode]
+        )
+        assert result.exit_code == 1, result.output
+        assert "--jobs must be at least 1" in result.output
+        assert str(missing) not in result.output
+        assert "Usage:" not in result.output
+
+    @pytest.mark.parametrize("arguments,expected", [([], 3), (["--jobs", "1"], 1), (["--jobs", "2"], 2)])
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_cli_forwards_default_and_explicit_jobs_to_real_scheduling(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        arguments: list[str],
+        expected: int,
+        dry_run: bool,
+    ) -> None:
+        probe = CapabilityProbe()
+        cfg = configure(monkeypatch, probe)
+        payload = cfg.model_dump(by_alias=True)
+        payload["instances"]["git-src"] = {"use": "tar-archive", "enabled": False}
+        path = tmp_path / "jobs.yaml"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        failures: list[BaseException] = []
+
+        def release_batch() -> None:
+            try:
+                for name in PRIORITY[:expected]:
+                    assert probe.started[name].wait(WAIT), f"missing initial worker {name}"
+                assert all(not probe.started[name].is_set() for name in PRIORITY[expected:])
+            except BaseException as exc:
+                failures.append(exc)
+            finally:
+                probe.release_all()
+
+        releaser = threading.Thread(target=release_batch, daemon=True)
+        releaser.start()
+        try:
+            mode = ["--dry-run"] if dry_run else []
+            result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(path), *arguments, *mode])
+        finally:
+            probe.release_all()
+            releaser.join(WAIT)
+        assert not releaser.is_alive()
+        assert failures == []
+        assert result.exit_code == 0, result.output
+        assert probe.maximum == expected
+        assert {row["label"] for row in probe.calls} == set(PRIORITY)
+        assert len(probe.calls) == len(PRIORITY)
+        assert all(row["dry_run"] is dry_run for row in probe.calls)
+        assert all(row["token"] == f"token-{row['label']}" for row in probe.calls)
+        assert probe.active == 0
+
+    @pytest.mark.parametrize("name", ["alpha", "alpha-copy"])
+    def test_cli_plan_keeps_writers_and_executor_unused_with_jobs(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
+    ) -> None:
+        from concurrent.futures import ThreadPoolExecutor
+
+        probe = CapabilityProbe(("alpha", "alpha-copy"))
+        cfg = configure(monkeypatch, probe)
+        payload = cfg.model_dump(by_alias=True)
+        payload["instances"]["git-src"] = {"use": "tar-archive", "enabled": False}
+        path = tmp_path / "plan.yaml"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+        def reject_executor(*args: object, **kwargs: object) -> None:
+            raise AssertionError("a read-only plan must not construct an executor")
+
+        monkeypatch.setattr(ThreadPoolExecutor, "__init__", reject_executor)
+        result = CliRunner().invoke(
+            cli, ["--config-dir", str(tmp_path), "--config", str(path), "--jobs", "2", "--plan", "--only", name]
+        )
+        assert result.exit_code == 0, result.output
+        assert [row["label"] for row in probe.plans] == [name]
+        assert probe.calls == []
+        assert name in result.output
