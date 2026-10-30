@@ -109,8 +109,8 @@ All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netsc
 
 ### backup
 
-`--jobs N` runs up to N steps concurrently (default: 3, minimum: 1).
-Use `--jobs 1` for sequential execution. Steps are submitted by configured order,
+`--jobs N` runs up to N instances concurrently (default: 3, minimum: 1).
+Use `--jobs 1` for sequential execution. Instances are submitted by configured order,
 then name; results appear in completion order.
 
 Ctrl-C stops new jobs, cancels and joins active writers, preserves completed
