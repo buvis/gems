@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tarfile
 from datetime import datetime
@@ -8,9 +9,11 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
+from click.testing import CliRunner
 
 from backup.capabilities import Capability
 from backup.capabilities.tar_archive import TarArchive, _expand_stamp
+from backup.cli import cli
 from backup.config import BackupConfig
 from backup.runner import Runner
 from backup.step_result import PlanEntry
@@ -19,6 +22,34 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from pytest_mock import MockerFixture
+
+
+def test_cli_plan_prints_real_config_without_creating_archive(tmp_path: Path) -> None:
+    source = tmp_path / "notes"
+    source.mkdir()
+    out = tmp_path / "notes.tar.gz"
+    config = tmp_path / "backup.yaml"
+    config.write_text(
+        json.dumps(
+            {
+                "instances": {
+                    "notes": {
+                        "use": "tar-archive",
+                        "with": {"source": str(source), "out": str(out)},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(cli, ["--config", str(config), "--plan"])
+
+    assert result.exit_code == 0, result.output
+    assert "notes" in result.output
+    assert "run" in result.output
+    assert "->" in result.output
+    assert not out.exists()
 
 
 @pytest.mark.parametrize("dry_run", [False, True])
