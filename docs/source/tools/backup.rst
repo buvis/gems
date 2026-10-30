@@ -13,7 +13,8 @@ Usage
 
 .. code-block:: bash
 
-    backup                              # run every enabled instance, in order
+    backup                              # run enabled instances with up to 3 jobs
+    backup --jobs 1                     # run instances strictly sequentially
     backup --only git-src,docs          # run only these instances (comma list or repeated)
     backup --tag nightly                # run only instances carrying this tag
     backup --list                       # print the configured instances and exit
@@ -27,6 +28,20 @@ non-empty flag wins over the configured value); they require exactly one
 selected instance, via ``--only``. ``--show-excludes`` is read-only: it prints
 the resolved exclude set and, with ``--for <path>``, the ``.bkpignore`` rules
 effective under that path, then exits without writing an archive.
+
+Parallel execution
+------------------
+
+``--jobs N`` limits concurrent instances (default 3; integer, at least 1).
+``--jobs 1`` runs strictly sequentially. Instances are submitted in ascending
+``(order, name)`` order; results appear as instances complete. An instance does
+not wait for every lower-order instance to finish before it can start.
+
+Ctrl-C stops new work, requests cancellation of active writers and waits for
+them to stop. The command names unfinished instances and exits with status 130.
+Completed archives remain available; cancellation before publication preserves
+any previous archive. Python archive cancellation takes effect after the
+current member finishes. Parallel execution does not guarantee a speedup.
 
 Planning
 --------
@@ -59,7 +74,7 @@ under a new key and overrides a field of an existing instance by that key.
     instances:
       git-src:
         use: tar-archive                # a registered capability
-        order: 10                       # instances run in ascending order
+        order: 10                       # submission priority, ascending
         tags: [nightly]
         with:                           # capability inputs
           source: ~/git/src
@@ -79,7 +94,7 @@ Field                         Meaning
 ============================  ==============================================================
 ``use``                       registered capability name (``tar-archive``)
 ``enabled``                   set ``false`` to skip a merged/bundled instance (default true)
-``order``                     integer; instances run ascending (default 100)
+``order``                     integer; submission priority, ascending (default 100)
 ``tags``                      list of strings for ``--tag`` filtering
 ``inherit_excludes``          inherit global excludes (default true)
 ``exclude_remove``            exact inherited patterns to remove (default empty list)
