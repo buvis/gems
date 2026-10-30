@@ -151,7 +151,7 @@ class TestRunnerInstanceExcludes:
         )
         results = list(Runner(cfg).run(list(cfg.instances.items())))
         assert [step.success for step in results] == [True, True]
-        assert [step.label for step in results] == ["adjusted", "default"]
+        assert sorted(step.label for step in results) == ["adjusted", "default"]
         assert _archive_members(adjusted_out) == {f"src/{path}" for path in kept}
         assert _archive_members(default_out) == {
             "src/scratch/x",

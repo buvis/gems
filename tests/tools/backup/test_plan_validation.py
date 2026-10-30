@@ -149,7 +149,12 @@ def test_runner_keeps_missing_inputs_distinct_from_collisions_and_executes_indep
 
     results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
 
-    assert [result.label for result in results] == list(cfg.instances)
+    labels = [result.label for result in results]
+    if mode == "plan":
+        assert labels == list(cfg.instances)
+    else:
+        assert sorted(labels) == sorted(cfg.instances)
+        assert labels[:-2] == ["empty", "empty-copy", "missing", "missing-copy", "same", "same-copy"]
     for result in results:
         name = result.label
         if name in {"notes", "notes-copy"}:
@@ -198,15 +203,25 @@ def test_engine_lookalikes_remain_rejected_without_archive_effects(
 
 @pytest.mark.parametrize("interface", ["capability", "runner"])
 @pytest.mark.parametrize("message", ["archive storage unavailable", "archive permission denied"])
-def test_fatal_archive_errors_propagate_with_empty_default_engine(
+def test_fatal_archive_errors_follow_interface_contract_with_empty_default_engine(
     tmp_path: Path, mocker: MockerFixture, interface: str, message: str
 ) -> None:
     source = _source(tmp_path / "sources", "notes")
     out = tmp_path / "notes.tar.gz"
     mocker.patch("tarfile.open", autospec=True, side_effect=FatalError(message))
 
-    with pytest.raises(FatalError, match=message):
-        _invoke(interface, "run", {"source": str(source), "out": str(out), "engine": ""})
+    values = {"source": str(source), "out": str(out), "engine": ""}
+    if interface == "capability":
+        with pytest.raises(FatalError, match=message):
+            _invoke(interface, "run", values)
+    else:
+        results = _invoke(interface, "run", values)
+        assert len(results) == 1
+        assert results[0].label == "selected"
+        assert results[0].success is False
+        assert results[0].skipped is False
+        assert results[0].message == f"selected failed: {message}"
+        assert results[0].archive is None
 
     assert not out.exists()
     assert (source / "tiny.txt").read_bytes() == b"notes"

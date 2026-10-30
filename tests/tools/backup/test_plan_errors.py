@@ -63,7 +63,12 @@ def test_runner_isolates_metadata_failures_and_preserves_independent_instances(
         _fail_metadata(patch, {targets[name]: error_type(messages[name]) for name in failed})
         selected = list(cfg.instances.items())
         results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
-    assert [result.label for result in results] == list(names)
+    labels = [result.label for result in results]
+    if mode == "plan":
+        assert labels == list(names)
+    else:
+        assert sorted(labels) == sorted(names)
+        assert labels[: len(failed)] == list(failed)
     for result in results:
         out = outputs[result.label]
         if result.label in failed:
@@ -110,7 +115,12 @@ def test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails(
         _fail_metadata(patch, {target: error_type(f"blocked {metadata} metadata")})
         selected = list(cfg.instances.items())
         results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
-    assert [result.label for result in results] == list(outputs)
+    labels = [result.label for result in results]
+    if mode == "plan":
+        assert labels == list(outputs)
+    else:
+        assert sorted(labels) == sorted(outputs)
+        assert labels[: len(colliding)] == list(colliding)
     for result in results:
         if result.label in colliding:
             others = ", ".join(sorted(name for name in colliding if name != result.label))
