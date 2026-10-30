@@ -33,17 +33,18 @@ def test_cli_plan_prints_real_config_without_creating_archive(tmp_path: Path) ->
         json.dumps(
             {
                 "instances": {
+                    "git-src": {"use": "tar-archive", "enabled": False},
                     "notes": {
                         "use": "tar-archive",
                         "with": {"source": str(source), "out": str(out)},
-                    }
+                    },
                 }
             }
         ),
         encoding="utf-8",
     )
 
-    result = CliRunner().invoke(cli, ["--config", str(config), "--plan"])
+    result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), "--plan"])
 
     assert result.exit_code == 0, result.output
     assert "notes" in result.output

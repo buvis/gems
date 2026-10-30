@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 
 def _config(tmp_path: Path, instances: dict[str, dict[str, object]]) -> Path:
     path = tmp_path / "backup.yaml"
-    path.write_text(json.dumps({"instances": instances}), encoding="utf-8")
+    isolated = {"git-src": {"use": "tar-archive", "enabled": False}, **instances}
+    path.write_text(json.dumps({"instances": isolated}), encoding="utf-8")
     return path
 
 
@@ -51,7 +52,7 @@ def test_cli_plan_formats_run_and_skip_rows_and_preserves_existing_outputs(
     suffix = "  [replaces existing]" if existing else ""
 
     with patch("backup.cli.console.info", autospec=True) as info:
-        result = CliRunner().invoke(cli, ["--config", str(config), "--plan"])
+        result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), "--plan"])
 
     assert result.exit_code == 0, result.output
     assert [call.args[0] for call in info.call_args_list] == [
@@ -81,10 +82,12 @@ def test_cli_plan_prints_every_row_and_exits_one_for_invalid_items(
     entries = [(f"{name}-bad", invalid), (name, _instance(source, good_out))]
     if not failed_first:
         entries.reverse()
+    for order, (_, instance) in enumerate(entries):
+        instance["order"] = order
     config = _config(tmp_path, dict(entries))
 
     with patch("backup.cli.console.info", autospec=True) as info:
-        result = CliRunner().invoke(cli, ["--config", str(config), "--plan"])
+        result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), "--plan"])
 
     assert result.exit_code == 1, result.output
     expected = {
@@ -117,11 +120,11 @@ def test_cli_plan_applies_exact_selection_to_all_requested_instances(
     }[selector]
 
     with patch("backup.cli.console.info", autospec=True) as info:
-        result = CliRunner().invoke(cli, ["--config", str(config), "--plan", *flags])
+        result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), "--plan", *flags])
 
     assert result.exit_code == 0, result.output
     assert [call.args[0] for call in info.call_args_list] == [
-        f"{name}  run  {tmp_path / name} -> {tmp_path / f'{name}.tgz'}" for name in names
+        f"{name}  run  {tmp_path / name} -> {tmp_path / f'{name}.tgz'}" for name in sorted(names)
     ]
     assert not list(tmp_path.glob("*.tgz"))
 
@@ -132,7 +135,7 @@ def test_cli_plan_accepts_empty_selection_without_archive_effects(tmp_path: Path
     source.mkdir()
     out = tmp_path / "notes.tgz"
     config = _config(tmp_path, {} if empty_config else {"notes": _instance(source, out, tags=["daily-copy"])})
-    args = ["--config", str(config), "--plan"]
+    args = ["--config-dir", str(tmp_path), "--config", str(config), "--plan"]
     if not empty_config:
         args += ["--tag", "daily"]
 
@@ -165,7 +168,7 @@ def test_cli_plan_uses_source_and_out_overrides_for_the_selected_instance(
             "selected-copy": _instance(source, tmp_path / "other.tgz"),
         },
     )
-    args = ["--config", str(config), "--plan", "--only", "selected"]
+    args = ["--config-dir", str(tmp_path), "--config", str(config), "--plan", "--only", "selected"]
     if override in {"source", "both"}:
         args += ["--source", str(alternate)]
     if override in {"out", "both"}:
@@ -198,7 +201,9 @@ def test_cli_plan_rejects_overrides_without_exactly_one_selected_instance(
         tmp_path, {f"notes-{number}": _instance(source, tmp_path / f"notes-{number}.tgz") for number in range(count)}
     )
 
-    result = CliRunner().invoke(cli, ["--config", str(config), "--plan", flag, str(tmp_path / "override")])
+    result = CliRunner().invoke(
+        cli, ["--config-dir", str(tmp_path), "--config", str(config), "--plan", flag, str(tmp_path / "override")]
+    )
 
     assert result.exit_code == 1, result.output
     assert "exactly one selected instance" in result.output
@@ -214,7 +219,7 @@ def test_cli_plan_rejects_dry_run_combination_without_writing(tmp_path: Path, fl
     out.write_bytes(b"preserve archive")
     config = _config(tmp_path, {"notes": _instance(source, out)})
 
-    result = CliRunner().invoke(cli, ["--config", str(config), *flags])
+    result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), *flags])
 
     assert result.exit_code == 1, result.output
     assert "--plan and --dry-run are mutually exclusive" in result.output
@@ -230,7 +235,7 @@ def test_cli_dry_run_still_reports_selected_files_without_creating_archive(tmp_p
     out = tmp_path / f"{name}.tgz"
     config = _config(tmp_path, {name: _instance(source, out)})
 
-    result = CliRunner().invoke(cli, ["--config", str(config), "--dry-run"])
+    result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), "--dry-run"])
 
     assert result.exit_code == 0, result.output
     assert "2 files" in result.output
@@ -254,7 +259,7 @@ def test_cli_plan_surfaces_both_colliding_outputs_and_preserves_archive(
     config = _config(tmp_path, instances)
 
     with patch("backup.cli.console.info", autospec=True) as info:
-        result = CliRunner().invoke(cli, ["--config", str(config), "--plan"])
+        result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), "--plan"])
 
     assert result.exit_code == 1, result.output
     assert [call.args[0] for call in info.call_args_list] == [
@@ -293,7 +298,7 @@ def test_cli_plan_reads_metadata_without_walking_or_creating_directories(tmp_pat
         patch.object(os, "replace", forbidden),
         patch.object(tarfile, "open", forbidden),
     ):
-        result = CliRunner().invoke(cli, ["--config", str(config), "--plan"])
+        result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(config), "--plan"])
 
     assert result.exit_code == 0, result.output
     assert not out.parent.exists()
