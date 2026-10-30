@@ -1,0 +1,42 @@
+[
+  {
+    "task": "3",
+    "agent": "/root/ivan_3",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T01-10-25-01a18a24-ba49-70a0-b5da-84af879b226f.jsonl",
+    "source_lines": [
+      1,
+      10
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_3-metadata.jsonl",
+    "models": [
+      "gpt-6.1-sol"
+    ]
+  },
+  {
+    "task": "3",
+    "agent": "/root/tess_3",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T00-55-30-01a18a17-1393-7161-ad6a-0e70cf59c1e3.jsonl",
+    "source_lines": [
+      1,
+      10,
+      131
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_3-metadata.jsonl",
+    "models": [
+      "gpt-6.1-sol"
+    ]
+  },
+  {
+    "task": "3",
+    "agent": "/root/ivan_3_astra",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T01-15-39-01a18a29-8725-7403-b1be-0f6888c83b1b.jsonl",
+    "source_lines": [
+      1,
+      10
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_3_astra-metadata.jsonl",
+    "models": [
+      "gpt-6-astra"
+    ]
+  }
+]

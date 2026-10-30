@@ -1,0 +1,30 @@
+[
+  {
+    "task": "4",
+    "agent": "/root/tess_4",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T01-28-10-01a18a34-fc84-7d50-85dd-c6ce929c7e26.jsonl",
+    "source_lines": [
+      1,
+      10,
+      139
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_4-metadata.jsonl",
+    "models": [
+      "gpt-6.1-sol"
+    ]
+  },
+  {
+    "task": "4",
+    "agent": "/root/ivan_4",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T01-34-29-01a18a3a-c3de-7790-b33d-ef5afbb42e70.jsonl",
+    "source_lines": [
+      1,
+      10,
+      92
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_4-metadata.jsonl",
+    "models": [
+      "gpt-6.1-sol"
+    ]
+  }
+]

@@ -1,0 +1,47 @@
+# PRD 00110 build evidence
+
+Lane: full (classified fast-track; uncardable because the named test file did not exist).
+
+Task 1: PlanEntry record. Classifier opus/contract; host native mapping gpt-6.1-sol/high. Source backend Opus route has Anthropic independent completion review supported by autocodex driver for the actual OpenAI implementor.
+Tests separately committed at 773b2d1f and strengthened at 5975d208 after eight proven Devon weak points; all strengthened. Devon restored original bytes and contributes no surviving production code.
+Implementation e77766fc. Independent verification: 16 passed in 0.01s; exit 0. Style gate clean; split hygiene clean; self-deslop skipped:trivial (11 lines, one implementation file). Pat through real use-sonnet wrapper, tools disabled, high effort: NO FINDINGS (parser exit 0).
+Red-check before implementation: skipped: PlanEntry import unavailable (existing module missing new symbol), collection error exit 2.
+Native session metadata retained under the sibling evidence directory; includes Tess and Ivan, excludes coordinator, guardian, restored adversary and read-only Pat from implementation provenance.
+
+Task 2: Capability.plan and clock. Tests6a172d2f strengthened99f5c64a after eight proven exploits; all eight strengthened. Red-check81failed/3passed/16deselected exit1 before implementation. Implementation091cf6d8 passed84focused tests. Self-deslop no slop found. Mechanical size gate found pre-existing-but-now-changed67-line TarArchive.run; bounded style extraction introduced PLR0913/PLR0917, first repair interrupted before edits and switched to actual gpt-6-astra/high per host after concrete Opus failure. Final extraction de84f6f1 committed, ruff/style clean, tests84passed/16deselected. Split hygiene clean. Final guarded Sonnet delta review parsed NO FINDINGS; first review LOW notes preserved in sibling evidence; no supported correctness finding. Initial review was started before the style gate was resolved, so the committed style delta was reviewed again. All actual contributing models are OpenAI: gpt-6.1-sol (Tess/Ivan/style extraction), gpt-6-astra (lint repair); native metadata retained. Restored adversaries, noop cleanup and read-only reviewers excluded. No assumptions.
+
+Task3: runner planning, clock and collisions. Tests5d33b702 strengthened428e29d3 after8proven exploits; all8strengthened. Committed red-check28failed/15passed/100deselected exit1. Initial gpt-6.1-sol/high implementation passed43tests but mypy found missing PlanEntry.replaces on unknown-capability branch. Main review also confirmed resolve() violated lexical normpath comparison; bounded gpt-6-astra/high repair fixed both and preserved capability replacement metadata. Commit0a6aea45. Focused verification43passed/100deselected exit0; mypy/ruff/style/split hygiene clean. One implementation file, self-deslop skipped:trivial. Pat raised LOW only, raw output retained. Duplicate override of pre-existing validation reasons is required by the every-selected-instance duplicate contract; do not skip failed entries. Other LOW suggestions do not identify a correctness defect and remain for independent completion review. Provider evidence retained for Tess/Ivan/Astra; restored adversary excluded. Unattended ambiguity about PlanEntry collision representation and normalized diagnostic spelling recorded in state and deferred batch log.
+
+Task4 pre-dispatch routing: backend single-file Sonnet task is Qwen eligible. Planning preflight was healthy on approved unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_XL; host driver.model_provider rejects this family, so it has no independent supported review route. Operator-authorized pre-dispatch fallback selects native logical Sonnet, configured gpt-6.1-sol/medium, whose OpenAI origin has Anthropic review support. No Qwen implementation dispatch occurred and no old provenance was relabeled. Final scoped classifier sonnet/default.
+
+Task4: --plan CLI. Tests f41223a3 were red33failed/2passed/104deselected before implementation. Initial worker result19passed/16failed exposed test assumptions about config replacement and insertion order. Verified actual existing load_config merges defaults/discovered/explicit layers; applicable_instances sorts(order,name). One bounded Tess correction40d07202 isolates config-dir, disables bundled git-src, and sets explicit order for fail-first/last; no behavior assertions dropped and no config production changes. CLI implementation first commit rejectedPLR0912; one same-Sonnet feedback repair extracts config/list/overrides solely to satisfy mandatory complexity/size limits. Commit829517a1. Final35passed/104deselected, ruff/mypy/style/split clean, self-deslop skipped:trivial (one implementation file). Devon skipped at Sonnet tier. Guarded Pat LOW only retained; extra formatting helpers rejected as unnecessary, incidental extractions mandated by gates. Stale _run_plan docstring noted for completion review per LOW deferral policy. Actual contributors native gpt-6.1-sol/medium only; unsupported Qwen fallback documented above.
+
+Task5 pre-dispatch routing: two-file backend Sonnet documentation task is eligible for source Codex interception. Mandatory read-only codex_hook_doctor check exited1 (4ok,7stale,5broken; first missing /Users/bob/.codex/codex-hook). Legacy backend resolved /opt/homebrew/bin/codex without launching it. As required by source unhealthy-probe policy, no live probe or external implementation dispatch ran, no hooks repaired, and dispatch falls back to native logical Sonnet gpt-6.1-sol/medium. codex_probe.backend=codex is a legacy source schema label, not actual model/launcher evidence. Root hook repair is out of scope and this finding is retained here and in state. Native OpenAI implementation has supported independent Anthropic review.
+
+Task5: documentation/changelog a7141346, actual native gpt-6.1-sol/medium confirmed by copied session metadata. Required rg acceptance: backup.rst3,CHANGELOG1,exit0. Docs-only Tess/red-check/Pat skipped by source policy; no Python style candidates and no test split candidates. Net19lines across2files, self-deslop skipped:trivial. No assumptions.
+
+Plan shape: five original PRD checkbox boundaries retained. Protocol plus implementation in task2 form one exported contract and compile/test seam. Guide and changelog in task5 form the one PRD documentation acceptance item; unsupported Qwen review means no effective routing gain from splitting it.
+
+## Final phase verification
+
+Full-suite first run:5993passed,16skipped,1xfailed,317warnings,10setup errors,126.41s; pytestexit1. All errors were existing Dot two-host fixtures attempting signed temporary commits. A targeted diagnostic captured stderr: error:1Password:agent returned an error; fatal:failed to write commit object.
+
+Verification environment isolates XDG state and BUVIS config (postup roots:[]), unsets inherited GIT_AUTHOR/COMMITTER name/email/date, and uses a temporary Git global config that includes original settings then disables commit signing for fixture subprocesses only. No operator config or project code changed for this correction. Targeted Dot module:10passed in12.06s.
+
+Failed full-suite command retried once after environment correction through the canonical autopilot verify writer:6003passed,16skipped,1xfailed,317warnings in143.41s,pytestexit0. All tests ran; no test/marker excluded beyond canonical snapshot skips already enforced by repository policy. Both raw runs and final command/environment are retained in the sibling evidence directory.
+
+Canonical verify returned exit3 because its summary parser did not recognize the successful pytest summary: passed/failed/skipped null, raw_line null, dirtyfalse, timed_outfalse, runnerexit0; no last-verification.json was written. This is the documented green-but-unparsed outcome. No verification record was hand-written. Fresh review must follow the source no-record verification policy; preserve actual successful raw summary rather than inventing cached counts.
+
+Other gates:uv run ruff check src/tools/backup tests/tools/backup clean; uv run mypy src/lib/ src/tools/ clean across557files; uv run sphinx-build -b html docs/source docs/build/html succeeded; git diff --check clean. Exact queued verification file for cycle1 absent.
+
+1: style_gate: clean, split_hygiene: clean
+2: style_gate: fixed:de84f6f1, split_hygiene: clean
+3: style_gate: clean, split_hygiene: clean
+4: style_gate: clean, split_hygiene: clean
+5: style_gate: clean, split_hygiene: skipped:no-tests
+
+Worker assumptions: all current Tess/Ivan reports say none. Coordinator collision representation/diagnostic resolution is retained in state.autonomous_decisions and the batch deferred log. Existing assumptions ledger was read; it only says: PRD00105:no worker assumptions reported; planning resolutions in state/build evidence. It is historical, not a new00110 assumption.
+
+Cleanup:only main worktree exists; no task-owned branch/worktree or executed00110 plan file was created. Current ignored dispatch prompts and verification fixture paths remain live until the fresh review consumes them. Durable logs/audits are retained. No push or release performed.
+
+Host checks:schema valid,5/5tasks complete with completed final attempts; implementation audit has17exact model metadata evidence lines and fresh fingerprint. driver review-route validated hashes/task coverage and returned anthropic. No completion review, receipts, convergence, cycle increment or finalize occurred in this build session.

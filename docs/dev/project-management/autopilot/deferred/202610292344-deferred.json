@@ -14,6 +14,12 @@
       "detail": "fast-track/00109-backup-bundle-items-and-skip-outcomes-v1-c1: suite red: 5822 passed, 3 failed, 16 skipped, 1 xfailed, exit 1; Klyreon git identity (2), Postup portfolio discovery (1); build and model evidence preserved in reports/00109-backup-bundle-items-and-skip-outcomes-v1-build.md",
       "op_id": "fb4da1cb7d85",
       "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md"
+    },
+    {
+      "type": "assumed-ambiguity",
+      "question": "How are duplicate outputs represented in Runner.plan and which output spelling appears in collision messages?",
+      "assumption": "PlanEntry.status is fail; reason is the exact StepResult duplicate message; diagnostics use expanduser+normpath output. Other PlanEntry fields retain capability plan values. This satisfies the PRD both-fail plan scenario.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md"
     }
   ]
 }

@@ -1,0 +1,15 @@
+[
+  {
+    "task": "5",
+    "agent": "/root/ivan_5",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T01-48-27-01a18a47-8cda-7332-9484-9f88813e5493.jsonl",
+    "source_lines": [
+      1,
+      10
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_5-metadata.jsonl",
+    "models": [
+      "gpt-6.1-sol"
+    ]
+  }
+]
