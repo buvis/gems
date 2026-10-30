@@ -74,6 +74,47 @@ def _apply_overrides(instance: BackupInstance, source: str, out: str) -> BackupI
     return instance.model_copy(update={"with_": merged})
 
 
+def _override_selected(
+    plan: list[tuple[str, BackupInstance]], source: str, out: str
+) -> list[tuple[str, BackupInstance]]:
+    if not (source or out):
+        return plan
+    if len(plan) != 1:
+        console.failure(
+            f"--source/--out require exactly one selected instance (via --only); {len(plan)} selected",
+        )
+        raise SystemExit(1)
+    name, instance = plan[0]
+    return [(name, _apply_overrides(instance, source, out))]
+
+
+def _list_instances(plan: list[tuple[str, BackupInstance]]) -> None:
+    if not plan:
+        console.info("no configured instances")
+    else:
+        for name, instance in plan:
+            console.info(_describe(name, instance))
+
+
+def _load_config(ctx: click.Context) -> BackupConfig | None:
+    from backup.config import load_config
+
+    # Honour the same --config / --config-dir the buvis_options wrapper resolved
+    # settings from, so the backup PLAN and BackupSettings come from ONE source.
+    # The wrapper publishes the raw selection on ctx.obj (None when unset); pass
+    # it through so `backup --config FILE` runs the plan from FILE and
+    # `--config-dir DIR` discovers it under DIR. (PRD 00084 closed the split that
+    # was deferred from PR #179.)
+    obj = ctx.obj or {}
+    config_dir = obj.get("config_dir")
+    config_path = obj.get("config_path")
+    try:
+        return load_config(config_dir=config_dir, config_path=config_path)
+    except FatalError as exc:
+        console.panic(str(exc))
+        return None
+
+
 def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> bool:
     """Print the resolved exclude set for ``instance_name`` under ``--for`` path.
 
@@ -159,7 +200,7 @@ def _select_plan(
     return plan, had_unknown
 
 
-def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_run: bool) -> bool:
+def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_run: bool, plan_only: bool) -> bool:
     """Run the selected plan, rendering every step; return whether any failed.
 
     Rendering all steps before returning means the user sees every failure (the
@@ -171,7 +212,18 @@ def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_
     from backup.runner import Runner
 
     try:
-        return _report_steps(Runner(cfg, dry_run=dry_run).run(plan), dry_run=dry_run)
+        runner = Runner(cfg, dry_run=dry_run)
+        if plan_only:
+            entries = runner.plan(plan)
+            for entry in entries:
+                message = f"{entry.label}  {entry.status}  {entry.source} -> {entry.out}"
+                if entry.reason:
+                    message += f"  ({entry.reason})"
+                if entry.replaces:
+                    message += "  [replaces existing]"
+                console.info(message)
+            return any(entry.status == "fail" for entry in entries)
+        return _report_steps(runner.run(plan), dry_run=dry_run)
     except FatalError as exc:
         console.panic(str(exc))
         return True  # unreachable: panic exits, but keeps the type honest
@@ -181,6 +233,7 @@ def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_
 @click.option("--only", multiple=True, help="Run only these instance names (comma-separated or repeated).")
 @click.option("--tag", "tags", multiple=True, help="Run only instances carrying one of these tags.")
 @click.option("--list", "list_plan", is_flag=True, help="Print the configured instances and exit.")
+@click.option("--plan", "plan_only", is_flag=True, help="Print the selected archive plan without walking sources.")
 @click.option("--dry-run", is_flag=True, help="Walk and report what would be archived without writing it.")
 @click.option("--source", default="", help="Override the single selected instance's source for this run.")
 @click.option("--out", default="", help="Override the single selected instance's out path for this run.")
@@ -198,13 +251,18 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
     only: tuple[str, ...],
     tags: tuple[str, ...],
     list_plan: bool,
+    plan_only: bool,
     dry_run: bool,
     source: str,
     out: str,
     show_excludes: str,
     for_path: str,
 ) -> None:
-    from backup.config import applicable_instances, load_config
+    from backup.config import applicable_instances
+
+    if plan_only and dry_run:
+        console.failure("--plan and --dry-run are mutually exclusive")
+        raise SystemExit(1)
 
     # --for only qualifies --show-excludes' read-only inspection; supplied alone
     # it used to be silently ignored while a real backup RAN. Reject it up front.
@@ -212,19 +270,8 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
         console.failure("--for requires --show-excludes")
         raise SystemExit(1)
 
-    # Honour the same --config / --config-dir the buvis_options wrapper resolved
-    # settings from, so the backup PLAN and BackupSettings come from ONE source.
-    # The wrapper publishes the raw selection on ctx.obj (None when unset); pass
-    # it through so `backup --config FILE` runs the plan from FILE and
-    # `--config-dir DIR` discovers it under DIR. (PRD 00084 closed the split that
-    # was deferred from PR #179.)
-    obj = ctx.obj or {}
-    config_dir = obj.get("config_dir")
-    config_path = obj.get("config_path")
-    try:
-        cfg = load_config(config_dir=config_dir, config_path=config_path)
-    except FatalError as exc:
-        console.panic(str(exc))
+    cfg = _load_config(ctx)
+    if cfg is None:
         return
 
     if show_excludes:
@@ -237,25 +284,13 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
     plan, unknown_only = _select_plan(cfg, plan, only, tags)
 
     if list_plan:
-        if not plan:
-            console.info("no configured instances")
-        else:
-            for name, instance in plan:
-                console.info(_describe(name, instance))
+        _list_instances(plan)
         if unknown_only:
             raise SystemExit(1)
         return
 
-    if source or out:
-        if len(plan) != 1:
-            console.failure(
-                f"--source/--out require exactly one selected instance (via --only); {len(plan)} selected",
-            )
-            raise SystemExit(1)
-        name, instance = plan[0]
-        plan = [(name, _apply_overrides(instance, source, out))]
-
-    any_failed = _run_plan(cfg, plan, dry_run=dry_run)
+    plan = _override_selected(plan, source, out)
+    any_failed = _run_plan(cfg, plan, dry_run=dry_run, plan_only=plan_only)
     # An unknown --only name (typo) must also fail the run, so a scheduled
     # backup can't silently do nothing (or less) after a mistyped selector.
     if any_failed or unknown_only:
