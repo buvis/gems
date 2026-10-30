@@ -58,25 +58,26 @@ def test_runner_duplicate_groups_reject_all_members_and_keep_independent_outputs
     shared.write_bytes(b"keep first group")
     second.write_bytes(b"keep second group")
     groups = {str(shared): ["zinc", "alpha", "beta", "gamma"], str(second): ["omega", "delta"]}
-    outputs = {name: out for out, names in groups.items() for name in names}
     independent = {
         "shared-copy": str(tmp_path / "shared.tar.gz.copy"),
         "prefix-shared": str(tmp_path / "prefix-shared.tar.gz"),
         "other-directory": str(tmp_path / "nested" / "shared.tar.gz"),
     }
-    outputs.update(independent)
+    outputs = {name: out for out, names in groups.items() for name in names} | independent
     cfg = _config(tmp_path, outputs)
-    missing = tmp_path / "sources" / "gamma"
-    (missing / "tiny.txt").unlink()
-    missing.rmdir()
+    (tmp_path / "sources" / "gamma" / "tiny.txt").unlink()
+    (tmp_path / "sources" / "gamma").rmdir()
     runner = Runner(cfg, dry_run=mode == "dry-run")
     opened = _record_archive_creation(monkeypatch)
     selected = list(cfg.instances.items())
     results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
     created = [[member.name for member in archive.members if member.isfile()] for archive in opened]
     assert len(results) == len(outputs)
-    assert [result.label for result in results] == list(outputs)
-    assert created == ([[f"{name}/tiny.txt"] for name in independent] if mode == "run" else [])
+    if mode == "plan":
+        assert [result.label for result in results] == list(outputs)
+    else:
+        assert {result.label for result in results} == set(outputs)
+    assert sorted(created) == (sorted([[f"{name}/tiny.txt"] for name in independent]) if mode == "run" else [])
     for result in results:
         if result.label in independent:
             assert result.status == "run" if mode == "plan" else result.success is True
@@ -313,7 +314,7 @@ def test_runner_preserves_global_and_instance_exclusion_rules(tmp_path: Path, in
 
     results = list(Runner(cfg).run(list(cfg.instances.items())))
 
-    assert [result.label for result in results] == list(names)
+    assert {result.label for result in results} == set(names)
     kept = {"restored", "global-drop-copy", "local-drop-copy"}
     if not inherit:
         kept.add("global-drop")
@@ -341,7 +342,7 @@ def test_runner_preserves_multiple_literal_items_without_archiving_lookalikes(tm
 
     results = list(Runner(cfg).run(list(cfg.instances.items())))
 
-    assert [result.label for result in results] == list(outputs)
+    assert {result.label for result in results} == set(outputs)
     for result in results:
         assert result.success is True
         with tarfile.open(outputs[result.label], "r:gz") as archive:
@@ -354,12 +355,18 @@ def test_runner_preserves_multiple_literal_items_without_archiving_lookalikes(tm
 
 
 @pytest.mark.parametrize("message", ["archive storage unavailable", "archive permission denied"])
-def test_runner_propagates_fatal_archive_filesystem_errors(tmp_path: Path, mocker: MockerFixture, message: str) -> None:
+def test_runner_returns_failed_result_for_execution_fatal_archive_filesystem_errors(
+    tmp_path: Path, mocker: MockerFixture, message: str
+) -> None:
     cfg = _config(tmp_path, {"notes": str(tmp_path / "notes.tar.gz")})
     mocker.patch("tarfile.open", autospec=True, side_effect=FatalError(message))
 
-    with pytest.raises(FatalError, match=message):
-        list(Runner(cfg).run(list(cfg.instances.items())))
+    results = list(Runner(cfg).run(list(cfg.instances.items())))
+
+    assert len(results) == 1
+    assert results[0].label == "notes"
+    assert results[0].success is False
+    assert results[0].message == f"notes failed: {message}"
 
 
 @pytest.mark.parametrize("mode", ["run", "dry-run", "plan"])
@@ -376,7 +383,7 @@ def test_runner_preserves_missing_source_skips_and_existing_outputs(tmp_path: Pa
 
     results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
 
-    assert [result.label for result in results] == list(outputs)
+    assert {result.label for result in results} == set(outputs)
     for result in results:
         expected = TarArchive().plan(label=result.label, **cfg.instances[result.label].with_)
         assert expected.status == "skip"
@@ -399,9 +406,9 @@ def test_runner_preserves_supported_engine_choices_and_fallback_messages(
         instance.with_["engine"] = engine
     mocker.patch("backup.capabilities.tar_archive.shutil.which", autospec=True, return_value=None)
 
-    results = list(Runner(cfg).run(list(cfg.instances.items())))
+    results = list(Runner(cfg, jobs=1).run(list(cfg.instances.items())))
 
-    assert [result.label for result in results] == list(outputs)
+    assert {result.label for result in results} == set(outputs)
     for result, engine in zip(results, engines, strict=True):
         assert result.success is True
         assert ("used python engine" in result.message) is (engine == "system-tar")

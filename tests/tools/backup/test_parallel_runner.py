@@ -14,6 +14,7 @@ from subprocess import Popen
 from unittest.mock import call, create_autospec
 
 import pytest
+from buvis.pybase.result import FatalError
 
 from backup.capabilities.tar_archive import (
     ArchiveCancelled,
@@ -21,6 +22,9 @@ from backup.capabilities.tar_archive import (
     _write_archive,
     _write_archive_system_tar,
 )
+from backup.runner import Runner
+from backup.step_result import StepResult
+from tests.tools.backup.parallel_runner_helpers import PRIORITY, WAIT, CapabilityProbe, Consumption, configure
 
 
 def _members(tmp_path: Path) -> list[Path]:
@@ -452,3 +456,197 @@ class TestCapabilityArchiveCancellation:
             assert marker is not None and marker.exists()
             assert len(tar_children) == 1
             assert tar_children[0].returncode == -signal.SIGTERM
+
+
+class TestParallelRunner:
+    @pytest.mark.parametrize("jobs", [0, -2])
+    def test_jobs_rejects_nonpositive_limits(self, monkeypatch: pytest.MonkeyPatch, jobs: int) -> None:
+        cfg = configure(monkeypatch, CapabilityProbe())
+        with pytest.raises(ValueError, match="^jobs must be at least 1$"):
+            Runner(cfg, jobs=jobs)
+
+    @pytest.mark.parametrize("jobs", [None, 1, 2])
+    def test_never_exceeds_jobs(self, monkeypatch: pytest.MonkeyPatch, jobs: int | None) -> None:
+        probe = CapabilityProbe()
+        cfg = configure(monkeypatch, probe)
+        runner = Runner(cfg) if jobs is None else Runner(cfg, jobs=jobs)
+        limit = 3 if jobs is None else jobs
+        with Consumption(runner, cfg, probe) as consumer:
+            for name in PRIORITY[:limit]:
+                assert probe.started[name].wait(WAIT), f"initial batch did not start {name}"
+            assert not any(probe.started[name].is_set() for name in PRIORITY[limit:])
+            assert probe.maximum == limit
+            probe.release_all()
+            consumer.finish()
+        assert probe.maximum == limit
+        assert {result.label for result in consumer.results} == set(PRIORITY)
+        assert len(consumer.results) == 5
+        assert all(result.success for result in consumer.results)
+        assert runner.interrupted is False
+        assert runner.cancelled_names == ()
+
+    def test_jobs_one_runs_strictly_in_order(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        probe = CapabilityProbe()
+        cfg = configure(monkeypatch, probe)
+        runner = Runner(cfg, jobs=1)
+        with Consumption(runner, cfg, probe) as consumer:
+            for index, name in enumerate(PRIORITY):
+                assert probe.started[name].wait(WAIT)
+                assert [call["label"] for call in probe.calls] == list(PRIORITY[: index + 1])
+                probe.release[name].set()
+                assert consumer.received[name].wait(WAIT)
+            consumer.finish()
+        assert [result.label for result in consumer.results] == list(PRIORITY)
+        assert probe.maximum == 1
+
+    def test_order_follows_completion_while_preserving_each_instances_steps(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        probe = CapabilityProbe(("alpha-copy", "alpha"))
+        cfg = configure(monkeypatch, probe)
+
+        def steps(kwargs: dict[str, object]) -> Iterator[StepResult]:
+            name = str(kwargs["label"])
+            assert probe.release[name].wait(WAIT)
+            yield StepResult(name, True, f"first {name}")
+            yield StepResult(name, True, f"second {name}")
+
+        probe.behavior = steps
+        with Consumption(Runner(cfg, jobs=2), cfg, probe) as consumer:
+            assert probe.started["alpha"].wait(WAIT)
+            assert probe.started["alpha-copy"].wait(WAIT)
+            probe.release["alpha-copy"].set()
+            assert consumer.received["alpha-copy"].wait(WAIT)
+            probe.release["alpha"].set()
+            consumer.finish()
+        assert [(row.label, row.message) for row in consumer.results] == [
+            ("alpha-copy", "first alpha-copy"),
+            ("alpha-copy", "second alpha-copy"),
+            ("alpha", "first alpha"),
+            ("alpha", "second alpha"),
+        ]
+        assert set(consumer.thread_ids) == {consumer.thread.ident}
+        assert all(worker != consumer.thread.ident for worker in probe.thread_ids)
+
+    @pytest.mark.parametrize("error", [ValueError("bad archive"), FatalError("disk unavailable")])
+    def test_failure_isolated_from_other_workers(self, monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
+        probe = CapabilityProbe(("alpha", "alpha-copy"))
+        cfg = configure(monkeypatch, probe)
+
+        def fail_one(kwargs: dict[str, object]) -> Iterator[StepResult]:
+            name = str(kwargs["label"])
+            if name == "alpha":
+                raise error
+            yield StepResult(name, True, "independent complete")
+
+        probe.behavior = fail_one
+        results = {row.label: row for row in Runner(cfg, jobs=2).run(list(cfg.instances.items()))}
+        assert set(results) == {"alpha", "alpha-copy"}
+        assert results["alpha"].success is False
+        assert results["alpha"].message == f"alpha failed: {error}"
+        assert results["alpha"].archive is None
+        assert results["alpha-copy"].success is True
+        assert results["alpha-copy"].message == "independent complete"
+
+    def test_interrupt_cancels_active_and_unsubmitted_but_preserves_committed_success(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        probe = CapabilityProbe(("omega", "alpha-copy", "alpha"))
+        cfg = configure(monkeypatch, probe)
+
+        def interruptible(kwargs: dict[str, object]) -> Iterator[StepResult]:
+            name = str(kwargs["label"])
+            cancel = kwargs["cancel"]
+            assert isinstance(cancel, threading.Event)
+            if name == "alpha":
+                assert probe.started["alpha-copy"].wait(WAIT)
+                yield StepResult(name, True, "committed alpha")
+                return
+            assert cancel.wait(WAIT)
+            raise ArchiveCancelled()
+
+        probe.behavior = interruptible
+        runner = Runner(cfg, jobs=2)
+        iterator = runner.run(list(cfg.instances.items()))
+        try:
+            first = next(iterator)
+            runner.request_cancel()
+            runner.request_cancel()
+            results = [first, *iterator]
+        finally:
+            runner.request_cancel()
+            iterator.close()
+        assert first.label == "alpha" and first.success is True
+        assert first.message == "committed alpha"
+        assert [row.label for row in results].count("alpha") == 1
+        assert {row.label for row in results if not row.success} == {"alpha-copy", "omega"}
+        assert len(results) == 3
+        assert not probe.started["omega"].is_set()
+        assert runner.interrupted is True
+        assert runner.cancelled_names == ("alpha-copy", "omega")
+        assert probe.active == 0
+
+    def test_interrupt_keyboard_at_yield_drains_workers_without_reraising(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        probe = CapabilityProbe(("alpha", "alpha-copy", "omega"))
+        cfg = configure(monkeypatch, probe)
+
+        def interruptible(kwargs: dict[str, object]) -> Iterator[StepResult]:
+            name = str(kwargs["label"])
+            if name == "alpha":
+                assert probe.started["alpha-copy"].wait(WAIT)
+                yield StepResult(name, True, "already committed")
+                return
+            cancel = kwargs["cancel"]
+            assert isinstance(cancel, threading.Event)
+            assert cancel.wait(WAIT)
+            raise ArchiveCancelled()
+
+        probe.behavior = interruptible
+        runner = Runner(cfg, jobs=2)
+        iterator = runner.run(list(cfg.instances.items()))
+        try:
+            completed = next(iterator)
+            interrupted = iterator.throw(KeyboardInterrupt())
+            remaining = [interrupted, *iterator]
+        finally:
+            runner.request_cancel()
+            iterator.close()
+        assert completed.success is True
+        assert len(remaining) == 2
+        assert all(not row.success and row.archive is None and not row.skipped for row in remaining)
+        assert {row.label for row in remaining} == {"alpha-copy", "omega"}
+        assert runner.interrupted is True
+        assert runner.cancelled_names == ("alpha-copy", "omega")
+        assert probe.active == 0
+
+    def test_interrupt_generator_close_joins_active_workers_and_prevents_refill(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        probe = CapabilityProbe(("alpha", "alpha-copy", "omega"))
+        cfg = configure(monkeypatch, probe)
+        cleaned = threading.Event()
+
+        def interruptible(kwargs: dict[str, object]) -> Iterator[StepResult]:
+            name = str(kwargs["label"])
+            if name == "alpha":
+                assert probe.started["alpha-copy"].wait(WAIT)
+                yield StepResult(name, True, "finished before close")
+                return
+            cancel = kwargs["cancel"]
+            assert isinstance(cancel, threading.Event)
+            assert cancel.wait(WAIT)
+            cleaned.set()
+            raise ArchiveCancelled()
+
+        probe.behavior = interruptible
+        runner = Runner(cfg, jobs=2)
+        iterator = runner.run(list(cfg.instances.items()))
+        try:
+            assert next(iterator).label == "alpha"
+        finally:
+            iterator.close()
+        assert cleaned.is_set()
+        assert probe.active == 0
+        assert not probe.started["omega"].is_set()
