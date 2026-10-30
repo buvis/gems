@@ -17,6 +17,7 @@ Usage
     backup --only git-src,docs          # run only these instances (comma list or repeated)
     backup --tag nightly                # run only instances carrying this tag
     backup --list                       # print the configured instances and exit
+    backup --plan                       # report run/skip/fail decisions from metadata only
     backup --dry-run                    # walk and report what would be archived, write nothing
     backup --only git-src --source DIR --out FILE   # one-shot override of the selected instance
     backup --show-excludes git-src --for PATH       # print the resolved excludes under PATH
@@ -26,6 +27,23 @@ non-empty flag wins over the configured value); they require exactly one
 selected instance, via ``--only``. ``--show-excludes`` is read-only: it prints
 the resolved exclude set and, with ``--for <path>``, the ``.bkpignore`` rules
 effective under that path, then exits without writing an archive.
+
+Planning
+--------
+
+``--plan`` reports a metadata-only preview with a ``run``, ``skip`` or ``fail``
+row for each selected instance, including the reason and a replacement marker
+when its output already exists. It does not write archives or walk their
+contents. Use ``--only`` and ``--tag`` to select instances; ``--source`` and
+``--out`` apply the same single-instance overrides as a normal run. A plan with
+any ``fail`` row exits with status 1. ``--plan`` and ``--dry-run`` are mutually
+exclusive; use ``--dry-run`` to walk and preview archive members.
+
+All selected output paths use one timestamp for ``strftime`` expansion.
+Colliding output paths are rejected for plans, normal runs and dry runs after
+lexical ``expanduser`` / ``normpath`` normalization; this check does not resolve
+symlinks. A plan is a point-in-time preview: execution rechecks conditions before
+writing, so later filesystem changes can alter the outcome.
 
 Configuration
 -------------
@@ -70,9 +88,9 @@ Field                         Meaning
 ============================  ==============================================================
 
 The ``out`` value supports ``strftime`` codes (e.g. ``%Y%m%d-%H%M%S``), expanded
-at archive time. An unknown capability name, an unknown ``with`` input, or an
-unknown ``engine`` value is a config/step error reported clearly — never a stack
-trace.
+using one timestamp for all selected outputs. An unknown capability name, an
+unknown ``with`` input, or an unknown ``engine`` value is a config/step error
+reported clearly — never a stack trace.
 
 Selected items
 ~~~~~~~~~~~~~~
