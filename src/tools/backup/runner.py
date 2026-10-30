@@ -68,8 +68,9 @@ class Runner:
                     # (resolved with the run-wide timestamp, like the capability does)
                     configured = now.strftime(str(instance.with_.get("out", "")))
                     entry = PlanEntry(name, "", configured, "fail", f"{name} failed: {exc}", False)
-                key = os.path.normpath(os.path.expanduser(entry.out))
-                outputs.setdefault(key, []).append(name)
+                if entry.out:
+                    key = os.path.normpath(os.path.expanduser(entry.out))
+                    outputs.setdefault(key, []).append(name)
             entries.append(entry)
             keys.append(key)
 

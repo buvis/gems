@@ -75,9 +75,16 @@ class TarArchive:
 
     def plan(self: TarArchive, **kwargs: object) -> PlanEntry:
         label = _require_str(kwargs, "label", default="tar-archive")
-        source = Path(os.path.normpath(Path(_require_str(kwargs, "source")).expanduser()))
-        out = Path(_expand_stamp(_require_str(kwargs, "out"), cast("datetime | None", kwargs.get("now")))).expanduser()
-        engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON)
+        source_raw = _require_str(kwargs, "source")
+        out_raw = _require_str(kwargs, "out")
+        engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON) or _ENGINE_PYTHON
+        if not source_raw or not out_raw:
+            message = "no source configured" if not source_raw else "no out path configured"
+            source_text = str(os.path.normpath(Path(source_raw).expanduser())) if source_raw else ""
+            out_text = _expand_stamp(out_raw, cast("datetime | None", kwargs.get("now"))) if out_raw else ""
+            return PlanEntry(label, source_text, out_text, "fail", message, False)
+        source = Path(os.path.normpath(Path(source_raw).expanduser()))
+        out = Path(_expand_stamp(out_raw, cast("datetime | None", kwargs.get("now")))).expanduser()
         replaces = out.exists()
         status = "run"
         reason = ""
@@ -112,8 +119,6 @@ class TarArchive:
         source_raw = _require_str(kwargs, "source")
         out_raw = _require_str(kwargs, "out")
         engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON) or _ENGINE_PYTHON
-        excludes = _as_str_tuple(kwargs.get("excludes", ()))
-        dry_run = bool(kwargs.get("dry_run", False))
 
         if not source_raw or not out_raw:
             message = "no source configured" if not source_raw else "no out path configured"
@@ -148,19 +153,18 @@ class TarArchive:
             yield containment
             return
 
-        yield from self._run_validated(source, out, excludes, dry_run, kwargs)
+        yield from self._run_validated(label, engine, source, out, kwargs)
 
     def _run_validated(
         self: TarArchive,
+        label: str,
+        engine: str,
         source: Path,
         out: Path,
-        excludes: tuple[str, ...],
-        dry_run: bool,
         kwargs: dict[str, object],
     ) -> Iterator[StepResult]:
-        label = _require_str(kwargs, "label", default="tar-archive")
-        engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON) or _ENGINE_PYTHON
-        base_state = ExcludeState(base_excludes=frozenset(excludes))
+        dry_run = bool(kwargs.get("dry_run", False))
+        base_state = ExcludeState(base_excludes=frozenset(_as_str_tuple(kwargs.get("excludes", ()))))
         missing: list[str] = []
         bundle = "items" in kwargs
         if bundle:
