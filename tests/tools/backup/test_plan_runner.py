@@ -5,7 +5,9 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 import pytest
+from buvis.pybase.result import FatalError
 
+from backup.capabilities.tar_archive import TarArchive
 from backup.config import BackupConfig
 from backup.runner import Runner
 from backup.step_result import PlanEntry
@@ -34,13 +36,28 @@ def _assert_archive(out: Path, name: str) -> None:
         assert member.read() == name.encode()
 
 
+def _record_archive_creation(monkeypatch: pytest.MonkeyPatch) -> list[tarfile.TarFile]:
+    opened = []
+    real_open = tarfile.open
+
+    def record_open(*args: object, **kwargs: object) -> tarfile.TarFile:
+        archive = real_open(*args, **kwargs)
+        opened.append(archive)
+        return archive
+
+    monkeypatch.setattr(tarfile, "open", record_open)
+    return opened
+
+
 @pytest.mark.parametrize("mode", ["run", "dry-run", "plan"])
-def test_runner_duplicate_groups_reject_all_members_and_keep_independent_outputs(tmp_path: Path, mode: str) -> None:
+def test_runner_duplicate_groups_reject_all_members_and_keep_independent_outputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str
+) -> None:
     shared = tmp_path / "shared.tar.gz"
     second = tmp_path / "second.tar.gz"
     shared.write_bytes(b"keep first group")
     second.write_bytes(b"keep second group")
-    groups = {str(shared): ["zinc", "alpha", "beta"], str(second): ["omega", "delta"]}
+    groups = {str(shared): ["zinc", "alpha", "beta", "gamma"], str(second): ["omega", "delta"]}
     outputs = {name: out for out, names in groups.items() for name in names}
     independent = {
         "shared-copy": str(tmp_path / "shared.tar.gz.copy"),
@@ -49,13 +66,17 @@ def test_runner_duplicate_groups_reject_all_members_and_keep_independent_outputs
     }
     outputs.update(independent)
     cfg = _config(tmp_path, outputs)
+    missing = tmp_path / "sources" / "gamma"
+    (missing / "tiny.txt").unlink()
+    missing.rmdir()
     runner = Runner(cfg, dry_run=mode == "dry-run")
-
+    opened = _record_archive_creation(monkeypatch)
     selected = list(cfg.instances.items())
     results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
-
+    created = [[member.name for member in archive.members if member.isfile()] for archive in opened]
     assert len(results) == len(outputs)
-    assert {result.label for result in results} == set(outputs)
+    assert [result.label for result in results] == list(outputs)
+    assert created == ([[f"{name}/tiny.txt"] for name in independent] if mode == "run" else [])
     for result in results:
         if result.label in independent:
             assert result.status == "run" if mode == "plan" else result.success is True
@@ -213,8 +234,9 @@ def test_runner_shares_one_clock_per_call_and_refreshes_between_run_and_plan(
         for result in results:
             out = tmp_path / f"{result.label}-{now.strftime(pattern)}"
             if mode == "plan":
+                expected = TarArchive().plan(label=result.label, now=now, **cfg.instances[result.label].with_)
                 assert result == PlanEntry(
-                    result.label, str(tmp_path / "sources" / result.label), str(out), "run", result.reason, False
+                    result.label, str(tmp_path / "sources" / result.label), str(out), "run", expected.reason, False
                 )
             else:
                 assert result.success is True
@@ -255,11 +277,133 @@ def test_runner_preserves_capability_inputs_and_surfaces_validation_failures(
             assert not out.exists()
             continue
         if mode == "plan":
+            expected = TarArchive().plan(label=result.label, **cfg.instances[result.label].with_)
             assert result == PlanEntry(
-                result.label, str(tmp_path / "sources" / result.label), str(out), "run", result.reason, False
+                result.label, str(tmp_path / "sources" / result.label), str(out), "run", expected.reason, False
             )
         else:
             assert result.success is True
             assert result.out_path == str(out)
             _assert_archive(out, result.label)
         assert out.exists() is (mode == "run")
+
+
+@pytest.mark.parametrize("inherit", [False, True])
+def test_runner_preserves_global_and_instance_exclusion_rules(tmp_path: Path, inherit: bool) -> None:
+    names = ("notes", "photos")
+    outputs = {name: str(tmp_path / f"{name}.tar.gz") for name in names}
+    _config(tmp_path, outputs)
+    instances = {
+        name: {
+            "use": "tar-archive",
+            "inherit_excludes": inherit,
+            "exclude_remove": ["restored"],
+            "exclude_add": ["local-drop"],
+            "with": {"source": str(tmp_path / "sources" / name), "out": out},
+        }
+        for name, out in outputs.items()
+    }
+    cfg = BackupConfig.model_validate({"instances": instances, "excludes": ["global-drop", "restored"]})
+    folders = ("global-drop", "restored", "local-drop", "global-drop-copy", "local-drop-copy")
+    for name in names:
+        for folder in folders:
+            path = tmp_path / "sources" / name / folder / "data.txt"
+            path.parent.mkdir()
+            path.write_bytes(f"{name}/{folder}".encode())
+
+    results = list(Runner(cfg).run(list(cfg.instances.items())))
+
+    assert [result.label for result in results] == list(names)
+    kept = {"restored", "global-drop-copy", "local-drop-copy"}
+    if not inherit:
+        kept.add("global-drop")
+    for result in results:
+        assert result.success is True
+        with tarfile.open(outputs[result.label], "r:gz") as archive:
+            expected = {f"{result.label}/{folder}/data.txt" for folder in kept} | {f"{result.label}/tiny.txt"}
+            assert {member.name for member in archive.getmembers() if member.isfile()} == expected
+            for folder in kept:
+                member = archive.extractfile(f"{result.label}/{folder}/data.txt")
+                assert member is not None
+                assert member.read() == f"{result.label}/{folder}".encode()
+
+
+def test_runner_preserves_multiple_literal_items_without_archiving_lookalikes(tmp_path: Path) -> None:
+    outputs = {name: str(tmp_path / f"{name}.tar.gz") for name in ("notes", "photos")}
+    cfg = _config(tmp_path, outputs)
+    for name, instance in cfg.instances.items():
+        instance.with_["items"] = ["tiny.txt", "folder/child.txt"]
+        source = tmp_path / "sources" / name
+        (source / "folder").mkdir()
+        (source / "folder" / "child.txt").write_bytes(f"{name}-child".encode())
+        (source / "folder" / "child.txt-copy").write_bytes(b"exclude nested lookalike")
+        (source / "tiny.txt-copy").write_bytes(b"exclude root lookalike")
+
+    results = list(Runner(cfg).run(list(cfg.instances.items())))
+
+    assert [result.label for result in results] == list(outputs)
+    for result in results:
+        assert result.success is True
+        with tarfile.open(outputs[result.label], "r:gz") as archive:
+            members = {member.name for member in archive.getmembers() if member.isfile()}
+            assert members == {"tiny.txt", "folder/child.txt"}
+            for path, payload in (("tiny.txt", result.label), ("folder/child.txt", f"{result.label}-child")):
+                member = archive.extractfile(path)
+                assert member is not None
+                assert member.read() == payload.encode()
+
+
+@pytest.mark.parametrize("message", ["archive storage unavailable", "archive permission denied"])
+def test_runner_propagates_fatal_archive_filesystem_errors(tmp_path: Path, mocker: MockerFixture, message: str) -> None:
+    cfg = _config(tmp_path, {"notes": str(tmp_path / "notes.tar.gz")})
+    mocker.patch("tarfile.open", autospec=True, side_effect=FatalError(message))
+
+    with pytest.raises(FatalError, match=message):
+        list(Runner(cfg).run(list(cfg.instances.items())))
+
+
+@pytest.mark.parametrize("mode", ["run", "dry-run", "plan"])
+def test_runner_preserves_missing_source_skips_and_existing_outputs(tmp_path: Path, mode: str) -> None:
+    outputs = {name: str(tmp_path / f"{name}.tar.gz") for name in ("absent", "absent-copy")}
+    cfg = _config(tmp_path, outputs)
+    for name, out in outputs.items():
+        source = tmp_path / "sources" / name
+        (source / "tiny.txt").unlink()
+        source.rmdir()
+        (tmp_path / out).write_bytes(name.encode())
+    runner = Runner(cfg, dry_run=mode == "dry-run")
+    selected = list(cfg.instances.items())
+
+    results = runner.plan(selected) if mode == "plan" else list(runner.run(selected))
+
+    assert [result.label for result in results] == list(outputs)
+    for result in results:
+        expected = TarArchive().plan(label=result.label, **cfg.instances[result.label].with_)
+        assert expected.status == "skip"
+        assert expected.reason == f"source not found: {tmp_path / 'sources' / result.label}"
+        if mode == "plan":
+            assert result == expected
+        else:
+            assert result.skipped is True
+            assert "source not found" in result.message
+        assert (tmp_path / outputs[result.label]).read_bytes() == result.label.encode()
+
+
+@pytest.mark.parametrize("engines", [("python-tarfile", "system-tar"), ("system-tar", "python-tarfile")])
+def test_runner_preserves_supported_engine_choices_and_fallback_messages(
+    tmp_path: Path, mocker: MockerFixture, engines: tuple[str, str]
+) -> None:
+    outputs = {name: str(tmp_path / f"{name}.tar.gz") for name in ("notes", "photos")}
+    cfg = _config(tmp_path, outputs)
+    for instance, engine in zip(cfg.instances.values(), engines, strict=True):
+        instance.with_["engine"] = engine
+    mocker.patch("backup.capabilities.tar_archive.shutil.which", autospec=True, return_value=None)
+
+    results = list(Runner(cfg).run(list(cfg.instances.items())))
+
+    assert [result.label for result in results] == list(outputs)
+    for result, engine in zip(results, engines, strict=True):
+        assert result.success is True
+        assert ("used python engine" in result.message) is (engine == "system-tar")
+        assert result.out_path == outputs[result.label]
+        _assert_archive(tmp_path / outputs[result.label], result.label)
