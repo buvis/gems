@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **backup**: `--jobs` controls concurrent archive instances (default three); interruption drains workers, preserves completed results and exits with status 130.
 - **backup**: independent instances run concurrently with a default limit of three workers; cancellation stops new work, joins active workers and preserves completed results.
 - **backup**: archive creation supports cooperative cancellation for Python and system tar, cleaning temporary files and stopping tar without replacing a completed backup.
 - **backup**: `--plan` previews metadata-only run/skip/fail decisions, reasons and existing-output replacement markers; selected outputs share one timestamp and colliding paths are rejected before plan, run or dry-run execution.

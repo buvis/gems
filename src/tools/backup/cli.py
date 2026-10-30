@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import click
 from buvis.pybase.adapters import console
@@ -10,7 +10,7 @@ from buvis.pybase.result import FatalError
 from backup.settings import BackupSettings
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Generator, Iterable
 
     from backup.config import BackupConfig, BackupInstance
     from backup.step_result import StepResult
@@ -22,28 +22,44 @@ def _report_step(step: StepResult) -> None:
     elif step.success:
         console.success(step.message or f"{step.label} archived")
     else:
-        console.failure(step.message or f"{step.label} failed")
+        message = f"{step.label} cancelled" if step.message == "cancelled" else step.message
+        console.failure(message or f"{step.label} failed")
 
 
-def _report_steps(steps: Iterable[StepResult], *, dry_run: bool = False) -> bool:
-    """Render every step (success and failure) and report whether any failed.
-
-    All steps are rendered before the caller acts on the return, so the user
-    sees every failure — the CLI must not stop at the first one. Returns ``True``
-    when at least one step failed, so the CLI layer can exit nonzero (a cron job
-    treating an incomplete backup as success is the bug this closes).
-    """
+def _report_steps(
+    steps: Iterable[StepResult], *, dry_run: bool = False, on_interrupt: Callable[[], None] | None = None
+) -> bool:
+    """Render every outcome, retrying interrupted output while draining workers."""
     archived = skipped = failed = 0
-    for step in steps:
-        _report_step(step)
-        if not step.success:
-            failed += 1
-        elif step.skipped:
-            skipped += 1
-        else:
-            archived += 1
+    iterator = iter(steps)
+    pending = None
+    while True:
+        try:
+            if pending is None:
+                pending = next(iterator)
+            _report_step(pending)
+            if not pending.success:
+                failed += 1
+            elif pending.skipped:
+                skipped += 1
+            else:
+                archived += 1
+            pending = None
+        except StopIteration:
+            break
+        except KeyboardInterrupt:
+            if on_interrupt is None:
+                raise
+            on_interrupt()
     verb = "previewed" if dry_run else "archived"
-    console.info(f"{verb} {archived}, skipped {skipped}, failed {failed}")
+    while True:
+        try:
+            console.info(f"{verb} {archived}, skipped {skipped}, failed {failed}")
+            break
+        except KeyboardInterrupt:
+            if on_interrupt is None:
+                raise
+            on_interrupt()
     return failed > 0
 
 
@@ -200,19 +216,14 @@ def _select_plan(
     return plan, had_unknown
 
 
-def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_run: bool, plan_only: bool) -> bool:
-    """Run the selected plan, rendering every step; return whether any failed.
-
-    Rendering all steps before returning means the user sees every failure (the
-    CLI must not stop at the first). Returns ``True`` if any step failed so the
-    caller can exit nonzero — a cron job treating an incomplete backup as success
-    is the bug this closes. A ``FatalError`` from the runner is surfaced via
-    ``console.panic`` (which exits).
-    """
+def _run_plan(
+    cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_run: bool, plan_only: bool, jobs: int = 3
+) -> bool:
+    """Render the selected plan or drain its run, preserving interruption cleanup."""
     from backup.runner import Runner
 
     try:
-        runner = Runner(cfg, dry_run=dry_run)
+        runner = Runner(cfg, dry_run=dry_run, jobs=jobs)
         if plan_only:
             entries = runner.plan(plan)
             for entry in entries:
@@ -223,7 +234,21 @@ def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_
                     message += "  [replaces existing]"
                 console.info(message)
             return any(entry.status == "fail" for entry in entries)
-        return _report_steps(runner.run(plan), dry_run=dry_run)
+        steps = cast("Generator[StepResult, None, None]", runner.run(plan))
+        try:
+            failed = _report_steps(steps, dry_run=dry_run, on_interrupt=runner.request_cancel)
+        finally:
+            steps.close()
+        if runner.interrupted:
+            while True:
+                try:
+                    names = ", ".join(runner.cancelled_names) or "no unfinished instances"
+                    console.failure("interrupted: " + names)
+                    break
+                except KeyboardInterrupt:
+                    runner.request_cancel()
+            raise SystemExit(130)
+        return failed
     except FatalError as exc:
         console.panic(str(exc))
         return True  # unreachable: panic exits, but keeps the type honest
@@ -235,6 +260,7 @@ def _run_plan(cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_
 @click.option("--list", "list_plan", is_flag=True, help="Print the configured instances and exit.")
 @click.option("--plan", "plan_only", is_flag=True, help="Print the selected archive plan without walking sources.")
 @click.option("--dry-run", is_flag=True, help="Walk and report what would be archived without writing it.")
+@click.option("--jobs", type=int, default=3, show_default=True, help="Run at most this many archive instances at once.")
 @click.option("--source", default="", help="Override the single selected instance's source for this run.")
 @click.option("--out", default="", help="Override the single selected instance's out path for this run.")
 @click.option(
@@ -253,6 +279,7 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
     list_plan: bool,
     plan_only: bool,
     dry_run: bool,
+    jobs: int,
     source: str,
     out: str,
     show_excludes: str,
@@ -260,12 +287,13 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
 ) -> None:
     from backup.config import applicable_instances
 
+    if jobs < 1:
+        console.failure("--jobs must be at least 1")
+        raise SystemExit(1)
     if plan_only and dry_run:
         console.failure("--plan and --dry-run are mutually exclusive")
         raise SystemExit(1)
-
-    # --for only qualifies --show-excludes' read-only inspection; supplied alone
-    # it used to be silently ignored while a real backup RAN. Reject it up front.
+    # --for only qualifies --show-excludes; reject it before a real backup runs.
     if for_path and not show_excludes:
         console.failure("--for requires --show-excludes")
         raise SystemExit(1)
@@ -273,7 +301,6 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
     cfg = _load_config(ctx)
     if cfg is None:
         return
-
     if show_excludes:
         failed = _show_excludes(cfg, show_excludes, for_path)
         if failed:
@@ -290,9 +317,8 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
         return
 
     plan = _override_selected(plan, source, out)
-    any_failed = _run_plan(cfg, plan, dry_run=dry_run, plan_only=plan_only)
-    # An unknown --only name (typo) must also fail the run, so a scheduled
-    # backup can't silently do nothing (or less) after a mistyped selector.
+    any_failed = _run_plan(cfg, plan, dry_run=dry_run, plan_only=plan_only, jobs=jobs)
+    # Unknown --only names must fail rather than silently omit backup work.
     if any_failed or unknown_only:
         raise SystemExit(1)
 
