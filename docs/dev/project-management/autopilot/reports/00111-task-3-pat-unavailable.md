@@ -1,0 +1,1 @@
+Per-task Pat prompt prepared at docs/dev/tmp/review-task-3-current-prompt.md. Not launched: same-provider weekly quota confirmed by real task2 attempt (00111-task-2-pat.md), reset2026-11-01 10:00 Europe/Prague. use-sonnet forbids retry before reset. Mandatory fresh completion review remains pending. No review pass claimed.

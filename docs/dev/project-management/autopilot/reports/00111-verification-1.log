@@ -1,0 +1,351 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+...........FFF...F..F........................FF......................... [ 25%]
+........................................................................ [ 26%]
+..............F......................................................... [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+.......................................FF.FF.FF.FF.FF.FF.F..FF.F..F..... [ 31%]
+FF...................................................................... [ 32%]
+.......................................FF.............F.F............... [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+..................x..................................................... [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+......................EEEEEEEEEE........................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+................................................................ssssssss [ 75%]
+ss...................................................................... [ 76%]
+........................................................................ [ 77%]
+.......................................................................s [ 78%]
+s....................................................................... [ 79%]
+........................................................................ [ 80%]
+..................................................................F..F.. [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+............................F........................ssss............... [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+...........................................                              [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[text] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[binary] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[crlf] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_dirty_path_untouched_upstream_is_kept_and_not_saved _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_unpushed_local_commit_is_never_selected _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestMixedStateStopsPull.test_staged_and_unstaged_path_stops_before_any_reset[worktree-C] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestMixedStateStopsPull.test_staged_and_unstaged_path_stops_before_any_reset[worktree-head] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUntrackedKeptFileStopsPull.test_rm_cached_file_upstream_changed_keeps_disk_bytes _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestRescuedTargetIsExcluded.test_localized_dirty_target_keeps_b_bytes_at_source _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestSaveFailureKeepsEdit.test_read_only_divergence_dir_stops_pull_with_edit_intact _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+=================================== FAILURES ===================================
+E   assert 1 == 0
+     +  where 1 = <Result AttributeError("'list_iterator' object has no attribute 'close'")>.exit_code
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_backup_cli.py:46: assert 1 == 0
+E   assert 1 == 0
+     +  where 1 = <Result AttributeError("'list_iterator' object has no attribute 'close'")>.exit_code
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_backup_cli.py:64: assert 1 == 0
+E   assert 1 == 0
+     +  where 1 = <Result AttributeError("'list_iterator' object has no attribute 'close'")>.exit_code
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_backup_cli.py:87: assert 1 == 0
+E   assert 1 == 0
+     +  where 1 = <Result AttributeError("'list_iterator' object has no attribute 'close'")>.exit_code
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_backup_cli.py:140: assert 1 == 0
+E   assert 1 == 0
+     +  where 1 = <Result AttributeError("'list_iterator' object has no attribute 'close'")>.exit_code
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_backup_cli.py:191: assert 1 == 0
+E   assert 1 == 0
+     +  where 1 = <Result AttributeError("'list_iterator' object has no attribute 'close'")>.exit_code
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_backup_phase2.py:63: assert 1 == 0
+E   assert 1 == 0
+     +  where 1 = <Result AttributeError("'list_iterator' object has no attribute 'close'")>.exit_code
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_backup_phase2.py:80: assert 1 == 0
+E   AssertionError: assert ['default', 'adjusted'] == ['adjusted', 'default']
+      
+      At index 0 diff: 'default' != 'adjusted'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_instance_excludes.py:154: AssertionError: assert ['default', 'adjusted'] == ['adjusted', 'default']
+E   AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...opy', 'after'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...opy', 'after'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...opy', 'after'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...opy', 'after'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...blocked-copy'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...er', 'before'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...er', 'before'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...er', 'before'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...er', 'before'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...blocked-copy'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...py', 'before'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...py', 'before'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...ore', 'after'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...py', 'before'] == ['before', 'b...ked', 'after']
+      
+      At index 0 diff: 'blocked' != 'before'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:66: AssertionError: assert ['blocked', '...py', 'before'] == ['before', 'b...ked', 'after']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+      
+      At index 3 diff: 'suffix-copy' != 'blocked-copy'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:113: AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+      
+      At index 3 diff: 'suffix-copy' != 'blocked-copy'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:113: AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+      
+      At index 3 diff: 'suffix-copy' != 'blocked-copy'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:113: AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+      
+      At index 3 diff: 'suffix-copy' != 'blocked-copy'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:113: AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+      
+      At index 3 diff: 'suffix-copy' != 'blocked-copy'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:113: AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+      
+      At index 3 diff: 'suffix-copy' != 'blocked-copy'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:113: AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+E   AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+      
+      At index 3 diff: 'suffix-copy' != 'blocked-copy'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py:113: AssertionError: assert ['blocked', '...blocked-copy'] == ['blocked', '...'suffix-copy']
+E   AssertionError: assert ['empty', 'em...me-copy', ...] == ['empty', 'em...me-copy', ...]
+      
+      At index 6 diff: 'notes-copy' != 'notes'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_validation.py:152: AssertionError: assert ['empty', 'em...me-copy', ...] == ['empty', 'em...me-copy', ...]
+E   AssertionError: assert ['empty', 'em...me-copy', ...] == ['empty', 'em...me-copy', ...]
+      
+      At index 6 diff: 'notes-copy' != 'notes'
+      Use -v to get more diff
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_validation.py:152: AssertionError: assert ['empty', 'em...me-copy', ...] == ['empty', 'em...me-copy', ...]
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_validation.py:208: Failed: DID NOT RAISE FatalError
+E   Failed: DID NOT RAISE FatalError
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_validation.py:208: Failed: DID NOT RAISE FatalError
+E   AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+      
+      - klyreon
+      + Agent ran by Tomáš Bouška
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/klyreon/test_vault_git.py:131: AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+E   AssertionError: assert True is False
+     +  where True = is_human_authored(PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1412/test_human_authored_false_for_0/klyreon-git-af_rgnfq/vault'), 'k.md', GitIdentity(name='klyreon', email='klyreon@localhost'))
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/klyreon/test_vault_git.py:151: AssertionError: assert True is False
+E   assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-14 12/test_collect_runs_and_reports0/out/data.json "
+     +  where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-14 12/test_collect_runs_and_reports0/out/data.json " = _flat(" ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-14\n12/test_collect_runs_and_reports0/out/data.json\n")
+     +    where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-14\n12/test_collect_runs_and_reports0/out/data.json\n" = <Result okay>.output
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/postup/adapters/test_cli.py:55: assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-14 12/test_collect_runs_and_reports0/out/data.json "
+=============================== warnings summary ===============================
+tests/tools/bim/test_serve_actions.py:12
+  /Users/bob/git/src/github.com/buvis/gems/tests/tools/bim/test_serve_actions.py:12: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:35: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/tools/bim/test_serve_actions.py: 54 warnings
+tests/tools/bim/test_serve_app.py: 20 warnings
+tests/tools/bim/test_serve_open.py: 8 warnings
+tests/tools/bim/test_serve_queries.py: 36 warnings
+tests/tools/bim/test_serve_triage_actions.py: 14 warnings
+tests/tools/bim/test_serve_zettels.py: 26 warnings
+  /Users/bob/git/src/github.com/buvis/gems/.venv/lib/python3.13/site-packages/fastapi/applications.py:4723: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:39: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/tools/backup/test_backup_cli.py::TestBackupCliRun::test_runs_all_applicable_and_renders_via_console
+FAILED tests/tools/backup/test_backup_cli.py::TestBackupCliRun::test_only_narrows_selection
+FAILED tests/tools/backup/test_backup_cli.py::TestBackupCliRun::test_tag_narrows_selection
+FAILED tests/tools/backup/test_backup_cli.py::TestBackupCliDryRun::test_dry_run_passes_flag_to_runner
+FAILED tests/tools/backup/test_backup_cli.py::TestBackupCliExitCode::test_all_success_exits_zero
+FAILED tests/tools/backup/test_backup_phase2.py::TestSourceOutOverride::test_source_and_out_override_selected_instance
+FAILED tests/tools/backup/test_backup_phase2.py::TestSourceOutOverride::test_flag_wins_over_config_value
+FAILED tests/tools/backup/test_instance_excludes.py::TestRunnerInstanceExcludes::test_runner_add_and_remove_affect_only_selected_instance[remove-exact-pattern]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-OSError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-OSError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-PermissionError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-PermissionError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-RuntimeError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[source-RuntimeError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-OSError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-OSError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-PermissionError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-PermissionError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-RuntimeError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_isolates_metadata_failures_and_preserves_independent_instances[out-RuntimeError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails[source-OSError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails[source-PermissionError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails[source-PermissionError-dry-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails[source-RuntimeError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails[out-OSError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails[out-RuntimeError-run]
+FAILED tests/tools/backup/test_plan_errors.py::test_runner_rejects_every_duplicate_output_even_when_member_metadata_fails[out-RuntimeError-dry-run]
+FAILED tests/tools/backup/test_plan_validation.py::test_runner_keeps_missing_inputs_distinct_from_collisions_and_executes_independent_instances[run]
+FAILED tests/tools/backup/test_plan_validation.py::test_runner_keeps_missing_inputs_distinct_from_collisions_and_executes_independent_instances[dry-run]
+FAILED tests/tools/backup/test_plan_validation.py::test_fatal_archive_errors_propagate_with_empty_default_engine[archive storage unavailable-runner]
+FAILED tests/tools/backup/test_plan_validation.py::test_fatal_archive_errors_propagate_with_empty_default_engine[archive permission denied-runner]
+FAILED tests/tools/klyreon/test_vault_git.py::TestScopedCommit::test_commit_author_is_klyreon_identity
+FAILED tests/tools/klyreon/test_vault_git.py::TestAuthorship::test_human_authored_false_for_klyreon_only
+FAILED tests/tools/postup/adapters/test_cli.py::TestCli::test_collect_runs_and_reports
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[text]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[binary]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[crlf]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_dirty_path_untouched_upstream_is_kept_and_not_saved
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_unpushed_local_commit_is_never_selected
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestMixedStateStopsPull::test_staged_and_unstaged_path_stops_before_any_reset[worktree-C]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestMixedStateStopsPull::test_staged_and_unstaged_path_stops_before_any_reset[worktree-head]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUntrackedKeptFileStopsPull::test_rm_cached_file_upstream_changed_keeps_disk_bytes
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestRescuedTargetIsExcluded::test_localized_dirty_target_keeps_b_bytes_at_source
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestSaveFailureKeepsEdit::test_read_only_divergence_dir_stops_pull_with_edit_intact
+34 failed, 6174 passed, 16 skipped, 1 xfailed, 317 warnings, 10 errors in 155.95s (0:02:35)
+PASS 6174 FAIL 34 SKIP 16 EXIT 1

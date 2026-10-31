@@ -419,3 +419,47 @@
 {"id":"3a6616ca","ended_at":1793358028,"elapsed_s":2353,"outcome":"ok","detail":"Tess completed draft tests; host approval failures stopped coordinator before quality gate"}
 {"kind":"handoff","site":"build","edge":"leave","at":1793358030,"phase":"paused","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1793399231,"phase":"build","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1793400146,"phase":"build","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
+{"id":"2116e1cd","kind":"tess","task":"2","queued_at":1793400250,"prompt_bytes":10256}
+{"id":"2116e1cd","ended_at":1793400326,"elapsed_s":76,"outcome":"error","detail":"Tess context_overrun before edits; no test changes"}
+{"id":"807f4d9d","kind":"tess","task":"2","queued_at":1793400338,"prompt_bytes":10468}
+{"id":"807f4d9d","ended_at":1793400429,"elapsed_s":91,"outcome":"ok","detail":null}
+{"id":"05bb8cfc","kind":"devon","task":"2","queued_at":1793400435,"prompt_bytes":44294}
+{"id":"7aef5ab4","kind":"ivan","task":"2","queued_at":1793400450,"prompt_bytes":50744}
+{"id":"7aef5ab4","ended_at":1793400458,"elapsed_s":8,"outcome":"error","detail":"prompt 50744 bytes exceeds 50000; trimmed architecture before dispatch"}
+{"id":"8d53a608","kind":"ivan","task":"2","queued_at":1793400458,"prompt_bytes":36717}
+{"id":"05bb8cfc","ended_at":1793400622,"elapsed_s":187,"outcome":"ok","detail":"one fabricated-success exploit rejected; tuple/list test defect; gate incomplete, no robust claim"}
+{"id":"35205e7f","kind":"tess","task":"2","queued_at":1793400622,"prompt_bytes":10984}
+{"id":"35205e7f","ended_at":1793400674,"elapsed_s":52,"outcome":"ok","detail":null}
+{"id":"8d53a608","ended_at":1793400690,"elapsed_s":232,"outcome":"error","detail":"prepared prompt superseded by strengthened tests before dispatch"}
+{"id":"d11f6451","kind":"ivan","task":"2","queued_at":1793400690,"prompt_bytes":37018}
+{"id":"d11f6451","ended_at":1793400896,"elapsed_s":206,"outcome":"ok","detail":null}
+{"id":"854559c4","kind":"ivan","task":"2","queued_at":1793400927,"prompt_bytes":15687}
+{"id":"854559c4","ended_at":1793401008,"elapsed_s":81,"outcome":"ok","detail":null}
+{"id":"4a75b50e","kind":"deslop","task":"2","queued_at":1793401039,"prompt_bytes":14121}
+{"id":"4a75b50e","ended_at":1793401070,"elapsed_s":31,"outcome":"ok","detail":null}
+{"id":"39d390e0","kind":"pat","task":"2","queued_at":1793401070,"prompt_bytes":47689}
+{"id":"39d390e0","ended_at":1793401097,"elapsed_s":27,"outcome":"error","detail":"Claude weekly limit resets Nov 1 10am Europe/Prague; no retry before reset"}
+{"id":"e93a4e1b","kind":"tess","task":"3","queued_at":1793401136,"prompt_bytes":18249}
+{"id":"e93a4e1b","ended_at":1793401411,"elapsed_s":275,"outcome":"ok","detail":null}
+{"id":"6005b227","kind":"devon","task":"3","queued_at":1793401445,"prompt_bytes":19676}
+{"id":"6005b227","ended_at":1793401662,"elapsed_s":217,"outcome":"ok","detail":"verified passing wrong candidate 35 passed; six weak points; original cli restored"}
+{"id":"6465ef2b","kind":"tess","task":"3","queued_at":1793401662,"prompt_bytes":10428}
+{"id":"6465ef2b","ended_at":1793401822,"elapsed_s":160,"outcome":"ok","detail":null}
+{"id":"297870df","kind":"ivan","task":"3","queued_at":1793401867,"prompt_bytes":29582}
+{"id":"297870df","ended_at":1793402035,"elapsed_s":168,"outcome":"ok","detail":"usable implementation; invalid missing-config precedence test corrected separately; cancellation label fix unverified"}
+{"id":"1dc10678","kind":"tess","task":"3","queued_at":1793402035,"prompt_bytes":8715}
+{"id":"1dc10678","ended_at":1793402119,"elapsed_s":84,"outcome":"ok","detail":null}
+{"id":"b302b1db","kind":"ivan","task":"3","queued_at":1793402147,"prompt_bytes":12883}
+{"id":"b302b1db","ended_at":1793402201,"elapsed_s":54,"outcome":"ok","detail":null}
+{"id":"2a01c328","kind":"pat","task":"3","queued_at":1793402223,"prompt_bytes":35783}
+{"id":"2a01c328","ended_at":1793402237,"elapsed_s":14,"outcome":"error","detail":"not launched: confirmed live Claude weekly quota from task2; no retry before reset"}
+{"id":"ec9bd677","kind":"ivan","task":"4","queued_at":1793402258,"prompt_bytes":5276}
+{"id":"ec9bd677","ended_at":1793402312,"elapsed_s":54,"outcome":"ok","detail":null}
+{"id":"7ab962cb","kind":"ivan","task":"5","queued_at":1793402327,"prompt_bytes":5018}
+{"id":"7ab962cb","ended_at":1793402406,"elapsed_s":79,"outcome":"ok","detail":null}
+{"id":"8f7b7897","kind":"ivan","task":"2","queued_at":1793402731,"prompt_bytes":16196}
+{"id":"8f7b7897","ended_at":1793402813,"elapsed_s":82,"outcome":"ok","detail":null}
+{"id":"5c5d1f18","kind":"ivan","task":"3","queued_at":1793402856,"prompt_bytes":14257}
+{"id":"5c5d1f18","ended_at":1793403718,"elapsed_s":862,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1793404904,"phase":"review","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
