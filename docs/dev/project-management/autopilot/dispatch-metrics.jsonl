@@ -463,3 +463,7 @@
 {"id":"5c5d1f18","kind":"ivan","task":"3","queued_at":1793402856,"prompt_bytes":14257}
 {"id":"5c5d1f18","ended_at":1793403718,"elapsed_s":862,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"leave","at":1793404904,"phase":"review","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793406288,"phase":"review","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
+{"id":"419321e1","kind":"bob","task":"review-00111-c1-20261031","queued_at":1793406472,"prompt_bytes":13311}
+{"id":"419321e1","ended_at":1793406522,"elapsed_s":50,"outcome":"error","detail":"not dispatched: required Anthropic roster blocked by confirmed weekly quota"}
+{"kind":"handoff","site":"review","edge":"leave","at":1793406552,"phase":"paused","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
