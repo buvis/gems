@@ -1,0 +1,54 @@
+[BOB] 🟡 The runner's interrupt path can lose a completed future. A `KeyboardInterrupt` that lands after `completed.get()` has dequeued the future (inside `Queue.get`'s `notify`/`__exit__`), or in a main-thread `completed.put` (from `add_done_callback` on an already-done future, or from `shutdown(cancel_futures=True)` calling `Future.cancel`), leaves the future in `pending` but not in the queue. The later `completed.get()` then blocks forever. If the interrupt lands after `pending.pop(future)` but before `ready.extend(...)`, that instance gets no terminal result. The window is very narrow, but the result is a hang in exactly the path this PRD is meant to make clean | File: src/tools/backup/runner.py:119 | Task: 2
+[BOB] 🟡 Two new system-tar behaviours have no test. First, removing the cancel check between fsync/chmod and `os.replace` (tar_archive.py:475) breaks no test: no test sets the event after `communicate` returns, and the Python engine has `test_cancel_cleans_when_requested_during_fsync` but the system engine has no counterpart. Second, the design's "any other exception after spawn must stop/reap the live child before returning the invocation-failure fallback" is untested: no test makes `communicate` raise `OSError` while `poll()` is None | File: tests/tools/backup/test_parallel_runner.py:327 | Task: 1
+[BOB] 🟡 CHANGELOG has three overlapping Added entries for one feature. Lines 12 and 13 both say the default is three workers and completed results are preserved. The PRD asks for "an `Added` line" and the design for "one Added entry" | File: CHANGELOG.md:12 | Task: 4
+[BOB] 🟡 `cast("Generator[StepResult, None, None]", runner.run(plan))` claims a type the declared `Iterator` return does not promise, so `.close()` is only safe by convention. That forced every `return_value=iter([...])` patch in test_backup_cli.py and test_backup_phase2.py to become a generator. Simpler: annotate `Runner.run` as `Generator[StepResult, None, None]` (runner.py:53) and drop the cast and the `cast` import | File: src/tools/backup/cli.py:237 | Task: 3
+[BOB] 🟡 `Runner.run` keeps its own `finished` flag and calls `cancel.set()` on abnormal exit, which duplicates `_execute`'s `finally` (runner.py:126). The only exception that can escape before `_execute` starts is a preflight `FatalError`, and no workers exist at that point. Remove the flag and the `cancel.set()` and keep only the `cancelled_names`/`_cancel` reset | File: src/tools/backup/runner.py:63 | Task: 2
+[BOB] 🟡 tar_archive.py has redundant guards. `TarArchive.run` checks cancel at entry (:124) and `_run_validated` checks again (:163) with only cheap input validation between them. `_run_system_tar` checks after a successful `communicate` (:514) and the caller checks again immediately (:462). The `contextlib.suppress(ProcessLookupError)` wrappers (:526, :531) duplicate what CPython ≥3.9 `Popen.send_signal` already does (poll first, then suppress `ProcessLookupError`) | File: src/tools/backup/capabilities/tar_archive.py:124 | Task: 1
+[BOB] ⚪ The diff compresses existing comments and docstrings nobody asked to change. The system-tar docstring loses its `--no-recursion` reason (a listed directory would re-add excluded content) and the reason for NUL delimiting (a newline in a filename would inject an outside or absolute `-T` path). The `_report_steps`/`_run_plan` docstrings lose the cron-exit reasoning | File: src/tools/backup/capabilities/tar_archive.py:440 | Task: 1
+[BOB] ⚪ The `stubborn` × `previous` parametrization waits through the real 5-second terminate grace twice, about 10 s of suite time. The design called for a controlled `Popen` fake for kill escalation without real five-second waits | File: tests/tools/backup/test_parallel_runner.py:222 | Task: 1
+[BOB] ⚪ The PRD test scenario "interrupt with two active and two queued" is only tested with one active and one unsubmitted instance (3 instances, jobs=2) | File: tests/tools/backup/test_parallel_runner.py:554 | Task: 2
+[BOB] ⚪ `_run_instance` materializes the capability iterator, so a later `ArchiveCancelled` or exception throws away earlier successful results from a multi-result capability | File: src/tools/backup/runner.py:205 | Task: 2
+[BOB] ⚪ Only the direct tar child is signalled, and the final `process.communicate()` after `kill` has no timeout. A descendant that holds the pipes could block cleanup | File: src/tools/backup/capabilities/tar_archive.py:533 | Task: 1
+[BOB] ⚪ `start_new_session=True` takes tar out of the terminal's process group. SIGHUP (terminal close) or SIGTERM to Python orphans a running tar, which keeps writing and leaves a `.tmp` sibling | File: src/tools/backup/capabilities/tar_archive.py:502 | Task: 1
+[BOB] ⚪ `KeyboardInterrupt` is an asynchronous exception, so a few bytecode positions stay outside the handlers: generator entry before `run`'s try, and the `_execute` loop back-edge after the inner try. An interrupt there escapes the generator. Unyielded results are then dropped and unsubmitted names are left out of `cancelled_names` ("interrupted: no unfinished instances") | File: src/tools/backup/runner.py:97 | Task: 2
+[BOB] ⚪ No test interrupts `_shutdown`'s join a second time to show the cleanup still completes after repeated Ctrl-C | File: src/tools/backup/runner.py:131 | Task: 2
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass
+
+FIX:
+- Interrupt can lose a dequeued future, hanging `completed.get()` or dropping a terminal result — src/tools/backup/runner.py:119 — in the cancel branch after `_shutdown` (runner.py:99-104), every future is already done. Collect results directly from `pending` (in insertion order), then `pending.clear()`, so the cancel path never blocks on the queue.
+- System-tar pre-publication check and post-spawn non-cancel reaping are untested — tests/tools/backup/test_parallel_runner.py:327 — add a test that sets the event inside the system-tar `os.fsync`/`os.chmod` and asserts `ArchiveCancelled`, prior bytes unchanged and no `.tmp`. Add a Popen-fake test where `communicate` raises `OSError` with `poll()` None, asserting `terminate` plus `communicate(timeout=5.0)` and a returned `"tar invocation failed: ..."`.
+- Three overlapping CHANGELOG Added entries — CHANGELOG.md:12 — merge lines 12-14 into one entry that covers `--jobs` (default 3), cooperative cancellation for both engines, and exit 130.
+- Cast to `Generator` hides the `.close()` contract — src/tools/backup/cli.py:237 — annotate `Runner.run` (runner.py:53) as `Generator[StepResult, None, None]`, then use `steps = runner.run(plan)` and drop the `cast` import.
+- Duplicate `finished`/`cancel.set()` in `Runner.run` — src/tools/backup/runner.py:63 — delete `finished` (:63, :78) and `if not finished: cancel.set()` (:80-81).
+- Redundant guards in tar_archive — src/tools/backup/capabilities/tar_archive.py:124 — keep the entry check in `run` and drop the one at :163. Drop the post-communicate check at :514, because :462 covers it. Drop the `contextlib.suppress(ProcessLookupError)` wrappers at :526 and :531.
+- Removed rationale comments and docstrings — src/tools/backup/capabilities/tar_archive.py:440 — restore the `--no-recursion` and NUL-injection reasoning in the system-tar docstring, and the cron-exit reasoning in the `_report_steps` (cli.py:32) and `_run_plan` (cli.py:222) docstrings.
+- Real 5-second grace waits in the stubborn-tar test — tests/tools/backup/test_parallel_runner.py:222 — run the stubborn real process for `previous=None` only, or replace it with a Popen fake whose `communicate(timeout=5.0)` raises `TimeoutExpired`, and assert `kill` and a final `communicate()`.
+- The two-active/two-queued interrupt scenario is not tested — tests/tools/backup/test_parallel_runner.py:554 — add a 4-instance, jobs=2 case: both active workers see the event and the two unsubmitted instances never start.
+
+VERIFY:
+- (none)
+
+KNOWN:
+- Successful prefix lost from a multi-result capability on a later cancel or failure — recorded as a non-blocker in both design-review dispatches; no current capability publishes more than one result.
+- Direct-child-only signalling and the untimed final `communicate()` — design names arbitrary descendant supervision as outside v1; the stub test deliberately uses a direct child.
+- Orphaned tar on SIGHUP/SIGTERM because of `start_new_session=True` — deliberate design choice so Ctrl-C reaches only the runner; the design forbids library signal handlers in v1.
+- Async `KeyboardInterrupt` windows outside the handlers (generator entry, loop back-edge) — exception-based interrupts cannot be made safe at every bytecode without a SIGINT handler, which the design excludes. The hang variant is fixed under FIX.
+- No test for repeated Ctrl-C during `_shutdown` — dispatch 2 of the design review recorded this as a future test improvement, not a v1 requirement.
+
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass

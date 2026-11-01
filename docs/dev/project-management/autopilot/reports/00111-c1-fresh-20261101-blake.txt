@@ -1,0 +1,35 @@
+[BLAKE] 🟡 Ctrl-C handling can lose a result or hang the run. If a KeyboardInterrupt lands between `pending[future] = name` and `future.add_done_callback(completed.put)` (runner.py:115-116), or after `completed.get()` takes a future but before `pending.pop` (runner.py:119-120), a future stays in `pending` but never reaches `completed`. The untimed `completed.get()` then blocks forever. Every later Ctrl-C is caught at runner.py:122 and goes back into the same get, so Ctrl-C can no longer stop the run. An interrupt just after `remaining.popleft()` (runner.py:113) or `pending.pop` (runner.py:120) instead drops that instance's StepResult, and the instance is not named in the "interrupted:" message. Suggested fix: wait on the futures themselves (`concurrent.futures.wait(pending, return_when=FIRST_COMPLETED)`, or a timed get that rescans `done()`), and remove a future from `pending` only after its results are in `ready` | File: src/tools/backup/runner.py:119 | Task: Phase 1
+[BLAKE] ⚪ The PRD says `cancel` goes to every capability call, but `Runner._plan` calls `capability.plan(**call_kwargs)` without it (runner.py:157-164). This is harmless while plan only reads metadata, but it does not match the PRD wording, and a future capability whose plan does I/O could not be cancelled | File: src/tools/backup/runner.py:164 | Task: Phase 1
+[BLAKE] ⚪ The Capability protocol docstring still says the runner lets FatalError through and turns only other exceptions into failed steps (capabilities/__init__.py:21-24). `_run_instance` now turns a worker FatalError into a failed step (runner.py:208, asserted by test_failure_isolated_from_other_workers). The code follows the PRD; the docstring is out of date | File: src/tools/backup/capabilities/__init__.py:21 | Task: Phase 1
+[BLAKE] ⚪ Ctrl-C has no way out when a writer is slow to see `cancel`. `_walk_tree` and `_select_items` check `cancel` only after the whole walk (tar_archive.py:183-184), and the Python engine checks only between members. Every repeated Ctrl-C is swallowed (runner.py:122, runner.py:136, cli.py:50, cli.py:248), so a large or stalled source tree keeps the process alive until SIGTERM or SIGKILL. The docs mention only the per-member delay (docs/source/tools/backup.rst:43-44) | File: src/tools/backup/capabilities/tar_archive.py:183 | Task: Phase 0
+[BLAKE] ⚪ `_cleanup_tar_process` sends terminate and kill only to the tar pid, although `start_new_session=True` gives tar its own process group (tar_archive.py:502, tar_archive.py:527-533). On Linux, GNU tar `-z` forks gzip, which inherits the stderr pipe. So the post-kill `process.communicate()` with no timeout (tar_archive.py:533) waits for gzip to exit, not the bounded wait promised in the PRD Risks section. `os.killpg` would close this gap | File: src/tools/backup/capabilities/tar_archive.py:533 | Task: Phase 0
+[BLAKE] ⚪ `_report_steps` re-renders the pending step after any KeyboardInterrupt. That includes one that lands after `_report_step` printed and the counter went up but before `pending = None` (cli.py:40-47). A Ctrl-C at that moment prints the step twice and counts it twice in the summary | File: src/tools/backup/cli.py:40 | Task: Phase 2
+[BLAKE] ⚪ The Test Strategy case "interrupt with two active and two queued" is not tested as written. The interrupt tests use three instances with `jobs=2`: one completed, one active, one queued (tests/tools/backup/test_parallel_runner.py:554, tests/tools/backup/test_parallel_cli.py:141). The exit-130 CLI test is in test_parallel_cli.py, so the PRD's success-metric command `pytest tests/tools/backup/test_parallel_runner.py` never runs the exit-130 path | File: tests/tools/backup/test_parallel_cli.py:141 | Task: Phase 2
+[BLAKE] ⚪ The PRD asks for one `Added` line under `[Unreleased]`, but CHANGELOG.md has three overlapping lines. Lines 12 and 13 both announce default-three concurrency and joining workers on cancel | File: CHANGELOG.md:12 | Task: Phase 2
+[BLAKE] ⚪ Runner has public members beyond the PRD's exports (`Runner(cfg, dry_run, jobs)`, `Runner.interrupted`): `request_cancel()` and `cancelled_names` (runner.py:45, runner.py:47). The CLI needs them to handle Ctrl-C during rendering and to name unfinished instances, so they add no new feature, but they are undocumented API | File: src/tools/backup/runner.py:47 | Task: Phase 1
+
+B1: fail
+B2: pass
+B3: pass
+B4: pass
+B5: pass
+B6: pass
+B7: pass
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass
+
+Checks the coordinator still needs to run (I could not run them under the read-only transport):
+1. Run `uv run ruff check src/tools/backup tests/tools/backup`. This is part of the Phase 2 exit criteria.
+2. Run `uv run mypy src/tools/backup`. This is part of the Phase 2 exit criteria.
+
+I checked the `rg -c "\-\-jobs"` acceptance with grep instead of rg: `docs/source/tools/backup.rst` has several matches and `CHANGELOG.md` matches at line 12.
