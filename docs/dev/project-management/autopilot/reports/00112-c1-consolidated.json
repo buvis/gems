@@ -1,0 +1,161 @@
+[
+  {
+    "ref": "R1",
+    "severity": "⚪",
+    "issue": "In the system-tar path, `on_finalize()` runs before fsync/chmod/`os.replace`. An `OSError` there returns a fallback reason, the Python writer then re-archives the whole tree and emits a second `finalizing`. No `archiving` event is re-emitted, so the status shows \"finalizing\" for the entire fallback write. This is a rare edge case, but the phase is misleading while it lasts",
+    "file": "src/tools/backup/capabilities/tar_archive.py:522",
+    "task": "2",
+    "found_by": [
+      "ALICE",
+      "BLAKE",
+      "BOB"
+    ],
+    "consensus": "3/3"
+  },
+  {
+    "ref": "R2",
+    "severity": "🟡",
+    "issue": "`_archive_callbacks` is named like a pure factory, but calling it emits the initial `archiving` event and starts the throttle clock. It also returns `on_finalize` even when `progress is None`, while `on_bytes` is gated. Rename it to state the side effect (e.g. `_start_archive_progress`) or emit the boundary event explicitly in `_archive_result`",
+    "file": "src/tools/backup/capabilities/tar_archive.py:48",
+    "task": "2",
+    "found_by": [
+      "ALICE",
+      "BOB"
+    ],
+    "consensus": "2/3"
+  },
+  {
+    "ref": "R3",
+    "severity": "⚪",
+    "issue": "`from queue import Queue as ProgressQueue` sits next to `import queue` with no comment. It exists only so tests that monkeypatch `backup.runner.queue.Queue` (test_runner_interrupt_boundaries.py:77, test_parallel_runner.py:782) don't also replace the progress queue. A cleanup to `queue.Queue` would silently move those injections onto the progress drain. Add a one-line comment",
+    "file": "src/tools/backup/runner.py:11",
+    "task": "3",
+    "found_by": [
+      "ALICE",
+      "BOB"
+    ],
+    "consensus": "2/3"
+  },
+  {
+    "ref": "R4",
+    "severity": "⚪",
+    "issue": "The new public contracts are not documented in code. `Runner.__init__` `on_progress`/`on_tick` lack a docstring covering calling-thread delivery, ordinary exceptions swallowed, suppression under dry-run, and short/nonblocking callbacks. That docstring is what the \"TUI/API observer\" next change depends on. The `ProgressEvent` docstring omits that byte fields are input bytes and None when not measurable (PRD wording)",
+    "file": "src/tools/backup/runner.py:47",
+    "task": "general",
+    "found_by": [
+      "ALICE",
+      "BOB"
+    ],
+    "consensus": "2/3"
+  },
+  {
+    "ref": "R5",
+    "severity": "🟡",
+    "issue": "The diff deletes documented rationale from two writer docstrings outside the feature's scope. `_write_archive` lost the explanation of why it does its own mkstemp+fsync+`os.replace` instead of `pybase.filesystem.atomic_write` (a large tarball must stream, not be built in memory), which is the recorded exception to the AGENTS.md atomic-persistence invariant. `_write_archive_system_tar` lost the security rationale (`--no-recursion` keeps excluded content out; NUL delimiting stops newline-filename member injection) and its Google `Returns:` section. Its new two-line docstring also has no blank line after the summary. Build evidence shows trimming was used to hold the 49-line bound. Restore the text, and if the cap binds, extract the fsync/chmod/replace publication block into a helper",
+    "file": "src/tools/backup/capabilities/tar_archive.py:459",
+    "task": "2",
+    "found_by": [
+      "ALICE"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R6",
+    "severity": "🟡",
+    "issue": "`_write_archive` binds `size` inside one `if on_bytes is not None:` block and reads it in a second identical block after `tar.add`, so `size` is conditionally bound. Simpler: a `_input_size(path) -> int` helper (lstat, `st_size` if `S_ISREG` else 0), with `size = _input_size(file_path) if on_bytes is not None else 0` before the add and one guarded `done += size; on_bytes(done)` after it",
+    "file": "src/tools/backup/capabilities/tar_archive.py:474",
+    "task": "2",
+    "found_by": [
+      "ALICE"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R7",
+    "severity": "🟡",
+    "issue": "No test pins the post-join drain in the cancellation branch. Every cancellation test has already queued its events before the drain at the top of the loop, so deleting this drain would leave the suite green. If that happens, an event whose put completes while workers are joining arrives after its label's cancellation result, and the label reappears in the live status.",
+    "file": "src/tools/backup/runner.py:128",
+    "task": "3",
+    "found_by": [
+      "BOB"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R8",
+    "severity": "⚪",
+    "issue": "The `self._on_progress is not None and not self._dry_run` guard in `_drain_progress` is half redundant. `_execute` passes `progress=None` under those conditions, so the queue is never filled. Only the None check (needed for mypy) is required",
+    "file": "src/tools/backup/runner.py:159",
+    "task": "3",
+    "found_by": [
+      "ALICE"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R9",
+    "severity": "⚪",
+    "issue": "Several tests in the new progress suite re-test unchanged PRD 00111 behavior and would pass at base if collected: `test_runner_forwards_inputs_effective_exclusions_and_one_runtime_timestamp`, `test_cli_report_summary_counts_each_outcome_and_describes_dry_run`, `test_cli_result_output_uses_the_outcome_severity`, `test_cli_skipped_success_keeps_success_exit_and_skip_count`. They overlap test_backup_cli.py and test_plan_runner.py. The class name `TestStrengthenedEngineProgress` names the workflow step, not what it tests",
+    "file": "tests/tools/backup/progress_runner_cases.py:127",
+    "task": "4",
+    "found_by": [
+      "ALICE"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R10",
+    "severity": "⚪",
+    "issue": "The PRD gives `Runner.__init__` one new kwarg, `on_progress`, and lists no new exports. The implementation also adds `on_tick`, which the CLI uses to refresh elapsed time when no events arrive. The PRD requires that refresh but names no way to do it, so this is a PRD gap closed with an unlisted parameter.",
+    "file": "src/tools/backup/runner.py:54",
+    "task": "general",
+    "found_by": [
+      "BLAKE"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R11",
+    "severity": "⚪",
+    "issue": "The final catch-up `archiving` event in `on_finalize` ignores the 0.2 second throttle. Two further `archiving` events can therefore arrive less than 0.2 seconds apart; a test asserts a 0.1999 second gap. The spec text says at most one per 0.2 seconds, but the PRD happy path requires `done_bytes` to end at the total. The excess is at most one event per archive.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:65",
+    "task": "general",
+    "found_by": [
+      "BLAKE"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R12",
+    "severity": "⚪",
+    "issue": "The progress queue is bounded (`maxsize=256`) and `_enqueue_progress` blocks until a slot frees. The PRD names only a plain `queue.Queue` and says progress can never fail an archive. A blocked put does not fail the archive, but it can stall the writer. This happens when the consumer holds a yielded result and does not iterate, for example when TTY output is paused with Ctrl-S.",
+    "file": "src/tools/backup/runner.py:81",
+    "task": "general",
+    "found_by": [
+      "BLAKE"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R13",
+    "severity": "⚪",
+    "issue": "A failure inside `on_result` (`_LiveProgress.finish` → `refresh`) propagates out of `_report_steps`. That closes the runner generator, which cancels in-flight archives, and the user sees a raw traceback. The runner swallows the same `refresh` failure when it comes through `on_tick`, and progress_cli_cases.py:387 pins the propagation.",
+    "file": "src/tools/backup/cli.py:106",
+    "task": "4",
+    "found_by": [
+      "BOB"
+    ],
+    "consensus": "1/3"
+  },
+  {
+    "ref": "R14",
+    "severity": "⚪",
+    "issue": "Cannot statically verify: on a real 80-column TTY, the joined status for three or more active jobs updates in place, does not leave stale wrapped lines, and clears before each result line and the summary.",
+    "file": "N/A",
+    "task": "4",
+    "found_by": [
+      "BOB"
+    ],
+    "consensus": "1/3"
+  }
+]

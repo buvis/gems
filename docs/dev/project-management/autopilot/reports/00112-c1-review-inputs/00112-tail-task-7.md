@@ -1,0 +1,6 @@
+### Findings (verbatim)
+- ⚪ src/tools/backup/runner.py:11: `from queue import Queue as ProgressQueue` sits next to `import queue` with no comment. It exists only so tests that monkeypatch `backup.runner.queue.Queue` (test_runner_interrupt_boundaries.py:77, test_parallel_runner.py:782) don't also replace the progress queue. A cleanup to `queue.Queue` would silently move those injections onto the progress drain. Add a one-line comment (found by: ALICE, BOB)
+- ⚪ src/tools/backup/runner.py:47: The new public contracts are not documented in code. `Runner.__init__` `on_progress`/`on_tick` lack a docstring covering calling-thread delivery, ordinary exceptions swallowed, suppression under dry-run, and short/nonblocking callbacks. That docstring is what the "TUI/API observer" next change depends on. The `ProgressEvent` docstring omits that byte fields are input bytes and None when not measurable (PRD wording) (found by: ALICE, BOB)
+
+### Scope and acceptance
+Documentation/comments only: explain the distinct completion/progress Queue bindings and document the actual observer contract on Runner and the input-byte/unknown semantics on ProgressEvent. Preserve the caller-thread, idle tick timing, held-generator yield exception, dry-run/plan suppression and ordinary-exception behavior. Keep existing signatures and behavior.

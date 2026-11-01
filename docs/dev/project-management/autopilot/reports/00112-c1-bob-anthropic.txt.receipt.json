@@ -1,0 +1,20 @@
+{
+  "provider": "kiro",
+  "model_provider": "anthropic",
+  "lens": "bob",
+  "model": "claude-opus-5.5",
+  "requested_model": "opus",
+  "effort": "xhigh",
+  "started": 1793571786.844102,
+  "completed": 1793572487.057991,
+  "output": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00112-c1-bob-anthropic.txt",
+  "sha256": "3ec36ce4bce3ee61506ed16aca859f6212f8cea05a397c0bf58df4cd745878ea",
+  "raw": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00112-c1-bob-anthropic-eb33a1b5b6ca4fd3aeed866fec228f81.jsonl",
+  "raw_sha256": "80d5ca95285d9d2027aec40b81021981a7bec00deee58ec7d608790ea92d527d",
+  "thread_id": "sess_e61cf802-609a-4316-a391-f16162788222",
+  "stderr_sha256": "837db07fcdad9fbe31e10ecf4eaf8e48bf85c28fd9067e6cd02836e09936ec96",
+  "root": "/Users/bob/git/src/github.com/buvis/gems",
+  "prd": "00112-backup-live-progress-and-quiet-v1.md",
+  "cycle": 1,
+  "implementation_fingerprint": "5103205432dd5cf63060d8d7542a79ceabd124724a9c262572681dcbf2ca53e8"
+}
