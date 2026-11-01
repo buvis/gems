@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **backup**: immutable `ProgressEvent` records carry an instance label, phase and optional input byte counts.
 - **backup**: `--jobs` controls concurrent archive instances (default three); cancellation stops new work, joins workers, stops tar and cleans temporary files while preserving completed results and backups; interruption exits with status 130.
 - **backup**: `--plan` previews metadata-only run/skip/fail decisions, reasons and existing-output replacement markers; selected outputs share one timestamp and colliding paths are rejected before plan, run or dry-run execution.
 - **backup**: optional `items` bundle literal source-relative files and directories into one archive, preserving empty directories and symlinks while applying inherited exclusions and `.bkpignore` rules.

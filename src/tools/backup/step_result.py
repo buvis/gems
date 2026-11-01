@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import Literal, NamedTuple
+
+
+class ProgressEvent(NamedTuple):
+    """Immutable progress update for one backup instance."""
+
+    label: str
+    phase: Literal["scanning", "archiving", "finalizing"]
+    done_bytes: int | None
+    total_bytes: int | None
 
 
 class ArchiveMeta(NamedTuple):
