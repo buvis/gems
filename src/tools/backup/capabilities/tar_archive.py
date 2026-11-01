@@ -258,9 +258,17 @@ class TarArchive:
         on_bytes, on_finalize = _start_archive_progress(label, walk.total_bytes, engine, progress)
         note = ""
         if engine == _ENGINE_SYSTEM_TAR:
-            fallback = _write_archive_system_tar(out, arcbase, walk.files, cancel=cancel, on_finalize=on_finalize)
+            finalized = False
+
+            def finalize_once() -> None:
+                nonlocal finalized
+                finalized = True
+                on_finalize()
+
+            fallback = _write_archive_system_tar(out, arcbase, walk.files, cancel=cancel, on_finalize=finalize_once)
             if fallback is not None:
-                _, on_finalize = _start_archive_progress(label, walk.total_bytes, engine, progress)
+                if finalized:
+                    _, on_finalize = _start_archive_progress(label, walk.total_bytes, engine, progress)
                 _write_archive(out, arcbase, walk.files, cancel=cancel, on_finalize=on_finalize)
                 note = f" (system-tar unavailable: {fallback}; used python engine)"
         else:
