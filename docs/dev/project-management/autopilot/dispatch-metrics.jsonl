@@ -468,3 +468,9 @@
 {"id":"419321e1","ended_at":1793406522,"elapsed_s":50,"outcome":"error","detail":"not dispatched: required Anthropic roster blocked by confirmed weekly quota"}
 {"kind":"handoff","site":"review","edge":"leave","at":1793406552,"phase":"paused","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
 {"kind":"handoff","site":"review","edge":"leave","at":1793523986,"phase":"review","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793525070,"phase":"review","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
+{"id":"b76c895a","kind":"bob","task":"review-00111-c1-20261101","queued_at":1793525212,"prompt_bytes":13471}
+{"id":"b76c895a","ended_at":1793525226,"elapsed_s":14,"outcome":"error","detail":"Not dispatched: stage used HEAD instead of PRD work base; superseded by 00111-c1-20261101-full"}
+{"id":"372b9c28","kind":"bob","task":"review-00111-c1-20261101-full","queued_at":1793525350,"prompt_bytes":13582}
+{"id":"372b9c28","ended_at":1793526040,"elapsed_s":690,"outcome":"ok","detail":"Bob Anthropic Kiro claude-opus-5.5 xhigh completed with receipt; whole review paused for Alice/Blake permission denials"}
+{"kind":"handoff","site":"review","edge":"leave","at":1793526094,"phase":"paused","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}

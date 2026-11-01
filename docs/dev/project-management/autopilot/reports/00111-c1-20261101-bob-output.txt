@@ -1,0 +1,49 @@
+[BOB] 🟡 A Ctrl-C that lands between `pending[future] = name` and `future.add_done_callback(completed.put)`, or after `completed.get()` returns but before `pending.pop(future)`, leaves a future in `pending` that never reaches the queue again. After `_shutdown`, the loop then blocks in `completed.get()` forever. Each further Ctrl-C is caught and re-enters the same wait, so the CLI never reaches exit 130 | File: src/tools/backup/runner.py:119 | Task: 2
+[BOB] 🟡 No test covers a non-cancel exception after `Popen` while the child is alive (for example `OSError` from `communicate`). That path in `_cleanup_tar_process` (terminate, 5 s reap, close pipes, then the "tar invocation failed" fallback or the exception propagating) is new behavior and the design names it, but nothing pins it | File: src/tools/backup/capabilities/tar_archive.py:518 | Task: 1
+[BOB] 🟡 No runner test raises KeyboardInterrupt at the completion-collection seam (`completed.get()`), which is where a real Ctrl-C lands. No test covers the PRD scenario of two active writers plus two queued instances either. The existing tests use one active and one unsubmitted instance, and interrupt at the yield, in preflight, or in rendering | File: tests/tools/backup/test_parallel_runner.py:593 | Task: 2
+[BOB] 🟡 CHANGELOG has three overlapping `Added` bullets for one feature. The design asks for one entry mentioning `--jobs` and cancellation, and the first two bullets both say "default three" and "preserves completed results" | File: CHANGELOG.md:12 | Task: 4
+[BOB] 🟡 The `_check_cancel(cancel)` right after `_run_system_tar` returns is redundant. `_run_system_tar` already checks after `communicate` succeeds (line 514), and the `finally` check covers the nonzero-return path. Nothing runs between the two checks | File: src/tools/backup/capabilities/tar_archive.py:462 | Task: 1
+[BOB] ⚪ The stubborn-tar parameters wait the real 5-second grace twice (prior output absent and present), so the case takes about 10 s. The design asked for kill escalation to be covered "without waiting five real seconds" | File: tests/tools/backup/test_parallel_runner.py:223 | Task: 1
+[BOB] ⚪ The label assertion was weakened to a set comparison, but `zip(results, engines, strict=True)` still pairs results with engines by position. The test now silently depends on the `(order, name)` order matching the insertion order | File: tests/tools/backup/test_plan_runner.py:412 | Task: 2
+[BOB] ⚪ `cast("Generator[...]", runner.run(plan))` works around the `Iterator` annotation on `Runner.run` so that `.close()` type-checks. Annotating `Runner.run` as a `Generator` removes the cast and the `cast` import | File: src/tools/backup/cli.py:237 | Task: 3
+[BOB] ⚪ The rewrite dropped the existing rationale from `_report_steps` without being asked: all steps render before the return so the user sees every failure, and a cron job must not treat an incomplete backup as success | File: src/tools/backup/cli.py:32 | Task: 3
+[BOB] ⚪ A Ctrl-C between `_report_step(pending)` returning and `pending = None` re-renders the step and counts it twice, so "count each step once" holds except within a narrow async-signal window | File: src/tools/backup/cli.py:47 | Task: 3
+[BOB] ⚪ `_run_instance` turns its whole result list into a list; a later `ArchiveCancelled` or exception drops an earlier successful prefix from a multi-result capability (recorded as a design non-blocker) | File: src/tools/backup/runner.py:205 | Task: 2
+[BOB] ⚪ The final unbounded `process.communicate()` after `kill()` can hang if a descendant of tar still holds the pipes (recorded as a design non-blocker) | File: src/tools/backup/capabilities/tar_archive.py:533 | Task: 1
+[BOB] ⚪ The fail-first replay was skipped because pytest is missing in the replay worktree, so no evidence shows the new tests fail against `9a7f78c8` | File: N/A | Task: general
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass
+
+FIX:
+- Futures can drop out of the queue during a Ctrl-C and then hang `completed.get()` — src/tools/backup/runner.py:119 — In the `cancel.is_set()` branch, after `self._shutdown(executor)`, every future is done. Drain `pending` there directly: for each future, add a cancelled result if `future.cancelled()`, otherwise `future.result()`, then `pending.clear()`. This means `completed.get()` is never waited on after shutdown.
+- No test for the exception-after-spawn cleanup path — src/tools/backup/capabilities/tar_archive.py:518 — Add a test in test_parallel_runner.py with an autospec `Popen` fake: `poll()` returns None, and the first `communicate` raises `OSError`. Assert `terminate()` and `communicate(timeout=5.0)` are called, all pipes are closed, the result starts with "tar invocation failed", no `*.tmp` remains, and the prior output bytes are unchanged. Add a second case where `ValueError` propagates after the reap.
+- No test interrupts at the collection seam, and none covers two active plus two queued — tests/tools/backup/test_parallel_runner.py:593 — Add a test with four instances and `jobs=2`. Both active workers block on `cancel.wait`. Patch `backup.runner.queue.Queue.get` to raise KeyboardInterrupt once after both have started. Assert the two queued instances never start, both active instances yield `cancelled`, `cancelled_names` holds all four in `(order, name)` order, `interrupted is True`, and `probe.active == 0`.
+- Three CHANGELOG bullets for one feature — CHANGELOG.md:12 — Replace lines 12-14 with one `Added` bullet: `--jobs N` (default 3) runs instances concurrently; Ctrl-C stops new work, cancels the Python and system-tar writers without replacing prior archives, and exits 130.
+- Redundant cancel check — src/tools/backup/capabilities/tar_archive.py:462 — Delete the `_check_cancel(cancel)` after the `_run_system_tar(...)` call. The inner check at line 514 and the `finally` check keep the behavior the same.
+- The stubborn-tar test waits real seconds — src/tools/backup/capabilities/tar_archive.py:529 — Move the 5.0 grace into a module constant (`_TERMINATE_GRACE`) and monkeypatch it to about 0.3 in the stubborn case at tests/tools/backup/test_parallel_runner.py:223.
+- Results are paired with engines by position — tests/tools/backup/test_plan_runner.py:412 — Build `engine_by_label = dict(zip(outputs, engines, strict=True))` and assert on `engine_by_label[result.label]` for each result.
+- The `cast` to `Generator` — src/tools/backup/cli.py:237 — Annotate `Runner.run` with `-> Generator[StepResult, None, None]` (under a TYPE_CHECKING import), then drop the `cast` and its import in cli.py.
+- The `_report_steps` rationale was removed — src/tools/backup/cli.py:32 — Add back the sentence explaining that every step renders before the return so the CLI exits nonzero on any incomplete backup.
+VERIFY:
+- No fail-first evidence for the new tests — Run `git worktree add /tmp/ff 9a7f78c8eb0e && cd /tmp/ff && uv sync --all-groups --all-extras`. Copy in HEAD's tests/tools/backup/{parallel_runner_helpers.py,test_parallel_runner.py,test_parallel_cli.py,test_parallel_runner_lifecycle.py}. Then run `uv run pytest tests/tools/backup/test_parallel_runner.py tests/tools/backup/test_parallel_cli.py tests/tools/backup/test_parallel_runner_lifecycle.py -q` and confirm every test that is not a preservation test fails.
+KNOWN:
+- A narrow double-render or double-count window in `_report_steps` (src/tools/backup/cli.py:47) — Exactly-once rendering under an async SIGINT would need signal masking, and the design rules out global signal handlers. The only effect is a duplicated output line.
+- `_run_instance` loses a successful prefix when a later step is cancelled (src/tools/backup/runner.py:205) — Recorded as a design non-blocker in both design-review dispatches. No current capability publishes more than one result.
+- A descendant holding the pipes can hang the final `communicate()` (src/tools/backup/capabilities/tar_archive.py:533) — Explicit v1 limit in the design: only the direct tar child is owned, and supervising arbitrary descendants is out of scope.
+
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass
