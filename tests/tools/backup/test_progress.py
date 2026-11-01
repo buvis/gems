@@ -126,6 +126,15 @@ class TestProgressEventRecord:
             assert tuple(replacement) == expected
 
 
+def _create_selected_input_source(tmp_path: Path, sizes: list[int]) -> Path:
+    source = tmp_path / "src"
+    source.mkdir()
+    for name, size in zip(["a-old", "b"], sizes, strict=True):
+        (source / name).write_bytes(b"x" * size)
+    (source / "a").write_bytes(b"excluded" * 13)
+    return source
+
+
 class TestArchiveEngineProgress:
     @pytest.mark.parametrize("engine", ["python-tarfile", "system-tar"])
     @pytest.mark.parametrize("label,sizes", [("docs", [7, 19]), ("docs-old", [11, 31])])
@@ -136,11 +145,7 @@ class TestArchiveEngineProgress:
         label: str,
         sizes: list[int],
     ) -> None:
-        source = tmp_path / "src"
-        source.mkdir()
-        for name, size in zip(["a-old", "b"], sizes, strict=True):
-            (source / name).write_bytes(b"x" * size)
-        (source / "a").write_bytes(b"excluded" * 13)
+        source = _create_selected_input_source(tmp_path, sizes)
         out = tmp_path / "out.tar.gz"
         out.write_bytes(b"previous archive")
         events: list[ProgressEvent] = []
