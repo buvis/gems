@@ -192,8 +192,10 @@ class Runner:
         instance: BackupInstance,
         now: datetime,
         cancel: threading.Event,
-        outcomes: dict[str, list[StepResult]],
+        outcomes: dict[str, list[StepResult]] | None = None,
     ) -> list[StepResult]:
+        if outcomes is None:
+            outcomes = {}
         if cancel.is_set():
             outcomes[name] = [self._cancelled_result(name)]
             return outcomes[name]
