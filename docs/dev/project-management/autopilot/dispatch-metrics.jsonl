@@ -597,3 +597,17 @@
 {"id":"d4473e2a","ended_at":1793572617,"elapsed_s":862,"outcome":"ok","detail":null}
 {"id":"004d36e9","ended_at":1793572617,"elapsed_s":798,"outcome":"error","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1793572732,"phase":"review","prd":"00112-backup-live-progress-and-quiet-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793572811,"phase":"review","prd":"00112-backup-live-progress-and-quiet-v1.md"}
+{"id":"abb863d5","kind":"tess","task":"6","queued_at":1793572858,"prompt_bytes":14061}
+{"id":"abb863d5","ended_at":1793572985,"elapsed_s":127,"outcome":"ok","detail":null}
+{"id":"35fbf09c","kind":"ivan","task":"6","queued_at":1793573004,"prompt_bytes":22817}
+{"id":"35fbf09c","ended_at":1793573043,"elapsed_s":39,"outcome":"ok","detail":null}
+{"id":"cc58f89d","kind":"pat","task":"6","queued_at":1793573062,"prompt_bytes":13176}
+{"id":"cc58f89d","ended_at":1793573089,"elapsed_s":27,"outcome":"ok","detail":null}
+{"id":"d7f6841b","kind":"ivan","task":"6","queued_at":1793573102,"prompt_bytes":24688}
+{"id":"d7f6841b","ended_at":1793573143,"elapsed_s":41,"outcome":"ok","detail":null}
+{"id":"54d9ac9e","kind":"pat","task":"6","queued_at":1793573161,"prompt_bytes":3291}
+{"id":"54d9ac9e","ended_at":1793573192,"elapsed_s":31,"outcome":"ok","detail":null}
+{"id":"845b8639","kind":"ivan","task":"7","queued_at":1793573212,"prompt_bytes":19719}
+{"id":"845b8639","ended_at":1793573243,"elapsed_s":31,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1793573496,"phase":"done","prd":"00112-backup-live-progress-and-quiet-v1.md"}
