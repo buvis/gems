@@ -16,7 +16,7 @@ from backup.config import effective_excludes
 from backup.step_result import PlanEntry, StepResult
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator, Iterator
 
     from backup.config import BackupConfig, BackupInstance
 
@@ -50,7 +50,7 @@ class Runner:
         if self._cancel is not None:
             self._cancel.set()
 
-    def run(self: Runner, selected: list[tuple[str, BackupInstance]]) -> Iterator[StepResult]:
+    def run(self: Runner, selected: list[tuple[str, BackupInstance]]) -> Generator[StepResult, None, None]:
         self.interrupted = False
         self.cancelled_names = ()
         self._cancelled.clear()

@@ -441,6 +441,8 @@ def _write_archive_system_tar(
 
     Python owns selection; nonrecursive, NUL-delimited paths preserve the exact
     member list, including empty directories and filenames containing newlines.
+    ``--no-recursion`` prevents listed directories from re-adding excluded content.
+    NUL delimiting prevents filenames containing newlines from injecting members.
     The sibling temp archive is fsynced before atomic publication.
 
     Returns:
@@ -459,7 +461,6 @@ def _write_archive_system_tar(
         filelist = b"".join(os.fsencode(file_path.relative_to(arcbase)) + b"\0" for file_path in files)
         _check_cancel(cancel)
         returncode, stderr_bytes = _run_system_tar(tar_bin, arcbase, tmp_path, filelist, cancel=cancel)
-        _check_cancel(cancel)
         if returncode != 0:
             stderr = stderr_bytes.decode("utf-8", "replace").strip().splitlines()
             detail = stderr[-1] if stderr else f"exit {returncode}"

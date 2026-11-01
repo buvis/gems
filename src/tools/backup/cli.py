@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import click
 from buvis.pybase.adapters import console
@@ -10,7 +10,7 @@ from buvis.pybase.result import FatalError
 from backup.settings import BackupSettings
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Iterable
+    from collections.abc import Callable, Iterable
 
     from backup.config import BackupConfig, BackupInstance
     from backup.step_result import StepResult
@@ -29,7 +29,11 @@ def _report_step(step: StepResult) -> None:
 def _report_steps(
     steps: Iterable[StepResult], *, dry_run: bool = False, on_interrupt: Callable[[], None] | None = None
 ) -> bool:
-    """Render every outcome, retrying interrupted output while draining workers."""
+    """Render every outcome, retrying interrupted output while draining workers.
+
+    Return whether any step failed so the caller exits nonzero and cron sees a
+    failed backup.
+    """
     archived = skipped = failed = 0
     iterator = iter(steps)
     pending = None
@@ -219,7 +223,11 @@ def _select_plan(
 def _run_plan(
     cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_run: bool, plan_only: bool, jobs: int = 3
 ) -> bool:
-    """Render the selected plan or drain its run, preserving interruption cleanup."""
+    """Render the selected plan or drain its run, preserving interruption cleanup.
+
+    Return whether the plan or run failed so the caller exits nonzero and cron
+    sees a failed backup.
+    """
     from backup.runner import Runner
 
     try:
@@ -234,7 +242,7 @@ def _run_plan(
                     message += "  [replaces existing]"
                 console.info(message)
             return any(entry.status == "fail" for entry in entries)
-        steps = cast("Generator[StepResult, None, None]", runner.run(plan))
+        steps = runner.run(plan)
         try:
             failed = _report_steps(steps, dry_run=dry_run, on_interrupt=runner.request_cancel)
         finally:
