@@ -5,6 +5,7 @@ import threading
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -88,6 +89,100 @@ class _OrderedCapability(_Capability):
 
 
 class TestRunnerCallingThread:
+    @pytest.mark.parametrize("jobs", [1, 3])
+    def test_runner_honors_requested_worker_concurrency(self, monkeypatch: pytest.MonkeyPatch, jobs: int) -> None:
+        started = {label: threading.Event() for label in ("one", "two", "three")}
+        release = threading.Event()
+        idle = threading.Event()
+
+        def produce(kwargs: dict[str, Any]) -> Iterator[StepResult]:
+            started[kwargs["label"]].set()
+            assert release.wait(3), "consumer did not release workers"
+            yield StepResult(kwargs["label"], True, "stored")
+
+        capability = _Capability(produce)
+        cfg = _config(monkeypatch, capability, tuple(started))
+        runner = Runner(cfg, jobs=jobs, on_tick=idle.set)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(lambda: list(runner.run(list(cfg.instances.items()))))
+            try:
+                if jobs == 1:
+                    assert idle.wait(2), "runner did not enter an idle wait"
+                    assert sum(event.is_set() for event in started.values()) == 1
+                else:
+                    assert all(event.wait(2) for event in started.values()), "requested workers did not all start"
+            finally:
+                release.set()
+            results = future.result(timeout=5)
+        assert sorted(_outcomes(results)) == [(label, True, "stored") for label in sorted(started)]
+        assert all(event.is_set() for event in started.values())
+
+    @pytest.mark.parametrize(
+        "inherit,remove,add,expected",
+        [
+            (True, ("cache",), ("extra", "cache-old"), ["cache-old", "extra"]),
+            (False, (), ("private",), ["private"]),
+        ],
+    )
+    def test_runner_forwards_inputs_effective_exclusions_and_one_runtime_timestamp(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        inherit: bool,
+        remove: tuple[str, ...],
+        add: tuple[str, ...],
+        expected: list[str],
+    ) -> None:
+        capability = _Capability(lambda kwargs: iter([StepResult(kwargs["label"], True, "stored")]))
+        cfg = _config(monkeypatch, capability, ("docs", "photos"))
+        cfg = BackupConfig(
+            excludes=cfg.excludes,
+            instances={
+                label: BackupInstance(
+                    use="controlled-progress",
+                    with_={"source": f"/unique/{label}", "items": [label, f"{label}-old"]},
+                    inherit_excludes=inherit,
+                    exclude_remove=remove,
+                    exclude_add=add,
+                )
+                for label in cfg.instances
+            },
+        )
+        before = datetime.now()
+        results = list(Runner(cfg, jobs=2).run(list(cfg.instances.items())))
+        after = datetime.now()
+        assert sorted(_outcomes(results)) == [(label, True, "stored") for label in sorted(cfg.instances)]
+        assert len(capability.calls) == 2
+        for call in capability.calls:
+            label = call["label"]
+            assert call["source"] == f"/unique/{label}"
+            assert call["items"] == [label, f"{label}-old"]
+            assert call["excludes"] == expected
+            assert isinstance(call["now"], datetime)
+            assert before <= call["now"] <= after
+        assert capability.calls[0]["now"] == capability.calls[1]["now"]
+
+    def test_runner_preserves_every_result_from_each_capability(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        received: list[ProgressEvent] = []
+
+        def produce(kwargs: dict[str, Any]) -> Iterator[StepResult]:
+            for index, (success, message, skipped) in enumerate(
+                [(True, "first stored", False), (False, "second failed", False), (True, "third skipped", True)]
+            ):
+                kwargs["progress"](ProgressEvent(kwargs["label"], "archiving", index, 3))
+                yield StepResult(kwargs["label"], success, message, skipped=skipped)
+
+        capability = _Capability(produce)
+        cfg = _config(monkeypatch, capability, ("docs",))
+        rows = []
+        for result in Runner(cfg, on_progress=received.append).run(list(cfg.instances.items())):
+            assert received == [ProgressEvent("docs", "archiving", index, 3) for index in range(3)]
+            rows.append((result.label, result.success, result.message, result.archive, result.skipped))
+        assert rows == [
+            ("docs", True, "first stored", None, False),
+            ("docs", False, "second failed", None, False),
+            ("docs", True, "third skipped", None, True),
+        ]
+
     @pytest.mark.parametrize("background_consumer", [False, True])
     @pytest.mark.parametrize("success", [False, True])
     def test_runner_preserves_fifo_events_and_drains_before_results_on_calling_thread(
@@ -148,7 +243,7 @@ class TestRunnerCallingThread:
 
         def tick() -> None:
             ticks.append(threading.get_ident())
-            if len(ticks) == 2:
+            if len(ticks) == 3:
                 release.set()
             raise ValueError("broken elapsed observer")
 
@@ -172,10 +267,10 @@ class TestRunnerCallingThread:
             release.set()
         assert _outcomes(results) == [("quiet", True, "writer unaffected")]
         assert events == (_frames("quiet", 23) if with_observer else [])
-        assert len(ticks) >= 2
+        assert len(ticks) >= 3
         assert set(ticks) == {caller}
         caller_waits = [timeout for thread, timeout in waits if thread == caller]
-        assert len(caller_waits) >= 2
+        assert len(caller_waits) >= 3
         assert all(timeout == 0.2 for timeout in caller_waits)
 
 
@@ -299,6 +394,8 @@ class TestRunnerCancellation:
             results.append(result)
         assert runner.interrupted is True
         assert [result.label for result in results] == ["cancel-me"]
+        assert results[0].success is False
+        assert results[0].message
         assert received == _frames("cancel-me")[:2]
 
     def test_runner_uses_fresh_progress_queue_for_each_run(
@@ -346,17 +443,17 @@ class _FloodCapability(_Capability):
             return
         try:
             assert self.start.wait(3), "consumer did not release producer"
-            for number in range(257):
+            for number in range(513):
                 if number == 256:
                     self.full.set()
                     self.overflow_attempt.set()
-                event = ProgressEvent(label, "archiving", number, 257)
+                event = ProgressEvent(label, "archiving", number, 513)
                 kwargs["progress"](event)
                 self.enqueued.append(event)
             self.overflow_returned.set()
             if kwargs["cancel"].is_set():
                 self.cancel_seen.set()
-                kwargs["progress"](ProgressEvent("flood-old", "finalizing", 257, 257))
+                kwargs["progress"](ProgressEvent("flood-old", "finalizing", 513, 513))
             yield StepResult(label, True, "flood finished")
         finally:
             self.finished.set()
@@ -400,7 +497,7 @@ class TestRunnerBoundedQueue:
             assert received == []
             remaining = []
             for result in iterator:
-                assert received == [ProgressEvent("flood", "archiving", number, 257) for number in range(257)]
+                assert received == [ProgressEvent("flood", "archiving", number, 513) for number in range(513)]
                 remaining.append(result)
         assert _outcomes(remaining) == [("flood", True, "flood finished")]
         assert capability.finished.is_set()
@@ -419,7 +516,7 @@ class TestRunnerBoundedQueue:
             assert capability.finished.wait(2)
             remaining = []
             for result in iterator:
-                assert received == [ProgressEvent("flood", "archiving", number, 257) for number in range(256)]
+                assert received == [ProgressEvent("flood", "archiving", number, 513) for number in range(256)]
                 remaining.append(result)
         assert [result.label for result in remaining] == ["flood"]
         assert runner.interrupted is True
