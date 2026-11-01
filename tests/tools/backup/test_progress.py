@@ -13,6 +13,11 @@ import pytest
 from backup.capabilities import tar_archive
 from backup.capabilities.tar_archive import TarArchive, _write_archive
 from backup.step_result import ProgressEvent
+from tests.tools.backup.progress_engine_cases import TestStrengthenedEngineProgress as TestStrengthenedEngineProgress
+
+
+class ProgressConsumerError(Exception):
+    """An ordinary consumer exception outside common built-in classes."""
 
 
 class TestProgressEventRecord:
@@ -582,7 +587,16 @@ class TestArchiveInputBytes:
 
 
 class TestProgressExceptionsSwallowed:
-    @pytest.mark.parametrize("exception", [ValueError("first"), RuntimeError("first-old")])
+    @pytest.mark.parametrize(
+        "exception",
+        [
+            ValueError("first"),
+            RuntimeError("first-old"),
+            OSError("unavailable"),
+            TypeError("unsupported"),
+            ProgressConsumerError("consumer failed"),
+        ],
+    )
     def test_ordinary_progress_exception_is_swallowed_after_delivering_exact_event(self, exception: Exception) -> None:
         events = [ProgressEvent("a", "archiving", 7, 31), ProgressEvent("a-old", "finalizing", 19, 37)]
         received: list[ProgressEvent] = []
