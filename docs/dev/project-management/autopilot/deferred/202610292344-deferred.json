@@ -118,6 +118,16 @@
       "classification_evidence": "Needs verification: both Bob providers identify the same unguarded recovery path. Coordinator NUL-plus-percent fixtures did not raise on macOS Python3.13 or3.14. The structural hazard is visible, but the reported NUL trigger is not reproduced here; no repair or invented passing claim.",
       "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
       "op_id": "fb497c1e9deb-dd6"
+    },
+    {
+      "cycle": 1,
+      "issue": "`_cleanup_tar_process` sends terminate and kill only to the tar pid, although `start_new_session=True` gives tar its own process group (tar_archive.py:502, tar_archive.py:527-533). On Linux, GNU tar `-z` forks gzip, which inherits the stderr pipe. So the post-kill `process.communicate()` with no timeout (tar_archive.py:533) waits for gzip to exit, not the bounded wait promised in the PRD Risks section. `os.killpg` would close this gap",
+      "severity": "\u26aa",
+      "file": "src/tools/backup/capabilities/tar_archive.py:533",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "type": "deferred_decision",
+      "prd": "00111-backup-parallel-jobs-and-cancellation-v1.md"
     }
   ]
 }
