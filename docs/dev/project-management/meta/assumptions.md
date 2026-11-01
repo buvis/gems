@@ -8,3 +8,7 @@
 - Tess: --list is the existing list-plan flag (confirmed).
 - Tess strengthening: probe input defaults are empty strings; exercised instances supply all three values.
 - Ivan Sol and Astra: none.
+
+## 8: Tail sweep test coverage
+- Ivan: Explicit test-only acceptance overrides dispatch boilerplate prohibiting added tests.
+- Style fix: none.

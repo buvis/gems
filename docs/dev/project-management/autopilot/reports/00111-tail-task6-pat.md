@@ -1,0 +1,8 @@
+Permission deny rule (/Users/bob/.claude/settings.json): Write(**/dev/local/**) is not matched by file permission checks — only Edit(path) rules are. Use Edit(**/dev/local/**) instead (Edit rules cover all file-editing tools).
+CLOSURE | resolved | `_run_system_tar` calls `_check_cancel(cancel)` right after `communicate` succeeds (tar_archive.py:514), and its only caller calls it again as soon as the function returns. Delete the check at tar_archive.py:462. | The diff removes the caller's `_check_cancel(cancel)` that followed `returncode, stderr_bytes = _run_system_tar(...)`. Only the check inside `_run_system_tar` remains (taken from the finding's description; line 514 is outside the diff).
+
+CLOSURE | resolved | `cast("Generator[StepResult, None, None]", runner.run(plan))` hides a real requirement: `_run_plan` calls `.close()`, which fails with AttributeError on any plain Iterator. Annotate `Runner.run` as `-> Generator[StepResult, None, None]` and drop the cast. | `runner.py` now declares `-> Generator[StepResult, None, None]`, and `cli.py` uses `steps = runner.run(plan)` with the `cast` and its imports removed.
+
+CLOSURE | resolved | Unrequested documentation cuts: the `_write_archive_system_tar` docstring lost the reasons for `--no-recursion` and NUL delimiting, and the `_report_steps` and `_run_plan` docstrings lost the return-value contract (nonzero exit so cron sees a failed backup). Restore the removed rationale. | The diff adds the `--no-recursion` and NUL-delimiting lines to the tar docstring. It adds "Return whether any step failed / the plan or run failed so the caller exits nonzero and cron sees a failed backup" to both `_report_steps` and `_run_plan`.
+
+NO FINDINGS

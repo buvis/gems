@@ -1,0 +1,30 @@
+{
+  "prd": "00111-backup-parallel-jobs-and-cancellation-v1.md",
+  "phase": "done",
+  "next_phase": "done",
+  "cycle": 1,
+  "rework_cap": 2,
+  "tasks_total": 9,
+  "tasks_completed": 9,
+  "phases_completed": [
+    "review"
+  ],
+  "implementation_fingerprint": "460e9b2bc423e6feb734eed83a8bbc67252a39437343573d137a1cf3aaf0be67",
+  "review_gap": null,
+  "verification": {
+    "sha": "e752c37364f66b9582f176de5a09cd4827a6b7b1",
+    "cycle": 1,
+    "writer": "run_gate",
+    "commands": [
+      {
+        "command": "python3 docs/dev/project-management/autopilot/reports/00111-verification-runner.py",
+        "exit": 0
+      }
+    ],
+    "passed": 6237,
+    "failed": 0,
+    "skipped": 16,
+    "summary_exit": 0
+  },
+  "next": "fresh Phase9 finalize session"
+}
