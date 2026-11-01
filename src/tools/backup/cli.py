@@ -1,19 +1,76 @@
 from __future__ import annotations
 
+import sys
+import time
 from typing import TYPE_CHECKING
 
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options
 from buvis.pybase.result import FatalError
+from rich.text import Text
 
 from backup.settings import BackupSettings
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+    from rich.status import Status
+
     from backup.config import BackupConfig, BackupInstance
-    from backup.step_result import StepResult
+    from backup.step_result import ProgressEvent, StepResult
+
+
+def _format_progress(event: ProgressEvent, elapsed: float) -> str:
+    percentage = ""
+    if (
+        event.done_bytes is not None
+        and event.total_bytes is not None
+        and event.total_bytes > 0
+        and event.phase != "finalizing"
+    ):
+        percentage = f" [{min(99, event.done_bytes * 100 // event.total_bytes)}%]"
+    minutes, seconds = divmod(max(0, int(elapsed)), 60)
+    return f"{event.label} {event.phase}{percentage} {minutes}:{seconds:02d}"
+
+
+class _LiveProgress:
+    def __init__(self) -> None:
+        self._events: dict[str, ProgressEvent] = {}
+        self._started: dict[str, float] = {}
+        self._status: Status | None = None
+        self._running = False
+
+    def on_progress(self, event: ProgressEvent) -> None:
+        if event.label not in self._started:
+            self._started[event.label] = time.monotonic()
+        self._events[event.label] = event
+        self.refresh()
+
+    def refresh(self) -> None:
+        if not self._events:
+            self.close()
+            return
+        if self._status is None:
+            self._status = console.status("")
+        if not self._running:
+            self._running = True
+            self._status.start()
+        now = time.monotonic()
+        message = " | ".join(
+            _format_progress(event, now - self._started[label]) for label, event in self._events.items()
+        )
+        self._status.update(Text(message))
+
+    def finish(self, label: str) -> None:
+        self._events.pop(label, None)
+        self._started.pop(label, None)
+        self.refresh()
+
+    def close(self) -> None:
+        if self._status is not None and self._running:
+            self._status.stop()
+            self._running = False
 
 
 def _report_step(step: StepResult) -> None:
@@ -27,7 +84,11 @@ def _report_step(step: StepResult) -> None:
 
 
 def _report_steps(
-    steps: Iterable[StepResult], *, dry_run: bool = False, on_interrupt: Callable[[], None] | None = None
+    steps: Iterable[StepResult],
+    *,
+    dry_run: bool = False,
+    on_interrupt: Callable[[], None] | None = None,
+    on_result: Callable[[StepResult], None] | None = None,
 ) -> bool:
     """Render every outcome, retrying interrupted output while draining workers.
 
@@ -41,6 +102,8 @@ def _report_steps(
         try:
             if pending is None:
                 pending = next(iterator)
+            if on_result is not None:
+                on_result(pending)
             _report_step(pending)
             if not pending.success:
                 failed += 1
@@ -221,17 +284,21 @@ def _select_plan(
 
 
 def _run_plan(
-    cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *, dry_run: bool, plan_only: bool, jobs: int = 3
+    cfg: BackupConfig,
+    plan: list[tuple[str, BackupInstance]],
+    *,
+    dry_run: bool,
+    plan_only: bool,
+    jobs: int = 3,
+    quiet: bool = False,
 ) -> bool:
-    """Render the selected plan or drain its run, preserving interruption cleanup.
-
-    Return whether the plan or run failed so the caller exits nonzero and cron
-    sees a failed backup.
-    """
     from backup.runner import Runner
 
+    live = _LiveProgress() if not quiet and sys.stdout.isatty() and not dry_run and not plan_only else None
+    on_progress, on_tick = (live.on_progress, live.refresh) if live else (None, None)
+    on_result = (lambda step: live.finish(step.label)) if live else None
     try:
-        runner = Runner(cfg, dry_run=dry_run, jobs=jobs)
+        runner = Runner(cfg, dry_run=dry_run, jobs=jobs, on_progress=on_progress, on_tick=on_tick)
         if plan_only:
             entries = runner.plan(plan)
             for entry in entries:
@@ -244,7 +311,7 @@ def _run_plan(
             return any(entry.status == "fail" for entry in entries)
         steps = runner.run(plan)
         try:
-            failed = _report_steps(steps, dry_run=dry_run, on_interrupt=runner.request_cancel)
+            failed = _report_steps(steps, dry_run=dry_run, on_interrupt=runner.request_cancel, on_result=on_result)
         finally:
             steps.close()
         if runner.interrupted:
@@ -260,6 +327,9 @@ def _run_plan(
     except FatalError as exc:
         console.panic(str(exc))
         return True  # unreachable: panic exits, but keeps the type honest
+    finally:
+        if live is not None:
+            live.close()
 
 
 @click.command(help="Run configured backup archives")
@@ -268,6 +338,7 @@ def _run_plan(
 @click.option("--list", "list_plan", is_flag=True, help="Print the configured instances and exit.")
 @click.option("--plan", "plan_only", is_flag=True, help="Print the selected archive plan without walking sources.")
 @click.option("--dry-run", is_flag=True, help="Walk and report what would be archived without writing it.")
+@click.option("--quiet", is_flag=True, help="Hide live progress; keep final results and the summary.")
 @click.option("--jobs", type=int, default=3, show_default=True, help="Run at most this many archive instances at once.")
 @click.option("--source", default="", help="Override the single selected instance's source for this run.")
 @click.option("--out", default="", help="Override the single selected instance's out path for this run.")
@@ -287,6 +358,7 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
     list_plan: bool,
     plan_only: bool,
     dry_run: bool,
+    quiet: bool,
     jobs: int,
     source: str,
     out: str,
@@ -323,9 +395,8 @@ def cli(  # noqa: PLR0917  # Click binds one callback arg per CLI option
         if unknown_only:
             raise SystemExit(1)
         return
-
     plan = _override_selected(plan, source, out)
-    any_failed = _run_plan(cfg, plan, dry_run=dry_run, plan_only=plan_only, jobs=jobs)
+    any_failed = _run_plan(cfg, plan, dry_run=dry_run, plan_only=plan_only, jobs=jobs, quiet=quiet)
     # Unknown --only names must fail rather than silently omit backup work.
     if any_failed or unknown_only:
         raise SystemExit(1)
