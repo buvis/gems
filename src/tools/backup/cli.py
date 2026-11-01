@@ -292,6 +292,8 @@ def _run_plan(
     jobs: int = 3,
     quiet: bool = False,
 ) -> bool:
+    """Render plan/results with eligible live status; return whether either failed."""
+
     from backup.runner import Runner
 
     live = _LiveProgress() if not quiet and sys.stdout.isatty() and not dry_run and not plan_only else None
