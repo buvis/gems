@@ -1,0 +1,19 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+      
+      - klyreon
+      + Agent ran by Tomáš Bouška
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/klyreon/test_vault_git.py:131: AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+E   AssertionError: assert True is False
+     +  where True = is_human_authored(PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1893/test_human_authored_false_for_0/klyreon-git-wbt1km4f/vault'), 'k.md', GitIdentity(name='klyreon', email='klyreon@localhost'))
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/klyreon/test_vault_git.py:151: AssertionError: assert True is False
+E   assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-18 93/test_collect_runs_and_reports0/out/data.json "
+     +  where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-18 93/test_collect_runs_and_reports0/out/data.json " = _flat(" ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-18\n93/test_collect_runs_and_reports0/out/data.json\n")
+     +    where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-18\n93/test_collect_runs_and_reports0/out/data.json\n" = <Result okay>.output
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/postup/adapters/test_cli.py:55: assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-18 93/test_collect_runs_and_reports0/out/data.json "
+=========================== short test summary info ============================
+FAILED tests/tools/klyreon/test_vault_git.py::TestScopedCommit::test_commit_author_is_klyreon_identity
+FAILED tests/tools/klyreon/test_vault_git.py::TestAuthorship::test_human_authored_false_for_klyreon_only
+FAILED tests/tools/postup/adapters/test_cli.py::TestCli::test_collect_runs_and_reports
+3 failed in 16.69s

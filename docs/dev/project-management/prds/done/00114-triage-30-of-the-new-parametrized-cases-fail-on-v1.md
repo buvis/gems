@@ -5,6 +5,8 @@ ledger: deferred/202610292344-deferred.json
 ledger_key: d1128c816565
 source_prd: 00110-backup-plan-preview-and-output-resolution-v1.md
 severity: high
+triage_status: closed
+duplicate_of: 00113-triage-r5-38dfe8ad-python-3-14-backup-tests-30-v1.md
 ---
 
 # Triage: 30 of the new parametrized cases fail on Python 3.14, and CI's `tools` matrix...
@@ -17,7 +19,11 @@ Issue: 30 of the new parametrized cases fail on Python 3.14, and CI's `tools` ma
 
 ## Solution
 
-Attended triage. A human promotes this finding into a backlog PRD through normal PRD authoring and review, or closes it. Autopilot never drains `docs/dev/project-management/prds/hold/`, and this stub is never auto-promoted.
+Attended batch review on 2026-11-02 closed this stub as duplicate coverage of
+00113: this R5 finding caused that cap-regression stall. Repair `5d8ab708`
+passes the complete Python 3.14 backup suite (758 tests). Held source PRD 00110
+still owns independent completion review at its existing cycle cap.
+See `../../autopilot/reports/202610292344-review-20261102.md`.
 
 ## Requirements
 
@@ -40,7 +46,7 @@ Attended triage. A human promotes this finding into a backlog PRD through normal
 ## Tasks
 
 ### Phase 0: Foundation
-- [ ] triage: promote to backlog or close - Acceptance: this file is no longer under docs/dev/project-management/prds/hold/
+- [x] triage: promote to backlog or close - Acceptance: this file is no longer under docs/dev/project-management/prds/hold/
 
 ### Phase 1: Core
 No implementation tasks until attended triage.

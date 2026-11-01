@@ -5,6 +5,7 @@ ledger: deferred/202610292344-deferred.json
 ledger_key: 9d4943f90df8
 source_prd: 00110-backup-plan-preview-and-output-resolution-v1.md
 severity: high
+triage_status: closed
 ---
 
 # Triage: R5 38dfe8ad; Python 3.14 backup tests: 30 failed, 485 passed; review cap 2 re...
@@ -17,7 +18,12 @@ Detail: R5 38dfe8ad; Python 3.14 backup tests: 30 failed, 485 passed; review cap
 
 ## Solution
 
-Attended triage. A human promotes this finding into a backlog PRD through normal PRD authoring and review, or closes it. Autopilot never drains `docs/dev/project-management/prds/hold/`, and this stub is never auto-promoted.
+Attended batch review on 2026-11-02 closed this triage task against repair
+`5d8ab708`. Complete Python 3.14 dependencies reproduced the 30 failures;
+the repaired backup suite passed 758 tests. Stub 00114 covers the same defect.
+Held source PRD 00110 still owns independent completion review at its existing
+cycle cap. This closes triage, not the source PRD's completion review.
+See `../../autopilot/reports/202610292344-review-20261102.md`.
 
 ## Requirements
 
@@ -40,7 +46,7 @@ Attended triage. A human promotes this finding into a backlog PRD through normal
 ## Tasks
 
 ### Phase 0: Foundation
-- [ ] triage: promote to backlog or close - Acceptance: this file is no longer under docs/dev/project-management/prds/hold/
+- [x] triage: promote to backlog or close - Acceptance: this file is no longer under docs/dev/project-management/prds/hold/
 
 ### Phase 1: Core
 No implementation tasks until attended triage.
