@@ -51,7 +51,7 @@ TTY runs show per-instance phases and elapsed time, measured from receipt of
 the instance's first progress event. Python archives show input-byte percentages
 capped at 99%; these measure input consumed, not compressed output or completion.
 Finalizing has no percentage. System tar shows activity only, including when
-the Python engine falls back to system tar.
+it falls back to the Python engine.
 
 Live status is disabled with ``--quiet``, non-TTY output, ``--list``, ``--plan``,
 ``--dry-run`` and ``--show-excludes``. Normal final output is preserved;
