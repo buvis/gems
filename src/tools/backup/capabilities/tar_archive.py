@@ -45,7 +45,7 @@ def _emit_progress(progress: Callable[[ProgressEvent], None] | None, event: Prog
             progress(event)
 
 
-def _archive_callbacks(
+def _start_archive_progress(
     label: str, total: int, engine: str, progress: Callable[[ProgressEvent], None] | None
 ) -> tuple[Callable[[int], None] | None, Callable[[], None]]:
     done = 0 if engine == _ENGINE_PYTHON else None
@@ -255,11 +255,12 @@ class TarArchive:
     ) -> StepResult:
         _check_cancel(cancel)
         out.parent.mkdir(parents=True, exist_ok=True)
-        on_bytes, on_finalize = _archive_callbacks(label, walk.total_bytes, engine, progress)
+        on_bytes, on_finalize = _start_archive_progress(label, walk.total_bytes, engine, progress)
         note = ""
         if engine == _ENGINE_SYSTEM_TAR:
             fallback = _write_archive_system_tar(out, arcbase, walk.files, cancel=cancel, on_finalize=on_finalize)
             if fallback is not None:
+                _, on_finalize = _start_archive_progress(label, walk.total_bytes, engine, progress)
                 _write_archive(out, arcbase, walk.files, cancel=cancel, on_finalize=on_finalize)
                 note = f" (system-tar unavailable: {fallback}; used python engine)"
         else:

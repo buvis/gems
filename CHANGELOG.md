@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **backup**: progress returns to archiving when a failure after system tar finishes triggers the Python fallback.
 - **backup**: interruption during submission or result collection preserves every instance's outcome and finishes cleanup without waiting for a lost completion notification.
 - **backup**: a source or output metadata error while planning one instance now fails only that instance; the others still run, and duplicate outputs are still rejected.
 - **backup**: `tar-archive` plans treat an empty `engine` as the default Python engine and report an empty `source` or `out` as "no source configured" or "no out path configured", the same as a run, instead of using the working directory; two instances with an empty `out` no longer report a false output collision.
