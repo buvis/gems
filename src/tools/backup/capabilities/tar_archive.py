@@ -7,6 +7,7 @@ import stat
 import subprocess
 import tarfile
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -16,11 +17,11 @@ from backup.shared.bkpignore import (
     ExcludeState,
     state_for_directory,
 )
-from backup.step_result import ArchiveMeta, PlanEntry, StepResult
+from backup.step_result import ArchiveMeta, PlanEntry, ProgressEvent, StepResult
 
 if TYPE_CHECKING:
     import threading
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Callable, Iterable, Iterator, Mapping
 
 __all__ = ["ArchiveCancelled", "TarArchive", "WalkResult"]
 
@@ -36,6 +37,36 @@ class ArchiveCancelled(Exception):
 def _check_cancel(cancel: threading.Event | None) -> None:
     if cancel is not None and cancel.is_set():
         raise ArchiveCancelled
+
+
+def _emit_progress(progress: Callable[[ProgressEvent], None] | None, event: ProgressEvent) -> None:
+    if progress is not None:
+        with contextlib.suppress(Exception):
+            progress(event)
+
+
+def _archive_callbacks(
+    label: str, total: int, engine: str, progress: Callable[[ProgressEvent], None] | None
+) -> tuple[Callable[[int], None] | None, Callable[[], None]]:
+    done = 0 if engine == _ENGINE_PYTHON else None
+    reported = done
+    emitted_at = time.monotonic()
+    _emit_progress(progress, ProgressEvent(label, "archiving", done, total))
+
+    def on_bytes(count: int) -> None:
+        nonlocal done, reported, emitted_at
+        done = count
+        now = time.monotonic()
+        if now - emitted_at >= 0.2:
+            _emit_progress(progress, ProgressEvent(label, "archiving", done, total))
+            reported, emitted_at = done, now
+
+    def on_finalize() -> None:
+        if done != reported:
+            _emit_progress(progress, ProgressEvent(label, "archiving", done, total))
+        _emit_progress(progress, ProgressEvent(label, "finalizing", done, total))
+
+    return (on_bytes if engine == _ENGINE_PYTHON and progress is not None else None), on_finalize
 
 
 class WalkResult:
@@ -162,6 +193,8 @@ class TarArchive:
         cancel = cast("threading.Event | None", kwargs.get("cancel"))
         _check_cancel(cancel)
         dry_run = bool(kwargs.get("dry_run", False))
+        progress = cast("Callable[[ProgressEvent], None] | None", kwargs.get("progress"))
+        progress = None if dry_run else progress
         base_state = ExcludeState(base_excludes=frozenset(_as_str_tuple(kwargs.get("excludes", ()))))
         missing: list[str] = []
         bundle = "items" in kwargs
@@ -171,6 +204,7 @@ class TarArchive:
             except ValueError as exc:
                 yield StepResult(label, success=False, message=str(exc))
                 return
+            _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
             walk, missing = _select_items(source, base_state, selected)
             _check_cancel(cancel)
             if not walk.files:
@@ -180,13 +214,16 @@ class TarArchive:
                 yield StepResult(label, success=True, message=message, skipped=True)
                 return
         else:
+            _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
             walk = _walk_tree(source, base_state)
             _check_cancel(cancel)
 
         if dry_run:
             result = self._dry_run_result(label, out, walk)
         else:
-            result = self._archive_result(label, source if bundle else source.parent, out, walk, engine, cancel=cancel)
+            result = self._archive_result(
+                label, source if bundle else source.parent, out, walk, engine, cancel=cancel, progress=progress
+            )
         if missing:
             result.message += f"; missing items: {', '.join(missing)}"
         yield result
@@ -207,18 +244,26 @@ class TarArchive:
 
     @staticmethod
     def _archive_result(  # noqa: PLR0913 — retain archive context plus keyword-only cancellation
-        label: str, arcbase: Path, out: Path, walk: WalkResult, engine: str, *, cancel: threading.Event | None = None
+        label: str,
+        arcbase: Path,
+        out: Path,
+        walk: WalkResult,
+        engine: str,
+        *,
+        cancel: threading.Event | None = None,
+        progress: Callable[[ProgressEvent], None] | None = None,
     ) -> StepResult:
         _check_cancel(cancel)
         out.parent.mkdir(parents=True, exist_ok=True)
+        on_bytes, on_finalize = _archive_callbacks(label, walk.total_bytes, engine, progress)
         note = ""
         if engine == _ENGINE_SYSTEM_TAR:
-            fallback = _write_archive_system_tar(out, arcbase, walk.files, cancel=cancel)
+            fallback = _write_archive_system_tar(out, arcbase, walk.files, cancel=cancel, on_finalize=on_finalize)
             if fallback is not None:
-                _write_archive(out, arcbase, walk.files, cancel=cancel)
+                _write_archive(out, arcbase, walk.files, cancel=cancel, on_finalize=on_finalize)
                 note = f" (system-tar unavailable: {fallback}; used python engine)"
         else:
-            _write_archive(out, arcbase, walk.files, cancel=cancel)
+            _write_archive(out, arcbase, walk.files, cancel=cancel, on_bytes=on_bytes, on_finalize=on_finalize)
         size = out.stat().st_size
         return StepResult(
             label,
@@ -402,15 +447,18 @@ def _collect_applied(states: dict[str, ExcludeState]) -> list[str]:
     return seen
 
 
-def _write_archive(out: Path, arcbase: Path, files: Iterable[Path], *, cancel: threading.Event | None = None) -> None:
-    """Stream a ``w:gz`` tarball of ``files`` to ``out`` atomically, ``chmod 600``.
+def _write_archive(  # noqa: PLR0913 — preserve writer contract with independent optional callbacks
+    out: Path,
+    arcbase: Path,
+    files: Iterable[Path],
+    *,
+    cancel: threading.Event | None = None,
+    on_bytes: Callable[[int], None] | None = None,
+    on_finalize: Callable[[], None] | None = None,
+) -> None:
+    """Stream selected members to an atomic, fsynced, mode-600 tarball.
 
-    Replicates ``pybase.filesystem.atomic_write``'s tempfile + fsync +
-    ``os.replace`` guarantee, but streams tar output straight into the temp file
-    (a large tarball must never be built in memory, which the byte-oriented
-    ``atomic_write_bytes`` would require). Archive names are stored relative to
-    ``arcbase``: the source's parent for whole trees, or the source itself for
-    selected items.
+    ``arcbase`` is the source's parent for whole trees, or the source for items.
     """
     _check_cancel(cancel)
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
@@ -418,12 +466,21 @@ def _write_archive(out: Path, arcbase: Path, files: Iterable[Path], *, cancel: t
     try:
         with os.fdopen(fd, "wb") as raw:
             os.fchmod(fd, _ARCHIVE_MODE)
+            done = 0
             with tarfile.open(fileobj=raw, mode="w:gz") as tar:
                 for file_path in files:
                     _check_cancel(cancel)
                     arcname = file_path.relative_to(arcbase)
+                    if on_bytes is not None:
+                        member_stat = file_path.lstat()
+                        size = member_stat.st_size if stat.S_ISREG(member_stat.st_mode) else 0
                     tar.add(str(file_path), arcname=str(arcname), recursive=False)
+                    if on_bytes is not None:
+                        done += size
+                        on_bytes(done)
                 _check_cancel(cancel)
+            if on_finalize is not None:
+                on_finalize()
             raw.flush()
             os.fsync(raw.fileno())
         _check_cancel(cancel)
@@ -435,18 +492,15 @@ def _write_archive(out: Path, arcbase: Path, files: Iterable[Path], *, cancel: t
 
 
 def _write_archive_system_tar(
-    out: Path, arcbase: Path, files: Iterable[Path], *, cancel: threading.Event | None = None
+    out: Path,
+    arcbase: Path,
+    files: Iterable[Path],
+    *,
+    cancel: threading.Event | None = None,
+    on_finalize: Callable[[], None] | None = None,
 ) -> str | None:
-    """Archive ``files`` via system ``tar --null -T -``, atomically, ``chmod 600``.
-
-    Python owns selection; nonrecursive, NUL-delimited paths preserve the exact
-    member list, including empty directories and filenames containing newlines.
-    ``--no-recursion`` prevents listed directories from re-adding excluded content.
-    NUL delimiting prevents filenames containing newlines from injecting members.
-    The sibling temp archive is fsynced before atomic publication.
-
-    Returns:
-        ``None`` on success, otherwise a reason for Python fallback.
+    """Atomically archive exact selected paths via nonrecursive, NUL-delimited tar.
+    Return ``None`` on success, otherwise a reason for Python fallback.
     """
     _check_cancel(cancel)
     tar_bin = shutil.which("tar")
@@ -465,6 +519,8 @@ def _write_archive_system_tar(
             stderr = stderr_bytes.decode("utf-8", "replace").strip().splitlines()
             detail = stderr[-1] if stderr else f"exit {returncode}"
             return f"tar exited {returncode}: {detail}"
+        if on_finalize is not None:
+            on_finalize()
         # Match the Python engine's durability: fsync the finished temp archive
         # before atomically swapping it into place.
         archive_fd = os.open(str(tmp_path), os.O_RDONLY)
