@@ -128,8 +128,37 @@ class TestCliProgressFormat:
     ) -> None:
         assert backup_cli._format_progress(event, elapsed) == expected
 
+    @pytest.mark.parametrize(
+        "done,total,percent",
+        [(25, 100, 25), (1, 3, 33), (2, 7, 28), (13, 29, 44), (47, 64, 73), (1001, 4096, 24)],
+    )
+    def test_format_percentage_handles_varied_byte_ratios(self, done: int, total: int, percent: int) -> None:
+        event = ProgressEvent("arbitrary", "archiving", done, total)
+        assert backup_cli._format_progress(event, 65) == f"arbitrary archiving [{percent}%] 1:05"
+
 
 class TestCliLiveProgress:
+    def test_cli_three_active_labels_preserve_order_and_elapsed_across_phase_changes(
+        self,
+        cli_display: tuple[StatusRecorder, StringIO],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        recorder, _ = cli_display
+        clock = [100.0]
+        monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+        live = backup_cli._LiveProgress()
+        try:
+            live.on_progress(ProgressEvent("docs", "scanning", None, None))
+            clock[0] = 130.0
+            live.on_progress(ProgressEvent("docs-old", "scanning", None, None))
+            clock[0] = 160.0
+            live.on_progress(ProgressEvent("photos", "scanning", None, None))
+            clock[0] = 165.0
+            live.on_progress(ProgressEvent("docs", "archiving", 25, 100))
+            assert recorder.current == ("docs archiving [25%] 1:05 | docs-old scanning 0:35 | photos scanning 0:05")
+        finally:
+            live.close()
+
     def test_cli_status_preserves_first_seen_time_order_and_exact_labels(
         self,
         cli_display: tuple[StatusRecorder, StringIO],
@@ -211,6 +240,75 @@ class TestCliLiveProgress:
 
 
 class TestCliProgressRunPlan:
+    @pytest.mark.parametrize("dry_run,verb", [(False, "archived"), (True, "previewed")])
+    def test_cli_report_summary_counts_each_outcome_and_describes_dry_run(
+        self,
+        cli_display: tuple[StatusRecorder, StringIO],
+        dry_run: bool,
+        verb: str,
+    ) -> None:
+        _, stream = cli_display
+        assert backup_cli._report_steps(result_lines(), dry_run=dry_run) is True
+        assert stream.getvalue().splitlines()[-1].endswith(f"{verb} 1, skipped 1, failed 1")
+
+    @pytest.mark.parametrize(
+        "result,marker",
+        [
+            (StepResult("docs", True, "first archive ready"), "✔"),
+            (StepResult("optional", True, "optional source absent", skipped=True), "⚠"),
+            (StepResult("docs-old", False, "second archive denied"), "✘"),
+        ],
+    )
+    def test_cli_result_output_uses_the_outcome_severity(
+        self,
+        cli_display: tuple[StatusRecorder, StringIO],
+        result: StepResult,
+        marker: str,
+    ) -> None:
+        _, stream = cli_display
+        backup_cli._report_steps([result])
+        lines = [line for line in stream.getvalue().splitlines() if result.message in line]
+        assert len(lines) == 1
+        assert lines[0].lstrip().startswith(marker)
+        assert result.message in lines[0]
+
+    def test_cli_skipped_success_keeps_success_exit_and_skip_count(
+        self,
+        cli_display: tuple[StatusRecorder, StringIO],
+    ) -> None:
+        _, stream = cli_display
+        result = StepResult("optional", True, "optional source absent", skipped=True)
+        assert backup_cli._report_steps([result]) is False
+        assert stream.getvalue().splitlines()[-1].endswith("archived 0, skipped 1, failed 0")
+
+    def test_cli_live_runner_tick_refreshes_elapsed_without_new_progress(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        cli_display: tuple[StatusRecorder, StringIO],
+    ) -> None:
+        recorder, _ = cli_display
+        cfg, plan, capability = controlled_plan(monkeypatch, [StepResult("docs", True, "ready")], progress=False)
+        clock = [100.0]
+        monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+        refreshed: list[str] = []
+        original = Runner.__init__
+
+        def initialize(runner: Runner, *args: object, **kwargs: object) -> None:
+            original(runner, *args, **kwargs)
+            progress, tick = kwargs.get("on_progress"), kwargs.get("on_tick")
+            assert callable(progress)
+            assert callable(tick)
+            progress(ProgressEvent("docs", "scanning", None, None))
+            clock[0] = 165.0
+            tick()
+            refreshed.append(recorder.current)
+
+        monkeypatch.setattr(Runner, "__init__", initialize)
+        assert backup_cli._run_plan(cfg, plan, dry_run=False, plan_only=False, jobs=1) is False
+        assert refreshed == ["docs scanning 1:05"]
+        assert capability.closed == ["docs"]
+        assert recorder.running is False
+
     @pytest.mark.parametrize("option", ["--quiet", "--list", "--show-excludes"])
     def test_cli_quiet_and_early_returns_never_create_live_status(
         self,
@@ -249,8 +347,8 @@ class TestCliProgressRunPlan:
         assert out.exists() is (option == "--quiet")
         output = stream.getvalue()
         if option == "--quiet":
-            assert "docs" in output
-            assert "archived" in output
+            assert str(out) in output
+            assert output.splitlines()[-1].endswith("archived 1, skipped 0, failed 0")
         elif option == "--show-excludes":
             assert "private-cache" in output
         else:
