@@ -51,6 +51,20 @@ def _controlled_tar(
     return process, spawn
 
 
+def _assert_tar_process_cleanup(process: Mock, mode: str) -> None:
+    expected = [
+        call.communicate(input=b"member.txt\0", timeout=0.2),
+        call.poll(),
+        call.terminate(),
+        call.communicate(timeout=5.0),
+    ]
+    if mode.startswith("kill"):
+        expected.extend([call.kill(), call.communicate()])
+    assert process.mock_calls == expected
+    assert process.returncode == (-9 if mode.startswith("kill") else -15)
+    assert all(pipe.closed for pipe in (process.stdin, process.stdout, process.stderr))
+
+
 class TestSystemTarLifecycle:
     @pytest.mark.parametrize("mode", ["terminate", "kill", "terminate-race", "kill-race"])
     @pytest.mark.parametrize("failure", ["exception", "cancel"])
@@ -73,17 +87,7 @@ class TestSystemTarLifecycle:
             assert _write_archive_system_tar(out, tmp_path, [source], cancel=cancel) == (
                 "tar invocation failed: pipe broken"
             )
-        expected = [
-            call.communicate(input=b"member.txt\0", timeout=0.2),
-            call.poll(),
-            call.terminate(),
-            call.communicate(timeout=5.0),
-        ]
-        if mode.startswith("kill"):
-            expected.extend([call.kill(), call.communicate()])
-        assert process.mock_calls == expected
-        assert process.returncode == (-9 if mode.startswith("kill") else -15)
-        assert all(pipe.closed for pipe in (process.stdin, process.stdout, process.stderr))
+        _assert_tar_process_cleanup(process, mode)
         spawn.assert_called_once()
         args, kwargs = spawn.call_args
         temp = Path(args[0][6])
