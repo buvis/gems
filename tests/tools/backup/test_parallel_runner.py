@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import _thread
 import json
 import os
+import queue
 import shutil
 import signal
 import subprocess
@@ -754,7 +754,6 @@ def test_cli_interrupt_with_two_active_and_two_queued_exits_130(
     path = tmp_path / "interrupt.yaml"
     path.write_text(json.dumps(payload), encoding="utf-8")
     cleaned: set[str] = set()
-    failures: list[BaseException] = []
 
     def interruptible(kwargs: dict[str, object]) -> Iterator[StepResult]:
         cancel = kwargs["cancel"]
@@ -765,26 +764,23 @@ def test_cli_interrupt_with_two_active_and_two_queued_exits_130(
         yield from ()
         raise ArchiveCancelled()
 
-    def interrupt() -> None:
-        try:
-            assert probe.started["alpha"].wait(WAIT)
-            assert probe.started["alpha-copy"].wait(WAIT)
-            assert probe.active == 2
-            assert not probe.started["delta"].is_set()
-            assert not probe.started["omega"].is_set()
-            _thread.interrupt_main()
-        except BaseException as exc:
-            failures.append(exc)
+    class InterruptingQueue(queue.Queue[object]):
+        interrupted = False
+
+        def get(self, block: bool = True, timeout: float | None = None) -> object:
+            if not self.interrupted:
+                self.interrupted = True
+                assert probe.started["alpha"].wait(WAIT)
+                assert probe.started["alpha-copy"].wait(WAIT)
+                assert probe.active == 2
+                assert not probe.started["delta"].is_set()
+                assert not probe.started["omega"].is_set()
+                raise KeyboardInterrupt
+            return super().get(block, timeout)
 
     probe.behavior = interruptible
-    interrupter = threading.Thread(target=interrupt, daemon=True)
-    interrupter.start()
-    try:
-        result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(path), "--jobs", "2"])
-    finally:
-        interrupter.join(WAIT)
-    assert not interrupter.is_alive()
-    assert failures == []
+    monkeypatch.setattr("backup.runner.queue.Queue", InterruptingQueue)
+    result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(path), "--jobs", "2"])
     assert result.exit_code == 130, (result.output, result.exception)
     assert "interrupted: alpha, alpha-copy, delta, omega" in result.output
     assert cleaned == {"alpha", "alpha-copy"}
