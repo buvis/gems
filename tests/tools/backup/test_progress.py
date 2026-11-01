@@ -14,6 +14,20 @@ from backup.capabilities import tar_archive
 from backup.capabilities.tar_archive import TarArchive, _write_archive
 from backup.step_result import ProgressEvent
 from tests.tools.backup.progress_engine_cases import TestStrengthenedEngineProgress as TestStrengthenedEngineProgress
+from tests.tools.backup.progress_runner_cases import (
+    TestRunnerBoundedQueue as TestRunnerBoundedQueue,
+    TestRunnerCallingThread as TestRunnerCallingThread,
+    TestRunnerCancellation as TestRunnerCancellation,
+    TestRunnerSuppression as TestRunnerSuppression,
+)
+
+__all__ = [
+    "TestRunnerBoundedQueue",
+    "TestRunnerCallingThread",
+    "TestRunnerCancellation",
+    "TestRunnerSuppression",
+    "TestStrengthenedEngineProgress",
+]
 
 
 class ProgressConsumerError(Exception):
