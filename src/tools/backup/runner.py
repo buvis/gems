@@ -5,7 +5,10 @@ import queue
 import threading
 from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import suppress
 from datetime import datetime
+from functools import partial
+from queue import Queue as ProgressQueue
 from typing import TYPE_CHECKING
 
 from buvis.pybase.result import FatalError
@@ -13,14 +16,23 @@ from buvis.pybase.result import FatalError
 from backup.capabilities import CAPABILITIES
 from backup.capabilities.tar_archive import ArchiveCancelled
 from backup.config import effective_excludes
-from backup.step_result import PlanEntry, StepResult
+from backup.step_result import PlanEntry, ProgressEvent, StepResult
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterator
+    from collections.abc import Callable, Generator, Iterator
 
     from backup.config import BackupConfig, BackupInstance
 
 __all__ = ["Runner"]
+
+
+def _enqueue_progress(events: ProgressQueue[ProgressEvent], cancel: threading.Event, event: ProgressEvent) -> None:
+    while not cancel.is_set():
+        try:
+            events.put(event, timeout=0.2)
+            return
+        except queue.Full:
+            continue
 
 
 class Runner:
@@ -32,12 +44,22 @@ class Runner:
     ``dry_run`` the capability itself previews (walks + reports) without writing.
     """
 
-    def __init__(self: Runner, cfg: BackupConfig, *, dry_run: bool = False, jobs: int = 3) -> None:
+    def __init__(
+        self: Runner,
+        cfg: BackupConfig,
+        *,
+        dry_run: bool = False,
+        jobs: int = 3,
+        on_progress: Callable[[ProgressEvent], None] | None = None,
+        on_tick: Callable[[], None] | None = None,
+    ) -> None:
         if jobs < 1:
             raise ValueError("jobs must be at least 1")
         self._cfg = cfg
         self._dry_run = dry_run
         self._jobs = jobs
+        self._on_progress = on_progress
+        self._on_tick = on_tick
         self._cancel: threading.Event | None = None
         self._cancelled: set[str] = set()
         self._cancelled_lock = threading.Lock()
@@ -56,6 +78,7 @@ class Runner:
         self._cancelled.clear()
         cancel = threading.Event()
         self._cancel = cancel
+        events: ProgressQueue[ProgressEvent] = ProgressQueue(maxsize=256)
         now = datetime.now()
         ordered = sorted(selected, key=lambda item: (item[1].order, item[0]))
         remaining = deque(ordered)
@@ -73,7 +96,7 @@ class Runner:
             except KeyboardInterrupt:
                 self.request_cancel()
 
-            yield from self._execute(remaining, ready, now, cancel)
+            yield from self._execute(remaining, ready, now, cancel, events)
         finally:
             self.cancelled_names = tuple(name for name, _ in ordered if name in self._cancelled)
             self._cancel = None
@@ -84,25 +107,26 @@ class Runner:
         ready: deque[StepResult],
         now: datetime,
         cancel: threading.Event,
+        events: ProgressQueue[ProgressEvent],
     ) -> Iterator[StepResult]:
         completed: queue.Queue[Future[list[StepResult]]] = queue.Queue()
         pending: dict[Future[list[StepResult]], str] = {}
         outcomes: dict[str, list[StepResult]] = {}
         executor: ThreadPoolExecutor | None = None
         finished = False
+        progress: Callable[[ProgressEvent], None] | None = None
+        if self._on_progress is not None and not self._dry_run:
+            progress = partial(_enqueue_progress, events, cancel)
         try:
             while ready or remaining or pending or outcomes:
                 try:
+                    self._drain_progress(events)
                     if cancel.is_set():
                         if executor is not None:
                             self._shutdown(executor)
                             executor = None
-                        names = dict.fromkeys((*pending.values(), *(name for name, _ in remaining)))
-                        ready.extend(row for rows in outcomes.values() for row in rows)
-                        ready.extend(self._cancelled_result(name) for name in names if name not in outcomes)
-                        remaining.clear()
-                        pending.clear()
-                        outcomes.clear()
+                        self._drain_progress(events)
+                        ready.extend(self._cancel_remaining(remaining, pending, outcomes))
                     if ready:
                         yield ready.popleft()
                         continue
@@ -111,14 +135,12 @@ class Runner:
                         if executor is None:
                             executor = ThreadPoolExecutor(max_workers=self._jobs)
                         name, instance = remaining[0]
-                        future = executor.submit(self._run_instance, name, instance, now, cancel, outcomes)
+                        future = executor.submit(self._run_instance, name, instance, now, cancel, outcomes, progress)
                         pending[future] = name
                         remaining.popleft()
                         future.add_done_callback(completed.put)
                     if pending:
-                        future = completed.get()
-                        name = pending.pop(future)
-                        ready.extend([self._cancelled_result(name)] if future.cancelled() else outcomes.pop(name))
+                        ready.extend(self._collect_completion(completed, pending, outcomes, events))
                 except KeyboardInterrupt:
                     self.request_cancel()
             finished = True
@@ -127,6 +149,50 @@ class Runner:
                 cancel.set()
             if executor is not None:
                 self._shutdown(executor)
+
+    def _drain_progress(self: Runner, events: ProgressQueue[ProgressEvent]) -> None:
+        while True:
+            try:
+                event = events.get_nowait()
+            except queue.Empty:
+                return
+            if self._on_progress is not None and not self._dry_run:
+                with suppress(Exception):
+                    self._on_progress(event)
+
+    def _collect_completion(
+        self: Runner,
+        completed: queue.Queue[Future[list[StepResult]]],
+        pending: dict[Future[list[StepResult]], str],
+        outcomes: dict[str, list[StepResult]],
+        events: ProgressQueue[ProgressEvent],
+    ) -> list[StepResult]:
+        self._drain_progress(events)
+        try:
+            future = completed.get(timeout=0.2)
+        except queue.Empty:
+            self._drain_progress(events)
+            if self._on_tick is not None and not self._dry_run:
+                with suppress(Exception):
+                    self._on_tick()
+            return []
+        self._drain_progress(events)
+        name = pending.pop(future)
+        return [self._cancelled_result(name)] if future.cancelled() else outcomes.pop(name)
+
+    def _cancel_remaining(
+        self: Runner,
+        remaining: deque[tuple[str, BackupInstance]],
+        pending: dict[Future[list[StepResult]], str],
+        outcomes: dict[str, list[StepResult]],
+    ) -> list[StepResult]:
+        names = dict.fromkeys((*pending.values(), *(name for name, _ in remaining)))
+        rows = [row for results in outcomes.values() for row in results]
+        rows.extend(self._cancelled_result(name) for name in names if name not in outcomes)
+        remaining.clear()
+        pending.clear()
+        outcomes.clear()
+        return rows
 
     def _shutdown(self: Runner, executor: ThreadPoolExecutor) -> None:
         while True:
@@ -186,13 +252,14 @@ class Runner:
                 )
         return entries
 
-    def _run_instance(
+    def _run_instance(  # noqa: PLR0913, PLR0917 - preserve optional outcome context and capability progress contract
         self: Runner,
         name: str,
         instance: BackupInstance,
         now: datetime,
         cancel: threading.Event,
         outcomes: dict[str, list[StepResult]] | None = None,
+        progress: Callable[[ProgressEvent], None] | None = None,
     ) -> list[StepResult]:
         if outcomes is None:
             outcomes = {}
@@ -208,6 +275,7 @@ class Runner:
             "dry_run": self._dry_run,
             "now": now,
             "cancel": cancel,
+            "progress": progress,
         }
         try:
             outcomes[name] = list(capability.run(**call_kwargs))

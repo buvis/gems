@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **backup**: the runner delivers bounded, cancellation-aware progress and idle ticks on the calling thread before terminal results.
 - **backup**: archive engines report scanning, archiving and finalizing progress; Python archives include throttled input byte counts, and consumer errors do not stop backups.
 - **backup**: immutable `ProgressEvent` records carry an instance label, phase and optional input byte counts.
 - **backup**: `--jobs` controls concurrent archive instances (default three); cancellation stops new work, joins workers, stops tar and cleans temporary files while preserving completed results and backups; interruption exits with status 130.
