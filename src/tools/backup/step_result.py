@@ -4,7 +4,11 @@ from typing import Literal, NamedTuple
 
 
 class ProgressEvent(NamedTuple):
-    """Immutable progress update for one backup instance."""
+    """Immutable progress update for one backup instance.
+
+    ``done_bytes`` and ``total_bytes`` count input (source) bytes, not archive
+    output bytes. Either is ``None`` when it cannot be measured.
+    """
 
     label: str
     phase: Literal["scanning", "archiving", "finalizing"]

@@ -8,6 +8,9 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import suppress
 from datetime import datetime
 from functools import partial
+
+# Separate binding on purpose: tests monkeypatch ``backup.runner.queue.Queue`` to
+# inject the completion queue; the progress queue must not be replaced with it.
 from queue import Queue as ProgressQueue
 from typing import TYPE_CHECKING
 
@@ -42,6 +45,19 @@ class Runner:
     inputs plus the runtime context the capability needs: the resolved instance
     ``excludes`` list, the instance ``label``, and the ``dry_run`` flag. Under
     ``dry_run`` the capability itself previews (walks + reports) without writing.
+
+    Observer callbacks (both optional):
+
+    * ``on_progress(event)`` receives each :class:`ProgressEvent`.
+    * ``on_tick()`` fires when no step has completed for 0.2 s, so a UI can
+      redraw while workers are busy.
+
+    Both run on the thread that iterates :meth:`run`, never on a worker. They
+    fire only while the generator is being advanced, so none are delivered
+    while it is paused at a ``yield``. Ordinary exceptions raised by a callback
+    are swallowed. Callbacks must be short and nonblocking, as they stall the
+    iterating thread. Neither fires under ``dry_run``, and the planning phase
+    emits none.
     """
 
     def __init__(
