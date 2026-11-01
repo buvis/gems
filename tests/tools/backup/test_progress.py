@@ -13,6 +13,12 @@ import pytest
 from backup.capabilities import tar_archive
 from backup.capabilities.tar_archive import TarArchive, _write_archive
 from backup.step_result import ProgressEvent
+from tests.tools.backup.progress_cli_cases import (
+    TestCliLiveProgress as TestCliLiveProgress,
+    TestCliProgressFormat as TestCliProgressFormat,
+    TestCliProgressRunPlan as TestCliProgressRunPlan,
+    cli_display as cli_display,
+)
 from tests.tools.backup.progress_engine_cases import TestStrengthenedEngineProgress as TestStrengthenedEngineProgress
 from tests.tools.backup.progress_runner_cases import (
     TestRunnerBoundedQueue as TestRunnerBoundedQueue,
@@ -22,11 +28,15 @@ from tests.tools.backup.progress_runner_cases import (
 )
 
 __all__ = [
+    "TestCliLiveProgress",
+    "TestCliProgressFormat",
+    "TestCliProgressRunPlan",
     "TestRunnerBoundedQueue",
     "TestRunnerCallingThread",
     "TestRunnerCancellation",
     "TestRunnerSuppression",
     "TestStrengthenedEngineProgress",
+    "cli_display",
 ]
 
 
