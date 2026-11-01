@@ -15,6 +15,7 @@ Usage
 
     backup                              # run enabled instances with up to 3 jobs
     backup --jobs 1                     # run instances strictly sequentially
+    backup --quiet                      # hide live status, keep final results
     backup --only git-src,docs          # run only these instances (comma list or repeated)
     backup --tag nightly                # run only instances carrying this tag
     backup --list                       # print the configured instances and exit
@@ -42,6 +43,19 @@ them to stop. The command names unfinished instances and exits with status 130.
 Completed archives remain available; cancellation before publication preserves
 any previous archive. Python archive cancellation takes effect after the
 current member finishes. Parallel execution does not guarantee a speedup.
+
+Live progress
+-------------
+
+TTY runs show per-instance phases and elapsed time, measured from receipt of
+the instance's first progress event. Python archives show input-byte percentages
+capped at 99%; these measure input consumed, not compressed output or completion.
+Finalizing has no percentage. System tar shows activity only, including when
+the Python engine falls back to system tar.
+
+Live status is disabled with ``--quiet``, non-TTY output, ``--list``, ``--plan``,
+``--dry-run`` and ``--show-excludes``. Normal final output is preserved;
+``--quiet`` keeps final results and summary counts.
 
 Planning
 --------
