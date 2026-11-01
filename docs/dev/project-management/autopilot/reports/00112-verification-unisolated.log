@@ -1,0 +1,192 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+............................x........................................... [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+..ssssssssss............................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+.........ss............................................................. [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+....F..F................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+......................................F........................ssss..... [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+.....................................................                    [100%]
+=================================== FAILURES ===================================
+___________ TestScopedCommit.test_commit_author_is_klyreon_identity ____________
+
+self = <tests.tools.klyreon.test_vault_git.TestScopedCommit object at 0x10e8c0550>
+temp_repo = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1784/test_commit_author_is_klyreon_0/klyreon-git-7mmxngn1/vault')
+
+    def test_commit_author_is_klyreon_identity(self, temp_repo: Path) -> None:
+        (temp_repo / "a.md").write_text("x\n")
+        sha = commit(temp_repo, ["a.md"], "feat: add a", KLYREON)
+        author = _git(temp_repo, "log", "-1", "--format=%an", sha).stdout.strip()
+        email = _git(temp_repo, "log", "-1", "--format=%ae", sha).stdout.strip()
+>       assert author == "klyreon"
+E       AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+E         
+E         - klyreon
+E         + Agent ran by Tomáš Bouška
+
+tests/tools/klyreon/test_vault_git.py:131: AssertionError
+__________ TestAuthorship.test_human_authored_false_for_klyreon_only ___________
+
+self = <tests.tools.klyreon.test_vault_git.TestAuthorship object at 0x10e8c07d0>
+temp_repo = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1784/test_human_authored_false_for_0/klyreon-git-stj681l5/vault')
+
+    def test_human_authored_false_for_klyreon_only(self, temp_repo: Path) -> None:
+        (temp_repo / "k.md").write_text("x\n")
+        commit(temp_repo, ["k.md"], "feat: klyreon only", KLYREON)
+>       assert is_human_authored(temp_repo, "k.md", KLYREON) is False
+E       AssertionError: assert True is False
+E        +  where True = is_human_authored(PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1784/test_human_authored_false_for_0/klyreon-git-stj681l5/vault'), 'k.md', GitIdentity(name='klyreon', email='klyreon@localhost'))
+
+tests/tools/klyreon/test_vault_git.py:151: AssertionError
+____________________ TestCli.test_collect_runs_and_reports _____________________
+
+self = <tests.tools.postup.adapters.test_cli.TestCli object at 0x10efb2030>
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1784/test_collect_runs_and_reports0')
+mocker = <pytest_mock.plugin.MockerFixture object at 0x114f346d0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1149f3cb0>
+
+    def test_collect_runs_and_reports(self, tmp_path, mocker, monkeypatch):
+        # No roots configured -> command returns failure, CLI renders it without crashing.
+        monkeypatch.delenv("BUVIS_POSTUP_ROOTS", raising=False)
+        monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
+        result = CliRunner().invoke(cli, ["collect", "--no-fetch"])
+        assert result.exit_code == 0
+>       assert "no repositories" in _flat(result.output)
+E       assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-17 84/test_collect_runs_and_reports0/out/data.json "
+E        +  where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-17 84/test_collect_runs_and_reports0/out/data.json " = _flat(" ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-17\n84/test_collect_runs_and_reports0/out/data.json\n")
+E        +    where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-17\n84/test_collect_runs_and_reports0/out/data.json\n" = <Result okay>.output
+
+tests/tools/postup/adapters/test_cli.py:55: AssertionError
+=============================== warnings summary ===============================
+tests/tools/bim/test_serve_actions.py:12
+  /Users/bob/git/src/github.com/buvis/gems/tests/tools/bim/test_serve_actions.py:12: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:35: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/tools/bim/test_serve_actions.py: 54 warnings
+tests/tools/bim/test_serve_app.py: 20 warnings
+tests/tools/bim/test_serve_open.py: 8 warnings
+tests/tools/bim/test_serve_queries.py: 36 warnings
+tests/tools/bim/test_serve_triage_actions.py: 14 warnings
+tests/tools/bim/test_serve_zettels.py: 26 warnings
+  /Users/bob/git/src/github.com/buvis/gems/.venv/lib/python3.13/site-packages/fastapi/applications.py:4723: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:39: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/tools/klyreon/test_vault_git.py::TestScopedCommit::test_commit_author_is_klyreon_identity
+FAILED tests/tools/klyreon/test_vault_git.py::TestAuthorship::test_human_authored_false_for_klyreon_only
+FAILED tests/tools/postup/adapters/test_cli.py::TestCli::test_collect_runs_and_reports
+3 failed, 6369 passed, 16 skipped, 1 xfailed, 317 warnings in 280.00s (0:04:39)

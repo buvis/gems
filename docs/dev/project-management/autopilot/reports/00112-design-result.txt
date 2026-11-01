@@ -1,0 +1,7 @@
+design-solution: 00112-backup-live-progress-and-quiet-v1
+  doc: docs/dev/project-management/designs/00112-backup-live-progress-and-quiet-v1-design.md
+  reviewer dispatches: 2/3
+  findings: cardinal-sin 1, blocker 0, non-blocker 8, question 2
+  open cardinal sins/blockers: none
+  weak dispatches: none
+  result: ok

@@ -1,14 +1,6 @@
-# Implementation assumptions
+# PRD 00112 assumptions
 
-## 1: Cancellable archive writers
-- Tess: System tar is installed, consistent with existing engine parity tests.
-- Ivan Sol and Astra: none.
+Task 1: Tess and Ivan reported ASSUMPTIONS: none.
 
-## 3: CLI jobs and exit130
-- Tess: --list is the existing list-plan flag (confirmed).
-- Tess strengthening: probe input defaults are empty strings; exercised instances supply all three values.
-- Ivan Sol and Astra: none.
-
-## 8: Tail sweep test coverage
-- Ivan: Explicit test-only acceptance overrides dispatch boilerplate prohibiting added tests.
-- Style fix: none.
+## 2: Emit archive engine progress
+Tess quality retry: Clearing PATH represents unavailable system tar; real fallback-message assertion passed. Other test writers and implementors reported none.

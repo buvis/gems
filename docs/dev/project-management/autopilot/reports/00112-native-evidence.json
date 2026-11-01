@@ -1,0 +1,233 @@
+[
+  {
+    "task": "1",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-1-tess1-session.jsonl",
+    "line": 10,
+    "sha256": "c294c3c06587f93694b8d7707fc58fe4cd3bca8fb78657137f15e115289133b8",
+    "worker_role": "test-author",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-36-41-01a198d4-1fa0-7241-a000-eb14748deca2.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "1",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-1-tess1_strengthen-session.jsonl",
+    "line": 10,
+    "sha256": "f91ab52caead3928f6d2864b3f90dfc7b9f21302c604e0bec576cdf5223ade4a",
+    "worker_role": "test-strengthener",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-40-51-01a198d7-f122-7471-89a5-06ab7e2f98cb.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "1",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-1-ivan1-session.jsonl",
+    "line": 10,
+    "sha256": "c4c86aba793b3c367d9073b5c9684ddad378856b178a5a5160008e059b860fc7",
+    "worker_role": "implementor",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-42-21-01a198d9-52a2-7b63-b71b-a496f3202e83.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-2-tess2-session.jsonl",
+    "line": 10,
+    "sha256": "3a3aeacc11ebdb89b47969f7de1a664f6d027ab0c87c8cf2744a9b0e8e25f046",
+    "worker_role": "test-author",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-43-54-01a198da-bcaa-76a3-8063-79225327b326.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-2-tess2_quality-session.jsonl",
+    "line": 10,
+    "sha256": "acfd8dbeb99edf56deb50bb638b316159c22b0d76ece0bf6e705d3cb49983837",
+    "worker_role": "test-quality-repair",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-47-29-01a198de-0530-7022-ab77-ebc7e796bc9b.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-2-tess2_style-session.jsonl",
+    "line": 10,
+    "sha256": "ab478d8acd2cff754e490bc27903a61cafdcc9ddc0f2acf96e77b08432a4a97c",
+    "worker_role": "test-style-repair",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-49-28-01a198df-d6db-7613-a1ac-4566af19494a.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-2-tess2_strengthen-session.jsonl",
+    "line": 10,
+    "sha256": "8d3cf30ee1e8e4b5b604a97e50a085b618445a28c2570035771f0e1df958396c",
+    "worker_role": "test-strengthener",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-53-23-01a198e3-6b49-70d3-874e-8ae062dce003.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-2-ivan2-session.jsonl",
+    "line": 10,
+    "sha256": "80a75c597ceac427dad76fde1b7d5432ba837a004916a517d6b839b18ada6d23",
+    "worker_role": "implementor",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-56-13-01a198e6-0491-78e1-8932-42f883b99c53.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6-astra",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-2-ivan2_retry-session.jsonl",
+    "line": 10,
+    "sha256": "e7e7ee8b1b347674b1fe9961a389c7bb7ad40e9cd39b94a0b54acd182d635a85",
+    "worker_role": "implementor-repair",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T21-59-32-01a198e9-0d0f-7463-9a91-b4ae7ff79df5.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "3",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-3-tess3-session.jsonl",
+    "line": 10,
+    "sha256": "f10430f0ebe7a0779caab8d5cd70343c272ceb810c57975296f60814257cf5ef",
+    "worker_role": "test-author",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-06-03-01a198ef-055d-76b1-98d8-2a897c19eae9.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "3",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-3-tess3_quality-session.jsonl",
+    "line": 10,
+    "sha256": "0a64027cbd4ac6ac152fd77f2b53bd77f60ae6ccd2c089042e31bcc0613616fe",
+    "worker_role": "test-quality-repair",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-13-26-01a198f5-c5c1-7062-9775-fad65ddac512.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "3",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-3-tess3_strengthen-session.jsonl",
+    "line": 10,
+    "sha256": "ccce6ca86fb11840a21c7ed9050942f026595338859cd2b63948c1b7975f7a71",
+    "worker_role": "test-strengthener",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-19-08-01a198fb-0038-7b01-bde5-592e2464cab6.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "3",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-3-ivan3-session.jsonl",
+    "line": 10,
+    "sha256": "3a70b67907c80a6b0d1f1233b66094010cfcf89e1e579b149a3f04a8fdc538d6",
+    "worker_role": "implementor",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-21-33-01a198fd-33c0-7473-add8-0b52249fd26f.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "3",
+    "role": "implementation",
+    "model": "gpt-6-astra",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-3-ivan3_retry-session.jsonl",
+    "line": 10,
+    "sha256": "729911f051a9de158b79f6b69103ce1a12b05ee7de459d6448c0512dbaa54a78",
+    "worker_role": "implementor-repair",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-25-21-01a19900-af79-7123-bbfd-55dabe96090b.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "4",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-4-tess4-session.jsonl",
+    "line": 10,
+    "sha256": "fbbc7396b281a763d21e53fda73338e81e7171cf6326724cdafe11588af2a8b6",
+    "worker_role": "test-author",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-30-01-01a19904-f4b8-7072-a334-23a4562c4d7d.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "4",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-4-tess4_strengthen-session.jsonl",
+    "line": 10,
+    "sha256": "e6af9600ad01fbff4917167aa740955e74549f7523640631601d50de84124bb7",
+    "worker_role": "test-strengthener",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-40-12-01a1990e-4784-7703-8269-95cd6d2b0650.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "4",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-4-tess4_quality-session.jsonl",
+    "line": 10,
+    "sha256": "0d1817673ebbd40cdcbd43e01503479f74eb01f0b37fa7e50b441f0504f7322d",
+    "worker_role": "test-quality-repair",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-43-50-01a19911-9d1d-7123-9b3c-3a61850a9b53.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "4",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-4-ivan4-session.jsonl",
+    "line": 10,
+    "sha256": "9098487688e8bb7fba0b2cc965d718d99ec37022f10a8a1eb9a0cf3fdd3627fc",
+    "worker_role": "implementor",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-45-07-01a19912-c8c6-7253-8d5d-a500641a37de.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "4",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-4-ivan4_doc-session.jsonl",
+    "line": 10,
+    "sha256": "4e37c358f37a4dcb5fe5a9a7797103f15668d5360830f3d2f7b3bae15fd90468",
+    "worker_role": "implementation-doc-fix",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-52-15-01a19919-50f5-73f3-b8ae-dc1801373085.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "5",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-5-ivan5-session.jsonl",
+    "line": 10,
+    "sha256": "214f9411c790e8f2228b54aa57432453f82994c7bbfeb78fb462bf350f91bb66",
+    "worker_role": "documentation-implementor",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-53-31-01a1991a-7acb-7391-a53a-65f225e626c8.jsonl",
+    "effort": "high"
+  },
+  {
+    "task": "5",
+    "role": "implementation",
+    "model": "gpt-6-astra",
+    "path": "docs/dev/project-management/autopilot/reports/00112-task-5-ivan5_retry-session.jsonl",
+    "line": 10,
+    "sha256": "26b37bb6107398cc551ea893dc3b23d3caf6f51517c1e3043d20646dfb6f96e0",
+    "worker_role": "documentation-repair",
+    "session_source": "/Users/bob/.codex/sessions/2026/11/01/rollout-2026-11-01T22-55-04-01a1991b-e4be-7f90-aeb5-0daf7243b244.jsonl",
+    "effort": "high"
+  }
+]
