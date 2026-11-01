@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 import pytest
 from buvis.pybase.result import FatalError
 
+from backup.capabilities.tar_archive import TarArchive
 from backup.config import BackupConfig
 from backup.runner import Runner
+from backup.step_result import PlanEntry
 
 if TYPE_CHECKING:
-    from os import stat_result
-
     from pytest_mock import MockerFixture
 
 
@@ -28,14 +28,22 @@ def _config(tmp_path: Path, outputs: dict[str, Path]) -> BackupConfig:
 
 
 def _fail_metadata(monkeypatch: pytest.MonkeyPatch, errors: dict[Path, Exception]) -> None:
-    real_stat = Path.stat
+    real_plan = TarArchive.plan
 
-    def stat(path: Path, *, follow_symlinks: bool = True) -> stat_result:
-        if path in errors:
-            raise errors[path]
-        return real_stat(path, follow_symlinks=follow_symlinks)
+    def plan(capability: TarArchive, **kwargs: object) -> PlanEntry:
+        for value in (kwargs.get("source"), kwargs.get("out")):
+            if isinstance(value, str) and (error := errors.get(Path(value))) is not None:
+                raise error
+        return real_plan(capability, **kwargs)
 
-    monkeypatch.setattr(Path, "stat", stat)
+    monkeypatch.setattr(TarArchive, "plan", plan)
+
+
+def _set_plan_clock(mocker: MockerFixture, now: datetime) -> None:
+    clock = mocker.patch("backup.runner.datetime", autospec=True)
+    clock.now.return_value = now
+    fallback = mocker.patch("backup.capabilities.tar_archive.datetime", autospec=True)
+    fallback.now.return_value = datetime(2001, 6, 7, 8, 9, 10)
 
 
 def _assert_archive(out: Path, name: str) -> None:
@@ -44,6 +52,39 @@ def _assert_archive(out: Path, name: str) -> None:
         member = archive.extractfile(f"{name}/tiny.txt")
         assert member is not None
         assert member.read() == name.encode()
+
+
+@pytest.mark.parametrize("out", [42, "~/archive-%Y.tar.gz"])
+def test_failed_plan_preserves_resolved_source_and_accepts_only_string_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, out: object
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    cfg = BackupConfig.model_validate(
+        {"instances": {"blocked": {"use": "tar-archive", "with": {"source": "~/source", "out": out}}}}
+    )
+    _fail_metadata(monkeypatch, {Path("~/source"): OSError("metadata unavailable")})
+
+    entry = Runner(cfg)._plan(list(cfg.instances.items()), datetime(2026, 11, 2))[0]
+
+    assert entry.source == str(tmp_path / "source")
+    assert entry.out == (str(tmp_path / "archive-2026.tar.gz") if isinstance(out, str) else "")
+    assert entry.status == "fail"
+    assert "metadata unavailable" in entry.reason
+
+
+def test_stamp_expansion_failure_does_not_escape_recovery_or_abort_other_instances(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    cfg = _config(tmp_path, {"blocked": tmp_path / "bad-%Y.tar.gz", "independent": tmp_path / "good.tar.gz"})
+    clock = mocker.Mock(wraps=datetime(2026, 11, 2))
+    clock.strftime.side_effect = ValueError("invalid timestamp pattern")
+
+    entries = Runner(cfg)._plan(list(cfg.instances.items()), clock)
+
+    assert [entry.status for entry in entries] == ["fail", "run"]
+    assert "invalid timestamp pattern" in entries[0].reason
+    assert entries[0].out == str(tmp_path / "bad-%Y.tar.gz")
+    assert entries[1].out == str(tmp_path / "good.tar.gz")
 
 
 @pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
@@ -211,10 +252,7 @@ def test_runner_rejects_timestamp_output_collisions_when_source_metadata_fails(
             "independent": independent,
         },
     )
-    clock = mocker.patch("backup.runner.datetime", autospec=True)
-    clock.now.return_value = now
-    fallback = mocker.patch("backup.capabilities.tar_archive.datetime", autospec=True)
-    fallback.now.return_value = datetime(2001, 6, 7, 8, 9, 10)
+    _set_plan_clock(mocker, now)
     runner = Runner(cfg, dry_run=mode == "dry-run")
     with monkeypatch.context() as patch:
         _fail_metadata(patch, {tmp_path / "sources" / "stamped": error_type("stamped source metadata")})

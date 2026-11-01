@@ -119,8 +119,9 @@ class TarArchive:
         message = _missing_input(source_raw, out_raw)
         if message:
             source_text = str(os.path.normpath(Path(source_raw).expanduser())) if source_raw else ""
-            out_text = _expand_stamp(out_raw, now) if out_raw else ""
-            return PlanEntry(label, source_text, out_text, "fail", message, False)
+            out_text = str(Path(_expand_stamp(out_raw, now)).expanduser()) if out_raw else ""
+            replaces = Path(out_text).exists() if out_text else False
+            return PlanEntry(label, source_text, out_text, "fail", message, replaces)
         source, out = _resolve_paths(source_raw, out_raw, now)
         replaces = out.exists()
         status = "run"

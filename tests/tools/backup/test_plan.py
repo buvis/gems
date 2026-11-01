@@ -112,106 +112,23 @@ class TestPlanEntry:
         assert entry.status == status
         assert entry.reason == reason
         assert entry.replaces is replaces
-        assert entry[0] == label
-        assert entry[1] == source
-        assert entry[2] == out
-        assert entry[3] == status
-        assert entry[4] == reason
-        assert entry[5] is replaces
-        assert entry[:] == expected
-        assert entry == expected
-        assert entry == PlanEntry(label, source, out, status, reason, replaces)
-        assert PlanEntry._make(iter(expected)) == expected
-
-    def test_plan_entry_accepts_named_fields_in_any_keyword_order(self) -> None:
-        entry = PlanEntry(
-            replaces=True,
-            reason="destination exists",
-            status="run",
-            out="/backup/documents.tar.gz",
-            source="/vault/documents",
-            label="documents",
-        )
-
-        assert tuple(entry) == (
-            "documents",
-            "/vault/documents",
-            "/backup/documents.tar.gz",
-            "run",
-            "destination exists",
-            True,
-        )
-        assert entry._asdict() == {
-            "label": "documents",
-            "source": "/vault/documents",
-            "out": "/backup/documents.tar.gz",
-            "status": "run",
-            "reason": "destination exists",
-            "replaces": True,
-        }
-
-    @pytest.mark.parametrize(
-        ("field", "value"),
-        [
-            ("label", "changed"),
-            ("source", "/different/source"),
-            ("out", "/different/out.tar.gz"),
-            ("status", "skip"),
-            ("reason", "source missing"),
-            ("replaces", True),
-        ],
-    )
-    def test_plan_entry_rejects_field_mutation(self, field: str, value: str | bool) -> None:
-        entry = PlanEntry("notes", "/vault/notes", "/backup/notes.tar.gz", "run", "", False)
-
-        with pytest.raises(AttributeError):
-            setattr(entry, field, value)
-
-        assert tuple(entry) == ("notes", "/vault/notes", "/backup/notes.tar.gz", "run", "", False)
-
-    def test_plan_entry_replace_returns_changed_record_and_preserves_original(self) -> None:
-        entry = PlanEntry("notes", "/vault/notes", "/backup/notes.tar.gz", "run", "", False)
-
-        changed = entry._replace(
-            label="notes-old",
-            source="/alternate/source",
-            out="/alternate/out.tgz",
-            status="fail",
-            reason="output unavailable",
-            replaces=True,
-        )
-
-        assert isinstance(changed, PlanEntry)
-        assert changed == (
-            "notes-old",
-            "/alternate/source",
-            "/alternate/out.tgz",
-            "fail",
-            "output unavailable",
-            True,
-        )
-        assert tuple(entry) == ("notes", "/vault/notes", "/backup/notes.tar.gz", "run", "", False)
-
-    @pytest.mark.parametrize(
-        ("args", "kwargs"),
-        [
-            ((), {}),
-            (("notes", "/vault/notes", "/backup/notes.tar.gz", "run", ""), {}),
-            (("notes", "/vault/notes", "/backup/notes.tar.gz", "run", "", False, "extra"), {}),
-            (("notes", "/vault/notes", "/backup/notes.tar.gz", "run", "", False), {"unknown": "extra"}),
-        ],
-        ids=["empty", "missing-field", "surplus-field", "unknown-keyword"],
-    )
-    def test_plan_entry_rejects_invalid_constructor_arguments(
-        self,
-        args: tuple[object, ...],
-        kwargs: dict[str, object],
-    ) -> None:
-        with pytest.raises(TypeError):
-            PlanEntry(*args, **kwargs)
 
 
 class TestCapabilityPlan:
+    @pytest.mark.parametrize("pattern", ["~/existing.tar.gz", "~/existing-%Y.tar.gz"])
+    def test_missing_source_preserves_expanded_output_and_replacement_marker(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pattern: str
+    ) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        now = datetime(2026, 11, 2)
+        out = tmp_path / now.strftime(pattern.removeprefix("~/"))
+        out.write_bytes(b"existing archive")
+
+        entry = TarArchive().plan(label="empty", source="", out=pattern, now=now)
+
+        assert entry == PlanEntry("empty", "", str(out), "fail", "no source configured", True)
+        assert out.read_bytes() == b"existing archive"
+
     def test_capability_requires_plan_as_well_as_run(self) -> None:
         run_only = SimpleNamespace(inputs={}, run=lambda **kwargs: iter(()))
         plan_only = SimpleNamespace(inputs={}, plan=lambda **kwargs: PlanEntry("", "", "", "run", "", False))

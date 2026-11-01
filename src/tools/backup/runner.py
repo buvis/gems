@@ -8,6 +8,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import suppress
 from datetime import datetime
 from functools import partial
+from pathlib import Path
 
 # Separate binding on purpose: tests monkeypatch ``backup.runner.queue.Queue`` to
 # inject the completion queue; the progress queue must not be replaced with it.
@@ -17,7 +18,7 @@ from typing import TYPE_CHECKING
 from buvis.pybase.result import FatalError
 
 from backup.capabilities import CAPABILITIES
-from backup.capabilities.tar_archive import ArchiveCancelled
+from backup.capabilities.tar_archive import ArchiveCancelled, _resolve_paths
 from backup.config import effective_excludes
 from backup.step_result import PlanEntry, ProgressEvent, StepResult
 
@@ -36,6 +37,22 @@ def _enqueue_progress(events: ProgressQueue[ProgressEvent], cancel: threading.Ev
             return
         except queue.Full:
             continue
+
+
+def _failed_plan_entry(name: str, instance: BackupInstance, now: datetime, error: Exception) -> PlanEntry:
+    """Retain best-effort paths without letting metadata recovery fail again."""
+    source_raw, out_raw = instance.with_.get("source", ""), instance.with_.get("out", "")
+    source = source_raw if isinstance(source_raw, str) else ""
+    out = out_raw if isinstance(out_raw, str) else ""
+    with suppress(Exception):
+        resolved_source, resolved_out = _resolve_paths(source, out, now)
+        source = str(resolved_source) if source else ""
+        out = str(resolved_out) if out else ""
+    replaces = False
+    if out:
+        with suppress(Exception):
+            replaces = Path(out).exists()
+    return PlanEntry(name, source, out, "fail", f"{name} failed: {error}", replaces)
 
 
 class Runner:
@@ -247,10 +264,7 @@ class Runner:
                 except FatalError:
                     raise
                 except Exception as exc:
-                    # keep the configured output so duplicate detection still sees it
-                    # (resolved with the run-wide timestamp, like the capability does)
-                    configured = now.strftime(str(instance.with_.get("out", "")))
-                    entry = PlanEntry(name, "", configured, "fail", f"{name} failed: {exc}", False)
+                    entry = _failed_plan_entry(name, instance, now, exc)
                 if entry.out:
                     key = os.path.normpath(os.path.expanduser(entry.out))
                     outputs.setdefault(key, []).append(name)
