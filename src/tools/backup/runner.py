@@ -60,7 +60,6 @@ class Runner:
         ordered = sorted(selected, key=lambda item: (item[1].order, item[0]))
         remaining = deque(ordered)
         ready: deque[StepResult] = deque()
-        finished = False
         try:
             try:
                 entries = self._plan(selected, now)
@@ -75,10 +74,7 @@ class Runner:
                 self.request_cancel()
 
             yield from self._execute(remaining, ready, now, cancel)
-            finished = True
         finally:
-            if not finished:
-                cancel.set()
             self.cancelled_names = tuple(name for name, _ in ordered if name in self._cancelled)
             self._cancel = None
 
@@ -91,18 +87,22 @@ class Runner:
     ) -> Iterator[StepResult]:
         completed: queue.Queue[Future[list[StepResult]]] = queue.Queue()
         pending: dict[Future[list[StepResult]], str] = {}
+        outcomes: dict[str, list[StepResult]] = {}
         executor: ThreadPoolExecutor | None = None
         finished = False
         try:
-            while ready or remaining or pending:
+            while ready or remaining or pending or outcomes:
                 try:
                     if cancel.is_set():
                         if executor is not None:
                             self._shutdown(executor)
                             executor = None
-                        ready.extend(self._cancelled_result(name) for name, _ in remaining)
+                        names = dict.fromkeys((*pending.values(), *(name for name, _ in remaining)))
+                        ready.extend(row for rows in outcomes.values() for row in rows)
+                        ready.extend(self._cancelled_result(name) for name in names if name not in outcomes)
                         remaining.clear()
-
+                        pending.clear()
+                        outcomes.clear()
                     if ready:
                         yield ready.popleft()
                         continue
@@ -110,15 +110,15 @@ class Runner:
                     while remaining and len(pending) < self._jobs and not cancel.is_set():
                         if executor is None:
                             executor = ThreadPoolExecutor(max_workers=self._jobs)
-                        name, instance = remaining.popleft()
-                        future = executor.submit(self._run_instance, name, instance, now, cancel)
+                        name, instance = remaining[0]
+                        future = executor.submit(self._run_instance, name, instance, now, cancel, outcomes)
                         pending[future] = name
+                        remaining.popleft()
                         future.add_done_callback(completed.put)
-
                     if pending:
                         future = completed.get()
                         name = pending.pop(future)
-                        ready.extend([self._cancelled_result(name)] if future.cancelled() else future.result())
+                        ready.extend([self._cancelled_result(name)] if future.cancelled() else outcomes.pop(name))
                 except KeyboardInterrupt:
                     self.request_cancel()
             finished = True
@@ -187,10 +187,16 @@ class Runner:
         return entries
 
     def _run_instance(
-        self: Runner, name: str, instance: BackupInstance, now: datetime, cancel: threading.Event
+        self: Runner,
+        name: str,
+        instance: BackupInstance,
+        now: datetime,
+        cancel: threading.Event,
+        outcomes: dict[str, list[StepResult]],
     ) -> list[StepResult]:
         if cancel.is_set():
-            return [self._cancelled_result(name)]
+            outcomes[name] = [self._cancelled_result(name)]
+            return outcomes[name]
         capability = CAPABILITIES[instance.use]
 
         call_kwargs: dict[str, object] = {
@@ -202,8 +208,9 @@ class Runner:
             "cancel": cancel,
         }
         try:
-            return list(capability.run(**call_kwargs))
+            outcomes[name] = list(capability.run(**call_kwargs))
         except ArchiveCancelled:
-            return [self._cancelled_result(name)]
+            outcomes[name] = [self._cancelled_result(name)]
         except Exception as exc:
-            return [StepResult(name, success=False, message=f"{name} failed: {exc}")]
+            outcomes[name] = [StepResult(name, success=False, message=f"{name} failed: {exc}")]
+        return outcomes[name]

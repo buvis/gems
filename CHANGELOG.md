@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **backup**: interruption during submission or result collection preserves every instance's outcome and finishes cleanup without waiting for a lost completion notification.
 - **backup**: a source or output metadata error while planning one instance now fails only that instance; the others still run, and duplicate outputs are still rejected.
 - **backup**: `tar-archive` plans treat an empty `engine` as the default Python engine and report an empty `source` or `out` as "no source configured" or "no out path configured", the same as a run, instead of using the working directory; two instances with an empty `out` no longer report a false output collision.
 - **sysup**: a `timeout` on a captured multi-command shell step now stops the whole step; before, only bash died and the command it was waiting on kept running. Such a step runs in its own process group, so Ctrl-C is forwarded to it, a terminal prompt it raises stops it until the timeout, and a command it runs as root through `sudo` is still out of reach and survives. Interactive steps and steps without a timeout are unchanged
