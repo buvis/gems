@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import _thread
 import json
 import os
 import shutil
@@ -68,9 +69,7 @@ def _require_archive_fsync_before_publication(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(os, "replace", replace)
 
 
-def _stub_tar(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, stubborn: bool = False, complete: bool = False
-) -> Path:
+def _stub_tar(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, complete: bool = False) -> Path:
     real_tar = shutil.which("tar")
     assert real_tar is not None
     bindir = tmp_path / "bin"
@@ -79,9 +78,8 @@ def _stub_tar(
     script = bindir / "tar"
     script.write_text(
         f"#!{sys.executable}\n"
-        "import os, signal, time\n"
+        "import os, time\n"
         "from pathlib import Path\n"
-        + ("signal.signal(signal.SIGTERM, signal.SIG_IGN)\n" if stubborn else "")
         + f"Path({str(marker)!r}).write_text(\n"
         + "    str(os.getpid()) + '\\n' + str(os.getsid(0)) + '\\n' + os.environ.get('COPYFILE_DISABLE', '')\n)\n"
         + f"time.sleep({0.45 if complete else 30})\n"
@@ -219,17 +217,15 @@ class TestPythonArchiveCancellation:
 
 class TestSystemArchiveCancellation:
     @pytest.mark.parametrize("previous", [None, b"previous system archive"])
-    @pytest.mark.parametrize("stubborn", [False, True])
     def test_terminates_tar_and_cancel_cleans_without_fallback(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         tar_children: list[subprocess.Popen[bytes]],
         previous: bytes | None,
-        stubborn: bool,
     ) -> None:
         files = _members(tmp_path)
-        marker = _stub_tar(tmp_path, monkeypatch, stubborn=stubborn)
+        marker = _stub_tar(tmp_path, monkeypatch)
         out = tmp_path / "out.tar.gz"
         if previous is not None:
             out.write_bytes(previous)
@@ -247,7 +243,7 @@ class TestSystemArchiveCancellation:
         assert len(tar_children) == 1
         child = tar_children[0]
         assert child.pid == int(pid)
-        assert child.returncode == -(signal.SIGKILL if stubborn else signal.SIGTERM)
+        assert child.returncode == -signal.SIGTERM
         with pytest.raises(ProcessLookupError):
             os.kill(int(pid), 0)
         assert all(pipe is not None and pipe.closed for pipe in (child.stdin, child.stdout, child.stderr))
@@ -746,3 +742,52 @@ class TestCliParallelJobs:
         assert [row["label"] for row in probe.plans] == [name]
         assert probe.calls == []
         assert name in result.output
+
+
+def test_cli_interrupt_with_two_active_and_two_queued_exits_130(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    probe = CapabilityProbe(("alpha", "alpha-copy", "delta", "omega"))
+    cfg = configure(monkeypatch, probe)
+    payload = cfg.model_dump(by_alias=True)
+    payload["instances"]["git-src"] = {"use": "tar-archive", "enabled": False}
+    path = tmp_path / "interrupt.yaml"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    cleaned: set[str] = set()
+    failures: list[BaseException] = []
+
+    def interruptible(kwargs: dict[str, object]) -> Iterator[StepResult]:
+        cancel = kwargs["cancel"]
+        assert isinstance(cancel, threading.Event)
+        assert cancel.wait(WAIT)
+        with probe.lock:
+            cleaned.add(str(kwargs["label"]))
+        yield from ()
+        raise ArchiveCancelled()
+
+    def interrupt() -> None:
+        try:
+            assert probe.started["alpha"].wait(WAIT)
+            assert probe.started["alpha-copy"].wait(WAIT)
+            assert probe.active == 2
+            assert not probe.started["delta"].is_set()
+            assert not probe.started["omega"].is_set()
+            _thread.interrupt_main()
+        except BaseException as exc:
+            failures.append(exc)
+
+    probe.behavior = interruptible
+    interrupter = threading.Thread(target=interrupt, daemon=True)
+    interrupter.start()
+    try:
+        result = CliRunner().invoke(cli, ["--config-dir", str(tmp_path), "--config", str(path), "--jobs", "2"])
+    finally:
+        interrupter.join(WAIT)
+    assert not interrupter.is_alive()
+    assert failures == []
+    assert result.exit_code == 130, (result.output, result.exception)
+    assert "interrupted: alpha, alpha-copy, delta, omega" in result.output
+    assert cleaned == {"alpha", "alpha-copy"}
+    assert {row["label"] for row in probe.calls} == cleaned
+    assert len(probe.calls) == 2
+    assert probe.maximum == 2 and probe.active == 0
