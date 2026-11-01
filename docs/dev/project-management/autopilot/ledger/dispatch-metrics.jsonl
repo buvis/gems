@@ -474,3 +474,4 @@
 {"id":"372b9c28","kind":"bob","task":"review-00111-c1-20261101-full","queued_at":1793525350,"prompt_bytes":13582}
 {"id":"372b9c28","ended_at":1793526040,"elapsed_s":690,"outcome":"ok","detail":"Bob Anthropic Kiro claude-opus-5.5 xhigh completed with receipt; whole review paused for Alice/Blake permission denials"}
 {"kind":"handoff","site":"review","edge":"leave","at":1793526094,"phase":"paused","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}
+{"kind":"handoff","site":"review","edge":"leave","at":1793562222,"phase":"review","prd":"00111-backup-parallel-jobs-and-cancellation-v1.md"}

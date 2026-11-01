@@ -1,0 +1,26 @@
+{
+  "authorization": "Operator explicitly authorized regeneration and reviewer reads in reports.",
+  "work_start_sha": "9a7f78c8eb0e4148181584f92eb649cfec590034",
+  "reviewed_head": "3976e25f4b8ce0201c5693389bf3debf17c61ecb",
+  "inputs": [
+    {
+      "path": "docs/dev/project-management/autopilot/reports/00111-c1-recovery-20261101-review-context.md",
+      "sha256": "c6147113ff7eceece3e56ba89ce1d3202d483f7fac4f9045902b1ce377fa5353",
+      "source": "docs/dev/tmp/review-context-00111-c1-20261101-full.md",
+      "source_sha256": "47af395363cc91e7874e6fa77b20fd974954341753e74368acb6cc8232574715"
+    },
+    {
+      "path": "docs/dev/project-management/autopilot/reports/00111-c1-recovery-20261101-review-diff.diff",
+      "sha256": "766c918eccf868222efc6f2f7de5278600a133b63c9d5f967dd955777c227dc4",
+      "source": "docs/dev/tmp/review-diff-00111-c1-20261101-full.diff",
+      "source_sha256": "17526be28f502eec32f79c90be0c2fa5146813e42e9900bfc8015257df8cedd5"
+    },
+    {
+      "path": "docs/dev/project-management/autopilot/reports/00111-c1-recovery-20261101-engram-pack.md",
+      "sha256": "18b9118e20714a0c66134236c120a817005f693a4b5648806f9881be80a79153",
+      "source": "docs/dev/tmp/engram-pack-00111-c1-20261101-full.md",
+      "source_sha256": "18b9118e20714a0c66134236c120a817005f693a4b5648806f9881be80a79153"
+    }
+  ],
+  "diff_bookkeeping_differences": []
+}
