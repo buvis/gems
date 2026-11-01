@@ -29,9 +29,9 @@ Generated: 2026-10-29
 
 ### Batch 202610292344
 - [x] 00111-backup-parallel-jobs-and-cancellation-v1.md (1 cycle)
-- [ ] 00112-backup-live-progress-and-quiet-v1.md
+- [x] 00112-backup-live-progress-and-quiet-v1.md (1 cycle)
 
-Observations: PRD 00111 completed all nine tasks and its Tail sweep. Final verification: 6237 passed, 16 skipped; Ruff and mypy clean. Original three-lens review, receipts and implementation audit remain intact; companion audit records sweep provenance. Direct-child tar supervision remains a durable deferred non-blocker. Two existing hold triage stubs remain outside the drain. Start PRD 00112 in a fresh build session.
+Observations: Batch drained. PRD 00112 completed all seven tasks, including its Tail sweep, in one review cycle. Final verification: 6380 passed, 16 skipped, 1 xfailed; Ruff, mypy (557 files), and Sphinx passed. Original three-lens review, receipts and implementation audit remain intact; companion audit records sweep provenance. Direct-child tar supervision remains a durable deferred non-blocker. Two existing hold triage stubs remain outside the drain. Review deferred batch items interactively.
 
 ## Related context
 No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
