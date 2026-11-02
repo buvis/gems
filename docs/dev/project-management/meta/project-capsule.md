@@ -30,8 +30,11 @@ Generated: 2026-10-29
 ### Batch 202610292344
 - [x] 00111-backup-parallel-jobs-and-cancellation-v1.md (1 cycle)
 - [x] 00112-backup-live-progress-and-quiet-v1.md (1 cycle)
+- [x] 00107-backup-per-instance-excludes-v1.md (1 cycle, recovered 2026-11-02)
+- [x] 00109-backup-bundle-items-and-skip-outcomes-v1.md (2 cycles, recovered 2026-11-02)
+- [x] 00110-backup-plan-preview-and-output-resolution-v1.md (3 cycles at cap 2, recovered 2026-11-02)
 
-Observations: Batch drained. Historical PRD 00112 verification: 6380 passed, 16 skipped, 1 xfailed; Ruff, mypy (557 files), and Sphinx passed. Its three-lens review and receipts remain intact. Attended batch review on 2026-11-02 repaired all seven 00110 findings on `fix/backup-batch-202610292344` (`5d8ab708`); Python 3.14 backup suite passed 758 tests in a separate environment. Stubs 00113/00114 closed against the same repaired regression. PRDs 00107/00109/00110 remain held pending fresh completion reviews; no review cap was raised. GNU tar/gzip descendant cleanup remains deferred for Linux verification. Read `autopilot/reports/202610292344-review-20261102.md` for current evidence and the fresh-session review queue.
+Observations: Batch drained; all held PRDs passed completion review on `fix/backup-batch-202610292344` (unpushed). Full isolated suite at `93781cd0`: 6417 passed, 16 skipped; Python 3.14 backup suite 802 passed. Open: hold stub 00117 (bundle `out` under source rejected by the containment guard; needs a PRD decision); GNU tar/gzip descendant cleanup deferred for Linux verification; ledgered follow-up candidate: uniform, labelled access-error framing in tar-archive run/plan. `autopilot review-once` cannot run while headless `claude -p` reports a revoked OAuth token. Evidence: `autopilot/reports/202610292344-review-20261102.md`.
 
 ## Related context
 No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.

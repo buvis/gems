@@ -634,3 +634,9 @@
 {"id":"00eb984e","kind":"pat","task":"5","queued_at":1793613188,"prompt_bytes":7990}
 {"id":"3ae6eab6","ended_at":1793613213,"elapsed_s":29,"outcome":"ok","detail":null}
 {"id":"00eb984e","ended_at":1793613214,"elapsed_s":26,"outcome":"ok","detail":null}
+{"id":"e4fca3af","kind":"tess","task":"8","queued_at":1793613495,"prompt_bytes":22478}
+{"id":"e4fca3af","ended_at":1793613534,"elapsed_s":39,"outcome":"ok","detail":null}
+{"id":"756cfe13","kind":"ivan","task":"8","queued_at":1793613542,"prompt_bytes":32402}
+{"id":"8255bcbf","kind":"pat","task":"8","queued_at":1793613656,"prompt_bytes":12589}
+{"id":"8255bcbf","ended_at":1793613804,"elapsed_s":148,"outcome":"ok","detail":null}
+{"id":"756cfe13","ended_at":1793613805,"elapsed_s":263,"outcome":"ok","detail":null}

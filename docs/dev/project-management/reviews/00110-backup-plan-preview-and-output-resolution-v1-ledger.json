@@ -2,7 +2,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\ud83d\udfe1",
+    "severity": "🟡",
     "issue": "Simplification: `plan` copies `run`'s pre-walk checks one by one: the engine check with the message repeated word for word at tar_archive.py:87 and :136, the source is_dir/exists branch, the containment check, and `_normalize_items`. That copy is how the two drifts above crept in. Move the checks into one shared validator that returns (status, reason) and call it from both `plan` and `run`.",
     "file": "src/tools/backup/capabilities/tar_archive.py:76",
     "reason": "single-voice"
@@ -10,7 +10,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\ud83d\udfe1",
+    "severity": "🟡",
     "issue": "Simplification: `Runner._plan` (runner.py:54-59) and `_run_instance` (runner.py:82-88) build the same `call_kwargs` dict; only `dry_run` differs. Use one `_call_kwargs(name, instance, now)` helper and add `dry_run` at the call site.",
     "file": "src/tools/backup/runner.py:54",
     "reason": "single-voice"
@@ -18,7 +18,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\u26aa",
+    "severity": "⚪",
     "issue": "The test builds its expected `reason` by calling `TarArchive().plan(...)`, the code under test, so it can never catch a wrong reason on a `run` row. Assert `\"\"` instead.",
     "file": "tests/tools/backup/test_plan_runner.py:237",
     "reason": "single-voice"
@@ -26,7 +26,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\u26aa",
+    "severity": "⚪",
     "issue": "The duplicate check compares paths as text only, as the spec says. It misses two names for one file on case-insensitive APFS (`~/Backup/x.tgz` vs `~/backup/x.tgz`) and a relative vs absolute spelling of the same file (`x.tgz` vs `$PWD/x.tgz`). So two instances can still write one archive and race. The docs mention only symlinks as not resolved.",
     "file": "src/tools/backup/runner.py:64",
     "reason": "specified lexical normpath behavior; broader file identity is outside PRD scope"
@@ -34,7 +34,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\u26aa",
+    "severity": "⚪",
     "issue": "`replaces` uses `out.exists()`, which follows symlinks. A dangling symlink at `out` reports `replaces=False` even though `os.replace` will overwrite it. The rest of plan uses `lexists`, so this is inconsistent.",
     "file": "src/tools/backup/capabilities/tar_archive.py:81",
     "reason": "single-voice"
@@ -42,7 +42,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\u26aa",
+    "severity": "⚪",
     "issue": "The `_run_plan` docstring still says it only runs and renders steps. It does not mention the `plan_only` branch that prints plan rows and never executes anything.",
     "file": "src/tools/backup/cli.py:203",
     "reason": "single-voice"
@@ -50,7 +50,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\u26aa",
+    "severity": "⚪",
     "issue": "Unconfirmed whether README.md documents backup CLI flags. The capsule invariant says every CLI change updates README.md, but only backup.rst and CHANGELOG.md were touched.",
     "file": "README.md",
     "reason": "README lists the tool only; it does not enumerate backup flags; rg inspection refuted missing flag documentation"
@@ -58,7 +58,7 @@
   {
     "cycle": 1,
     "disposition": "discarded",
-    "severity": "\u26aa",
+    "severity": "⚪",
     "issue": "Known limitation: the plan's item check ignores exclusions. If every present item is excluded, the plan shows `run` but the actual run skips. The PRD specifies a lexists-only check.",
     "file": "src/tools/backup/capabilities/tar_archive.py:76",
     "reason": "single-voice"
@@ -102,5 +102,45 @@
     "issue": "26 touched test(s) pass against the pre-change code: test_empty_paths_fail_without_using_cwd_or_changing_artifacts +20 more.",
     "file": "tests/tools/backup/test_plan_validation.py:58",
     "reason": "Behavior-preserving regression guards: PRD requires dry-run unchanged; these cases preserve base input/engine/fatal behavior and target cycle1 drift. Mechanical fact retained, not silently dropped."
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Every run-time `fail` plan entry is now pre-empted in `Runner.run`, not just duplicate-output ones; the message text is equivalent, so this is a latent behaviour change and not a defect.",
+    "file": "src/tools/backup/runner.py:121",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_failed_plan_entry` and its changelog note about metadata errors failing only one instance are not in the spec.",
+    "file": "src/tools/backup/runner.py:42",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_set_plan_clock` has a single caller while test_plan_runner.py keeps the same four lines inline twice",
+    "file": "tests/tools/backup/test_plan_errors.py:42",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "CHANGELOG claims \"a metadata error fails only its instance\", but on 3.14 `Path.is_dir()/exists()` swallow EACCES so a real metadata error yields `skip: source not found`",
+    "file": "CHANGELOG.md:10",
+    "reason": "single-voice; resolved at HEAD by the 00109 rework (unreadable source fails on every Python version)"
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_fail_metadata` and four test names/messages still say \"metadata\" although the seam is now `TarArchive.plan` raising",
+    "file": "tests/tools/backup/test_plan_errors.py:30",
+    "reason": "single-voice"
   }
 ]

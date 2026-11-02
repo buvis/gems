@@ -12,7 +12,7 @@
         "choice": "repair blocker; retain hold for completion review",
         "reason": "Original environment blockers reproduced; unchanged isolation runner passes all three and the full suite passes 6373 tests.",
         "evidence": "reports/202610292344-review-20261102.md",
-        "completion_review": "pending"
+        "completion_review": "passed 2026-11-02: reviews/00107-backup-per-instance-excludes-v1-review-1.md converged cycle 1; tail sweep fda7530c, 6a4e56ea; PRD in done/"
       }
     },
     {
@@ -26,7 +26,7 @@
         "choice": "repair blocker; retain hold for completion review",
         "reason": "Original environment blockers reproduced; unchanged isolation runner passes all three and the full suite passes 6373 tests.",
         "evidence": "reports/202610292344-review-20261102.md",
-        "completion_review": "pending"
+        "completion_review": "passed 2026-11-02: reviews/00109-backup-bundle-items-and-skip-outcomes-v1-review-1.md (2 HIGH fixed) and -review-2.md converged cycle 2/cap 2; PRD in done/"
       }
     },
     {
@@ -51,7 +51,7 @@
         "choice": "repair blocker; retain hold for completion review",
         "reason": "Cap regression repaired on branch in 5d8ab708; Python 3.14 backup suite passes 758 tests. Historical cycle/cap 2 preserved.",
         "evidence": "reports/202610292344-review-20261102.md",
-        "completion_review": "pending"
+        "completion_review": "passed 2026-11-02: reviews/00110-backup-plan-preview-and-output-resolution-v1-review-3.md verified R1-R7 resolved, converged at cycle 3 against cap 2 (no rework budget added); tail sweep 93781cd0; PRD in done/"
       }
     },
     {
@@ -197,7 +197,7 @@
     {
       "cycle": 1,
       "issue": "`_cleanup_tar_process` sends terminate and kill only to the tar pid, although `start_new_session=True` gives tar its own process group (tar_archive.py:502, tar_archive.py:527-533). On Linux, GNU tar `-z` forks gzip, which inherits the stderr pipe. So the post-kill `process.communicate()` with no timeout (tar_archive.py:533) waits for gzip to exit, not the bounded wait promised in the PRD Risks section. `os.killpg` would close this gap",
-      "severity": "\u26aa",
+      "severity": "⚪",
       "file": "src/tools/backup/capabilities/tar_archive.py:533",
       "action": "deferred",
       "reason": "deferred by review-close",
