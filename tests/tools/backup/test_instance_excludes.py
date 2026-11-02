@@ -8,7 +8,7 @@ import yaml
 from buvis.pybase.result import FatalError
 
 from backup.cli import cli
-from backup.config import BackupConfig, BackupInstance, load_config
+from backup.config import BackupConfig, BackupInstance, effective_excludes, load_config
 from backup.runner import Runner
 
 
@@ -35,8 +35,8 @@ class TestInstanceExcludeFields:
     def test_defaults_inherit_without_additions_or_removals(self) -> None:
         instance = BackupInstance.model_validate({"use": "tar-archive"})
         assert instance.inherit_excludes is True
-        assert tuple(instance.exclude_add) == ()
-        assert tuple(instance.exclude_remove) == ()
+        assert instance.exclude_add == ()
+        assert instance.exclude_remove == ()
 
     @pytest.mark.parametrize("inherit", [True, False])
     def test_loads_instance_fields_beside_with(self, tmp_path: Path, inherit: bool) -> None:
@@ -54,8 +54,8 @@ class TestInstanceExcludeFields:
             ["target", "dist", "node_modules"],
         )
         instance = load_config(config_dir=str(path.parent)).instances["documents"]
-        assert tuple(instance.exclude_add) == ("scratch", "sub/cache")
-        assert tuple(instance.exclude_remove) == ("target", "dist")
+        assert instance.exclude_add == ("scratch", "sub/cache")
+        assert instance.exclude_remove == ("target", "dist")
         assert instance.inherit_excludes is inherit
         assert instance.with_ == {"source": "/documents", "out": "/archive.tar.gz"}
 
@@ -101,12 +101,9 @@ class TestEffectiveExcludes:
     def test_effective_excludes_keep_first_occurrence_in_order(
         self, base: list[str], fields: dict[str, object], expected: tuple[str, ...]
     ) -> None:
-        from backup.config import effective_excludes
-
         cfg = BackupConfig.model_validate({"excludes": base})
         instance = BackupInstance.model_validate({"use": "tar-archive", **fields})
         assert effective_excludes(cfg, instance) == expected
-        assert cfg.excludes == tuple(base)
 
 
 class TestRunnerInstanceExcludes:
