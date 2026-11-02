@@ -134,7 +134,7 @@ directories, with member names relative to ``source``:
       settings:
         use: tar-archive
         with:
-          source: ~
+          source: "~"                   # quoted: a bare ~ is YAML null
           out: /Volumes/Backup/settings.tar.gz
           items: [.gitconfig, .config/tool]
 
