@@ -212,6 +212,24 @@
       "reason": "Unchanged historical audit; preserve immutable evidence. Reconciled from the archived final state and batch report during attended review on 2026-11-02.",
       "op_id": "20261102-ledger-reconcile-00112",
       "prd": "00112-backup-live-progress-and-quiet-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "high",
+      "issue": "A bundle whose out lies under source but under no selected item is rejected by the unconditional containment check, blocking the PRD's headline case (source: ~, items .gitconfig/.npmrc, out under ~/.local/backup)",
+      "file": "src/tools/backup/capabilities/tar_archive.py:112",
+      "reason": "requirements ambiguity: pre-existing out-inside-source guard; PRD 00110 restates it unconditionally; needs a new PRD decision",
+      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "medium",
+      "issue": "PRD says WalkResult gains missing; the implementation returns tuple[WalkResult, list[str]] from _select_items instead",
+      "file": "src/tools/backup/capabilities/tar_archive.py:220",
+      "reason": "recorded deviation: behavior-equivalent structural choice",
+      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md"
     }
   ]
 }
