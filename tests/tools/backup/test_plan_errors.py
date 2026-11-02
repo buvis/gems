@@ -87,6 +87,53 @@ def test_stamp_expansion_failure_does_not_escape_recovery_or_abort_other_instanc
     assert entries[1].out == str(tmp_path / "good.tar.gz")
 
 
+def test_stamp_expansion_failure_keeps_resolved_source_in_failed_plan_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    good_source = tmp_path / "good-source"
+    good_source.mkdir()
+    (good_source / "tiny.txt").write_bytes(b"good")
+    cfg = BackupConfig.model_validate(
+        {
+            "instances": {
+                "blocked": {"use": "tar-archive", "with": {"source": "~/source", "out": "~/bad-%Y.tar.gz"}},
+                "independent": {
+                    "use": "tar-archive",
+                    "with": {"source": str(good_source), "out": str(tmp_path / "good.tar.gz")},
+                },
+            }
+        }
+    )
+    clock = mocker.Mock(wraps=datetime(2026, 11, 2))
+    clock.strftime.side_effect = ValueError("invalid timestamp pattern")
+
+    entries = Runner(cfg)._plan(list(cfg.instances.items()), clock)
+
+    assert [entry.status for entry in entries] == ["fail", "run"]
+    assert entries[0].source == str(tmp_path / "source")
+    assert entries[0].out == "~/bad-%Y.tar.gz"
+    assert "invalid timestamp pattern" in entries[0].reason
+    assert entries[1].source == str(good_source)
+    assert entries[1].out == str(tmp_path / "good.tar.gz")
+
+
+def test_tar_archive_exports_public_resolve_paths_that_expands_home_and_stamp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from backup.capabilities import tar_archive
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    assert "resolve_paths" in tar_archive.__all__
+    source, out = tar_archive.resolve_paths("~/src", "~/out-%Y.tgz", datetime(2026, 11, 2))
+    assert isinstance(source, Path)
+    assert isinstance(out, Path)
+    assert (source, out) == (tmp_path / "src", tmp_path / "out-2026.tgz")
+    other_source, other_out = tar_archive.resolve_paths("~/docs", "~/b-%Y.tgz", datetime(2031, 1, 5))
+    assert (other_source, other_out) == (tmp_path / "docs", tmp_path / "b-2031.tgz")
+
+
 @pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
 @pytest.mark.parametrize("error_type", [OSError, PermissionError, RuntimeError])
 @pytest.mark.parametrize("metadata", ["source", "out"])
