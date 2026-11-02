@@ -130,25 +130,20 @@ class TarArchive:
         if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
             status = "fail"
             reason = f"unknown engine '{engine}'; expected {_ENGINE_PYTHON} or {_ENGINE_SYSTEM_TAR}"
-        elif not source.is_dir():
-            missing = not source.exists()
+        elif (kind := _source_kind_or_error(source)) != "dir":
+            missing = kind == "missing"
             status = "skip" if missing else "fail"
-            reason = f"{'source not found' if missing else 'source is not a directory'}: {source}"
+            if kind not in ("missing", "file"):
+                reason = kind
+            else:
+                reason = f"{'source not found' if missing else 'source is not a directory'}: {source}"
         else:
             containment = _reject_out_inside_source(label, source, out)
             if containment is not None:
                 status = "fail"
                 reason = containment.message
-            elif "items" in kwargs:
-                try:
-                    selected = _normalize_items(source, _as_str_tuple(kwargs["items"]))
-                except ValueError as exc:
-                    status = "fail"
-                    reason = str(exc)
-                else:
-                    if not any(os.path.lexists(source / item) for item in selected):
-                        status = "skip"
-                        reason = "no selected items to archive"
+            elif kwargs.get("items") is not None:
+                status, reason = _plan_items(source, kwargs["items"])
 
         return PlanEntry(label, str(source), str(out), status, reason, replaces)
 
@@ -170,8 +165,8 @@ class TarArchive:
             )
             return
 
-        if not source.is_dir():
-            missing_source = not source.exists()
+        if _source_kind(source) != "dir":
+            missing_source = _source_kind(source) == "missing"
             reason = "source not found" if missing_source else "source is not a directory"
             yield StepResult(label, success=missing_source, message=f"{reason}: {source}", skipped=missing_source)
             return
@@ -198,21 +193,22 @@ class TarArchive:
         progress = None if dry_run else progress
         base_state = ExcludeState(base_excludes=frozenset(_as_str_tuple(kwargs.get("excludes", ()))))
         missing: list[str] = []
-        bundle = "items" in kwargs
+        bundle = kwargs.get("items") is not None
         if bundle:
             try:
-                selected = _normalize_items(source, _as_str_tuple(kwargs["items"]))
+                selected = _normalize_items(source, kwargs["items"])
             except ValueError as exc:
                 yield StepResult(label, success=False, message=str(exc))
                 return
             _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
-            walk, missing = _select_items(source, base_state, selected)
+            try:
+                walk, missing = _select_items(source, base_state, selected)
+            except OSError as exc:
+                yield StepResult(label, success=False, message=str(exc))
+                return
             _check_cancel(cancel)
             if not walk.files:
-                message = "no selected items to archive"
-                if missing:
-                    message += f"; missing items: {', '.join(missing)}"
-                yield StepResult(label, success=True, message=message, skipped=True)
+                yield StepResult(label, success=True, message=_no_items_message(source, missing), skipped=True)
                 return
         else:
             _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
@@ -307,14 +303,65 @@ def _reject_out_inside_source(label: str, source: Path, out: Path) -> StepResult
     return None
 
 
-def _normalize_items(source: Path, items: tuple[str, ...]) -> list[Path]:
+def _no_items_message(source: Path, missing: list[str]) -> str:
+    tail = f"; missing items: {', '.join(missing)}" if missing else ""
+    return f"no selected items to archive in {source}{tail}"
+
+
+def _plan_items(source: Path, items: object) -> tuple[str, str]:
+    """Return the plan ``(status, reason)`` for a bundle's ``items``."""
+    try:
+        selected = _normalize_items(source, items)
+        found = any(_item_present(source / item) for item in selected)
+    except (ValueError, OSError) as exc:
+        return "fail", str(exc)
+    if found:
+        return "run", ""
+    return "skip", _no_items_message(source, [item.as_posix() for item in selected])
+
+
+def _source_kind(source: Path) -> str:
+    """Classify ``source`` as ``dir``, ``file`` or ``missing``; other OSErrors propagate.
+
+    ``Path.is_dir``/``exists`` report False on EACCES (Python 3.14), which would
+    turn an unreadable source into a silent skip.
+    """
+    try:
+        mode = os.stat(source).st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return "missing"
+    return "dir" if stat.S_ISDIR(mode) else "file"
+
+
+def _source_kind_or_error(source: Path) -> str:
+    """Like :func:`_source_kind`, but return the error text when the stat fails."""
+    try:
+        return _source_kind(source)
+    except OSError as exc:
+        return str(exc)
+
+
+def _item_present(path: Path) -> bool:
+    """Return whether ``path`` exists; only absence counts as missing, other OSErrors propagate."""
+    if os.path.lexists(path):
+        return True
+    try:
+        os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return True
+
+
+def _normalize_items(source: Path, items: object) -> list[Path]:
     """Validate literal item paths and remove duplicate selected subtrees."""
+    if not isinstance(items, (list, tuple)) or not all(isinstance(item, str) for item in items):
+        raise ValueError("items must be a list of relative paths")
     if not items:
         raise ValueError("items must not be empty")
     selected: list[Path] = []
     for item in items:
         relative = Path(os.path.normpath(item))
-        if not item or relative.is_absolute() or relative == Path(".") or relative.parts[0].startswith(".."):
+        if not item or relative.is_absolute() or relative == Path(".") or relative.parts[0] == "..":
             raise ValueError(f"invalid item '{item}': must be a relative path inside the source")
         for parent in reversed(relative.parents):
             if parent != Path(".") and (source / parent).is_symlink():
@@ -334,7 +381,7 @@ def _select_items(source: Path, base_state: ExcludeState, selected: list[Path]) 
     applied: list[str] = []
     for relative in selected:
         path = source / relative
-        if not os.path.lexists(path):
+        if not _item_present(path):
             missing.append(relative.as_posix())
             continue
         metadata = path.lstat()

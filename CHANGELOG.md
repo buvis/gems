@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **backup**: missing sources and bundles with no surviving members now warn and skip without touching previous archives; each run reports archived or previewed, skipped, and failed step counts. Existing non-directory sources and unreadable selected files still fail.
+- **backup**: missing sources and bundles with no surviving members now warn and skip without touching previous archives; each run reports archived or previewed, skipped, and failed step counts. Existing non-directory sources, unreadable sources and unreadable selected items still fail instead of counting as missing; a skipped bundle names its source.
 
 ### Fixed
 

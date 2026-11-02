@@ -350,7 +350,6 @@ class TestCapabilityPlan:
             (["folder/.."], "invalid item 'folder/..': must be a relative path inside the source"),
             (["/notes"], "invalid item '/notes': must be a relative path inside the source"),
             (["../notes"], "invalid item '../notes': must be a relative path inside the source"),
-            (["..notes"], "invalid item '..notes': must be a relative path inside the source"),
             (["present", "../notes"], "invalid item '../notes': must be a relative path inside the source"),
             (["../notes", "present"], "invalid item '../notes': must be a relative path inside the source"),
         ],
