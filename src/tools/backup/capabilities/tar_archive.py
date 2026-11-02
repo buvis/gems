@@ -338,8 +338,6 @@ def _plan_source(label: str, source: Path, out: Path, items: object) -> tuple[st
 
 def _item_present(path: Path) -> bool:
     """Return whether ``path`` exists; only absence counts as missing, other OSErrors propagate."""
-    if os.path.lexists(path):
-        return True
     try:
         os.lstat(path)
     except (FileNotFoundError, NotADirectoryError):

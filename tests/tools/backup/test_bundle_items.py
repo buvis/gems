@@ -281,17 +281,13 @@ class TestBundleItems:
         out.write_bytes(b"previous")
         real_lstat = os.lstat
         real_stat = os.stat
-        real_lexists = os.path.lexists
         checked: set[Path] = set()
 
-        def presence(path: object) -> bool:
-            exists = real_lexists(path)
-            checked.add(Path(path))
-            return exists
-
         def denied(path: object, *args: object, **kwargs: object) -> os.stat_result:
-            if Path(path) == source / "locked" and Path(path) in checked:
-                raise PermissionError("fixture permission denied")
+            if Path(path) == source / "locked":
+                if Path(path) in checked:
+                    raise PermissionError("fixture permission denied")
+                checked.add(Path(path))
             return real_lstat(path, *args, **kwargs)
 
         def denied_stat(path: object, *args: object, **kwargs: object) -> os.stat_result:
@@ -299,7 +295,6 @@ class TestBundleItems:
                 raise PermissionError("fixture permission denied")
             return real_stat(path, *args, **kwargs)
 
-        monkeypatch.setattr(os.path, "lexists", presence)
         monkeypatch.setattr(os, "lstat", denied)
         monkeypatch.setattr(os, "stat", denied_stat)
         result = _runner(source, out, engine, ["good", "locked"])
@@ -317,15 +312,15 @@ class TestBundleItems:
         source = tmp_path / "src"
         _tree(source, {"good": "keep", "vanishing": "gone"})
         out = tmp_path / "out.tar.gz"
-        real_lexists = os.path.lexists
+        real_lstat = os.lstat
 
-        def vanish(path: object) -> bool:
-            exists = real_lexists(path)
-            if Path(path) == source / "vanishing" and exists:
+        def vanish(path: object, *args: object, **kwargs: object) -> os.stat_result:
+            result = real_lstat(path, *args, **kwargs)
+            if Path(path) == source / "vanishing":
                 (source / "vanishing").unlink()
-            return exists
+            return result
 
-        monkeypatch.setattr(os.path, "lexists", vanish)
+        monkeypatch.setattr(os, "lstat", vanish)
         result = _runner(source, out, engine, ["good", "vanishing"])
         assert result.success is False
         assert result.skipped is False
