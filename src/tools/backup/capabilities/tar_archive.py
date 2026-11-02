@@ -124,27 +124,11 @@ class TarArchive:
             return PlanEntry(label, source_text, out_text, "fail", message, replaces)
         source, out = _resolve_paths(source_raw, out_raw, now)
         replaces = out.exists()
-        status = "run"
-        reason = ""
-
         if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
             status = "fail"
             reason = f"unknown engine '{engine}'; expected {_ENGINE_PYTHON} or {_ENGINE_SYSTEM_TAR}"
-        elif (kind := _source_kind_or_error(source)) != "dir":
-            missing = kind == "missing"
-            status = "skip" if missing else "fail"
-            if kind not in ("missing", "file"):
-                reason = kind
-            else:
-                reason = f"{'source not found' if missing else 'source is not a directory'}: {source}"
         else:
-            containment = _reject_out_inside_source(label, source, out)
-            if containment is not None:
-                status = "fail"
-                reason = containment.message
-            elif kwargs.get("items") is not None:
-                status, reason = _plan_items(source, kwargs["items"])
-
+            status, reason = _plan_source(label, source, out, kwargs.get("items"))
         return PlanEntry(label, str(source), str(out), status, reason, replaces)
 
     def run(self: TarArchive, **kwargs: object) -> Iterator[StepResult]:
@@ -165,8 +149,9 @@ class TarArchive:
             )
             return
 
-        if _source_kind(source) != "dir":
-            missing_source = _source_kind(source) == "missing"
+        kind = _source_kind(source)
+        if kind != "dir":
+            missing_source = kind == "missing"
             reason = "source not found" if missing_source else "source is not a directory"
             yield StepResult(label, success=missing_source, message=f"{reason}: {source}", skipped=missing_source)
             return
@@ -333,12 +318,22 @@ def _source_kind(source: Path) -> str:
     return "dir" if stat.S_ISDIR(mode) else "file"
 
 
-def _source_kind_or_error(source: Path) -> str:
-    """Like :func:`_source_kind`, but return the error text when the stat fails."""
+def _plan_source(label: str, source: Path, out: Path, items: object) -> tuple[str, str]:
+    """Return the plan ``(status, reason)`` once the engine is valid."""
     try:
-        return _source_kind(source)
+        kind = _source_kind(source)
     except OSError as exc:
-        return str(exc)
+        return "fail", str(exc)
+    if kind == "missing":
+        return "skip", f"source not found: {source}"
+    if kind == "file":
+        return "fail", f"source is not a directory: {source}"
+    containment = _reject_out_inside_source(label, source, out)
+    if containment is not None:
+        return "fail", containment.message
+    if items is not None:
+        return _plan_items(source, items)
+    return "run", ""
 
 
 def _item_present(path: Path) -> bool:
