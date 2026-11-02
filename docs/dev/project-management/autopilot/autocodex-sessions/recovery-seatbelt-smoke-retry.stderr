@@ -1,0 +1,8 @@
+2026-10-30T22:25:01.604941Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: [Fact-Forcing Gate]
+
+Before the first Bash command this session, present these facts:
+
+1. The current user request in one sentence
+2. What this specific command verifies or produces
+
+Present the facts, then retry the same operation.. Command: /Users/bob/.local/share/mise/installs/python/3.14.6/bin/python3 -c 'import ctypes,os,subprocess; lib=ctypes.CDLL("/usr/lib/libsandbox.dylib",use_errno=True); check=lib.sandbox_check; check.argtypes=[ctypes.c_int,ctypes.c_char_p,ctypes.c_int]; check.restype=ctypes.c_int; ctypes.set_errno(0); status=check(os.getpid(),None,0); print("OUTER_SEATBELT",status,"ERRNO",ctypes.get_errno(),flush=True); assert status==1 and ctypes.get_errno()==0; subprocess.run(["git","diff","--stat"],check=True); print("EXECUTION_PROBE_OK")'

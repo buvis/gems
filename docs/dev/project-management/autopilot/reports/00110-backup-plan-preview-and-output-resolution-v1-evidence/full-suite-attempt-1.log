@@ -1,0 +1,165 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+...................x.................................................... [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+.......................EEEEEEEEEE....................................... [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+.................................................................sssssss [ 74%]
+sss..................................................................... [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+ss...................................................................... [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+......................................................ssss.............. [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+............................................                             [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[text] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[binary] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[crlf] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_dirty_path_untouched_upstream_is_kept_and_not_saved _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_unpushed_local_commit_is_never_selected _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestMixedStateStopsPull.test_staged_and_unstaged_path_stops_before_any_reset[worktree-C] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestMixedStateStopsPull.test_staged_and_unstaged_path_stops_before_any_reset[worktree-head] _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestUntrackedKeptFileStopsPull.test_rm_cached_file_upstream_changed_keeps_disk_bytes _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestRescuedTargetIsExcluded.test_localized_dirty_target_keeps_b_bytes_at_source _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+_ ERROR at setup of TestSaveFailureKeepsEdit.test_read_only_divergence_dir_stops_pull_with_edit_intact _
+E   subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+=============================== warnings summary ===============================
+tests/tools/bim/test_serve_actions.py:12
+  /Users/bob/git/src/github.com/buvis/gems/tests/tools/bim/test_serve_actions.py:12: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:35: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/tools/bim/test_serve_actions.py: 54 warnings
+tests/tools/bim/test_serve_app.py: 20 warnings
+tests/tools/bim/test_serve_open.py: 8 warnings
+tests/tools/bim/test_serve_queries.py: 36 warnings
+tests/tools/bim/test_serve_triage_actions.py: 14 warnings
+tests/tools/bim/test_serve_zettels.py: 26 warnings
+  /Users/bob/git/src/github.com/buvis/gems/.venv/lib/python3.13/site-packages/fastapi/applications.py:4744: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:39: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[text]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[binary]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[crlf]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_dirty_path_untouched_upstream_is_kept_and_not_saved
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_unpushed_local_commit_is_never_selected
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestMixedStateStopsPull::test_staged_and_unstaged_path_stops_before_any_reset[worktree-C]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestMixedStateStopsPull::test_staged_and_unstaged_path_stops_before_any_reset[worktree-head]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUntrackedKeptFileStopsPull::test_rm_cached_file_upstream_changed_keeps_disk_bytes
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestRescuedTargetIsExcluded::test_localized_dirty_target_keeps_b_bytes_at_source
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestSaveFailureKeepsEdit::test_read_only_divergence_dir_stops_pull_with_edit_intact
+5993 passed, 16 skipped, 1 xfailed, 317 warnings, 10 errors in 126.41s (0:02:06)

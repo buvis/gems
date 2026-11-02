@@ -1,0 +1,277 @@
+{
+  "phase": "review",
+  "next_phase": "review",
+  "schema_version": 1,
+  "batch": {
+    "id": "202610292344",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "parks_consecutive": 0
+  },
+  "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+  "catchup_mode": "skipped",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "fast-track",
+  "lane_reason": "uncardable",
+  "lane_effective": "full",
+  "tasks_total": 5,
+  "cycle": 1,
+  "tasks_completed": 5,
+  "phases_completed": [],
+  "replan_count": 0,
+  "contract_card": "step: build complete; PRD00110; cycle1; all5tasks completed and phase gates passed\ninvariants: preserve work_start_sha 7f4b462f1275c9306d7cc452cb2024a429f2c371 and implementation audit fingerprint; no completion review in build session\nnext: fresh review; driver review-route validated Anthropic Claude Opus/xhigh for Alice,Blake,Bob; complete rubrics/isolation, Blake PRD-only; legacy launcher enums do not add Eve\nverification:6003passed,16skipped,1xfailed,runnerexit0; verifyexit3 unparsed summary,no last-verification.json; honor source no-record policy and retained raw logs\nevidence: reports/00110-backup-plan-preview-and-output-resolution-v1-build.md; reports/00110-backup-plan-preview-and-output-resolution-v1-implementation-models.json; reports/00110-backup-plan-preview-and-output-resolution-v1-implementation-models.md; reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/verification-environment.json",
+  "prd_budget_since": "2026-10-29T23:18:07Z",
+  "design_mode": "skipped",
+  "work_start_sha": "7f4b462f1275c9306d7cc452cb2024a429f2c371",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "tasks": [
+    {
+      "name": "Add PlanEntry record",
+      "description": "Implement Add PlanEntry record.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/step_result.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n- **Outputs**: `PlanEntry(label, source, out, status, reason, replaces)`; `status` is `run`, `skip` or `fail`; `replaces` is true when `out` already exists.\n- **Outputs**: one `console.info` line per instance: `<label>  <status>  <source> -> <out>` followed by `  (<reason>)` when a reason exists and `  [replaces existing]` when `replaces`; exit 1 if any entry is `fail`, else 0.\nsrc/tools/backup/step_result.py              # Maps to: Capability plan (PlanEntry)\n- **Exports**: `PlanEntry` (NamedTuple with the six fields above).\n- New symbols: `PlanEntry`, `plan`, `now`, `replaces`, `test_plan_does_not_walk_tree`, `test_duplicate_outputs_rejected_before_writing`\n- **Exports**: `TarArchive.plan(**kwargs) -> PlanEntry`; `Capability` protocol gains `plan`.\n- **Responsibility**: single `now`, duplicate rejection, `Runner.plan(selected) -> list[PlanEntry]`.\n- [ ] Add `PlanEntry` to `src/tools/backup/step_result.py` (no deps) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k plan_entry -q` passes.\n**Exit Criteria**: `PlanEntry` importable with the six fields.\n\nAcceptance criteria:\n- [ ] Add `PlanEntry` to `src/tools/backup/step_result.py` (no deps) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k plan_entry -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k plan_entry -q` passes.",
+      "files": [
+        "src/tools/backup/step_result.py"
+      ],
+      "blocked_by": [],
+      "estimated_tokens": 59814,
+      "est_context_peak": 79814,
+      "model": "opus",
+      "tier_reason": "contract",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "id": "1",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "red_check": "skipped:PlanEntry import unavailable before implementation",
+          "self_deslop": "skipped:trivial",
+          "style_gate": "clean",
+          "split_hygiene": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "eight NamedTuple shortcuts passed initial tests",
+          "devon_weak_points": 8,
+          "devon_in_contract": []
+        }
+      ]
+    },
+    {
+      "name": "Add capability plan and timestamp",
+      "description": "Implement Add capability plan and timestamp.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/capabilities/__init__.py, /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/capabilities/tar_archive.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n\n- **Description**: Each capability can describe one instance without archiving.\n- **Inputs**: the same kwargs as `run` (`source`, `out`, `items`, `engine`, `label`, `now`).\n- **Outputs**: `PlanEntry(label, source, out, status, reason, replaces)`; `status` is `run`, `skip` or `fail`; `replaces` is true when `out` already exists.\n- **Behavior**: `fail` for unknown engine, `out` inside `source`, `items` invalid per PRD 00109, or `source` not a directory; `skip` for a missing `source` (`source not found: <path>`) or when no selected item exists (`lexists`); otherwise `run`. Uses `lexists`/`is_dir`/`stat` only; never `os.walk`.\n\n\n\n- **Description**: One `now` per run feeds every stamp expansion.\n- **Inputs**: `now: datetime`.\n- **Outputs**: `_expand_stamp(pattern, now)` uses it; when `now` is absent it falls back to `datetime.now()`.\n- **Behavior**: `Runner` takes `now = datetime.now()` once per `run`/`plan` call and passes it as a kwarg.\n\n\n\nAcceptance criteria:\n- [ ] Add `TarArchive.plan`, the `plan` member of `Capability`, and the `now` parameter of `_expand_stamp` (depends on: Phase 0) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k \"capability or stamp or walk\" -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k \"capability or stamp or walk\" -q` passes.",
+      "files": [
+        "src/tools/backup/capabilities/__init__.py",
+        "src/tools/backup/capabilities/tar_archive.py"
+      ],
+      "blocked_by": [
+        1
+      ],
+      "estimated_tokens": 64879,
+      "est_context_peak": 84879,
+      "model": "opus",
+      "tier_reason": "contract",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "id": "2",
+      "status": "completed",
+      "attempts": [
+        {
+          "model": "opus",
+          "review_cycle": null,
+          "implementor": "codex",
+          "actual_provider": "openai",
+          "preflight_outcome": null,
+          "split_hygiene": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "eight capability/protocol/stamp shortcuts passed initial tests; all strengthened",
+          "devon_weak_points": 8,
+          "devon_in_contract": [],
+          "attempt": 1,
+          "outcome": "escalated",
+          "actual_model": "gpt-6.1-sol",
+          "cause": "style_commit_lint_failure",
+          "pipeline": "full",
+          "self_deslop": "noop",
+          "style_gate": "failed:TarArchive.run 67 lines; first style extraction introduced PLR0913/PLR0917"
+        },
+        {
+          "model": "opus",
+          "review_cycle": null,
+          "implementor": "codex",
+          "actual_provider": "openai",
+          "preflight_outcome": null,
+          "split_hygiene": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "eight capability/protocol/stamp shortcuts passed initial tests; all strengthened",
+          "devon_weak_points": 8,
+          "devon_in_contract": [],
+          "attempt": 2,
+          "outcome": "completed",
+          "actual_model": "gpt-6-astra",
+          "cause": null,
+          "pipeline": "lean",
+          "escalation_reason": "gate_failure",
+          "escalated_from": "opus",
+          "self_deslop": "noop",
+          "style_gate": "fixed:de84f6f1"
+        }
+      ]
+    },
+    {
+      "name": "Add Runner plan and collision rejection",
+      "description": "Implement Add Runner plan and collision rejection.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/runner.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n\n- **Description**: One `now` per run feeds every stamp expansion.\n- **Inputs**: `now: datetime`.\n- **Outputs**: `_expand_stamp(pattern, now)` uses it; when `now` is absent it falls back to `datetime.now()`.\n- **Behavior**: `Runner` takes `now = datetime.now()` once per `run`/`plan` call and passes it as a kwarg.\n\n#### Feature: Duplicate output rejection\n- **Description**: Two selected instances may not resolve to one output path.\n- **Inputs**: plan entries of the selected instances.\n- **Outputs**: for each group sharing a resolved `out`, every instance in the group yields `StepResult(name, success=False, message=\"output '<out>' is also the output of '<other names, comma separated, sorted>'\")` and is not executed; the others run.\n- **Behavior**: compared as `os.path.normpath` of the expanded path with `~` expanded; applies to `run`, `--dry-run` and `--plan`.\n\n\n\nAcceptance criteria:\n- [ ] Add `Runner.plan`, the single per-run `now`, and duplicate rejection in `Runner.run` (depends on: Phase 0) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k \"runner or duplicate\" -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k \"runner or duplicate\" -q` passes.",
+      "files": [
+        "src/tools/backup/runner.py"
+      ],
+      "blocked_by": [
+        2
+      ],
+      "estimated_tokens": 59965,
+      "est_context_peak": 79965,
+      "model": "opus",
+      "tier_reason": "contract",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "id": "3",
+      "status": "completed",
+      "attempts": [
+        {
+          "model": "opus",
+          "review_cycle": null,
+          "implementor": "codex",
+          "actual_provider": "openai",
+          "preflight_outcome": null,
+          "self_deslop": "skipped:trivial",
+          "split_hygiene": "clean",
+          "attempt": 1,
+          "outcome": "escalated",
+          "actual_model": "gpt-6.1-sol",
+          "cause": "commit_type_check_failure",
+          "pipeline": "full",
+          "style_gate": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "eight runner shortcuts passed; all strengthened",
+          "devon_weak_points": 8,
+          "devon_in_contract": []
+        },
+        {
+          "model": "opus",
+          "review_cycle": null,
+          "implementor": "codex",
+          "actual_provider": "openai",
+          "preflight_outcome": null,
+          "self_deslop": "skipped:trivial",
+          "split_hygiene": "clean",
+          "attempt": 2,
+          "outcome": "completed",
+          "actual_model": "gpt-6-astra",
+          "cause": null,
+          "pipeline": "lean",
+          "escalation_reason": "gate_failure",
+          "escalated_from": "opus",
+          "style_gate": "clean"
+        }
+      ]
+    },
+    {
+      "name": "Add CLI plan flag",
+      "description": "Implement Add CLI plan flag.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/cli.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n\n- **Description**: Prints the plan table and exits without writing.\n- **Inputs**: `--plan`, plus the usual `--only` and `--tag` selection and the `--source`/`--out` overrides.\n- **Outputs**: one `console.info` line per instance: `<label>  <status>  <source> -> <out>` followed by `  (<reason>)` when a reason exists and `  [replaces existing]` when `replaces`; exit 1 if any entry is `fail`, else 0.\n- **Behavior**: `--plan` with `--dry-run` fails: `--plan and --dry-run are mutually exclusive` (exit 1). `--dry-run` is unchanged.\n\n\n\nAcceptance criteria:\n- [ ] Add `--plan` to `src/tools/backup/cli.py` with the mutual-exclusion check (depends on: Phase 1) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k cli -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k cli -q` passes.",
+      "files": [
+        "src/tools/backup/cli.py"
+      ],
+      "blocked_by": [
+        3
+      ],
+      "estimated_tokens": 62032,
+      "est_context_peak": 82032,
+      "model": "sonnet",
+      "tier_reason": "default",
+      "qwen_eligible": true,
+      "id": "4",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "sonnet",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "preflight_outcome": null,
+          "pipeline": "lean",
+          "self_deslop": "skipped:trivial",
+          "style_gate": "clean",
+          "split_hygiene": "clean"
+        }
+      ]
+    },
+    {
+      "name": "Document plan preview",
+      "description": "Implement Document plan preview.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/docs/source/tools/backup.rst, /Users/bob/git/src/github.com/buvis/gems/CHANGELOG.md\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\nDocument `--plan` in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md`\n\nAcceptance criteria:\n- [ ] Document `--plan` in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md` (depends on: Phase 1) - Acceptance: `rg -c \"\\-\\-plan\" docs/source/tools/backup.rst CHANGELOG.md` prints a count of at least 1 for each file.\n\nVerify: `rg -c \"\\-\\-plan\" docs/source/tools/backup.rst CHANGELOG.md` prints a count of at least 1 for each file.",
+      "files": [
+        "docs/source/tools/backup.rst",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [
+        4
+      ],
+      "estimated_tokens": 85826,
+      "est_context_peak": 105826,
+      "model": "sonnet",
+      "tier_reason": "default",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "files",
+      "id": "5",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "sonnet",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "preflight_outcome": null,
+          "pipeline": "lean",
+          "red_check": "n/a:docs-only-task",
+          "self_deslop": "skipped:trivial",
+          "style_gate": "clean",
+          "split_hygiene": "skipped:no-tests"
+        }
+      ]
+    }
+  ],
+  "autonomous_decisions": [
+    {
+      "type": "assumed-ambiguity",
+      "question": "How are duplicate outputs represented in Runner.plan and which output spelling appears in collision messages?",
+      "assumption": "PlanEntry.status is fail; reason is the exact StepResult duplicate message; diagnostics use expanduser+normpath output. Other PlanEntry fields retain capability plan values. This satisfies the PRD both-fail plan scenario."
+    }
+  ],
+  "codex_probe": {
+    "batch_id": "202610292344",
+    "verdict": "unhealthy",
+    "backend": "codex",
+    "detail": "hook_doctor: missing /Users/bob/.codex/codex-hook",
+    "hook_doctor": "4 ok, 7 stale, 5 broken",
+    "checked_at": "2026-10-30T00:47:58.010495+00:00"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "provider": "kiro",
+  "model_provider": "anthropic",
+  "lens": "blake",
+  "model": "claude-opus-5.5",
+  "requested_model": "opus",
+  "effort": "xhigh",
+  "started": 1793525386.58715,
+  "completed": 1793525908.947909,
+  "output": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00111-c1-20261101-blake-output.txt",
+  "sha256": "ec9a560a50282a1bed9f059112e703cf0f5228bc8a4b513c9ecf7fb97f724362",
+  "raw": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00111-c1-20261101-blake-output-ac5de55bed9d4b3396738e8248cfdfa6.jsonl",
+  "raw_sha256": "8ef0b5eefeac834cf66752adcdfec9f763db8439fa5d320d8c9987dc325480e1",
+  "thread_id": "sess_2b21ae8b-0747-40c8-bb3e-e5db5fe950df",
+  "root": "/Users/bob/git/src/github.com/buvis/gems",
+  "prd": "00111-backup-parallel-jobs-and-cancellation-v1.md",
+  "cycle": 1,
+  "implementation_fingerprint": "4c79b2411c063006517cf309b8c13ab686bc85c6cd8e86274e202aa5211a6236"
+}

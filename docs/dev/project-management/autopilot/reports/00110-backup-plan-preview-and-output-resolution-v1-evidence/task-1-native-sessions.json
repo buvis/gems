@@ -1,0 +1,23 @@
+[
+  {
+    "task": "1",
+    "agent": "/root/ivan_1",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T00-28-32-01a189fe-61cf-7002-abba-83cccffe46d1.jsonl",
+    "source_lines": [
+      1,
+      10
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_1-metadata.jsonl"
+  },
+  {
+    "task": "1",
+    "agent": "/root/tess_1",
+    "session": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T00-22-26-01a189f8-cb77-73f0-9cce-0dedcec94138.jsonl",
+    "source_lines": [
+      1,
+      10,
+      63
+    ],
+    "copy": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_1-metadata.jsonl"
+  }
+]

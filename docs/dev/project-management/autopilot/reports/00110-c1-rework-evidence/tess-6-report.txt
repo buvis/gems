@@ -1,0 +1,16 @@
+Task 6 Tess report
+
+Created tests/tools/backup/test_plan_errors.py only as production-facing work; this report is the separately requested artifact. No implementation reads, production edits, commits, or state edits.
+
+Four behavior tests, 51 parameterized cases, cover public Runner.plan and Runner.run including dry-run: source/output filesystem metadata OSError, PermissionError, RuntimeError; two failing instances with healthy siblings before/after; prefix and basename lookalikes; archive contents and configured destinations; duplicate-group rejection despite metadata failures; unchanged existing collision output; exact FatalError identity; empty selection and untouched unselected sources.
+
+Test run 1 (only test execution):
+uv run pytest tests/tools/backup/test_plan_errors.py -q --tb=line
+Result: 36 failed, 15 passed in 0.16s; exit code 1.
+The 36 expected regression failures surface uncaught ordinary metadata exceptions, across isolation and duplicate safety cases. FatalError and empty-selection cases pass. The assertions after the expected red failure remain for implementation verification.
+
+Static self-check: 176 file lines; test functions 40, 40, 19, 16 lines, all below the required limits. No implementation source was inspected.
+
+Provider/model dispatch evidence: OpenAI gpt-6.1-sol, medium reasoning, explicitly selected by parent dispatch (logical task model sonnet).
+
+ASSUMPTIONS: none

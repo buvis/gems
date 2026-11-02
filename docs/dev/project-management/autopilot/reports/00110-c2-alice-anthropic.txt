@@ -1,0 +1,26 @@
+[ALICE] 🟠 30 of the new parametrized cases fail on Python 3.14, and CI's `tools` matrix runs 3.14 on both ubuntu and macOS. `_fail_metadata` injects errors by patching `Path.stat`. On 3.14, `Path.exists()` and `Path.is_dir()` call `os.path.exists`/`os.path.isdir` and never reach `Path.stat`, so the patched error never fires in `plan`. Reproduced with `uv run --python 3.14 pytest tests/tools/backup`: 30 failed, 485 passed. The failures are all of `test_runner_isolates_metadata_failures_and_preserves_independent_instances` and all of `test_runner_propagates_the_original_fatal_metadata_error`. The same command on 3.11 passes 515/515, and the gate ran only 3.13. Fix: inject the error through a seam that works on every version, for example wrap `TarArchive.plan` to raise for the blocked labels, since the runner's per-instance isolation is what these tests check. | File: tests/tools/backup/test_plan_errors.py:30 | Task: 6
+[ALICE] 🟡 Simplification: in `plan`'s missing-input branch, `out_text = _expand_stamp(out_raw, now) if out_raw else ""` has a redundant conditional, because `_expand_stamp("")` already returns `""`. Use `out_text = _expand_stamp(out_raw, now)`. | File: src/tools/backup/capabilities/tar_archive.py:81 | Task: 7
+[ALICE] ⚪ The runner's exception fallback rebuilds the output key with `now.strftime(str(instance.with_.get("out", "")))`. The generic `Runner` now hardcodes tar-archive's `out` input and its stamp rules, duplicating `_expand_stamp`. A non-str `out` also gets keyed as `str(value)`, while the capability treats it as missing. The fallback row also sets `source=""`, so `--plan` prints `bad  fail   -> /x (...)` with no source, while other fail rows show it. | File: src/tools/backup/runner.py:69 | Task: 6
+[ALICE] ⚪ Two new CHANGELOG `Fixed` entries describe fixes to `--plan`/plan behavior that only exists in `[Unreleased]`. Users of 0.16.0 never had these bugs, so the entries read like fixes to released behavior. Fold them into the `Added` line or drop them. | File: CHANGELOG.md:22 | Task: 5
+[ALICE] ⚪ `test_runner_rejects_timestamp_output_collisions_when_source_metadata_fails` is 52 lines, over the 50-line function limit. The 8-line signature is most of the overrun. | File: tests/tools/backup/test_plan_errors.py:185 | Task: 6
+
+Prior findings checked against HEAD on 3.13:
+- **R1 resolved:** with an `out` under a chmod-000 dir, the plan returns `fail "bad failed: [Errno 13] …"` and `good` still archives.
+- **R2 resolved:** `engine: ""` plans `run` and archives.
+- **R3 resolved:** empty `source`/`out` plan as `no source configured`, and two empty outs give no false collision.
+- **R6 and R7 resolved.**
+- **Checks:** `ruff check` and `mypy src/tools/backup` are clean.
+- **Cleanup:** I deleted my scratch venvs and repro dir under `docs/dev/tmp/`.
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: fail
+R13: pass

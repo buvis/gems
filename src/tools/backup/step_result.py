@@ -1,6 +1,19 @@
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import Literal, NamedTuple
+
+
+class ProgressEvent(NamedTuple):
+    """Immutable progress update for one backup instance.
+
+    ``done_bytes`` and ``total_bytes`` count input (source) bytes, not archive
+    output bytes. Either is ``None`` when it cannot be measured.
+    """
+
+    label: str
+    phase: Literal["scanning", "archiving", "finalizing"]
+    done_bytes: int | None
+    total_bytes: int | None
 
 
 class ArchiveMeta(NamedTuple):
@@ -11,13 +24,24 @@ class ArchiveMeta(NamedTuple):
     total_bytes: int
 
 
+class PlanEntry(NamedTuple):
+    """One backup plan entry with its preview status and replacement flag."""
+
+    label: str
+    source: str
+    out: str
+    status: str
+    reason: str
+    replaces: bool
+
+
 class StepResult:
     """Structured outcome of one capability step.
 
     ``label`` names the instance, ``success`` is the verdict, and ``message`` is
     a human-readable line the CLI renders via ``console``. ``archive`` carries
     the produced/previewed archive facts, or ``None`` for a step that produces
-    no archive.
+    no archive. ``skipped`` marks a successful step that has nothing to archive.
     """
 
     def __init__(
@@ -26,11 +50,14 @@ class StepResult:
         success: bool,
         message: str = "",
         archive: ArchiveMeta | None = None,
+        *,
+        skipped: bool = False,
     ) -> None:
         self.label = label
         self.success = success
         self.message = message
         self.archive = archive
+        self.skipped = skipped
 
     @property
     def out_path(self: StepResult) -> str | None:

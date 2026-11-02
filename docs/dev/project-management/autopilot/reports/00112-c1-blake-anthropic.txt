@@ -1,0 +1,27 @@
+[BLAKE] ⚪ The PRD gives `Runner.__init__` one new kwarg, `on_progress`, and lists no new exports. The implementation also adds `on_tick`, which the CLI uses to refresh elapsed time when no events arrive. The PRD requires that refresh but names no way to do it, so this is a PRD gap closed with an unlisted parameter. | File: src/tools/backup/runner.py:54 | Task: general
+
+[BLAKE] ⚪ The system-tar engine can emit `finalizing` twice. `_write_archive_system_tar` emits `finalizing` before it fsyncs, chmods and replaces the temp file. If any of those steps raises `OSError`, the error is returned as a fallback reason, and `_archive_result` reruns the whole archive with the Python engine using the same `on_finalize`. The events become scanning, archiving, finalizing, finalizing, and the status line reads "finalizing" for the entire rerun. The note then says "system-tar unavailable" although tar ran successfully. | File: src/tools/backup/capabilities/tar_archive.py:535 | Task: general
+
+[BLAKE] ⚪ The final catch-up `archiving` event in `on_finalize` ignores the 0.2 second throttle. Two further `archiving` events can therefore arrive less than 0.2 seconds apart; a test asserts a 0.1999 second gap. The spec text says at most one per 0.2 seconds, but the PRD happy path requires `done_bytes` to end at the total. The excess is at most one event per archive. | File: src/tools/backup/capabilities/tar_archive.py:65 | Task: general
+
+[BLAKE] ⚪ The progress queue is bounded (`maxsize=256`) and `_enqueue_progress` blocks until a slot frees. The PRD names only a plain `queue.Queue` and says progress can never fail an archive. A blocked put does not fail the archive, but it can stall the writer. This happens when the consumer holds a yielded result and does not iterate, for example when TTY output is paused with Ctrl-S. | File: src/tools/backup/runner.py:81 | Task: general
+
+B1: pass
+B2: pass
+B3: pass
+B4: pass
+B5: pass
+B6: pass
+B7: fail
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass

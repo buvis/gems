@@ -1,0 +1,228 @@
+{
+  "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+  "cycle": 1,
+  "scope": [
+    "6",
+    "7"
+  ],
+  "original_audit_preserved": true,
+  "routing": {
+    "logical_model": "sonnet",
+    "native_role_mapping": "OpenAI gpt-6.1-sol medium",
+    "source_implementor": "Claude at task tier",
+    "actual_implementation_route": "use-sonnet wrapper sonnet --effort medium",
+    "codex": "same-batch cached unhealthy; no nested Codex CLI",
+    "qwen": "rework and multi-file exclusion; no preflight",
+    "independent_completion_review_support": [
+      "openai",
+      "anthropic"
+    ],
+    "unsupported_provider_fallback": "Gemini unsupported: native at existing tier before dispatch; no Gemini route selected"
+  },
+  "dispatches": [
+    {
+      "task": "7",
+      "role": "test-author",
+      "contribution": true,
+      "label": "tess7_contract",
+      "provider": "openai",
+      "observed_models": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        }
+      ],
+      "agent_path": "/root/rework/tess7_contract",
+      "source": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T04-42-08-01a18ae6-9204-70c1-b15c-4dfe362c3d79.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess7_contract-metadata.jsonl",
+      "sha256": "029e63b4e827ed7236f644031df75c7798eecfa994d7f682eedc98ff84c1c184"
+    },
+    {
+      "task": "6",
+      "role": "test-author",
+      "contribution": true,
+      "label": "tess6",
+      "provider": "openai",
+      "observed_models": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        }
+      ],
+      "agent_path": "/root/rework/tess6",
+      "source": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T04-12-30-01a18acb-6daf-7592-9398-a67cf1b1d6c0.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess6-metadata.jsonl",
+      "sha256": "13719d5b1fa4d004af153823cdeef246ecd03319c6f99f6255cfacf736256fbb"
+    },
+    {
+      "task": "6",
+      "role": "test-author",
+      "contribution": true,
+      "label": "tess6_boundary",
+      "provider": "openai",
+      "observed_models": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        }
+      ],
+      "agent_path": "/root/rework/tess6_boundary",
+      "source": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T04-18-02-01a18ad0-816f-7c40-819a-224b2cff8749.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess6_boundary-metadata.jsonl",
+      "sha256": "13a2a9332810b818c199022e800bdfe11afa222b27f0548d2c1ce9545abe159d"
+    },
+    {
+      "task": "7",
+      "role": "test-author",
+      "contribution": true,
+      "label": "tess7",
+      "provider": "openai",
+      "observed_models": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        }
+      ],
+      "agent_path": "/root/rework/tess7",
+      "source": "/Users/bob/.codex/sessions/2026/10/30/rollout-2026-10-30T04-25-49-01a18ad7-9ec3-7013-871b-34975a5f5a46.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess7-metadata.jsonl",
+      "sha256": "38e9a27afaa6089b1151cf6eca2218b6cefbd92e7ae30b36c846c954601f36b9"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "contribution": true,
+      "label": "ivan-6-initial",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "medium"
+        }
+      ],
+      "session_id": "bd4c4e3c-4ba7-44f6-ba73-8849e1c5c060",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/bd4c4e3c-4ba7-44f6-ba73-8849e1c5c060.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-6-initial-metadata.jsonl",
+      "sha256": "e9828e8bfb76e4207469e8bdaaa4b74fa2c2f9bba84282a7de724a7c34c016ef"
+    },
+    {
+      "task": "6",
+      "role": "implementation-repair",
+      "contribution": true,
+      "label": "ivan-6-retry-1",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "medium"
+        }
+      ],
+      "session_id": "3f43a765-6b5e-4556-8892-b7f45f51aaf3",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/3f43a765-6b5e-4556-8892-b7f45f51aaf3.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-6-retry-1-metadata.jsonl",
+      "sha256": "920f328fb3825c438d6837f0f5d0c029d1bb09da313f48073f8202398a0eda41"
+    },
+    {
+      "task": "6",
+      "role": "style-fixer",
+      "contribution": false,
+      "label": "ivan-6-style",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "medium"
+        }
+      ],
+      "session_id": "f42cf9ef-0614-4edc-b96a-c894aa4a395f",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/f42cf9ef-0614-4edc-b96a-c894aa4a395f.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-6-style-metadata.jsonl",
+      "sha256": "25701bcf0e90d388f96e0a1840680f4126db0ce5adf70d202f41ce9c6fe61b15"
+    },
+    {
+      "task": "6",
+      "role": "per-task-review",
+      "contribution": false,
+      "label": "pat-6",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "high"
+        }
+      ],
+      "session_id": "48d60742-4bc6-4b60-876c-26b4e92d95da",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/48d60742-4bc6-4b60-876c-26b4e92d95da.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/pat-6-metadata.jsonl",
+      "sha256": "da3a3eb3f44c2818c74b138a17fa83f77948d63bb388fe0bc58c546bb33f3325"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "contribution": true,
+      "label": "ivan-7",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "medium"
+        }
+      ],
+      "session_id": "58d8bca9-27a9-4f53-925f-3f6e1c2dc17a",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/58d8bca9-27a9-4f53-925f-3f6e1c2dc17a.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-metadata.jsonl",
+      "sha256": "81a93bd5f9337bd4780d86f367285ac8bd30cc46183c0b7124616cd217dc0c05"
+    },
+    {
+      "task": "7",
+      "role": "implementation-repair",
+      "contribution": true,
+      "label": "ivan-7-retry-1",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "medium"
+        }
+      ],
+      "session_id": "71044b55-e465-4536-98cd-12f638827173",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/71044b55-e465-4536-98cd-12f638827173.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-retry-1-metadata.jsonl",
+      "sha256": "2a19064b3f35fba2f709135abad3416f6b28d88bc5415ec60e1291c62acf8b34"
+    },
+    {
+      "task": "7",
+      "role": "closure-repair",
+      "contribution": true,
+      "label": "ivan-7-review-fix",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "medium"
+        }
+      ],
+      "session_id": "8f62c953-956d-4a72-b18a-6154a998ac5e",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/8f62c953-956d-4a72-b18a-6154a998ac5e.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-review-fix-metadata.jsonl",
+      "sha256": "166502d2ea0a9bc0119b29b41d10484bba798b648f3ba7eef8ea0c3f71282cc3"
+    },
+    {
+      "task": "7",
+      "role": "per-task-review",
+      "contribution": false,
+      "label": "pat-7",
+      "provider": "anthropic",
+      "observed_models": [
+        {
+          "model": "claude-sonnet-5-5",
+          "effort": "high"
+        }
+      ],
+      "session_id": "27d022c7-34b2-4ef9-9a01-6eaf44eb9b49",
+      "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/27d022c7-34b2-4ef9-9a01-6eaf44eb9b49.jsonl",
+      "metadata": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/pat-7-metadata.jsonl",
+      "sha256": "be484453dd18126bc3c281d761838d91cd02384d9707a75041e4448727ad14e6"
+    }
+  ]
+}

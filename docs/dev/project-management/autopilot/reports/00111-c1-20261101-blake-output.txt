@@ -1,0 +1,28 @@
+[BLAKE] 🟡 Signal-unsafe bookkeeping in `Runner._execute`. A KeyboardInterrupt that lands after `pending[future] = name` but before `future.add_done_callback(completed.put)` leaves a future in `pending` that never reaches the queue. The same happens if the interrupt lands after `completed.get()` has dequeued a future but before `pending.pop(future)`. In both cases `completed.get()` then blocks forever, and every later Ctrl-C is caught by `except KeyboardInterrupt` and re-enters the same wait, so the run never exits 130. A separate case: an interrupt between `remaining.popleft()` and `pending[future] = name` drops the instance from the results and from the `interrupted:` list. Each window is microseconds wide, but all of them sit on the interrupt path the spec defines. | File: src/tools/backup/runner.py:115 | Task: 2
+[BLAKE] 🟡 Cancel is never checked during the source walk. `_walk_tree` and `_select_items` receive no `cancel`, and the check only runs before and after them (tar_archive.py:174, tar_archive.py:183). A Ctrl-C during a long walk of a large tree, or during any `--dry-run` (which only walks), leaves `executor.shutdown(wait=True)` blocked until the walk ends. `_shutdown` (runner.py:132) and `_report_steps` swallow every further Ctrl-C, so only a kill stops the run. | File: src/tools/backup/capabilities/tar_archive.py:183 | Task: 1
+[BLAKE] 🟡 `start_new_session=True`, which the spec does not ask for, moves tar out of the CLI's process group. If Python dies without running its cleanup (SIGTERM or SIGHUP with no handler, a launchd process-group stop, SIGKILL), tar keeps archiving into the sibling `*.tmp` until it finishes. This leaves an orphan child and a full-size temp file, and widens the PRD's "orphan child" risk. Before this change, tar shared the process group and died with it. | File: src/tools/backup/capabilities/tar_archive.py:502 | Task: 1
+[BLAKE] ⚪ The spec says `cancel` is passed to every capability call, but `Runner._plan` calls `capability.plan(**call_kwargs)` without `cancel`. Only `run` calls receive the event. | File: src/tools/backup/runner.py:164 | Task: 2
+[BLAKE] ⚪ The public surface goes beyond the PRD exports. The PRD exports only `Runner(cfg, dry_run, jobs)` and `Runner.interrupted`, but the code adds `Runner.request_cancel()` and `Runner.cancelled_names`, and `Runner.__init__` raises `ValueError` for `jobs < 1`. The CLI needs this plumbing, but the PRD does not specify it. | File: src/tools/backup/runner.py:47 | Task: 2
+[BLAKE] ⚪ The CLI interrupt handling has two narrow windows. A Ctrl-C before the generator body resets its state, or during `run()` setup, ends the generator early. The CLI then prints `interrupted: no unfinished instances` and exits 130 although nothing ran. A Ctrl-C after `_report_step` writes a line but before `pending = None` renders that step again and counts it twice. | File: src/tools/backup/cli.py:47 | Task: 3
+[BLAKE] ⚪ Test-strategy gaps. The "two active and two queued" interrupt scenario is not tested; the interrupt tests have one active and one queued instance at cancel time. No CLI-level test checks that a raising instance gives exit 1. The exit-130 tests live in tests/tools/backup/test_parallel_cli.py and call `_run_plan` directly, not `cli`, so the Phase 2 acceptance command (`test_parallel_runner.py -k cli`) never runs the exit-130 path. Tests are also split across three files the PRD's structure does not list. | File: tests/tools/backup/test_parallel_runner.py:554 | Task: general
+[BLAKE] ⚪ CHANGELOG `[Unreleased]` has three overlapping `Added` lines for this one PRD, where the spec asks for one. Lines 12 and 13 both repeat the default of three and "preserves completed results". | File: CHANGELOG.md:12 | Task: 4
+
+B1: pass
+B2: pass
+B3: pass
+B4: pass
+B5: pass
+B6: pass
+B7: pass
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass

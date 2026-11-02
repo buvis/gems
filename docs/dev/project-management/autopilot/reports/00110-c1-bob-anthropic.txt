@@ -1,0 +1,43 @@
+[BOB] 🟠 `Runner._plan` calls `capability.plan()` with no exception guard, so one instance can abort the whole run or plan. Before this change, `_run_instance` turned an instance's exception into a failed step and the other instances still ran. Now an `OSError` from planning one instance stops every instance before any work starts. Examples: `out.exists()` or `source.is_dir()` raising `EACCES` or `EIO` on a dead mount, which they do on 3.11 and 3.12. The traceback reaches the user because the CLI catches only `FatalError`. This breaks the `Capability` docstring ("any other exception is caught by the runner and turned into a failed step") and the AGENTS.md "no raw tracebacks" rule. | File: src/tools/backup/runner.py:60 | Task: 3
+[BOB] 🟡 `TarArchive.plan` does not repeat `run()`'s empty-input checks ("no source configured" / "no out path configured"). An instance with no `source` normalizes to `.`, which is a directory, so `--plan` shows `run  . -> <out>` and exits 0 for an instance that will fail. In a real run, two instances with no `out` both normalize to `.` and get a misleading collision message on `.`. | File: src/tools/backup/capabilities/tar_archive.py:78 | Task: 2
+[BOB] 🟡 Plan and run disagree on engine `""`. `plan()` reads it with `_require_str(..., default=_ENGINE_PYTHON)` and no `or _ENGINE_PYTHON` fallback, so `""` fails. `run()` treats `""` as the python engine. Because `Runner.run` now refuses to execute anything `plan()` marks `fail`, a config with `engine: ""` that used to run or dry-run now fails. The PRD says "`--dry-run` is unchanged". Test test_plan.py:391 locks in the divergent behavior with its `("", "fail")` row. | File: src/tools/backup/capabilities/tar_archive.py:80 | Task: 2
+[BOB] ⚪ `replaces` uses `out.exists()`, which follows symlinks. A dangling symlink at `out` reports `replaces=False` even though `os.replace` will overwrite it. The rest of plan uses `lexists`, so this is inconsistent. | File: src/tools/backup/capabilities/tar_archive.py:81 | Task: 2
+[BOB] ⚪ The `_run_plan` docstring still says it only runs and renders steps. It does not mention the `plan_only` branch that prints plan rows and never executes anything. | File: src/tools/backup/cli.py:203 | Task: 4
+[BOB] ⚪ `_plan` computes `os.path.normpath(os.path.expanduser(entry.out))` twice per entry, and it checks `capability is None` twice. Computing the key once in the first loop removes both repeats. | File: src/tools/backup/runner.py:68 | Task: 3
+[BOB] ⚪ `_run_validated` parses `label` and `engine` from `kwargs` again, though `run()` already parsed them. `plan()` and `run()` also repeat the same source/out/`cast(now)` setup. This duplication is how the engine `""` drift happened. | File: src/tools/backup/capabilities/tar_archive.py:161 | Task: 2
+[BOB] ⚪ Unconfirmed whether README.md documents backup CLI flags. The capsule invariant says every CLI change updates README.md, but only backup.rst and CHANGELOG.md were touched. | File: README.md | Task: 5
+[BOB] ⚪ Known limitation: the collision check is lexical only. A relative and an absolute path to the same file are not caught, and neither are paths that differ only in case on a case-insensitive filesystem. The PRD requires normpath, and the docs state the limit. | File: src/tools/backup/runner.py:64 | Task: 3
+[BOB] ⚪ Known limitation: the plan's item check ignores exclusions. If every present item is excluded, the plan shows `run` but the actual run skips. The PRD specifies a lexists-only check. | File: src/tools/backup/capabilities/tar_archive.py:76 | Task: 2
+
+R1: pass
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: fail
+R11: pass
+R12: pass
+R13: pass
+
+FIX:
+- `capability.plan()` exceptions escape `Runner._plan` and abort every instance with a traceback — src/tools/backup/runner.py:60 — wrap the `capability.plan(**call_kwargs)` call in `try`/`except FatalError: raise`/`except Exception as exc:`, and produce `PlanEntry(name, "", "", "fail", f"{name} failed: {exc}", False)`, which matches the old `_run_instance` message. Add a regression test where `out.exists` raises `PermissionError` for one instance and the other instance still runs.
+- Plan reports `run` for instances with no source or out — src/tools/backup/capabilities/tar_archive.py:78 — before resolving paths, check the raw strings the way `run()` does and return a `fail` entry with "no source configured" or "no out path configured". In `Runner._plan`, leave entries with an empty `out` out of collision grouping.
+- `plan()` rejects engine `""` while `run()` accepts it — src/tools/backup/capabilities/tar_archive.py:80 — add `or _ENGINE_PYTHON` as `run()` does, and change the `("", "fail")` row in test_plan.py:391 to `run`.
+- `replaces` follows symlinks — src/tools/backup/capabilities/tar_archive.py:81 — use `os.path.lexists(out)`.
+- Stale `_run_plan` docstring — src/tools/backup/cli.py:203 — mention the `plan_only` branch and its fail-based return value.
+- Double normalization and double `None` check in `_plan` — src/tools/backup/runner.py:68 — compute the key once in the first loop, store `(entry, key)` pairs, and reuse them.
+- `_run_validated` re-parses `label` and `engine`, and plan/run repeat the path setup — src/tools/backup/capabilities/tar_archive.py:161 — pass the parsed values through, or extract one small `_resolve_paths(kwargs)` helper that both methods call.
+VERIFY:
+- Does README.md document backup flags and need a `--plan` line? — run `rg -n -- "--dry-run|--show-excludes|backup " README.md`. If it lists backup flags, add `--plan`.
+KNOWN:
+- The lexical collision check misses relative-vs-absolute and case-only differences — the PRD requires `os.path.normpath`, and the docs say symlinks are not resolved.
+- The plan's item check ignores exclusions — the PRD limits plan to lexists/is_dir/stat, and the risk section notes that execution checks everything again.
+
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass

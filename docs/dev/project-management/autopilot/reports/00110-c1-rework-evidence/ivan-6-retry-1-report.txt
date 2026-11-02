@@ -1,0 +1,13 @@
+The 69 tests in `tests/tools/backup/test_plan_errors.py` pass, and mypy on `src/tools/backup/runner.py` is clean. I didn't run anything else.
+
+- **mypy error:** `_plan` now builds the normalized key once per entry and sets it only inside the known-capability branch. The duplicate check is guarded by `out is not None`, so `out` narrows to `str`. That removes the repeated capability-is-None check.
+- **Timestamp collisions:** when planning raises a non-fatal error, the configured output is now resolved with the run-wide `now.strftime(...)`. Before, the raw pattern went into duplicate detection, so a timestamped output no longer collided with a literal one.
+- **Preserved:** `FatalError` still propagates, and the existing duplicate behavior is unchanged.
+- **Changelog:** I added a `backup` entry under Fixed in `CHANGELOG.md`.
+
+ASSUMPTIONS:
+- Capabilities resolve `out` with `now.strftime`, so the fallback does the same.
+
+FILES_TOUCHED:
+src/tools/backup/runner.py
+CHANGELOG.md

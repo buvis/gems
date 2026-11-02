@@ -1,0 +1,18 @@
+{
+  "root": "/private/tmp/gems-00110-verify-2cn8mp17",
+  "env": {
+    "BUVIS_CONFIG_DIR": "/private/tmp/gems-00110-verify-2cn8mp17/config",
+    "XDG_STATE_HOME": "/private/tmp/gems-00110-verify-2cn8mp17/state",
+    "CARGO_HOME": "/private/tmp/gems-00110-verify-2cn8mp17/cargo-home",
+    "BUVIS_SKIP_FRONTEND": "1",
+    "GIT_CONFIG_GLOBAL": "/private/tmp/gems-00110-verify-2cn8mp17/gitconfig"
+  },
+  "unset": [
+    "GIT_AUTHOR_NAME",
+    "GIT_AUTHOR_EMAIL",
+    "GIT_AUTHOR_DATE",
+    "GIT_COMMITTER_NAME",
+    "GIT_COMMITTER_EMAIL",
+    "GIT_COMMITTER_DATE"
+  ]
+}

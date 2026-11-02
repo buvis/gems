@@ -1,0 +1,230 @@
+# Decision Audit Log: 00111-backup-parallel-jobs-and-cancellation-v1
+
+PRD: `00111-backup-parallel-jobs-and-cancellation-v1.md`
+Started: 2026-11-01T20:26:56Z
+Completed: 2026-11-01T20:26:56Z
+Autonomous: 27  |  Deferred: 1  |  Doubts: 0
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Reviewed design: bounded submissions, completion queue, cooperative cancellation, managed tar child, consumer cancellation API
+
+**Choice**: auto-fix
+
+**Rationale**: No open design blockers; 3 non-blockers retained. External Claude quota failed and documented native fallback ran. Archive/runner/CLI changes stay coupled to mandatory changelog notes; two documentation files independently planned.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Recovered host execution pause with operator-approved outer Seatbelt launch policy
+
+**Choice**: auto-fix
+
+**Rationale**: Warrant 39fae3167ec8b595ce48d927e3a0e6c5 installed the tested conditional launch policy; 11 installed policy tests passed; actual Codex default-permission command exited 0 with OUTER_SEATBELT 1 ERRNO 0 and EXECUTION_PROBE_OK. Resume task 2 existing draft test quality gate; preserve all review requirements, task provenance, cycle and cap.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Resume PRD 00111 after recorded quota reset
+
+**Choice**: auto-fix
+
+**Rationale**: Operator requested resume on 2026-11-01 after the recorded 10:00 Europe/Prague reset. review-route validates the unchanged implementation audit and requires Anthropic. Restore review cycle 1 with cap 2 and all five tasks preserved; run fresh isolated Alice, Blake and Bob through the updated helper, using authorized explicit-model Kiro/Copilot/native Claude routes and retaining all evidence gates. Availability is verified by the next actual review dispatch; no successful review is claimed.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Recover cycle 1 reviewer permission pause
+
+**Choice**: auto-fix
+
+**Rationale**: Operator explicitly authorized regenerated context, diff and engram inputs under reports. Installed denial-evidence fix verified; live Kiro Opus5.5/xhigh read/search probe passed without permission denial. Restore the same review cycle and cap with all five tasks and implementation provenance unchanged. Fresh complete three-lens review uses corrected recovery prompts; no prior failed receipt is certified. See reports/00111-c1-recovery-20261101-handoff.md.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: `_cleanup_tar_process` sends terminate and kill only to the tar pid, although `start_new_session=True` gives tar its own process group (tar_archive.py:502, tar_archive.py:527-533). On Linux, GNU tar `-z` forks gzip, which inherits the stderr pipe. So the post-kill `process.communicate()` with no timeout (tar_archive.py:533) waits for gzip to exit, not the bounded wait promised in the PRD Risks section. `os.killpg` would close this gap
+
+**Choice**: settled deferral
+
+**Rationale**: Reviewed design scopes v1 to direct-child lifecycle ownership; retain descendant supervision as an explicit non-blocker and defer durably.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Two new system-tar behaviours have no test. First, removing the cancel check between fsync/chmod and `os.replace` (tar_archive.py:475) breaks no test: no test sets the event after `communicate` returns, and the Python engine has `test_cancel_cleans_when_requested_during_fsync` but the system engine has no counterpart. Second, the design's "any other exception after spawn must stop/reap the live child before returning the invocation-failure fallback" is untested: no test makes `communicate` raise `OSError` while `poll()` is None
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Low The `Runner` class docstring still lists only label, excludes and dry_run as runtime kwargs. It does not mention `jobs`, `now`, `cancel`, completion-order yielding, `interrupted` or `cancelled_names`
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Low This test runs with `jobs=1`, which makes the order deterministic, but its label check was weakened to set equality. The `zip(results, engines, strict=True)` that follows still depends on result order, so the weaker check hides that dependency. Restore `== list(outputs)`
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Low The review range contains changes outside PRD 00111: Node 22.23→26.13 in `.mise.toml` and `publish.yml`, and svelte and milkdown bumps in the bim and postup frontends. Confirm they come from separate dependency commits. If not, split them out of this PRD
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Low The recorded gate covers only pytest. The PRD exit criteria also require clean ruff and mypy runs. The coordinator should run `uv run ruff check src/tools/backup tests/tools/backup` and `uv run mypy src/tools/backup`
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: The PRD says `cancel` goes to every capability call, but `Runner._plan` calls `capability.plan(**call_kwargs)` without it (runner.py:157-164). This is harmless while plan only reads metadata, but it does not match the PRD wording, and a future capability whose plan does I/O could not be cancelled
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: The Capability protocol docstring still says the runner lets FatalError through and turns only other exceptions into failed steps (capabilities/__init__.py:21-24). `_run_instance` now turns a worker FatalError into a failed step (runner.py:208, asserted by test_failure_isolated_from_other_workers). The code follows the PRD; the docstring is out of date
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Ctrl-C has no way out when a writer is slow to see `cancel`. `_walk_tree` and `_select_items` check `cancel` only after the whole walk (tar_archive.py:183-184), and the Python engine checks only between members. Every repeated Ctrl-C is swallowed (runner.py:122, runner.py:136, cli.py:50, cli.py:248), so a large or stalled source tree keeps the process alive until SIGTERM or SIGKILL. The docs mention only the per-member delay (docs/source/tools/backup.rst:43-44)
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: `_report_steps` re-renders the pending step after any KeyboardInterrupt. That includes one that lands after `_report_step` printed and the counter went up but before `pending = None` (cli.py:40-47). A Ctrl-C at that moment prints the step twice and counts it twice in the summary
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Runner has public members beyond the PRD's exports (`Runner(cfg, dry_run, jobs)`, `Runner.interrupted`): `request_cancel()` and `cancelled_names` (runner.py:45, runner.py:47). The CLI needs them to handle Ctrl-C during rendering and to name unfinished instances, so they add no new feature, but they are undocumented API
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: `_run_instance` materializes the capability iterator, so a later `ArchiveCancelled` or exception throws away earlier successful results from a multi-result capability
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: `start_new_session=True` takes tar out of the terminal's process group. SIGHUP (terminal close) or SIGTERM to Python orphans a running tar, which keeps writing and leaves a `.tmp` sibling
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: `KeyboardInterrupt` is an asynchronous exception, so a few bytecode positions stay outside the handlers: generator entry before `run`'s try, and the `_execute` loop back-edge after the inner try. An interrupt there escapes the generator. Unyielded results are then dropped and unsubmitted names are left out of `cancelled_names` ("interrupted: no unfinished instances")
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: No test interrupts `_shutdown`'s join a second time to show the cleanup still completes after repeated Ctrl-C
+
+**Choice**: discard
+
+**Rationale**: single-voice; mandatory Medium/Low disposition. Exact finding retained in settled-decisions ledger and review.
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Low Two narrow Ctrl-C timing windows in `_execute`. First, a KeyboardInterrupt that lands after `Queue.get` has dequeued a future but before `pending.pop(future)` (runner.py:119-120) leaves that future in `pending` with nothing in the queue. The next `completed.get()` then blocks forever, and the inner handler swallows every later Ctrl-C. Second, a KeyboardInterrupt inside `executor.submit`, for example while `Thread.start` waits, drops an instance already popped from `remaining`, so it gets no terminal result. Fix: after `_shutdown`, every future is done, so collect from `pending` directly instead of waiting on the queue
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Low CHANGELOG has three overlapping Added bullets for one feature. Bullets 1 and 2 both describe the default of three concurrent instances and the preservation of completed results. The design asked for one entry that mentions `--jobs` and cancellation. Merge them into one bullet
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Medium Some new system-tar lifecycle paths have no test. No test raises an exception other than cancellation after tar has spawned and then checks that the live child is terminated and reaped and that the `tar invocation failed` fallback is returned (a grep for that string in tests finds nothing). No test covers the suppressed `ProcessLookupError` race when the child has already exited. Kill escalation is covered only by the stubborn stub, which waits a real 5 seconds in each of its two parameter cases. The design asked for a controlled Popen fake that covers terminate, the 5-second grace, kill, already-exited races and exceptional cleanup without real waits
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Medium Two cancel checks run back to back. `_run_system_tar` calls `_check_cancel(cancel)` right after `communicate` succeeds (tar_archive.py:514), and its only caller calls it again as soon as the function returns. Delete the check at tar_archive.py:462. No work runs between the two checks, so behavior does not change
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Medium `Runner.run` has a `finished` flag (runner.py:63) and calls `cancel.set()` in its `finally` (runner.py:80). That duplicates the `finally` in `_execute`, which already sets the event and joins the executor when the generator is abandoned or fails. Before `_execute` starts, no worker exists, so setting the event there has no effect. Remove the flag and that branch, and keep only the `cancelled_names` and `_cancel = None` lines in the `finally`
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Medium `cast("Generator[StepResult, None, None]", runner.run(plan))` hides a real requirement: `_run_plan` calls `.close()`, which fails with AttributeError on any plain Iterator, the type `Runner.run` declares. That is why the mocks in test_backup_cli.py had to change from `iter([...])` to `_steps()` generators. Annotate `Runner.run` as `-> Generator[StepResult, None, None]` and drop the cast. A Generator is still an Iterator, so the design contract still holds
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: Low Unrequested documentation cuts. The `_write_archive_system_tar` docstring lost the reasons for `--no-recursion` (a listed directory must not be re-expanded, which would re-add excluded content) and for NUL delimiting (no newline injection). The `_report_steps` and `_run_plan` docstrings lost the return-value contract (a nonzero exit so cron sees a failed backup). Restore the removed rationale
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [autonomous] 2026-11-01T20:26:56Z
+
+**Decision**: The Test Strategy case "interrupt with two active and two queued" is not tested as written. The interrupt tests use three instances with `jobs=2`: one completed, one active, one queued (tests/tools/backup/test_parallel_runner.py:554, tests/tools/backup/test_parallel_cli.py:141). The exit-130 CLI test is in test_parallel_cli.py, so the PRD's success-metric command `pytest tests/tools/backup/test_parallel_runner.py` never runs the exit-130 path
+
+**Choice**: auto-fixed
+
+**Rationale**: fixed by review-close
+
+### [deferred] 2026-11-01T20:26:56Z
+
+**Decision**: `_cleanup_tar_process` sends terminate and kill only to the tar pid, although `start_new_session=True` gives tar its own process group (tar_archive.py:502, tar_archive.py:527-533). On Linux, GNU tar `-z` forks gzip, which inherits the stderr pipe. So the post-kill `process.communicate()` with no timeout (tar_archive.py:533) waits for gzip to exit, not the bounded wait promised in the PRD Risks section. `os.killpg` would close this gap
+
+**Choice**: deferred
+
+**Rationale**: deferred by review-close

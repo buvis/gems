@@ -1,0 +1,7 @@
+LOW | src/tools/backup/capabilities/tar_archive.py:76-82 and :130 | `plan` and `run` each repeat the path setup: the `source` normpath/expanduser, the `_expand_stamp(..., cast("datetime | None", kwargs.get("now")))` call, and the `expanduser()` on `out`. The `cast` expression is written out twice on very long lines. | Extract one small helper, for example `_resolve_paths(kwargs) -> tuple[Path, Path]`, and have both methods call it. This keeps the `now` handling in one place.
+
+LOW | src/tools/backup/capabilities/tar_archive.py:76 | `plan` and `run` repeat the engine, containment and items-normalization checks. The two copies could drift apart, so `plan` might report `run` for a step that `run` then fails. | Share one validation helper that returns the failure message or `None`.
+
+LOW | tests/tools/backup/test_plan.py:~270-420 | Many parametrized tests build the expected value with `PlanEntry(..., entry.reason, ...)`, so the `reason` field is never compared. For example, the status-only tests for `skip` and `fail` only check that the reason is non-empty. | Assert the exact reason strings where the contract fixes them, such as `source not found: <path>`. Where it doesn't fix them, keep the non-empty check.
+
+LOW | tests/tools/backup/test_plan.py:~590 | `test_capability_run_passes_now_to_archive_stamp_for_normal_and_dry_run` exercises `run`, although the task limits the tests to `plan`, stamp and walk. It is useful, but it lies outside the stated scope. | Keep it if the `run` path is meant to be covered here. Otherwise move it to the `run` tests.

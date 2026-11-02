@@ -1,0 +1,1358 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+.....F.................................................................. [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+..x..................................................................... [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+......EEEEEEEEEE........................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+................................................ssssssssss.............. [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+.......................................................ss............... [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+..................................................F..F.................. [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+............F........................ssss............................... [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+...........................                                              [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[text] _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_conflicting_edit_is_saved0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e095b00>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_conflicting_edit_is_saved0/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[binary] _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_conflicting_edit_is_saved1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112c8a270>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_conflicting_edit_is_saved1/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_conflicting_edit_is_saved_then_reset[crlf] _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_conflicting_edit_is_saved2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10df8f230>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_conflicting_edit_is_saved2/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_dirty_path_untouched_upstream_is_kept_and_not_saved _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_dirty_path_untouched_upst0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10dca8750>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_dirty_path_untouched_upst0/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestUpstreamWinsAndPatchRebuildsEdit.test_unpushed_local_commit_is_never_selected _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_unpushed_local_commit_is_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112be9be0>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_unpushed_local_commit_is_0/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestMixedStateStopsPull.test_staged_and_unstaged_path_stops_before_any_reset[worktree-C] _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_staged_and_unstaged_path_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112be96a0>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_staged_and_unstaged_path_0/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestMixedStateStopsPull.test_staged_and_unstaged_path_stops_before_any_reset[worktree-head] _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_staged_and_unstaged_path_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112bea970>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_staged_and_unstaged_path_1/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestUntrackedKeptFileStopsPull.test_rm_cached_file_upstream_changed_keeps_disk_bytes _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_rm_cached_file_upstream_c0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112be9c50>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_rm_cached_file_upstream_c0/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestRescuedTargetIsExcluded.test_localized_dirty_target_keeps_b_bytes_at_source _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_localized_dirty_target_ke0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x112bebee0>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_localized_dirty_target_ke0/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+_ ERROR at setup of TestSaveFailureKeepsEdit.test_read_only_divergence_dir_stops_pull_with_edit_intact _
+
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_read_only_divergence_dir_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1147d14e0>
+
+    @pytest.fixture
+    def two_host_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
+        """Create a bare origin with two cloned hosts."""
+        # Set git identity via environment
+        monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+        monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.local")
+        monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+        monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.local")
+    
+        # Create bare origin
+        origin = tmp_path / "origin.git"
+        origin.mkdir()
+        _run(["git", "init", "--bare", str(origin)])
+    
+        # Seed initial content through a temporary clone
+        init_clone = tmp_path / "init_clone"
+        _run(["git", "clone", str(origin), str(init_clone)])
+        _run(["git", "config", "user.email", "test@test.local"], cwd=init_clone)
+        _run(["git", "config", "user.name", "Test User"], cwd=init_clone)
+    
+        (init_clone / ".gitignore").write_text(".buvis\n")
+        _run(["git", "add", ".gitignore"], cwd=init_clone)
+    
+        (init_clone / ".zshrc").write_text("shared config")
+        _run(["git", "add", ".zshrc"], cwd=init_clone)
+>       _run(["git", "commit", "-m", "Initial commit"], cwd=init_clone)
+
+tests/tools/dot/conftest.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/tools/dot/conftest.py:29: in _run
+    result = subprocess.run(  # fixed git argv, no shell, test-only
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'commit', '-m', 'Initial commit'],)
+kwargs = {'cwd': PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_read_only_divergence_dir_1/init_clone'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'commit', '-m', 'Initial commit']' returned non-zero exit status 128.
+
+/Users/bob/.local/share/uv/python/cpython-3.13.18-macos-aarch64-none/lib/python3.13/subprocess.py:578: CalledProcessError
+=================================== FAILURES ===================================
+_ TestCapabilityPlan.test_capability_plan_accepts_only_known_engine_names[-fail] _
+
+self = <backup.test_plan.TestCapabilityPlan object at 0x10befea30>
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_capability_plan_accepts_o5')
+engine = '', status = 'fail'
+
+    @pytest.mark.parametrize(
+        ("engine", "status"),
+        [
+            ("python-tarfile", "run"),
+            ("system-tar", "run"),
+            ("python-tarfile-extra", "fail"),
+            ("extra-system-tar", "fail"),
+            ("tar", "fail"),
+            ("", "fail"),
+        ],
+    )
+    def test_capability_plan_accepts_only_known_engine_names(self, tmp_path: Path, engine: str, status: str) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        out = tmp_path / "archive.tar.gz"
+    
+        entry = TarArchive().plan(source=str(source), out=str(out), engine=engine, label="engine")
+    
+>       assert entry == PlanEntry("engine", str(source), str(out), status, entry.reason, False)
+E       AssertionError: assert PlanEntry(lab...eplaces=False) == PlanEntry(lab...eplaces=False)
+E         
+E         Omitting 5 identical items, use -vv to show
+E         Differing attributes:
+E         ['status']
+E         
+E         Drill down into differing attribute status:
+E           status: 'run' != 'fail'...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/tools/backup/test_plan.py:398: AssertionError
+___________ TestScopedCommit.test_commit_author_is_klyreon_identity ____________
+
+self = <tests.tools.klyreon.test_vault_git.TestScopedCommit object at 0x10e8a5310>
+temp_repo = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_commit_author_is_klyreon_0/klyreon-git-n6rrp14d/vault')
+
+    def test_commit_author_is_klyreon_identity(self, temp_repo: Path) -> None:
+        (temp_repo / "a.md").write_text("x\n")
+        sha = commit(temp_repo, ["a.md"], "feat: add a", KLYREON)
+        author = _git(temp_repo, "log", "-1", "--format=%an", sha).stdout.strip()
+        email = _git(temp_repo, "log", "-1", "--format=%ae", sha).stdout.strip()
+>       assert author == "klyreon"
+E       AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+E         
+E         - klyreon
+E         + Agent ran by Tomáš Bouška
+
+tests/tools/klyreon/test_vault_git.py:131: AssertionError
+__________ TestAuthorship.test_human_authored_false_for_klyreon_only ___________
+
+self = <tests.tools.klyreon.test_vault_git.TestAuthorship object at 0x10e8a5590>
+temp_repo = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_human_authored_false_for_0/klyreon-git-gy0kh4jq/vault')
+
+    def test_human_authored_false_for_klyreon_only(self, temp_repo: Path) -> None:
+        (temp_repo / "k.md").write_text("x\n")
+        commit(temp_repo, ["k.md"], "feat: klyreon only", KLYREON)
+>       assert is_human_authored(temp_repo, "k.md", KLYREON) is False
+E       AssertionError: assert True is False
+E        +  where True = is_human_authored(PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_human_authored_false_for_0/klyreon-git-gy0kh4jq/vault'), 'k.md', GitIdentity(name='klyreon', email='klyreon@localhost'))
+
+tests/tools/klyreon/test_vault_git.py:151: AssertionError
+____________________ TestCli.test_collect_runs_and_reports _____________________
+
+self = <tests.tools.postup.adapters.test_cli.TestCli object at 0x10f0917b0>
+tmp_path = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1295/test_collect_runs_and_reports0')
+mocker = <pytest_mock.plugin.MockerFixture object at 0x114e8c870>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x114096350>
+
+    def test_collect_runs_and_reports(self, tmp_path, mocker, monkeypatch):
+        # No roots configured -> command returns failure, CLI renders it without crashing.
+        monkeypatch.delenv("BUVIS_POSTUP_ROOTS", raising=False)
+        monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
+        result = CliRunner().invoke(cli, ["collect", "--no-fetch"])
+        assert result.exit_code == 0
+>       assert "no repositories" in _flat(result.output)
+E       assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12 95/test_collect_runs_and_reports0/out/data.json "
+E        +  where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12 95/test_collect_runs_and_reports0/out/data.json " = _flat(" ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12\n95/test_collect_runs_and_reports0/out/data.json\n")
+E        +    where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12\n95/test_collect_runs_and_reports0/out/data.json\n" = <Result okay>.output
+
+tests/tools/postup/adapters/test_cli.py:55: AssertionError
+=============================== warnings summary ===============================
+tests/tools/bim/test_serve_actions.py:12
+  /Users/bob/git/src/github.com/buvis/gems/tests/tools/bim/test_serve_actions.py:12: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:35: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/tools/bim/test_serve_actions.py: 54 warnings
+tests/tools/bim/test_serve_app.py: 20 warnings
+tests/tools/bim/test_serve_open.py: 8 warnings
+tests/tools/bim/test_serve_queries.py: 36 warnings
+tests/tools/bim/test_serve_triage_actions.py: 14 warnings
+tests/tools/bim/test_serve_zettels.py: 26 warnings
+  /Users/bob/git/src/github.com/buvis/gems/.venv/lib/python3.13/site-packages/fastapi/applications.py:4744: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:39: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/tools/backup/test_plan.py::TestCapabilityPlan::test_capability_plan_accepts_only_known_engine_names[-fail]
+FAILED tests/tools/klyreon/test_vault_git.py::TestScopedCommit::test_commit_author_is_klyreon_identity
+FAILED tests/tools/klyreon/test_vault_git.py::TestAuthorship::test_human_authored_false_for_klyreon_only
+FAILED tests/tools/postup/adapters/test_cli.py::TestCli::test_collect_runs_and_reports
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[text]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[binary]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_conflicting_edit_is_saved_then_reset[crlf]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_dirty_path_untouched_upstream_is_kept_and_not_saved
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUpstreamWinsAndPatchRebuildsEdit::test_unpushed_local_commit_is_never_selected
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestMixedStateStopsPull::test_staged_and_unstaged_path_stops_before_any_reset[worktree-C]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestMixedStateStopsPull::test_staged_and_unstaged_path_stops_before_any_reset[worktree-head]
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestUntrackedKeptFileStopsPull::test_rm_cached_file_upstream_changed_keeps_disk_bytes
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestRescuedTargetIsExcluded::test_localized_dirty_target_keeps_b_bytes_at_source
+ERROR tests/tools/dot/test_pull_divergence_two_hosts.py::TestSaveFailureKeepsEdit::test_read_only_divergence_dir_stops_pull_with_edit_intact
+4 failed, 6116 passed, 16 skipped, 1 xfailed, 317 warnings, 10 errors in 163.54s (0:02:43)

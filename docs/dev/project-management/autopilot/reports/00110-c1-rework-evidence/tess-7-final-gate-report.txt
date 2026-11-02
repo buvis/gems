@@ -1,0 +1,9 @@
+Changed only tests/tools/backup/test_plan.py:388 from ("", "fail") to ("", "run").
+Preserved all other accepted/rejected engine cases and assertions, including unknown-engine rejection.
+No implementation modules read or edited. No commits or state changes.
+Verification command: uv run pytest tests/tools/backup/test_plan.py::TestCapabilityPlan::test_capability_plan_accepts_only_known_engine_names -q --tb=line
+Verification timeout: 300000 ms.
+Verification result: 6 passed in 0.17s; exit code 0.
+Verified git diff contains only the single expected test-row change.
+Procedure deviation: initial task-prompt read used cat before its prohibition was discovered; subsequent reads used Python. No implementation input was read.
+ASSUMPTIONS: none

@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **backup**: TTY runs show per-instance live progress and elapsed time, with input-byte percentages capped at 99% for Python archives and activity only for system tar; `--quiet` hides live status while preserving final results and summary counts.
+- **backup**: `--jobs` controls concurrent archive instances (default three); cancellation stops new work, joins workers, stops tar and cleans temporary files while preserving completed results and backups; interruption exits with status 130.
+- **backup**: `--plan` previews metadata-only run/skip/fail decisions, reasons and existing-output replacement markers; selected outputs share one timestamp and colliding paths are rejected before plan, run or dry-run execution. Missing inputs report the same errors as a run; a metadata error fails only its instance, keeping its expanded source, while preserving collision checks.
+- **backup**: optional `items` bundle literal source-relative files and directories into one archive, preserving empty directories and symlinks while applying inherited exclusions and `.bkpignore` rules.
+- **backup**: per-instance `inherit_excludes`, `exclude_remove` and `exclude_add` control inherited exclusions for archives and `--show-excludes`, which still lists the resolved patterns sorted.
+
+### Changed
+
+- **backup**: missing sources and bundles with no surviving members now warn and skip without touching previous archives; each run reports archived or previewed, skipped, and failed step counts. Existing non-directory sources, unreadable sources and unreadable selected items still fail instead of counting as missing; a skipped bundle names its source.
+
 ### Fixed
 
+- **backup**: progress returns to archiving when a failure after system tar finishes triggers the Python fallback.
+- **backup**: interruption during submission or result collection preserves every instance's outcome and finishes cleanup without waiting for a lost completion notification.
 - **sysup**: a `timeout` on a captured multi-command shell step now stops the whole step; before, only bash died and the command it was waiting on kept running. Such a step runs in its own process group, so Ctrl-C is forwarded to it, a terminal prompt it raises stops it until the timeout, and a command it runs as root through `sudo` is still out of reach and survives. Interactive steps and steps without a timeout are unchanged
 
 ## [0.16.0] - 2026-10-29

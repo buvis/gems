@@ -52,7 +52,7 @@ class TestSourceOutOverride:
         def _fake_run(self, selected):
             name, instance = selected[0]
             captured["with_"] = dict(instance.with_)
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),
@@ -69,7 +69,7 @@ class TestSourceOutOverride:
 
         def _fake_run(self, selected):
             captured["with_"] = dict(selected[0][1].with_)
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),
@@ -181,11 +181,14 @@ class TestSystemTarEngine:
         _tree(source, {"repoA/main.rs": "x"})
         out = tmp_path / "out.tar.gz"
 
-        class _Failed:
-            returncode = 2
-            stderr = b"tar: bogus flag\n"
-
-        with patch("backup.capabilities.tar_archive.subprocess.run", return_value=_Failed()):
+        with patch("backup.capabilities.tar_archive.subprocess.Popen", autospec=True) as popen:
+            process = popen.return_value
+            process.returncode = 2
+            process.poll.return_value = 2
+            process.communicate.return_value = (b"", b"tar: bogus flag\n")
+            process.stdin = None
+            process.stdout = None
+            process.stderr = None
             result = _run_engine(source, out, "system-tar")
         assert result.success is True
         assert out.exists()

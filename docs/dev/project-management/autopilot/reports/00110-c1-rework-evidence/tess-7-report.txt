@@ -1,0 +1,31 @@
+Task 7: preserve archive planning input semantics — Tess regression tests
+
+Changed only tests/tools/backup/test_plan_validation.py and this report.
+No implementation modules read; no production edits, commits, or state changes.
+
+Command: uv run pytest tests/tools/backup/test_plan_validation.py -q --tb=line
+Single narrow run: 21 failed, 37 passed in 0.22s; pytest exit code 1.
+The enclosing subprocess command exited 0 because it recorded the pytest result explicitly.
+
+Expected red failures:
+- Empty-engine plan equality: both interfaces and two distinct source/output fixtures.
+- Empty-engine Runner real runs and dry-runs, including FatalError reachability.
+- Empty source/output capability and Runner previews with and without an existing archive.
+- Runner's two empty outputs incorrectly reported as a collision on '.'.
+
+Tests authored (58 parameterized cases):
+- test_empty_engine_matches_omitted_python_engine (12): compares default preview, both public interfaces, all three modes, two fixture values; real runs verify exact member names and bytes.
+- test_empty_paths_fail_without_using_cwd_or_changing_artifacts (24): exact missing-input reasons, failure signals, cwd containing real files, existing/absent output, full filesystem snapshot preservation.
+- test_runner_keeps_missing_inputs_distinct_from_collisions_and_executes_independent_instances (3): two empty outputs, two empty sources, valid collision pair, independent near-match labels/outputs; preserves shared artifact and cwd; verifies exact resulting archive set.
+- test_engine_lookalikes_remain_rejected_without_archive_effects (12): prefix/suffix lookalikes of python-tarfile, all modes/interfaces, existing artifact preservation and surfaced validation.
+- test_fatal_archive_errors_propagate_with_empty_default_engine (4): two distinct FatalError messages at external tarfile.open boundary, both interfaces, no swallowed exceptions or output file.
+- test_runner_empty_selection_has_no_archive_effects (3): empty selected input across modes, preserving all files.
+
+DEVON-PROOF coverage: distinct labels/paths/payloads/errors; near-match engines, member names and independent outputs; multiple selected instances and empty selection; accepted defaults and rejected missing inputs; surfaced failures/FatalError; cwd and passed source/out values verified through archive and filesystem effects.
+
+Validation: uv run ruff check tests/tools/backup/test_plan_validation.py passed.
+Validation: uv run ruff format tests/tools/backup/test_plan_validation.py completed; final file unchanged.
+Final annotation-only adjustment adds public PlanEntry | StepResult result typing after the test run; no runtime behavior changed.
+AST verification after final formatting: all six test functions below 50 lines (maximum 35); file below 800 lines.
+
+ASSUMPTIONS: none

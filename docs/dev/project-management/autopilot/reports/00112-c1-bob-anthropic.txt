@@ -1,0 +1,47 @@
+[BOB] 🟡 No test pins the post-join drain in the cancellation branch. Every cancellation test has already queued its events before the drain at the top of the loop, so deleting this drain would leave the suite green. If that happens, an event whose put completes while workers are joining arrives after its label's cancellation result, and the label reappears in the live status. | File: src/tools/backup/runner.py:128 | Task: 3
+
+[BOB] 🟡 `_archive_callbacks` reads like a pure factory at its call site (`on_bytes, on_finalize = _archive_callbacks(...)`, tar_archive.py:258). It also emits the initial `archiving` boundary event and starts the 0.2 s throttle clock, and its name hides both. | File: src/tools/backup/capabilities/tar_archive.py:48 | Task: 2
+
+[BOB] ⚪ A failure inside `on_result` (`_LiveProgress.finish` → `refresh`) propagates out of `_report_steps`. That closes the runner generator, which cancels in-flight archives, and the user sees a raw traceback. The runner swallows the same `refresh` failure when it comes through `on_tick`, and progress_cli_cases.py:387 pins the propagation. | File: src/tools/backup/cli.py:106 | Task: 4
+
+[BOB] ⚪ `from queue import Queue as ProgressQueue` sits next to `import queue` with no comment. The alias is a deliberate seam: it keeps the progress queue off the `backup.runner.queue.Queue` monkeypatch used by test_runner_interrupt_boundaries.py:77 and test_parallel_runner.py:782. A cleanup back to `queue.Queue(maxsize=256)` would silently move those injections onto progress drains. | File: src/tools/backup/runner.py:11 | Task: 3
+
+[BOB] ⚪ The `Runner` docstring does not describe the new public `on_progress`/`on_tick` contract: they run only on the thread iterating `run()`, never for dry runs or `plan()`, ordinary exceptions are suppressed, and capabilities receive a `progress` enqueue callable or None. The design expects a later TUI/API observer to rely on this. | File: src/tools/backup/runner.py:39 | Task: 3
+
+[BOB] ⚪ When system tar exits 0 but fsync, chmod or replace then raises OSError, `on_finalize` has already emitted `finalizing` (tar_archive.py:523). The OSError then triggers the Python fallback (tar_archive.py:535, :263), which rewrites the whole archive while the live line shows `finalizing`, and a second `finalizing` follows. | File: src/tools/backup/capabilities/tar_archive.py:523 | Task: 2
+
+[BOB] ⚪ Cannot statically verify: on a real 80-column TTY, the joined status for three or more active jobs updates in place, does not leave stale wrapped lines, and clears before each result line and the summary. | File: N/A | Task: 4
+
+FIX:
+- Post-join cancellation drain is unpinned — src/tools/backup/runner.py:128 — Add a test to `TestRunnerCancellation` in tests/tools/backup/progress_runner_cases.py. Monkeypatch `Runner._shutdown` to set a `joining` event before it calls the original. Make the capability wait for `cancel`, then for `joining`, then put a same-label `finalizing` event directly into `kwargs["progress"].args[0]` and return. Assert that the observer receives that event before the label's terminal result. The test must fail when line 128 is deleted.
+- Factory name hides the boundary emission — src/tools/backup/capabilities/tar_archive.py:48 — Rename `_archive_callbacks` to a verb that names the side effect, such as `_start_archiving_progress`, and update the call at tar_archive.py:258. Behavior does not change.
+- `on_result` failure cancels running archives and leaks a traceback — src/tools/backup/cli.py:106 — In `_LiveProgress.finish`, wrap `self.refresh()` in `contextlib.suppress(Exception)` so KeyboardInterrupt still reaches the retry loop. Change progress_cli_cases.py:387 to assert that the result line still prints and the run continues.
+- Test-seam alias has no comment — src/tools/backup/runner.py:11 — Add a one-line comment saying the separate binding keeps the progress queue out of the `backup.runner.queue.Queue` completion-queue monkeypatch seam.
+- Observer contract is undocumented — src/tools/backup/runner.py:39 — Extend the `Runner` docstring with the `on_progress`/`on_tick` semantics: calling thread only, wake-up at least every 0.2 s while idle, suppressed for dry runs and `plan()`, ordinary exceptions swallowed, and capabilities get a `progress` enqueue callable or None.
+
+VERIFY:
+- Real-TTY rendering of multiple joined jobs — Configure three instances with labels of at least 10 characters and large sources. Run `backup --jobs 3` on an 80-column terminal. Confirm the status redraws in place without leftover wrapped lines, and that it is cleared before each result line and before the summary.
+
+KNOWN:
+- Repeated `finalizing` after a system-tar fallback that fails after the stream closed — The fallback on post-close OSError is existing PRD 00111 behavior. The design defines `finalizing` as "stream closed", which held when the first event fired. Fixing the phase needs a design decision (move finalize after fsync, or re-emit `archiving` before the fallback). The terminal StepResult stays authoritative, and the path needs a rare fsync/chmod/replace failure.
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass
+
+```
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass
+```

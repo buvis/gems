@@ -3,28 +3,70 @@ from __future__ import annotations
 import contextlib
 import os
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from backup.shared.bkpignore import (
     BKPIGNORE_FILENAME,
     ExcludeState,
     state_for_directory,
 )
-from backup.step_result import ArchiveMeta, StepResult
+from backup.step_result import ArchiveMeta, PlanEntry, ProgressEvent, StepResult
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    import threading
+    from collections.abc import Callable, Iterable, Iterator, Mapping
 
-__all__ = ["TarArchive", "WalkResult"]
+__all__ = ["ArchiveCancelled", "TarArchive", "WalkResult", "resolve_paths"]
 
 _ARCHIVE_MODE = 0o600
 _ENGINE_PYTHON = "python-tarfile"
 _ENGINE_SYSTEM_TAR = "system-tar"
+
+
+class ArchiveCancelled(Exception):
+    """Archive creation stopped before publication."""
+
+
+def _check_cancel(cancel: threading.Event | None) -> None:
+    if cancel is not None and cancel.is_set():
+        raise ArchiveCancelled
+
+
+def _emit_progress(progress: Callable[[ProgressEvent], None] | None, event: ProgressEvent) -> None:
+    if progress is not None:
+        with contextlib.suppress(Exception):
+            progress(event)
+
+
+def _start_archive_progress(
+    label: str, total: int, engine: str, progress: Callable[[ProgressEvent], None] | None
+) -> tuple[Callable[[int], None] | None, Callable[[], None]]:
+    done = 0 if engine == _ENGINE_PYTHON else None
+    reported = done
+    emitted_at = time.monotonic()
+    _emit_progress(progress, ProgressEvent(label, "archiving", done, total))
+
+    def on_bytes(count: int) -> None:
+        nonlocal done, reported, emitted_at
+        done = count
+        now = time.monotonic()
+        if now - emitted_at >= 0.2:
+            _emit_progress(progress, ProgressEvent(label, "archiving", done, total))
+            reported, emitted_at = done, now
+
+    def on_finalize() -> None:
+        if done != reported:
+            _emit_progress(progress, ProgressEvent(label, "archiving", done, total))
+        _emit_progress(progress, ProgressEvent(label, "finalizing", done, total))
+
+    return (on_bytes if engine == _ENGINE_PYTHON and progress is not None else None), on_finalize
 
 
 class WalkResult:
@@ -70,31 +112,34 @@ class TarArchive:
 
     @property
     def inputs(self: TarArchive) -> Mapping[str, object]:
-        return {"source": "", "out": "", "engine": _ENGINE_PYTHON}
+        return {"source": "", "out": "", "engine": _ENGINE_PYTHON, "items": None}
+
+    def plan(self: TarArchive, **kwargs: object) -> PlanEntry:
+        label, engine, source_raw, out_raw, now = _parse_inputs(kwargs)
+        message = _missing_input(source_raw, out_raw)
+        if message:
+            source_text = str(os.path.normpath(Path(source_raw).expanduser())) if source_raw else ""
+            out_text = str(Path(_expand_stamp(out_raw, now)).expanduser()) if out_raw else ""
+            replaces = Path(out_text).exists() if out_text else False
+            return PlanEntry(label, source_text, out_text, "fail", message, replaces)
+        source, out = resolve_paths(source_raw, out_raw, now)
+        replaces = out.exists()
+        if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
+            status = "fail"
+            reason = f"unknown engine '{engine}'; expected {_ENGINE_PYTHON} or {_ENGINE_SYSTEM_TAR}"
+        else:
+            status, reason = _plan_source(label, source, out, kwargs.get("items"))
+        return PlanEntry(label, str(source), str(out), status, reason, replaces)
 
     def run(self: TarArchive, **kwargs: object) -> Iterator[StepResult]:
-        label = _require_str(kwargs, "label", default="tar-archive")
-        source_raw = _require_str(kwargs, "source")
-        out_raw = _require_str(kwargs, "out")
-        engine = _require_str(kwargs, "engine", default=_ENGINE_PYTHON) or _ENGINE_PYTHON
-        excludes = _as_str_tuple(kwargs.get("excludes", ()))
-        dry_run = bool(kwargs.get("dry_run", False))
-
-        if not source_raw:
-            yield StepResult(label, success=False, message="no source configured")
-            return
-        if not out_raw:
-            yield StepResult(label, success=False, message="no out path configured")
+        _check_cancel(cast("threading.Event | None", kwargs.get("cancel")))
+        label, engine, source_raw, out_raw, now = _parse_inputs(kwargs)
+        message = _missing_input(source_raw, out_raw)
+        if message:
+            yield StepResult(label, success=False, message=message)
             return
 
-        # Normalize `.`/`..` LEXICALLY (os.path.normpath, not resolve()) before
-        # walking: a source like `parent/child/..` would otherwise be walked as
-        # given and produce member names like `..` / `../child` (an unsafe
-        # archive that also breaks the documented source-name prefix). normpath
-        # collapses the segments without following symlinks, so the
-        # symlink-confinement guarantee is untouched.
-        source = Path(os.path.normpath(Path(source_raw).expanduser()))
-        out = Path(_expand_stamp(out_raw)).expanduser()
+        source, out = resolve_paths(source_raw, out_raw, now)
 
         if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
             yield StepResult(
@@ -104,8 +149,11 @@ class TarArchive:
             )
             return
 
-        if not source.is_dir():
-            yield StepResult(label, success=False, message=f"source not found: {source}")
+        kind = _source_kind(source)
+        if kind != "dir":
+            missing_source = kind == "missing"
+            reason = "source not found" if missing_source else "source is not a directory"
+            yield StepResult(label, success=missing_source, message=f"{reason}: {source}", skipped=missing_source)
             return
 
         containment = _reject_out_inside_source(label, source, out)
@@ -113,14 +161,54 @@ class TarArchive:
             yield containment
             return
 
-        base_state = ExcludeState(base_excludes=frozenset(excludes))
-        walk = _walk_tree(source, base_state)
+        yield from self._run_validated(label, engine, source, out, kwargs)
+
+    def _run_validated(
+        self: TarArchive,
+        label: str,
+        engine: str,
+        source: Path,
+        out: Path,
+        kwargs: dict[str, object],
+    ) -> Iterator[StepResult]:
+        cancel = cast("threading.Event | None", kwargs.get("cancel"))
+        _check_cancel(cancel)
+        dry_run = bool(kwargs.get("dry_run", False))
+        progress = cast("Callable[[ProgressEvent], None] | None", kwargs.get("progress"))
+        progress = None if dry_run else progress
+        base_state = ExcludeState(base_excludes=frozenset(_as_str_tuple(kwargs.get("excludes", ()))))
+        missing: list[str] = []
+        bundle = kwargs.get("items") is not None
+        if bundle:
+            try:
+                selected = _normalize_items(source, kwargs["items"])
+            except ValueError as exc:
+                yield StepResult(label, success=False, message=str(exc))
+                return
+            _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
+            try:
+                walk, missing = _select_items(source, base_state, selected)
+            except OSError as exc:
+                yield StepResult(label, success=False, message=str(exc))
+                return
+            _check_cancel(cancel)
+            if not walk.files:
+                yield StepResult(label, success=True, message=_no_items_message(source, missing), skipped=True)
+                return
+        else:
+            _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
+            walk = _walk_tree(source, base_state)
+            _check_cancel(cancel)
 
         if dry_run:
-            yield self._dry_run_result(label, out, walk)
-            return
-
-        yield self._archive_result(label, source, out, walk, engine)
+            result = self._dry_run_result(label, out, walk)
+        else:
+            result = self._archive_result(
+                label, source if bundle else source.parent, out, walk, engine, cancel=cancel, progress=progress
+            )
+        if missing:
+            result.message += f"; missing items: {', '.join(missing)}"
+        yield result
 
     @staticmethod
     def _dry_run_result(label: str, out: Path, walk: WalkResult) -> StepResult:
@@ -137,16 +225,36 @@ class TarArchive:
         )
 
     @staticmethod
-    def _archive_result(label: str, source: Path, out: Path, walk: WalkResult, engine: str) -> StepResult:
+    def _archive_result(  # noqa: PLR0913 — retain archive context plus keyword-only cancellation
+        label: str,
+        arcbase: Path,
+        out: Path,
+        walk: WalkResult,
+        engine: str,
+        *,
+        cancel: threading.Event | None = None,
+        progress: Callable[[ProgressEvent], None] | None = None,
+    ) -> StepResult:
+        _check_cancel(cancel)
         out.parent.mkdir(parents=True, exist_ok=True)
+        on_bytes, on_finalize = _start_archive_progress(label, walk.total_bytes, engine, progress)
         note = ""
         if engine == _ENGINE_SYSTEM_TAR:
-            fallback = _write_archive_system_tar(out, source, walk.files)
+            finalized = False
+
+            def finalize_once() -> None:
+                nonlocal finalized
+                finalized = True
+                on_finalize()
+
+            fallback = _write_archive_system_tar(out, arcbase, walk.files, cancel=cancel, on_finalize=finalize_once)
             if fallback is not None:
-                _write_archive(out, source, walk.files)
+                if finalized:
+                    _, on_finalize = _start_archive_progress(label, walk.total_bytes, engine, progress)
+                _write_archive(out, arcbase, walk.files, cancel=cancel, on_finalize=on_finalize)
                 note = f" (system-tar unavailable: {fallback}; used python engine)"
         else:
-            _write_archive(out, source, walk.files)
+            _write_archive(out, arcbase, walk.files, cancel=cancel, on_bytes=on_bytes, on_finalize=on_finalize)
         size = out.stat().st_size
         return StepResult(
             label,
@@ -180,7 +288,124 @@ def _reject_out_inside_source(label: str, source: Path, out: Path) -> StepResult
     return None
 
 
-def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
+def _no_items_message(source: Path, missing: list[str]) -> str:
+    tail = f"; missing items: {', '.join(missing)}" if missing else ""
+    return f"no selected items to archive in {source}{tail}"
+
+
+def _plan_items(source: Path, items: object) -> tuple[str, str]:
+    """Return the plan ``(status, reason)`` for a bundle's ``items``."""
+    try:
+        selected = _normalize_items(source, items)
+        found = any(_item_present(source / item) for item in selected)
+    except (ValueError, OSError) as exc:
+        return "fail", str(exc)
+    if found:
+        return "run", ""
+    return "skip", _no_items_message(source, [item.as_posix() for item in selected])
+
+
+def _source_kind(source: Path) -> str:
+    """Classify ``source`` as ``dir``, ``file`` or ``missing``; other OSErrors propagate.
+
+    ``Path.is_dir``/``exists`` report False on EACCES (Python 3.14), which would
+    turn an unreadable source into a silent skip.
+    """
+    try:
+        mode = os.stat(source).st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return "missing"
+    return "dir" if stat.S_ISDIR(mode) else "file"
+
+
+def _plan_source(label: str, source: Path, out: Path, items: object) -> tuple[str, str]:
+    """Return the plan ``(status, reason)`` once the engine is valid."""
+    try:
+        kind = _source_kind(source)
+    except OSError as exc:
+        return "fail", str(exc)
+    if kind == "missing":
+        return "skip", f"source not found: {source}"
+    if kind == "file":
+        return "fail", f"source is not a directory: {source}"
+    containment = _reject_out_inside_source(label, source, out)
+    if containment is not None:
+        return "fail", containment.message
+    if items is not None:
+        return _plan_items(source, items)
+    return "run", ""
+
+
+def _item_present(path: Path) -> bool:
+    """Return whether ``path`` exists; only absence counts as missing, other OSErrors propagate."""
+    try:
+        os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return True
+
+
+def _normalize_items(source: Path, items: object) -> list[Path]:
+    """Validate literal item paths and remove duplicate selected subtrees."""
+    if not isinstance(items, (list, tuple)) or not all(isinstance(item, str) for item in items):
+        raise ValueError("items must be a list of relative paths")
+    if not items:
+        raise ValueError("items must not be empty")
+    selected: list[Path] = []
+    for item in items:
+        relative = Path(os.path.normpath(item))
+        if not item or relative.is_absolute() or relative == Path(".") or relative.parts[0] == "..":
+            raise ValueError(f"invalid item '{item}': must be a relative path inside the source")
+        for parent in reversed(relative.parents):
+            if parent != Path(".") and (source / parent).is_symlink():
+                raise ValueError(f"item '{item}' passes through symlink '{parent.as_posix()}'")
+        if relative not in selected and not any(parent in selected for parent in relative.parents):
+            selected = [path for path in selected if relative not in path.parents]
+            selected.append(relative)
+    return selected
+
+
+def _select_items(source: Path, base_state: ExcludeState, selected: list[Path]) -> tuple[WalkResult, list[str]]:
+    """Select bundle members using source-relative excludes and ancestor rules."""
+    files: list[Path] = []
+    missing: list[str] = []
+    total_bytes = file_count = 0
+    states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
+    applied: list[str] = []
+    for relative in selected:
+        path = source / relative
+        if not _item_present(path):
+            missing.append(relative.as_posix())
+            continue
+        metadata = path.lstat()
+        state = states[str(source)]
+        for index, component in enumerate(relative.parts):
+            ancestor = source.joinpath(*relative.parts[: index + 1])
+            relpath = ancestor.relative_to(source).as_posix()
+            if state.is_excluded(component, relpath):
+                break
+            if index < len(relative.parts) - 1:
+                state = state_for_directory(ancestor, state)
+                states[str(ancestor)] = state
+                continue
+            if stat.S_ISDIR(metadata.st_mode):
+                subtree = _walk_tree(path, state, root=source)
+                files.extend(subtree.files)
+                file_count += subtree.file_count
+                total_bytes += subtree.total_bytes
+                applied.extend(subtree.applied)
+            elif component != BKPIGNORE_FILENAME:
+                if stat.S_ISREG(metadata.st_mode):
+                    file_count += 1
+                    total_bytes += metadata.st_size
+                    files.append(path)
+                elif stat.S_ISLNK(metadata.st_mode):
+                    files.append(path)
+    rules = list(dict.fromkeys([*_collect_applied(states), *applied]))
+    return WalkResult(files, total_bytes, rules, file_count), missing
+
+
+def _walk_tree(source: Path, base_state: ExcludeState, *, root: Path | None = None) -> WalkResult:
     """Walk ``source`` top-down, applying global excludes + path-scoped ``.bkpignore``.
 
     The exclude state at each directory is the ancestors' state layered with
@@ -191,6 +416,8 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
     symlinks: list[Path] = []
     dirs: list[Path] = []
     total_bytes = 0
+    if root is None:
+        root = source
     states: dict[str, ExcludeState] = {str(source): state_for_directory(source, base_state)}
 
     for dirpath, dirnames, filenames in os.walk(source, onerror=_raise_walk_error):
@@ -205,7 +432,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
         kept_dirs: list[str] = []
         for dirname in dirnames:
             child = os.path.join(dirpath, dirname)
-            relpath = os.path.relpath(child, source).replace(os.sep, "/")
+            relpath = os.path.relpath(child, root).replace(os.sep, "/")
             if state.is_excluded(dirname, relpath):
                 continue
             # A directory symlink: os.walk (followlinks=False) will not descend
@@ -225,7 +452,7 @@ def _walk_tree(source: Path, base_state: ExcludeState) -> WalkResult:
             if filename == BKPIGNORE_FILENAME:
                 continue
             file_path = Path(dirpath) / filename
-            relpath = os.path.relpath(file_path, source).replace(os.sep, "/")
+            relpath = os.path.relpath(file_path, root).replace(os.sep, "/")
             if state.is_excluded(filename, relpath):
                 continue
             # Archive a symlink as the link itself (not its target), matching the
@@ -270,28 +497,43 @@ def _collect_applied(states: dict[str, ExcludeState]) -> list[str]:
     return seen
 
 
-def _write_archive(out: Path, source: Path, files: Iterable[Path]) -> None:
-    """Stream a ``w:gz`` tarball of ``files`` to ``out`` atomically, ``chmod 600``.
+def _write_archive(  # noqa: PLR0913 — preserve writer contract with independent optional callbacks
+    out: Path,
+    arcbase: Path,
+    files: Iterable[Path],
+    *,
+    cancel: threading.Event | None = None,
+    on_bytes: Callable[[int], None] | None = None,
+    on_finalize: Callable[[], None] | None = None,
+) -> None:
+    """Stream selected members to an atomic, fsynced, mode-600 tarball.
 
-    Replicates ``pybase.filesystem.atomic_write``'s tempfile + fsync +
-    ``os.replace`` guarantee, but streams tar output straight into the temp file
-    (a large tarball must never be built in memory, which the byte-oriented
-    ``atomic_write_bytes`` would require). Archive names are stored relative to
-    ``source``'s parent, so entries are prefixed with ``source.name`` — matching
-    the wrapped script's ``-C dirname basename`` layout.
+    ``arcbase`` is the source's parent for whole trees, or the source for items.
     """
-    arcbase = source.parent
+    _check_cancel(cancel)
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
     tmp_path = Path(tmp_name)
     try:
         with os.fdopen(fd, "wb") as raw:
             os.fchmod(fd, _ARCHIVE_MODE)
+            done = 0
             with tarfile.open(fileobj=raw, mode="w:gz") as tar:
                 for file_path in files:
+                    _check_cancel(cancel)
                     arcname = file_path.relative_to(arcbase)
+                    if on_bytes is not None:
+                        member_stat = file_path.lstat()
+                        size = member_stat.st_size if stat.S_ISREG(member_stat.st_mode) else 0
                     tar.add(str(file_path), arcname=str(arcname), recursive=False)
+                    if on_bytes is not None:
+                        done += size
+                        on_bytes(done)
+                _check_cancel(cancel)
+            if on_finalize is not None:
+                on_finalize()
             raw.flush()
             os.fsync(raw.fileno())
+        _check_cancel(cancel)
         os.replace(tmp_path, out)
     except BaseException:
         with contextlib.suppress(OSError):
@@ -299,55 +541,36 @@ def _write_archive(out: Path, source: Path, files: Iterable[Path]) -> None:
         raise
 
 
-def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) -> str | None:
-    """Archive ``files`` via system ``tar --null -T -``, atomically, ``chmod 600``.
-
-    Python still owns selection: ``files`` is the exact include list the walk
-    produced (surviving directories, files, and symlinks — so ``.bkpignore``
-    path-scoping and empty-directory preservation hold). The paths, relative
-    to ``source.parent``, are joined with NUL bytes and streamed to
-    ``tar -C <source.parent> --no-recursion --null -T - -czf <tmp>`` on stdin.
-    ``--no-recursion`` keeps the filtered list authoritative — a listed directory
-    is archived as a bare entry, not re-expanded (which would re-add contents the
-    walk excluded). NUL delimiting
-    (both GNU tar and macOS bsdtar support ``--null``) means a filename
-    containing a newline can never split into an extra ``-T`` line and inject an
-    outside/absolute path. The gzip output lands in a sibling temp file, is
-    ``fsync``ed and ``chmod 600``ed, then ``os.replace``d into ``out``,
-    preserving the Python engine's atomicity and durability guarantee.
-
-    Returns:
-        ``None`` when the archive was written successfully; otherwise a short
-        reason string so the caller can fall back to the Python engine and note
-        why. A partial temp archive is always cleaned up.
+def _write_archive_system_tar(
+    out: Path,
+    arcbase: Path,
+    files: Iterable[Path],
+    *,
+    cancel: threading.Event | None = None,
+    on_finalize: Callable[[], None] | None = None,
+) -> str | None:
+    """Atomically archive exact selected paths via nonrecursive, NUL-delimited tar.
+    Return ``None`` on success, otherwise a reason for Python fallback.
     """
+    _check_cancel(cancel)
     tar_bin = shutil.which("tar")
     if tar_bin is None:
         return "tar not found on PATH"
 
-    arcbase = source.parent
     fd, tmp_name = tempfile.mkstemp(prefix=out.name + ".", suffix=".tmp", dir=str(out.parent))
     os.close(fd)
     tmp_path = Path(tmp_name)
-    # NUL-delimited list on stdin: a NUL cannot occur in a POSIX path component,
-    # so no filename (even one containing a newline) can inject an extra entry.
-    filelist = b"".join(os.fsencode(file_path.relative_to(arcbase)) + b"\0" for file_path in files)
+    published = False
     try:
-        # bsdtar (macOS) otherwise stores AppleDouble (``._name``) metadata
-        # members that the Python engine never produces; COPYFILE_DISABLE
-        # suppresses them and is a no-op for GNU tar on Linux.
-        env = {**os.environ, "COPYFILE_DISABLE": "1"}
-        completed = subprocess.run(
-            [tar_bin, "-C", str(arcbase), "--no-recursion", "--null", "-czf", str(tmp_path), "-T", "-"],
-            input=filelist,
-            capture_output=True,
-            check=False,
-            env=env,
-        )
-        if completed.returncode != 0:
-            stderr = completed.stderr.decode("utf-8", "replace").strip().splitlines()
-            detail = stderr[-1] if stderr else f"exit {completed.returncode}"
-            return f"tar exited {completed.returncode}: {detail}"
+        filelist = b"".join(os.fsencode(file_path.relative_to(arcbase)) + b"\0" for file_path in files)
+        _check_cancel(cancel)
+        returncode, stderr_bytes = _run_system_tar(tar_bin, arcbase, tmp_path, filelist, cancel=cancel)
+        if returncode != 0:
+            stderr = stderr_bytes.decode("utf-8", "replace").strip().splitlines()
+            detail = stderr[-1] if stderr else f"exit {returncode}"
+            return f"tar exited {returncode}: {detail}"
+        if on_finalize is not None:
+            on_finalize()
         # Match the Python engine's durability: fsync the finished temp archive
         # before atomically swapping it into place.
         archive_fd = os.open(str(tmp_path), os.O_RDONLY)
@@ -356,13 +579,99 @@ def _write_archive_system_tar(out: Path, source: Path, files: Iterable[Path]) ->
         finally:
             os.close(archive_fd)
         os.chmod(tmp_path, _ARCHIVE_MODE)
+        _check_cancel(cancel)
         os.replace(tmp_path, out)
+        published = True
     except OSError as exc:
         return f"tar invocation failed: {exc}"
     finally:
         with contextlib.suppress(OSError):
             tmp_path.unlink(missing_ok=True)
+        if not published:
+            _check_cancel(cancel)
     return None
+
+
+def _run_system_tar(
+    tar_bin: str, arcbase: Path, tmp_path: Path, filelist: bytes, *, cancel: threading.Event | None
+) -> tuple[int | None, bytes]:
+    """Run tar with cancellable communication and unconditional process cleanup."""
+    # bsdtar (macOS) otherwise stores AppleDouble (``._name``) metadata
+    # members that the Python engine never produces; COPYFILE_DISABLE
+    # suppresses them and is a no-op for GNU tar on Linux.
+    env = {**os.environ, "COPYFILE_DISABLE": "1"}
+    process = subprocess.Popen(
+        [tar_bin, "-C", str(arcbase), "--no-recursion", "--null", "-czf", str(tmp_path), "-T", "-"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        first_communication = True
+        while True:
+            _check_cancel(cancel)
+            try:
+                if first_communication:
+                    first_communication = False
+                    _, stderr_bytes = process.communicate(input=filelist, timeout=0.2)
+                else:
+                    _, stderr_bytes = process.communicate(timeout=0.2)
+                _check_cancel(cancel)
+                return process.returncode, stderr_bytes
+            except subprocess.TimeoutExpired:
+                continue
+    finally:
+        _cleanup_tar_process(process)
+
+
+def _cleanup_tar_process(process: subprocess.Popen[bytes]) -> None:
+    """Stop and reap a live tar child, then close all owned pipes."""
+    try:
+        if process.poll() is None:
+            with contextlib.suppress(ProcessLookupError):
+                process.terminate()
+            try:
+                process.communicate(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                with contextlib.suppress(ProcessLookupError):
+                    process.kill()
+                process.communicate()
+    finally:
+        for pipe in (process.stdin, process.stdout, process.stderr):
+            if pipe is not None:
+                with contextlib.suppress(OSError):
+                    pipe.close()
+
+
+def _parse_inputs(kwargs: Mapping[str, object]) -> tuple[str, str, str, str, datetime | None]:
+    """Parse label, engine, raw source/out and ``now``; an empty engine means the python engine."""
+    return (
+        _require_str(kwargs, "label", default="tar-archive"),
+        _require_str(kwargs, "engine", default=_ENGINE_PYTHON) or _ENGINE_PYTHON,
+        _require_str(kwargs, "source"),
+        _require_str(kwargs, "out"),
+        cast("datetime | None", kwargs.get("now")),
+    )
+
+
+def _missing_input(source_raw: str, out_raw: str) -> str:
+    """Return the missing-input message, or ``""`` when both source and out are set."""
+    if not source_raw:
+        return "no source configured"
+    return "" if out_raw else "no out path configured"
+
+
+def resolve_paths(source_raw: str, out_raw: str, now: datetime | None) -> tuple[Path, Path]:
+    # Normalize `.`/`..` LEXICALLY (os.path.normpath, not resolve()) before
+    # walking: a source like `parent/child/..` would otherwise be walked as
+    # given and produce member names like `..` / `../child` (an unsafe
+    # archive that also breaks the documented source-name prefix). normpath
+    # collapses the segments without following symlinks, so the
+    # symlink-confinement guarantee is untouched.
+    source = Path(os.path.normpath(Path(source_raw).expanduser()))
+    return source, Path(_expand_stamp(out_raw, now)).expanduser()
 
 
 def _require_str(kwargs: Mapping[str, object], key: str, *, default: str = "") -> str:
@@ -370,8 +679,8 @@ def _require_str(kwargs: Mapping[str, object], key: str, *, default: str = "") -
     return value if isinstance(value, str) else default
 
 
-def _expand_stamp(pattern: str) -> str:
-    """Expand ``strftime`` codes in an ``out`` pattern against the current time.
+def _expand_stamp(pattern: str, now: datetime | None = None) -> str:
+    """Expand ``strftime`` codes in an ``out`` pattern against the supplied or current time.
 
     A pattern like ``git-src-%Y%m%d-%H%M%S.tar.gz`` becomes a timestamped name
     at archive time, reproducing the wrapped script's ``date +%Y%m%d-%H%M%S``
@@ -379,7 +688,7 @@ def _expand_stamp(pattern: str) -> str:
     """
     if "%" not in pattern:
         return pattern
-    return datetime.now().strftime(pattern)
+    return (now if now is not None else datetime.now()).strftime(pattern)
 
 
 def _as_str_tuple(value: object) -> tuple[str, ...]:

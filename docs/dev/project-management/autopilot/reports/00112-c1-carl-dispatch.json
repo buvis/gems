@@ -1,0 +1,8 @@
+{
+  "helper": "/Users/bob/.claude/plugins/cache/buvis-plugins/autopilot/0.10.0/skills/use-gemini/scripts/gemini-run.sh",
+  "exit": 3,
+  "stderr": "refusing nested dispatch (already inside a CLI agent)",
+  "backend_ran": false,
+  "dispatch_row": "004d36e9",
+  "resolution": "optional reviewer unavailable; nesting guard preserved; no retry or old output reused"
+}

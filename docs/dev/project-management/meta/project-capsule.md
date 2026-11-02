@@ -26,20 +26,15 @@ Generated: 2026-10-29
 - sysup step shape normalization (string/list/object -> argv + `label`) is a config-layer concern (`StepSpec`); `runner.py` only sees resolved argv, the child env and the label used for dry-run and the run log. The timeout ceiling above lives in the runner because that is where the spawn seam is.
 
 ## Active Work
-- No active autopilot batch: `autopilot/state.json` is absent, `prds/wip/` and `prds/backlog/` do not exist, `hold/` is empty. Last batch 202610261200 (00108) drained; its one deferred VERIFY is resolved (210e674c) and its test follow-ups closed 2026-10-29: `test_moves_every_well_formed_receipt_in_place` covers every receipt shape, pinned or not, including the two `future = false` receipts 00105 used to skip.
-- Last shipped work: sysup shell-line steps (PR #253, merged 2026-10-28), released as gems-v0.16.0 on 2026-10-29 (tag pushed, publish run in flight at catchup time).
-- #252 (timeout orphaning from that PR's review) fixed 2026-10-29 for captured steps; the interactive residual is recorded in the invariants.
-- Backup intake 00107 was specced on 2026-10-29 into five sequenced backlog PRDs: 00107 per-instance excludes, 00109 bundle `items` + skip outcomes + replace-after-complete, 00110 `--plan` + once-per-run output resolution, 00111 `--jobs` + cancellation, 00112 progress + `--quiet`. Two discovery answers were reversed at that point (no no-clobber or `--force`; a missing source root skips rather than fails). At the time of writing the five PRDs and the intake move to `processed/` were still uncommitted in the worktree, written by a session other than the one refreshing this capsule. Next gate: `/review-prd-backlog` before the batch.
 
-### Batch 202610261200
-- [x] `00108-sysup-uv-tool-python-upgrade-in-place-v1.md` (1 cycle)
+### Batch 202610292344
+- [x] 00111-backup-parallel-jobs-and-cancellation-v1.md (1 cycle)
+- [x] 00112-backup-live-progress-and-quiet-v1.md (1 cycle)
+- [x] 00107-backup-per-instance-excludes-v1.md (1 cycle, recovered 2026-11-02)
+- [x] 00109-backup-bundle-items-and-skip-outcomes-v1.md (2 cycles, recovered 2026-11-02)
+- [x] 00110-backup-plan-preview-and-output-resolution-v1.md (3 cycles at cap 2, recovered 2026-11-02)
 
-Observations: Fast-track lane. `uv tool upgrade --python` now moves customized receipts in place. Eve's VERIFY items were confirmed against uv 0.13.5 and fixed in 210e674c (receipt restore before rollback; skip tools whose `pyvenv.cfg` minor is already the target).
-
-### Batch 202610242315
-- [x] `00105-sysup-uv-tool-python-pin-v1.md` (1 cycle)
-
-Observations: New `UvToolPython` pins supported plain unpinned/older installs before uv upgrades (order35 before40); preserves newer pins, visibly skips customized/unreadable receipts, and reports rollback failures honestly. One HIGH deferred to batch-end: `engram`'s editable install stayed unpinned/red on this host (triage 00106, done).
+Observations: Batch drained; all held PRDs passed completion review on `fix/backup-batch-202610292344` (unpushed). Full isolated suite at `93781cd0`: 6417 passed, 16 skipped; Python 3.14 backup suite 802 passed. Open: hold stub 00117 (bundle `out` under source rejected by the containment guard; needs a PRD decision); GNU tar/gzip descendant cleanup deferred for Linux verification; ledgered follow-up candidate: uniform, labelled access-error framing in tar-archive run/plan. `autopilot review-once` cannot run while headless `claude -p` reports a revoked OAuth token. Evidence: `autopilot/reports/202610292344-review-20261102.md`.
 
 ## Related context
 No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.

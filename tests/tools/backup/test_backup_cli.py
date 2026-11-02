@@ -1,16 +1,26 @@
 from __future__ import annotations
 
+import json
+from collections.abc import Generator
+from pathlib import Path
 from unittest.mock import patch
 
 import click
+import pytest
+from click.testing import CliRunner
 
 from backup.cli import cli
 from backup.config import BackupConfig
+from backup.runner import Runner
 from backup.step_result import StepResult
 
 
 def _cfg(instances: dict[str, dict[str, object]]) -> BackupConfig:
     return BackupConfig.model_validate({"instances": instances})
+
+
+def _steps(*steps: StepResult) -> Generator[StepResult, None, None]:
+    yield from steps
 
 
 class TestBackupCliShape:
@@ -35,7 +45,7 @@ class TestBackupCliRun:
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
             patch(
                 "backup.runner.Runner.run",
-                return_value=iter([StepResult("git-src", True, "archived 3 files -> /x (99 bytes)")]),
+                return_value=_steps(StepResult("git-src", True, "archived 3 files -> /x (99 bytes)")),
             ),
         ):
             result = runner.invoke(cli, [])
@@ -49,7 +59,7 @@ class TestBackupCliRun:
 
         def _fake_run(self, selected):
             captured["selected"] = [n for n, _ in selected]
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),
@@ -72,7 +82,7 @@ class TestBackupCliRun:
 
         def _fake_run(self, selected):
             captured["selected"] = [n for n, _ in selected]
-            return iter([])
+            yield from ()
 
         with (
             patch("backup.config.load_config", return_value=cfg),
@@ -88,7 +98,7 @@ class TestBackupCliRun:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
-            patch("backup.runner.Runner.run", return_value=iter([])),
+            patch("backup.runner.Runner.run", return_value=_steps()),
         ):
             result = runner.invoke(cli, ["--only", "nope"])
         # an unknown --only name now fails the run (was exit 0): a mistyped
@@ -129,8 +139,8 @@ class TestBackupCliDryRun:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=plan),
-            patch("backup.runner.Runner.__init__", return_value=None) as mock_init,
-            patch("backup.runner.Runner.run", return_value=iter([])),
+            patch("backup.runner.Runner.__init__", autospec=True, side_effect=Runner.__init__) as mock_init,
+            patch("backup.runner.Runner.run", return_value=_steps()),
         ):
             result = runner.invoke(cli, ["--dry-run"])
         assert result.exit_code == 0
@@ -159,11 +169,9 @@ class TestBackupCliExitCode:
             patch("backup.config.applicable_instances", return_value=plan),
             patch(
                 "backup.runner.Runner.run",
-                return_value=iter(
-                    [
-                        StepResult("a", False, "a failed: source not found"),
-                        StepResult("b", True, "archived 2 files -> /x"),
-                    ],
+                return_value=_steps(
+                    StepResult("a", False, "a failed: source not found"),
+                    StepResult("b", True, "archived 2 files -> /x"),
                 ),
             ),
         ):
@@ -180,7 +188,7 @@ class TestBackupCliExitCode:
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
             patch(
                 "backup.runner.Runner.run",
-                return_value=iter([StepResult("git-src", True, "archived 3 files -> /x")]),
+                return_value=_steps(StepResult("git-src", True, "archived 3 files -> /x")),
             ),
         ):
             result = runner.invoke(cli, [])
@@ -249,7 +257,7 @@ class TestOnlyUnknownExitCode:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=[("git-src", cfg.instances["git-src"])]),
-            patch("backup.runner.Runner.run", return_value=iter([])) as mock_run,
+            patch("backup.runner.Runner.run", return_value=_steps()) as mock_run,
         ):
             result = runner.invoke(cli, ["--only", "typo"])
         assert result.exit_code != 0
@@ -263,7 +271,7 @@ class TestOnlyUnknownExitCode:
         with (
             patch("backup.config.load_config", return_value=cfg),
             patch("backup.config.applicable_instances", return_value=plan),
-            patch("backup.runner.Runner.run", return_value=iter([StepResult("git-src", True, "archived 1 -> /x")])),
+            patch("backup.runner.Runner.run", return_value=_steps(StepResult("git-src", True, "archived 1 -> /x"))),
         ):
             result = runner.invoke(cli, ["--only", "git-src,typo"])
         assert result.exit_code != 0
@@ -389,3 +397,77 @@ class TestBackupConfigSelectionThreaded:
         assert result.exit_code == 0, result.output
         assert "git-src" in result.output
         assert "fixture-only" not in result.output
+
+
+class TestBackupCliSkipSummary:
+    @pytest.mark.parametrize("dry_run", [False, True])
+    @pytest.mark.parametrize(
+        "states,archived,skipped,failed",
+        [
+            (["missing"], 0, 1, 0),
+            (["missing", "missing"], 0, 2, 0),
+            (["archived", "archived"], 2, 0, 0),
+            (["archived", "missing", "file"], 1, 1, 1),
+            (["file", "missing", "file"], 0, 1, 2),
+        ],
+        ids=["one-skip", "all-skipped", "two-archives", "mixed", "two-failures"],
+    )
+    def test_skip_summary_counts_every_step_and_only_failures_change_exit_status(
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
+        dry_run: bool,
+        states: list[str],
+        archived: int,
+        skipped: int,
+        failed: int,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        instances = {}
+        for index, state in enumerate(states):
+            source = tmp_path / f"source-{index}"
+            if state == "archived":
+                source.mkdir()
+                (source / "a").write_text("first", encoding="utf-8")
+                (source / "b").write_text("second", encoding="utf-8")
+            elif state == "file":
+                source.write_text("not a directory", encoding="utf-8")
+            instances[f"step-{index}"] = {
+                "use": "tar-archive",
+                "with": {
+                    "source": source.name,
+                    "out": str(tmp_path / f"out-{index}.tar.gz"),
+                },
+            }
+        config = tmp_path / "plan.yaml"
+        config.write_text(json.dumps({"instances": instances}), encoding="utf-8")
+        args = ["--config", str(config), "--only", ",".join(instances)]
+        if dry_run:
+            args.append("--dry-run")
+        result = runner.invoke(cli, args)
+        assert result.exit_code == (1 if failed else 0), result.output
+        verb = "previewed" if dry_run else "archived"
+        summary = f"{verb} {archived}, skipped {skipped}, failed {failed}"
+        assert result.output.count(summary) == 1
+        for index, state in enumerate(states):
+            if state == "missing":
+                assert "source not found:" in result.output
+                assert f"source-{index}" in result.output
+            elif state == "file":
+                assert "source is not a directory:" in result.output
+                assert f"source-{index}" in result.output
+            assert (tmp_path / f"out-{index}.tar.gz").exists() is (state == "archived" and not dry_run)
+        assert result.output.rstrip().endswith(summary)
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_empty_run_summary_has_zero_counts(self, runner: CliRunner, tmp_path: Path, dry_run: bool) -> None:
+        config = tmp_path / "plan.yaml"
+        config.write_text(json.dumps({"instances": {}}), encoding="utf-8")
+        args = ["--config", str(config), "--tag", "fixture-no-instance-has-this-tag"]
+        if dry_run:
+            args.append("--dry-run")
+        result = runner.invoke(cli, args)
+        assert result.exit_code == 0, result.output
+        verb = "previewed" if dry_run else "archived"
+        assert f"{verb} 0, skipped 0, failed 0" in result.output

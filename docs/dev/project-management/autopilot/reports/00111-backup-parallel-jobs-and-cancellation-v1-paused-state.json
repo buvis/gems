@@ -1,0 +1,231 @@
+{
+  "phase": "paused",
+  "next_phase": "paused",
+  "schema_version": 1,
+  "batch": {
+    "id": "202610292344",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "parks_consecutive": 0,
+    "minted_stubs": [
+      "00113-triage-r5-38dfe8ad-python-3-14-backup-tests-30-v1.md",
+      "00114-triage-30-of-the-new-parametrized-cases-fail-on-v1.md"
+    ]
+  },
+  "prd": "00111-backup-parallel-jobs-and-cancellation-v1.md",
+  "catchup_mode": "skipped",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "full",
+  "lane_reason": "design",
+  "lane_effective": "full",
+  "tasks_total": 5,
+  "cycle": 1,
+  "tasks_completed": 1,
+  "phases_completed": [],
+  "replan_count": 0,
+  "codex_probe": {
+    "batch_id": "202610292344",
+    "verdict": "unhealthy",
+    "backend": "codex",
+    "detail": "hook_doctor: missing /Users/bob/.codex/codex-hook",
+    "hook_doctor": "4 ok, 7 stale, 5 broken",
+    "checked_at": "2026-10-30T00:47:58.010495+00:00"
+  },
+  "applied_review_batches": [
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-1.md::decision-gate"
+  ],
+  "contract_card": "step: build paused at task 2 test quality gate after host command approval deadlines\ninvariants: phase and next_phase paused; cap 2 and cycle 1 unchanged; work base preserved; no completion review or task 2 implementation\nevidence: reports/00111-host-execution-pause.md; reports/00111-backup-parallel-jobs-and-cancellation-v1-paused-state.json; task 1 commit 455c9cba; task 2 raw model metadata and final test-author result\nnext: attended Resume resolves execution approval issue, then checks existing task 2 draft tests; do not repeat Tess blindly\nverification: task 1 committed tree 26 passed, hooks/style/split clean, cleanup noop; task 2 author red 19 failed and 2 passed; coordinator quality gate and final suite not reached",
+  "prd_budget_since": "2026-10-30T09:34:28Z",
+  "design_mode": "run",
+  "loop_entry": {
+    "entered_by": "loop",
+    "prd": "00111-backup-parallel-jobs-and-cancellation-v1.md",
+    "result": {
+      "stop": null,
+      "detail": "",
+      "prd": "00111-backup-parallel-jobs-and-cancellation-v1.md",
+      "source": "backlog",
+      "parked": null,
+      "custody_pending": 0,
+      "lane_effective": "full",
+      "catchup": "skip",
+      "design": "run",
+      "resume_target": "build: catchup then planning",
+      "batch": "open"
+    }
+  },
+  "design_doc": "docs/dev/project-management/designs/00111-backup-parallel-jobs-and-cancellation-v1-design.md",
+  "tasks": [
+    {
+      "name": "Cancellable archive writers",
+      "description": "Cancellable archive writers\n\nLocation: src/tools/backup/capabilities/tar_archive.py, CHANGELOG.md\n\nReuse: existing backup archive atomic writers, Runner._plan, _report_steps and current console/result conventions.\n\nContract (verbatim \u2014 reviewed design):\n\n### Archive cancellation\n\n```python\nclass ArchiveCancelled(Exception):\n    \"\"\"Archive creation stopped before publication.\"\"\"\n\n__all__ = [\"ArchiveCancelled\", \"TarArchive\", \"WalkResult\"]\n\ndef _write_archive(\n    out: Path, arcbase: Path, files: Iterable[Path], *, cancel: threading.Event | None = None\n) -> None: ...\n\ndef _write_archive_system_tar(\n    out: Path, arcbase: Path, files: Iterable[Path], *, cancel: threading.Event | None = None\n) -> str | None: ...\n\n# TarArchive static helper, with the existing result shape:\ndef _archive_result(\n    label: str, arcbase: Path, out: Path, walk: WalkResult, engine: str,\n    *, cancel: threading.Event | None = None,\n) -> StepResult: ...\n```\n\n`ArchiveCancelled` is the PRD-required exception at the archive/runner boundary. It carries no new state. It must escape both writer helpers and the capability without triggering fallback. The runner converts it to exactly `StepResult(name, success=False, message=\"cancelled\")`, with `archive=None` and `skipped=False`.\n\n`TarArchive.run(self, **kwargs: object) -> Iterator[StepResult]` accepts an optional runtime `cancel` kwarg holding `threading.Event`. Omitting it preserves direct-call behavior. `_run_validated` forwards it to `_archive_result`; the latter passes the same event to both the selected engine and any legitimate Python fallback. Check a supplied event before selection starts, after selection, and before creating archive output. An already-cancelled call must not walk or write. No `cancel` entry is added to `TarArchive.inputs`.\n\nThe Python writer checks `cancel.is_set()` before every `tar.add`, after the member loop, and immediately before `os.replace`. A set event raises `ArchiveCancelled`. Keep the existing `except BaseException` temp cleanup, streaming compression, `fsync`, mode `0o600`, and atomic replacement. Cancellation during a single large member takes effect when that `tar.add` returns; v1 does not interrupt a file halfway through its copy. A final event check also covers an empty member iterable.\n\nThe system writer preserves the exact argv, NUL-delimited bytes input, `COPYFILE_DISABLE=1`, return-reason fallback behavior, permissions, and atomic publication. Start with `subprocess.Popen(..., stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, start_new_session=True)`. A private session prevents terminal Ctrl-C from killing tar independently of the runner's cancellation decision; this child needs no terminal input.\n\nCall `process.communicate(input=filelist, timeout=0.2)` once. After `subprocess.TimeoutExpired`, retry `process.communicate(timeout=0.2)` without `input`. Check the event before spawn, between retries, after communicate succeeds, and immediately before publication. A timeout is a polling interval, not a failed archive or a fallback reason.\n\nOn cancellation while the child is alive: call `process.terminate()`, drain/reap with `process.communicate(timeout=5.0)`, then on `TimeoutExpired` call `process.kill()` and `process.communicate()` to reap it. Suppress only an already-exited-child race when signaling. Close owned pipes and remove the temp in cleanup. Any other exception after spawn must also stop/reap the live child before propagating or returning the existing invocation-failure fallback reason. Cancellation remains `ArchiveCancelled`, including cancellation during cleanup; it must not become a Python fallback. A child already exited still requires the event check before publication.\n\nPublication is the existing `os.replace` operation. An archive published before cancellation is completed and is preserved. An observed cancellation before publication prevents replacement; the old output stays byte-identical, and a previously absent output stays absent. The immediately preceding check is cooperative, not a transactional synchronization primitive with arbitrary external event setters.\n\n\n\nDetails:\n- Implement only this feature slice.\n- Include its release note in CHANGELOG.md when listed; do not alter prior notes.\n- Tests belong to tests/tools/backup/test_parallel_runner.py, with sibling test modules if needed; required PRD-named tests and -k subsets remain in the named file.\n\nAcceptance criteria:\n`uv run pytest tests/tools/backup/test_parallel_runner.py -k \"cancel_cleans or terminates_tar\" -q` passes; the system-tar test uses a stub `tar` script on `PATH` that sleeps.\n\nVerify: uv run pytest tests/tools/backup/test_parallel_runner.py -k \"cancel_cleans or terminates_tar\" -q",
+      "files": [
+        "src/tools/backup/capabilities/tar_archive.py",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [],
+      "estimated_tokens": 88507,
+      "est_context_peak": 108507,
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "model": "opus",
+      "tier_reason": "contract",
+      "id": "1",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "outcome": "escalated",
+          "review_cycle": null,
+          "cause": "commit_rejected",
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "red_check": "skipped:ArchiveCancelled export not yet implemented",
+          "reflow": "src/tools/backup/capabilities/tar_archive.py:28"
+        },
+        {
+          "attempt": 2,
+          "model": "opus",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "actual_model": "gpt-6-astra",
+          "actual_provider": "openai",
+          "escalation_reason": "gate_failure",
+          "escalated_from": "opus",
+          "red_check": "skipped:ArchiveCancelled export not yet implemented",
+          "self_deslop": "noop",
+          "style_gate": "clean",
+          "split_hygiene": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "System fsync and cancellation after member iteration were unasserted; strengthened. Direct-child signaling is in contract.",
+          "devon_weak_points": 3,
+          "devon_in_contract": [
+            "3. in-contract: PRD explicitly requires direct-child terminate()/kill() and reaping; process-group termination adds an unsupported requirement."
+          ],
+          "review": "failed:weekly_quota_resets_2026-11-01_10:00_Prague"
+        }
+      ]
+    },
+    {
+      "name": "Bounded parallel runner and interruption",
+      "description": "Bounded parallel runner and interruption\n\nLocation: src/tools/backup/runner.py, CHANGELOG.md\n\nReuse: existing backup archive atomic writers, Runner._plan, _report_steps and current console/result conventions.\n\nContract (verbatim \u2014 reviewed design):\n### Runner\n\n```python\nclass Runner:\n    interrupted: bool\n    cancelled_names: tuple[str, ...]\n\n    def __init__(\n        self, cfg: BackupConfig, *, dry_run: bool = False, jobs: int = 3\n    ) -> None: ...\n\n    def run(self, selected: list[tuple[str, BackupInstance]]) -> Iterator[StepResult]: ...\n    def plan(self, selected: list[tuple[str, BackupInstance]]) -> list[PlanEntry]: ...\n    def request_cancel(self) -> None: ...\n\n    def _run_instance(\n        self, name: str, instance: BackupInstance, now: datetime, cancel: threading.Event\n    ) -> list[StepResult]: ...\n```\n\nReject `jobs < 1` in the constructor with `ValueError(\"jobs must be at least 1\")` for non-CLI callers. Initialize `interrupted=False`, `cancelled_names=()`; reset them when a new `run` begins. One Runner supports successive runs, not concurrent calls to `run` on the same object.\n\n`request_cancel()` is a calling-thread, idempotent consumer cancellation API. It sets `interrupted=True` and the active run event, if present. Store the current event in `self._cancel: threading.Event | None`; assign it when run iteration starts and clear it only after cleanup finishes. Calling `request_cancel()` after iteration has ended still sets `interrupted=True`, covering an interrupt while rendering the final summary. A new run resets the state as specified above. The method performs no rendering, yielding, joining, or exception raising. Both the runner's own KeyboardInterrupt handler and a consumer whose rendering was interrupted use this method.\n\nEach run creates its own event named `cancel = threading.Event()`, completion queue `queue.Queue[Future[list[StepResult]]]`, and `ThreadPoolExecutor(max_workers=self._jobs)`. No executor is needed for an empty selection or a selection containing only preflight failures. Preserve `_plan(selected, now)` as the preflight step, before any submission; preflight `FatalError` retains its existing propagation contract. Preflight failure rows yield their existing failed results from the calling thread and are never submitted. Do not turn a preflight `skip` into a new failure; retain the capability's existing skip behavior.\n\nSort execution candidates by `(instance.order, name)` and submit in that order. Maintain at most `jobs` submitted, uncollected futures, and refill from the remaining candidates after each completion. This keeps the scheduling queue bounded and leaves not-yet-started instances under calling-thread ownership. With `jobs=1`, capability execution is strictly sequential. With larger values, ordering is submit priority; worker-start and completion order can differ.\n\n`_run_instance` checks `cancel` before invoking the capability and builds a fresh kwargs dictionary with fresh excludes. Pass `label`, `excludes`, `dry_run`, `now`, and `cancel` after `instance.with_`, so runtime values win. Fully consume the capability iterator inside the worker and return its results as a list. Workers never yield to the outside caller or render output. Registered capabilities are shared, stateless objects; per-call mutation belongs in local variables.\n\nCatch `ArchiveCancelled` first for the exact cancelled result. Catch other `Exception`, including execution-time `FatalError`, as a failed result with the existing `f\"{name} failed: {exc}\"` message; another instance must continue. This follows PRD 00111's worker-exception requirement and deliberately supersedes the older execution-time fatal-propagation test. Do not change preflight or config fatal-error handling. Do not swallow `BaseException` indiscriminately.\n\nRegister a future callback that only puts its future into the completion queue. The calling thread consumes that queue and yields the completed instance's result list. Queue notification order defines completion order; simultaneous completions have no required tie order. Results within one instance retain capability order. Preflight failures are immediately available and are emitted before worker results.\n\nCatch calling-thread `KeyboardInterrupt` around preflight/scheduling/result collection and call `request_cancel()` before waiting for cleanup. Also check the event whenever iteration resumes after a yield and before every refill; consumer cancellation must enter the same shutdown/drain path even when no exception was thrown inside the generator. Stop submitting new futures and call `executor.shutdown(wait=True, cancel_futures=True)` when an executor exists. A worker entry check prevents queued wrappers from invoking a capability after cancellation. Preserve already-completed future results even if they were not yet rendered; never rewrite a committed success as cancelled merely because the main thread noticed it later. Active workers observe the event and return their cleanup outcome. Every unsubmitted/cancelled-future instance gets one cancelled result. No instance gets a second terminal result.\n\nPopulate `cancelled_names` from the names receiving cancelled results, in `(order, name)` order. This small interface lets the CLI name unfinished instances without parsing message text. After draining completed and cancelled outcomes, `run` ends normally; it re-raises no handled `KeyboardInterrupt`. Exit 130 takes priority even when all work happened to finish at the interruption boundary and the names tuple is empty. In `finally`, generator abandonment or an unexpected calling-thread exception sets `cancel` and joins the executor before leaving, so early consumer exit cannot leak active writers. No output occurs during cleanup.\n\n\n\nDetails:\n- Implement only this feature slice.\n- Include its release note in CHANGELOG.md when listed; do not alter prior notes.\n- Tests belong to tests/tools/backup/test_parallel_runner.py, with sibling test modules if needed; required PRD-named tests and -k subsets remain in the named file.\n\nAcceptance criteria:\n`uv run pytest tests/tools/backup/test_parallel_runner.py -k \"jobs or order or failure_isolated or interrupt\" -q` passes.\n\nVerify: uv run pytest tests/tools/backup/test_parallel_runner.py -k \"jobs or order or failure_isolated or interrupt\" -q",
+      "files": [
+        "src/tools/backup/runner.py",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [
+        1
+      ],
+      "estimated_tokens": 84226,
+      "est_context_peak": 104226,
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "model": "opus",
+      "tier_reason": "contract",
+      "id": "2",
+      "status": "in_progress",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "outcome": "aborted",
+          "review_cycle": null,
+          "cause": "host_exec_approval_timeout",
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "verification": "skipped:host_exec_approval_timeout_before_test_quality_gate",
+          "red_check": "skipped:coordinator_red_check_not_reached"
+        }
+      ]
+    },
+    {
+      "name": "CLI jobs and exit 130",
+      "description": "CLI jobs and exit 130\n\nLocation: src/tools/backup/cli.py, CHANGELOG.md\n\nReuse: existing backup archive atomic writers, Runner._plan, _report_steps and current console/result conventions.\n\nContract (verbatim \u2014 reviewed design):\n### CLI\n\n```python\n@click.option(\"--jobs\", type=int, default=3, show_default=True,\n              help=\"Run at most this many archive instances at once.\")\n\ndef _report_steps(\n    steps: Iterable[StepResult], *, dry_run: bool = False,\n    on_interrupt: Callable[[], None] | None = None,\n) -> bool: ...\n\ndef _run_plan(\n    cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *,\n    dry_run: bool, plan_only: bool, jobs: int = 3,\n) -> bool: ...\n```\n\nAdd `jobs: int` to the Click callback. Before config loading or other early-return modes, reject `jobs < 1` with exactly `console.failure(\"--jobs must be at least 1\")` and `raise SystemExit(1)`. Do not use `IntRange` or a parse-time custom validator. Keep existing flag conflict validation and selectors.\n\nInstantiate `Runner(cfg, dry_run=dry_run, jobs=jobs)`. Keep `--plan` read-only; it does not construct an executor or invoke writers. Real and dry-run execution use the same scheduling path. Keep the concrete generator in a local `steps = runner.run(plan)` and call `_report_steps(steps, dry_run=dry_run, on_interrupt=runner.request_cancel)`. The CLI owns interruptions in consumer code, including `_report_step`, counter rendering, and final summary rendering: a suspended generator cannot catch those exceptions.\n\nWith `on_interrupt` supplied, `_report_steps` catches `KeyboardInterrupt` around consuming and rendering each step and its summary, calls `on_interrupt()`, and resumes consumption of the same iterator until exhaustion. Keep any fetched-but-not-fully-rendered step pending and retry its render; count each step once. Keep the counters across retries. An interrupt must not discard the generator, invoke `close()` as the cancellation path, or restart a run. Resuming it lets the runner observe the event, stop refill, join active writers, and yield cancelled outcomes. Already-completed/published outcomes stay successful even if their rendering was interrupted. Repeated interrupts repeat the idempotent cancellation request and continue draining. If no callback is supplied, preserve the helper's existing KeyboardInterrupt propagation behavior. Use `finally` in `_run_plan` to close the retained generator on an unrelated consumer exception, invoking the runner's resource-cleanup guarantee.\n\nAfter `_report_steps` finishes, if `runner.interrupted`, print `console.failure(\"interrupted: \" + \", \".join(runner.cancelled_names))`; use `\"interrupted: no unfinished instances\"` when the tuple is empty. Catch KeyboardInterrupt during this final interruption message, request cancellation again, and retry the message before `raise SystemExit(130)`. An interrupt during the ordinary final summary also uses the callback above, so it reaches this exit-130 decision. Otherwise return the existing failure boolean and retain exit 1 for ordinary failures/unknown selectors, exit 0 for success. Workers have no access to the console.\n\n\nDetails:\n- Implement only this feature slice.\n- Include its release note in CHANGELOG.md when listed; do not alter prior notes.\n- Tests belong to tests/tools/backup/test_parallel_runner.py, with sibling test modules if needed; required PRD-named tests and -k subsets remain in the named file.\n\nAcceptance criteria:\n`uv run pytest tests/tools/backup/test_parallel_runner.py -k cli -q` passes, including `--jobs 0` exiting 1 with `--jobs must be at least 1` in the console output.\n\nVerify: uv run pytest tests/tools/backup/test_parallel_runner.py -k cli -q",
+      "files": [
+        "src/tools/backup/cli.py",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [
+        2
+      ],
+      "estimated_tokens": 85388,
+      "est_context_peak": 105388,
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "model": "opus",
+      "tier_reason": "contract",
+      "id": "3",
+      "status": "pending"
+    },
+    {
+      "name": "Document parallel backup operation",
+      "description": "Document parallel backup operation\n\nLocation: docs/source/tools/backup.rst\n\nReuse: existing backup archive atomic writers, Runner._plan, _report_steps and current console/result conventions.\n\nContract (verbatim \u2014 PRD documentation slice):\n- [ ] Document `--jobs`, ordering and Ctrl-C behaviour in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md` (depends on: Phase 1)\n\nDetails:\n- Implement only this feature slice.\n- Include its release note in CHANGELOG.md when listed; do not alter prior notes.\n- Tests belong to tests/tools/backup/test_parallel_runner.py, with sibling test modules if needed; required PRD-named tests and -k subsets remain in the named file.\n\nAcceptance criteria:\n`rg -c \"\\-\\-jobs\" docs/source/tools/backup.rst CHANGELOG.md` prints a count of at least 1 for each file.\n\nVerify: rg -c \"\\-\\-jobs\" docs/source/tools/backup.rst CHANGELOG.md",
+      "files": [
+        "docs/source/tools/backup.rst"
+      ],
+      "blocked_by": [
+        2
+      ],
+      "estimated_tokens": 59983,
+      "est_context_peak": 79983,
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "model": "opus",
+      "tier_reason": "floor",
+      "id": "4",
+      "status": "pending"
+    },
+    {
+      "name": "Update backup README interface",
+      "description": "Update backup README interface\n\nLocation: README.md\n\nReuse: existing backup archive atomic writers, Runner._plan, _report_steps and current console/result conventions.\n\nContract (verbatim \u2014 PRD documentation slice):\n- [ ] Document `--jobs`, ordering and Ctrl-C behaviour in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md` (depends on: Phase 1)\n\nDetails:\n- Implement only this feature slice.\n- Include its release note in CHANGELOG.md when listed; do not alter prior notes.\n- Tests belong to tests/tools/backup/test_parallel_runner.py, with sibling test modules if needed; required PRD-named tests and -k subsets remain in the named file.\n\nAcceptance criteria:\n`rg -c \"\\-\\-jobs\" docs/source/tools/backup.rst CHANGELOG.md` prints a count of at least 1 for each file.\n\nVerify: rg -n -- --jobs README.md",
+      "files": [
+        "README.md"
+      ],
+      "blocked_by": [
+        2
+      ],
+      "estimated_tokens": 59220,
+      "est_context_peak": 79220,
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "model": "opus",
+      "tier_reason": "floor",
+      "id": "5",
+      "status": "pending"
+    }
+  ],
+  "autonomous_decisions": [
+    {
+      "cycle": 1,
+      "issue": "Reviewed design: bounded submissions, completion queue, cooperative cancellation, managed tar child, consumer cancellation API",
+      "severity": "low",
+      "consensus": "2/2",
+      "action": "auto-fix",
+      "reason": "No open design blockers; 3 non-blockers retained. External Claude quota failed and documented native fallback ran. Archive/runner/CLI changes stay coupled to mandatory changelog notes; two documentation files independently planned."
+    }
+  ],
+  "work_start_sha": "9a7f78c8eb0e4148181584f92eb649cfec590034",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "pause_reason": {
+    "site": "host_exec_approval_timeout",
+    "detail": "Build stopped during task 2 test quality gate: sandbox initialization fails with sandbox_apply Operation not permitted; escalated command approval review repeatedly times out, including read-only git diff --stat. Task 1 committed and verified; task 2 tests remain uncommitted. No implementation worker is active. Execution approval infrastructure must recover before resume."
+  }
+}

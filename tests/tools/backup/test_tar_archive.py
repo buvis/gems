@@ -176,9 +176,10 @@ class TestArchiveProduction:
         assert "%Y" not in result.out_path
         assert result.out_path.endswith(".tar.gz")
 
-    def test_missing_source_fails_cleanly(self, tmp_path: Path) -> None:
+    def test_missing_source_is_skipped(self, tmp_path: Path) -> None:
         result = _run(tmp_path / "nope", tmp_path / "out.tar.gz", [])
-        assert result.success is False
+        assert result.success is True
+        assert result.skipped is True
         assert "source not found" in result.message
 
 

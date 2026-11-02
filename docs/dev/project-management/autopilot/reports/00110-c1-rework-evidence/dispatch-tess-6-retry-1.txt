@@ -1,0 +1,44 @@
+Your tests have quality issues. Fix them.
+
+Issues found:
+Boundary coverage gap: duplicate-output safety must also hold with timestamp-expanded paths. Add regression cases where one colliding instance has source metadata failure and its configured output uses strftime patterns, while its peer config uses the literal resolved path. Use fixed runtime clock (same public Runner now-per-call contract seen in sample tests). Assert all colliding entries fail without writes in plan, run, and dry-run; retain an independent successful instance. Do not read implementation modules or alter existing assertions. Only edit /Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py. Run only that file. Preserve report to /Users/bob/git/src/github.com/buvis/gems/docs/dev/tmp/tess-6-retry-report.txt.
+
+
+Original requirements (unchanged):
+
+Description:
+Create regression tests only in /Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_plan_errors.py (new file). Test public Runner.plan and Runner.run in /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/runner.py.
+Ordinary exceptions during one selected instance's metadata planning must produce that instance's fail result, retain useful error text, and allow independent selected instances to plan and execute. Cover OSError/PermissionError and RuntimeError from filesystem metadata checks. FatalError must propagate unchanged. Preserve duplicate-output rejection for all colliding instances with no archive writes, including when metadata checks fail for one member. Empty selection stays empty. Run only the newly authored test file. Do not read implementation modules.
+
+
+Acceptance Criteria:
+Regression tests fail against current planning exception behavior before implementation. Assert per-instance outcomes and independent archive effects. Cover plan, run and dry-run; preserve FatalError and duplicate-output safety.
+
+
+Rewrite the tests addressing each issue above. Keep every test that is already
+sound — this is a targeted fix, not a rewrite from scratch.
+
+The original rules still apply. In particular:
+
+1. Write tests from requirements only. You are a USER of this API, not its builder.
+2. Each test name describes a behavior, not an implementation detail.
+3. Assert on outputs, return values, side effects, and errors. Never assert on mock existence.
+4. For EACH test, ask yourself: "What wrong implementation would still pass this?" If easy to answer, add constraints.
+5. SIMPLICITY FIRST: test only the behavior in the acceptance criteria. Strengthening a weak test does not mean adding tests nobody asked for.
+6. NEVER INVENT A CONTRACT: if the requirements name a data structure but do not pin its exact field names, enum values, or types, STOP and report it as a blocker rather than inventing a plausible schema.
+7. SURGICAL: only create/modify test files. Match the existing test file's style.
+8. SIZE LIMITS: keep every test function under 50 lines and every test file under 800 lines; a style-gate line above naming a file or function over a limit is an issue to fix here, by splitting into sibling files named after the test module.
+
+Read only the files listed above. If a file or symbol you need is not listed, stop and report it as a blocker — do not run broad `rg` sweeps to discover scope.
+
+Abort and report if you read more than 100K of total input. Return the partial result and an abort_reason: context_overrun field.
+
+Read every file before your first Edit to it. Never call bash `head`, `tail`, `cat`, `grep`, or `find` - a hook blocks them. Use the Read tool (offset/limit), `rg`, or `rg --files` instead. Never combine an inspection (read, list, search, diff) with a test, lint or build invocation in one Bash call - run them as two calls, because a combined command has two ways to hang and one exit code. Pass an explicit `timeout` on every Bash call: 60000 ms for an inspection, 300000 ms for a lint run or a narrow test run, 600000 ms for a full suite or a full build.
+
+Run only the test files this task names (the tests you wrote, or the
+failing tests in your prompt), with `-q --tb=line`. Never run a whole test
+directory or `dev/bin/release-checks`: the orchestrator runs the full suite
+once, after every task. Read the pass count and exit code from that one
+run; never re-run a suite to recover a number.
+
+End your report with `ASSUMPTIONS:` - one line per assumption you made where the task, tests, or listed files were silent (guessed interface, data shape, resolved ambiguity, unstated behavior). Write `ASSUMPTIONS: none` if you made none.

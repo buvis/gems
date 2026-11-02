@@ -1,0 +1,241 @@
+{
+  "batch_id": "202610292344",
+  "items": [
+    {
+      "type": "stall",
+      "site": "fast_track_blocked",
+      "detail": "fast-track/00107-backup-per-instance-excludes-v1-c1: suite red: 5754 passed, 3 failed, 16 skipped, 1 xfailed, exit 1; failures in klyreon Git identity and postup repository discovery; backup 142 passed; commits 74e19c78 and 182e9bd3 retained; see reports/00107-backup-per-instance-excludes-v1-build.md and build-state/model audits; completion review not run",
+      "op_id": "b1aea81bd8b5",
+      "prd": "00107-backup-per-instance-excludes-v1.md",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "repair blocker; retain hold for completion review",
+        "reason": "Original environment blockers reproduced; unchanged isolation runner passes all three and the full suite passes 6373 tests.",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "passed 2026-11-02: reviews/00107-backup-per-instance-excludes-v1-review-1.md converged cycle 1; tail sweep fda7530c, 6a4e56ea; PRD in done/"
+      }
+    },
+    {
+      "type": "stall",
+      "site": "fast_track_blocked",
+      "detail": "fast-track/00109-backup-bundle-items-and-skip-outcomes-v1-c1: suite red: 5822 passed, 3 failed, 16 skipped, 1 xfailed, exit 1; Klyreon git identity (2), Postup portfolio discovery (1); build and model evidence preserved in reports/00109-backup-bundle-items-and-skip-outcomes-v1-build.md",
+      "op_id": "fb4da1cb7d85",
+      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "repair blocker; retain hold for completion review",
+        "reason": "Original environment blockers reproduced; unchanged isolation runner passes all three and the full suite passes 6373 tests.",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "passed 2026-11-02: reviews/00109-backup-bundle-items-and-skip-outcomes-v1-review-1.md (2 HIGH fixed) and -review-2.md converged cycle 2/cap 2; PRD in done/"
+      }
+    },
+    {
+      "type": "assumed-ambiguity",
+      "question": "How are duplicate outputs represented in Runner.plan and which output spelling appears in collision messages?",
+      "assumption": "PlanEntry.status is fail; reason is the exact StepResult duplicate message; diagnostics use expanduser+normpath output. Other PlanEntry fields retain capability plan values. This satisfies the PRD both-fail plan scenario.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "accept",
+        "reason": "Matches PRD both-fail collision scenario and existing collision tests."
+      }
+    },
+    {
+      "type": "stall",
+      "site": "cap_regression",
+      "detail": "R5 38dfe8ad; Python 3.14 backup tests: 30 failed, 485 passed; review cap 2 reached",
+      "op_id": "fb497c1e9deb",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "repair blocker; retain hold for completion review",
+        "reason": "Cap regression repaired on branch in 5d8ab708; Python 3.14 backup suite passes 758 tests. Historical cycle/cap 2 preserved.",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "passed 2026-11-02: reviews/00110-backup-plan-preview-and-output-resolution-v1-review-3.md verified R1-R7 resolved, converged at cycle 3 against cap 2 (no rework budget added); tail sweep 93781cd0; PRD in done/"
+      }
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "ref": "R1",
+      "issue": "An empty source with an existing output returns replaces=False; the missing-input branch also leaves a configured ~/out unexpanded, so the failed plan omits the replacement marker.",
+      "file": "src/tools/backup/capabilities/tar_archive.py:82",
+      "severity": "low",
+      "consensus": "4/6",
+      "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+      "classification_evidence": "Confirmed with existing output fixture; PRD defines replaces by output existence independently of source validity.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "op_id": "fb497c1e9deb-dd0",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "fix now",
+        "commit": "5d8ab708",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "pending; source PRD remains held at historical cap 2"
+      }
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "ref": "R2",
+      "issue": "Two new CHANGELOG Fixed entries describe bugs in the unreleased --plan code from this PRD; fold them into its Added entry.",
+      "file": "CHANGELOG.md:22",
+      "severity": "medium",
+      "consensus": "3/6",
+      "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+      "classification_evidence": "CHANGELOG Unreleased contains the feature and both development-time fixes; supported repeated editorial finding.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "op_id": "fb497c1e9deb-dd1",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "fix now",
+        "commit": "5d8ab708",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "pending; source PRD remains held at historical cap 2"
+      }
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "ref": "R3",
+      "issue": "The new test_runner_rejects_timestamp_output_collisions_when_source_metadata_fails is 52 lines, exceeding the 50-line function limit.",
+      "file": "tests/tools/backup/test_plan_errors.py:185",
+      "severity": "medium",
+      "consensus": "3/6",
+      "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+      "classification_evidence": "Computed AST block confirms52 lines; source finding is supported.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "op_id": "fb497c1e9deb-dd2",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "fix now",
+        "commit": "5d8ab708",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "pending; source PRD remains held at historical cap 2"
+      }
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "ref": "R4",
+      "issue": "PlanEntry tests redundantly verify autogenerated NamedTuple indexing, slicing, _make, _asdict, _replace, mutation, keyword order and constructor arity; retain concise six-field contract checks.",
+      "file": "tests/tools/backup/test_plan.py:94",
+      "severity": "medium",
+      "consensus": "3/6",
+      "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+      "classification_evidence": "Read TestPlanEntry: ordered field and named-field contract assertions already cover the requested record; repeated stdlib behavior tests add no backup behavior.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "op_id": "fb497c1e9deb-dd3",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "fix now",
+        "commit": "5d8ab708",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "pending; source PRD remains held at historical cap 2"
+      }
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "ref": "R5",
+      "issue": "30 of the new parametrized cases fail on Python 3.14, and CI's `tools` matrix runs 3.14 on both ubuntu and macOS. `_fail_metadata` injects errors by patching `Path.stat`. On 3.14, `Path.exists()` and `Path.is_dir()` call `os.path.exists`/`os.path.isdir` and never reach `Path.stat`, so the patched error never fires in `plan`. Reproduced with `uv run --python 3.14 pytest tests/tools/backup`: 30 failed, 485 passed. The failures are all of `test_runner_isolates_metadata_failures_and_preserves_independent_instances` and all of `test_runner_propagates_the_original_fatal_metadata_error`. The same command on 3.11 passes 515/515, and the gate ran only 3.13. Fix: inject the error through a seam that works on every version, for example wrap `TarArchive.plan` to raise for the blocked labels, since the runner's per-instance isolation is what these tests check.",
+      "file": "tests/tools/backup/test_plan_errors.py:30",
+      "severity": "high",
+      "consensus": "2/6",
+      "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+      "classification_evidence": "Reproduced on installed Python3.14.10:30failed485passed; CI explicitly includes3.14. Bob's3.13+ wording is overbroad: staged3.13 gate passes. HIGH remains unresolved and blocks convergence at cap2.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "op_id": "fb497c1e9deb-dd4",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "fix now",
+        "commit": "5d8ab708",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "pending; source PRD remains held at historical cap 2"
+      }
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "ref": "R6",
+      "issue": "The exception fallback duplicates tar-archive output expansion in generic Runner, stringifies non-string out values differently, and drops the configured source from failed plan rows.",
+      "file": "src/tools/backup/runner.py:69",
+      "severity": "low",
+      "consensus": "2/6",
+      "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+      "classification_evidence": "Source runner.py:69-70 confirms bare strftime,str conversion and source empty string; bounded repeated fallback metadata finding.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "op_id": "fb497c1e9deb-dd5",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "fix now",
+        "commit": "5d8ab708",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "pending; source PRD remains held at historical cap 2"
+      }
+    },
+    {
+      "type": "cap-overflow",
+      "cycle": 2,
+      "ref": "R7",
+      "issue": "Recovery can raise again: if stamp expansion raises, the except handler repeats unguarded now.strftime for out, so the fallback may escape and abort independent instances.",
+      "file": "src/tools/backup/runner.py:69",
+      "severity": "medium",
+      "consensus": "2/6",
+      "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+      "classification_evidence": "Needs verification: both Bob providers identify the same unguarded recovery path. Coordinator NUL-plus-percent fixtures did not raise on macOS Python3.13 or3.14. The structural hazard is visible, but the reported NUL trigger is not reproduced here; no repair or invented passing claim.",
+      "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+      "op_id": "fb497c1e9deb-dd6",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "fix now",
+        "commit": "5d8ab708",
+        "evidence": "reports/202610292344-review-20261102.md",
+        "completion_review": "pending; source PRD remains held at historical cap 2"
+      }
+    },
+    {
+      "cycle": 1,
+      "issue": "`_cleanup_tar_process` sends terminate and kill only to the tar pid, although `start_new_session=True` gives tar its own process group (tar_archive.py:502, tar_archive.py:527-533). On Linux, GNU tar `-z` forks gzip, which inherits the stderr pipe. So the post-kill `process.communicate()` with no timeout (tar_archive.py:533) waits for gzip to exit, not the bounded wait promised in the PRD Risks section. `os.killpg` would close this gap",
+      "severity": "⚪",
+      "file": "src/tools/backup/capabilities/tar_archive.py:533",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "type": "deferred_decision",
+      "prd": "00111-backup-parallel-jobs-and-cancellation-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "issue": "Pre-existing Ruff E501 in immutable00105 verification report script line22",
+      "severity": "low",
+      "cycle": 1,
+      "reason": "Unchanged historical audit; preserve immutable evidence. Reconciled from the archived final state and batch report during attended review on 2026-11-02.",
+      "op_id": "20261102-ledger-reconcile-00112",
+      "prd": "00112-backup-live-progress-and-quiet-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "high",
+      "issue": "A bundle whose out lies under source but under no selected item is rejected by the unconditional containment check, blocking the PRD's headline case (source: ~, items .gitconfig/.npmrc, out under ~/.local/backup)",
+      "file": "src/tools/backup/capabilities/tar_archive.py:112",
+      "reason": "requirements ambiguity: pre-existing out-inside-source guard; PRD 00110 restates it unconditionally; needs a new PRD decision",
+      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "promote to backlog PRD 00117",
+        "reason": "A bundle archives only its selected items, so an out under source but outside every item can never re-archive itself; the headline 00109 case must work.",
+        "evidence": "prds/backlog/00117-backup-bundle-out-under-source-v1.md"
+      }
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "medium",
+      "issue": "PRD says WalkResult gains missing; the implementation returns tuple[WalkResult, list[str]] from _select_items instead",
+      "file": "src/tools/backup/capabilities/tar_archive.py:220",
+      "reason": "recorded deviation: behavior-equivalent structural choice",
+      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+fixture git commit exit 128
+error: 1Password: agent returned an error
+
+fatal: failed to write commit object

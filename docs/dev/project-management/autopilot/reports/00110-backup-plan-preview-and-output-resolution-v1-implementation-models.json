@@ -1,0 +1,325 @@
+{
+  "fingerprint": "3baeaf4a31599a806cbd25f0d3e27604f27d3390f810d61c590957c5b62d3c44",
+  "snapshot": {
+    "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+    "cycle": 2,
+    "work_start_sha": "7f4b462f1275c9306d7cc452cb2024a429f2c371",
+    "tasks": [
+      {
+        "id": "1",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "2",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "escalated"
+          },
+          {
+            "attempt": 2,
+            "actual_model": "gpt-6-astra",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "escalated"
+          },
+          {
+            "attempt": 2,
+            "actual_model": "gpt-6-astra",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "4",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "5",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "6",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "7",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
+            "outcome": "completed"
+          },
+          {
+            "attempt": 2,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
+            "outcome": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_1-metadata.jsonl",
+      "line": 2,
+      "sha256": "5304e2a037844a13aeb214285f97f622022c689c883ec90f4ea7f8d88896927b"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_1-metadata.jsonl",
+      "line": 2,
+      "sha256": "21957c7f89265cba3ba4c80640e2650c09e21330f12903ca19ce7865897add7d"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_1-metadata.jsonl",
+      "line": 3,
+      "sha256": "c793700d0af8b6b303f45e724afd659c3d1fb71615eeb5942eb867b087378836"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_2-metadata.jsonl",
+      "line": 2,
+      "sha256": "3345d021a8f5c90a8a115cd8fc1f67c9280b7381ac2be2685d74d7c5853d5dcf"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_2-metadata.jsonl",
+      "line": 2,
+      "sha256": "0fff55117c89cbfc0e0a98a9ed4343be1f86e97163f630943218e7812a92b3c4"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_2-metadata.jsonl",
+      "line": 3,
+      "sha256": "4a2671f39baa01c64f110da735c092a2e9a4af2443cc2f67a05efe258874f465"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/style_2-metadata.jsonl",
+      "line": 2,
+      "sha256": "ad878d98644096c1f67a948e163a4398e8646f919ac22da870aec3ab6d25b288"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6-astra",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/style_2_astra-metadata.jsonl",
+      "line": 2,
+      "sha256": "c4691097db357e7ad60ff03bf937d1a312a5c4170676c2e8357d1ac7e75bc94e"
+    },
+    {
+      "task": "3",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_3-metadata.jsonl",
+      "line": 2,
+      "sha256": "e221bde874f7de5438aed3e082426c9c3ad3f9a61fbd734a4faf11e0c616db07"
+    },
+    {
+      "task": "3",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_3-metadata.jsonl",
+      "line": 2,
+      "sha256": "72227224e1a462adfca4f7e40f6dc9fd87c5ac2ae335b5221666b5c9f9b3fcdb"
+    },
+    {
+      "task": "3",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_3-metadata.jsonl",
+      "line": 3,
+      "sha256": "425abdb1da8d18e170a7058fe457620a65b6cc147c61a04f74ef42a9a873f342"
+    },
+    {
+      "task": "3",
+      "role": "implementation",
+      "model": "gpt-6-astra",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_3_astra-metadata.jsonl",
+      "line": 2,
+      "sha256": "1219137a7bf7825b63b0e751e9b4fe882ea85a337094d876b4e596a228850f6c"
+    },
+    {
+      "task": "4",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_4-metadata.jsonl",
+      "line": 2,
+      "sha256": "b9f0ddeba46aff1792069c169ac0a9b5192592bed82686cdd2cdbf2a11d186c5"
+    },
+    {
+      "task": "4",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/tess_4-metadata.jsonl",
+      "line": 3,
+      "sha256": "ac7c48e4a794ea5fd9bceaa892d208b26e80f94aa6f0d587f2464c8ccbea5789"
+    },
+    {
+      "task": "4",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_4-metadata.jsonl",
+      "line": 2,
+      "sha256": "6f8ea7ca8436708bdfbd999a9a98075ba22e07e14ebfca39e367c8aa82d96c81"
+    },
+    {
+      "task": "4",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_4-metadata.jsonl",
+      "line": 3,
+      "sha256": "dcfe870ebc8c6f8c758d41200ff7dff485fbf2ab7b903590b3ff9e58fc7062ad"
+    },
+    {
+      "task": "5",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-backup-plan-preview-and-output-resolution-v1-evidence/ivan_5-metadata.jsonl",
+      "line": 2,
+      "sha256": "806e91aca61e8bb09c55d32228bfd7a4f464bbae12506ab06587d38149b70904"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess7_contract-metadata.jsonl",
+      "line": 2,
+      "sha256": "0c591eae85ceb617302cea6408fa278fafdc4b73f2c32710f25d6f42a34756f7"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess6-metadata.jsonl",
+      "line": 2,
+      "sha256": "fc59c64ea1d138144b199a7e95fc0c94caad9f845b11a109ecaf799c480730b7"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess6_boundary-metadata.jsonl",
+      "line": 2,
+      "sha256": "e19690fa29858cf3643b94de1bb0bb6e2210618141ba79f358c58635c46dc700"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/tess7-metadata.jsonl",
+      "line": 2,
+      "sha256": "dc209631d72017967b0ea121aff81b09b983829cbac8567459fa176bec84c5d7"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-6-initial-metadata.jsonl",
+      "line": 4,
+      "sha256": "df570d4442a5dfcdd7bb57d1c7db24d081fc65b262053e5285cd7da7410d9bfd"
+    },
+    {
+      "task": "6",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-6-retry-1-metadata.jsonl",
+      "line": 3,
+      "sha256": "a4883ce67ef115e6cbe26cc3c02922221ebf3b993840128130f3c319a2cc87d8"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-metadata.jsonl",
+      "line": 4,
+      "sha256": "94d514490a61c6e9349a6ffe08b2dd48253109f3e87a8ea214b41b05fdef4c22"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-retry-1-metadata.jsonl",
+      "line": 3,
+      "sha256": "1aeee2e14725bf5a087b51e6fc2107ea62e24988f73510f5e39eb55629a21c2f"
+    },
+    {
+      "task": "7",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00110-c1-rework-evidence/ivan-7-review-fix-metadata.jsonl",
+      "line": 6,
+      "sha256": "db251dcf769ee12761a79d5195552a286f2c9e05e65fe3245a22010b934d07f3"
+    }
+  ]
+}

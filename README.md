@@ -107,6 +107,19 @@ All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netsc
 | vuc | Video utility collection |
 | zseq | Zettelsequence utilities |
 
+### backup
+
+`--jobs N` runs up to N instances concurrently (default: 3, minimum: 1).
+Use `--jobs 1` for sequential execution. Instances are submitted by configured order,
+then name; results appear in completion order.
+
+TTY runs show per-instance live progress and elapsed time. Python archives show
+input-byte percentages capped at 99%; system tar shows activity only.
+Use `--quiet` to hide live status and keep final results and summary counts.
+
+Ctrl-C stops new jobs, cancels and joins active writers, preserves completed
+and prior archives, and exits with status 130.
+
 ### dot host-specific config
 
 List per-host paths in the tracked manifest

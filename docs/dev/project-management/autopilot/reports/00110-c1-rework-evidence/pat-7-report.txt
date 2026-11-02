@@ -1,0 +1,13 @@
+CLOSURE | resolved | `plan` and `run` (~119-125) both carry the same source/out parse, `or _ENGINE_PYTHON` fallback and "no source / no out path configured" selection | Both methods now start with `label, engine, source_raw, out_raw, now = _parse_inputs(kwargs)` and `message = _missing_input(source_raw, out_raw)`, then call `_resolve_paths(source_raw, out_raw, now)`. The engine fallback lives only in `_parse_inputs`, so the copies are gone.
+
+CLOSURE | resolved | LOW at tar_archive.py:78-87: `plan` and `run` still duplicate the parse, the engine fallback and the missing-input message selection | Same evidence as above. The old duplicated blocks are deleted and each rule has one definition.
+
+The extraction preserves behavior:
+- **Missing-input order:** `_missing_input` checks `source` first, then `out`, which matches the old message order.
+- **`now` handling:** `now` is still read from `kwargs.get("now")`, as before.
+- **Path normalization:** the lexical `normpath` comment moved intact with the logic into `_resolve_paths`, so the symlink-confinement note is kept.
+- **Call sites:** `label` and `engine` are still passed into `_run_validated`, so that fix stands.
+
+I have no new findings from this delta. The 63-line `_write_archive_system_tar` that the style checker flags is outside this delta, and you report its AST as identical to the task base.
+
+NO FINDINGS

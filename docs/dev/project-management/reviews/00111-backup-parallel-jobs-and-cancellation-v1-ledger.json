@@ -1,0 +1,122 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "low",
+    "issue": "`_cleanup_tar_process` sends terminate and kill only to the tar pid, although `start_new_session=True` gives tar its own process group (tar_archive.py:502, tar_archive.py:527-533). On Linux, GNU tar `-z` forks gzip, which inherits the stderr pipe. So the post-kill `process.communicate()` with no timeout (tar_archive.py:533) waits for gzip to exit, not the bounded wait promised in the PRD Risks section. `os.killpg` would close this gap",
+    "file": "src/tools/backup/capabilities/tar_archive.py:533",
+    "reason": "Reviewed design explicitly limits v1 to the direct child; descendant-held-pipe cleanup is a recorded non-blocker."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Two new system-tar behaviours have no test. First, removing the cancel check between fsync/chmod and `os.replace` (tar_archive.py:475) breaks no test: no test sets the event after `communicate` returns, and the Python engine has `test_cancel_cleans_when_requested_during_fsync` but the system engine has no counterpart. Second, the design's \"any other exception after spawn must stop/reap the live child before returning the invocation-failure fallback\" is untested: no test makes `communicate` raise `OSError` while `poll()` is None",
+    "file": "tests/tools/backup/test_parallel_runner.py:327",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Low The `Runner` class docstring still lists only label, excludes and dry_run as runtime kwargs. It does not mention `jobs`, `now`, `cancel`, completion-order yielding, `interrupted` or `cancelled_names`",
+    "file": "src/tools/backup/runner.py:27",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Low This test runs with `jobs=1`, which makes the order deterministic, but its label check was weakened to set equality. The `zip(results, engines, strict=True)` that follows still depends on result order, so the weaker check hides that dependency. Restore `== list(outputs)`",
+    "file": "tests/tools/backup/test_plan_runner.py:411",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Low The review range contains changes outside PRD 00111: Node 22.23→26.13 in `.mise.toml` and `publish.yml`, and svelte and milkdown bumps in the bim and postup frontends. Confirm they come from separate dependency commits. If not, split them out of this PRD",
+    "file": ".github/workflows/publish.yml:46",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Low The recorded gate covers only pytest. The PRD exit criteria also require clean ruff and mypy runs. The coordinator should run `uv run ruff check src/tools/backup tests/tools/backup` and `uv run mypy src/tools/backup`",
+    "file": "N/A",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The PRD says `cancel` goes to every capability call, but `Runner._plan` calls `capability.plan(**call_kwargs)` without it (runner.py:157-164). This is harmless while plan only reads metadata, but it does not match the PRD wording, and a future capability whose plan does I/O could not be cancelled",
+    "file": "src/tools/backup/runner.py:164",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The Capability protocol docstring still says the runner lets FatalError through and turns only other exceptions into failed steps (capabilities/__init__.py:21-24). `_run_instance` now turns a worker FatalError into a failed step (runner.py:208, asserted by test_failure_isolated_from_other_workers). The code follows the PRD; the docstring is out of date",
+    "file": "src/tools/backup/capabilities/__init__.py:21",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Ctrl-C has no way out when a writer is slow to see `cancel`. `_walk_tree` and `_select_items` check `cancel` only after the whole walk (tar_archive.py:183-184), and the Python engine checks only between members. Every repeated Ctrl-C is swallowed (runner.py:122, runner.py:136, cli.py:50, cli.py:248), so a large or stalled source tree keeps the process alive until SIGTERM or SIGKILL. The docs mention only the per-member delay (docs/source/tools/backup.rst:43-44)",
+    "file": "src/tools/backup/capabilities/tar_archive.py:183",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_report_steps` re-renders the pending step after any KeyboardInterrupt. That includes one that lands after `_report_step` printed and the counter went up but before `pending = None` (cli.py:40-47). A Ctrl-C at that moment prints the step twice and counts it twice in the summary",
+    "file": "src/tools/backup/cli.py:40",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Runner has public members beyond the PRD's exports (`Runner(cfg, dry_run, jobs)`, `Runner.interrupted`): `request_cancel()` and `cancelled_names` (runner.py:45, runner.py:47). The CLI needs them to handle Ctrl-C during rendering and to name unfinished instances, so they add no new feature, but they are undocumented API",
+    "file": "src/tools/backup/runner.py:47",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_run_instance` materializes the capability iterator, so a later `ArchiveCancelled` or exception throws away earlier successful results from a multi-result capability",
+    "file": "src/tools/backup/runner.py:205",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`start_new_session=True` takes tar out of the terminal's process group. SIGHUP (terminal close) or SIGTERM to Python orphans a running tar, which keeps writing and leaves a `.tmp` sibling",
+    "file": "src/tools/backup/capabilities/tar_archive.py:502",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`KeyboardInterrupt` is an asynchronous exception, so a few bytecode positions stay outside the handlers: generator entry before `run`'s try, and the `_execute` loop back-edge after the inner try. An interrupt there escapes the generator. Unyielded results are then dropped and unsubmitted names are left out of `cancelled_names` (\"interrupted: no unfinished instances\")",
+    "file": "src/tools/backup/runner.py:97",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "No test interrupts `_shutdown`'s join a second time to show the cleanup still completes after repeated Ctrl-C",
+    "file": "src/tools/backup/runner.py:131",
+    "reason": "single-voice"
+  }
+]

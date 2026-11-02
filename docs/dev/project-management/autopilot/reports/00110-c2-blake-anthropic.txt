@@ -1,0 +1,43 @@
+I found no Critical, High or Medium issues: the build matches the spec, and I found four Low issues. I read the step result, capability, runner and CLI code, plus the five plan test files, the docs and the CHANGELOG. I compared the capability against its pre-00110 version (`3d4d2cd4`).
+
+**Checks I ran** (I did not rerun the full suite; the test gate shows 6130 passed):
+- **Phase 0/1:** `test_plan.py -k "capability or stamp or walk or plan_entry"` gave 100 passed.
+- **Runner/duplicate:** `-k "runner or duplicate"` gave 4 passed.
+- **CLI:** `-k cli` gave 1 passed.
+- **Lint and types:** `ruff check src/tools/backup tests/tools/backup` is clean, and `mypy src/tools/backup` reports no issues.
+- **Docs:** `--plan` appears in both `backup.rst` and `CHANGELOG.md`.
+
+**Spec points confirmed:**
+- `PlanEntry` has the six fields in order.
+- `TarArchive.plan` checks for fail, then skip, then run, using only metadata calls and never `os.walk`.
+- `Capability` now includes `plan`.
+- `_expand_stamp(pattern, now)` falls back to `datetime.now()` when `now` is absent.
+- `Runner` takes one `now` per `run` or `plan` call.
+- The duplicate check covers all three modes and runs before any instance writes.
+- The plan line format, exit codes and the `--plan`/`--dry-run` message all match the spec.
+- `Runner.run` reuses the plan's failure messages, which are the same messages the old run produced, so I see no change in behavior for other failures.
+
+[BLAKE] ⚪ PRD gap: the spec requires collision detection by `normpath(expanduser(out))` only (src/tools/backup/runner.py:72), so two spellings of one file are not caught: `Notes.tgz` vs `notes.tgz` on macOS's default case-insensitive disk, a symlinked parent folder, or a relative vs absolute `out`. Both instances then write the same file and one archive is silently lost, which is the problem this PRD set out to fix. The limit is documented at docs/source/tools/backup.rst:43. | File: src/tools/backup/runner.py | Task: general
+[BLAKE] ⚪ `replaces` uses `Path.exists()`, which follows symlinks (src/tools/backup/capabilities/tar_archive.py:84). If `out` is a dangling symlink, the line shows no `[replaces existing]` marker, yet `os.replace` will still replace that entry. The spec's metadata rule names `lexists`. | File: src/tools/backup/capabilities/tar_archive.py | Task: 2
+[BLAKE] ⚪ The acceptance commands pass but test less than they appear to. In `test_plan.py`, `-k runner` matches no test (only the duplicate tests run), and `-k cli` selects one test that checks neither the line format nor the mutual-exclusion message. Those checks live in test_plan_cli.py and test_plan_runner.py, which the spec's file layout says should be `test_plan.py`. | File: tests/tools/backup/test_plan.py | Task: 3
+[BLAKE] ⚪ The spec asks for one `Added` line, but CHANGELOG.md:22 and CHANGELOG.md:23 also add `Fixed` entries. They describe fixes made while building the unreleased `--plan` feature, so users will read them as fixes to released behavior. | File: CHANGELOG.md | Task: 5
+
+B1: pass
+B2: pass
+B3: pass
+B4: pass
+B5: pass
+B6: pass
+B7: pass
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass

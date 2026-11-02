@@ -1,0 +1,716 @@
+{
+  "state": {
+    "phase": "paused",
+    "next_phase": "paused",
+    "schema_version": 1,
+    "batch": {
+      "id": "202610292344",
+      "mode": "autopilot",
+      "completed_prds": [],
+      "plugin_versions": {
+        "aegis@buvis-plugins": "0.4.1",
+        "warden@buvis-plugins": "0.14.1"
+      },
+      "parks_consecutive": 0
+    },
+    "prd": "00110-backup-plan-preview-and-output-resolution-v1.md",
+    "catchup_mode": "skipped",
+    "doubt_reviewer": "codex",
+    "consensus_engine": "legacy",
+    "session_model": "sonnet",
+    "rework_cap": 2,
+    "lane": "fast-track",
+    "lane_reason": "uncardable",
+    "lane_effective": "full",
+    "tasks_total": 7,
+    "cycle": 2,
+    "tasks_completed": 7,
+    "phases_completed": [],
+    "replan_count": 0,
+    "contract_card": "step: PRD 00110 cycle 2 review complete; paused host_cap_regression_boundary\ninvariants: all six external review processes finished; provider receipts and cycle 2 implementation audit validate; work_start_sha and all 7 completed task attempts unchanged; no convergence, cap increase or implementation repair\nevidence: reviews/00110-backup-plan-preview-and-output-resolution-v1-review-2.md; reports/00110-c2-python314.log; reports/00110-c2-host-pause.md; reports/00110-c2-decisions.json\nnext: operator recovery must resolve host cap_regression boundary compatibility, then use canonical stall/mint-stubs path; do not rerun reviews or repair past cap merely by resuming\nverification: staged Python 3.13 suite 6130 passed, 0 failed, 16 skipped, 1 xfailed; backup Ruff/mypy pass; Python 3.14 backup 30 failed, 485 passed; cap-check R5 regression 38dfe8ad; current adapter.review_gap null, canonical stall candidate gap review has no recorded cycle artifact",
+    "prd_budget_since": "2026-10-29T23:18:07Z",
+    "design_mode": "skipped",
+    "work_start_sha": "7f4b462f1275c9306d7cc452cb2024a429f2c371",
+    "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+    "tasks": [
+      {
+        "name": "Add PlanEntry record",
+        "description": "Implement Add PlanEntry record.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/step_result.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n- **Outputs**: `PlanEntry(label, source, out, status, reason, replaces)`; `status` is `run`, `skip` or `fail`; `replaces` is true when `out` already exists.\n- **Outputs**: one `console.info` line per instance: `<label>  <status>  <source> -> <out>` followed by `  (<reason>)` when a reason exists and `  [replaces existing]` when `replaces`; exit 1 if any entry is `fail`, else 0.\nsrc/tools/backup/step_result.py              # Maps to: Capability plan (PlanEntry)\n- **Exports**: `PlanEntry` (NamedTuple with the six fields above).\n- New symbols: `PlanEntry`, `plan`, `now`, `replaces`, `test_plan_does_not_walk_tree`, `test_duplicate_outputs_rejected_before_writing`\n- **Exports**: `TarArchive.plan(**kwargs) -> PlanEntry`; `Capability` protocol gains `plan`.\n- **Responsibility**: single `now`, duplicate rejection, `Runner.plan(selected) -> list[PlanEntry]`.\n- [ ] Add `PlanEntry` to `src/tools/backup/step_result.py` (no deps) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k plan_entry -q` passes.\n**Exit Criteria**: `PlanEntry` importable with the six fields.\n\nAcceptance criteria:\n- [ ] Add `PlanEntry` to `src/tools/backup/step_result.py` (no deps) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k plan_entry -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k plan_entry -q` passes.",
+        "files": [
+          "src/tools/backup/step_result.py"
+        ],
+        "blocked_by": [],
+        "estimated_tokens": 59814,
+        "est_context_peak": 79814,
+        "model": "opus",
+        "tier_reason": "contract",
+        "qwen_eligible": false,
+        "qwen_excluded_reason": "tier",
+        "id": "1",
+        "status": "completed",
+        "attempts": [
+          {
+            "attempt": 1,
+            "model": "opus",
+            "outcome": "completed",
+            "review_cycle": null,
+            "cause": null,
+            "implementor": "codex",
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "preflight_outcome": null,
+            "pipeline": "full",
+            "red_check": "skipped:PlanEntry import unavailable before implementation",
+            "self_deslop": "skipped:trivial",
+            "style_gate": "clean",
+            "split_hygiene": "clean",
+            "devon": "exploit_fixed",
+            "devon_exploit": "eight NamedTuple shortcuts passed initial tests",
+            "devon_weak_points": 8,
+            "devon_in_contract": []
+          }
+        ]
+      },
+      {
+        "name": "Add capability plan and timestamp",
+        "description": "Implement Add capability plan and timestamp.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/capabilities/__init__.py, /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/capabilities/tar_archive.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n\n- **Description**: Each capability can describe one instance without archiving.\n- **Inputs**: the same kwargs as `run` (`source`, `out`, `items`, `engine`, `label`, `now`).\n- **Outputs**: `PlanEntry(label, source, out, status, reason, replaces)`; `status` is `run`, `skip` or `fail`; `replaces` is true when `out` already exists.\n- **Behavior**: `fail` for unknown engine, `out` inside `source`, `items` invalid per PRD 00109, or `source` not a directory; `skip` for a missing `source` (`source not found: <path>`) or when no selected item exists (`lexists`); otherwise `run`. Uses `lexists`/`is_dir`/`stat` only; never `os.walk`.\n\n\n\n- **Description**: One `now` per run feeds every stamp expansion.\n- **Inputs**: `now: datetime`.\n- **Outputs**: `_expand_stamp(pattern, now)` uses it; when `now` is absent it falls back to `datetime.now()`.\n- **Behavior**: `Runner` takes `now = datetime.now()` once per `run`/`plan` call and passes it as a kwarg.\n\n\n\nAcceptance criteria:\n- [ ] Add `TarArchive.plan`, the `plan` member of `Capability`, and the `now` parameter of `_expand_stamp` (depends on: Phase 0) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k \"capability or stamp or walk\" -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k \"capability or stamp or walk\" -q` passes.",
+        "files": [
+          "src/tools/backup/capabilities/__init__.py",
+          "src/tools/backup/capabilities/tar_archive.py"
+        ],
+        "blocked_by": [
+          1
+        ],
+        "estimated_tokens": 64879,
+        "est_context_peak": 84879,
+        "model": "opus",
+        "tier_reason": "contract",
+        "qwen_eligible": false,
+        "qwen_excluded_reason": "tier",
+        "id": "2",
+        "status": "completed",
+        "attempts": [
+          {
+            "model": "opus",
+            "review_cycle": null,
+            "implementor": "codex",
+            "actual_provider": "openai",
+            "preflight_outcome": null,
+            "split_hygiene": "clean",
+            "devon": "exploit_fixed",
+            "devon_exploit": "eight capability/protocol/stamp shortcuts passed initial tests; all strengthened",
+            "devon_weak_points": 8,
+            "devon_in_contract": [],
+            "attempt": 1,
+            "outcome": "escalated",
+            "actual_model": "gpt-6.1-sol",
+            "cause": "style_commit_lint_failure",
+            "pipeline": "full",
+            "self_deslop": "noop",
+            "style_gate": "failed:TarArchive.run 67 lines; first style extraction introduced PLR0913/PLR0917"
+          },
+          {
+            "model": "opus",
+            "review_cycle": null,
+            "implementor": "codex",
+            "actual_provider": "openai",
+            "preflight_outcome": null,
+            "split_hygiene": "clean",
+            "devon": "exploit_fixed",
+            "devon_exploit": "eight capability/protocol/stamp shortcuts passed initial tests; all strengthened",
+            "devon_weak_points": 8,
+            "devon_in_contract": [],
+            "attempt": 2,
+            "outcome": "completed",
+            "actual_model": "gpt-6-astra",
+            "cause": null,
+            "pipeline": "lean",
+            "escalation_reason": "gate_failure",
+            "escalated_from": "opus",
+            "self_deslop": "noop",
+            "style_gate": "fixed:de84f6f1"
+          }
+        ]
+      },
+      {
+        "name": "Add Runner plan and collision rejection",
+        "description": "Implement Add Runner plan and collision rejection.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/runner.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n\n- **Description**: One `now` per run feeds every stamp expansion.\n- **Inputs**: `now: datetime`.\n- **Outputs**: `_expand_stamp(pattern, now)` uses it; when `now` is absent it falls back to `datetime.now()`.\n- **Behavior**: `Runner` takes `now = datetime.now()` once per `run`/`plan` call and passes it as a kwarg.\n\n#### Feature: Duplicate output rejection\n- **Description**: Two selected instances may not resolve to one output path.\n- **Inputs**: plan entries of the selected instances.\n- **Outputs**: for each group sharing a resolved `out`, every instance in the group yields `StepResult(name, success=False, message=\"output '<out>' is also the output of '<other names, comma separated, sorted>'\")` and is not executed; the others run.\n- **Behavior**: compared as `os.path.normpath` of the expanded path with `~` expanded; applies to `run`, `--dry-run` and `--plan`.\n\n\n\nAcceptance criteria:\n- [ ] Add `Runner.plan`, the single per-run `now`, and duplicate rejection in `Runner.run` (depends on: Phase 0) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k \"runner or duplicate\" -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k \"runner or duplicate\" -q` passes.",
+        "files": [
+          "src/tools/backup/runner.py"
+        ],
+        "blocked_by": [
+          2
+        ],
+        "estimated_tokens": 59965,
+        "est_context_peak": 79965,
+        "model": "opus",
+        "tier_reason": "contract",
+        "qwen_eligible": false,
+        "qwen_excluded_reason": "tier",
+        "id": "3",
+        "status": "completed",
+        "attempts": [
+          {
+            "model": "opus",
+            "review_cycle": null,
+            "implementor": "codex",
+            "actual_provider": "openai",
+            "preflight_outcome": null,
+            "self_deslop": "skipped:trivial",
+            "split_hygiene": "clean",
+            "attempt": 1,
+            "outcome": "escalated",
+            "actual_model": "gpt-6.1-sol",
+            "cause": "commit_type_check_failure",
+            "pipeline": "full",
+            "style_gate": "clean",
+            "devon": "exploit_fixed",
+            "devon_exploit": "eight runner shortcuts passed; all strengthened",
+            "devon_weak_points": 8,
+            "devon_in_contract": []
+          },
+          {
+            "model": "opus",
+            "review_cycle": null,
+            "implementor": "codex",
+            "actual_provider": "openai",
+            "preflight_outcome": null,
+            "self_deslop": "skipped:trivial",
+            "split_hygiene": "clean",
+            "attempt": 2,
+            "outcome": "completed",
+            "actual_model": "gpt-6-astra",
+            "cause": null,
+            "pipeline": "lean",
+            "escalation_reason": "gate_failure",
+            "escalated_from": "opus",
+            "style_gate": "clean"
+          }
+        ]
+      },
+      {
+        "name": "Add CLI plan flag",
+        "description": "Implement Add CLI plan flag.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/cli.py\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\n\n- **Description**: Prints the plan table and exits without writing.\n- **Inputs**: `--plan`, plus the usual `--only` and `--tag` selection and the `--source`/`--out` overrides.\n- **Outputs**: one `console.info` line per instance: `<label>  <status>  <source> -> <out>` followed by `  (<reason>)` when a reason exists and `  [replaces existing]` when `replaces`; exit 1 if any entry is `fail`, else 0.\n- **Behavior**: `--plan` with `--dry-run` fails: `--plan and --dry-run are mutually exclusive` (exit 1). `--dry-run` is unchanged.\n\n\n\nAcceptance criteria:\n- [ ] Add `--plan` to `src/tools/backup/cli.py` with the mutual-exclusion check (depends on: Phase 1) - Acceptance: `uv run pytest tests/tools/backup/test_plan.py -k cli -q` passes.\n\nVerify: `uv run pytest tests/tools/backup/test_plan.py -k cli -q` passes.",
+        "files": [
+          "src/tools/backup/cli.py"
+        ],
+        "blocked_by": [
+          3
+        ],
+        "estimated_tokens": 62032,
+        "est_context_peak": 82032,
+        "model": "sonnet",
+        "tier_reason": "default",
+        "qwen_eligible": true,
+        "id": "4",
+        "status": "completed",
+        "attempts": [
+          {
+            "attempt": 1,
+            "model": "sonnet",
+            "outcome": "completed",
+            "review_cycle": null,
+            "cause": null,
+            "implementor": "codex",
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "preflight_outcome": null,
+            "pipeline": "lean",
+            "self_deslop": "skipped:trivial",
+            "style_gate": "clean",
+            "split_hygiene": "clean"
+          }
+        ]
+      },
+      {
+        "name": "Document plan preview",
+        "description": "Implement Document plan preview.\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/docs/source/tools/backup.rst, /Users/bob/git/src/github.com/buvis/gems/CHANGELOG.md\n\nReuse: existing backup records, capability, runner and console conventions.\n\nContract (verbatim):\nDocument `--plan` in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md`\n\nAcceptance criteria:\n- [ ] Document `--plan` in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md` (depends on: Phase 1) - Acceptance: `rg -c \"\\-\\-plan\" docs/source/tools/backup.rst CHANGELOG.md` prints a count of at least 1 for each file.\n\nVerify: `rg -c \"\\-\\-plan\" docs/source/tools/backup.rst CHANGELOG.md` prints a count of at least 1 for each file.",
+        "files": [
+          "docs/source/tools/backup.rst",
+          "CHANGELOG.md"
+        ],
+        "blocked_by": [
+          4
+        ],
+        "estimated_tokens": 85826,
+        "est_context_peak": 105826,
+        "model": "sonnet",
+        "tier_reason": "default",
+        "qwen_eligible": false,
+        "qwen_excluded_reason": "files",
+        "id": "5",
+        "status": "completed",
+        "attempts": [
+          {
+            "attempt": 1,
+            "model": "sonnet",
+            "outcome": "completed",
+            "review_cycle": null,
+            "cause": null,
+            "implementor": "codex",
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "preflight_outcome": null,
+            "pipeline": "lean",
+            "red_check": "n/a:docs-only-task",
+            "self_deslop": "skipped:trivial",
+            "style_gate": "clean",
+            "split_hygiene": "skipped:no-tests"
+          }
+        ]
+      },
+      {
+        "name": "[D1] src/tools/backup/runner.py",
+        "description": "### Findings (verbatim)\n- \ud83d\udfe0 src/tools/backup/runner.py:36: `Runner.run` now calls `_plan`/`capability.plan` before `_run_instance` and outside its `try/except` (src/tools/backup/runner.py:36). Any OSError from the new metadata checks escapes the generator: `out.exists()`, `is_dir`, `is_symlink`, or a RuntimeError from `resolve` on a symlink loop. `_run_plan` in src/tools/backup/cli.py catches only `FatalError`, so the user sees a raw traceback and every other selected instance is skipped. I reproduced it with one instance whose `out` sits under a chmod-000 dir, plus one good instance. At base 7f4b462 that step fails (\"bad failed: [Errno 13] \u2026\") and the good instance still archives. At HEAD the run dies with PermissionError and no archive is written. `--plan` crashes the same way. No test covers this. Fix: catch per instance in `_plan` and turn the error into a `fail` entry, the same way `_run_instance` handles it. (found by: ALICE, BLAKE, BOB)\n- \u26aa src/tools/backup/runner.py:62: `_plan` tests `capability is None` twice (runner.py:51 and :62, the second with `continue`). Move `outputs.setdefault(...)` into the `else` branch and drop the second check. Additional wording: `_plan` computes `os.path.normpath(os.path.expanduser(entry.out))` twice per entry, and it checks `capability is None` twice. Computing the key once in the first loop removes both repeats. (found by: ALICE, BOB)\n\n### Acceptance criteria\n- Every quoted finding no longer reproduces.\n- Add regression tests for the quoted behavioral failures before implementing fixes.\n- Preserve FatalError propagation, per-instance failure reporting, independent-instance execution, and duplicate-output safety.\n- Run the normal work pipeline, required quality gates, and independent per-task review.\n",
+        "model": "sonnet",
+        "id": "6",
+        "status": "completed",
+        "attempts": [
+          {
+            "attempt": 1,
+            "model": "sonnet",
+            "outcome": "completed",
+            "review_cycle": 1,
+            "cause": null,
+            "implementor": "claude",
+            "actual_provider": "anthropic",
+            "actual_model": "claude-sonnet-5-5",
+            "preflight_outcome": null,
+            "qwen_excluded_reason": "files",
+            "pipeline": "lean",
+            "self_deslop": "skipped:trivial",
+            "style_gate": "failed:FUNCTION | tests/tools/backup/test_plan_errors.py:185 | test_runner_rejects_timestamp_output_collisions_when_source_metadata_fails | 52 lines",
+            "split_hygiene": "clean"
+          }
+        ]
+      },
+      {
+        "name": "[D1] src/tools/backup/capabilities/tar_archive.py",
+        "description": "### Findings (verbatim)\n- \ud83d\udfe1 src/tools/backup/capabilities/tar_archive.py:80: `TarArchive.plan` resolves `engine` without `run`'s `or _ENGINE_PYTHON` fallback. `engine: \"\"` now plans as `fail \"unknown engine ''\"`, and `Runner.run` stops on any plan `fail`. So a config that base archived with python-tarfile (reproduced) now fails in run and in `--dry-run`. That breaks the PRD rule \"`--dry-run` is unchanged\". (found by: ALICE, BLAKE, BOB)\n- \ud83d\udfe1 src/tools/backup/capabilities/tar_archive.py:78: `plan` lacks `run`'s \"no source configured\" / \"no out path configured\" guard. An empty `source` plans as `run` with source `.` (the cwd) and exits 0, while the real run fails (reproduced). An empty `out` resolves to `.` with `[replaces existing]`, and two empty outs get reported as a duplicate collision. The preview does not match what a run would do. (found by: ALICE, BLAKE, BOB)\n- \u26aa src/tools/backup/capabilities/tar_archive.py:161: `_run_validated` re-reads `label` and `engine` from kwargs (tar_archive.py:161-162), though `run` already computed both. Pass them as parameters instead. Additional wording: `_run_validated` parses `label` and `engine` from `kwargs` again, though `run()` already parsed them. `plan()` and `run()` also repeat the same source/out/`cast(now)` setup. This duplication is how the engine `\"\"` drift happened. (found by: ALICE, BOB)\n\n### Acceptance criteria\n- Every quoted finding no longer reproduces.\n- Add regression tests for the quoted behavioral failures before implementing fixes.\n- Preserve FatalError propagation, per-instance failure reporting, independent-instance execution, and duplicate-output safety.\n- Run the normal work pipeline, required quality gates, and independent per-task review.\n",
+        "model": "sonnet",
+        "id": "7",
+        "status": "completed",
+        "attempts": [
+          {
+            "attempt": 1,
+            "model": "sonnet",
+            "outcome": "completed",
+            "review_cycle": 1,
+            "cause": null,
+            "implementor": "claude",
+            "actual_provider": "anthropic",
+            "actual_model": "claude-sonnet-5-5",
+            "preflight_outcome": null,
+            "qwen_excluded_reason": "files",
+            "pipeline": "lean",
+            "self_deslop": "skipped:trivial",
+            "style_gate": "clean",
+            "split_hygiene": "clean"
+          },
+          {
+            "attempt": 2,
+            "model": "sonnet",
+            "outcome": "completed",
+            "review_cycle": 1,
+            "cause": null,
+            "implementor": "claude",
+            "actual_provider": "anthropic",
+            "actual_model": "claude-sonnet-5-5",
+            "preflight_outcome": null,
+            "qwen_excluded_reason": "files",
+            "pipeline": "lean",
+            "self_deslop": "skipped:trivial",
+            "style_gate": "failed:FUNCTION | src/tools/backup/capabilities/tar_archive.py:415 | _write_archive_system_tar | 63 lines; pre-existing unchanged AST confirmed at task base",
+            "split_hygiene": "clean"
+          }
+        ]
+      }
+    ],
+    "autonomous_decisions": [
+      {
+        "type": "assumed-ambiguity",
+        "question": "How are duplicate outputs represented in Runner.plan and which output spelling appears in collision messages?",
+        "assumption": "PlanEntry.status is fail; reason is the exact StepResult duplicate message; diagnostics use expanduser+normpath output. Other PlanEntry fields retain capability plan values. This satisfies the PRD both-fail plan scenario."
+      },
+      {
+        "issue": "R1: `Runner.run` now calls `_plan`/`capability.plan` before `_run_instance` and outside its `try/except` (src/tools/backup/runner.py:36). Any OSError from the new metadata checks escapes the generator: `out.exists()`, `is_dir`, `is_symlink`, or a RuntimeError from `resolve` on a symlink loop. `_run_plan` in src/tools/backup/cli.py catches only `FatalError`, so the user sees a raw traceback and every other selected instance is skipped. I reproduced it with one instance whose `out` sits under a chmod-000 dir, plus one good instance. At base 7f4b462 that step fails (\"bad failed: [Errno 13] \u2026\") and the good instance still archives. At HEAD the run dies with PermissionError and no archive is written. `--plan` crashes the same way. No test covers this. Fix: catch per instance in `_plan` and turn the error into a `fail` entry, the same way `_run_instance` handles it.",
+        "severity": "high",
+        "cycle": 1,
+        "action": "fix",
+        "reason": "bounded supported defect or repeated simplification; queue first-pass regression follow-up"
+      },
+      {
+        "issue": "R2: `TarArchive.plan` resolves `engine` without `run`'s `or _ENGINE_PYTHON` fallback. `engine: \"\"` now plans as `fail \"unknown engine ''\"`, and `Runner.run` stops on any plan `fail`. So a config that base archived with python-tarfile (reproduced) now fails in run and in `--dry-run`. That breaks the PRD rule \"`--dry-run` is unchanged\".",
+        "severity": "medium",
+        "cycle": 1,
+        "action": "fix",
+        "reason": "bounded supported defect or repeated simplification; queue first-pass regression follow-up"
+      },
+      {
+        "issue": "R3: `plan` lacks `run`'s \"no source configured\" / \"no out path configured\" guard. An empty `source` plans as `run` with source `.` (the cwd) and exits 0, while the real run fails (reproduced). An empty `out` resolves to `.` with `[replaces existing]`, and two empty outs get reported as a duplicate collision. The preview does not match what a run would do.",
+        "severity": "medium",
+        "cycle": 1,
+        "action": "fix",
+        "reason": "bounded supported defect or repeated simplification; queue first-pass regression follow-up"
+      },
+      {
+        "issue": "R4: Simplification: `plan` copies `run`'s pre-walk checks one by one: the engine check with the message repeated word for word at tar_archive.py:87 and :136, the source is_dir/exists branch, the containment check, and `_normalize_items`. That copy is how the two drifts above crept in. Move the checks into one shared validator that returns (status, reason) and call it from both `plan` and `run`.",
+        "severity": "medium",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "single-voice"
+      },
+      {
+        "issue": "R5: Simplification: `Runner._plan` (runner.py:54-59) and `_run_instance` (runner.py:82-88) build the same `call_kwargs` dict; only `dry_run` differs. Use one `_call_kwargs(name, instance, now)` helper and add `dry_run` at the call site.",
+        "severity": "medium",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "single-voice"
+      },
+      {
+        "issue": "R6: `_plan` tests `capability is None` twice (runner.py:51 and :62, the second with `continue`). Move `outputs.setdefault(...)` into the `else` branch and drop the second check. Additional wording: `_plan` computes `os.path.normpath(os.path.expanduser(entry.out))` twice per entry, and it checks `capability is None` twice. Computing the key once in the first loop removes both repeats.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "fix",
+        "reason": "bounded supported defect or repeated simplification; queue first-pass regression follow-up"
+      },
+      {
+        "issue": "R7: `_run_validated` re-reads `label` and `engine` from kwargs (tar_archive.py:161-162), though `run` already computed both. Pass them as parameters instead. Additional wording: `_run_validated` parses `label` and `engine` from `kwargs` again, though `run()` already parsed them. `plan()` and `run()` also repeat the same source/out/`cast(now)` setup. This duplication is how the engine `\"\"` drift happened.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "fix",
+        "reason": "bounded supported defect or repeated simplification; queue first-pass regression follow-up"
+      },
+      {
+        "issue": "R8: The test builds its expected `reason` by calling `TarArchive().plan(...)`, the code under test, so it can never catch a wrong reason on a `run` row. Assert `\"\"` instead.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "single-voice"
+      },
+      {
+        "issue": "R9: The duplicate check compares paths as text only, as the spec says. It misses two names for one file on case-insensitive APFS (`~/Backup/x.tgz` vs `~/backup/x.tgz`) and a relative vs absolute spelling of the same file (`x.tgz` vs `$PWD/x.tgz`). So two instances can still write one archive and race. The docs mention only symlinks as not resolved.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "specified lexical normpath behavior; broader file identity is outside PRD scope"
+      },
+      {
+        "issue": "R10: `replaces` uses `out.exists()`, which follows symlinks. A dangling symlink at `out` reports `replaces=False` even though `os.replace` will overwrite it. The rest of plan uses `lexists`, so this is inconsistent.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "single-voice"
+      },
+      {
+        "issue": "R11: The `_run_plan` docstring still says it only runs and renders steps. It does not mention the `plan_only` branch that prints plan rows and never executes anything.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "single-voice"
+      },
+      {
+        "issue": "R12: Unconfirmed whether README.md documents backup CLI flags. The capsule invariant says every CLI change updates README.md, but only backup.rst and CHANGELOG.md were touched.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "README lists the tool only; it does not enumerate backup flags; rg inspection refuted missing flag documentation"
+      },
+      {
+        "issue": "R13: Known limitation: the plan's item check ignores exclusions. If every present item is excluded, the plan shows `run` but the actual run skips. The PRD specifies a lexists-only check.",
+        "severity": "low",
+        "cycle": 1,
+        "action": "discard",
+        "reason": "single-voice"
+      },
+      {
+        "cycle": 1,
+        "issue": "`Runner.run` now calls `_plan`/`capability.plan` before `_run_instance` and outside its `try/except` (src/tools/backup/runner.py:36). Any OSError from the new metadata checks escapes the generator: `out.exists()`, `is_dir`, `is_symlink`, or a RuntimeError from `resolve` on a symlink loop. `_run_plan` in src/tools/backup/cli.py catches only `FatalError`, so the user sees a raw traceback and every other selected instance is skipped. I reproduced it with one instance whose `out` sits under a chmod-000 dir, plus one good instance. At base 7f4b462 that step fails (\"bad failed: [Errno 13] \u2026\") and the good instance still archives. At HEAD the run dies with PermissionError and no archive is written. `--plan` crashes the same way. No test covers this. Fix: catch per instance in `_plan` and turn the error into a `fail` entry, the same way `_run_instance` handles it.",
+        "severity": "high",
+        "action": "auto-fixed",
+        "reason": "fixed by review-close"
+      },
+      {
+        "cycle": 1,
+        "issue": "`TarArchive.plan` resolves `engine` without `run`'s `or _ENGINE_PYTHON` fallback. `engine: \"\"` now plans as `fail \"unknown engine ''\"`, and `Runner.run` stops on any plan `fail`. So a config that base archived with python-tarfile (reproduced) now fails in run and in `--dry-run`. That breaks the PRD rule \"`--dry-run` is unchanged\".",
+        "severity": "medium",
+        "action": "auto-fixed",
+        "reason": "fixed by review-close"
+      },
+      {
+        "cycle": 1,
+        "issue": "`plan` lacks `run`'s \"no source configured\" / \"no out path configured\" guard. An empty `source` plans as `run` with source `.` (the cwd) and exits 0, while the real run fails (reproduced). An empty `out` resolves to `.` with `[replaces existing]`, and two empty outs get reported as a duplicate collision. The preview does not match what a run would do.",
+        "severity": "medium",
+        "action": "auto-fixed",
+        "reason": "fixed by review-close"
+      },
+      {
+        "cycle": 1,
+        "issue": "`_plan` tests `capability is None` twice (runner.py:51 and :62, the second with `continue`). Move `outputs.setdefault(...)` into the `else` branch and drop the second check. Additional wording: `_plan` computes `os.path.normpath(os.path.expanduser(entry.out))` twice per entry, and it checks `capability is None` twice. Computing the key once in the first loop removes both repeats.",
+        "severity": "low",
+        "action": "auto-fixed",
+        "reason": "fixed by review-close"
+      },
+      {
+        "cycle": 1,
+        "issue": "`_run_validated` re-reads `label` and `engine` from kwargs (tar_archive.py:161-162), though `run` already computed both. Pass them as parameters instead. Additional wording: `_run_validated` parses `label` and `engine` from `kwargs` again, though `run()` already parsed them. `plan()` and `run()` also repeat the same source/out/`cast(now)` setup. This duplication is how the engine `\"\"` drift happened.",
+        "severity": "low",
+        "action": "auto-fixed",
+        "reason": "fixed by review-close"
+      },
+      {
+        "cycle": 2,
+        "issue": "Simplification: in `plan`'s missing-input branch, `out_text = _expand_stamp(out_raw, now) if out_raw else \"\"` has a redundant conditional, because `_expand_stamp(\"\")` already returns `\"\"`. Use `out_text = _expand_stamp(out_raw, now)`.",
+        "severity": "medium",
+        "action": "discard",
+        "reason": "single-voice"
+      },
+      {
+        "cycle": 2,
+        "issue": "Missing sources bypass item validation and output containment checks: `items=['../escape']` or an output inside the missing source produces `skip` and exit 0, although the spec requires `fail`.",
+        "severity": "medium",
+        "action": "discard",
+        "reason": "single-voice; fixtures confirm missing source skips before item/containment validation. No write occurs; existing missing-source behavior and PRD status precedence are ambiguous."
+      },
+      {
+        "cycle": 2,
+        "issue": "The acceptance commands pass but test less than they appear to. In `test_plan.py`, `-k runner` matches no test (only the duplicate tests run), and `-k cli` selects one test that checks neither the line format nor the mutual-exclusion message. Those checks live in test_plan_cli.py and test_plan_runner.py, which the spec's file layout says should be `test_plan.py`.",
+        "severity": "low",
+        "action": "discard",
+        "reason": "single-voice; required assertions exist in dedicated test_plan_cli.py/test_plan_runner.py and whole backup suite covers them."
+      },
+      {
+        "cycle": 2,
+        "issue": "2 touched test(s) pass against the pre-change code: test_runner_keeps_empty_selection_empty_without_planning_unselected_instances. Bob also notes duplicated empty-selection tests across three files.",
+        "severity": "medium",
+        "action": "discard",
+        "reason": "single-voice reviewer; mechanical replay is retained explicitly. Empty selection is an unchanged run/dry-run contract, so passing base is expected and does not prove the plan variant tautological."
+      },
+      {
+        "cycle": 2,
+        "issue": "26 touched test(s) pass against the pre-change code: test_empty_paths_fail_without_using_cwd_or_changing_artifacts +20 more.",
+        "severity": "medium",
+        "action": "discard",
+        "reason": "Behavior-preserving regression guards: PRD requires dry-run unchanged; these cases preserve base input/engine/fatal behavior and target cycle1 drift. Mechanical fact retained, not silently dropped."
+      }
+    ],
+    "codex_probe": {
+      "batch_id": "202610292344",
+      "verdict": "unhealthy",
+      "backend": "codex",
+      "detail": "hook_doctor: missing /Users/bob/.codex/codex-hook",
+      "hook_doctor": "4 ok, 7 stale, 5 broken",
+      "checked_at": "2026-10-30T00:47:58.010495+00:00"
+    },
+    "review_lenses": {
+      "consensus": "done",
+      "blind": "done",
+      "doubt": "done"
+    },
+    "rework_task_ids": [],
+    "doubts_rubric_verdicts": [
+      {
+        "rule_id": "D1",
+        "verdict": "pass",
+        "source": "anthropic"
+      },
+      {
+        "rule_id": "D2",
+        "verdict": "pass",
+        "source": "anthropic"
+      },
+      {
+        "rule_id": "D3",
+        "verdict": "pass",
+        "source": "anthropic"
+      },
+      {
+        "rule_id": "D4",
+        "verdict": "pass",
+        "source": "anthropic"
+      },
+      {
+        "rule_id": "D5",
+        "verdict": "pass",
+        "source": "anthropic"
+      },
+      {
+        "rule_id": "D1",
+        "verdict": "pass",
+        "source": "openai"
+      },
+      {
+        "rule_id": "D2",
+        "verdict": "pass",
+        "source": "openai"
+      },
+      {
+        "rule_id": "D3",
+        "verdict": "pass",
+        "source": "openai"
+      },
+      {
+        "rule_id": "D4",
+        "verdict": "pass",
+        "source": "openai"
+      },
+      {
+        "rule_id": "D5",
+        "verdict": "pass",
+        "source": "openai"
+      }
+    ],
+    "applied_review_batches": [
+      "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-1.md::decision-gate"
+    ],
+    "review_cycles": [
+      {
+        "cycle": 1,
+        "review_file": "docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-1.md",
+        "agents": {
+          "alice": "available",
+          "blake": "available",
+          "bob": "available",
+          "carl": "disabled"
+        },
+        "issues_found": 13,
+        "follow_up_tasks": 2,
+        "deferred": 0,
+        "recurring_issues": [],
+        "decision_gate": "queued rework tasks 6 and 7; no convergence; original task provenance preserved",
+        "actual_review_provider": "anthropic",
+        "actual_review_model": "claude-opus-5-5",
+        "actual_review_effort": "xhigh"
+      },
+      {
+        "cycle": 2,
+        "review_file": "docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-2.md",
+        "agents": {
+          "alice": "available",
+          "blake": "available",
+          "bob": "available",
+          "carl": "disabled"
+        },
+        "issues_found": 12,
+        "follow_up_tasks": 0,
+        "deferred": 7,
+        "recurring_issues": [],
+        "decision_gate": "Unresolved HIGH R5; cap-check confirms regression 38dfe8ad at cycle2/cap2. Required cap_regression stall blocked by host boundary resetting required review-cycle evidence; precise host pause, no repair or cap increase.",
+        "actual_review_providers": [
+          "anthropic",
+          "openai"
+        ]
+      }
+    ],
+    "deferred_decisions": [
+      {
+        "type": "cap-overflow",
+        "cycle": 2,
+        "ref": "R1",
+        "issue": "An empty source with an existing output returns replaces=False; the missing-input branch also leaves a configured ~/out unexpanded, so the failed plan omits the replacement marker.",
+        "file": "src/tools/backup/capabilities/tar_archive.py:82",
+        "severity": "low",
+        "consensus": "4/6",
+        "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+        "classification_evidence": "Confirmed with existing output fixture; PRD defines replaces by output existence independently of source validity."
+      },
+      {
+        "type": "cap-overflow",
+        "cycle": 2,
+        "ref": "R2",
+        "issue": "Two new CHANGELOG Fixed entries describe bugs in the unreleased --plan code from this PRD; fold them into its Added entry.",
+        "file": "CHANGELOG.md:22",
+        "severity": "medium",
+        "consensus": "3/6",
+        "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+        "classification_evidence": "CHANGELOG Unreleased contains the feature and both development-time fixes; supported repeated editorial finding."
+      },
+      {
+        "type": "cap-overflow",
+        "cycle": 2,
+        "ref": "R3",
+        "issue": "The new test_runner_rejects_timestamp_output_collisions_when_source_metadata_fails is 52 lines, exceeding the 50-line function limit.",
+        "file": "tests/tools/backup/test_plan_errors.py:185",
+        "severity": "medium",
+        "consensus": "3/6",
+        "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+        "classification_evidence": "Computed AST block confirms52 lines; source finding is supported."
+      },
+      {
+        "type": "cap-overflow",
+        "cycle": 2,
+        "ref": "R4",
+        "issue": "PlanEntry tests redundantly verify autogenerated NamedTuple indexing, slicing, _make, _asdict, _replace, mutation, keyword order and constructor arity; retain concise six-field contract checks.",
+        "file": "tests/tools/backup/test_plan.py:94",
+        "severity": "medium",
+        "consensus": "3/6",
+        "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+        "classification_evidence": "Read TestPlanEntry: ordered field and named-field contract assertions already cover the requested record; repeated stdlib behavior tests add no backup behavior."
+      },
+      {
+        "type": "cap-overflow",
+        "cycle": 2,
+        "ref": "R5",
+        "issue": "30 of the new parametrized cases fail on Python 3.14, and CI's `tools` matrix runs 3.14 on both ubuntu and macOS. `_fail_metadata` injects errors by patching `Path.stat`. On 3.14, `Path.exists()` and `Path.is_dir()` call `os.path.exists`/`os.path.isdir` and never reach `Path.stat`, so the patched error never fires in `plan`. Reproduced with `uv run --python 3.14 pytest tests/tools/backup`: 30 failed, 485 passed. The failures are all of `test_runner_isolates_metadata_failures_and_preserves_independent_instances` and all of `test_runner_propagates_the_original_fatal_metadata_error`. The same command on 3.11 passes 515/515, and the gate ran only 3.13. Fix: inject the error through a seam that works on every version, for example wrap `TarArchive.plan` to raise for the blocked labels, since the runner's per-instance isolation is what these tests check.",
+        "file": "tests/tools/backup/test_plan_errors.py:30",
+        "severity": "high",
+        "consensus": "2/6",
+        "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+        "classification_evidence": "Reproduced on installed Python3.14.10:30failed485passed; CI explicitly includes3.14. Bob's3.13+ wording is overbroad: staged3.13 gate passes. HIGH remains unresolved and blocks convergence at cap2."
+      },
+      {
+        "type": "cap-overflow",
+        "cycle": 2,
+        "ref": "R6",
+        "issue": "The exception fallback duplicates tar-archive output expansion in generic Runner, stringifies non-string out values differently, and drops the configured source from failed plan rows.",
+        "file": "src/tools/backup/runner.py:69",
+        "severity": "low",
+        "consensus": "2/6",
+        "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+        "classification_evidence": "Source runner.py:69-70 confirms bare strftime,str conversion and source empty string; bounded repeated fallback metadata finding."
+      },
+      {
+        "type": "cap-overflow",
+        "cycle": 2,
+        "ref": "R7",
+        "issue": "Recovery can raise again: if stamp expansion raises, the except handler repeats unguarded now.strftime for out, so the fallback may escape and abort independent instances.",
+        "file": "src/tools/backup/runner.py:69",
+        "severity": "medium",
+        "consensus": "2/6",
+        "reason": "rework cap reached with this finding unresolved; required cap_regression stall awaits host boundary repair",
+        "classification_evidence": "Needs verification: both Bob providers identify the same unguarded recovery path. Coordinator NUL-plus-percent fixtures did not raise on macOS Python3.13 or3.14. The structural hazard is visible, but the reported NUL trigger is not reproduced here; no repair or invented passing claim."
+      }
+    ],
+    "pause_reason": {
+      "site": "host_cap_regression_boundary",
+      "detail": "Cycle 2/cap 2: R5 Python 3.14 tests 30 failed/485 passed; cap-check attributes regression to 38dfe8ad. Canonical cap_regression stall resets review_cycles; installed host adapter.review_gap then rejects review exit: review has no recorded cycle artifact. Required stall cannot be adapted without changing host. Review/receipts/audits/tasks preserved; no stall, repair or cap increase."
+    }
+  },
+  "review_sha256": "f18c76805a3c5cdc04ea0d12dddeaaa9bf15db89576e919ac21b5b98a4804b1d",
+  "prd_sha256": "1d3061f2cf4931f7e2500b79b09f71c26557945fd1320d8e9253c92fa314108e",
+  "deferred_before": {
+    "batch_id": "202610292344",
+    "items": [
+      {
+        "type": "stall",
+        "site": "fast_track_blocked",
+        "detail": "fast-track/00107-backup-per-instance-excludes-v1-c1: suite red: 5754 passed, 3 failed, 16 skipped, 1 xfailed, exit 1; failures in klyreon Git identity and postup repository discovery; backup 142 passed; commits 74e19c78 and 182e9bd3 retained; see reports/00107-backup-per-instance-excludes-v1-build.md and build-state/model audits; completion review not run",
+        "op_id": "b1aea81bd8b5",
+        "prd": "00107-backup-per-instance-excludes-v1.md"
+      },
+      {
+        "type": "stall",
+        "site": "fast_track_blocked",
+        "detail": "fast-track/00109-backup-bundle-items-and-skip-outcomes-v1-c1: suite red: 5822 passed, 3 failed, 16 skipped, 1 xfailed, exit 1; Klyreon git identity (2), Postup portfolio discovery (1); build and model evidence preserved in reports/00109-backup-bundle-items-and-skip-outcomes-v1-build.md",
+        "op_id": "fb4da1cb7d85",
+        "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md"
+      },
+      {
+        "type": "assumed-ambiguity",
+        "question": "How are duplicate outputs represented in Runner.plan and which output spelling appears in collision messages?",
+        "assumption": "PlanEntry.status is fail; reason is the exact StepResult duplicate message; diagnostics use expanduser+normpath output. Other PlanEntry fields retain capability plan values. This satisfies the PRD both-fail plan scenario.",
+        "prd": "00110-backup-plan-preview-and-output-resolution-v1.md"
+      }
+    ]
+  }
+}

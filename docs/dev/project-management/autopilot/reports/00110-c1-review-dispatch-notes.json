@@ -1,0 +1,14 @@
+{
+  "cycle": 1,
+  "review_id": "00110-c1-20261030",
+  "stage_dispatch_rows": {
+    "bob": "5941fa83"
+  },
+  "pack": "failed (engram pack timed out after 300s)",
+  "carl": {
+    "status": "disabled",
+    "reason": "automatic approval review denied optional Gemini/Copilot repository egress; required Claude roster proceeds",
+    "request": "gemini-run.sh -f carl-prompt-00110-c1-20261030.md",
+    "backend_ran": false
+  }
+}

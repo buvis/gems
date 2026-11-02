@@ -1,0 +1,551 @@
+{
+  "phase": "review",
+  "next_phase": "review",
+  "schema_version": 1,
+  "batch": {
+    "id": "202610292344",
+    "mode": "autopilot",
+    "completed_prds": [
+      {
+        "filename": "00111-backup-parallel-jobs-and-cancellation-v1.md",
+        "cycles": 1,
+        "autonomous_decisions": 27,
+        "escalated_decisions": 0,
+        "tasks_completed": 9,
+        "tasks_total": 9,
+        "lane": "full",
+        "lane_reason": "design",
+        "lane_effective": "full",
+        "lane_escalated": null
+      }
+    ],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "parks_consecutive": 0,
+    "minted_stubs": [
+      "00113-triage-r5-38dfe8ad-python-3-14-backup-tests-30-v1.md",
+      "00114-triage-30-of-the-new-parametrized-cases-fail-on-v1.md"
+    ]
+  },
+  "prd": "00112-backup-live-progress-and-quiet-v1.md",
+  "catchup_mode": "skipped",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "full",
+  "lane_reason": "design",
+  "lane_effective": "full",
+  "tasks_total": 7,
+  "cycle": 1,
+  "tasks_completed": 5,
+  "phases_completed": [],
+  "replan_count": 0,
+  "codex_probe": {
+    "batch_id": "202610292344",
+    "verdict": "unhealthy",
+    "backend": "codex",
+    "detail": "hook_doctor: missing /Users/bob/.codex/codex-hook",
+    "hook_doctor": "4 ok, 7 stale, 5 broken",
+    "checked_at": "2026-10-30T00:47:58.010495+00:00"
+  },
+  "applied_review_batches": [
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00111-backup-parallel-jobs-and-cancellation-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00111-backup-parallel-jobs-and-cancellation-v1-review-1.md::tail-sweep",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00112-backup-live-progress-and-quiet-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00112-backup-live-progress-and-quiet-v1-review-1.md::tail-sweep"
+  ],
+  "contract_card": "step: review cycle 1 converged; tail-sweep tasks 6 and 7 queued; resume at Tail sweep step 3\ninvariants: phase/next_phase review and cycle 1 unchanged; original five tasks, work_start_sha and implementation audit/three provider receipts preserved; no completion review or cycle increment after sweep\nevidence: reviews/00112-backup-live-progress-and-quiet-v1-review-1.md; 14 findings, four consensus findings grouped in two source-created sonnet tasks; 10 single-voice discards retained in ledger; 6372 passed, 0 failed, 16 skipped; host adapter.review_gap=None; Carl exit3 nesting guard preserved\nnext: fresh session invokes work in rework mode for IDs 6,7 only, using host logical-sonnet mapping and full source verification/per-task review. After completion write the required entire-task-set tail-sweep-models.json companion with unchanged original evidence plus every sweep implementor; preserve original audit/receipts. Check adapter.review_gap on a done candidate, then phase-done converged and fresh finalize handoff. Do not reopen review.",
+  "prd_budget_since": "2026-11-01T20:27:31Z",
+  "design_mode": "run",
+  "loop_entry": {
+    "entered_by": "loop",
+    "prd": "00112-backup-live-progress-and-quiet-v1.md",
+    "result": {
+      "stop": null,
+      "detail": "",
+      "prd": "00112-backup-live-progress-and-quiet-v1.md",
+      "source": "backlog",
+      "parked": null,
+      "custody_pending": 0,
+      "lane_effective": "full",
+      "catchup": "skip",
+      "design": "run",
+      "resume_target": "build: catchup then planning",
+      "batch": "open"
+    }
+  },
+  "design_doc": "docs/dev/project-management/designs/00112-backup-live-progress-and-quiet-v1-design.md",
+  "autonomous_decisions": [
+    {
+      "issue": "Progress design contracts",
+      "action": "Use reviewed bounded queue, caller-thread tick and final cumulative flush",
+      "reason": "Two independent design reviews; no open blockers; nonblocking concerns retained in design log; four-field event retained",
+      "cycle": 1,
+      "severity": "low"
+    },
+    {
+      "issue": "Full test process inherited agent identity and portfolio configuration",
+      "action": "Reuse unchanged existing00111 verification isolation runner after reproducing3 failures and passing3 targeted isolated cases",
+      "reason": "Same environment-only failures documented in prior PRD; all tests retained, no HOME/product/test changes",
+      "cycle": 1,
+      "severity": "low"
+    },
+    {
+      "issue": "In the system-tar path, `on_finalize()` runs before fsync/chmod/`os.replace`. An `OSError` there returns a fallback reason, the Python writer then re-archives the whole tree and emits a second `finalizing`. No `archiving` event is re-emitted, so the status shows \"finalizing\" for the entire fallback write. This is a rare edge case, but the phase is misleading while it lasts",
+      "severity": "low",
+      "cycle": 1,
+      "action": "tail sweep",
+      "reason": "Confirmed same on_finalize callback survives post-close system-tar OSError and Python fallback; re-emit activity-only archiving without moving stream-close boundary."
+    },
+    {
+      "issue": "`_archive_callbacks` is named like a pure factory, but calling it emits the initial `archiving` event and starts the throttle clock. It also returns `on_finalize` even when `progress is None`, while `on_bytes` is gated. Rename it to state the side effect (e.g. `_start_archive_progress`) or emit the boundary event explicitly in `_archive_result`",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "tail sweep",
+      "reason": "Both implementation-aware reviewers identify the hidden boundary emission; mechanical helper rename preserves callback/throttle behavior."
+    },
+    {
+      "issue": "`from queue import Queue as ProgressQueue` sits next to `import queue` with no comment. It exists only so tests that monkeypatch `backup.runner.queue.Queue` (test_runner_interrupt_boundaries.py:77, test_parallel_runner.py:782) don't also replace the progress queue. A cleanup to `queue.Queue` would silently move those injections onto the progress drain. Add a one-line comment",
+      "severity": "low",
+      "cycle": 1,
+      "action": "tail sweep",
+      "reason": "Two reviewers confirm distinct Queue binding protects existing completion-queue monkeypatch seam; add explanatory comment."
+    },
+    {
+      "issue": "The new public contracts are not documented in code. `Runner.__init__` `on_progress`/`on_tick` lack a docstring covering calling-thread delivery, ordinary exceptions swallowed, suppression under dry-run, and short/nonblocking callbacks. That docstring is what the \"TUI/API observer\" next change depends on. The `ProgressEvent` docstring omits that byte fields are input bytes and None when not measurable (PRD wording)",
+      "severity": "low",
+      "cycle": 1,
+      "action": "tail sweep",
+      "reason": "Two reviewers confirm missing caller-thread, suppression and short/nonblocking observer documentation; add bounded contract documentation."
+    },
+    {
+      "issue": "The diff deletes documented rationale from two writer docstrings outside the feature's scope. `_write_archive` lost the explanation of why it does its own mkstemp+fsync+`os.replace` instead of `pybase.filesystem.atomic_write` (a large tarball must stream, not be built in memory), which is the recorded exception to the AGENTS.md atomic-persistence invariant. `_write_archive_system_tar` lost the security rationale (`--no-recursion` keeps excluded content out; NUL delimiting stops newline-filename member injection) and its Google `Returns:` section. Its new two-line docstring also has no blank line after the summary. Build evidence shows trimming was used to hold the 49-line bound. Restore the text, and if the cap binds, extract the fsync/chmod/replace publication block into a helper",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "`_write_archive` binds `size` inside one `if on_bytes is not None:` block and reads it in a second identical block after `tar.add`, so `size` is conditionally bound. Simpler: a `_input_size(path) -> int` helper (lstat, `st_size` if `S_ISREG` else 0), with `size = _input_size(file_path) if on_bytes is not None else 0` before the add and one guarded `done += size; on_bytes(done)` after it",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "No test pins the post-join drain in the cancellation branch. Every cancellation test has already queued its events before the drain at the top of the loop, so deleting this drain would leave the suite green. If that happens, an event whose put completes while workers are joining arrives after its label's cancellation result, and the label reappears in the live status.",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "The `self._on_progress is not None and not self._dry_run` guard in `_drain_progress` is half redundant. `_execute` passes `progress=None` under those conditions, so the queue is never filled. Only the None check (needed for mypy) is required",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "Several tests in the new progress suite re-test unchanged PRD 00111 behavior and would pass at base if collected: `test_runner_forwards_inputs_effective_exclusions_and_one_runtime_timestamp`, `test_cli_report_summary_counts_each_outcome_and_describes_dry_run`, `test_cli_result_output_uses_the_outcome_severity`, `test_cli_skipped_success_keeps_success_exit_and_skip_count`. They overlap test_backup_cli.py and test_plan_runner.py. The class name `TestStrengthenedEngineProgress` names the workflow step, not what it tests",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "The PRD gives `Runner.__init__` one new kwarg, `on_progress`, and lists no new exports. The implementation also adds `on_tick`, which the CLI uses to refresh elapsed time when no events arrive. The PRD requires that refresh but names no way to do it, so this is a PRD gap closed with an unlisted parameter.",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice; reviewed design explicitly defines optional on_tick to satisfy the PRD idle elapsed refresh"
+    },
+    {
+      "issue": "The final catch-up `archiving` event in `on_finalize` ignores the 0.2 second throttle. Two further `archiving` events can therefore arrive less than 0.2 seconds apart; a test asserts a 0.1999 second gap. The spec text says at most one per 0.2 seconds, but the PRD happy path requires `done_bytes` to end at the total. The excess is at most one event per archive.",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice; reviewed design explicitly requires final cumulative flush to retain final input bytes"
+    },
+    {
+      "issue": "The progress queue is bounded (`maxsize=256`) and `_enqueue_progress` blocks until a slot frees. The PRD names only a plain `queue.Queue` and says progress can never fail an archive. A blocked put does not fail the archive, but it can stall the writer. This happens when the consumer holds a yielded result and does not iterate, for example when TTY output is paused with Ctrl-S.",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice; reviewed design specifies bounded cancellation-aware backpressure and excludes consumer-held yields from tick timing"
+    },
+    {
+      "issue": "A failure inside `on_result` (`_LiveProgress.finish` → `refresh`) propagates out of `_report_steps`. That closes the runner generator, which cancels in-flight archives, and the user sees a raw traceback. The runner swallows the same `refresh` failure when it comes through `on_tick`, and progress_cli_cases.py:387 pins the propagation.",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "Cannot statically verify: on a real 80-column TTY, the joined status for three or more active jobs updates in place, does not leave stale wrapped lines, and clears before each result line and the summary.",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discard",
+      "reason": "single-voice; no exact runnable project verification command; manual real-TTY directions are not queued"
+    },
+    {
+      "cycle": 1,
+      "issue": "In the system-tar path, `on_finalize()` runs before fsync/chmod/`os.replace`. An `OSError` there returns a fallback reason, the Python writer then re-archives the whole tree and emits a second `finalizing`. No `archiving` event is re-emitted, so the status shows \"finalizing\" for the entire fallback write. This is a rare edge case, but the phase is misleading while it lasts",
+      "severity": "low",
+      "action": "auto-fixed",
+      "reason": "fixed by review-close"
+    },
+    {
+      "cycle": 1,
+      "issue": "`_archive_callbacks` is named like a pure factory, but calling it emits the initial `archiving` event and starts the throttle clock. It also returns `on_finalize` even when `progress is None`, while `on_bytes` is gated. Rename it to state the side effect (e.g. `_start_archive_progress`) or emit the boundary event explicitly in `_archive_result`",
+      "severity": "medium",
+      "action": "auto-fixed",
+      "reason": "fixed by review-close"
+    },
+    {
+      "cycle": 1,
+      "issue": "`from queue import Queue as ProgressQueue` sits next to `import queue` with no comment. It exists only so tests that monkeypatch `backup.runner.queue.Queue` (test_runner_interrupt_boundaries.py:77, test_parallel_runner.py:782) don't also replace the progress queue. A cleanup to `queue.Queue` would silently move those injections onto the progress drain. Add a one-line comment",
+      "severity": "low",
+      "action": "auto-fixed",
+      "reason": "fixed by review-close"
+    },
+    {
+      "cycle": 1,
+      "issue": "The new public contracts are not documented in code. `Runner.__init__` `on_progress`/`on_tick` lack a docstring covering calling-thread delivery, ordinary exceptions swallowed, suppression under dry-run, and short/nonblocking callbacks. That docstring is what the \"TUI/API observer\" next change depends on. The `ProgressEvent` docstring omits that byte fields are input bytes and None when not measurable (PRD wording)",
+      "severity": "low",
+      "action": "auto-fixed",
+      "reason": "fixed by review-close"
+    }
+  ],
+  "tasks": [
+    {
+      "name": "Add ProgressEvent record",
+      "description": "Add ProgressEvent record\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/step_result.py\n\nReuse: Existing NamedTuple records, archive writers, completion queue, pending-result reporting and console.status as identified in reviewed design.\n\nContract (verbatim — reviewed design):\nIn `backup.step_result`:\n\n```python\nclass ProgressEvent(NamedTuple):\n    label: str\n    phase: Literal[\"scanning\", \"archiving\", \"finalizing\"]\n    done_bytes: int | None\n    total_bytes: int | None\n```\n\nField order is exactly `label, phase, done_bytes, total_bytes`; there are no defaults and no new enum or base class. Byte values are nonnegative input sizes, never compressed output sizes. The immutable record can cross worker threads without sharing mutable call state.\n\nDetails:\n- Add focused tests to /Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_progress.py. Preserve earlier tasks' tests. Use names matching this acceptance selector. If splitting for 800-line limit, use non-collected sibling progress_*_cases.py and import test classes into test_progress.py.\n- Test failure, empty/unknown values and cancellation behavior where applicable; preserve previous interfaces.\n\nAcceptance criteria:\n- uv run pytest tests/tools/backup/test_progress.py -k event_record -q passes.\n\nVerify: uv run pytest tests/tools/backup/test_progress.py -k event_record -q",
+      "files": [
+        "src/tools/backup/step_result.py",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [],
+      "estimated_tokens": 82617,
+      "est_context_peak": 102617,
+      "model": "opus",
+      "tier_reason": "contract",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "id": "1",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "red_check": "skipped:missing ProgressEvent import during collection",
+          "self_deslop": "skipped:trivial",
+          "style_gate": "clean",
+          "split_hygiene": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "Eight mutants exploited Unicode, integer range, indexing, replacement, mixed arguments, mutable state and cross-instance isolation",
+          "devon_weak_points": 8,
+          "devon_in_contract": []
+        }
+      ]
+    },
+    {
+      "name": "Emit archive engine progress",
+      "description": "Emit archive engine progress\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/capabilities/tar_archive.py\n\nReuse: Existing NamedTuple records, archive writers, completion queue, pending-result reporting and console.status as identified in reviewed design.\n\nContract (verbatim — reviewed design):\nKeep the existing protocol-compatible signature:\n\n```python\ndef TarArchive.run(self: TarArchive, **kwargs: object) -> Iterator[StepResult]: ...\n\ndef _emit_progress(\n    progress: Callable[[ProgressEvent], None] | None,\n    event: ProgressEvent,\n) -> None: ...\n\ndef TarArchive._archive_result(\n    label: str, arcbase: Path, out: Path, walk: WalkResult, engine: str, *,\n    cancel: threading.Event | None = None,\n    progress: Callable[[ProgressEvent], None] | None = None,\n) -> StepResult: ...\n\ndef _write_archive(\n    out: Path, arcbase: Path, files: Iterable[Path], *,\n    cancel: threading.Event | None = None,\n    on_bytes: Callable[[int], None] | None = None,\n    on_finalize: Callable[[], None] | None = None,\n) -> None: ...\n\ndef _write_archive_system_tar(\n    out: Path, arcbase: Path, files: Iterable[Path], *,\n    cancel: threading.Event | None = None,\n    on_finalize: Callable[[], None] | None = None,\n) -> str | None: ...\n```\n\n`TarArchive.run` accepts the runtime kwarg `progress: Callable[[ProgressEvent], None] | None`; parse it from `kwargs`, then pass it through the existing validated-run path. Do not add it to `TarArchive.inputs`. `_emit_progress` calls a non-None callback and swallows ordinary `Exception`; it does not swallow `KeyboardInterrupt`, `SystemExit`, `GeneratorExit` or other `BaseException`. Genuine interruption must retain the established cancellation/cleanup behavior. The runner applies the same exception policy to consumer callbacks.\n\nFor a real validated run, emit `ProgressEvent(label, \"scanning\", None, None)` immediately before `_walk_tree` or `_select_items`. Invalid inputs, a missing source and preflight rejection do not enter a walk and need no fabricated activity. A bundle which becomes a skip during selection can end after scanning. For `dry_run=True`, disable the emitter before either walk and never call `progress`, including for direct capability use.\n\nAfter a successful walk and before writing, emit `ProgressEvent(label, \"archiving\", 0, walk.total_bytes)` for the configured Python engine, or `ProgressEvent(label, \"archiving\", None, walk.total_bytes)` for the configured system-tar engine. Set the initial throttle timestamp with `time.monotonic()` at this boundary.\n\nThe Python writer calls `on_bytes(cumulative_done)` only after each successful `tar.add(..., recursive=False)`. When accounting is enabled, obtain `file_path.lstat()` immediately before adding the member; add its `st_size` only if `stat.S_ISREG(st_mode)`. Directories and all symlinks, including broken links, contribute zero and must not be followed for counting. Regular source paths that tar encodes as hardlinks still contribute their input `st_size`, consistent with `walk.total_bytes`. Keep accounting state local to this invocation; `CAPABILITIES` contains a shared singleton `TarArchive`.\n\n`_archive_result` owns the cumulative count and event throttle. Update its latest count on every writer callback; emit intermediate archiving events only when at least `0.2` monotonic seconds have elapsed since the previous archiving event. On successful archive-stream close, flush the last count as an archiving event if it differs from the last reported count, then emit `ProgressEvent(label, \"finalizing\", done, walk.total_bytes)`. The unconditional final cumulative flush is the minimal resolution of the PRD's short-archive tension: intermediate updates are limited to one per 0.2 seconds, while the required final count is never omitted and archive completion is never delayed to satisfy a UI rate limit. Scanning, the initial archiving event and phase transitions are boundary events.\n\n`on_finalize()` runs inside each writer immediately after the archive stream closes successfully and before fsync/publication: after the Python tar context exits, or after successful system-tar communication returns. It must not run for a failed stream. Existing raw-file flush, fsync, mode 0600, cancellation checks, atomic `os.replace` and `BaseException` temp cleanup remain in their current order. A finalizing event means the stream closed, not that publication succeeded; the terminal `StepResult` remains authoritative.\n\nFor the configured system-tar engine, `done_bytes` is `None` for every archiving/finalizing event. A failed system attempt followed by the existing Python fallback retains this activity-only policy for the instance: pass no `on_bytes` callback to the fallback writer, but preserve finalizing and the existing fallback note. This avoids changing percentage semantics partway through a configured system-tar job. No subprocess output parsing or archive-size polling is introduced.\n\nDetails:\n- Add focused tests to /Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_progress.py. Preserve earlier tasks' tests. Use names matching this acceptance selector. If splitting for 800-line limit, use non-collected sibling progress_*_cases.py and import test classes into test_progress.py.\n- Test failure, empty/unknown values and cancellation behavior where applicable; preserve previous interfaces.\n\nAcceptance criteria:\n- uv run pytest tests/tools/backup/test_progress.py -k \"engine or input_bytes or swallowed\" -q passes.\n\nVerify: uv run pytest tests/tools/backup/test_progress.py -k \"engine or input_bytes or swallowed\" -q\n\nAdditional PRD acceptance criteria (verbatim):\n- `test_percent_uses_input_bytes_not_output_size` passes: with an incompressible and a highly compressible fixture, the reported done bytes equal the summed sizes of the files added.\n",
+      "files": [
+        "src/tools/backup/capabilities/tar_archive.py",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [
+        1
+      ],
+      "estimated_tokens": 89968,
+      "est_context_peak": 109968,
+      "model": "opus",
+      "tier_reason": "contract",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "id": "2",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "escalated",
+          "review_cycle": null,
+          "cause": "precommit_lint",
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "reflow": "src/tools/backup/capabilities/tar_archive.py:24"
+        },
+        {
+          "attempt": 2,
+          "model": "opus",
+          "actual_model": "gpt-6-astra",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "escalation_reason": "gate_failure",
+          "escalated_from": "opus",
+          "self_deslop": "noop",
+          "style_gate": "clean",
+          "split_hygiene": "failed:UNUSED public pytest reexport TestStrengthenedEngineProgress; false positive proved by10 collected cases; deletion-only repair correctly made no change",
+          "devon": "exploit_fixed",
+          "devon_exploit": "Eight proved timing, durability, cancellation, system-engine and exception-coverage gaps strengthened",
+          "devon_weak_points": 8,
+          "devon_in_contract": []
+        }
+      ]
+    },
+    {
+      "name": "Deliver runner progress on calling thread",
+      "description": "Deliver runner progress on calling thread\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/runner.py\n\nReuse: Existing NamedTuple records, archive writers, completion queue, pending-result reporting and console.status as identified in reviewed design.\n\nContract (verbatim — reviewed design):\n```python\ndef Runner.__init__(\n    self: Runner, cfg: BackupConfig, *, dry_run: bool = False, jobs: int = 3,\n    on_progress: Callable[[ProgressEvent], None] | None = None,\n    on_tick: Callable[[], None] | None = None,\n) -> None: ...\n```\n\nKeep `Runner.run`, `request_cancel`, `plan`, `interrupted` and `cancelled_names` contracts unchanged. `on_tick` is an optional, backward-compatible refinement of the PRD's wake-up requirement: a wake-up with no event needs a distinct hook to recompute elapsed text. Never replay an old `ProgressEvent`, synthesize a heartbeat phase, yield non-results or create a CLI timer thread to implement a tick.\n\nEach `run()` creates a fresh `queue.Queue[ProgressEvent](maxsize=256)` for progress, separate from the existing completed-future queue. The progress queue holds at most 256 events. Workers receive only the enqueue callable as `progress`; they never receive `on_progress`, `on_tick` or a console object. The enqueue callable checks the run's cancellation event, then calls `put(event, timeout=0.2)`; on `queue.Full`, retry while cancellation remains unset. If cancellation becomes set, return without enqueueing or raising. A queue timeout is backpressure, never an archive failure. No event is silently dropped for an uncancelled successful instance. When `on_progress is None` or `dry_run=True`, pass `progress=None` instead. No callbacks are invoked by `plan()`. Suppress both callbacks for dry runs.\n\nWhile work remains pending, drain currently queued progress with `get_nowait()` before waiting for a completion, then use `completed.get(timeout=0.2)`. Catch `queue.Empty` as a normal wake-up, drain progress again, and invoke the optional tick on the iteration thread. Drain on completion notification as well. Drain before every terminal result is yielded, including ready preflight rows and cancellation outcomes, and once after joined workers finish during normal cancellation. These drains unblock bounded-queue producers even when no future has completed. Enqueuing is synchronous inside the capability, before its future completes, so a completed uncancelled instance's entire queued progress prefix is available before its result. Preserve FIFO event order per label. Cross-label event order is queue insertion order and need not equal configured launch order. After cancellation, no new progress enqueue is required; drain every event already queued before terminal cancellation results.\n\nTicks run on the thread advancing `Runner.run`, only while the generator is actively executing. The wait loop offers a tick at least every 0.2 seconds during an otherwise idle wait, subject to scheduler/callback execution time; no guarantee applies while the consumer holds a yielded result or the existing blocking cancellation join runs. A callback must be short and nonblocking. Catch ordinary exceptions from each `on_progress`/`on_tick` invocation separately so one broken observer cannot turn any archive into a failure. Preserve calling-thread `KeyboardInterrupt` handling, request cancellation and drain the same run.\n\nOn generator abandonment, set cancellation before joining writers, so producers blocked on the bounded queue observe cancellation after at most their current 0.2-second put timeout and return. Do not invoke user callbacks from the abandonment-only `finally` path. Normal cancellation likewise sets cancellation before shutdown/join, then drains the joined queue before yielding results. Release per-run queue references on exit. A subsequent run uses clean queues and cannot receive earlier events. Do not refactor outcomes, submission boundaries, lost-notification recovery or cancellation ordering as part of this feature.\n\nDetails:\n- Add focused tests to /Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_progress.py. Preserve earlier tasks' tests. Use names matching this acceptance selector. If splitting for 800-line limit, use non-collected sibling progress_*_cases.py and import test classes into test_progress.py.\n- Test failure, empty/unknown values and cancellation behavior where applicable; preserve previous interfaces.\n\nAcceptance criteria:\n- uv run pytest tests/tools/backup/test_progress.py -k \"runner or calling_thread or drain\" -q passes.\n\nVerify: uv run pytest tests/tools/backup/test_progress.py -k \"runner or calling_thread or drain\" -q",
+      "files": [
+        "src/tools/backup/runner.py",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [
+        1
+      ],
+      "estimated_tokens": 85889,
+      "est_context_peak": 105889,
+      "model": "opus",
+      "tier_reason": "contract",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "id": "3",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "escalated",
+          "review_cycle": null,
+          "cause": "precommit_lint",
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full"
+        },
+        {
+          "attempt": 2,
+          "model": "opus",
+          "actual_model": "gpt-6-astra",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "escalation_reason": "gate_failure",
+          "escalated_from": "opus",
+          "self_deslop": "noop",
+          "style_gate": "clean",
+          "split_hygiene": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "Eight proved concurrency, runtime-input, cancellation, multi-result, tick and FIFO gaps strengthened",
+          "devon_weak_points": 8,
+          "devon_in_contract": []
+        }
+      ]
+    },
+    {
+      "name": "Render live progress and quiet mode",
+      "description": "Render live progress and quiet mode\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/src/tools/backup/cli.py\n\nReuse: Existing NamedTuple records, archive writers, completion queue, pending-result reporting and console.status as identified in reviewed design.\n\nContract (verbatim — reviewed design):\n```python\n@click.option(\"--quiet\", is_flag=True, help=\"Hide live progress; keep final results and the summary.\")\n\ndef _format_progress(event: ProgressEvent, elapsed: float) -> str: ...\n\nclass _LiveProgress:\n    def on_progress(self, event: ProgressEvent) -> None: ...\n    def refresh(self) -> None: ...\n    def finish(self, label: str) -> None: ...\n    def close(self) -> None: ...\n\ndef _report_steps(\n    steps: Iterable[StepResult], *, dry_run: bool = False,\n    on_interrupt: Callable[[], None] | None = None,\n    on_result: Callable[[StepResult], None] | None = None,\n) -> bool: ...\n\ndef _run_plan(\n    cfg: BackupConfig, plan: list[tuple[str, BackupInstance]], *,\n    dry_run: bool, plan_only: bool, jobs: int = 3, quiet: bool = False,\n) -> bool: ...\n```\n\nAdd `quiet: bool` to the Click callback and forward it to `_run_plan`. Live mode is exactly `not quiet and sys.stdout.isatty() and not dry_run and not plan_only`; use stdout as the explicit functional contract specifies, even though introductory PRD wording mentions stderr/stdout. Existing list/show-excludes early returns never construct live status. In every disabled mode, construct no status and pass `on_progress=None`, `on_tick=None` to `Runner`.\n\n`_format_progress` returns `label phase [NN%] M:SS` when both byte fields exist, `total_bytes > 0` and `phase != \"finalizing\"`; `NN = min(99, done_bytes * 100 // total_bytes)`. Otherwise omit the percentage and its surrounding space. Brackets are literal display characters. Elapsed seconds are `max(0, int(elapsed))`, formatted with `divmod(seconds, 60)`; minutes can exceed 59 and seconds always have two digits. Examples: `docs archiving [37%] 1:05`, `git scanning 0:02`, `git finalizing 2:00`.\n\n`_LiveProgress` stores latest events and first-seen `time.monotonic()` timestamps by label, in first-event insertion order. Waiting/unsubmitted instances are not active. Phase changes preserve the first timestamp. `on_progress` replaces the label's latest event and refreshes; `refresh` joins active strings with `\" | \"` and calls `Status.update`. Use `rich.text.Text` for the rendered string passed to `Status.update` so configured labels and literal percentage brackets cannot be parsed as Rich markup. Only CLI owns Rich imports and status objects.\n\nCreate at most one `console.status(\"\")` object per live run, lazily at the first event, and start it only while active labels exist. Stop it when the last active label finishes; restart the same object if later submitted work emits its first event. `finish(label)` removes the label and timestamp idempotently and refreshes the remaining jobs. `close()` stops the status idempotently. No status is needed for an empty run or only preflight failures.\n\nCall `_report_steps(..., on_result=lambda step: live.finish(step.label))` in live mode. The report loop invokes `on_result(pending)` immediately before `_report_step(pending)` inside its existing interrupt-handling boundary. Keep the pending result and counters across rendering retries; `finish` is idempotent, and each result still affects counters once. A completed/failed/skipped/cancelled label disappears before its final line prints. Keep `_report_step`, final messages, summary counts and ordinary exit codes unchanged. `--quiet` suppresses redraws only; every result, skip, failure and summary remains visible.\n\nUse `finally` in `_run_plan` to close the original runner generator and the live status on every exit. Preserve the existing retained-iterator interrupt path and exit-130 message. Status updates interrupted by `KeyboardInterrupt` reach the runner or report-loop cancellation owner; cleanup must not leave a spinner or active writer running. Do not move execution into a UI thread.\n\nDetails:\n- Add focused tests to /Users/bob/git/src/github.com/buvis/gems/tests/tools/backup/test_progress.py. Preserve earlier tasks' tests. Use names matching this acceptance selector. If splitting for 800-line limit, use non-collected sibling progress_*_cases.py and import test classes into test_progress.py.\n- Test failure, empty/unknown values and cancellation behavior where applicable; preserve previous interfaces.\n\nAcceptance criteria:\n- uv run pytest tests/tools/backup/test_progress.py -k \"cli or quiet or format\" -q passes.\n\nVerify: uv run pytest tests/tools/backup/test_progress.py -k \"cli or quiet or format\" -q\n\nAdditional PRD acceptance criteria (verbatim):\n- `test_no_live_output_when_not_a_tty_or_quiet` passes: final result lines and the summary are still printed.\n",
+      "files": [
+        "src/tools/backup/cli.py",
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [
+        2,
+        3
+      ],
+      "estimated_tokens": 86077,
+      "est_context_peak": 106077,
+      "model": "opus",
+      "tier_reason": "contract",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "ui",
+      "id": "4",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "self_deslop": "noop",
+          "style_gate": "clean",
+          "split_hygiene": "clean",
+          "devon": "exploit_fixed",
+          "devon_exploit": "Eight proved summary, severity, callback, ratio, active-label and elapsed transition gaps strengthened",
+          "devon_weak_points": 8,
+          "devon_in_contract": []
+        }
+      ]
+    },
+    {
+      "name": "Document live progress and quiet",
+      "description": "Document live progress and quiet\n\nLocation: /Users/bob/git/src/github.com/buvis/gems/docs/source/tools/backup.rst, /Users/bob/git/src/github.com/buvis/gems/CHANGELOG.md, /Users/bob/git/src/github.com/buvis/gems/README.md\n\nReuse: Existing NamedTuple records, archive writers, completion queue, pending-result reporting and console.status as identified in reviewed design.\n\nContract (verbatim — reviewed design):\nDocument progress and `--quiet` in `docs/source/tools/backup.rst`; add an `Added` line under `[Unreleased]` in `CHANGELOG.md`.\n\nDetails:\n- Include README backup section, matching project CLI documentation convention. Explain activity-only system tar, honest input-byte percentages, finalizing, elapsed receipt origin and retained final output.\n\nAcceptance criteria:\n- rg -c \"\\-\\-quiet\" docs/source/tools/backup.rst CHANGELOG.md prints a count of at least 1 for each file.\n\nVerify: rg -c \"\\-\\-quiet\" docs/source/tools/backup.rst CHANGELOG.md\nDocumentation details: consolidate interim ProgressEvent/engine/runner/live progress Added entries into one concise user-facing --quiet/progress entry, preserving unrelated Added entries. Document TTY-only live status, input-byte percentage capped99 and no finalizing percentage, system-tar activity-only (including fallback), disabled live modes, final output preserved, elapsed starts on event receipt. Keep concise. Reading budget: README.md backup section lines110-120; docs/source/tools/backup.rst usage/parallelism lines1-65; CHANGELOG.md Unreleased/Added first30 lines. No unrelated docs edits.\n",
+      "files": [
+        "docs/source/tools/backup.rst",
+        "CHANGELOG.md",
+        "README.md"
+      ],
+      "blocked_by": [
+        2,
+        3,
+        4
+      ],
+      "estimated_tokens": 86548,
+      "est_context_peak": 106548,
+      "model": "opus",
+      "tier_reason": "floor",
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "id": "5",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "escalated",
+          "review_cycle": null,
+          "cause": "doc_review",
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "red_check": "n/a:docs-only-task"
+        },
+        {
+          "attempt": 2,
+          "model": "opus",
+          "actual_model": "gpt-6-astra",
+          "actual_provider": "openai",
+          "launcher": "native_codex_subagent",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "escalation_reason": "gate_failure",
+          "escalated_from": "opus",
+          "red_check": "n/a:docs-only-task",
+          "self_deslop": "skipped:trivial",
+          "style_gate": "clean",
+          "split_hygiene": "skipped:no-tests"
+        }
+      ]
+    },
+    {
+      "name": "[D1] Tail sweep: src/tools/backup/capabilities/tar_archive.py",
+      "description": "### Findings (verbatim)\n- ⚪ src/tools/backup/capabilities/tar_archive.py:522: In the system-tar path, `on_finalize()` runs before fsync/chmod/`os.replace`. An `OSError` there returns a fallback reason, the Python writer then re-archives the whole tree and emits a second `finalizing`. No `archiving` event is re-emitted, so the status shows \"finalizing\" for the entire fallback write. This is a rare edge case, but the phase is misleading while it lasts (found by: ALICE, BLAKE, BOB)\n- 🟡 src/tools/backup/capabilities/tar_archive.py:48: `_archive_callbacks` is named like a pure factory, but calling it emits the initial `archiving` event and starts the throttle clock. It also returns `on_finalize` even when `progress is None`, while `on_bytes` is gated. Rename it to state the side effect (e.g. `_start_archive_progress`) or emit the boundary event explicitly in `_archive_result` (found by: ALICE, BOB)\n\n### Scope and acceptance\nPreserve the existing stream-close finalizing boundary and all archive/fallback data semantics. Re-emit activity-only archiving (done_bytes=None, total preserved) before Python fallback after system tar emitted finalizing. Keep fallback activity-only, including when the Python writer runs. Rename the progress helper to state its boundary-emission side effect; preserve its callback shape and throttle behavior. Add a regression test that fails against the current misleading post-close OSError fallback phase.\n",
+      "model": "sonnet",
+      "id": "6",
+      "status": "pending"
+    },
+    {
+      "name": "[D1] Tail sweep: src/tools/backup/runner.py",
+      "description": "### Findings (verbatim)\n- ⚪ src/tools/backup/runner.py:11: `from queue import Queue as ProgressQueue` sits next to `import queue` with no comment. It exists only so tests that monkeypatch `backup.runner.queue.Queue` (test_runner_interrupt_boundaries.py:77, test_parallel_runner.py:782) don't also replace the progress queue. A cleanup to `queue.Queue` would silently move those injections onto the progress drain. Add a one-line comment (found by: ALICE, BOB)\n- ⚪ src/tools/backup/runner.py:47: The new public contracts are not documented in code. `Runner.__init__` `on_progress`/`on_tick` lack a docstring covering calling-thread delivery, ordinary exceptions swallowed, suppression under dry-run, and short/nonblocking callbacks. That docstring is what the \"TUI/API observer\" next change depends on. The `ProgressEvent` docstring omits that byte fields are input bytes and None when not measurable (PRD wording) (found by: ALICE, BOB)\n\n### Scope and acceptance\nDocumentation/comments only: explain the distinct completion/progress Queue bindings and document the actual observer contract on Runner and the input-byte/unknown semantics on ProgressEvent. Preserve the caller-thread, idle tick timing, held-generator yield exception, dry-run/plan suppression and ordinary-exception behavior. Keep existing signatures and behavior.\n",
+      "model": "sonnet",
+      "id": "7",
+      "status": "pending"
+    }
+  ],
+  "work_start_sha": "853b765e2662d64a8cc2363ac1582228bfc88d90",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "deferred_decisions": [
+    {
+      "issue": "Pre-existing Ruff E501 in immutable00105 verification report script line22",
+      "action": "Defer historical evidence formatting; product lint scope src/tests/tools is clean",
+      "reason": "Unchanged at work_start853b765e, outside current backup progress scope; raw historical audit must remain intact",
+      "cycle": 1,
+      "severity": "low"
+    }
+  ],
+  "review_lenses": {
+    "consensus": "done",
+    "blind": "done",
+    "doubt": "done",
+    "ui": "failed"
+  },
+  "review_cycles": [
+    {
+      "cycle": 1,
+      "review_file": "docs/dev/project-management/reviews/00112-backup-live-progress-and-quiet-v1-review-1.md",
+      "agents": {
+        "alice": "available",
+        "blake": "available",
+        "bob": "available",
+        "carl": "unavailable"
+      },
+      "issues_found": 14,
+      "follow_up_tasks": 2,
+      "deferred": 0,
+      "recurring_issues": []
+    }
+  ],
+  "doubts_rubric_verdicts": [
+    {
+      "rule_id": "D1",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D2",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D3",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D4",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D5",
+      "verdict": "pass"
+    }
+  ],
+  "rework_task_ids": [
+    "6",
+    "7"
+  ]
+}

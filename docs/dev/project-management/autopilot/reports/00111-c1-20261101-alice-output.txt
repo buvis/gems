@@ -1,0 +1,23 @@
+Review inputs: the three `docs/dev/tmp/` files were blocked by a read-deny rule, so I did not bypass it. Instead I reviewed against the PRD, the design doc, the committed staged diff (`autopilot/reports/00111-review-c1-stage-review-diff-00111-c1-20261031.diff`) and the current tree. `uv run pytest tests/tools/backup -q` gives 603 passed. `ruff check` and `mypy src/tools/backup` are clean.
+
+[ALICE] 🟡 Some new interrupt behavior has no test. `Runner._shutdown` retries `executor.shutdown` when a KeyboardInterrupt arrives, and no test covers that. No test delivers a KeyboardInterrupt while the runner blocks in `completed.get()`; tests only use `iterator.throw` at the yield and `request_cancel()`. The PRD case "interrupt with two active and two queued" is not run: at cancel time the tests have one active and one queued instance. | File: src/tools/backup/runner.py:131 | Task: 2
+[ALICE] 🟡 The `cast("Generator[StepResult, None, None]", runner.run(plan))` hides a wrong type annotation. `Runner.run` is a generator function, but it is annotated `Iterator[StepResult]`, and the CLI now calls `.close()` on it. Fix: annotate `Runner.run` (runner.py:53) as `Generator[StepResult, None, None]`, then drop the `cast` and `Generator` imports from cli.py. | File: src/tools/backup/cli.py:237 | Task: 3
+[ALICE] 🟡 The same "retry on KeyboardInterrupt" loop appears twice: once for the final summary (cli.py:55) and once for the `interrupted:` message (cli.py:243). Fix: extract one helper, for example `_render_retrying(render: Callable[[], None], on_interrupt)`, and call it from both places. | File: src/tools/backup/cli.py:55 | Task: 3
+[ALICE] 🟡 `_execute` nests five levels deep: try → while → try → `if cancel.is_set()` → `if executor is not None`. Fix: move the cancel-drain block (lines 99-104) into a helper, such as `_drain_cancelled(executor, remaining, ready)` that returns `None` for the executor. That brings nesting down to four. | File: src/tools/backup/runner.py:100 | Task: 2
+[ALICE] 🟡 The `Capability` protocol docstring now describes the wrong behavior. It says a capability may raise `FatalError` to escape the runner, but `_run_instance` now turns an execution-time `FatalError` into a failed step. Only a preflight `FatalError` still propagates. The docstring needs updating to match. | File: src/tools/backup/capabilities/__init__.py:22 | Task: 2
+[ALICE] 🟡 Rationale docs were removed that no task asked to remove. The `_write_archive_system_tar` docstring and inline comment lost two explanations: NUL delimiting stops a newline in a filename from injecting an outside or absolute path, and `--no-recursion` stops excluded contents from being re-added. The `_report_steps` and `_run_plan` docstrings (cli.py:32, cli.py:222) lost the "render every failure, return True so cron exits nonzero" contract. These should be restored. | File: src/tools/backup/capabilities/tar_archive.py:440 | Task: 1
+[ALICE] 🟡 `[Unreleased]/Added` has three overlapping bullets, one per task, for a single feature. Concurrency and the default of three appear twice, and "preserves completed results" appears twice. The PRD asks for one `Added` line and the design asks for one entry. Fix: merge them into one bullet. | File: CHANGELOG.md:12 | Task: 4
+[ALICE] ⚪ Two small race windows can hang the run or drop a result. (a) A KeyboardInterrupt can land after `completed.get()` dequeues a future but before `pending.pop`/`ready.extend` (lines 119-121). (b) It can land between `pending[future] = name` and `add_done_callback` (lines 115-116). Either way a future stays in `pending` with no queue entry, so the next `completed.get()` blocks forever, or a success that already happened is never reported. Every future is done after `_shutdown`, so draining `pending` directly would close both windows. | File: src/tools/backup/runner.py:119 | Task: 2
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass

@@ -1,0 +1,5 @@
+CLOSURE | unresolved | `plan` and `run` (~119-125) both carry the same source/out parse, `or _ENGINE_PYTHON` fallback and "no source / no out path configured" selection | The delta only changes `("", "fail")` to `("", "run")` in `tests/tools/backup/test_plan.py:388`. No production line moves, so both copies still exist.
+
+LOW | src/tools/backup/capabilities/tar_archive.py:78-87 | `plan` and `run` (~119-125) still duplicate the source/out parse, the `or _ENGINE_PYTHON` fallback and the missing-input message selection. | Extract one shared helper such as `_parse_inputs(kwargs)` and call it from both. This is carried to the PRD-level review as prescribed.
+
+The test change itself is correct. `("", "run")` matches the `or _ENGINE_PYTHON` fallback in `plan` at tar_archive.py:80, and the other `fail` cases (`python-tarfile-extra`, `extra-system-tar`, `tar`) still pin unknown-engine rejection. I have no new findings from this delta.

@@ -1,0 +1,18 @@
+The task 7 regressions pass: 87 passed under a `-k` filter on `tests/tools/backup`. I didn't run the full backup test directory, and I didn't confirm which test file holds the supplied regressions.
+
+- **Empty `engine` in plans:** `TarArchive.plan` now treats an empty `engine` as `python-tarfile`, matching `run`.
+- **Empty `source` or `out` in plans:** `plan` now fails with "no source configured" or "no out path configured" before building any path. The returned entry has an empty `out` and `replaces=False` when `out` is empty. The working directory is never used.
+- **`_run_validated` cleanup:** it now takes the already-parsed `label` and `engine` instead of re-parsing them.
+- **`Runner._plan`:** an entry with an empty `out` no longer takes part in duplicate-output detection. Two instances with an empty `out` each keep their own "no out path configured" message instead of a false '.' collision.
+- **`CHANGELOG.md`:** I added a Fixed entry under Unreleased for the restored empty-engine and empty-path behavior.
+
+I left the task 6 fixes alone, touched no test files, and made no commits.
+
+ASSUMPTIONS:
+- When both `source` and `out` are empty, the plan reports "no source configured" first, the same order `run` uses.
+- For an empty `source` with a valid `out`, the plan entry keeps the stamp-expanded `out` string and has `replaces=False`.
+
+FILES_TOUCHED:
+src/tools/backup/capabilities/tar_archive.py
+src/tools/backup/runner.py
+CHANGELOG.md

@@ -1,0 +1,148 @@
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+.........................................................x.............. [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+...............................ssssssssss............................... [ 73%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+......................................ss................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 80%]
+.................................F..F................................... [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+...................................................................F.... [ 85%]
+....................ssss................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+..........                                                               [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+      
+      - klyreon
+      + Agent ran by Tomáš Bouška
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/klyreon/test_vault_git.py:131: AssertionError: assert 'Agent ran by Tomáš Bouška' == 'klyreon'
+E   AssertionError: assert True is False
+     +  where True = is_human_authored(PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-1205/test_human_authored_false_for_0/klyreon-git-hsieu0ei/vault'), 'k.md', GitIdentity(name='klyreon', email='klyreon@localhost'))
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/klyreon/test_vault_git.py:151: AssertionError: assert True is False
+E   assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12 05/test_collect_runs_and_reports0/out/data.json "
+     +  where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12 05/test_collect_runs_and_reports0/out/data.json " = _flat(" ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12\n05/test_collect_runs_and_reports0/out/data.json\n")
+     +    where " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No \nsuch remote 'origin'\n ⚠ skipped /U...folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12\n05/test_collect_runs_and_reports0/out/data.json\n" = <Result okay>.output
+/Users/bob/git/src/github.com/buvis/gems/tests/tools/postup/adapters/test_cli.py:55: assert 'no repositories' in " ⚠ skipped /Users/bob/git/src/github.com/buvis/agoge-gym: git remote: error: No such remote 'origin' ⚠ skipped /Users...r/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-12 05/test_collect_runs_and_reports0/out/data.json "
+=============================== warnings summary ===============================
+tests/tools/bim/test_serve_actions.py:12
+  /Users/bob/git/src/github.com/buvis/gems/tests/tools/bim/test_serve_actions.py:12: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:35: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/tools/bim/test_serve_actions.py: 54 warnings
+tests/tools/bim/test_serve_app.py: 20 warnings
+tests/tools/bim/test_serve_open.py: 8 warnings
+tests/tools/bim/test_serve_queries.py: 36 warnings
+tests/tools/bim/test_serve_triage_actions.py: 14 warnings
+tests/tools/bim/test_serve_zettels.py: 26 warnings
+  /Users/bob/git/src/github.com/buvis/gems/.venv/lib/python3.13/site-packages/fastapi/applications.py:4744: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+tests/tools/bim/test_serve_actions.py: 27 warnings
+tests/tools/bim/test_serve_app.py: 10 warnings
+tests/tools/bim/test_serve_open.py: 4 warnings
+tests/tools/bim/test_serve_queries.py: 18 warnings
+tests/tools/bim/test_serve_triage_actions.py: 7 warnings
+tests/tools/bim/test_serve_zettels.py: 13 warnings
+  /Users/bob/git/src/github.com/buvis/gems/src/tools/bim/commands/serve/_app.py:39: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/tools/klyreon/test_vault_git.py::TestScopedCommit::test_commit_author_is_klyreon_identity
+FAILED tests/tools/klyreon/test_vault_git.py::TestAuthorship::test_human_authored_false_for_klyreon_only
+FAILED tests/tools/postup/adapters/test_cli.py::TestCli::test_collect_runs_and_reports
+3 failed, 5822 passed, 16 skipped, 1 xfailed, 317 warnings in 178.30s (0:02:58)

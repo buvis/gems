@@ -1,0 +1,9 @@
+2026-10-29T22:43:14.569455Z ERROR codex_models_manager::manager: failed to refresh available models: request timed out
+2026-10-29T22:43:31.281765Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: [Fact-Forcing Gate]
+
+Before the first Bash command this session, present these facts:
+
+1. The current user request in one sentence
+2. What this specific command verifies or produces
+
+Present the facts, then retry the same operation.. Command: pwd

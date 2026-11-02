@@ -1,0 +1,83 @@
+{
+  "phase": "build",
+  "next_phase": "build",
+  "schema_version": 1,
+  "batch": {
+    "id": "202610292344",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "parks_consecutive": 0
+  },
+  "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md",
+  "catchup_mode": "skip",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "fast-track",
+  "lane_reason": "card_sized",
+  "lane_effective": "fast-track",
+  "tasks_total": 1,
+  "cycle": 1,
+  "tasks_completed": 1,
+  "phases_completed": [],
+  "replan_count": 0,
+  "contract_card": "step: build boundary after PRD 00107 fast_track_blocked stall\ninvariants: hold PRD and retain implementation commits; do not claim reviewed or finalized; preserve build-state/model audit on recovery\nnext: fresh build session selects the next eligible PRD; held 00107 needs full-suite resolution and fresh provider-routed completion review\nevidence: reports/00107-backup-per-instance-excludes-v1-build.md; reports/00107-backup-per-instance-excludes-v1-build-state.json; reports/00107-backup-per-instance-excludes-v1-implementation-models.json",
+  "prd_budget_since": "2026-10-29T22:57:16Z",
+  "design_mode": "skip",
+  "loop_entry": {
+    "entered_by": "loop",
+    "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md",
+    "result": {
+      "stop": "lane",
+      "detail": "lane: fast-track (card_sized)",
+      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md",
+      "source": "backlog",
+      "parked": null,
+      "custody_pending": 0,
+      "lane_effective": "fast-track",
+      "catchup": null,
+      "design": null,
+      "resume_target": "build: catchup then planning",
+      "batch": "open"
+    }
+  },
+  "work_start_sha": "5a3ab34deb025e2a4223f9af876ec0256c2de177",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "tasks": [
+    {
+      "name": "00109-backup-bundle-items-and-skip-outcomes-v1-c1",
+      "id": "1",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "opus",
+          "actual_model": "gpt-6.1-sol",
+          "actual_provider": "openai",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "codex",
+          "launcher": "codex",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "test_writer_model": "gpt-6.1-sol",
+          "test_writer_provider": "openai",
+          "implementation_agent": "/root/ivan",
+          "test_writer_agent": "/root/tess",
+          "red_check_exit_code": 1,
+          "red_check_counts": {
+            "failed": 2,
+            "passed": 0,
+            "deselected": 16
+          }
+        }
+      ]
+    }
+  ]
+}

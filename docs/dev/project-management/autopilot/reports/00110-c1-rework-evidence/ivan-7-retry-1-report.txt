@@ -1,0 +1,8 @@
+`_run_validated` now takes 5 arguments instead of 7, which clears the PLR0913 and PLR0917 violations. I haven't re-run the linter or the commit hook. `uv run pytest tests/tools/backup/test_plan_validation.py -q --tb=line` gives 58 passed.
+
+The change is in `src/tools/backup/capabilities/tar_archive.py`. `_run_validated` now reads `excludes` and `dry_run` from `kwargs` itself, so `run()` no longer passes them in. `label` and `engine` are still parsed once in `run()` and passed through. No lint suppressions were added. Parsing `excludes` later is behaviour-neutral, since it happens only after all the early-return checks in `run()` have passed.
+
+I didn't touch `runner.py` or `CHANGELOG.md`. The staged changes already seemed to cover the Runner and changelog parts of task 7, and the tests pass without further edits there. I did not read either file to confirm the changelog entry.
+
+ASSUMPTIONS: none
+FILES_TOUCHED: src/tools/backup/capabilities/tar_archive.py
