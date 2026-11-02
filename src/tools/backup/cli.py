@@ -224,7 +224,7 @@ def _show_excludes(cfg: BackupConfig, instance_name: str, for_path: str) -> bool
 
     excludes = effective_excludes(cfg, instance)
     console.info(f"resolved excludes for '{instance_name}':")
-    for pattern in excludes:
+    for pattern in sorted(excludes):
         console.info(f"  {pattern}")
 
     if not for_path:

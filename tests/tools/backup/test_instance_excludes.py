@@ -276,6 +276,19 @@ class TestShowInstanceExcludes:
         assert "!local-other" in result.output
         assert not out.exists()
 
+    def test_show_excludes_prints_effective_list_sorted(self, runner, tmp_path: Path) -> None:
+        config = _config_file(
+            tmp_path,
+            {"home": {"use": "tar-archive", "exclude_add": ["mid"]}},
+            ["zeta", "alpha"],
+        )
+        result = runner.invoke(cli, ["--config-dir", str(config.parent), "--show-excludes", "home"])
+        assert result.exit_code == 0, result.output
+        lines = result.output.splitlines()
+        start = next(i for i, line in enumerate(lines) if "resolved excludes for 'home':" in line) + 1
+        end = next(i for i, line in enumerate(lines) if ".bkpignore rules omitted" in line)
+        assert [line.strip() for line in lines[start:end]] == ["alpha", "mid", "zeta"]
+
     def test_show_excludes_accepts_empty_effective_list(self, runner, tmp_path: Path) -> None:
         config = _config_file(
             tmp_path,
