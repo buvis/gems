@@ -113,7 +113,7 @@ class TestBundleItems:
         assert result.success is True
         assert {member.name for member in _members(out)} == {"*.txt", "keep"}
 
-    @pytest.mark.parametrize("item", ["", "/etc", ".", "a/..", "..", "../x", "..hidden"])
+    @pytest.mark.parametrize("item", ["", "/etc", ".", "a/..", "..", "../x"])
     def test_invalid_item_fails_without_replacing_output(self, tmp_path: Path, engine: str, item: str) -> None:
         source = tmp_path / "src"
         _tree(source, {"keep": "data"})
@@ -124,6 +124,57 @@ class TestBundleItems:
         assert result.skipped is False
         assert result.message == f"invalid item '{item}': must be a relative path inside the source"
         assert out.read_bytes() == b"previous"
+
+    @pytest.mark.parametrize("item", ["..", "../x", "a/../../x"])
+    def test_traversal_items_are_rejected(self, tmp_path: Path, engine: str, item: str) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"keep": "data", "..hidden": "literal"})
+        out = tmp_path / "out.tar.gz"
+        result = _run(source, out, engine, ["keep", item])
+        assert result.success is False
+        assert result.message == f"invalid item '{item}': must be a relative path inside the source"
+        assert not out.exists()
+
+    def test_dot_dot_prefixed_literal_names_are_valid_items(self, tmp_path: Path, engine: str) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"..hidden": "literal file", "..foo/bar": "inside dir", "..foo-other/x": "unselected"})
+        out = tmp_path / "out.tar.gz"
+        result = _run(source, out, engine, ["..hidden", "..foo/bar"])
+        assert result.success is True
+        assert result.skipped is False
+        names = {member.name for member in _members(out)}
+        assert {"..hidden", "..foo/bar"} <= names
+        assert "..foo-other/x" not in names
+        with tarfile.open(out, "r:gz") as archive:
+            assert archive.extractfile("..hidden").read() == b"literal file"
+            assert archive.extractfile("..foo/bar").read() == b"inside dir"
+
+    def test_none_items_archives_whole_tree_like_omitted_items(self, tmp_path: Path, engine: str) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"a": "first", "d/b": "second"})
+        omitted = tmp_path / "omitted.tar.gz"
+        explicit = tmp_path / "none.tar.gz"
+        common = {"label": "bundle", "source": str(source), "engine": engine}
+        (first,) = list(TarArchive().run(out=str(omitted), **common))
+        (second,) = list(TarArchive().run(out=str(explicit), items=None, **common))
+        assert first.success is True
+        assert second.success is True
+        assert second.skipped is False
+        assert {m.name for m in _members(explicit)} == {m.name for m in _members(omitted)}
+        assert {m.name for m in _members(explicit)} >= {"src/a", "src/d/b"}
+
+    @pytest.mark.parametrize("items", [".gitconfig", 5, [".gitconfig", 5], ["keep", None]])
+    def test_non_list_items_fail_with_exact_message(self, tmp_path: Path, engine: str, items: object) -> None:
+        source = tmp_path / "src"
+        _tree(source, {"keep": "data", ".gitconfig": "cfg"})
+        out = tmp_path / "out.tar.gz"
+        (result,) = list(
+            TarArchive().run(label="bundle", source=str(source), out=str(out), engine=engine, items=items),
+        )
+        assert result.success is False
+        assert result.skipped is False
+        assert result.message == "items must be a list of relative paths"
+        assert not out.exists()
 
     def test_explicitly_empty_items_fails(self, tmp_path: Path, engine: str) -> None:
         source = tmp_path / "src"

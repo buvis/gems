@@ -101,3 +101,46 @@ class TestSkippedArchives:
         assert out.stat().st_mtime_ns == before.st_mtime_ns
         assert out.stat().st_ino == before.st_ino
         assert sorted(path.name for path in tmp_path.iterdir()) == ["out.tar.gz", "src"]
+
+    @pytest.mark.parametrize(
+        "present,items,tail",
+        [
+            ([], ["a", "b"], "; missing items: a, b"),
+            ([], ["zed", "alpha", "mid"], "; missing items: zed, alpha, mid"),
+            (["a", "b"], ["a", "b"], ""),
+            (["b"], ["a", "b"], "; missing items: a"),
+        ],
+    )
+    def test_empty_bundle_skip_and_plan_name_the_source(
+        self,
+        tmp_path: Path,
+        engine: str,
+        present: list[str],
+        items: list[str],
+        tail: str,
+    ) -> None:
+        source = tmp_path / "home dir"
+        source.mkdir()
+        (source / "unselected").write_text("must not leak", encoding="utf-8")
+        for name in present:
+            (source / name).write_text(name, encoding="utf-8")
+        kwargs = {
+            "label": "optional",
+            "source": str(source),
+            "out": str(tmp_path / "out.tar.gz"),
+            "items": items,
+            "excludes": present,
+            "engine": engine,
+        }
+        result = next(iter(TarArchive().run(**kwargs)))
+        entry = TarArchive().plan(**kwargs)
+        expected = f"no selected items to archive in {source}{tail}"
+        assert result.success is True
+        assert result.skipped is True
+        assert result.message == expected
+        if present:
+            assert entry.status == "run"
+            assert entry.reason == ""
+        else:
+            assert entry.status == "skip"
+            assert entry.reason == expected
