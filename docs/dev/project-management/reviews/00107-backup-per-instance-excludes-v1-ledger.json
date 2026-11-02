@@ -1,0 +1,5 @@
+[
+  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "Two new validation tests exercise existing rejection behavior and pass against pre-change code; add successful controls using the new instance fields before testing rejection.", "file": "tests/tools/backup/test_instance_excludes.py:63", "reason": "single-voice"},
+  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "PRD parked in `prds/hold/` on 3 batch-suite failures outside the diff (klyreon identity x2, postup collect) that project memory records as env noise; needs an isolated re-run before the PRD leaves hold", "file": "N/A", "reason": "single-voice; refuted: unchanged 00111 isolation runner passes all three and this cycle's full suite ran through it"},
+  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "Docs drift in touched page: `.bkpignore` bullet still says \"the global default\" after the intro was reworded to \"effective instance list\"; new \"Instance exclusions\" section never states instance patterns are the same gitignore-style fnmatch globs as `excludes`", "file": "docs/source/tools/backup.rst:126", "reason": "single-voice"}
+]

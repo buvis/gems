@@ -614,3 +614,8 @@
 {"kind":"handoff","site":"done","edge":"resume","at":1793573553,"phase":"done","prd":"00112-backup-live-progress-and-quiet-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1793573593,"phase":"done","prd":"00112-backup-live-progress-and-quiet-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1793609889,"phase":"review","prd":"00107-backup-per-instance-excludes-v1.md"}
+{"id":"4c395cc3","kind":"pat","task":"2","queued_at":1793610848,"prompt_bytes":7924}
+{"id":"4c395cc3","ended_at":1793610863,"elapsed_s":15,"outcome":"ok","detail":null}
+{"id":"94b99cf6","kind":"pat","task":"3","queued_at":1793610921,"prompt_bytes":6794}
+{"id":"94b99cf6","ended_at":1793611100,"elapsed_s":179,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"done","edge":"resume","at":1793611115,"phase":"done","prd":"00107-backup-per-instance-excludes-v1.md"}
