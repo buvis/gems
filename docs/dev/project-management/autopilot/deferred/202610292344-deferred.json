@@ -220,7 +220,13 @@
       "issue": "A bundle whose out lies under source but under no selected item is rejected by the unconditional containment check, blocking the PRD's headline case (source: ~, items .gitconfig/.npmrc, out under ~/.local/backup)",
       "file": "src/tools/backup/capabilities/tar_archive.py:112",
       "reason": "requirements ambiguity: pre-existing out-inside-source guard; PRD 00110 restates it unconditionally; needs a new PRD decision",
-      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md"
+      "prd": "00109-backup-bundle-items-and-skip-outcomes-v1.md",
+      "resolved": {
+        "date": "2026-11-02",
+        "choice": "promote to backlog PRD 00117",
+        "reason": "A bundle archives only its selected items, so an out under source but outside every item can never re-archive itself; the headline 00109 case must work.",
+        "evidence": "prds/backlog/00117-backup-bundle-out-under-source-v1.md"
+      }
     },
     {
       "type": "deferred_decision",
