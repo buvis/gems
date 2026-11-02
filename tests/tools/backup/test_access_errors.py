@@ -116,6 +116,19 @@ class TestUnreadableItem:
         assert "no selected items" not in result.message
         assert not out.exists()
 
+    @pytest.mark.parametrize("items", [["locked/inner.txt"], ["locked/inner.txt", "absent.txt"]])
+    def test_plan_fails_item_under_locked_directory_instead_of_skipping(
+        self, tmp_path: Path, lock: list[Path], items: list[str]
+    ) -> None:
+        source = tmp_path / "src"
+        (source / "locked").mkdir(parents=True)
+        (source / "locked" / "inner.txt").write_text("inner", encoding="utf-8")
+        (source / "locked").chmod(0o000)
+        lock.append(source / "locked")
+        entry = TarArchive().plan(label="bundle", source=str(source), out=str(tmp_path / "out.tar.gz"), items=items)
+        assert entry.status == "fail"
+        assert "Permission denied" in entry.reason
+
     def test_genuinely_absent_item_still_reports_missing_with_success(self, tmp_path: Path, engine: str) -> None:
         source = tmp_path / "src"
         source.mkdir()

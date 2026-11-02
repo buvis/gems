@@ -352,6 +352,9 @@ class TestCapabilityPlan:
             (["../notes"], "invalid item '../notes': must be a relative path inside the source"),
             (["present", "../notes"], "invalid item '../notes': must be a relative path inside the source"),
             (["../notes", "present"], "invalid item '../notes': must be a relative path inside the source"),
+            ("present", "items must be a list of relative paths"),
+            (5, "items must be a list of relative paths"),
+            (["present", 5], "items must be a list of relative paths"),
         ],
     )
     def test_capability_plan_rejects_invalid_items_even_beside_existing_items(
@@ -367,6 +370,34 @@ class TestCapabilityPlan:
 
         assert entry == PlanEntry("items", str(source), str(out), "fail", reason, True)
         assert out.read_bytes() == b"keep"
+
+    @pytest.mark.parametrize(
+        ("files", "items", "status"),
+        [
+            (["..notes"], ["..notes"], "run"),
+            (["..foo/bar"], ["..foo/bar"], "run"),
+            ([], ["..notes"], "skip"),
+            (["present"], None, "run"),
+            ([], None, "run"),
+        ],
+        ids=["dot-dot-file", "dot-dot-dir", "dot-dot-absent", "none-present", "none-empty"],
+    )
+    def test_capability_plan_accepts_dot_dot_names_and_treats_none_items_as_omitted(
+        self, tmp_path: Path, files: list[str], items: list[str] | None, status: str
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        for name in files:
+            (source / name).parent.mkdir(parents=True, exist_ok=True)
+            (source / name).write_bytes(b"data")
+        out = tmp_path / "archive.tar.gz"
+
+        entry = TarArchive().plan(source=str(source), out=str(out), items=items, label="items")
+
+        assert entry.status == status
+        assert entry.reason == (
+            "" if status == "run" else f"no selected items to archive in {source}; missing items: ..notes"
+        )
 
     @pytest.mark.parametrize(
         ("items", "status"),
