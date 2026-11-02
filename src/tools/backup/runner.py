@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 from buvis.pybase.result import FatalError
 
 from backup.capabilities import CAPABILITIES
-from backup.capabilities.tar_archive import ArchiveCancelled, _resolve_paths
+from backup.capabilities.tar_archive import ArchiveCancelled, resolve_paths
 from backup.config import effective_excludes
 from backup.step_result import PlanEntry, ProgressEvent, StepResult
 
@@ -45,9 +45,9 @@ def _failed_plan_entry(name: str, instance: BackupInstance, now: datetime, error
     source = source_raw if isinstance(source_raw, str) else ""
     out = out_raw if isinstance(out_raw, str) else ""
     with suppress(Exception):
-        resolved_source, resolved_out = _resolve_paths(source, out, now)
-        source = str(resolved_source) if source else ""
-        out = str(resolved_out) if out else ""
+        source = str(resolve_paths(source, "", now)[0]) if source else ""
+    with suppress(Exception):
+        out = str(resolve_paths("", out, now)[1]) if out else ""
     replaces = False
     if out:
         with suppress(Exception):

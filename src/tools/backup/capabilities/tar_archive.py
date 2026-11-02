@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     import threading
     from collections.abc import Callable, Iterable, Iterator, Mapping
 
-__all__ = ["ArchiveCancelled", "TarArchive", "WalkResult"]
+__all__ = ["ArchiveCancelled", "TarArchive", "WalkResult", "resolve_paths"]
 
 _ARCHIVE_MODE = 0o600
 _ENGINE_PYTHON = "python-tarfile"
@@ -122,7 +122,7 @@ class TarArchive:
             out_text = str(Path(_expand_stamp(out_raw, now)).expanduser()) if out_raw else ""
             replaces = Path(out_text).exists() if out_text else False
             return PlanEntry(label, source_text, out_text, "fail", message, replaces)
-        source, out = _resolve_paths(source_raw, out_raw, now)
+        source, out = resolve_paths(source_raw, out_raw, now)
         replaces = out.exists()
         if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
             status = "fail"
@@ -139,7 +139,7 @@ class TarArchive:
             yield StepResult(label, success=False, message=message)
             return
 
-        source, out = _resolve_paths(source_raw, out_raw, now)
+        source, out = resolve_paths(source_raw, out_raw, now)
 
         if engine not in (_ENGINE_PYTHON, _ENGINE_SYSTEM_TAR):
             yield StepResult(
@@ -663,7 +663,7 @@ def _missing_input(source_raw: str, out_raw: str) -> str:
     return "" if out_raw else "no out path configured"
 
 
-def _resolve_paths(source_raw: str, out_raw: str, now: datetime | None) -> tuple[Path, Path]:
+def resolve_paths(source_raw: str, out_raw: str, now: datetime | None) -> tuple[Path, Path]:
     # Normalize `.`/`..` LEXICALLY (os.path.normpath, not resolve()) before
     # walking: a source like `parent/child/..` would otherwise be walked as
     # given and produce member names like `..` / `../child` (an unsafe
