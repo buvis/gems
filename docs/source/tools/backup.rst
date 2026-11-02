@@ -141,15 +141,18 @@ directories, with member names relative to ``source``:
 Items are literal relative paths, without glob expansion. Redundant separators
 and ``.`` components are normalized; duplicate items and children of a selected
 directory are included only once. Empty lists, empty paths, absolute paths,
-paths normalizing to ``.``, and paths beginning with ``..`` are errors.
+paths normalizing to ``.``, and paths whose first component is ``..`` are
+errors; a literal name such as ``..hidden`` is valid. ``items`` must be a list
+of strings, and ``items: null`` means the key is omitted (whole tree).
 An item cannot pass through a symlink directory. A final symlink, including a
 broken one, is archived as a link without following its target.
 
 Excludes still match source-relative paths or basenames. Ancestor and selected
 directory ``.bkpignore`` files apply with the same pruning and precedence as a
 whole-tree backup. Missing items are listed in the result while present items
-are archived. An unreadable selected file or one that disappears after its
-presence check fails the step.
+are archived. An item that cannot be inspected (for example under an
+unreadable directory), an unreadable selected file, or one that disappears
+after its presence check fails the step instead of counting as missing.
 
 The global ``excludes`` list layers via the 00080 ``excludes+`` / ``excludes-``
 directives, so a lower layer extends or trims the shared list without re-listing
@@ -235,8 +238,8 @@ Run outcomes
 ~~~~~~~~~~~~
 
 A missing source or a bundle with no surviving selected members is skipped,
-including during ``--dry-run``. An existing source that is not a directory
-fails. Skipped steps print a warning with the reason and leave any existing
+including during ``--dry-run``. An existing source that is not a directory,
+or a source that cannot be inspected (permission denied), fails. Skipped steps print a warning with the reason and leave any existing
 archive untouched.
 
 Every run ends with ``archived N, skipped N, failed N``; dry runs use
