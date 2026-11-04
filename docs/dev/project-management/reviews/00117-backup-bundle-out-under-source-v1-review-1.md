@@ -20,11 +20,23 @@ Lane: fast-track, one card (`00117-backup-bundle-out-under-source-v1-c1`). Full 
 
 ## Bob
 
-**00117-backup-bundle-out-under-source-v1-c1** (codex backend hit its usage limit; the copilot fallback model was refused; the lane ran as a Claude opus subagent with Read tools)
-- 🟡 Dead `ValueError` branch in `_run_validated` and double normalization after the change; return the normalized list and pass it down.
-- ⚪ Unused `items: object = None` default on `_reject_out_inside_source`.
-- ⚪ Case-insensitive volume: `.Config` item vs `.config` out passes the check (pre-existing weakness class).
+**00117-backup-bundle-out-under-source-v1-c1** (codex `gpt-6-astra`, prompt, context and diff inlined because the nested sandbox blocks its file reads; an earlier Claude opus fallback run, made while codex was over its usage limit, is kept below as an extra voice)
+- 🟡 Codex: several new tests pass against the pre-change guard (whole-tree tests, source-equality tests, one relative-output parameter), which breaks fail-first. Adjudicated: not a defect. They are deliberate regression guards for behavior the PRD requires unchanged, and the pre-implementation run showed 114 failed (all behavior-changing cases) alongside 168 passed. No rework.
+- ⚪ Codex: could not statically verify the test gates (they pass: 282 / 954 / 6569) or the 800-line limit. Verified by `wc -l`: tar_archive.py 716, test_bundle_items.py 530, test_plan_validation.py 405, so R13 holds. Codex marked R2 and R13 as fail; R2 is answered above and R13 was an unverified guess.
+- Claude opus fallback run (extra voice): 🟡 dead `ValueError` branch and double normalization of items; ⚪ unused `items: object = None` default; ⚪ case-insensitive volume weakness.
 
+R1: pass
+R2: fail
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: fail
 D1: pass
 D2: pass
 D3: pass
