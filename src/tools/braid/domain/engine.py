@@ -375,7 +375,7 @@ def _report_orphans(
 
 
 def _sync_links(projection: _Projection, run_pass: _Pass) -> dict[str, str]:
-    desired, previous = projection.desired, projection.previous
+    desired = projection.desired
     destination_root, backup_root = projection.destination_root, projection.backup_root
     backup_category = projection.backup_category
     preserve_real_sources = projection.preserve_real_sources
@@ -406,6 +406,13 @@ def _sync_links(projection: _Projection, run_pass: _Pass) -> dict[str, str]:
         managed[name] = str(target)
         emit(f"LINK[{backend}] {destination} -> {target}")
 
+    _remove_stale_links(projection, run_pass)
+    return managed
+
+
+def _remove_stale_links(projection: _Projection, run_pass: _Pass) -> None:
+    desired, previous, destination_root = projection.desired, projection.previous, projection.destination_root
+    mode, platform, result, emit = run_pass.mode, run_pass.platform, run_pass.result, run_pass.emit
     for name, raw_target in sorted(previous.items()):
         if name in desired:
             continue
@@ -428,7 +435,21 @@ def _sync_links(projection: _Projection, run_pass: _Pass) -> dict[str, str]:
         result.removed += 1
         emit(f"REMOVE {destination}")
 
-    return managed
+
+def _project_host(
+    desired: dict[str, Path], previous: dict[str, str], host_root: Path, suffix: str, run_pass: _Pass
+) -> dict[str, str]:
+    return _sync_links(
+        _Projection(
+            desired=desired,
+            previous=previous,
+            destination_root=host_root / "skills",
+            backup_root=host_root / "skills-backup" / suffix,
+            backup_category="project",
+            preserve_real_sources=False,
+        ),
+        run_pass,
+    )
 
 
 def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
@@ -460,31 +481,13 @@ def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
     eligible = {name: union_root / name for name in inventory if name not in ignored}
     if settings.project_claude:
         result.ignored += len(inventory) - len(eligible)
-        hosts["claude"] = _sync_links(
-            _Projection(
-                desired=eligible,
-                previous=previous_state.hosts.get("claude", {}),
-                destination_root=settings.claude_root / "skills",
-                backup_root=settings.claude_root / "skills-backup" / suffix,
-                backup_category="project",
-                preserve_real_sources=False,
-            ),
-            run_pass,
-        )
+        previous = previous_state.hosts.get("claude", {})
+        hosts["claude"] = _project_host(eligible, previous, settings.claude_root, suffix, run_pass)
 
     if kiro is not None and settings.project_kiro:
         # Claude's plugin-duplicate exclusions do not apply to Kiro.
-        hosts["kiro"] = _sync_links(
-            _Projection(
-                desired={name: union_root / name for name in inventory},
-                previous=previous_state.hosts.get("kiro", {}),
-                destination_root=kiro.root / "skills",
-                backup_root=kiro.root / "skills-backup" / suffix,
-                backup_category="project",
-                preserve_real_sources=False,
-            ),
-            run_pass,
-        )
+        everything = {name: union_root / name for name in inventory}
+        hosts["kiro"] = _project_host(everything, previous_state.hosts.get("kiro", {}), kiro.root, suffix, run_pass)
         for edit in kiro_edits:
             sync_kiro_agent(edit, kiro.root / "agent-backup" / suffix, settings.mode, result, emit)
 
