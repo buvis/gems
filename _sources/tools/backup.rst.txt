@@ -154,6 +154,16 @@ are archived. An item that cannot be inspected (for example under an
 unreadable directory), an unreadable selected file, or one that disappears
 after its presence check fails the step instead of counting as missing.
 
+With ``items``, ``out`` may sit inside ``source`` as long as it is outside every
+selected item (for example ``~/.local/backup/settings.tar.gz`` for items
+``.gitconfig`` and ``.config/tool``). An ``out`` equal to or inside a selected
+item fails in plan, run, and dry-run before anything is written, because the
+archive would re-archive itself. An ``out`` equal to ``source`` still fails. A
+whole-tree backup (``items`` omitted or ``null``) still rejects any ``out``
+inside ``source``. Invalid ``items`` are reported before this check. ``out`` is
+judged by its real location, after resolving symlinks in its parent
+directory.
+
 The global ``excludes`` list layers via the 00080 ``excludes+`` / ``excludes-``
 directives, so a lower layer extends or trims the shared list without re-listing
 it:

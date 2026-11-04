@@ -272,6 +272,15 @@ whole-tree backup. Missing items are listed in the result while present items
 are archived. An item that cannot be inspected (for example under an
 unreadable directory), an unreadable selected file, or one that disappears
 after its presence check fails the step instead of counting as missing.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">items</span></code>, <code class="docutils literal notranslate"><span class="pre">out</span></code> may sit inside <code class="docutils literal notranslate"><span class="pre">source</span></code> as long as it is outside every
+selected item (for example <code class="docutils literal notranslate"><span class="pre">~/.local/backup/settings.tar.gz</span></code> for items
+<code class="docutils literal notranslate"><span class="pre">.gitconfig</span></code> and <code class="docutils literal notranslate"><span class="pre">.config/tool</span></code>). An <code class="docutils literal notranslate"><span class="pre">out</span></code> equal to or inside a selected
+item fails in plan, run, and dry-run before anything is written, because the
+archive would re-archive itself. An <code class="docutils literal notranslate"><span class="pre">out</span></code> equal to <code class="docutils literal notranslate"><span class="pre">source</span></code> still fails. A
+whole-tree backup (<code class="docutils literal notranslate"><span class="pre">items</span></code> omitted or <code class="docutils literal notranslate"><span class="pre">null</span></code>) still rejects any <code class="docutils literal notranslate"><span class="pre">out</span></code>
+inside <code class="docutils literal notranslate"><span class="pre">source</span></code>. Invalid <code class="docutils literal notranslate"><span class="pre">items</span></code> are reported before this check. <code class="docutils literal notranslate"><span class="pre">out</span></code> is
+judged by its real location, after resolving symlinks in its parent
+directory.</p>
 <p>The global <code class="docutils literal notranslate"><span class="pre">excludes</span></code> list layers via the 00080 <code class="docutils literal notranslate"><span class="pre">excludes+</span></code> / <code class="docutils literal notranslate"><span class="pre">excludes-</span></code>
 directives, so a lower layer extends or trims the shared list without re-listing
 it:</p>
