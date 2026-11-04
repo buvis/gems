@@ -110,6 +110,7 @@ addopts = ["--import-mode=importlib"]
 markers = [
     "backup: backup tests",
     "bim: bim tests",
+    "braid: braid tests",
     "dot: dot tests",
     "fctracker: fctracker tests",
     "fren: fren tests",
