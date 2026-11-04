@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-04
+
 ### Added
 
 - **sysup**: on macOS, `rustup update` runs before `mise upgrade` when `rustup` is installed, so the Rust toolchain stays current and mise's `cargo:` tools build with it.
@@ -627,7 +629,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.16.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.17.0...HEAD
+[0.17.0]: https://github.com/buvis/gems/compare/gems-v0.16.0...gems-v0.17.0
 [0.16.0]: https://github.com/buvis/gems/compare/gems-v0.15.3...gems-v0.16.0
 [0.15.3]: https://github.com/buvis/gems/compare/gems-v0.15.2...gems-v0.15.3
 [0.15.2]: https://github.com/buvis/gems/compare/gems-v0.15.1...gems-v0.15.2
