@@ -53,6 +53,13 @@ commands:
     when: { os: darwin, check: helm }
     use: helm-repo-update
 
+  # Before mise: mise's `cargo:` tools are built with the toolchain this updates.
+  rustup:
+    order: 55
+    when: { os: darwin, check: rustup }
+    steps:
+      - rustup update
+
   # `mise upgrade` deletes replaced tool-version dirs that the inherited PATH
   # still points at, so it must run after every other tool lookup — hence the
   # highest `order` among the macOS entries.

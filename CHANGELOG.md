@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **sysup**: on macOS, `rustup update` runs before `mise upgrade` when `rustup` is installed, so the Rust toolchain stays current and mise's `cargo:` tools build with it.
 - **gems**: wheels for Python 3.15 (macOS arm64, Linux x64 and arm64, Windows x64), so installing on 3.15 no longer needs a Rust toolchain; `pyyaml` and `xattr` publish no 3.15 wheels yet, so pip and uv build them from source on 3.15 (a C compiler is needed for `xattr`).
 - **backup**: TTY runs show per-instance live progress and elapsed time, with input-byte percentages capped at 99% for Python archives and activity only for system tar; `--quiet` hides live status while preserving final results and summary counts.
 - **backup**: `--jobs` controls concurrent archive instances (default three); cancellation stops new work, joins workers, stops tar and cleans temporary files while preserving completed results and backups; interruption exits with status 130.

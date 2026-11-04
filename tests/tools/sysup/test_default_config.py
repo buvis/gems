@@ -27,11 +27,12 @@ class TestDefaultConfigEquivalence:
             "uv-tool-python",
             "uv",
             "helm",
+            "rustup",
             "mise",
             "pipx-python",
             "nvim",
         ]
-        assert names.index("mise") < names.index("pipx-python") < names.index("nvim")
+        assert names.index("rustup") < names.index("mise") < names.index("pipx-python") < names.index("nvim")
 
     def test_linux_plan_matches_old_sysup_wsl(self, mocker) -> None:
         """Zero-config linux plan == today's `sysup wsl` (apt then snap) plus the
@@ -57,7 +58,7 @@ class TestDefaultConfigEquivalence:
 
     def test_linux_does_not_include_darwin_entries(self, mocker) -> None:
         names = _plan_names("linux", mocker)
-        for mac_entry in ("brew", "npm-check", "python-packages", "uv-tool-python", "uv", "helm", "mise"):
+        for mac_entry in ("brew", "npm-check", "python-packages", "uv-tool-python", "uv", "helm", "rustup", "mise"):
             assert mac_entry not in names
 
     def test_uv_tool_python_runs_before_unchanged_uv_upgrades(self, mocker) -> None:
@@ -117,6 +118,14 @@ class TestDefaultConfigEquivalence:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
         assert cfg.commands["mise"].steps[0].label == "mise self-update --yes"
+
+    def test_rustup_updates_before_mise_builds_cargo_tools(self, mocker) -> None:
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        entry = cfg.commands["rustup"]
+        assert [s.label for s in entry.steps] == ["rustup update"]
+        assert entry.when.check == "rustup"
+        assert entry.order < cfg.commands["mise"].order
 
     def test_npm_check_is_interactive(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
