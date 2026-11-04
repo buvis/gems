@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **braid**: compose agent skills from sources.d into ~/.agents and project them to Claude Code and Kiro (ported from agent-skills)
+
 ## [0.17.0] - 2026-11-04
 
 ### Added

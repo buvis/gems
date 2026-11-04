@@ -43,6 +43,7 @@ all = ["buvis-gems[backup,bim,bim-web,doc,dot,fren,morph,muc,pinger,postup,postu
 [project.scripts]
 backup = "backup.cli:cli"
 bim = "bim.cli:cli"
+braid = "braid.cli:cli"
 dot = "dot.cli:cli"
 fctracker = "fctracker.cli:cli"
 fren = "fren.cli:cli"
@@ -83,6 +84,7 @@ packages = [
   "src/lib/buvis",
   "src/tools/backup",
   "src/tools/bim",
+  "src/tools/braid",
   "src/tools/dot",
   "src/tools/fctracker",
   "src/tools/fren",
