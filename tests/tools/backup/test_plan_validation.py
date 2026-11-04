@@ -241,3 +241,165 @@ def test_runner_empty_selection_has_no_archive_effects(tmp_path: Path, mode: str
 
     assert results == []
     assert _snapshot(tmp_path) == before
+
+
+def _bundle_source(root: Path) -> Path:
+    source = _source(root, "home")
+    (source / "data/deep").mkdir(parents=True)
+    (source / "data/inner.txt").write_bytes(b"inner")
+    (source / "data/deep/leaf.txt").write_bytes(b"leaf")
+    return source
+
+
+def _reason(result: PlanEntry | StepResult, mode: str) -> str:
+    return result.reason if mode == "plan" else result.message
+
+
+@pytest.mark.parametrize("interface", ["capability", "runner"])
+@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
+@pytest.mark.parametrize(
+    ("items", "out_rel", "item_rel"),
+    [
+        (["data"], "data/x.tar.gz", "data"),
+        (["tiny.txt", "data/deep"], "data/deep/more/x.tar.gz", "data/deep"),
+        (["data"], "data", "data"),
+        (["tiny.txt"], "tiny.txt", "tiny.txt"),
+    ],
+)
+def test_bundle_out_inside_selected_item_fails_identically_in_every_mode(
+    tmp_path: Path, interface: str, mode: str, items: list[str], out_rel: str, item_rel: str
+) -> None:
+    source = _bundle_source(tmp_path)
+    out = source / out_rel
+    if out.parent.is_dir() and not out.exists():
+        out.write_bytes(b"previous")
+    before = _snapshot(tmp_path)
+
+    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), "items": items})
+
+    message = (
+        f"out path {out} is inside selected item {source / item_rel}; choose an out path outside the bundle's items"
+    )
+    assert result.status == "fail" if mode == "plan" else result.success is False
+    assert _reason(result, mode) == message
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("interface", ["capability", "runner"])
+@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
+@pytest.mark.parametrize(
+    ("items", "out_rel", "members"),
+    [
+        (["tiny.txt"], "backups/x.tar.gz", {"tiny.txt"}),
+        (["tiny.txt"], "tiny.txt.tar.gz", {"tiny.txt"}),
+        (
+            ["data", "tiny.txt-copy"],
+            "data-backup.tar.gz",
+            {"data", "data/inner.txt", "data/deep", "data/deep/leaf.txt", "tiny.txt-copy"},
+        ),
+        (["data/deep"], "data/x.tar.gz", {"data/deep", "data/deep/leaf.txt"}),
+    ],
+)
+def test_bundle_out_under_source_outside_items_plans_runs_and_archives_only_items(
+    tmp_path: Path, interface: str, mode: str, items: list[str], out_rel: str, members: set[str]
+) -> None:
+    source = _bundle_source(tmp_path)
+    out = source / out_rel
+    before = _snapshot(tmp_path)
+
+    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), "items": items})
+
+    if mode == "plan":
+        assert result.status == "run"
+        assert result.reason == ""
+        assert result.source == str(source)
+        assert result.out == str(out)
+        assert result.replaces is False
+    else:
+        assert result.success is True
+        assert result.skipped is False
+        assert result.out_path == str(out)
+    if mode != "run":
+        assert _snapshot(tmp_path) == before
+        assert not out.exists()
+        return
+    with tarfile.open(out, "r:gz") as archive:
+        assert {member.name for member in archive.getmembers()} == members
+
+
+@pytest.mark.parametrize("interface", ["capability", "runner"])
+@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
+@pytest.mark.parametrize("extra", [{}, {"items": None}])
+def test_whole_tree_out_under_source_keeps_source_message_in_every_mode(
+    tmp_path: Path, interface: str, mode: str, extra: dict[str, object]
+) -> None:
+    source = _bundle_source(tmp_path)
+    out = source / "backups/all.tar.gz"
+    before = _snapshot(tmp_path)
+
+    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), **extra})
+
+    message = f"out path {out} is inside source {source}; choose an out path outside the backup source"
+    assert result.status == "fail" if mode == "plan" else result.success is False
+    assert _reason(result, mode) == message
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("interface", ["capability", "runner"])
+@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
+@pytest.mark.parametrize("items", [["data"], ["tiny.txt", "data/deep"]])
+def test_bundle_out_equal_to_source_keeps_source_message_in_every_mode(
+    tmp_path: Path, interface: str, mode: str, items: list[str]
+) -> None:
+    source = _bundle_source(tmp_path)
+    before = _snapshot(tmp_path)
+
+    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(source), "items": items})
+
+    message = f"out path {source} is inside source {source}; choose an out path outside the backup source"
+    assert result.status == "fail" if mode == "plan" else result.success is False
+    assert _reason(result, mode) == message
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("interface", ["capability", "runner"])
+@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
+@pytest.mark.parametrize(
+    ("items", "message"),
+    [
+        ([], "items must not be empty"),
+        (["../x"], "invalid item '../x': must be a relative path inside the source"),
+        ("data", "items must be a list of relative paths"),
+    ],
+)
+def test_invalid_items_win_over_containment_in_every_mode(
+    tmp_path: Path, interface: str, mode: str, items: object, message: str
+) -> None:
+    source = _bundle_source(tmp_path)
+    out = source / "backups/x.tar.gz"
+    before = _snapshot(tmp_path)
+
+    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), "items": items})
+
+    assert result.status == "fail" if mode == "plan" else result.success is False
+    assert _reason(result, mode) == message
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("mode", ["plan", "run"])
+def test_bundle_plan_marks_existing_out_under_source_as_replaced_and_rerun_succeeds(tmp_path: Path, mode: str) -> None:
+    source = _bundle_source(tmp_path)
+    out = source / "backups/x.tar.gz"
+    values = {"source": str(source), "out": str(out), "items": ["tiny.txt"]}
+    (first,) = _invoke("capability", "run", values)
+    assert first.success is True
+
+    (result,) = _invoke("capability", mode, values)
+
+    if mode == "plan":
+        assert result.status == "run"
+        assert result.replaces is True
+    else:
+        assert result.success is True
+        with tarfile.open(out, "r:gz") as archive:
+            assert [member.name for member in archive.getmembers()] == ["tiny.txt"]
