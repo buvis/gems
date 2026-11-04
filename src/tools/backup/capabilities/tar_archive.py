@@ -156,7 +156,7 @@ class TarArchive:
             yield StepResult(label, success=missing_source, message=f"{reason}: {source}", skipped=missing_source)
             return
 
-        containment = _reject_out_inside_source(label, source, out)
+        containment = _reject_out_inside_source(label, source, out, kwargs.get("items"))
         if containment is not None:
             yield containment
             return
@@ -266,25 +266,44 @@ class TarArchive:
         )
 
 
-def _reject_out_inside_source(label: str, source: Path, out: Path) -> StepResult | None:
-    """Reject an ``out`` path that lands inside the ``source`` tree.
+def _reject_out_inside_source(label: str, source: Path, out: Path, items: object = None) -> StepResult | None:
+    """Reject an ``out`` path that would be re-archived by the run.
 
     An ``out`` under ``source`` makes each run re-archive the previous run's
     archive (unbounded recursive growth). ``out`` may not exist yet, so its
     PARENT is resolved (which does exist — a stamp only expands the basename) and
     the name rejoined, giving a real absolute path to test for containment
-    against the resolved source. Returns a failed :class:`StepResult` when ``out``
-    is inside ``source`` (the caller yields it and returns before walking),
+    against the resolved source. A whole-tree run rejects ``out`` anywhere in
+    ``source``; a bundle rejects ``out`` equal to the source or equal to or
+    inside a selected item (invalid ``items`` fail first). Returns a failed
+    :class:`StepResult` (the caller yields it and returns before walking),
     otherwise ``None``.
     """
+    selected: list[Path] = []
+    if items is not None:
+        try:
+            selected = _normalize_items(source, items)
+        except ValueError as exc:
+            return StepResult(label, success=False, message=str(exc))
     source_resolved = source.resolve()
     out_resolved = out.parent.resolve() / out.name
-    if out_resolved == source_resolved or source_resolved in out_resolved.parents:
+    if out_resolved == source_resolved or (items is None and source_resolved in out_resolved.parents):
         return StepResult(
             label,
             success=False,
             message=(f"out path {out} is inside source {source}; choose an out path outside the backup source"),
         )
+    for relative in selected:
+        item = source_resolved / relative
+        if out_resolved == item or item in out_resolved.parents:
+            return StepResult(
+                label,
+                success=False,
+                message=(
+                    f"out path {out} is inside selected item {source / relative}; "
+                    "choose an out path outside the bundle's items"
+                ),
+            )
     return None
 
 
@@ -328,7 +347,7 @@ def _plan_source(label: str, source: Path, out: Path, items: object) -> tuple[st
         return "skip", f"source not found: {source}"
     if kind == "file":
         return "fail", f"source is not a directory: {source}"
-    containment = _reject_out_inside_source(label, source, out)
+    containment = _reject_out_inside_source(label, source, out, items)
     if containment is not None:
         return "fail", containment.message
     if items is not None:
