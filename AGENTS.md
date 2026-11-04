@@ -40,6 +40,7 @@ src/
 │       └── integrations/       # jira assemblers
 └── tools/
     ├── bim/                    # BUVIS InfoMesh CLI (zettel integration)
+    ├── braid/                  # agent skill composer (sources.d -> ~/.agents, Claude, Kiro)
     ├── dot/                    # dotfiles manager
     ├── fctracker/              # foreign currency tracker
     ├── fren/                   # file renamer toolkit

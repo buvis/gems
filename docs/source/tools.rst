@@ -32,6 +32,9 @@ Overview
    * - :doc:`bim <tools/bim>`
      - ``bim``
      - BUVIS InfoMesh — Zettelkasten management with Jira integration
+   * - :doc:`braid <tools/braid>`
+     -
+     - Agent skill composer (sources.d to ``~/.agents``, Claude Code and Kiro)
    * - :doc:`dot <tools/dot>`
      -
      - Dotfiles manager
@@ -120,6 +123,7 @@ See :doc:`configuration` for how to create custom settings classes and YAML conf
 
    tools/backup
    tools/bim
+   tools/braid
    tools/dot
    tools/fctracker
    tools/fren

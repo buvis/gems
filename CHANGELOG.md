@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **braid**: compose agent skills from sources.d into ~/.agents and project them to Claude Code and Kiro (ported from agent-skills)
+- **braid**: compose agent skills from sources.d into ~/.agents and project them to Claude Code and Kiro (ported from agent-skills); sources.d now lives in ~/.config/braid, and the old ~/.config/agent-skills location and env names are not read
 
 ## [0.17.0] - 2026-11-04
 

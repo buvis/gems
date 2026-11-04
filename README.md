@@ -11,7 +11,7 @@ Pre-built wheels for Linux (x64, ARM), macOS (ARM), and Windows (x64). Python 3.
 ### uv
 
 ```bash
-uv tool install buvis-gems              # all 15 CLIs, no optional deps
+uv tool install buvis-gems              # all 16 CLIs, no optional deps
 uv tool install buvis-gems[bim]         # + jira & textual deps for bim
 uv tool install buvis-gems[bim,muc]     # combine extras
 uv tool install buvis-gems[all]         # all optional deps
@@ -20,7 +20,7 @@ uv tool install buvis-gems[all]         # all optional deps
 ### pipx
 
 ```bash
-pipx install buvis-gems                 # all 15 CLIs, no optional deps
+pipx install buvis-gems                 # all 16 CLIs, no optional deps
 pipx install 'buvis-gems[all]'          # all optional deps
 ```
 
@@ -67,7 +67,7 @@ pipx upgrade buvis-gems
 mise upgrade pipx:buvis-gems
 ```
 
-All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netscan`, `outlookctl`, `pinger`, `puc`, `readerctl`, `sysup`, `vuc`, `zseq`) are always installed. Extras add optional dependencies some tools need:
+All 16 CLIs (`backup`, `bim`, `braid`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netscan`, `outlookctl`, `pinger`, `puc`, `readerctl`, `sysup`, `vuc`, `zseq`) are always installed. Extras add optional dependencies some tools need:
 
 | Extra | Dep | Tool |
 |-------|-----|------|
@@ -87,12 +87,13 @@ All 15 CLIs (`backup`, `bim`, `dot`, `fctracker`, `fren`, `morph`, `muc`, `netsc
 
 **Library** (`src/lib/buvis/pybase/`) — shared adapters, CLI scaffolding, configuration, filesystem and formatting utilities, plus the zettel subsystem (domain logic, Jira integration, and a Rust extension via PyO3 for performance-critical parsing).
 
-**Tools** (`src/tools/`) — 15 Click-based CLIs built on the library:
+**Tools** (`src/tools/`) — 16 Click-based CLIs built on the library:
 
 | Tool | Purpose |
 |------|---------|
 | backup | Config-driven tar archiver (git-src backup) |
 | bim | BUVIS InfoMesh (zettel integration) |
+| braid | Agent skill composer (sources.d to `~/.agents`, Claude Code and Kiro) |
 | dot | Dotfiles manager, with host-specific config links via a `host-links` manifest |
 | fctracker | Foreign currency account tracker |
 | fren | File renamer toolkit |
@@ -181,4 +182,19 @@ list (zettels still at the pre-v1 flat path). `bim doc migrate-layout`
 consumes that list and moves each zettel into its per-issuer subfolder
 (dry-run by default; `--apply` performs the moves). See the
 [Sphinx docs](https://buvis.github.io/gems/) for the full JSON schema.
+
+### braid
+
+`braid` links every skill from the repos listed in
+`~/.config/braid/sources.d` into `~/.agents/skills`, then projects them into
+`~/.claude/skills` and, once enrolled with `--kiro`, into `~/.kiro/skills`.
+`.braidignore` files keep named skills out of Claude. `--dry-run` reports
+changes; `--check` exits 1 on drift. The old `~/.config/agent-skills` location
+and env names are no longer read. Details: `docs/source/tools/braid.rst`.
+
+```bash
+braid                                   # sync links and state
+braid --check                           # exit 1 when anything drifts
+braid --kiro --kiro-agent reviewer      # enroll Kiro and one custom agent
+```
 
