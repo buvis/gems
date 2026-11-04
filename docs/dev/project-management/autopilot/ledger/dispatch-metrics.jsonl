@@ -640,3 +640,20 @@
 {"id":"8255bcbf","kind":"pat","task":"8","queued_at":1793613656,"prompt_bytes":12589}
 {"id":"8255bcbf","ended_at":1793613804,"elapsed_s":148,"outcome":"ok","detail":null}
 {"id":"756cfe13","ended_at":1793613805,"elapsed_s":263,"outcome":"ok","detail":null}
+{"id":"e296a6b8","ended_at":1793775365,"elapsed_s":null,"outcome":"lost","detail":"open at build/resume handoff"}
+{"kind":"handoff","site":"build","edge":"resume","at":1793775365,"phase":"build","prd":"00117-backup-bundle-out-under-source-v1.md"}
+{"id":"74aa6811","kind":"fast-track:tess","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775454,"prompt_bytes":61373}
+{"id":"74aa6811","ended_at":1793775651,"elapsed_s":197,"outcome":"ok","detail":null}
+{"id":"ad135031","kind":"fast-track:ivan","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775684,"prompt_bytes":57647}
+{"id":"ad135031","ended_at":1793775786,"elapsed_s":102,"outcome":"ok","detail":null}
+{"id":"31e9a36f","kind":"fast-track:alice","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775898,"prompt_bytes":6221}
+{"id":"b6b295bd","kind":"fast-track:blake","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775900,"prompt_bytes":8636}
+{"id":"f444fcc0","kind":"fast-track:eve","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775900,"prompt_bytes":3897}
+{"id":"a8d7fd3b","kind":"fast-track:bob","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775901,"prompt_bytes":1428}
+{"id":"9324eb13","kind":"fast-track:carl","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775902,"prompt_bytes":6577}
+{"id":"b6b295bd","ended_at":1793775953,"elapsed_s":53,"outcome":"ok","detail":null}
+{"id":"31e9a36f","ended_at":1793775962,"elapsed_s":64,"outcome":"ok","detail":null}
+{"id":"a8d7fd3b","ended_at":1793776043,"elapsed_s":142,"outcome":"error","detail":"codex usage limit; copilot gpt-5.4 unavailable; fell back to claude opus subagent"}
+{"id":"9324eb13","ended_at":1793776145,"elapsed_s":243,"outcome":"ok","detail":null}
+{"id":"f444fcc0","ended_at":1793776175,"elapsed_s":275,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"done","edge":"leave","at":1793776661,"phase":"done","prd":"00117-backup-bundle-out-under-source-v1.md"}
