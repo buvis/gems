@@ -7,7 +7,6 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-
 from braid.domain import engine
 from braid.domain.engine import (
     BraidError,
@@ -22,6 +21,7 @@ from braid.domain.engine import (
     select_kiro,
     sync_kiro_agent,
 )
+
 from tests.tools.braid.helpers import enroll, kiro_root, make_skill, read_state, settings, write_agent
 
 
@@ -55,6 +55,7 @@ def test_sync_composes_union_and_projects_only_eligible_skills(tmp_path: Path) -
 
     checked = run(config.with_mode(Mode.CHECK))
     assert checked.drift == 0
+    assert checked.current == 3
 
 
 def test_duplicate_names_fail_before_writing(tmp_path: Path) -> None:
@@ -72,14 +73,41 @@ def test_duplicate_names_fail_before_writing(tmp_path: Path) -> None:
 
 def test_dry_run_reports_drift_without_writing(tmp_path: Path) -> None:
     source = tmp_path / "personal"
-    make_skill(source, "portable")
+    skill = make_skill(source, "portable")
     config = settings(tmp_path, source, mode=Mode.DRY_RUN)
+    reported: list[str] = []
+
+    result = run(config, emit=reported.append)
+
+    assert result.drift == 2
+    union_link = config.agents_root / "skills" / "portable"
+    assert reported == [
+        f"WOULD LINK {union_link} -> {skill.resolve()}",
+        f"WOULD LINK {config.claude_root / 'skills' / 'portable'} -> {union_link}",
+    ]
+    assert not config.agents_root.exists()
+    assert not config.claude_root.exists()
+
+
+@pytest.mark.parametrize("mode", [Mode.DRY_RUN, Mode.CHECK])
+def test_preview_and_check_leave_a_colliding_real_folder_in_place(tmp_path: Path, mode: Mode) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    config = settings(tmp_path, source, mode=mode)
+    collisions = [root / "skills" / "portable" for root in (config.agents_root, config.claude_root)]
+    for collision in collisions:
+        collision.mkdir(parents=True)
+        (collision / "original").write_text("keep")
 
     result = run(config)
 
-    assert result.drift == 2
-    assert not config.agents_root.exists()
-    assert not config.claude_root.exists()
+    for collision in collisions:
+        assert collision.is_dir()
+        assert not collision.is_symlink()
+        assert (collision / "original").read_text() == "keep"
+    assert not (config.agents_root / "backups").exists()
+    assert not (config.claude_root / "skills-backup").exists()
+    assert (result.drift, result.backed_up) == (2, 0)
 
 
 def test_real_union_collision_is_backed_up_before_linking(tmp_path: Path) -> None:
@@ -90,13 +118,38 @@ def test_real_union_collision_is_backed_up_before_linking(tmp_path: Path) -> Non
     collision.mkdir(parents=True)
     (collision / "original").write_text("keep")
 
-    run(config)
+    result = run(config)
 
     assert collision.is_symlink()
     assert collision.resolve() == expected.resolve()
     backups = list((config.agents_root / "backups").glob("*/compose/portable/original"))
     assert len(backups) == 1
     assert backups[0].read_text() == "keep"
+    assert result.backed_up == 1
+
+
+def test_real_claude_collision_is_backed_up_before_linking(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    skill = make_skill(source, "portable")
+    config = settings(tmp_path, source)
+    collision = config.claude_root / "skills" / "portable"
+    collision.mkdir(parents=True)
+    (collision / "original").write_text("keep")
+    reported: list[str] = []
+
+    result = run(config, emit=reported.append)
+
+    union_link = config.agents_root / "skills" / "portable"
+    assert collision.is_symlink()
+    assert collision.resolve() == skill.resolve()
+    backups = list((config.claude_root / "skills-backup").glob("*/project/portable"))
+    assert [(backup / "original").read_text() for backup in backups] == ["keep"]
+    assert result.backed_up == 1
+    assert reported == [
+        f"LINK[symlink] {union_link} -> {skill.resolve()}",
+        f"BACKUP {collision} -> {backups[0]}",
+        f"LINK[symlink] {collision} -> {union_link}",
+    ]
 
 
 def test_stale_cleanup_removes_only_manifest_owned_links(tmp_path: Path) -> None:
@@ -179,6 +232,50 @@ def test_windows_symlink_privilege_failure_falls_back_to_junction(
 
     assert backend == "junction"
     assert calls == [["cmd", "/c", "mklink", "/J", str(destination), str(target)]]
+
+
+def deny_symlink(monkeypatch: pytest.MonkeyPatch, winerror: int) -> None:
+    error = OSError("symlink denied")
+    error.winerror = winerror
+
+    def denied(*_args: object, **_kwargs: object) -> None:
+        raise error
+
+    monkeypatch.setattr(os, "symlink", denied)
+
+
+def test_windows_junction_that_mklink_fails_to_create_is_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    deny_symlink(monkeypatch, 1314)
+
+    class Failed:
+        returncode = 1
+        stdout = ""
+        stderr = "Access is denied.\n"
+
+    with pytest.raises(BraidError, match="cannot create junction .*: Access is denied.$"):
+        create_directory_link(tmp_path / "destination", target, platform="nt", runner=lambda *_a, **_k: Failed())
+
+
+def test_windows_link_error_other_than_privilege_is_not_retried_as_a_junction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    deny_symlink(monkeypatch, 3)
+    calls: list[object] = []
+
+    def runner(command: object, **_kwargs: object) -> object:
+        calls.append(command)
+        return type("Completed", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    with pytest.raises(BraidError, match="cannot link"):
+        create_directory_link(tmp_path / "destination", target, platform="nt", runner=runner)
+
+    assert calls == []
 
 
 def test_configured_sources_support_comments_home_and_relative_paths(
@@ -287,12 +384,13 @@ def test_kiro_name_collision_is_backed_up_and_unmanaged_skills_stay(tmp_path: Pa
     (kiro_skills / "manual").mkdir()
     (kiro_skills / "manual" / "keep").write_text("yes")
 
-    run(enroll(plain))
+    result = run(enroll(plain))
 
     assert (kiro_skills / "portable").is_symlink()
     backups = (kiro_root(plain) / "skills-backup").glob("*/project/portable/original")
     assert [backup.read_text() for backup in backups] == ["keep"]
     assert (kiro_skills / "manual" / "keep").read_text() == "yes"
+    assert result.backed_up == 1
 
 
 def test_selected_agent_gains_the_skill_resource_and_keeps_everything_else(
@@ -305,8 +403,9 @@ def test_selected_agent_gains_the_skill_resource_and_keeps_everything_else(
     agent = write_agent(plain, "dev", {"name": "dev", "resources": ["file://README.md"], "tools": ["read"]})
     agent.chmod(0o640)
     original = agent.read_bytes()
+    reported: list[str] = []
 
-    result = run(enroll(plain, "dev"))
+    result = run(enroll(plain, "dev"), emit=reported.append)
 
     assert json.loads(agent.read_text()) == {
         "name": "dev",
@@ -314,9 +413,10 @@ def test_selected_agent_gains_the_skill_resource_and_keeps_everything_else(
         "tools": ["read"],
     }
     assert agent.stat().st_mode & 0o777 == 0o640
-    assert result.configured == 1
+    assert (result.configured, result.backed_up) == (1, 1)
     backups = list((kiro_root(plain) / "agent-backup").glob("*/agents/dev.json"))
     assert [backup.read_bytes() for backup in backups] == [original]
+    assert reported[-2:] == [f"BACKUP {agent} -> {backups[0]}", f"CONFIGURE {agent}"]
 
     again = run(plain)
 
@@ -344,6 +444,36 @@ def test_agent_already_reading_the_skills_is_left_byte_for_byte(
     assert agent.read_bytes() == original
     assert result.configured == 0
     assert not (kiro_root(plain) / "agent-backup").exists()
+
+
+def test_an_unrelated_home_skill_resource_does_not_stand_in_for_the_kiro_view(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "home"))
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    plain = settings(tmp_path, source)
+    unrelated = "skill://~/notes/*/SKILL.md"
+    agent = write_agent(plain, "dev", {"resources": [unrelated]})
+
+    result = run(enroll(plain, "dev"))
+
+    assert json.loads(agent.read_text())["resources"] == [unrelated, "skill://~/.kiro/skills/*/SKILL.md"]
+    assert result.configured == 1
+
+
+def test_enrolling_a_second_agent_keeps_the_first_enrolled(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    plain = settings(tmp_path, source)
+    write_agent(plain, "dev", {"resources": []})
+    qa = write_agent(plain, "qa", {"resources": []})
+    run(enroll(plain, "dev"))
+
+    run(enroll(plain, "qa"))
+
+    assert read_state(plain)["kiro"]["agents"] == ["dev", "qa"]
+    assert json.loads(qa.read_text())["resources"] == ["skill://~/.kiro/skills/*/SKILL.md"]
 
 
 def test_project_relative_skill_resource_does_not_stand_in_for_the_global_view(
@@ -417,10 +547,13 @@ def test_preview_and_check_report_a_missing_agent_resource_without_writing(tmp_p
     original = agent.read_bytes()
     run(enroll(plain, "dev"))
     agent.write_bytes(original)
+    reported: list[str] = []
 
-    result = run(plain.with_mode(mode))
+    result = run(plain.with_mode(mode), emit=reported.append)
 
     assert result.drift == 1
+    verb = {Mode.CHECK: "MISMATCH RESOURCE", Mode.DRY_RUN: "WOULD CONFIGURE"}[mode]
+    assert reported == [f"{verb} {agent}"]
     assert agent.read_bytes() == original
     assert len(list((kiro_root(plain) / "agent-backup").glob("*/agents/dev.json"))) == 1
 
@@ -488,6 +621,28 @@ def test_agent_edited_since_it_was_read_is_not_overwritten(tmp_path: Path) -> No
     agent.parent.mkdir()
     agent.write_bytes(b'{"edited": "by hand"}')
     edit = KiroAgentEdit(path=agent, before=b"{}", after=b'{"resources": []}')
+
+    with pytest.raises(BraidError, match="changed during composition"):
+        sync_kiro_agent(edit, tmp_path / "backup", Mode.SYNC, Result(), print)
+
+    assert agent.read_bytes() == b'{"edited": "by hand"}'
+    assert [path.name for path in agent.parent.iterdir()] == ["dev.json"]
+
+
+def test_agent_edited_while_the_new_config_is_written_is_not_overwritten(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agent = tmp_path / "agents" / "dev.json"
+    agent.parent.mkdir()
+    agent.write_bytes(b"{}")
+    edit = KiroAgentEdit(path=agent, before=b"{}", after=b'{"resources": []}')
+    copymode = shutil.copymode
+
+    def copymode_then_edit_by_hand(source: Path, destination: Path, *, follow_symlinks: bool = True) -> None:
+        copymode(source, destination, follow_symlinks=follow_symlinks)
+        agent.write_bytes(b'{"edited": "by hand"}')
+
+    monkeypatch.setattr(shutil, "copymode", copymode_then_edit_by_hand)
 
     with pytest.raises(BraidError, match="changed during composition"):
         sync_kiro_agent(edit, tmp_path / "backup", Mode.SYNC, Result(), print)

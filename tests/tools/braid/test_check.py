@@ -6,14 +6,15 @@ defects were fixed. They stay as the regression tests for those fixes.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from pathlib import Path
 
 import pytest
-
 from braid.domain import engine
 from braid.domain.engine import BraidError, Mode, Result, Settings, run
+
 from tests.tools.braid.helpers import enroll, kiro_root, make_skill, settings
 
 
@@ -92,6 +93,23 @@ def test_check_after_a_lost_state_file_reports_the_state_not_the_wanted_links(
     assert reported == [f"MISMATCH STATE {state_path}"]
 
 
+def test_check_reports_a_state_file_that_no_longer_records_a_managed_link(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    config = settings(tmp_path, source)
+    run(config)
+    state_path = config.agents_root / ".braid-state.json"
+    stale_state = json.loads(state_path.read_text())
+    del stale_state["hosts"]["claude"]["portable"]
+    state_path.write_text(json.dumps(stale_state))
+    reported: list[str] = []
+
+    result = run(config.with_mode(Mode.CHECK), emit=reported.append)
+
+    assert reported == [f"MISMATCH STATE {state_path}"]
+    assert result.drift == 1
+
+
 def test_check_reports_a_kiro_link_the_state_does_not_record(tmp_path: Path) -> None:
     source = tmp_path / "personal"
     make_skill(source, "portable")
@@ -152,9 +170,12 @@ def test_read_only_run_names_the_hand_changed_path_and_finishes_the_report(tmp_p
 
     run(config.with_mode(mode), emit=reported.append)
 
-    assert reported[0] == f"MISMATCH CHANGED {stale}"
     # The Claude projection of the same skill comes after it and is still reported.
-    assert len(reported) == 2
+    verb = {Mode.CHECK: "MISMATCH STALE", Mode.DRY_RUN: "WOULD REMOVE"}[mode]
+    assert reported == [
+        f"MISMATCH CHANGED {stale}",
+        f"{verb} {config.claude_root / 'skills' / 'temporary'}",
+    ]
 
 
 def test_sync_refuses_to_remove_a_hand_changed_managed_path(tmp_path: Path) -> None:
@@ -179,4 +200,27 @@ def test_a_failed_state_write_reports_a_braid_error_and_leaves_no_temp_file(
     with pytest.raises(BraidError):
         run(config)
 
+    assert {path.name for path in state_path.parent.iterdir()} == {".braid-state.json", "skills"}
+
+
+def test_a_state_write_that_cannot_land_keeps_the_previous_state_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    config = settings(tmp_path, source)
+    run(config)
+    state_path = config.agents_root / ".braid-state.json"
+    previous = state_path.read_bytes()
+    make_skill(source, "added-later")
+
+    def refuse(*_args: object, **_kwargs: object) -> None:
+        raise OSError("no space left on device")
+
+    monkeypatch.setattr(os, "replace", refuse)
+
+    with pytest.raises(BraidError, match="cannot write Braid state"):
+        run(config)
+
+    assert state_path.read_bytes() == previous
     assert {path.name for path in state_path.parent.iterdir()} == {".braid-state.json", "skills"}
