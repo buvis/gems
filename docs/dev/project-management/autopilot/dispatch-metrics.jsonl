@@ -661,3 +661,4 @@
 {"id":"a1b60eba","ended_at":1793776850,"elapsed_s":47,"outcome":"error","detail":"codex could not read files (nested sandbox-exec denied); no review produced"}
 {"id":"c3bba339","kind":"fast-track:bob","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793776865,"prompt_bytes":36576}
 {"id":"c3bba339","ended_at":1793776952,"elapsed_s":87,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"resume","at":1793832155,"phase":"build","prd":"00115-braid-port-skills-parity-v1.md"}
