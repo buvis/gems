@@ -1,0 +1,16 @@
+[tool]
+name = "braid"
+display_name = "Braid"
+module_name = "braid"
+description = "Compose agent skills from sources.d and project them to Claude Code and Kiro"
+category = "system"
+
+[tool.interfaces]
+cli = true
+rest = false
+tui = false
+web = false
+
+[tool.requirements]
+python = ">=3.11"
+extras = []
