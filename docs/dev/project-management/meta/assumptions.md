@@ -50,3 +50,11 @@
 
 - Ivan: the braid.rst example summary numbers are illustrative, not derived.
 - Ivan: rule backup paths (`rules-backup`, `steering-backup`) and rule-name characters come from the design contract; both added to braid.rst.
+
+## 6: [D1] braid rules: Windows foreign instruction file stays UNMANAGED on regeneration; sync_rules takes emit positionally
+
+- Tess: `ignored`/`previous` types are not pinned; the positional test passes `frozenset()`/`None`, then `frozenset({"tone"})` and the first call's `RuleState`.
+- Tess: the direct `sync_rules` call needs `agents_root` to exist, standing in for the engine's skill phase.
+- Tess: `RuleState.union`/`hosts` are compared by keys only.
+- Ivan: Windows instruction-file ownership means "same file as the generated `AGENTS.md` just before this run rewrote it"; content plays no part.
+- Ivan: a detached hard link is braid's stale output and can be unlinked without backup. Overruled by the orchestrator: the design backs up any present owned path before relinking, because edits made through a hard link land in the detached file.
