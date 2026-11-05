@@ -703,3 +703,11 @@
 {"id":"81987d19","kind":"pat","task":"7","queued_at":1793860469,"prompt_bytes":8096}
 {"id":"81987d19","ended_at":1793860485,"elapsed_s":16,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1793860660,"phase":"review","prd":"00115-braid-port-skills-parity-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793860743,"phase":"review","prd":"00115-braid-port-skills-parity-v1.md"}
+{"id":"b3a5de11","kind":"bob","task":"review-00115c2","queued_at":1793860787,"prompt_bytes":17305}
+{"id":"599ba17a","kind":"carl","task":"review-00115c2","queued_at":1793860787,"prompt_bytes":14342}
+{"id":"b3a5de11","ended_at":1793860939,"elapsed_s":152,"outcome":"ok","detail":null}
+{"id":"599ba17a","ended_at":1793860940,"elapsed_s":153,"outcome":"ok","detail":null}
+{"id":"b3a5de11","ended_at":1793861002,"elapsed_s":215,"outcome":"ok","detail":null}
+{"id":"599ba17a","ended_at":1793861002,"elapsed_s":215,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1793861042,"phase":"done","prd":"00115-braid-port-skills-parity-v1.md"}
