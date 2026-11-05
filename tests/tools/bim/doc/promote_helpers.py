@@ -46,7 +46,7 @@ def _make_settings(tmp_path: Path) -> DocSettings:
         {
             "business_root": str(tmp_path / "Business"),
             "vault_root": str(tmp_path / "Vault"),
-            "vault_documents_subdir": "Zettelkasten/documents",
+            "vault_documents_subdir": "notes/documents",
             "state_dir": str(tmp_path / "state"),
         }
     )

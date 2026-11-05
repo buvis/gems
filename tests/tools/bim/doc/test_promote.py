@@ -64,7 +64,7 @@ class TestCommandPromote:
         zettel_path = Path(result.metadata["zettel_path"])
         assert zettel_path.exists()
         # v1: zettel lands under per-issuer subfolder.
-        assert zettel_path.parent == settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
+        assert zettel_path.parent == settings.paths.vault_root / "notes" / "documents" / "cez-as"
 
         # Proposal deleted after promote.
         assert not yml.exists()

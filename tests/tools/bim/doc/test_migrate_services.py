@@ -102,7 +102,7 @@ class TestCommandAuditWriteReportSeam:
             state_db=_StubStateDB(),  # type: ignore[arg-type]
             business_root=business_root,
             vault_root=vault_root,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
             issuers_path=issuers,
             state_dir=state_dir,
             low_confidence_threshold=0.7,
@@ -142,7 +142,7 @@ class TestCommandAuditWriteReportSeam:
             state_db=_StubStateDB(),  # type: ignore[arg-type]
             business_root=business_root,
             vault_root=vault_root,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
             issuers_path=issuers,
             state_dir=state_dir,
             low_confidence_threshold=0.7,

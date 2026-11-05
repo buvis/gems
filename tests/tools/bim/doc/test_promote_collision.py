@@ -117,11 +117,7 @@ class TestCommandPromoteCollisions:
         """A pre-existing zettel under <vault>/<doc-subdir>/<issuer-slug>/ must
         block the same canonical filename from being reused during promote."""
         existing_zettel = (
-            settings.paths.vault_root
-            / "Zettelkasten"
-            / "documents"
-            / "cez-as"
-            / "20210311000000-cez-as-7102105594.invoice.md"
+            settings.paths.vault_root / "notes" / "documents" / "cez-as" / "20210311000000-cez-as-7102105594.invoice.md"
         )
         existing_zettel.parent.mkdir(parents=True, exist_ok=True)
         existing_text = "# pre-existing zettel\n\nthis content must survive\n"
@@ -190,7 +186,7 @@ class TestCommandPromoteCollisions:
 
         issuer_dir = settings.paths.business_root / "cez-as"
         assert len(list(issuer_dir.glob("*.pdf"))) == 2
-        vault_issuer_dir = settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
+        vault_issuer_dir = settings.paths.vault_root / "notes" / "documents" / "cez-as"
         assert len(list(vault_issuer_dir.glob("*.md"))) == 2
 
         text = second_zettel.read_text(encoding="utf-8")
@@ -244,7 +240,7 @@ class TestCommandPromoteCollisions:
         # No new PDF was written beyond the 60 pre-seeded incumbents.
         assert len(list(issuer_dir.glob("*.pdf"))) == 60
         # No zettel was written for this issuer at all.
-        vault_issuer_dir = settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
+        vault_issuer_dir = settings.paths.vault_root / "notes" / "documents" / "cez-as"
         assert not vault_issuer_dir.exists() or list(vault_issuer_dir.glob("*.md")) == []
 
     def test_filesystem_error_during_collision_resolution_returns_failure_without_traceback(
@@ -288,7 +284,7 @@ class TestCommandPromoteCollisions:
         # _finalize must never have run: proposal is untouched, nothing written.
         assert yml.exists()
         assert not (settings.paths.business_root / "cez-as").exists()
-        vault_issuer_dir = settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
+        vault_issuer_dir = settings.paths.vault_root / "notes" / "documents" / "cez-as"
         assert not vault_issuer_dir.exists()
 
     @pytest.mark.skipif(os.geteuid() == 0, reason="root ignores directory mode bits")

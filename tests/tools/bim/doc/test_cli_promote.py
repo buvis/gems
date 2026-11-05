@@ -64,7 +64,7 @@ class TestBimDocPromote:
         yml = _staged_yml(tmp_path)
         settings = _bim_settings_with_doc(tmp_path)
         target_pdf = tmp_path / "Business" / "cez-as" / "x.invoice.pdf"
-        zettel_path = tmp_path / "Vault" / "Zettelkasten" / "documents" / "x.invoice.md"
+        zettel_path = tmp_path / "Vault" / "notes" / "documents" / "x.invoice.md"
         cmd_result = CommandResult(
             success=True,
             metadata={
@@ -158,7 +158,7 @@ class TestBimDocPromoteStrictFlag:
         # Symmetry with TestBimDocIngestStrictFlag: --strict only flips the
         # exit code on failure; success must still exit 0 even with the flag.
         target_pdf = tmp_path / "Business" / "cez-as" / "x.invoice.pdf"
-        zettel_path = tmp_path / "Vault" / "Zettelkasten" / "documents" / "x.invoice.md"
+        zettel_path = tmp_path / "Vault" / "notes" / "documents" / "x.invoice.md"
         cmd_result = CommandResult(
             success=True,
             metadata={

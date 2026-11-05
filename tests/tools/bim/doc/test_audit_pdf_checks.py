@@ -74,11 +74,11 @@ class TestResolveZettelPaths:
             pdf,
             folder_slug="cez-as",
             vault_root=tmp_path / "vault",
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         basename = "20260101000000-cez-as-foo.invoice.md"
-        assert per_issuer == tmp_path / "vault" / "Zettelkasten/documents" / "cez-as" / basename
-        assert legacy == tmp_path / "vault" / "Zettelkasten/documents" / basename
+        assert per_issuer == tmp_path / "vault" / "notes/documents" / "cez-as" / basename
+        assert legacy == tmp_path / "vault" / "notes/documents" / basename
 
 
 class TestCheckFilenameCanonical:
@@ -161,7 +161,7 @@ class TestCheckZettelExists:
     @pytest.fixture
     def setup(self, tmp_path: Path) -> dict[str, Path]:
         vault = tmp_path / "vault"
-        docs = vault / "Zettelkasten/documents"
+        docs = vault / "notes/documents"
         docs.mkdir(parents=True)
         per_issuer_dir = docs / "cez-as"
         per_issuer_dir.mkdir()
@@ -179,18 +179,18 @@ class TestCheckZettelExists:
 
     def test_clean_zettel_per_issuer_returns_empty(self, setup: dict[str, Path]) -> None:
         setup["per_issuer"].touch()
-        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "Zettelkasten/documents")
+        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "notes/documents")
         assert findings == []
         assert legacy == []
 
     def test_legacy_layout_zettel_returns_legacy_path(self, setup: dict[str, Path]) -> None:
         setup["legacy"].touch()
-        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "Zettelkasten/documents")
+        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "notes/documents")
         assert findings == []
         assert legacy == [str(setup["legacy"])]
 
     def test_missing_zettel_returns_finding(self, setup: dict[str, Path]) -> None:
-        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "Zettelkasten/documents")
+        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "notes/documents")
         assert len(findings) == 1
         assert findings[0].code == "missing_zettel"
         assert findings[0].issuer_slug == "cez-as"
@@ -200,18 +200,18 @@ class TestCheckZettelExists:
     def test_per_issuer_takes_precedence_over_legacy(self, setup: dict[str, Path]) -> None:
         setup["per_issuer"].touch()
         setup["legacy"].touch()
-        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "Zettelkasten/documents")
+        findings, legacy = check_zettel_exists(setup["pdf"], "cez-as", setup["vault"], "notes/documents")
         assert findings == []
         assert legacy == []
 
     def test_empty_folder_slug_only_checks_legacy(self, tmp_path: Path) -> None:
         vault = tmp_path / "vault"
-        docs = vault / "Zettelkasten/documents"
+        docs = vault / "notes/documents"
         docs.mkdir(parents=True)
         pdf = tmp_path / "scan.pdf"
         pdf.touch()
         # No legacy file -> missing_zettel.
-        findings, legacy = check_zettel_exists(pdf, "", vault, "Zettelkasten/documents")
+        findings, legacy = check_zettel_exists(pdf, "", vault, "notes/documents")
         assert len(findings) == 1
         assert findings[0].code == "missing_zettel"
         assert findings[0].issuer_slug is None
@@ -219,13 +219,13 @@ class TestCheckZettelExists:
 
     def test_empty_folder_slug_finds_legacy(self, tmp_path: Path) -> None:
         vault = tmp_path / "vault"
-        docs = vault / "Zettelkasten/documents"
+        docs = vault / "notes/documents"
         docs.mkdir(parents=True)
         pdf = tmp_path / "scan.pdf"
         pdf.touch()
         legacy_path = docs / "scan.md"
         legacy_path.touch()
-        findings, legacy = check_zettel_exists(pdf, "", vault, "Zettelkasten/documents")
+        findings, legacy = check_zettel_exists(pdf, "", vault, "notes/documents")
         assert findings == []
         assert legacy == [str(legacy_path)]
 

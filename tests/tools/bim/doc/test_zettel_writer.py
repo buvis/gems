@@ -271,14 +271,12 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
 
-        expected_path = (
-            tmp_path / "Zettelkasten" / "documents" / "cez-as" / "20210311083422-cez-as-7102105594.invoice.md"
-        )
+        expected_path = tmp_path / "notes" / "documents" / "cez-as" / "20210311083422-cez-as-7102105594.invoice.md"
         assert target == expected_path
         assert target.exists()
 
@@ -310,11 +308,11 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
-        expected_parent = tmp_path / "Zettelkasten" / "documents" / "cez-as"
+        expected_parent = tmp_path / "notes" / "documents" / "cez-as"
         assert expected_parent.is_dir()
         assert target.parent == expected_parent
         assert target.name == "20210311083422-cez-as-7102105594.invoice.md"
@@ -323,7 +321,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         with pytest.raises(ValueError):
@@ -336,7 +334,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -371,7 +369,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -388,7 +386,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -401,7 +399,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -418,7 +416,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
         target = writer.write(fm, body, issuer_slug="cez-as")
@@ -432,7 +430,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
         target = writer.write(fm, body, issuer_slug="cez-as")
@@ -447,7 +445,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -461,7 +459,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -486,7 +484,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -502,7 +500,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(frontmatter, SAMPLE_OCR_TEXT)
         target = writer.write(frontmatter, body, issuer_slug="cez-as")
@@ -522,7 +520,7 @@ class TestZettelWriter:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
         target = writer.write(fm, body, issuer_slug="cez-as")
@@ -611,7 +609,7 @@ class TestZettelWriterPerVariantFixtures:
         writer = ZettelWriter(
             repo=None,
             vault_root=tmp_path,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
         )
         body = build_zettel_body(fm, SAMPLE_OCR_TEXT)
         target = writer.write(fm, body, issuer_slug="cez-as")

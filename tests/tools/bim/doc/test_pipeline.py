@@ -71,7 +71,7 @@ class TestPipeline:
         assert zettel_path.exists()
         assert zettel_path.suffix == ".md"
         # v1: zettel lands under per-issuer subfolder.
-        assert zettel_path.parent == settings.paths.vault_root / "Zettelkasten" / "documents" / "cez-as"
+        assert zettel_path.parent == settings.paths.vault_root / "notes" / "documents" / "cez-as"
 
         pdf_path = Path(result.metadata["pdf_path"])
         assert pdf_path.exists()
@@ -901,11 +901,7 @@ class TestPipeline:
         """
         # Pre-create a colliding zettel in the per-issuer vault subfolder.
         existing_zettel = (
-            settings.paths.vault_root
-            / "Zettelkasten"
-            / "documents"
-            / "cez-as"
-            / "20210311000000-cez-as-7102105594.invoice.md"
+            settings.paths.vault_root / "notes" / "documents" / "cez-as" / "20210311000000-cez-as-7102105594.invoice.md"
         )
         existing_zettel.parent.mkdir(parents=True, exist_ok=True)
         existing_text = "# pre-existing zettel\n\nthis content must survive\n"

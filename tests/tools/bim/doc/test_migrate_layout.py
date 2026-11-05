@@ -14,7 +14,7 @@ from pathlib import Path
 
 from bim.commands.doc.migrate.migrate_layout import CommandMigrateLayout, MigrateServices
 
-_VAULT_SUBDIR = "Zettelkasten/documents"
+_VAULT_SUBDIR = "notes/documents"
 
 
 def _pdf_link(pdf_path: Path) -> str:

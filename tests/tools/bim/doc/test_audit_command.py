@@ -85,7 +85,7 @@ def _build_clean_fixture(tmp_path: Path) -> _Fixture:
 
     pdf = business_root / "cez-as" / CANONICAL_PDF
     _make_pdf(pdf)
-    _make_zettel(vault_root / "Zettelkasten" / "documents" / "cez-as" / CANONICAL_MD)
+    _make_zettel(vault_root / "notes" / "documents" / "cez-as" / CANONICAL_MD)
 
     state_db = open_state_db(tmp_path / "state.db")
     _record_processed(state_db, sha256_file(pdf))
@@ -98,7 +98,7 @@ def _build_clean_fixture(tmp_path: Path) -> _Fixture:
         state_db=state_db,
         business_root=business_root,
         vault_root=vault_root,
-        vault_documents_subdir="Zettelkasten/documents",
+        vault_documents_subdir="notes/documents",
         issuers_path=issuers_path,
         state_dir=state_dir,
         low_confidence_threshold=0.7,
@@ -149,9 +149,9 @@ class TestExecuteSuccess:
 class TestExecuteFindings:
     def test_execute_legacy_layout_in_metadata_count(self, tmp_path: Path) -> None:
         fx = _build_clean_fixture(tmp_path)
-        per_issuer_md = fx.vault_root / "Zettelkasten" / "documents" / "cez-as" / CANONICAL_MD
+        per_issuer_md = fx.vault_root / "notes" / "documents" / "cez-as" / CANONICAL_MD
         per_issuer_md.unlink()
-        legacy_md = fx.vault_root / "Zettelkasten" / "documents" / CANONICAL_MD
+        legacy_md = fx.vault_root / "notes" / "documents" / CANONICAL_MD
         _make_zettel(legacy_md)
 
         result = CommandAudit(services=fx.services).execute()
@@ -164,7 +164,7 @@ class TestExecuteFindings:
 
     def test_execute_passes_through_findings(self, tmp_path: Path) -> None:
         fx = _build_clean_fixture(tmp_path)
-        zettel = fx.vault_root / "Zettelkasten" / "documents" / "cez-as" / CANONICAL_MD
+        zettel = fx.vault_root / "notes" / "documents" / "cez-as" / CANONICAL_MD
         zettel.unlink()
 
         result = CommandAudit(services=fx.services).execute()

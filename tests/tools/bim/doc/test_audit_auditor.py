@@ -94,7 +94,7 @@ class AuditorFactory:
             state_db=self.state_db,
             business_root=self.business,
             vault_root=self.vault,
-            vault_documents_subdir="Zettelkasten/documents",
+            vault_documents_subdir="notes/documents",
             low_confidence_threshold=low_confidence_threshold,
             ocr_quality_reader=ocr_quality_reader,
             hash_reader=hash_reader,
@@ -117,7 +117,7 @@ def factory(tmp_path: Path, state_db: StateDB) -> AuditorFactory:
 
 
 def _docs_dir(vault: Path) -> Path:
-    return vault / "Zettelkasten" / "documents"
+    return vault / "notes" / "documents"
 
 
 class TestCleanAndLegacy:

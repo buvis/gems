@@ -44,7 +44,7 @@ class TestBimDocIngest:
         pdf = _staged_pdf(tmp_path)
         settings = _bim_settings_with_doc(tmp_path)
         target_pdf = tmp_path / "Business" / "cez-as" / "20210311083422-cez-as-x.invoice.pdf"
-        zettel_path = tmp_path / "Vault" / "Zettelkasten" / "documents" / "20210311083422-cez-as-x.invoice.md"
+        zettel_path = tmp_path / "Vault" / "notes" / "documents" / "20210311083422-cez-as-x.invoice.md"
         cmd_result = CommandResult(
             success=True,
             metadata={

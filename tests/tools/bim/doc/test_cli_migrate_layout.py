@@ -17,7 +17,7 @@ from bim.commands.doc.shared.settings_models import DocPaths, DocSettings
 from bim.settings import BimSettings
 from click.testing import CliRunner
 
-_VAULT_SUBDIR = "Zettelkasten/documents"
+_VAULT_SUBDIR = "notes/documents"
 
 
 def _bim_settings_with_doc(tmp_path: Path) -> BimSettings:

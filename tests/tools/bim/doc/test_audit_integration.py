@@ -165,7 +165,7 @@ def _build_full_fixture(tmp_path: Path) -> _Fixture:
     triage_proposal.write_text("issuer_slug: cez-as\n")
 
     # Vault zettels: per-issuer for clean, legacy flat for legacy_pdf
-    vault_docs_dir = vault_root / "Zettelkasten" / "documents"
+    vault_docs_dir = vault_root / "notes" / "documents"
     clean_zettel = vault_docs_dir / "cez-as" / CANONICAL_CLEAN_PDF.replace(".pdf", ".md")
     _make_zettel(clean_zettel)
     legacy_zettel = vault_docs_dir / CANONICAL_LEGACY_PDF.replace(".pdf", ".md")
@@ -195,7 +195,7 @@ def _build_full_fixture(tmp_path: Path) -> _Fixture:
         state_db=state_db,
         business_root=business_root,
         vault_root=vault_root,
-        vault_documents_subdir="Zettelkasten/documents",
+        vault_documents_subdir="notes/documents",
         issuers_path=issuers_path,
         state_dir=state_dir,
         low_confidence_threshold=0.7,
