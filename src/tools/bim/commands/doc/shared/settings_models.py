@@ -26,7 +26,7 @@ class DocPaths(BaseModel):
 
     business_root: Path
     vault_root: Path
-    vault_documents_subdir: str = "Zettelkasten/documents"
+    vault_documents_subdir: str = "notes/documents"
     state_dir: Path | None = None
     inbox_scans: Path | None = None
     inbox_email: Path | None = None

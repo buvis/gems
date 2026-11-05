@@ -16,5 +16,5 @@ class BimSettings(GlobalSettings):
     )
 
     path_zettelkasten: str = "~/bim/notes/"
-    path_archive: str = "~/bim/reference/40-archives/"
+    path_archive: str = "~/Documents/reference/40-archives/"
     doc: DocSettings | None = None

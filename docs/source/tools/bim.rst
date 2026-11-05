@@ -22,7 +22,7 @@ Configuration
      - ``~/bim/notes/``
      - Root directory for zettels
    * - ``path_archive``
-     - ``~/bim/reference/40-archives/``
+     - ``~/Documents/reference/40-archives/``
      - Archive directory
 
 Env vars: ``BUVIS_BIM_PATH_ZETTELKASTEN``, ``BUVIS_BIM_PATH_ARCHIVE``.
@@ -177,7 +177,7 @@ Mark zettel(s) as processed and move to archive directory.
 
     bim archive ~/bim/notes/done-note.md
     bim archive ~/bim/notes/a.md ~/bim/notes/b.md
-    bim archive --undo ~/bim/reference/40-archives/done-note.md
+    bim archive --undo ~/Documents/reference/40-archives/done-note.md
 
 Options:
 
@@ -317,7 +317,7 @@ Options:
 Outcomes (printed to console and recorded in ``state.db``):
 
 - **filed** — PDF moved to ``<business_root>/<issuer-slug>/<canonical>.pdf``
-  and zettel written to ``<vault_root>/Zettelkasten/documents/<issuer-slug>/<canonical>.md``
+  and zettel written to ``<vault_root>/notes/documents/<issuer-slug>/<canonical>.md``
   (per-issuer subfolder; the vault layout mirrors the business root).
 - **triaged** — confidence too low or required field missing. The PDF lands
   in ``<business_root>/_triage/`` with a ``.proposed.yml`` sidecar awaiting

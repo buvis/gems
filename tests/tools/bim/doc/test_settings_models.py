@@ -37,7 +37,7 @@ class TestDocPaths:
     ) -> None:
         monkeypatch.delenv("XDG_STATE_HOME", raising=False)
         paths = DocPaths.model_validate(required_paths_data)
-        assert paths.vault_documents_subdir == "Zettelkasten/documents"
+        assert paths.vault_documents_subdir == "notes/documents"
         assert paths.originals_retention_days == 30
         assert paths.state_dir == Path.home() / ".local" / "state" / "bim" / "doc"
 
