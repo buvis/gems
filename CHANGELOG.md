@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-05
+
 ### Fixed
 
 - **backup**: distinct hard-linked output names outside selected items are allowed without changing the selected source file; case aliases of selected paths remain rejected.
@@ -634,7 +636,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.17.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.17.1...HEAD
+[0.17.1]: https://github.com/buvis/gems/compare/gems-v0.17.0...gems-v0.17.1
 [0.17.0]: https://github.com/buvis/gems/compare/gems-v0.16.0...gems-v0.17.0
 [0.16.0]: https://github.com/buvis/gems/compare/gems-v0.15.3...gems-v0.16.0
 [0.15.3]: https://github.com/buvis/gems/compare/gems-v0.15.2...gems-v0.15.3
