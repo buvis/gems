@@ -1,0 +1,8 @@
+2026-11-05T09:54:00.202766Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: [Fact-Forcing Gate]
+
+Before the first Bash command this session, present these facts:
+
+1. The current user request in one sentence
+2. What this specific command verifies or produces
+
+Present the facts, then retry the same operation.. Command: pwd; rg --files -g AGENTS.md -g '*tar_archive*' -g '*bundle_items*' -g '*plan_validation*' -g '*backup.rst' -g CHANGELOG.md

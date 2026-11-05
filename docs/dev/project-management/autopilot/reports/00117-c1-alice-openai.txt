@@ -1,0 +1,16 @@
+[ALICE] 🟡 Item normalization now runs outside the plan’s OSError handler: simulated unreadable item parents returned a failed PlanEntry before, but now raise PermissionError. Preserve error conversion and add coverage. | File: src/tools/backup/capabilities/tar_archive.py:285 | Task: 1
+[ALICE] 🟡 Items are normalized twice in both run and plan. Normalize once and pass the selected paths to containment and selection. | File: src/tools/backup/capabilities/tar_archive.py:285 | Task: 1
+[ALICE] 🟡 Replay confirms 32 added whole-tree/source-equality cases pass against pre-change code, violating the supplied fail-first rule. Reuse existing invariant coverage and make new cases exercise changed precedence. | File: tests/tools/backup/test_plan_validation.py:333 | Task: 1
+
+R1: fail
+R2: fail
+R3: pass
+R4: fail
+R6: pass
+R7: pass
+R8: pass
+R9: fail
+R10: fail
+R11: pass
+R12: pass
+R13: pass

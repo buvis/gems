@@ -1,0 +1,42 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Item normalization now runs outside the plan\u2019s OSError handler: simulated unreadable item parents returned a failed PlanEntry before, but now raise PermissionError. Preserve error conversion and add coverage.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:285",
+    "reason": "single-voice Medium; preserve reported error conversion evidence"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Replay confirms 32 added whole-tree/source-equality cases pass against pre-change code, violating the supplied fail-first rule. Reuse existing invariant coverage and make new cases exercise changed precedence.",
+    "file": "tests/tools/backup/test_plan_validation.py:333",
+    "reason": "single-voice; preexisting invariants intentionally pass against the base"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Required Fixed entry appears under `0.17.0`; `[Unreleased]` is empty, contrary to Phase 1.",
+    "file": "CHANGELOG.md:28",
+    "reason": "release 0.17.0 moved the Unreleased entry correctly"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_walk_tree` remains 70 lines according to the supplied mechanical facts, exceeding R12's 50-line limit. This function is unchanged; splitting it belongs outside this containment fix.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:427",
+    "reason": "single-voice; unchanged function outside containment scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The supplied full-suite gate has three failures attributed to host author identity and configured roots. These concern unrelated tools and do not establish a backup regression.",
+    "file": "N/A",
+    "reason": "single-voice; unrelated host-dependent suite failures retained separately"
+  }
+]

@@ -1,0 +1,28 @@
+FIX:
+[BOB] 🟠 The new item comparison can allow output inside a selected directory on case-insensitive filesystems: items ["Config"] and out "<source>/config/archive.tar.gz" compare unequal lexically but address the same directory. Previously the whole-source guard rejected this configuration. Compare filesystem identity for existing ancestors while preserving final-symlink semantics; add coverage for both engines and every mode. | File: src/tools/backup/capabilities/tar_archive.py:299 | Task: 1
+[BOB] 🟡 Item normalization now happens inside containment and again in the existing run/plan selection paths. Normalize once per path and pass the normalized selection into containment, as the PRD specifies; retain explicit validation errors. | File: src/tools/backup/capabilities/tar_archive.py:285 | Task: 1
+
+VERIFY:
+- (none)
+
+KNOWN:
+[BOB] ⚪ `_walk_tree` remains 70 lines according to the supplied mechanical facts, exceeding R12's 50-line limit. This function is unchanged; splitting it belongs outside this containment fix. | File: src/tools/backup/capabilities/tar_archive.py:427 | Task: general
+[BOB] ⚪ The supplied full-suite gate has three failures attributed to host author identity and configured roots. These concern unrelated tools and do not establish a backup regression. | File: N/A | Task: general
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: fail
+R10: pass
+R11: pass
+R12: fail
+R13: pass
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass

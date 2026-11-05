@@ -1,0 +1,19 @@
+{
+  "provider": "codex",
+  "model_provider": "openai",
+  "lens": "bob",
+  "model": "gpt-6.1-sol",
+  "requested_model": "gpt-6.1-sol",
+  "effort": null,
+  "started": 1793872434.769593,
+  "completed": 1793872560.5852191,
+  "output": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00117-c1-bob-openai.txt",
+  "sha256": "0779c6756e4966522c0a6fe5923d80f525f89555cb54fc3f023019579c431acf",
+  "raw": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00117-c1-bob-openai-ffb5347fbe96461392c855d924c2c312.jsonl",
+  "raw_sha256": "bf986d5450a111761b9eceab5197b295fff1db783c373acb6c2346ecff1c40f4",
+  "thread_id": "01a1ab21-1698-7f03-bb94-3b4751dc36b2",
+  "root": "/Users/bob/git/src/github.com/buvis/gems",
+  "prd": "00117-backup-bundle-out-under-source-v1.md",
+  "cycle": 1,
+  "implementation_fingerprint": "65afad16ce41c4a2971d52bec6a43aee429ffd418572676d90279881e07e6a89"
+}
