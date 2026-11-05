@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tarfile
 from pathlib import Path
 
@@ -45,6 +46,35 @@ def _case_alias(directory: Path) -> Path:
 
 
 class TestBundleCaseContainment:
+    @pytest.mark.parametrize("error", ["output identity permission denied", "archive metadata access denied"])
+    def test_output_identity_permission_error_fails_without_replacing_output(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, mode: str, error: str
+    ) -> None:
+        source = tmp_path.resolve() / "source"
+        directory = source / "Config"
+        directory.mkdir(parents=True)
+        (directory / "settings").write_bytes(b"selected settings")
+        (source / "other").write_bytes(b"also selected")
+        sibling = source / "Config-backup"
+        sibling.mkdir()
+        out = sibling / "archive.tar.gz"
+        out.write_bytes(error.encode())
+        before = _snapshot(source)
+        real_lstat = Path.lstat
+
+        def denied_lstat(path: Path) -> os.stat_result:
+            if path == out:
+                raise PermissionError(error)
+            return real_lstat(path)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "lstat", denied_lstat)
+            success, message = _outcome(source, out, engine, mode, ["Config", "other"])
+
+        assert success is False
+        assert error in message
+        assert _snapshot(source) == before
+
     @pytest.mark.parametrize("selected", ["Config", "Profiles"])
     @pytest.mark.parametrize("out_rel", ["", "archive.tar.gz", "new/deep/archive.tar.gz"])
     def test_case_alias_of_selected_directory_rejects_output_without_changes(
