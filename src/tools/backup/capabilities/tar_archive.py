@@ -158,10 +158,10 @@ class TarArchive:
 
         try:
             selected = _normalize_items(source, kwargs["items"]) if kwargs.get("items") is not None else None
+            containment = _reject_out_inside_source(label, source, out, selected)
         except (ValueError, OSError) as exc:
             yield StepResult(label, success=False, message=str(exc))
             return
-        containment = _reject_out_inside_source(label, source, out, selected)
         if containment is not None:
             yield containment
             return
@@ -360,9 +360,9 @@ def _plan_source(label: str, source: Path, out: Path, items: object) -> tuple[st
         return "fail", f"source is not a directory: {source}"
     try:
         selected = _normalize_items(source, items) if items is not None else None
+        containment = _reject_out_inside_source(label, source, out, selected)
     except (ValueError, OSError) as exc:
         return "fail", str(exc)
-    containment = _reject_out_inside_source(label, source, out, selected)
     if containment is not None:
         return "fail", containment.message
     return _plan_items(source, selected) if selected is not None else ("run", "")
