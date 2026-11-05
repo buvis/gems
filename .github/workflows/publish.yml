@@ -51,7 +51,11 @@ jobs:
       - name: Pin dependencies from lockfile
         run: python tools/lib/pin_deps.py .
 
+      # Without a target, hatchling tags macOS wheels with the runner's OS
+      # (macosx_26_0), so older macOS skips them and builds the sdist.
       - name: Build wheel
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: uv build --wheel
 
       - name: Repair Linux wheel
