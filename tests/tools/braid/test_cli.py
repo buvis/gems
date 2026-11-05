@@ -52,7 +52,8 @@ def test_cli_loads_machine_policy_from_agents_root(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert result.output.splitlines()[-1] == (
-        "braid: 3 linked, 0 current, 1 ignored, 0 removed, 0 backed up, 0 configured, 3 change(s)"
+        "braid: 3 linked, 0 generated, 0 current, 1 ignored, 0 removed, 0 backed up, 0 configured, 0 unmanaged, "
+        "3 change(s)"
     )
     assert (agents_root / "skills" / "machine-ignored").is_symlink()
     assert not os.path.lexists(claude_root / "skills" / "machine-ignored")
@@ -67,7 +68,10 @@ def test_cli_dry_run_reports_changes_without_writing(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     lines = result.output.splitlines()
-    assert lines[-1] == "braid: 0 linked, 0 current, 0 ignored, 0 removed, 0 backed up, 0 configured, 2 change(s)"
+    assert lines[-1] == (
+        "braid: 0 linked, 0 generated, 0 current, 0 ignored, 0 removed, 0 backed up, 0 configured, 0 unmanaged, "
+        "2 change(s)"
+    )
     assert sum(line.startswith("WOULD LINK ") for line in lines) == 2
     assert not os.path.lexists(agents_root / "skills" / "portable")
     assert not os.path.lexists(tmp_path / "home" / ".claude" / "skills" / "portable")
@@ -139,7 +143,8 @@ def test_cli_policy_flag_keeps_the_skill_out_of_claude(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert result.output.splitlines()[-1] == (
-        "braid: 1 linked, 0 current, 1 ignored, 0 removed, 0 backed up, 0 configured, 1 change(s)"
+        "braid: 1 linked, 0 generated, 0 current, 1 ignored, 0 removed, 0 backed up, 0 configured, 0 unmanaged, "
+        "1 change(s)"
     )
     assert (tmp_path / "home" / ".agents" / "skills" / "portable").is_symlink()
     assert not os.path.lexists(tmp_path / "home" / ".claude" / "skills" / "portable")
@@ -169,7 +174,8 @@ def test_cli_enrolls_kiro_and_reports_the_configured_agent(tmp_path: Path) -> No
 
     assert result.exit_code == 0
     assert result.output.splitlines()[-1] == (
-        "braid: 3 linked, 0 current, 0 ignored, 0 removed, 1 backed up, 1 configured, 4 change(s)"
+        "braid: 3 linked, 0 generated, 0 current, 0 ignored, 0 removed, 1 backed up, 1 configured, 0 unmanaged, "
+        "4 change(s)"
     )
     assert (kiro_root(plain) / "skills" / "portable").is_symlink()
     assert runner.invoke(cli, [*roots(tmp_path, source), "--check"]).exit_code == 0
@@ -201,7 +207,8 @@ def test_cli_forget_kiro_agent_drops_it_from_the_saved_state(tmp_path: Path) -> 
 
     assert result.exit_code == 0
     assert result.output.splitlines()[-1] == (
-        "braid: 0 linked, 3 current, 0 ignored, 0 removed, 0 backed up, 0 configured, 1 change(s)"
+        "braid: 0 linked, 0 generated, 3 current, 0 ignored, 0 removed, 0 backed up, 0 configured, 0 unmanaged, "
+        "1 change(s)"
     )
     assert read_state(plain)["kiro"]["agents"] == []
 
@@ -274,7 +281,8 @@ def test_cli_no_kiro_leaves_an_enrolled_kiro_root_untouched(tmp_path: Path) -> N
 
     assert result.exit_code == 0
     assert result.output.splitlines()[-1] == (
-        "braid: 0 linked, 2 current, 0 ignored, 0 removed, 0 backed up, 0 configured, 0 change(s)"
+        "braid: 0 linked, 0 generated, 2 current, 0 ignored, 0 removed, 0 backed up, 0 configured, 0 unmanaged, "
+        "0 change(s)"
     )
     assert not os.path.lexists(kiro_link)
     assert "kiro" in read_state(plain)
