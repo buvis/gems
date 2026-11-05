@@ -137,7 +137,7 @@ Jira sync, and a web dashboard.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_zettelkasten</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">~/bim/zettelkasten/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/bim/notes/</span></code></p></td>
 <td><p>Root directory for zettels</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path_archive</span></code></p></td>
@@ -234,10 +234,10 @@ If ollama is unreachable, tag suggestion is skipped with a warning.</p>
 <section id="bim-edit">
 <h3>bim edit<a class="headerlink" href="#bim-edit" title="Link to this heading"></a></h3>
 <p>Modify zettel metadata in-place.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Better title"</span>
-bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">"updated,important"</span>
-bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>--processed
-bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-s<span class="w"> </span><span class="s2">"priority=high"</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"reviewer=alice"</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>edit<span class="w"> </span>~/bim/notes/my-note.md<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Better title"</span>
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/notes/my-note.md<span class="w"> </span>--tags<span class="w"> </span><span class="s2">"updated,important"</span>
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/notes/my-note.md<span class="w"> </span>--processed
+bim<span class="w"> </span>edit<span class="w"> </span>~/bim/notes/my-note.md<span class="w"> </span>-s<span class="w"> </span><span class="s2">"priority=high"</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"reviewer=alice"</span>
 </pre></div>
 </div>
 <p>Options:</p>
@@ -253,10 +253,10 @@ bim<span class="w"> </span>edit<span class="w"> </span>~/bim/zettelkasten/my-not
 <section id="bim-format">
 <h3>bim format<a class="headerlink" href="#bim-format" title="Link to this heading"></a></h3>
 <p>Format a note’s metadata and content.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md
-bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-d<span class="w">    </span><span class="c1"># show diff</span>
-bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-h<span class="w">    </span><span class="c1"># highlight output</span>
-bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-note.md<span class="w"> </span>-o<span class="w"> </span>formatted.md
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>format<span class="w"> </span>~/bim/notes/my-note.md
+bim<span class="w"> </span>format<span class="w"> </span>~/bim/notes/my-note.md<span class="w"> </span>-d<span class="w">    </span><span class="c1"># show diff</span>
+bim<span class="w"> </span>format<span class="w"> </span>~/bim/notes/my-note.md<span class="w"> </span>-h<span class="w">    </span><span class="c1"># highlight output</span>
+bim<span class="w"> </span>format<span class="w"> </span>~/bim/notes/my-note.md<span class="w"> </span>-o<span class="w"> </span>formatted.md
 </pre></div>
 </div>
 <p>Options:</p>
@@ -269,15 +269,15 @@ bim<span class="w"> </span>format<span class="w"> </span>~/bim/zettelkasten/my-n
 <section id="bim-show">
 <h3>bim show<a class="headerlink" href="#bim-show" title="Link to this heading"></a></h3>
 <p>Pretty-print a zettel.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>show<span class="w"> </span>~/bim/zettelkasten/my-note.md
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>show<span class="w"> </span>~/bim/notes/my-note.md
 </pre></div>
 </div>
 </section>
 <section id="bim-archive">
 <h3>bim archive<a class="headerlink" href="#bim-archive" title="Link to this heading"></a></h3>
 <p>Mark zettel(s) as processed and move to archive directory.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>archive<span class="w"> </span>~/bim/zettelkasten/done-note.md
-bim<span class="w"> </span>archive<span class="w"> </span>~/bim/zettelkasten/a.md<span class="w"> </span>~/bim/zettelkasten/b.md
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>archive<span class="w"> </span>~/bim/notes/done-note.md
+bim<span class="w"> </span>archive<span class="w"> </span>~/bim/notes/a.md<span class="w"> </span>~/bim/notes/b.md
 bim<span class="w"> </span>archive<span class="w"> </span>--undo<span class="w"> </span>~/bim/reference/40-archives/done-note.md
 </pre></div>
 </div>
@@ -289,8 +289,8 @@ bim<span class="w"> </span>archive<span class="w"> </span>--undo<span class="w">
 <section id="bim-delete">
 <h3>bim delete<a class="headerlink" href="#bim-delete" title="Link to this heading"></a></h3>
 <p>Permanently delete zettel(s).</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>delete<span class="w"> </span>~/bim/zettelkasten/obsolete.md
-bim<span class="w"> </span>delete<span class="w"> </span>--force<span class="w"> </span>~/bim/zettelkasten/a.md<span class="w"> </span>~/bim/zettelkasten/b.md
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>delete<span class="w"> </span>~/bim/notes/obsolete.md
+bim<span class="w"> </span>delete<span class="w"> </span>--force<span class="w"> </span>~/bim/notes/a.md<span class="w"> </span>~/bim/notes/b.md
 </pre></div>
 </div>
 <p>Options:</p>
@@ -301,7 +301,7 @@ bim<span class="w"> </span>delete<span class="w"> </span>--force<span class="w">
 <section id="bim-sync">
 <h3>bim sync<a class="headerlink" href="#bim-sync" title="Link to this heading"></a></h3>
 <p>Synchronize a note with an external system (currently Jira).</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>sync<span class="w"> </span>~/bim/zettelkasten/project-note.md<span class="w"> </span>jira
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>sync<span class="w"> </span>~/bim/notes/project-note.md<span class="w"> </span>jira
 </pre></div>
 </div>
 <p>Arguments: <code class="docutils literal notranslate"><span class="pre">PATH_TO_NOTE</span></code>, <code class="docutils literal notranslate"><span class="pre">TARGET_SYSTEM</span></code>.</p>
