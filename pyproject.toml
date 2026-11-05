@@ -183,3 +183,5 @@ combine-as-imports = true
 # doc's verbatim contract (PRD 00098); module-level helpers in the same file
 # intentionally reach into the dataclass's internal handle.
 "src/tools/sysup/runlog.py" = ["PLR0913", "SLF001"]
+# sync_rules' six-parameter signature is the PRD 00116 verbatim contract (same precedent as runlog.py).
+"src/tools/braid/domain/rules.py" = ["PLR0913"]

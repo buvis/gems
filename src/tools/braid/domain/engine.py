@@ -4,7 +4,7 @@ import importlib
 import json
 import os
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -32,6 +32,7 @@ from braid.domain.model import (
     _resolved,
     is_legacy_skills_source,
 )
+from braid.domain.rules import RuleState, discover_rules, sync_rules
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -64,6 +65,7 @@ class State:
     union: dict[str, str]
     hosts: dict[str, dict[str, str]]
     kiro: KiroRegistration | None = None
+    rules: RuleState | None = None
 
     @classmethod
     def empty(cls) -> State:
@@ -77,6 +79,8 @@ class State:
         }
         if self.kiro is not None:
             payload["kiro"] = {"root": str(self.kiro.root), "agents": list(self.kiro.agents)}
+        if self.rules is not None:
+            payload["rules"] = self.rules.as_json()
         return payload
 
 
@@ -328,7 +332,8 @@ def _load_state(path: Path) -> State:
         ):
             raise BraidError(f"invalid Kiro registration in {path}")
         kiro = KiroRegistration(root=Path(registration["root"]), agents=tuple(sorted(set(registration["agents"]))))
-    return State(union=dict(union), hosts=normalized_hosts, kiro=kiro)
+    rules = RuleState.from_json(payload["rules"], path) if "rules" in payload else None
+    return State(union=dict(union), hosts=normalized_hosts, kiro=kiro, rules=rules)
 
 
 def _write_state(path: Path, state: State) -> None:
@@ -504,6 +509,7 @@ def _backup_suffix() -> str:
 
 def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
     inventory = discover_inventory(settings.sources)
+    rule_inventory = discover_rules(settings.sources)  # before any write: a bad rule exits with nothing written
     ignored = read_ignored(settings.policy_files)
     state_path = settings.agents_root / ".braid-state.json"
     previous_state = _load_state(state_path)
@@ -540,9 +546,12 @@ def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
         for edit in kiro_edits:
             sync_kiro_agent(edit, kiro.root / "agent-backup" / suffix, settings.mode, result, emit)
 
+    rule_settings = replace(settings, kiro_root=kiro.root if kiro is not None and settings.project_kiro else None)
+    rules_state = sync_rules(rule_settings, rule_inventory, ignored, previous_state.rules, result, emit=emit)
+
     _report_orphans(settings, union_root, _OrphanScope(inventory, eligible, previous_state, kiro), result, emit)
 
-    next_state = State(union=union, hosts=hosts, kiro=kiro)
+    next_state = State(union=union, hosts=hosts, kiro=kiro, rules=rules_state)
     if next_state != previous_state and result.drift == 0:
         result.drift += 1
         if settings.mode is not Mode.SYNC:

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from braid.domain.model import BraidError, _resolved, is_legacy_skills_source
+from buvis.pybase.filesystem.atomic_write import atomic_write_bytes
+
+from braid.domain.model import BraidError, Mode, _present, _resolved, is_legacy_skills_source
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
+
+    from braid.domain.engine import _Pass, _Projection
+    from braid.domain.model import Result, Settings
 
 __all__ = [
     "DIRECTORY_HOSTS",
@@ -21,6 +26,7 @@ __all__ = [
     "RuleState",
     "discover_rules",
     "render_host_file",
+    "sync_rules",
 ]
 
 RULE_NAME = re.compile(r"[a-z0-9-]+")
@@ -175,3 +181,252 @@ def discover_rules(sources: Iterable[Path]) -> RuleInventory:
 def render_host_file(shared: Mapping[str, Path], host_rules: Mapping[str, Path]) -> str:
     bodies = [_read_rule(directory / "RULE.md").rstrip() for directory in (*shared.values(), *host_rules.values())]
     return "\n\n".join([GENERATED_HEADER, *(body for body in bodies if body)]) + "\n"
+
+
+def _eligible(rules: Mapping[str, Path], ignored: set[str]) -> dict[str, Path]:
+    return {name: path for name, path in rules.items() if name not in ignored}
+
+
+def _ignored_count(inventory: RuleInventory, ignored: set[str], host: str) -> int:
+    return len({name for name in (*inventory.shared, *inventory.hosts.get(host, {})) if name in ignored})
+
+
+def _view_files(settings: Settings, inventory: RuleInventory, ignored: set[str], host: str) -> dict[str, Path]:
+    """Union-view RULE.md files a directory host links to: eligible shared rules, then its own."""
+    shared_root = settings.agents_root / "rules"
+    host_root = settings.agents_root / "hosts" / host / "rules"
+    return {
+        **{name: shared_root / name / "RULE.md" for name in _eligible(inventory.shared, ignored)},
+        **{name: host_root / name / "RULE.md" for name in _eligible(inventory.hosts.get(host, {}), ignored)},
+    }
+
+
+def _directory_hosts(settings: Settings) -> list[tuple[str, Path, str]]:
+    """Directory hosts projected this run as (host, root, rules folder)."""
+    hosts: list[tuple[str, Path, str]] = []
+    if settings.project_claude:
+        hosts.append(("claude", settings.claude_root, "rules"))
+    if settings.project_kiro and settings.kiro_root is not None:
+        hosts.append(("kiro", settings.kiro_root, "steering"))
+    return hosts
+
+
+def _without_stale(projection: _Projection) -> _Projection:
+    """Create/refresh only: stale union links wait until the directory hosts stop pointing into them."""
+    return replace(projection, previous={n: t for n, t in projection.previous.items() if n in projection.desired})
+
+
+def _read_generated(path: Path) -> bytes | None:
+    try:
+        return path.read_bytes() if path.is_file() else None
+    except OSError as error:
+        raise BraidError(f"cannot read {path}: {error}") from error
+
+
+def _sync_generated(
+    settings: Settings,
+    inventory: RuleInventory,
+    ignored: set[str],
+    previous: RuleState,
+    *,
+    run_pass: _Pass,
+    backups: Path,
+    backup: Callable[..., None],
+) -> tuple[dict[str, str], set[str]]:
+    """Bring each single-file host's AGENTS.md in line; return (recorded paths, hosts written this run)."""
+    mode, result, emit = run_pass.mode, run_pass.result, run_pass.emit
+    shared = _eligible(inventory.shared, ignored)
+    generated: dict[str, str] = {}
+    regenerated: set[str] = set()
+    for host in SINGLE_FILE_HOSTS:
+        result.ignored += _ignored_count(inventory, ignored, host)
+        path = settings.agents_root / "hosts" / host / "AGENTS.md"
+        expected = render_host_file(shared, _eligible(inventory.hosts.get(host, {}), ignored)).encode("utf-8")
+        if _read_generated(path) == expected:
+            result.current += 1
+            generated[host] = str(path)
+        elif mode is Mode.CHECK:
+            result.drift += 1
+            emit(f"MISMATCH GENERATED {path}")
+        elif mode is Mode.DRY_RUN:
+            result.drift += 1
+            emit(f"WOULD GENERATE {path}")
+        else:
+            result.drift += 1
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if _present(path) and previous.generated.get(host) != str(path):
+                backup(path, backups, f"generated/{host}", result, emit)
+            try:
+                atomic_write_bytes(path, expected)
+            except OSError as error:
+                raise BraidError(f"cannot write {path}: {error}") from error
+            result.generated += 1
+            emit(f"GENERATE {path}")
+            generated[host] = str(path)
+            regenerated.add(host)
+        if len(expected) > GENERATED_LIMIT:
+            result.drift += 1
+            emit(f"MISMATCH OVERSIZE {path} is {len(expected)} bytes; limit {GENERATED_LIMIT}")
+    return generated, regenerated
+
+
+def _sync_instruction_links(
+    settings: Settings,
+    previous: RuleState,
+    regenerated: set[str],
+    *,
+    run_pass: _Pass,
+    backups: Path,
+    engine_links: tuple[Callable[..., bool], Callable[..., None], Callable[..., str]],
+) -> dict[str, str]:
+    """Link each present host's instruction path to its generated file; never touch a file Braid does not own."""
+    points_to, backup, create_file_link = engine_links
+    mode, platform, result, emit = run_pass.mode, run_pass.platform, run_pass.result, run_pass.emit
+    instructions: dict[str, str] = {}
+    for host in SINGLE_FILE_HOSTS:
+        link = Path.home() / HOST_INSTRUCTION_PATHS[host]
+        target = settings.agents_root / "hosts" / host / "AGENTS.md"
+        if not (Path.home() / HOST_INSTRUCTION_PATHS[host].parts[0]).is_dir():
+            continue
+        if points_to(link, target, platform):
+            result.current += 1
+            instructions[host] = str(link)
+            continue
+        recorded = previous.instructions.get(host) == str(link)
+        # A Windows hard link this run's regeneration detached is still Braid's regular file.
+        owned = recorded and (link.is_symlink() or (platform == "nt" and link.is_file() and host in regenerated))
+        if _present(link) and not owned:
+            result.unmanaged += 1
+            emit(f"UNMANAGED {link}")
+            if host in previous.instructions:
+                instructions[host] = previous.instructions[host]
+            continue
+        result.drift += 1
+        if mode is not Mode.SYNC:
+            verb = "MISMATCH" if mode is Mode.CHECK else "WOULD LINK"
+            emit(f"{verb} {link} -> {target}")
+            continue
+        link.parent.mkdir(parents=True, exist_ok=True)
+        if _present(link):
+            backup(link, backups, f"instructions/{host}", result, emit)
+        backend = create_file_link(link, target, platform=platform)
+        result.linked += 1
+        emit(f"LINK[{backend}] {link} -> {target}")
+        instructions[host] = str(link)
+    return instructions
+
+
+def _report_rule_orphans(
+    settings: Settings,
+    inventory: RuleInventory,
+    ignored: set[str],
+    previous: RuleState,
+    *,
+    run_pass: _Pass,
+    report: Callable[..., None],
+) -> None:
+    """Report unrecorded links into the rule union views (CHECK and DRY_RUN only)."""
+    if settings.mode is Mode.SYNC:
+        return
+    agents = settings.agents_root
+    resolved_sources = dict.fromkeys(map(_resolved, settings.sources))
+    layout = [source for source in resolved_sources if not is_legacy_skills_source(source)]
+    source_rules = [source / "rules" for source in layout]
+    source_hosts = [source / "hosts" / host / "rules" for source in layout for host in KNOWN_HOSTS]
+    scans = [(agents / "rules", source_rules, {*inventory.shared, *previous.union})]
+    scans += [
+        (
+            agents / "hosts" / host / "rules",
+            [source / "hosts" / host / "rules" for source in layout],
+            {*inventory.hosts.get(host, {}), *previous.hosts.get(host, {})},
+        )
+        for host in KNOWN_HOSTS
+    ]
+    # A rule file link's parent is the union symlink itself, which resolves into a source rule dir.
+    owners = [agents / "rules", agents / "hosts", *source_rules, *source_hosts]
+    for host, root, folder in _directory_hosts(settings):
+        names = {*_view_files(settings, inventory, ignored, host), *previous.projected.get(host, {})}
+        scans.append((root / folder, owners, {f"{name}.md" for name in names}))
+    for root, owner_roots, recorded in scans:
+        report(root, owner_roots, recorded, run_pass.result, run_pass.emit)
+
+
+def sync_rules(
+    settings: Settings,
+    inventory: RuleInventory,
+    ignored: set[str],
+    previous: RuleState | None,
+    result: Result,
+    *,
+    emit: Callable[[str], None],
+) -> RuleState | None:
+    """Project rules into union views, directory hosts, generated files and instruction links."""
+    # engine imports this module at load time for run(); a module-level import back is a cycle.
+    from braid.domain.engine import (
+        _backup,
+        _backup_suffix,
+        _Pass,
+        _points_to,
+        _Projection,
+        _remove_stale_links,
+        _report_orphan_links,
+        _sync_links,
+        create_file_link,
+    )
+
+    if inventory.empty and previous is None:
+        return None
+    previous = previous or RuleState.empty()
+    suffix = _backup_suffix()
+    run_pass = _Pass(mode=settings.mode, platform=settings.platform, result=result, emit=emit)
+    backups = settings.agents_root / "backups" / suffix
+
+    shared_view = _Projection(
+        desired=inventory.shared,
+        previous=previous.union,
+        destination_root=settings.agents_root / "rules",
+        backup_root=backups,
+        backup_category="rules",
+        preserve_real_sources=True,
+    )
+    host_views = {
+        host: _Projection(
+            desired=inventory.hosts.get(host, {}),
+            previous=previous.hosts.get(host, {}),
+            destination_root=settings.agents_root / "hosts" / host / "rules",
+            backup_root=backups,
+            backup_category=f"hosts/{host}/rules",
+            preserve_real_sources=True,
+        )
+        for host in sorted(set(inventory.hosts) | set(previous.hosts))
+    }
+    union = _sync_links(_without_stale(shared_view), run_pass)
+    hosts = {host: links for host, view in host_views.items() if (links := _sync_links(_without_stale(view), run_pass))}
+
+    skipped = {"claude": not settings.project_claude, "kiro": not settings.project_kiro}
+    projected = {host: links for host, links in previous.projected.items() if skipped[host]}
+    for host, root, folder in _directory_hosts(settings):
+        result.ignored += _ignored_count(inventory, ignored, host)
+        projection = _Projection(
+            desired=_view_files(settings, inventory, ignored, host),
+            previous=previous.projected.get(host, {}),
+            destination_root=root / folder,
+            backup_root=root / f"{folder}-backup" / suffix,
+            backup_category="project",
+            preserve_real_sources=False,
+            entry_suffix=".md",
+            file_links=True,
+        )
+        projected[host] = _sync_links(projection, run_pass)
+    for view in (shared_view, *host_views.values()):
+        _remove_stale_links(view, run_pass)
+
+    generated, regenerated = _sync_generated(
+        settings, inventory, ignored, previous, run_pass=run_pass, backups=backups, backup=_backup
+    )
+    engine_links = (_points_to, _backup, create_file_link)
+    instructions = _sync_instruction_links(
+        settings, previous, regenerated, run_pass=run_pass, backups=backups, engine_links=engine_links
+    )
+    _report_rule_orphans(settings, inventory, ignored, previous, run_pass=run_pass, report=_report_orphan_links)
+    return RuleState(union=union, hosts=hosts, projected=projected, generated=generated, instructions=instructions)
