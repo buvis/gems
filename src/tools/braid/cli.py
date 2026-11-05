@@ -10,7 +10,7 @@ from rich.markup import escape
 from braid.settings import BraidSettings
 
 
-@click.command(help="Compose Agent Skills from multiple repositories and project them to hosts.")
+@click.command(help="Compose Agent Skills and rules from multiple repositories and project them to hosts.")
 @click.option("--dry-run", is_flag=True, help="report changes without writing")
 @click.option("--check", is_flag=True, help="exit non-zero when links, resources or state drift")
 @click.option(
@@ -45,7 +45,7 @@ from braid.settings import BraidSettings
     default=None,
     help="override the ~/.config/braid directory holding sources.d, ahead of BUVIS_BRAID_CONFIG_ROOT",
 )
-@click.option("--no-claude", is_flag=True, help="skip projecting skills into claude-root")
+@click.option("--no-claude", is_flag=True, help="skip projecting skills and rules into the Claude root")
 @click.option("--kiro", is_flag=True, help="enroll Kiro once; later runs remember it")
 @click.option(
     "--kiro-root",
