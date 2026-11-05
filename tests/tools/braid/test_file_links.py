@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, tzinfo
 from pathlib import Path
 
 import pytest
@@ -142,6 +142,8 @@ def test_a_failing_hard_link_is_a_braid_error(tmp_path: Path, monkeypatch: pytes
     with pytest.raises(BraidError, match=f"cannot create hard link {re.escape(str(destination))} -> .*cross-device"):
         engine.create_file_link(destination, target, platform="nt", hard_link=cross_device)
 
+    assert not os.path.lexists(destination)
+
 
 @pytest.mark.parametrize("entry_suffix", [".md", ""])
 def test_file_links_land_at_the_suffixed_name_and_state_keeps_the_bare_name(tmp_path: Path, entry_suffix: str) -> None:
@@ -149,16 +151,53 @@ def test_file_links_land_at_the_suffixed_name_and_state_keeps_the_bare_name(tmp_
     beta = rule_file(tmp_path, "alpha-beta", "beta body")
     project = projection(tmp_path, {"alpha": alpha, "alpha-beta": beta}, entry_suffix=entry_suffix)
     emitted: list[str] = []
+    run_pass = a_pass(Mode.SYNC, "posix", emitted)
 
-    state = engine._sync_links(project, a_pass(Mode.SYNC, "posix", emitted))
+    state = engine._sync_links(project, run_pass)
 
     root = project.destination_root
     assert set(state) == {"alpha", "alpha-beta"}
-    assert sorted(path.name for path in root.iterdir()) == [f"alpha{entry_suffix}", f"alpha-beta{entry_suffix}"]
+    assert {path.name for path in root.iterdir()} == {f"alpha{entry_suffix}", f"alpha-beta{entry_suffix}"}
+    assert run_pass.result.linked == 2
     assert Path(os.readlink(root / f"alpha{entry_suffix}")) == alpha
     assert Path(os.readlink(root / f"alpha-beta{entry_suffix}")) == beta
     assert f"LINK[symlink] {root / f'alpha{entry_suffix}'} -> {alpha}" in emitted
     assert f"LINK[symlink] {root / f'alpha-beta{entry_suffix}'} -> {beta}" in emitted
+
+
+@pytest.mark.parametrize("file_links", [True, False])
+def test_sync_creates_file_links_only_for_file_link_projections(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, file_links: bool
+) -> None:
+    if file_links:
+        target = rule_file(tmp_path, "alpha", "alpha body")
+    else:
+        target = tmp_path / "source" / "skills" / "alpha"
+        target.mkdir(parents=True)
+    calls: list[tuple[str, Path, Path, object]] = []
+
+    def create_file(destination: Path, link_target: Path, **kwargs: object) -> str:
+        calls.append(("file", destination, link_target, kwargs.get("platform")))
+        return "file"
+
+    def create_directory(destination: Path, link_target: Path, **kwargs: object) -> str:
+        calls.append(("directory", destination, link_target, kwargs.get("platform")))
+        return "directory"
+
+    monkeypatch.setattr(engine, "create_file_link", create_file)
+    monkeypatch.setattr(engine, "create_directory_link", create_directory)
+    project = projection(tmp_path, {"alpha": target}, entry_suffix=".md" if file_links else "", file_links=file_links)
+    emitted: list[str] = []
+    run_pass = a_pass(Mode.SYNC, "nt", emitted)
+
+    state = engine._sync_links(project, run_pass)
+
+    kind = "file" if file_links else "directory"
+    destination = project.destination_root / ("alpha.md" if file_links else "alpha")
+    assert calls == [(kind, destination, target, "nt")]
+    assert emitted == [f"LINK[{kind}] {destination} -> {target}"]
+    assert state == {"alpha": str(target)}
+    assert run_pass.result.linked == 1
 
 
 def test_an_empty_file_link_projection_links_nothing(tmp_path: Path) -> None:
@@ -180,7 +219,8 @@ def test_windows_sync_reports_hard_links_and_a_second_pass_counts_them_current(
     deny_file_symlinks(monkeypatch)
     root = tmp_path / "home" / ".claude" / "rules"
     first: list[str] = []
-    state = engine._sync_links(projection(tmp_path, {"alpha": alpha, "beta": beta}), a_pass(Mode.SYNC, "nt", first))
+    first_pass = a_pass(Mode.SYNC, "nt", first)
+    state = engine._sync_links(projection(tmp_path, {"alpha": alpha, "beta": beta}), first_pass)
     inodes = {name: (root / f"{name}.md").stat().st_ino for name in ("alpha", "beta")}
     second: list[str] = []
     run_pass = a_pass(Mode.SYNC, "nt", second)
@@ -189,6 +229,7 @@ def test_windows_sync_reports_hard_links_and_a_second_pass_counts_them_current(
 
     assert f"LINK[hardlink] {root / 'alpha.md'} -> {alpha}" in first
     assert f"LINK[hardlink] {root / 'beta.md'} -> {beta}" in first
+    assert first_pass.result.linked == 2
     assert run_pass.result.current == 2
     assert run_pass.result.drift == 0
     assert not any(line.startswith(("LINK", "BACKUP")) for line in second)
@@ -220,7 +261,9 @@ def test_sync_backs_up_and_relinks_a_hard_link_whose_target_was_rewritten(
 
     engine._sync_links(projection(tmp_path, {"alpha": alpha}, state), run_pass)
 
-    assert run_pass.result.drift >= 1
+    assert run_pass.result.drift == 1
+    assert run_pass.result.linked == 1
+    assert run_pass.result.backed_up == 1
     assert os.path.samefile(destination, alpha)
     assert destination.read_text(encoding="utf-8") == "new body"
     assert backed_up_bodies(tmp_path) == ["old body"]
@@ -236,11 +279,13 @@ def test_check_reports_a_rewritten_hard_link_target_as_drift_and_keeps_the_file(
     state = engine._sync_links(projection(tmp_path, {"alpha": alpha}), a_pass(Mode.SYNC, "nt", []))
     rewrite(alpha, "new body")
     destination = tmp_path / "home" / ".claude" / "rules" / "alpha.md"
-    run_pass = a_pass(Mode.CHECK, "nt", [])
+    emitted: list[str] = []
+    run_pass = a_pass(Mode.CHECK, "nt", emitted)
 
     engine._sync_links(projection(tmp_path, {"alpha": alpha}, state), run_pass)
 
-    assert run_pass.result.drift >= 1
+    assert run_pass.result.drift == 1
+    assert emitted == [f"MISMATCH {destination} -> {alpha}"]
     assert destination.read_text(encoding="utf-8") == "old body"
     assert backed_up_bodies(tmp_path) == []
 
@@ -312,10 +357,15 @@ def test_sync_removes_a_stale_file_link_that_still_points_at_its_target(
         deny_file_symlinks(monkeypatch)
     state = engine._sync_links(projection(tmp_path, {"alpha": alpha}), a_pass(Mode.SYNC, platform, []))
     destination = tmp_path / "home" / ".claude" / "rules" / "alpha.md"
+    emitted: list[str] = []
+    run_pass = a_pass(Mode.SYNC, platform, emitted)
 
-    engine._remove_stale_links(projection(tmp_path, {}, state), a_pass(Mode.SYNC, platform, []))
+    engine._remove_stale_links(projection(tmp_path, {}, state), run_pass)
 
     assert not os.path.lexists(destination)
+    assert run_pass.result.removed == 1
+    assert run_pass.result.drift == 1
+    assert f"REMOVE {destination}" in emitted
     assert alpha.read_text(encoding="utf-8") == "alpha body"
     assert backed_up_bodies(tmp_path) == []
 
@@ -346,6 +396,18 @@ def test_points_to_rejects_a_windows_hard_link_whose_target_is_gone(tmp_path: Pa
     assert engine._points_to(linked, target, "nt") is False
 
 
+def test_windows_hard_link_to_a_different_file_is_not_owned(tmp_path: Path) -> None:
+    target = rule_file(tmp_path, "alpha", "alpha body")
+    other = rule_file(tmp_path, "beta", "beta body")
+    linked = tmp_path / "linked.md"
+    os.link(other, linked)
+
+    assert engine._points_to(linked, target, "nt") is False
+    with pytest.raises(BraidError):
+        engine._remove_owned_link(linked, target, "nt")
+    assert os.path.samefile(linked, other)
+
+
 def test_remove_owned_link_unlinks_a_windows_hard_link_and_keeps_the_target(tmp_path: Path) -> None:
     target = rule_file(tmp_path, "alpha", "alpha body")
     linked = tmp_path / "linked.md"
@@ -368,7 +430,17 @@ def test_remove_owned_link_refuses_a_windows_file_that_is_not_the_target(tmp_pat
     assert copy.read_text(encoding="utf-8") == "alpha body"
 
 
-BACKUP_SUFFIX = re.compile(r"(\d{8}-\d{6}-\d{6})-(\d+)")
+def freeze_clock(monkeypatch: pytest.MonkeyPatch, *instants: datetime) -> None:
+    """Make the engine's clock return the given instants in order."""
+    ticks = iter(instants)
+
+    class FrozenClock(datetime):
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> FrozenClock:
+            instant = next(ticks)
+            return cls.combine(instant.date(), instant.time(), tz)
+
+    monkeypatch.setattr(engine, "datetime", FrozenClock)
 
 
 @pytest.mark.parametrize("pid", [4242, 77])
@@ -376,20 +448,16 @@ def test_backup_suffix_is_a_microsecond_timestamp_then_the_process_id(
     monkeypatch: pytest.MonkeyPatch, pid: int
 ) -> None:
     monkeypatch.setattr(os, "getpid", lambda: pid)
+    freeze_clock(monkeypatch, datetime(2026, 11, 5, 9, 8, 7, 123456))
 
-    suffix = engine._backup_suffix()
-
-    match = BACKUP_SUFFIX.fullmatch(suffix)
-    assert match is not None
-    assert match.group(2) == str(pid)
-    stamped = datetime.strptime(match.group(1), "%Y%m%d-%H%M%S-%f")
-    assert abs(datetime.now() - stamped) < timedelta(seconds=5)
+    assert engine._backup_suffix() == f"20261105-090807-123456-{pid}"
 
 
-def test_two_backup_suffixes_in_one_process_share_the_real_pid() -> None:
+def test_two_backup_suffixes_in_one_process_share_the_real_pid(monkeypatch: pytest.MonkeyPatch) -> None:
+    freeze_clock(monkeypatch, datetime(2026, 11, 5, 9, 8, 7, 1), datetime(2026, 11, 5, 9, 8, 7, 2))
+
     first = engine._backup_suffix()
     second = engine._backup_suffix()
 
-    assert first.endswith(f"-{os.getpid()}")
-    assert second.endswith(f"-{os.getpid()}")
-    assert second >= first
+    assert first == f"20261105-090807-000001-{os.getpid()}"
+    assert second == f"20261105-090807-000002-{os.getpid()}"
