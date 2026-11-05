@@ -691,3 +691,15 @@
 {"id":"ec004012","kind":"ivan","task":"5","queued_at":1793836534,"prompt_bytes":9784}
 {"id":"ec004012","ended_at":1793836646,"elapsed_s":112,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"leave","at":1793838083,"phase":"review","prd":"00115-braid-port-skills-parity-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793859105,"phase":"review","prd":"00115-braid-port-skills-parity-v1.md"}
+{"id":"1da48a26","kind":"bob","task":"review-00115c1","queued_at":1793859300,"prompt_bytes":9488}
+{"id":"6dd6e0bb","kind":"carl","task":"review-00115c1","queued_at":1793859300,"prompt_bytes":6525}
+{"id":"1da48a26","ended_at":1793859725,"elapsed_s":425,"outcome":"ok","detail":null}
+{"id":"6dd6e0bb","ended_at":1793859726,"elapsed_s":426,"outcome":"ok","detail":null}
+{"id":"1da48a26","ended_at":1793860046,"elapsed_s":746,"outcome":"ok","detail":null}
+{"id":"6dd6e0bb","ended_at":1793860046,"elapsed_s":746,"outcome":"ok","detail":null}
+{"id":"71ee5725","kind":"pat","task":"6","queued_at":1793860237,"prompt_bytes":11086}
+{"id":"71ee5725","ended_at":1793860330,"elapsed_s":93,"outcome":"ok","detail":"retry"}
+{"id":"81987d19","kind":"pat","task":"7","queued_at":1793860469,"prompt_bytes":8096}
+{"id":"81987d19","ended_at":1793860485,"elapsed_s":16,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1793860660,"phase":"review","prd":"00115-braid-port-skills-parity-v1.md"}
