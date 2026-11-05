@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
@@ -473,8 +474,17 @@ def test_windows_recorded_instruction_file_not_regenerated_this_run_is_unmanaged
     assert not (config.agents_root / "backups").exists()
 
 
+USER_FILE_CONTENTS = {
+    "short": lambda old: b"mine\n",
+    "longer-than-header": lambda old: b"m" * (len(GENERATED_HEADER.encode()) + 64),
+    "byte-copy-of-generated": lambda old: old,
+    "edited-copy-of-generated": lambda old: old + b"\nMy own edit.\n",
+}
+
+
+@pytest.mark.parametrize("content", list(USER_FILE_CONTENTS.values()), ids=list(USER_FILE_CONTENTS))
 def test_windows_user_file_at_a_recorded_instruction_path_stays_unmanaged_when_its_generated_file_is_rewritten(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: Callable[[bytes], bytes]
 ) -> None:
     source = tmp_path / "personal"
     make_rule(source, "tone", "Tone.")
@@ -487,8 +497,9 @@ def test_windows_user_file_at_a_recorded_instruction_path_stays_unmanaged_when_i
     for host, link in (("codex", codex), ("copilot", copilot)):
         assert link.is_file() and not link.is_symlink() and link.samefile(generated_file(config, host))
     before = read_state(config)["rules"]["instructions"]
+    mine = content(generated_file(config, "codex").read_bytes())
     codex.unlink()
-    codex.write_bytes(b"mine\n")
+    codex.write_bytes(mine)
     (source / "rules" / "tone" / "RULE.md").write_text("Tone, revised.", encoding="utf-8")
     emitted: list[str] = []
 
@@ -496,7 +507,7 @@ def test_windows_user_file_at_a_recorded_instruction_path_stays_unmanaged_when_i
 
     assert f"UNMANAGED {codex}" in emitted and result.unmanaged == 1
     assert not any(line.startswith(("LINK", "BACKUP")) and str(codex) in line for line in emitted)
-    assert codex.read_bytes() == b"mine\n" and not codex.samefile(generated_file(config, "codex"))
+    assert codex.read_bytes() == mine and not codex.samefile(generated_file(config, "codex"))
     assert before == {"codex": str(codex), "copilot": str(copilot)}
     assert read_state(config)["rules"]["instructions"] == before
     assert not (config.agents_root / "backups").exists()
@@ -508,23 +519,65 @@ def test_windows_user_file_at_a_recorded_instruction_path_stays_unmanaged_when_i
     assert copilot.samefile(generated_file(config, "copilot"))
 
 
+def test_windows_separate_copy_of_unchanged_generated_file_at_a_recorded_path_is_unmanaged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone", "Tone.")
+    config = replace(settings(tmp_path, source), platform="nt")
+    make_host_roots(config, "codex")
+    deny_file_symlinks(monkeypatch)
+    run(config)
+    codex = instruction_link(config, "codex")
+    assert codex.samefile(generated_file(config, "codex"))
+    before = read_state(config)["rules"]["instructions"]
+    current = generated_file(config, "codex").read_bytes()
+    assert current.startswith(GENERATED_HEADER.encode())
+    codex.unlink()
+    codex.write_bytes(current)
+    emitted: list[str] = []
+
+    result = run(config, emit=emitted.append)
+
+    assert emitted == [f"UNMANAGED {codex}"] and result.unmanaged == 1 and result.linked == 0
+    assert codex.read_bytes() == current and not codex.samefile(generated_file(config, "codex"))
+    assert read_state(config)["rules"]["instructions"] == before == {"codex": str(codex)}
+    assert not (config.agents_root / "backups").exists()
+
+
 def test_sync_rules_accepts_all_six_arguments_positionally(tmp_path: Path) -> None:
     source = tmp_path / "personal"
     make_rule(source, "tone", "Tone.")
     make_host_rule(source, "codex", "codex-only", "Codex only.")
     config = settings(tmp_path, source)
     config.agents_root.mkdir(parents=True)
+    inventory = discover_rules(config.sources)
     emitted: list[str] = []
     result = Result()
 
-    state = sync_rules(config, discover_rules(config.sources), frozenset(), None, result, emitted.append)
+    state = sync_rules(config, inventory, frozenset(), None, result, emitted.append)
 
     assert isinstance(state, RuleState)
+    assert state.generated == {host: str(generated_file(config, host)) for host in SINGLE_FILE_HOSTS}
+    assert set(state.union) == {"tone"} and set(state.hosts) == {"codex"}
+    assert set(state.hosts["codex"]) == {"codex-only"}
     for host in SINGLE_FILE_HOSTS:
         assert f"GENERATE {generated_file(config, host)}" in emitted
     assert result.generated == len(SINGLE_FILE_HOSTS)
     assert generated_file(config, "codex").read_text() == f"{GENERATED_HEADER}\n\nTone.\n\nCodex only.\n"
     assert generated_file(config, "copilot").read_text() == f"{GENERATED_HEADER}\n\nTone.\n"
+    again: list[str] = []
+    second = Result()
+
+    sync_rules(config, inventory, frozenset({"tone"}), state, second, again.append)
+
+    assert not any(line.startswith("BACKUP ") for line in again)
+    assert not (config.agents_root / "backups").exists()
+    assert second.generated == len(SINGLE_FILE_HOSTS)
+    for host in SINGLE_FILE_HOSTS:
+        expected = render_host_file({}, inventory.hosts.get(host, {})).encode("utf-8")
+        assert generated_file(config, host).read_bytes() == expected
+        assert b"Tone." not in expected
 
 
 # --- pre-existing files in directory hosts -------------------------------------------------
