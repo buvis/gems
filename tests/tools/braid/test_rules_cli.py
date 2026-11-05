@@ -7,7 +7,7 @@ import braid.cli as braid_cli
 import pytest
 from braid.cli import cli
 from braid.commands.compose.compose import CommandCompose
-from braid.domain.engine import ComposeRequest
+from braid.domain.engine import ComposeRequest, Mode
 from click.testing import CliRunner
 from rich.console import Console
 
@@ -67,6 +67,13 @@ def hand_made_gemini_file(tmp_path: Path) -> Path:
     path = tmp_path / "home" / ".gemini" / "GEMINI.md"
     path.parent.mkdir(parents=True)
     path.write_text("hand-kept gemini\n")
+    return path
+
+
+def hand_made_copilot_file(tmp_path: Path) -> Path:
+    path = tmp_path / "home" / ".copilot" / "copilot-instructions.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("hand-kept copilot\n")
     return path
 
 
@@ -142,15 +149,19 @@ def test_check_lists_every_unmanaged_host_path_once(tmp_path: Path) -> None:
     make_rule(source, "safety")
     codex_link = hand_made_codex_link(tmp_path)
     gemini_file = hand_made_gemini_file(tmp_path)
+    copilot_file = hand_made_copilot_file(tmp_path)
     runner = CliRunner()
     runner.invoke(cli, roots(tmp_path, source))
 
     result = runner.invoke(cli, [*roots(tmp_path, source), "--check"])
 
     assert result.exit_code == 0
-    assert sorted(unmanaged_lines(result.output)) == sorted([f"UNMANAGED {codex_link}", f"UNMANAGED {gemini_file}"])
-    assert ", 2 unmanaged, " in result.output.splitlines()[-1]
+    assert sorted(unmanaged_lines(result.output)) == sorted(
+        [f"UNMANAGED {codex_link}", f"UNMANAGED {gemini_file}", f"UNMANAGED {copilot_file}"]
+    )
+    assert ", 3 unmanaged, " in result.output.splitlines()[-1]
     assert gemini_file.read_text() == "hand-kept gemini\n"
+    assert copilot_file.read_text() == "hand-kept copilot\n"
 
 
 @pytest.mark.parametrize("second_kind", ["shared", "host"])
@@ -212,6 +223,7 @@ def test_check_exits_1_on_an_edited_generated_file_and_sync_restores_it(tmp_path
 
     assert sync.exit_code == 0
     assert [line for line in sync.output.splitlines() if line.startswith("GENERATE ")] == [f"GENERATE {codex_file}"]
+    assert ", 1 generated, " in sync.output.splitlines()[-1]
     assert codex_file.read_bytes() == generated(tmp_path, "copilot").read_bytes()
     assert runner.invoke(cli, [*roots(tmp_path, source), "--check"]).exit_code == 0
 
@@ -228,7 +240,7 @@ def test_check_exits_0_when_generated_files_are_untouched(tmp_path: Path) -> Non
     assert not any(line.startswith("MISMATCH") for line in check.output.splitlines())
 
 
-def compose_request(tmp_path: Path, source: Path) -> ComposeRequest:
+def compose_request(tmp_path: Path, source: Path, mode: Mode = Mode.SYNC) -> ComposeRequest:
     config_root = tmp_path / "config"
     config_root.mkdir(exist_ok=True)
     return ComposeRequest(
@@ -236,30 +248,45 @@ def compose_request(tmp_path: Path, source: Path) -> ComposeRequest:
         claude_root=tmp_path / "home" / ".claude",
         config_root=config_root,
         sources=(source,),
+        mode=mode,
     )
 
 
-def test_compose_metadata_carries_one_unmanaged_host_path(tmp_path: Path) -> None:
+def test_compose_metadata_carries_one_unmanaged_host_path_in_sync_and_check(tmp_path: Path) -> None:
     source = tmp_path / "personal"
     make_rule(source, "safety")
     hand_made_codex_link(tmp_path)
 
     outcome = CommandCompose(compose_request(tmp_path, source)).execute()
+    check = CommandCompose(compose_request(tmp_path, source, Mode.CHECK)).execute()
 
     assert outcome.success
     assert outcome.metadata["unmanaged"] == 1
+    assert check.success
+    assert check.metadata["unmanaged"] == 1
 
 
-def test_compose_metadata_carries_two_unmanaged_host_paths(tmp_path: Path) -> None:
+def test_compose_metadata_carries_three_unmanaged_host_paths(tmp_path: Path) -> None:
     source = tmp_path / "personal"
     make_rule(source, "safety")
     hand_made_codex_link(tmp_path)
     hand_made_gemini_file(tmp_path)
+    hand_made_copilot_file(tmp_path)
 
     outcome = CommandCompose(compose_request(tmp_path, source)).execute()
 
     assert outcome.success
-    assert outcome.metadata["unmanaged"] == 2
+    assert outcome.metadata["unmanaged"] == 3
+
+
+def test_compose_metadata_carries_zero_unmanaged_without_host_paths(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "safety")
+
+    outcome = CommandCompose(compose_request(tmp_path, source)).execute()
+
+    assert outcome.success
+    assert outcome.metadata["unmanaged"] == 0
 
 
 def test_compose_error_result_carries_zero_unmanaged(tmp_path: Path) -> None:
