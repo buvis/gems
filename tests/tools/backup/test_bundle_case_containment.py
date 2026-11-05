@@ -133,6 +133,25 @@ class TestBundleCaseContainment:
         assert str(out) in message
         assert _snapshot(source) == before
 
+    def test_case_alias_of_selected_file_rejects_output_without_changes(
+        self, tmp_path: Path, engine: str, mode: str
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        selected = source / "Config"
+        selected.write_bytes(b"selected settings")
+        (source / "other").write_bytes(b"also selected")
+        out = _case_alias(selected).with_name("config")
+        before = _snapshot(source)
+
+        success, message = _outcome(source, out, engine, mode, ["Config", "other"])
+
+        assert success is False
+        assert "inside selected item" in message
+        assert str(out) in message
+        assert str(selected) in message
+        assert _snapshot(source) == before
+
     @pytest.mark.parametrize("error", ["output identity permission denied", "archive metadata access denied"])
     def test_output_identity_permission_error_fails_without_replacing_output(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, mode: str, error: str
