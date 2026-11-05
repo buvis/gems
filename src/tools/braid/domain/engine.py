@@ -221,6 +221,8 @@ def read_ignored(policy_files: Iterable[Path]) -> set[str]:
 
 def _create_junction(target: str, destination: str) -> None:
     # Direct Win32 call, never cmd.exe: path metacharacters (&, |, ^) stay literal.
+    # _winapi is CPython-private and Windows-only (no public junction API exists),
+    # so it is imported at call time.
     importlib.import_module("_winapi").CreateJunction(target, destination)
 
 

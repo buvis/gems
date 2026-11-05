@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sys
+import types
 from dataclasses import replace
 from pathlib import Path
 
@@ -232,9 +234,12 @@ def test_windows_junction_passes_shell_metacharacters_literally_without_a_shell(
 
     monkeypatch.setattr("subprocess.run", no_shell)
     monkeypatch.setattr("subprocess.Popen", no_shell)
+    winapi = types.SimpleNamespace(CreateJunction=lambda t, d: calls.append((t, d)))
+    monkeypatch.setitem(sys.modules, "_winapi", winapi)
 
-    create_directory_link(destination, target, platform="nt", junction=lambda t, d: calls.append((t, d)))
+    backend = create_directory_link(destination, target, platform="nt")
 
+    assert backend == "junction"
     assert calls == [(str(target), str(destination))]
 
 
