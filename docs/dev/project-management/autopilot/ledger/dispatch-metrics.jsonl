@@ -662,3 +662,4 @@
 {"id":"c3bba339","kind":"fast-track:bob","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793776865,"prompt_bytes":36576}
 {"id":"c3bba339","ended_at":1793776952,"elapsed_s":87,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"done","edge":"leave","at":1793859592,"phase":"paused","prd":"00117-backup-bundle-out-under-source-v1.md"}
+{"kind":"handoff","site":"review","edge":"leave","at":1793861194,"phase":"review","prd":"00117-backup-bundle-out-under-source-v1.md"}

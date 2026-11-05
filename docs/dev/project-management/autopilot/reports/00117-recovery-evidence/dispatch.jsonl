@@ -1,0 +1,4 @@
+{"id":"74aa6811","kind":"fast-track:tess","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775454,"prompt_bytes":61373}
+{"id":"74aa6811","ended_at":1793775651,"elapsed_s":197,"outcome":"ok","detail":null}
+{"id":"ad135031","kind":"fast-track:ivan","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793775684,"prompt_bytes":57647}
+{"id":"ad135031","ended_at":1793775786,"elapsed_s":102,"outcome":"ok","detail":null}

@@ -1,0 +1,253 @@
+[
+  {
+    "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/57552899-a733-45f0-8920-6d30f220db78.jsonl",
+    "source_sha256": "21ee24de0fc26ced15a0441338154d4a5c0867c83af2c0cde52a1878bf7c5712",
+    "excerpt": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/coordinator.jsonl",
+    "lines": [
+      {
+        "excerpt_line": 1,
+        "source_line": 193,
+        "sha256": "e15ae12d5714e8b6da29e810e3e7439269959a9d88e16a34f1822877115eb632"
+      },
+      {
+        "excerpt_line": 2,
+        "source_line": 363,
+        "sha256": "5725229f56b835118ac519e349920c8591c3e1ccb76fe689d341b60bfbbdaa62"
+      },
+      {
+        "excerpt_line": 3,
+        "source_line": 366,
+        "sha256": "93fd499e1cc4c1308638fabff659e2f81c4c432f797604d982c5a3054318e878"
+      },
+      {
+        "excerpt_line": 4,
+        "source_line": 380,
+        "sha256": "c91c22fca35828280ad47feb4eaa954e13df56ad36bf0e633c8edf638e243f44"
+      },
+      {
+        "excerpt_line": 5,
+        "source_line": 381,
+        "sha256": "b05daddf22c72b983c77a444544d919e0daf26caf5da316581c6e860b95726fe"
+      },
+      {
+        "excerpt_line": 6,
+        "source_line": 445,
+        "sha256": "4e8c035e0130a70169165c18170d036c2d541804ed5bdc6a500e5bb40d5c34fa"
+      },
+      {
+        "excerpt_line": 7,
+        "source_line": 468,
+        "sha256": "408e61553a52e51293fcecab56bdf30ee980a96795fac87914f158f26144d197"
+      },
+      {
+        "excerpt_line": 8,
+        "source_line": 471,
+        "sha256": "e877da35b50876d293525a72d74f11657e4be39243c2e3ded5fa3c7f8f2464a8"
+      },
+      {
+        "excerpt_line": 9,
+        "source_line": 486,
+        "sha256": "13cbcfd2f266663759caf7ed8924aef261fc3f08ac0a851f72580537a5b888c7"
+      },
+      {
+        "excerpt_line": 10,
+        "source_line": 489,
+        "sha256": "cc3e0bef3edb598ce39fe4e5fd842b16bcf54cd293cab6637706fb04fe405277"
+      },
+      {
+        "excerpt_line": 11,
+        "source_line": 490,
+        "sha256": "58d1e8a56ad40fcc05be86b383029872b92b6e646bff2144ed875a567d391fc1"
+      },
+      {
+        "excerpt_line": 12,
+        "source_line": 491,
+        "sha256": "79a7f27eb3fb835f784fa5cb207f999046e65fe488adbe52aadcbc23ec5607b0"
+      },
+      {
+        "excerpt_line": 13,
+        "source_line": 548,
+        "sha256": "b2191edfa90028089d437226a86bffc597463612c9a1786c847e7d86075c7854"
+      },
+      {
+        "excerpt_line": 14,
+        "source_line": 550,
+        "sha256": "a180586fcabae36355a54fee37c356524e4dbdad3a8fe5874750ea1d032e24c2"
+      },
+      {
+        "excerpt_line": 15,
+        "source_line": 571,
+        "sha256": "9407458959d0084b52ee0449c75f5ecffa102bf9ea4b799e4df3e7983dcf40b7"
+      },
+      {
+        "excerpt_line": 16,
+        "source_line": 574,
+        "sha256": "5f25356d15f62e9ed4f0882379cfe1c63ed603362b14c53d0ca47d13154bd15f"
+      }
+    ]
+  },
+  {
+    "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/57552899-a733-45f0-8920-6d30f220db78/subagents/agent-a579cbe6d9daf9b4a.jsonl",
+    "source_sha256": "658d22895deec6fb0a8b7e7762e05c2be45661330139e824e05fea450e1c7604",
+    "excerpt": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+    "lines": [
+      {
+        "excerpt_line": 1,
+        "source_line": 60,
+        "sha256": "932547e153415d729213d5bb12e18a66be55b55fd482811380c4069d3454c734"
+      },
+      {
+        "excerpt_line": 2,
+        "source_line": 63,
+        "sha256": "8361f2025ff4446d5b0b411c04013f8e08be240eb75602aaf22d7a4ba336242c"
+      },
+      {
+        "excerpt_line": 3,
+        "source_line": 65,
+        "sha256": "fc4966fdaabc223261de07e790f25ffa02b3c841744409ac398c163b2ca2c386"
+      },
+      {
+        "excerpt_line": 4,
+        "source_line": 67,
+        "sha256": "99ee6f13c0e7d11aed635d811d3de1813df72d89e87c32c7f0d46bb6f8a6b81f"
+      },
+      {
+        "excerpt_line": 5,
+        "source_line": 74,
+        "sha256": "a4067ec86382d37fdb7f81ccf95853de690514631ad0bd1949c8f2713fbe2d76"
+      },
+      {
+        "excerpt_line": 6,
+        "source_line": 77,
+        "sha256": "4815dd304dde39e673ad3679c23e3878fb87cd0b7ca95bf94c9805b456085c5a"
+      },
+      {
+        "excerpt_line": 7,
+        "source_line": 82,
+        "sha256": "ad9b02cf3ef1fcfbdd6978526ee8943106705ff0463eeb4c640355792916d55e"
+      },
+      {
+        "excerpt_line": 8,
+        "source_line": 84,
+        "sha256": "876f9082b62d10b3552018f4879b9051525d5beafd66612949ef9bd04478e82c"
+      },
+      {
+        "excerpt_line": 9,
+        "source_line": 90,
+        "sha256": "29f554fc5e3f8a0db378031fff0dcc1932d59b6a47e48ffe4b1f16788aeca2b1"
+      },
+      {
+        "excerpt_line": 10,
+        "source_line": 92,
+        "sha256": "f7578d781a0e6bdf49680755a1b68d8074cf6d2a0b6b916551eb2edb3d2668d3"
+      }
+    ]
+  },
+  {
+    "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/57552899-a733-45f0-8920-6d30f220db78/subagents/agent-a579cbe6d9daf9b4a.meta.json",
+    "source_sha256": "ac77787b62b04599cce966dd982402e60f2d9ba44f65906aba9feb9506d3e69b",
+    "excerpt": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.meta.json",
+    "lines": [
+      {
+        "excerpt_line": 1,
+        "source_line": 1,
+        "sha256": "ac77787b62b04599cce966dd982402e60f2d9ba44f65906aba9feb9506d3e69b"
+      }
+    ]
+  },
+  {
+    "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/57552899-a733-45f0-8920-6d30f220db78/subagents/agent-a24fe18c8d990062d.jsonl",
+    "source_sha256": "4e0d338947c20232abf4f1570454fad1a8b8276b5dc80cecdd5d627baddcb2a7",
+    "excerpt": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+    "lines": [
+      {
+        "excerpt_line": 1,
+        "source_line": 31,
+        "sha256": "298a5f8c4f0d3a45df4e497f0dff440798728c7f002871dbc05064b8e7b11455"
+      },
+      {
+        "excerpt_line": 2,
+        "source_line": 34,
+        "sha256": "b462468868bd9b98a38148f3be97a14177e764a50de0f7c2d902ea3e96773b8e"
+      },
+      {
+        "excerpt_line": 3,
+        "source_line": 35,
+        "sha256": "e11127f2ef03281f3e13d3e26b7f0fd9db50f289d16aa632521aa139f0bcf876"
+      },
+      {
+        "excerpt_line": 4,
+        "source_line": 37,
+        "sha256": "a5d68853d3844c41cae75454460c0666a8b08f928587369c4ff43874faeecbc1"
+      },
+      {
+        "excerpt_line": 5,
+        "source_line": 38,
+        "sha256": "f0025fa622b3cf46d9f5e5d1e1da0f42b1bc3004a017d5629bbfd5504dc0725f"
+      },
+      {
+        "excerpt_line": 6,
+        "source_line": 40,
+        "sha256": "7e337c57a3939f18835f95ff8cc1eb699e06e77a739c02952eb9522e0ea602e2"
+      },
+      {
+        "excerpt_line": 7,
+        "source_line": 55,
+        "sha256": "56b24a8284fa0bfe7179050b245a70c9c4bdd4ac2b6cb1d3d3d6f8f82d959515"
+      },
+      {
+        "excerpt_line": 8,
+        "source_line": 57,
+        "sha256": "724d9ca58d28f031a37400fdfb9537427ec67e233d3a8be6cc5c282d147ccb65"
+      },
+      {
+        "excerpt_line": 9,
+        "source_line": 76,
+        "sha256": "02b5c6c98be92e88094b8eb64f7263b236481767dd759ede16b3e77a2dc8ffc0"
+      },
+      {
+        "excerpt_line": 10,
+        "source_line": 78,
+        "sha256": "e729ecb546e54abf6afaf202e5d41f3ae75e358ef1aa82bcb57ffefb2dce87ac"
+      }
+    ]
+  },
+  {
+    "source": "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/57552899-a733-45f0-8920-6d30f220db78/subagents/agent-a24fe18c8d990062d.meta.json",
+    "source_sha256": "a6b7bff7d472e7e705663284a0b2f19bdb77d88e80bcf32cda975560ed156266",
+    "excerpt": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.meta.json",
+    "lines": [
+      {
+        "excerpt_line": 1,
+        "source_line": 1,
+        "sha256": "a6b7bff7d472e7e705663284a0b2f19bdb77d88e80bcf32cda975560ed156266"
+      }
+    ]
+  },
+  {
+    "source": "docs/dev/project-management/autopilot/ledger/dispatch-metrics.jsonl",
+    "excerpt": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/dispatch.jsonl",
+    "lines": [
+      {
+        "excerpt_line": 1,
+        "source_line": 645,
+        "sha256": "9c18b5fa5f9f8d7b55f036219a4e8934aed4c9f35f800df68b96023ed882d5f2"
+      },
+      {
+        "excerpt_line": 2,
+        "source_line": 646,
+        "sha256": "d4ad32ba2a6ec061ce5e92a4341c0f49a30abe60ac64fdeb32d55e70430729df"
+      },
+      {
+        "excerpt_line": 3,
+        "source_line": 647,
+        "sha256": "d1b58fcb92290df9d962743ad8433717e2b2f681224831f7091bcdc51a67dca2"
+      },
+      {
+        "excerpt_line": 4,
+        "source_line": 648,
+        "sha256": "59fb426ba58eb46bb0ea01f4adc3b92f7e3e27867f292f2982221d258bee168f"
+      }
+    ]
+  }
+]

@@ -1,0 +1,96 @@
+{
+  "fingerprint": "65afad16ce41c4a2971d52bec6a43aee429ffd418572676d90279881e07e6a89",
+  "snapshot": {
+    "prd": "00117-backup-bundle-out-under-source-v1.md",
+    "cycle": 1,
+    "work_start_sha": "5ae5c53e49ad95d94562b60df99aa272e0772cc5",
+    "tasks": [
+      {
+        "id": "1",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
+            "outcome": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 1,
+      "sha256": "932547e153415d729213d5bb12e18a66be55b55fd482811380c4069d3454c734"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 3,
+      "sha256": "fc4966fdaabc223261de07e790f25ffa02b3c841744409ac398c163b2ca2c386"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 5,
+      "sha256": "a4067ec86382d37fdb7f81ccf95853de690514631ad0bd1949c8f2713fbe2d76"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 9,
+      "sha256": "29f554fc5e3f8a0db378031fff0dcc1932d59b6a47e48ffe4b1f16788aeca2b1"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 3,
+      "sha256": "e11127f2ef03281f3e13d3e26b7f0fd9db50f289d16aa632521aa139f0bcf876"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 5,
+      "sha256": "f0025fa622b3cf46d9f5e5d1e1da0f42b1bc3004a017d5629bbfd5504dc0725f"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 7,
+      "sha256": "56b24a8284fa0bfe7179050b245a70c9c4bdd4ac2b6cb1d3d3d6f8f82d959515"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 9,
+      "sha256": "02b5c6c98be92e88094b8eb64f7263b236481767dd759ede16b3e77a2dc8ffc0"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/coordinator.jsonl",
+      "line": 13,
+      "sha256": "b2191edfa90028089d437226a86bffc597463612c9a1786c847e7d86075c7854"
+    }
+  ]
+}

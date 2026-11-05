@@ -1,0 +1,72 @@
+{
+  "phase": "paused",
+  "next_phase": "paused",
+  "schema_version": 1,
+  "batch": {
+    "id": "202611040755",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "parks_consecutive": 0
+  },
+  "prd": "00117-backup-bundle-out-under-source-v1.md",
+  "catchup_mode": "skip",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "fast-track",
+  "lane_reason": "card_sized",
+  "lane_effective": "fast-track",
+  "tasks_total": 1,
+  "cycle": 1,
+  "tasks_completed": 1,
+  "phases_completed": [
+    "review"
+  ],
+  "replan_count": 0,
+  "codex_probe": {
+    "batch_id": "202610292344",
+    "verdict": "unhealthy",
+    "backend": "codex",
+    "detail": "hook_doctor: missing /Users/bob/.codex/codex-hook",
+    "hook_doctor": "4 ok, 7 stale, 5 broken",
+    "checked_at": "2026-10-30T00:47:58.010495+00:00"
+  },
+  "applied_review_batches": [
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-3.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-3.md::tail-sweep"
+  ],
+  "prd_budget_since": "2026-11-04T06:56:05Z",
+  "design_mode": "skip",
+  "work_start_sha": "5ae5c53e49ad95d94562b60df99aa272e0772cc5",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "tasks": [
+    {
+      "name": "00117-backup-bundle-out-under-source-v1-c1",
+      "id": "1",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "sonnet",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "claude",
+          "preflight_outcome": null,
+          "pipeline": "full"
+        }
+      ]
+    }
+  ],
+  "contract_card": "step: done gate paused for PRD 00117 | invariants: preserve wip PRD, attempts and review evidence; never infer model provenance or fabricate receipts; no finalize without host review guard | next: interactive recovery of missing implementation audit and independent provider review receipts",
+  "pause_reason": {
+    "site": "host_review_evidence",
+    "detail": "Done gate blocked for PRD 00117: review-route rejects missing reports/00117-backup-bundle-out-under-source-v1-implementation-models.json; review-1 lacks required provider receipts and provider_review_guard. Preserve wip PRD and existing review; interactive recovery must verify implementation provenance and restore compliant independent review before finalization."
+  }
+}

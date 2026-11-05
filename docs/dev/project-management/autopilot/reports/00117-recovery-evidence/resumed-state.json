@@ -1,0 +1,77 @@
+{
+  "phase": "review",
+  "next_phase": "review",
+  "schema_version": 1,
+  "batch": {
+    "id": "202611040755",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "parks_consecutive": 0
+  },
+  "prd": "00117-backup-bundle-out-under-source-v1.md",
+  "catchup_mode": "skip",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "fast-track",
+  "lane_reason": "card_sized",
+  "lane_effective": "fast-track",
+  "tasks_total": 1,
+  "cycle": 1,
+  "tasks_completed": 1,
+  "phases_completed": [],
+  "replan_count": 0,
+  "codex_probe": {
+    "batch_id": "202610292344",
+    "verdict": "unhealthy",
+    "backend": "codex",
+    "detail": "hook_doctor: missing /Users/bob/.codex/codex-hook",
+    "hook_doctor": "4 ok, 7 stale, 5 broken",
+    "checked_at": "2026-10-30T00:47:58.010495+00:00"
+  },
+  "applied_review_batches": [
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-3.md::decision-gate",
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/reviews/00110-backup-plan-preview-and-output-resolution-v1-review-3.md::tail-sweep"
+  ],
+  "prd_budget_since": "2026-11-04T06:56:05Z",
+  "design_mode": "skip",
+  "work_start_sha": "5ae5c53e49ad95d94562b60df99aa272e0772cc5",
+  "repo_root": "/Users/bob/git/src/github.com/buvis/gems",
+  "tasks": [
+    {
+      "name": "00117-backup-bundle-out-under-source-v1-c1",
+      "id": "1",
+      "status": "completed",
+      "attempts": [
+        {
+          "attempt": 1,
+          "model": "sonnet",
+          "outcome": "completed",
+          "review_cycle": null,
+          "cause": null,
+          "implementor": "claude",
+          "preflight_outcome": null,
+          "pipeline": "full",
+          "actual_model": "claude-sonnet-5-5",
+          "actual_provider": "anthropic"
+        }
+      ]
+    }
+  ],
+  "contract_card": "step: PRD 00117 interactive recovery complete; fresh review cycle 1 pending\ninvariants: retain completed task, wip PRD, cycle/cap and work_start_sha; old review is preserved evidence only; no finalize without valid provider receipts and adapter.review_gap\nnext: read reports/00117-backup-bundle-out-under-source-v1-implementation-models.md and ~/.config/autocodex/host.md; run review-route; perform full isolated OpenAI Alice/Blake/Bob review via host helper, gpt-6.1-sol/high; use original work range, not archived review head; preserve Blake blindness; record review_cycles and all rubrics/receipts; run normal decision gate before done handoff",
+  "autonomous_decisions": [
+    {
+      "issue": "PRD 00117 completion lacks provider-independent review evidence",
+      "severity": "high",
+      "cycle": 1,
+      "action": "Restore verified implementation provenance and resume fresh cycle-1 review",
+      "reason": "Original Claude Sonnet 5.5 implementation records verified; preserve prior review and pause snapshot, clear obsolete convergence, retain tasks and cap. Interactive recovery and standing authorization permit this reversible correction."
+    }
+  ]
+}
