@@ -1,0 +1,15 @@
+{
+  "batch_id": "202611040755",
+  "items": [
+    {
+      "cycle": 1,
+      "type": "out-of-scope-verification",
+      "severity": "medium",
+      "issue": "Full-suite host-dependent failures: klyreon author identity (two tests) and postup local roots (one test)",
+      "action": "defer unrelated test isolation fixes",
+      "reason": "Both full-suite runs: 6567 passed, 3 failed, 16 skipped, 1 xfailed. Backup checks pass. See reports/00117-c1-full-suite.log; no unrelated source changes made.",
+      "status": "pending",
+      "prd": "00117-backup-bundle-out-under-source-v1.md"
+    }
+  ]
+}

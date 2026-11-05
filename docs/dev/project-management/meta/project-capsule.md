@@ -27,14 +27,10 @@ Generated: 2026-10-29
 
 ## Active Work
 
-### Batch 202610292344
-- [x] 00111-backup-parallel-jobs-and-cancellation-v1.md (1 cycle)
-- [x] 00112-backup-live-progress-and-quiet-v1.md (1 cycle)
-- [x] 00107-backup-per-instance-excludes-v1.md (1 cycle, recovered 2026-11-02)
-- [x] 00109-backup-bundle-items-and-skip-outcomes-v1.md (2 cycles, recovered 2026-11-02)
-- [x] 00110-backup-plan-preview-and-output-resolution-v1.md (3 cycles at cap 2, recovered 2026-11-02)
+### Batch 202611040755
+- [x] 00117-backup-bundle-out-under-source-v1.md (2 cycles)
 
-Observations: Batch drained; all held PRDs passed completion review on `fix/backup-batch-202610292344` (unpushed). Full isolated suite at `93781cd0`: 6417 passed, 16 skipped; Python 3.14 backup suite 802 passed. Open: hold stub 00117 (bundle `out` under source rejected by the containment guard; needs a PRD decision); GNU tar/gzip descendant cleanup deferred for Linux verification; ledgered follow-up candidate: uniform, labelled access-error framing in tar-archive run/plan. `autopilot review-once` cannot run while headless `claude -p` reports a revoked OAuth token. Evidence: `autopilot/reports/202610292344-review-20261102.md`.
+Observations: Batch drained; all four tasks completed, including the cycle-2 Tail sweep. Both provider rosters and the original and companion implementation audits passed the host evidence gate. Final isolated suite: 6654 passed, 16 skipped, 1 xfailed; backup ruff and mypy passed. Earlier host-dependent test isolation failures remain in the deferred ledger. Evidence: `autopilot/reports/202611040755-report.md` and `autopilot/reports/00117-tail-sweep-work.md`.
 
 ## Related context
 No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
