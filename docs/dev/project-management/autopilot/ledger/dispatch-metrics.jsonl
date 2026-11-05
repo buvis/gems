@@ -683,3 +683,4 @@
 {"id":"e8354d75","kind":"pat","task":"2","queued_at":1793873528,"prompt_bytes":7661}
 {"id":"e8354d75","ended_at":1793873565,"elapsed_s":37,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1793873782,"phase":"review","prd":"00117-backup-bundle-out-under-source-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1793875759,"phase":"review","prd":"00117-backup-bundle-out-under-source-v1.md"}

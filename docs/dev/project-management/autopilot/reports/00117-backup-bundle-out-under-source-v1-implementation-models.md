@@ -64,3 +64,7 @@ full rubric verdicts and `review_cycles`, adjudicate all findings using the
 normal gate, and verify `adapter.review_gap` before the done handoff.
 Recovery does not assert convergence or satisfy the provider guard.
 A fresh review session is required before finalization.
+
+## Cycle 2 audit
+
+Original cycle 1 audit preserved in 00117-c1-implementation-models.json and .md. Original task 1 Anthropic evidence is unchanged. Task 2 Tess and Ivan raw session metadata and turn contexts show OpenAI gpt-6.1-sol/medium, including same-session retries. Dispatches ad588f5d/f9ec96bf and retries d7e0ed6e/fa6d26ec correlate to commits 80c90eca, 64458f89, 74d2e145 and 2698031c. See 00117-c1-rework-model-evidence/correlation.md and manifest.json. Pat performed read-only review and is excluded. Every cited line hash was checked before regenerating this cycle snapshot. Both complete provider rosters must review the entire PRD change.
