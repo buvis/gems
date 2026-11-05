@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -22,7 +24,19 @@ from braid.domain.rules import (
     render_host_file,
 )
 
-from tests.tools.braid.helpers import make_host_rule, make_rule, make_skill, settings
+from tests.tools.braid.helpers import (
+    deny_file_symlinks,
+    enroll,
+    generated_file,
+    kiro_root,
+    make_host_roots,
+    make_host_rule,
+    make_rule,
+    make_skill,
+    read_state,
+    settings,
+    write_policy,
+)
 
 NOT_UTF8 = b"\xff\xfe\x00not utf-8"
 
@@ -568,3 +582,218 @@ def test_layout_of_a_corrupt_rule_state_is_refused(tmp_path: Path, payload: obje
         RuleState.from_json(payload, state_path)
 
     assert str(raised.value) == f"invalid rules state in {state_path}"
+
+
+# --- sync_rules (PRD-named; more in test_rules_sync.py) ------------------------------------
+
+
+def test_skill_only_source_keeps_the_skills_state_shape(tmp_path: Path) -> None:
+    skills = tmp_path / "personal"
+    make_skill(skills, "portable")
+    (skills / "rules").mkdir()
+    config = settings(tmp_path, skills)
+    make_host_roots(config, "codex")
+
+    result = engine.run(config)
+
+    state = read_state(config)
+    assert "rules" not in state
+    assert set(state) <= {"version", "union", "hosts", "kiro"}
+    assert set(state["union"]) == {"portable"}
+    assert result.generated == 0
+    assert not (config.agents_root / "rules").exists() and not (config.agents_root / "hosts").exists()
+    assert not (config.claude_root / "rules").exists()
+    assert list((tmp_path / "home" / ".codex").iterdir()) == []
+    make_rule(skills, "tone")
+    engine.run(config)
+    assert set(read_state(config)["rules"]["union"]) == {"tone"}
+
+
+@pytest.mark.parametrize("kind", ["file", "foreign-symlink"])
+def test_existing_host_instruction_link_is_reported_unmanaged_and_kept(tmp_path: Path, kind: str) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone")
+    config = settings(tmp_path, source)
+    make_host_roots(config, "codex", "copilot")
+    own = tmp_path / "home" / ".codex" / "AGENTS.md"
+    mine = tmp_path / "mine.md"
+    mine.write_text("my own\n")
+    if kind == "file":
+        own.write_text("my own\n")
+    else:
+        own.symlink_to(mine)
+    synced: list[str] = []
+    reported: list[str] = []
+
+    result = engine.run(config, emit=synced.append)
+    check = engine.run(config.with_mode(engine.Mode.CHECK), emit=reported.append)
+
+    copilot = tmp_path / "home" / HOST_INSTRUCTION_PATHS["copilot"]
+    assert f"UNMANAGED {own}" in synced and result.unmanaged == 1
+    assert own.read_text() == "my own\n" and own.is_symlink() == (kind != "file")
+    assert copilot.resolve() == generated_file(config, "copilot").resolve()
+    assert read_state(config)["rules"]["instructions"] == {"copilot": str(copilot)}
+    assert not (config.agents_root / "backups").exists()
+    assert reported == [f"UNMANAGED {own}"] and check.drift == 0
+
+
+def test_ignored_rule_leaves_every_host(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "secret", "Secret body.")
+    make_rule(source, "secrets", "Near-miss body.")
+    config = enroll(settings(tmp_path, source))
+    engine.run(config)
+    policy = write_policy(tmp_path / "policy", "secret")
+
+    result = engine.run(replace(config, policy_files=(policy,)))
+
+    for root in (config.claude_root / "rules", kiro_root(config) / "steering"):
+        assert sorted(path.name for path in root.iterdir()) == ["secrets.md"]
+    for host in SINGLE_FILE_HOSTS:
+        text = generated_file(config, host).read_text()
+        assert "Near-miss body." in text and "Secret body." not in text
+    assert (config.agents_root / "rules" / "secret").is_symlink()
+    assert result.ignored == 6
+    projected = read_state(config)["rules"]["projected"]
+    assert set(projected["claude"]) == set(projected["kiro"]) == {"secrets"}
+
+
+@pytest.mark.parametrize("rules", [None, [], {"union": {}}, {**RuleState.empty().as_json(), "projected": {"pi": {}}}])
+def test_malformed_rules_state_is_refused(tmp_path: Path, rules: object) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone")
+    config = settings(tmp_path, source)
+    engine.run(config)
+    state_path = config.agents_root / ".braid-state.json"
+    state_path.write_text(json.dumps({**read_state(config), "rules": rules}))
+    make_rule(source, "added")
+
+    for mode in (engine.Mode.SYNC, engine.Mode.CHECK):
+        with pytest.raises(BraidError) as raised:
+            engine.run(config.with_mode(mode))
+        assert str(raised.value) == f"invalid rules state in {state_path}"
+    assert not (config.claude_root / "rules" / "added.md").exists()
+    assert read_state(config)["rules"] == rules
+
+
+def test_missing_host_root_skips_the_instruction_link(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone")
+    config = settings(tmp_path, source)
+    home = tmp_path / "home"
+    make_host_roots(config, "codex", "pi", "copilot-old")
+    (home / ".gemini").write_text("a file, not a directory")
+    synced: list[str] = []
+
+    engine.run(config, emit=synced.append)
+
+    links = {host: home / HOST_INSTRUCTION_PATHS[host] for host in SINGLE_FILE_HOSTS}
+    for host in ("codex", "pi"):
+        assert links[host].is_symlink() and links[host].resolve() == generated_file(config, host).resolve()
+    assert not (home / ".copilot").exists() and (home / ".gemini").is_file()
+    assert not any(str(links["copilot"]) in line or str(links["gemini"]) in line for line in synced)
+    rules = read_state(config)["rules"]
+    assert rules["instructions"] == {"codex": str(links["codex"]), "pi": str(links["pi"])}
+    assert set(rules["generated"]) == set(SINGLE_FILE_HOSTS)
+    assert engine.run(config.with_mode(engine.Mode.CHECK)).drift == 0
+
+
+def test_stale_generated_file_is_check_drift(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone", "Tone.")
+    terse = make_host_rule(source, "codex", "terse", "Terse.")
+    config = settings(tmp_path, source)
+    engine.run(config)
+    clean: list[str] = []
+    assert engine.run(config.with_mode(engine.Mode.CHECK), emit=clean.append).drift == 0
+    (terse / "RULE.md").write_text("Terser.", encoding="utf-8")
+    generated_file(config, "copilot").write_text("hand edit\n")
+    before = {host: generated_file(config, host).read_bytes() for host in SINGLE_FILE_HOSTS}
+    reported: list[str] = []
+
+    result = engine.run(config.with_mode(engine.Mode.CHECK), emit=reported.append)
+
+    assert clean == []
+    assert [line for line in reported if "GENERATED" in line] == [
+        f"MISMATCH GENERATED {generated_file(config, host)}" for host in ("codex", "copilot")
+    ]
+    assert result.drift >= 2
+    assert {host: generated_file(config, host).read_bytes() for host in SINGLE_FILE_HOSTS} == before
+
+
+def test_oversized_generated_file_fails_check(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    filler = GENERATED_LIMIT - len(GENERATED_HEADER) - 3
+    over = make_host_rule(source, "codex", "big", "x" * (filler + 1))
+    at_limit = make_host_rule(source, "copilot", "big", "y" * filler)
+    assert len(render_host_file({}, {"big": over}).encode("utf-8")) == GENERATED_LIMIT + 1
+    assert len(render_host_file({}, {"big": at_limit}).encode("utf-8")) == GENERATED_LIMIT
+    config = settings(tmp_path, source)
+    path = generated_file(config, "codex")
+    oversize = f"MISMATCH OVERSIZE {path} is {GENERATED_LIMIT + 1} bytes; limit 32768"
+    synced: list[str] = []
+    reported: list[str] = []
+
+    engine.run(config, emit=synced.append)
+    check = engine.run(config.with_mode(engine.Mode.CHECK), emit=reported.append)
+
+    assert f"GENERATE {path}" in synced and oversize in synced
+    assert path.read_bytes() == render_host_file({}, {"big": over}).encode("utf-8")
+    assert reported == [oversize] and check.drift == 1
+
+
+def test_windows_file_link_falls_back_to_hard_link(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone", "Tone.")
+    config = replace(settings(tmp_path, source), platform="nt")
+    make_host_roots(config, "codex")
+    deny_file_symlinks(monkeypatch)
+    claude_link = config.claude_root / "rules" / "tone.md"
+    codex_link = tmp_path / "home" / ".codex" / "AGENTS.md"
+    target = generated_file(config, "codex")
+    synced: list[str] = []
+    relinked: list[str] = []
+
+    engine.run(config, emit=synced.append)
+    clean = engine.run(config.with_mode(engine.Mode.CHECK))
+    (source / "rules" / "tone" / "RULE.md").write_text("Tone, revised.", encoding="utf-8")
+    engine.run(config, emit=relinked.append)
+
+    assert f"LINK[hardlink] {claude_link} -> {config.agents_root / 'rules' / 'tone' / 'RULE.md'}" in synced
+    assert f"LINK[hardlink] {codex_link} -> {target}" in synced
+    assert (config.agents_root / "rules" / "tone").is_symlink()
+    assert not claude_link.is_symlink() and claude_link.samefile(source / "rules" / "tone" / "RULE.md")
+    assert clean.drift == 0
+    assert f"LINK[hardlink] {codex_link} -> {target}" in relinked
+    assert not any(line.startswith("UNMANAGED") for line in relinked)
+    assert not codex_link.is_symlink() and codex_link.samefile(target)
+    assert "Tone, revised." in codex_link.read_text()
+
+
+def test_rule_removed_from_source_unlinks_from_claude_and_kiro(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone")
+    gone = make_rule(source, "gone")
+    steer = make_host_rule(source, "kiro", "steer")
+    config = enroll(settings(tmp_path, source))
+    engine.run(config)
+    steering = kiro_root(config) / "steering"
+    shutil.rmtree(gone)
+    shutil.rmtree(steer)
+    emitted: list[str] = []
+
+    engine.run(config, emit=emitted.append)
+
+    assert [line for line in emitted if line.startswith("REMOVE ")] == [
+        f"REMOVE {config.claude_root / 'rules' / 'gone.md'}",
+        f"REMOVE {steering / 'gone.md'}",
+        f"REMOVE {steering / 'steer.md'}",
+        f"REMOVE {config.agents_root / 'rules' / 'gone'}",
+        f"REMOVE {config.agents_root / 'hosts' / 'kiro' / 'rules' / 'steer'}",
+    ]
+    assert sorted(path.name for path in (config.claude_root / "rules").iterdir()) == ["tone.md"]
+    assert sorted(path.name for path in steering.iterdir()) == ["tone.md"]
+    rules = read_state(config)["rules"]
+    assert set(rules["union"]) == {"tone"} and rules["hosts"] == {}
+    assert set(rules["projected"]["kiro"]) == {"tone"}
+    assert engine.run(config.with_mode(engine.Mode.CHECK)).drift == 0
