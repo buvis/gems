@@ -49,6 +49,13 @@ class Result:
     backed_up: int = 0
     drift: int = 0
     configured: int = 0
+    generated: int = 0
+    unmanaged: int = 0
+
+
+def is_legacy_skills_source(source: Path) -> bool:
+    """A configured path that is itself a skills directory (PRD 00115 form)."""
+    return not (source / "skills").is_dir() and source.is_dir() and source.name == "skills"
 
 
 def _present(path: Path) -> bool:

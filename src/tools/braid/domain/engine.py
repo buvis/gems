@@ -30,6 +30,7 @@ from braid.domain.model import (
     _expand_user,
     _present,
     _resolved,
+    is_legacy_skills_source,
 )
 
 if TYPE_CHECKING:
@@ -155,14 +156,16 @@ def _skill_name(skill_directory: Path) -> str:
     raise BraidError(f"missing valid name in {skill_file}")
 
 
-def _skills_directory(source: Path) -> Path:
+def _skills_directory(source: Path) -> Path | None:
     source = _resolved(source)
     nested = source / "skills"
     if nested.is_dir():
         return nested
-    if source.is_dir() and source.name == "skills":
+    if is_legacy_skills_source(source):
         return source
-    raise BraidError(f"skill source has no skills directory: {source}")
+    if (source / "rules").is_dir() or (source / "hosts").is_dir():
+        return None
+    raise BraidError(f"source has no skills, rules or hosts directory: {source}")
 
 
 def discover_inventory(sources: Iterable[Path]) -> dict[str, Path]:
@@ -172,7 +175,7 @@ def discover_inventory(sources: Iterable[Path]) -> dict[str, Path]:
 
     for configured_source in sources:
         source = _skills_directory(configured_source)
-        if source in seen_sources:
+        if source is None or source in seen_sources:
             continue
         seen_sources.add(source)
         for candidate in sorted(source.iterdir(), key=lambda path: path.name):
@@ -369,7 +372,7 @@ def _report_orphans(
     if settings.mode is Mode.SYNC:
         return  # the manifest is not the only record of what Braid owns, but sync trusts it
     hosts = previous.hosts
-    source_roots = [_skills_directory(source) for source in settings.sources]
+    source_roots = [root for source in settings.sources if (root := _skills_directory(source)) is not None]
     scans = [(union_root, source_roots, {*inventory, *previous.union})]
     if settings.project_claude:
         claude_skills = settings.claude_root / "skills"
@@ -529,7 +532,7 @@ def resolve_settings(request: ComposeRequest) -> Settings:
         raise BraidError(f"no skill sources configured; add a path under {config_root / 'sources.d'} or pass --source")
     candidates = [agents_root / ".braidignore", config_root / ".braidignore"]
     for source in sources:
-        policy_root = source if (source / "skills").is_dir() else source.parent
+        policy_root = source.parent if is_legacy_skills_source(source) else source
         candidates.append(policy_root / ".braidignore")
     candidates.extend(request.policies)
     policy_files = tuple(path for path in _deduplicate(candidates) if path.is_file())
