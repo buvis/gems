@@ -14,6 +14,20 @@ def make_skill(source: Path, name: str) -> Path:
     return skill
 
 
+def make_rule(source: Path, name: str, body: str = "...") -> Path:
+    rule = source / "rules" / name
+    rule.mkdir(parents=True)
+    (rule / "RULE.md").write_text(body, encoding="utf-8")
+    return rule
+
+
+def make_host_rule(source: Path, host: str, name: str, body: str = "...") -> Path:
+    rule = source / "hosts" / host / "rules" / name
+    rule.mkdir(parents=True)
+    (rule / "RULE.md").write_text(body, encoding="utf-8")
+    return rule
+
+
 def settings(
     tmp_path: Path,
     *sources: Path,
