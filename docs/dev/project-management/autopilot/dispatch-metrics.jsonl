@@ -662,3 +662,32 @@
 {"id":"c3bba339","kind":"fast-track:bob","task":"00117-backup-bundle-out-under-source-v1-c1","queued_at":1793776865,"prompt_bytes":36576}
 {"id":"c3bba339","ended_at":1793776952,"elapsed_s":87,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"resume","at":1793832155,"phase":"build","prd":"00115-braid-port-skills-parity-v1.md"}
+{"id":"9918237e","kind":"ivan","task":"2","queued_at":1793833771,"prompt_bytes":28940}
+{"id":"9918237e","ended_at":1793834074,"elapsed_s":303,"outcome":"ok","detail":null}
+{"id":"d8253d86","kind":"devon","task":"1","queued_at":1793834167,"prompt_bytes":38378}
+{"id":"d8253d86","ended_at":1793834723,"elapsed_s":556,"outcome":"ok","detail":"8 weak points; found tests/tools/braid/__init__.py shadowing braid"}
+{"id":"3dc198d6","kind":"tess","task":"1","queued_at":1793834771,"prompt_bytes":20391}
+{"id":"3dc198d6","ended_at":1793835090,"elapsed_s":319,"outcome":"ok","detail":null}
+{"id":"203bc44e","kind":"ivan","task":"1","queued_at":1793835132,"prompt_bytes":46192}
+{"id":"203bc44e","ended_at":1793835326,"elapsed_s":194,"outcome":"ok","detail":null}
+{"id":"f2c309c2","kind":"deslop","task":"1","queued_at":1793835373,"prompt_bytes":18790}
+{"id":"f2c309c2","ended_at":1793835400,"elapsed_s":27,"outcome":"ok","detail":"no slop found"}
+{"id":"674156d9","kind":"ivan","task":"1","queued_at":1793835423,"prompt_bytes":14859}
+{"id":"674156d9","ended_at":1793835558,"elapsed_s":135,"outcome":"ok","detail":null}
+{"id":"07552d0e","kind":"pat","task":"1","queued_at":1793835601,"prompt_bytes":44689}
+{"id":"07552d0e","ended_at":1793835623,"elapsed_s":22,"outcome":"ok","detail":"NO FINDINGS"}
+{"id":"143fe74c","kind":"ivan","task":"4","queued_at":1793835667,"prompt_bytes":24692}
+{"id":"143fe74c","ended_at":1793835811,"elapsed_s":144,"outcome":"ok","detail":null}
+{"id":"5113067c","kind":"devon","task":"3","queued_at":1793835860,"prompt_bytes":24283}
+{"id":"5113067c","ended_at":1793836024,"elapsed_s":164,"outcome":"ok","detail":"8 weak points"}
+{"id":"26b50fe0","kind":"tess","task":"3","queued_at":1793836046,"prompt_bytes":21039}
+{"id":"26b50fe0","ended_at":1793836261,"elapsed_s":215,"outcome":"ok","detail":null}
+{"id":"c4969e29","kind":"ivan","task":"3","queued_at":1793836290,"prompt_bytes":32082}
+{"id":"c4969e29","ended_at":1793836384,"elapsed_s":94,"outcome":"ok","detail":null}
+{"id":"a65c6399","kind":"deslop","task":"3","queued_at":1793836408,"prompt_bytes":20385}
+{"id":"a65c6399","ended_at":1793836429,"elapsed_s":21,"outcome":"ok","detail":"no slop found"}
+{"id":"b6340136","kind":"pat","task":"3","queued_at":1793836477,"prompt_bytes":25481}
+{"id":"b6340136","ended_at":1793836493,"elapsed_s":16,"outcome":"ok","detail":"NO FINDINGS"}
+{"id":"ec004012","kind":"ivan","task":"5","queued_at":1793836534,"prompt_bytes":9784}
+{"id":"ec004012","ended_at":1793836646,"elapsed_s":112,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1793838083,"phase":"review","prd":"00115-braid-port-skills-parity-v1.md"}
