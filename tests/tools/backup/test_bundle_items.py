@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from backup.capabilities import tar_archive
 from backup.capabilities.tar_archive import TarArchive
 from backup.config import BackupConfig
 from backup.runner import Runner
@@ -313,15 +314,17 @@ class TestBundleItems:
         source = tmp_path / "src"
         _tree(source, {"good": "keep", "vanishing": "gone"})
         out = tmp_path / "out.tar.gz"
-        real_lstat = os.lstat
+        real_present = tar_archive._item_present
 
-        def vanish(path: object, *args: object, **kwargs: object) -> os.stat_result:
-            result = real_lstat(path, *args, **kwargs)
-            if Path(path) == source / "vanishing":
-                (source / "vanishing").unlink()
-            return result
+        # Vanish at the presence check itself: patching os.lstat fires early on
+        # 3.13+, where pathlib's is_symlink() also calls it.
+        def vanish(path: Path) -> bool:
+            present = real_present(path)
+            if path == source / "vanishing":
+                path.unlink()
+            return present
 
-        monkeypatch.setattr(os, "lstat", vanish)
+        monkeypatch.setattr(tar_archive, "_item_present", vanish)
         result = _runner(source, out, engine, ["good", "vanishing"])
         assert result.success is False
         assert result.skipped is False
