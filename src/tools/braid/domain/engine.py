@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import shutil
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -219,12 +219,17 @@ def read_ignored(policy_files: Iterable[Path]) -> set[str]:
     return ignored
 
 
+def _create_junction(target: str, destination: str) -> None:
+    # Direct Win32 call, never cmd.exe: path metacharacters (&, |, ^) stay literal.
+    importlib.import_module("_winapi").CreateJunction(target, destination)
+
+
 def create_directory_link(
     destination: Path,
     target: Path,
     *,
     platform: str = os.name,
-    runner: Callable[..., object] = subprocess.run,
+    junction: Callable[[str, str], None] = _create_junction,
 ) -> str:
     try:
         os.symlink(str(target), str(destination), target_is_directory=True)
@@ -233,15 +238,10 @@ def create_directory_link(
         if platform != "nt" or getattr(error, "winerror", None) not in {5, 1314}:
             raise BraidError(f"cannot link {destination} -> {target}: {error}") from error
 
-    completed = runner(
-        ["cmd", "/c", "mklink", "/J", str(destination), str(target)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if getattr(completed, "returncode", 1) != 0:
-        detail = getattr(completed, "stderr", "") or getattr(completed, "stdout", "")
-        raise BraidError(f"cannot create junction {destination} -> {target}: {detail.strip()}")
+    try:
+        junction(str(target), str(destination))
+    except OSError as error:
+        raise BraidError(f"cannot create junction {destination} -> {target}: {error}") from error
     return "junction"
 
 

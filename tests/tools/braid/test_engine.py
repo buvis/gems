@@ -209,29 +209,33 @@ def test_windows_symlink_privilege_failure_falls_back_to_junction(
     target = tmp_path / "target"
     destination = tmp_path / "destination"
     target.mkdir()
-    calls: list[list[str]] = []
+    calls: list[tuple[str, str]] = []
+    deny_symlink(monkeypatch, 1314)
 
-    error = OSError("symlink privilege unavailable")
-    error.winerror = 1314
-
-    def denied(*_args: object, **_kwargs: object) -> None:
-        raise error
-
-    class Completed:
-        returncode = 0
-        stdout = "junction created"
-        stderr = ""
-
-    def runner(command: list[str], **_kwargs: object) -> Completed:
-        calls.append(command)
-        return Completed()
-
-    monkeypatch.setattr(os, "symlink", denied)
-
-    backend = create_directory_link(destination, target, platform="nt", runner=runner)
+    backend = create_directory_link(destination, target, platform="nt", junction=lambda t, d: calls.append((t, d)))
 
     assert backend == "junction"
-    assert calls == [["cmd", "/c", "mklink", "/J", str(destination), str(target)]]
+    assert calls == [(str(target), str(destination))]
+
+
+def test_windows_junction_passes_shell_metacharacters_literally_without_a_shell(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "skills&calc&"
+    destination = tmp_path / "dest|x^y"
+    target.mkdir()
+    calls: list[tuple[str, str]] = []
+    deny_symlink(monkeypatch, 5)
+
+    def no_shell(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("junction fallback must not spawn a process")
+
+    monkeypatch.setattr("subprocess.run", no_shell)
+    monkeypatch.setattr("subprocess.Popen", no_shell)
+
+    create_directory_link(destination, target, platform="nt", junction=lambda t, d: calls.append((t, d)))
+
+    assert calls == [(str(target), str(destination))]
 
 
 def deny_symlink(monkeypatch: pytest.MonkeyPatch, winerror: int) -> None:
@@ -251,13 +255,11 @@ def test_windows_junction_that_mklink_fails_to_create_is_an_error(
     target.mkdir()
     deny_symlink(monkeypatch, 1314)
 
-    class Failed:
-        returncode = 1
-        stdout = ""
-        stderr = "Access is denied.\n"
+    def failed(_target: str, _destination: str) -> None:
+        raise PermissionError("Access is denied.")
 
     with pytest.raises(BraidError, match="cannot create junction .*: Access is denied.$"):
-        create_directory_link(tmp_path / "destination", target, platform="nt", runner=lambda *_a, **_k: Failed())
+        create_directory_link(tmp_path / "destination", target, platform="nt", junction=failed)
 
 
 def test_windows_link_error_other_than_privilege_is_not_retried_as_a_junction(
@@ -266,14 +268,12 @@ def test_windows_link_error_other_than_privilege_is_not_retried_as_a_junction(
     target = tmp_path / "target"
     target.mkdir()
     deny_symlink(monkeypatch, 3)
-    calls: list[object] = []
-
-    def runner(command: object, **_kwargs: object) -> object:
-        calls.append(command)
-        return type("Completed", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+    calls: list[tuple[str, str]] = []
 
     with pytest.raises(BraidError, match="cannot link"):
-        create_directory_link(tmp_path / "destination", target, platform="nt", runner=runner)
+        create_directory_link(
+            tmp_path / "destination", target, platform="nt", junction=lambda t, d: calls.append((t, d))
+        )
 
     assert calls == []
 
