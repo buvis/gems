@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **sysup**: on macOS, an `obsidian-plugins` step updates community plugins through the Obsidian CLI when `obsidian` is installed and the app is running; it skips when Obsidian is closed.
+
 ### Fixed
 
 - **klyreon**: vault commits keep the klyreon identity when `GIT_AUTHOR_*` or `GIT_COMMITTER_*` is set in the environment, so they are no longer mistaken for human edits.

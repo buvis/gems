@@ -31,6 +31,7 @@ class TestDefaultConfigEquivalence:
             "mise",
             "pipx-python",
             "nvim",
+            "obsidian-plugins",
         ]
         assert names.index("rustup") < names.index("mise") < names.index("pipx-python") < names.index("nvim")
 

@@ -88,6 +88,19 @@ commands:
     when: { check: nvim }
     use: nvim-mason
 
+  # Updates community plugins through the Obsidian CLI (Settings > General >
+  # Advanced). The CLI drives the running app, so skip when it is closed.
+  # `installPlugin` and `updates` are internal APIs: revisit if Obsidian breaks them.
+  obsidian-plugins:
+    order: 75
+    when: { os: darwin, check: obsidian }
+    steps:
+      - |
+        pgrep -x Obsidian >/dev/null || { echo "Obsidian not running, skipping"; exit 0; }
+        out=$(obsidian eval code='app.plugins.checkForUpdates().then(async()=>{const o=[];for(const [id,u] of Object.entries(app.plugins.updates)){const ok=await app.plugins.installPlugin(u.repo,u.version,u.manifest);if(ok&&app.plugins.enabledPlugins.has(id)){await app.plugins.disablePlugin(id);await app.plugins.enablePlugin(id)}o.push(id+" "+u.version+(ok?"":" FAILED"))}return o.join("\n")||"up to date"})')
+        echo "$out"
+        ! grep -q FAILED <<<"$out"
+
   # --- WSL / Linux (former `sysup wsl`) -----------------------------------
   apt:
     order: 10
