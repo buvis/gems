@@ -1,41 +1,52 @@
-# PRD 00115 assumptions
+# PRD 00116 assumptions
 
-## 2: Port the engine test suites to tests/tools/braid and register the braid marker
+## 1: braid: discover and render rules (rules.py foundation, source layout relax)
 
-- `isolate_braid_environment` creates the `buvis-config` directory (the contract calls it "empty") but does not create `tmp_path/"home"`, so engine `not ...exists()` asserts stay meaningful.
-- `test_configured_sources_support_comments_home_and_relative_paths` keeps its reference `agent-skills` config path verbatim: it calls `read_configured_sources` directly, under the "rewrite only imports and helpers" rule.
-- `test_check.py` keeps the reference module docstring (PRD 00014, agoge note) verbatim.
-- The `isolate_braid_environment` docstring is Ivan's own one-line wording.
-- Orchestrator: `tests/tools/braid/__init__.py` was later deleted (commit a69c6ea5). Under `--import-mode=importlib` it registered the test dir as package `braid` and shadowed `src/tools/braid` (found by Devon in task 1). This differs from the design doc's module list.
-- Deviation: the reference's inline mypy ignore on `error.winerror = 1314` was dropped because the aegis suppression hook blocks it. gems runs mypy only on `src/`, so nothing checks that line.
+- Tess: `make_rule`/`make_host_rule` default `body` is the literal `"..."`; every body-checking test passes one explicitly.
+- Tess: `tmp_path` is already resolved, so configured and resolved paths print the same in error messages; only the first duplicate source is passed relative.
+- Tess: `RuleState.as_json()` returns stored dicts unchanged, including empty inner dicts.
+- Tess: `from_json` refuses `None` and list payloads ("unless payload is a dict").
+- Tess: `engine.run` never links a rule-only source's rules under `<root>/skills`.
+- Tess: `Settings.policy_files` values are path-like; tests compare `Path(...).resolve()`.
+- Tess: `resolve_settings` needs no content in `config_root` and does not parse `.braidignore` contents.
+- Tess: the bad name `tóne` keeps its spelling on disk under APFS, so the expected error text matches `iterdir`.
+- Ivan: `RuleState.from_json` accepts extra top-level keys beyond the five required ones.
+- Ivan: when a shared rule's name was first used by host rules on several hosts, the duplicate error names the earliest host rule's source.
+- Ivan: `discover_rules` tests already-seen before legacy on the resolved source; order is not observable.
 
-## 1: Port the braid engine and Kiro logic into src/tools/braid/domain
+## 2: braid: file-link projections and Windows hard-link support in the engine
 
-- Tess (strengthen): test 9 assumes `atomic_write_text` calls `os.replace` through the `os` module and removes its temp file on failure. Test 7 assumes `kiro.py` calls `shutil.copymode` by module attribute. The expected link lines assume `Settings.platform` defaults to posix on the test host.
-- Ivan: `model.py` and `kiro.py` carry no `__all__`; only `engine.py` re-exports, per the contract. `ruff format` reflowed the copied code to gems' line length (layout only). `Callable`/`Iterable` moved under `TYPE_CHECKING`.
-- Ivan (style fix): `run` is 49 lines, one under the 50-line limit. A shared `_project_host` helper builds the Claude and Kiro projections that were two identical blocks.
-- CHANGELOG `[Unreleased]` Added entry for braid landed with the engine commit (a feat commit needs it); task 5 verifies it rather than adding it.
+- Tess: `_Pass` exposes its `Result` as `.result`; `preserve_real_sources=False` is neutral for rule projections.
+- Tess: a BACKUP line starts with "BACKUP " and names the destination; the backup layout under `backup_root` is not pinned.
+- Tess: a recorded stale hard link whose target was rewritten is backed up and relinked on SYNC (task text), not removed as owned.
+- Tess: `_backup_suffix` reads the clock through engine's module-level `datetime`; `_sync_links` finds `create_file_link` by module-global name.
+- Tess: on a file-link pass `_backup` adds no drift of its own.
+- Ivan: the stale file-link backup branch counts `drift += 1` before `_backup` counts `backed_up`.
 
-## 4: Write tests/tools/braid/test_cli.py with CliRunner
+## 3: braid: sync_rules projections, generated host files, instruction links and rules state
 
-- The one-line error asserts require exactly one output line with the bare error phrase, and that line must be the last output line.
-- The option-rejection tests and the second `--check` run in the Kiro enrollment test also pass the roots and `--source`, because the CLI has no `_repository_root` source.
-- The OS-error and machine-policy tests do not pass `--no-claude`/`--no-kiro`.
-- The `--check` drift test treats the last output line as the summary (starts with `braid: `, contains `drift`).
-- The long-line test expects the link target to be `skill.resolve()` and the destination to be the unresolved `tmp_path/home/.agents/skills/portable` (`tmp_path` is already resolved).
-- The help-text test compares whitespace-normalized output.
-- The old-config test writes one absolute path per line in `.config/agent-skills/sources.d/personal`.
+- Tess: `REMOVE` lines are exactly `REMOVE {path}`; order is directory hosts, then union shared, then union hosts.
+- Tess: backups land at `backups/<suffix>/<category>/<name>`; tests glob `*/generated/codex/*` and `*/instructions/<host>/*`.
+- Tess: the `LINK[...]` backend tag and link-target absoluteness are not pinned; links are checked with `resolve()`.
+- Tess: without a `rules` key, top-level state keys are a subset of `{version, union, hosts, kiro}`.
+- Tess: a fully current SYNC emits nothing; DRY_RUN/CHECK with nothing on disk create no agents root.
+- Tess: `.braidignore` matches exact rule names; production calls `os.symlink(src, dst, target_is_directory)` without `dir_fd`.
+- Tess: orphan lines across scans compared order-insensitively; a pre-existing real file at a directory-host path follows `_sync_links` backup behavior.
+- Ivan: `emit` is keyword-only in `sync_rules` (`..., result, *, emit`) to satisfy ruff PLR0917 without a second per-file ignore; PRD names and order kept.
+- Ivan: engine helpers reach the per-step helpers as parameters so the single function-local import holds.
+- Ivan: empty `projected[host]` maps are kept in state; only empty union `hosts` maps are dropped.
+- Ivan: when Kiro is not enrolled (`project_kiro` true, `kiro_root` None) the previous `projected["kiro"]` is dropped; `--no-kiro`/`--no-claude` carry it over.
+- Ivan: the orphan-scan `layout` dedupes resolved sources, keeping order.
 
-## 3: Add the braid Click CLI, settings, CommandCompose and wheel wiring
+## 4: braid: summary line and CLI with generated and unmanaged counts
 
-- Tess (strengthen): the summary is the last output line on success. The parametrized `--kiro-root X` rejection case uses a relative `X`, which is never resolved because the rejection runs first. A `--kiro` run stores an empty Kiro agents list.
-- Ivan: `get_settings` is imported from `buvis.pybase.configuration` and `CommandResult` from `buvis.pybase.result`; tests, mypy and `--help` confirm both.
-- Orchestrator: this `feat` commit stages no CHANGELOG change. The `[Unreleased]` braid entry from the task 1 commit already covers the whole user-visible feature.
+- Tess: test_cli.py summary literals were split into adjacent strings to satisfy ruff E501; asserted values are byte-identical.
+- Tess: in SYNC each link and each generated write counts as one change; the CHECK label is not asserted, only the summary prefix.
+- Tess: the `braid:` error line may carry a console marker prefix, so it is checked with `endswith`.
+- Tess: `~/.copilot/copilot-instructions.md` as a hand-made regular file reports UNMANAGED.
+- Orchestrator: `--no-claude` help reads "skip projecting skills and rules into the Claude root"; the plan's "into claude-root" wraps at the hyphen at 80 columns and breaks `test_parser_documents_previously_bare_options_with_help_text`.
 
-## 5: Document braid in README, AGENTS.md, Sphinx docs and CHANGELOG
+## 5: braid: document rules (braid.rst, README, CHANGELOG)
 
-- The AGENTS.md tree line uses the tree's real 4-space prefix.
-- The README `### braid` section sits at the end of the file, after `### bim doc subsystem`, because there is no plain `### bim` section.
-- The summary-line example in `braid.rst` uses made-up counts.
-- Orchestrator corrections after Ivan: the Kiro agent backup path is `<kiro_root>/agent-backup/<stamp>/agents/`. A non-empty `BUVIS_BRAID_KIRO_ROOT` alone enrolls Kiro, an empty one counts as unset, and a saved enrollment cannot move roots (checked against `kiro.py:select_kiro`). The CHANGELOG bullet's appended sentence now joins with a semicolon.
-- Out of scope, already wrong before this task: `docs/source/tools.rst` says "all 16 CLIs" while its table lists 18 tools, and the README CLI list omits klyreon and postup.
+- Ivan: the braid.rst example summary numbers are illustrative, not derived.
+- Ivan: rule backup paths (`rules-backup`, `steering-backup`) and rule-name characters come from the design contract; both added to braid.rst.

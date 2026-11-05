@@ -713,3 +713,58 @@
 {"kind":"handoff","site":"review","edge":"leave","at":1793861042,"phase":"done","prd":"00115-braid-port-skills-parity-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1793875750,"phase":"done","prd":"00115-braid-port-skills-parity-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1793875791,"phase":"build","prd":"00115-braid-port-skills-parity-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1793876111,"phase":"build","prd":"00116-braid-rules-kind-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1793876115,"phase":"build","prd":"00116-braid-rules-kind-v1.md"}
+{"id":"6c4cf4b3","kind":"tess","task":"1","queued_at":1793877744,"prompt_bytes":28426}
+{"id":"6c4cf4b3","ended_at":1793877992,"elapsed_s":248,"outcome":"ok","detail":null}
+{"id":"a80afeb4","kind":"tess","task":"1","queued_at":1793878018,"prompt_bytes":16306}
+{"id":"a80afeb4","ended_at":1793878073,"elapsed_s":55,"outcome":"ok","detail":null}
+{"id":"806c070f","kind":"devon","task":"1","queued_at":1793878097,"prompt_bytes":3802}
+{"id":"806c070f","ended_at":1793878345,"elapsed_s":248,"outcome":"ok","detail":null}
+{"id":"5af2516f","kind":"tess","task":"1","queued_at":1793878357,"prompt_bytes":18522}
+{"id":"5af2516f","ended_at":1793878428,"elapsed_s":71,"outcome":"ok","detail":null}
+{"id":"8685a711","kind":"ivan","task":"1","queued_at":1793878450,"prompt_bytes":35398}
+{"id":"8685a711","ended_at":1793878568,"elapsed_s":118,"outcome":"ok","detail":null}
+{"id":"b623d6c7","kind":"deslop","task":"1","queued_at":1793878617,"prompt_bytes":17506}
+{"id":"b623d6c7","ended_at":1793878649,"elapsed_s":32,"outcome":"ok","detail":null}
+{"id":"eeca1a29","kind":"pat","task":"1","queued_at":1793878687,"prompt_bytes":47735}
+{"id":"eeca1a29","ended_at":1793878727,"elapsed_s":40,"outcome":"ok","detail":"sonnet-run.sh OAuth revoked; native sonnet subagent route"}
+{"id":"ad524723","kind":"tess","task":"2","queued_at":1793878788,"prompt_bytes":26228}
+{"id":"ad524723","ended_at":1793878989,"elapsed_s":201,"outcome":"ok","detail":null}
+{"id":"c5af260e","kind":"devon","task":"2","queued_at":1793879015,"prompt_bytes":3220}
+{"id":"c5af260e","ended_at":1793879170,"elapsed_s":155,"outcome":"ok","detail":null}
+{"id":"dc40c63b","kind":"tess","task":"2","queued_at":1793879185,"prompt_bytes":16267}
+{"id":"dc40c63b","ended_at":1793879306,"elapsed_s":121,"outcome":"ok","detail":null}
+{"id":"1dfa9b17","kind":"ivan","task":"2","queued_at":1793879319,"prompt_bytes":26863}
+{"id":"1dfa9b17","ended_at":1793879376,"elapsed_s":57,"outcome":"ok","detail":null}
+{"id":"c761f33e","kind":"pat","task":"2","queued_at":1793879403,"prompt_bytes":34972}
+{"id":"c761f33e","ended_at":1793879426,"elapsed_s":23,"outcome":"ok","detail":"native sonnet subagent route (sonnet-run.sh OAuth revoked)"}
+{"id":"3f41fbe7","kind":"tess","task":"3","queued_at":1793879470,"prompt_bytes":37440}
+{"id":"3f41fbe7","ended_at":1793879942,"elapsed_s":472,"outcome":"ok","detail":null}
+{"id":"d9131bf9","kind":"devon","task":"3","queued_at":1793879974,"prompt_bytes":4214}
+{"id":"d9131bf9","ended_at":1793880375,"elapsed_s":401,"outcome":"ok","detail":null}
+{"id":"62c6801b","kind":"tess","task":"3","queued_at":1793880389,"prompt_bytes":27088}
+{"id":"62c6801b","ended_at":1793880526,"elapsed_s":137,"outcome":"ok","detail":null}
+{"id":"364bde8f","kind":"ivan","task":"3","queued_at":1793880546,"prompt_bytes":18403}
+{"id":"364bde8f","ended_at":1793880895,"elapsed_s":349,"outcome":"ok","detail":null}
+{"id":"d615b1a0","kind":"deslop","task":"3","queued_at":1793880916,"prompt_bytes":23808}
+{"id":"d615b1a0","ended_at":1793880983,"elapsed_s":67,"outcome":"ok","detail":null}
+{"id":"657074ad","kind":"pat","task":"3","queued_at":1793880998,"prompt_bytes":36318}
+{"id":"28b78910","kind":"ivan","task":"3","queued_at":1793881015,"prompt_bytes":19038}
+{"id":"28b78910","ended_at":1793881103,"elapsed_s":88,"outcome":"ok","detail":null}
+{"id":"f59aa701","kind":"pat","task":"3","queued_at":1793881124,"prompt_bytes":38463}
+{"id":"657074ad","ended_at":1793881124,"elapsed_s":126,"outcome":"killed","detail":"superseded by re-render after style fix"}
+{"id":"f59aa701","ended_at":1793881187,"elapsed_s":63,"outcome":"ok","detail":"native sonnet subagent route"}
+{"id":"dea3841c","kind":"tess","task":"4","queued_at":1793881218,"prompt_bytes":31668}
+{"id":"dea3841c","ended_at":1793881450,"elapsed_s":232,"outcome":"ok","detail":null}
+{"id":"68a53f45","kind":"devon","task":"4","queued_at":1793881475,"prompt_bytes":2437}
+{"id":"68a53f45","ended_at":1793881605,"elapsed_s":130,"outcome":"ok","detail":null}
+{"id":"0fba9ab0","kind":"tess","task":"4","queued_at":1793881614,"prompt_bytes":10044}
+{"id":"0fba9ab0","ended_at":1793881680,"elapsed_s":66,"outcome":"ok","detail":null}
+{"id":"0303b7f9","kind":"ivan","task":"4","queued_at":1793881699,"prompt_bytes":17745}
+{"id":"0303b7f9","ended_at":1793881777,"elapsed_s":78,"outcome":"ok","detail":null}
+{"id":"32adf61e","kind":"pat","task":"4","queued_at":1793881817,"prompt_bytes":25452}
+{"id":"32adf61e","ended_at":1793881861,"elapsed_s":44,"outcome":"ok","detail":"native sonnet subagent route"}
+{"id":"408c3086","kind":"ivan","task":"5","queued_at":1793881893,"prompt_bytes":10607}
+{"id":"408c3086","ended_at":1793881990,"elapsed_s":97,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1793882521,"phase":"review","prd":"00116-braid-rules-kind-v1.md"}
