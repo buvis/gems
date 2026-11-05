@@ -29,7 +29,7 @@ def migrate_parent_reference(zettel_data: ZettelData) -> None:
         if parent_link:
             if str(parent_link) == str(zettel_data.metadata["id"]):
                 zettel_data.reference["parent"] = (
-                    f"[[zettelkasten/{zettel_data.metadata['id']}|{zettel_data.metadata['title']}]]"
+                    f"[[notes/{zettel_data.metadata['id']}|{zettel_data.metadata['title']}]]"
                 )
             else:
                 zettel_data.reference["parent"] = f"[[{parent_link}]]"

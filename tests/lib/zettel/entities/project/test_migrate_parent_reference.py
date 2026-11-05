@@ -18,7 +18,7 @@ class TestMigrateParentReference:
             reference={"parent": "[[123]]"},
         )
         migrate_parent_reference(data)
-        assert data.reference["parent"] == "[[zettelkasten/123|My Note]]"
+        assert data.reference["parent"] == "[[notes/123|My Note]]"
 
     def test_parent_link_differs_from_id(self) -> None:
         data = ZettelData(

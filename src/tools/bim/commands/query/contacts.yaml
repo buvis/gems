@@ -1,5 +1,5 @@
 source:
-  directory: ~/bim/zettelkasten/contact
+  directory: ~/bim/notes/contact
 
 filter:
   type: {eq: contact}

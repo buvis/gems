@@ -72,7 +72,7 @@ pub fn migrate_parent_reference(data: &mut ZettelData) {
         .to_string();
 
     let new_parent = if link == id_str {
-        format!("[[zettelkasten/{}|{}]]", id_str, title)
+        format!("[[notes/{}|{}]]", id_str, title)
     } else {
         format!("[[{}]]", link)
     };
@@ -283,4 +283,24 @@ fn format_log_entries(entries: &[LogEntry], next_action: &NextAction) -> String 
     }
 
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parent_link_matching_id_points_at_notes_folder() {
+        let mut data = ZettelData::new();
+        data.metadata.insert("id".to_string(), YamlValue::String("123".to_string()));
+        data.metadata.insert("title".to_string(), YamlValue::String("My Note".to_string()));
+        data.reference.insert("parent".to_string(), YamlValue::String("[[123]]".to_string()));
+
+        migrate_parent_reference(&mut data);
+
+        assert_eq!(
+            data.reference.get("parent").and_then(|v| v.as_str()),
+            Some("[[notes/123|My Note]]")
+        );
+    }
 }

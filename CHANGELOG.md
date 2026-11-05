@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **bim**: the default note directory is `~/bim/notes/` instead of `~/bim/zettelkasten/`, the bundled contacts query reads `~/bim/notes/contact`, and a migrated project `parent` reference is written as `[[notes/<id>|<title>]]`. Set `path_zettelkasten` (or `BUVIS_BIM_PATH_ZETTELKASTEN`) to keep a `zettelkasten` folder; existing `[[zettelkasten/...]]` links are not rewritten.
+
 ## [0.17.2] - 2026-11-05
 
 ### Added

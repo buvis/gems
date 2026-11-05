@@ -19,7 +19,7 @@ Configuration
      - Default
      - Description
    * - ``path_zettelkasten``
-     - ``~/bim/zettelkasten/``
+     - ``~/bim/notes/``
      - Root directory for zettels
    * - ``path_archive``
      - ``~/bim/reference/40-archives/``
@@ -127,10 +127,10 @@ Modify zettel metadata in-place.
 
 .. code-block:: bash
 
-    bim edit ~/bim/zettelkasten/my-note.md --title "Better title"
-    bim edit ~/bim/zettelkasten/my-note.md --tags "updated,important"
-    bim edit ~/bim/zettelkasten/my-note.md --processed
-    bim edit ~/bim/zettelkasten/my-note.md -s "priority=high" -s "reviewer=alice"
+    bim edit ~/bim/notes/my-note.md --title "Better title"
+    bim edit ~/bim/notes/my-note.md --tags "updated,important"
+    bim edit ~/bim/notes/my-note.md --processed
+    bim edit ~/bim/notes/my-note.md -s "priority=high" -s "reviewer=alice"
 
 Options:
 
@@ -148,10 +148,10 @@ Format a note's metadata and content.
 
 .. code-block:: bash
 
-    bim format ~/bim/zettelkasten/my-note.md
-    bim format ~/bim/zettelkasten/my-note.md -d    # show diff
-    bim format ~/bim/zettelkasten/my-note.md -h    # highlight output
-    bim format ~/bim/zettelkasten/my-note.md -o formatted.md
+    bim format ~/bim/notes/my-note.md
+    bim format ~/bim/notes/my-note.md -d    # show diff
+    bim format ~/bim/notes/my-note.md -h    # highlight output
+    bim format ~/bim/notes/my-note.md -o formatted.md
 
 Options:
 
@@ -166,7 +166,7 @@ Pretty-print a zettel.
 
 .. code-block:: bash
 
-    bim show ~/bim/zettelkasten/my-note.md
+    bim show ~/bim/notes/my-note.md
 
 bim archive
 ~~~~~~~~~~~
@@ -175,8 +175,8 @@ Mark zettel(s) as processed and move to archive directory.
 
 .. code-block:: bash
 
-    bim archive ~/bim/zettelkasten/done-note.md
-    bim archive ~/bim/zettelkasten/a.md ~/bim/zettelkasten/b.md
+    bim archive ~/bim/notes/done-note.md
+    bim archive ~/bim/notes/a.md ~/bim/notes/b.md
     bim archive --undo ~/bim/reference/40-archives/done-note.md
 
 Options:
@@ -190,8 +190,8 @@ Permanently delete zettel(s).
 
 .. code-block:: bash
 
-    bim delete ~/bim/zettelkasten/obsolete.md
-    bim delete --force ~/bim/zettelkasten/a.md ~/bim/zettelkasten/b.md
+    bim delete ~/bim/notes/obsolete.md
+    bim delete --force ~/bim/notes/a.md ~/bim/notes/b.md
 
 Options:
 
@@ -204,7 +204,7 @@ Synchronize a note with an external system (currently Jira).
 
 .. code-block:: bash
 
-    bim sync ~/bim/zettelkasten/project-note.md jira
+    bim sync ~/bim/notes/project-note.md jira
 
 Arguments: ``PATH_TO_NOTE``, ``TARGET_SYSTEM``.
 

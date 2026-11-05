@@ -229,7 +229,7 @@ Definitions created in 2025+:
 ```bash
 bim query -q '
 source:
-  directory: ~/bim/zettelkasten
+  directory: ~/bim/notes
 filter:
   and:
     - id: {gt: 20250101000000}
@@ -563,7 +563,7 @@ user story in their title. This query joins them:
 ```bash
 bim query -q '
 source:
-  directory: ~/bim/zettelkasten
+  directory: ~/bim/notes
 filter:
   and:
     - type: {eq: project}
@@ -571,7 +571,7 @@ filter:
 lookups:
   - name: kanban
     source:
-      directory: ~/bim/zettelkasten/kanban
+      directory: ~/bim/notes/kanban
     filter:
       type: {eq: note}
     match: "us and us in kanban.title"
@@ -595,7 +595,7 @@ summary queries:
 ```bash
 bim query -q '
 source:
-  directory: ~/bim/zettelkasten
+  directory: ~/bim/notes
 filter:
   type: {eq: project}
 lookups:
@@ -619,13 +619,13 @@ before matching, reducing the candidate pool:
 ```bash
 bim query -q '
 source:
-  directory: ~/bim/zettelkasten
+  directory: ~/bim/notes
 filter:
   type: {eq: project}
 lookups:
   - name: tasks
     source:
-      directory: ~/bim/zettelkasten
+      directory: ~/bim/notes
     filter:
       and:
         - type: {eq: note}

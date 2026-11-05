@@ -1,0 +1,17 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import bim
+import yaml
+from bim.settings import BimSettings
+
+
+class TestBimDefaultVaultFolder:
+    def test_default_note_directory_is_notes_folder(self) -> None:
+        assert BimSettings.model_fields["path_zettelkasten"].default == "~/bim/notes/"
+
+    def test_contacts_query_reads_notes_folder(self) -> None:
+        contacts = Path(bim.__file__).parent / "commands" / "query" / "contacts.yaml"
+        source = yaml.safe_load(contacts.read_text(encoding="utf-8"))["source"]
+        assert source["directory"] == "~/bim/notes/contact"
