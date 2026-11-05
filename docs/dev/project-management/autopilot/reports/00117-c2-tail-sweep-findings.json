@@ -1,0 +1,63 @@
+[
+  {
+    "ref": "R1",
+    "consensus": "3/6",
+    "severity": "\ud83d\udfe1",
+    "issue": "Whole-tree containment and bundle source-equality now compare by filesystem identity (lines 298-299). On APFS, a case alias is now rejected: source `<tmp>/Src` with out `<tmp>/src/x.tar.gz` (old lexical guard allowed it). An out equal to a source alias now gets the source message. No test covers either branch. If both lines go back to lexical comparison, the suite still passes, because the permission test then raises in the item loop instead. Add case-alias cases for whole-tree and for bundle `out == source`, skipped like `_case_alias`.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:298",
+    "found_by": [
+      "ALICE_ANTHROPIC",
+      "BLAKE_ANTHROPIC",
+      "BOB_ANTHROPIC"
+    ],
+    "classification": "fix"
+  },
+  {
+    "ref": "R2",
+    "consensus": "2/6",
+    "severity": "\ud83d\udfe1",
+    "issue": "Inode equality rejects valid hard-linked output names outside the selected items. For items [\"a\"], an external out hard-linked to source/a fails, although atomic replacement preserves a. Distinguish path aliases from distinct hard links and add coverage across both engines and all modes.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:308",
+    "found_by": [
+      "ALICE_OPENAI",
+      "BLAKE_OPENAI"
+    ],
+    "classification": "fix"
+  },
+  {
+    "ref": "R3",
+    "consensus": "2/6",
+    "severity": "\u26aa",
+    "issue": "The new default `selected: list[Path] | None = None` is never used, because both callers (lines 161, 362) pass the argument. Make it a required parameter.",
+    "file": "src/tools/backup/capabilities/tar_archive.py:282",
+    "found_by": [
+      "ALICE_ANTHROPIC",
+      "BOB_ANTHROPIC"
+    ],
+    "classification": "fix"
+  },
+  {
+    "ref": "R4",
+    "consensus": "2/6",
+    "severity": "\ud83d\udfe1",
+    "issue": "`test_invalid_items_take_precedence_over_output_containment` repeats `test_invalid_items_win_over_containment` (tests/tools/backup/test_bundle_items.py:471) and `test_invalid_items_win_over_containment_in_every_mode` (tests/tools/backup/test_plan_validation.py:375). It uses the same messages, engines and modes. Invalid items can never reach the item branch, so putting `out` inside `Config` tests no new path. Delete it.",
+    "file": "tests/tools/backup/test_bundle_case_containment.py:169",
+    "found_by": [
+      "ALICE_ANTHROPIC",
+      "BOB_ANTHROPIC"
+    ],
+    "classification": "fix"
+  },
+  {
+    "ref": "R5",
+    "consensus": "2/6",
+    "severity": "\u26aa",
+    "issue": "Some parametrizations repeat one code path. Both `error` values inject the same `lstat(out)` failure, and the `selected` value \"Profiles\" exercises the same path as \"Config\" (:78, :102). Drop the duplicates.",
+    "file": "tests/tools/backup/test_bundle_case_containment.py:49",
+    "found_by": [
+      "ALICE_ANTHROPIC",
+      "BOB_ANTHROPIC"
+    ],
+    "classification": "fix"
+  }
+]

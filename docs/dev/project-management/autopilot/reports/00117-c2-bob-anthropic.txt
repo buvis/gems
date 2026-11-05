@@ -1,0 +1,36 @@
+Both prior-cycle findings are resolved:
+- **Double normalization:** `run` and `_plan_source` now normalize items once and pass `selected` on to `_run_validated` and `_plan_items`.
+- **Case-insensitive alias:** `_same_path` now compares filesystem identity (lstat plus samestat), and `test_case_alias_of_selected_directory_rejects_output_without_changes` covers it in every mode and with both engines.
+
+The rework introduced no correctness regression. `_select_items`, `_plan_items` and the new containment handler all return OSError as `str(exc)`, so run and plan still give the same failure messages.
+
+FIX:
+- [BOB] 🟡 The source checks also moved from lexical comparison to filesystem identity: `out` equal to `source`, and the whole-tree ancestor check. Now a whole-tree `out` under a case alias of `source` is refused, where before it was allowed and the archive re-archived itself on every run. No test covers this new behavior; every `_case_alias` test uses a selected item. | File: src/tools/backup/capabilities/tar_archive.py:298 | Task: 2 — fix: in tests/tools/backup/test_bundle_case_containment.py, add a test that uses `_case_alias(source)`. It must check that a whole-tree `out` under the alias, and a bundle `out` equal to the alias, both fail with the source message, unchanged files, in every mode and with both engines.
+- [BOB] ⚪ The `selected: list[Path] | None = None` default is never used, because both callers (`run` and `_plan_source`) always pass `selected`. | File: src/tools/backup/capabilities/tar_archive.py:282 | Task: 2 — fix: remove the default so `selected` is required.
+- [BOB] ⚪ The new test file repeats cases that do not add coverage. The `error` values ("output identity permission denied", "archive metadata access denied") take the same `Path.lstat` patch path. The `selected` values `Config` and `Profiles` take the same swapcase path. `test_invalid_items_take_precedence_over_output_containment` repeats `test_invalid_items_win_over_containment_in_every_mode` (test_plan_validation.py) and `test_invalid_items_win_over_containment` (test_bundle_items.py). | File: tests/tools/backup/test_bundle_case_containment.py:49 | Task: 2 — fix: keep one value for each of those parametrizations (lines 49, 78, 102) and delete the duplicate invalid-items test at line 169.
+- [BOB] ⚪ The docs give the wrong reason for refusing an `out` equal to a selected item. "because the archive would re-archive itself" does not fit that case, because writing `out` there would overwrite the selected item. The PRD also asked for one sentence; this paragraph has seven. | File: docs/source/tools/backup.rst:159 | Task: 1 — fix: change the reason to "because writing it would overwrite or re-archive a selected item" and cut the sentences that only restate whole-tree behavior.
+
+VERIFY:
+- (none)
+
+KNOWN:
+- (none)
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass
+
+D1: pass
+D2: pass
+D3: pass
+D4: pass
+D5: pass

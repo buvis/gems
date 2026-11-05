@@ -1,0 +1,777 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 6621b5bb..5c8e7e47 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
+ 
+ ## [Unreleased]
+ 
++## [0.17.0] - 2026-11-04
++
+ ### Added
+ 
++- **sysup**: on macOS, `rustup update` runs before `mise upgrade` when `rustup` is installed, so the Rust toolchain stays current and mise's `cargo:` tools build with it.
++- **gems**: wheels for Python 3.15 (macOS arm64, Linux x64 and arm64, Windows x64), so installing on 3.15 no longer needs a Rust toolchain; `pyyaml` and `xattr` publish no 3.15 wheels yet, so pip and uv build them from source on 3.15 (a C compiler is needed for `xattr`).
+ - **backup**: TTY runs show per-instance live progress and elapsed time, with input-byte percentages capped at 99% for Python archives and activity only for system tar; `--quiet` hides live status while preserving final results and summary counts.
+ - **backup**: `--jobs` controls concurrent archive instances (default three); cancellation stops new work, joins workers, stops tar and cleans temporary files while preserving completed results and backups; interruption exits with status 130.
+ - **backup**: `--plan` previews metadata-only run/skip/fail decisions, reasons and existing-output replacement markers; selected outputs share one timestamp and colliding paths are rejected before plan, run or dry-run execution. Missing inputs report the same errors as a run; a metadata error fails only its instance, keeping its expanded source, while preserving collision checks.
+@@ -21,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
+ 
+ ### Fixed
+ 
++- **backup**: a bundle's `out` may now lie under `source` when it is outside every selected item (for example `~/.local/backup/settings.tar.gz` for `items: [.gitconfig, .npmrc]`); an `out` equal to or inside a selected item still fails in run, `--dry-run` and `--plan`.
+ - **backup**: progress returns to archiving when a failure after system tar finishes triggers the Python fallback.
+ - **backup**: interruption during submission or result collection preserves every instance's outcome and finishes cleanup without waiting for a lost completion notification.
+ - **sysup**: a `timeout` on a captured multi-command shell step now stops the whole step; before, only bash died and the command it was waiting on kept running. Such a step runs in its own process group, so Ctrl-C is forwarded to it, a terminal prompt it raises stops it until the timeout, and a command it runs as root through `sudo` is still out of reach and survives. Interactive steps and steps without a timeout are unchanged
+@@ -624,7 +629,8 @@ Initial release.
+ - **config**: Pydantic-based settings with Click option generation
+ - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
+ 
+-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.16.0...HEAD
++[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.17.0...HEAD
++[0.17.0]: https://github.com/buvis/gems/compare/gems-v0.16.0...gems-v0.17.0
+ [0.16.0]: https://github.com/buvis/gems/compare/gems-v0.15.3...gems-v0.16.0
+ [0.15.3]: https://github.com/buvis/gems/compare/gems-v0.15.2...gems-v0.15.3
+ [0.15.2]: https://github.com/buvis/gems/compare/gems-v0.15.1...gems-v0.15.2
+diff --git a/docs/source/tools/backup.rst b/docs/source/tools/backup.rst
+index 8b1ead65..726eb053 100644
+--- a/docs/source/tools/backup.rst
++++ b/docs/source/tools/backup.rst
+@@ -154,6 +154,16 @@ are archived. An item that cannot be inspected (for example under an
+ unreadable directory), an unreadable selected file, or one that disappears
+ after its presence check fails the step instead of counting as missing.
+ 
++With ``items``, ``out`` may sit inside ``source`` as long as it is outside every
++selected item (for example ``~/.local/backup/settings.tar.gz`` for items
++``.gitconfig`` and ``.config/tool``). An ``out`` equal to or inside a selected
++item fails in plan, run, and dry-run before anything is written, because the
++archive would re-archive itself. An ``out`` equal to ``source`` still fails. A
++whole-tree backup (``items`` omitted or ``null``) still rejects any ``out``
++inside ``source``. Invalid ``items`` are reported before this check. ``out`` is
++judged by its real location, after resolving symlinks in its parent
++directory.
++
+ The global ``excludes`` list layers via the 00080 ``excludes+`` / ``excludes-``
+ directives, so a lower layer extends or trims the shared list without re-listing
+ it:
+diff --git a/src/tools/backup/capabilities/tar_archive.py b/src/tools/backup/capabilities/tar_archive.py
+index edcb6b78..b26d5c1b 100644
+--- a/src/tools/backup/capabilities/tar_archive.py
++++ b/src/tools/backup/capabilities/tar_archive.py
+@@ -156,20 +156,27 @@ class TarArchive:
+             yield StepResult(label, success=missing_source, message=f"{reason}: {source}", skipped=missing_source)
+             return
+ 
+-        containment = _reject_out_inside_source(label, source, out)
++        try:
++            selected = _normalize_items(source, kwargs["items"]) if kwargs.get("items") is not None else None
++            containment = _reject_out_inside_source(label, source, out, selected)
++        except (ValueError, OSError) as exc:
++            yield StepResult(label, success=False, message=str(exc))
++            return
+         if containment is not None:
+             yield containment
+             return
+ 
+-        yield from self._run_validated(label, engine, source, out, kwargs)
++        yield from self._run_validated(label, engine, source, out, kwargs, selected=selected)
+ 
+-    def _run_validated(
++    def _run_validated(  # noqa: PLR0913 — retain archive context plus normalized selection
+         self: TarArchive,
+         label: str,
+         engine: str,
+         source: Path,
+         out: Path,
+         kwargs: dict[str, object],
++        *,
++        selected: list[Path] | None,
+     ) -> Iterator[StepResult]:
+         cancel = cast("threading.Event | None", kwargs.get("cancel"))
+         _check_cancel(cancel)
+@@ -178,13 +185,8 @@ class TarArchive:
+         progress = None if dry_run else progress
+         base_state = ExcludeState(base_excludes=frozenset(_as_str_tuple(kwargs.get("excludes", ()))))
+         missing: list[str] = []
+-        bundle = kwargs.get("items") is not None
+-        if bundle:
+-            try:
+-                selected = _normalize_items(source, kwargs["items"])
+-            except ValueError as exc:
+-                yield StepResult(label, success=False, message=str(exc))
+-                return
++        bundle = selected is not None
++        if selected is not None:
+             _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
+             try:
+                 walk, missing = _select_items(source, base_state, selected)
+@@ -266,25 +268,54 @@ class TarArchive:
+         )
+ 
+ 
+-def _reject_out_inside_source(label: str, source: Path, out: Path) -> StepResult | None:
+-    """Reject an ``out`` path that lands inside the ``source`` tree.
++def _same_path(left: Path, right: Path) -> bool:
++    """Compare existing filesystem entries without following their final symlinks."""
++    if left == right:
++        return True
++    try:
++        return os.path.samestat(left.lstat(), right.lstat())
++    except (FileNotFoundError, NotADirectoryError):
++        return False
++
++
++def _reject_out_inside_source(
++    label: str, source: Path, out: Path, selected: list[Path] | None = None
++) -> StepResult | None:
++    """Reject an ``out`` path that would be re-archived by the run.
+ 
+     An ``out`` under ``source`` makes each run re-archive the previous run's
+     archive (unbounded recursive growth). ``out`` may not exist yet, so its
+     PARENT is resolved (which does exist — a stamp only expands the basename) and
+     the name rejoined, giving a real absolute path to test for containment
+-    against the resolved source. Returns a failed :class:`StepResult` when ``out``
+-    is inside ``source`` (the caller yields it and returns before walking),
++    against the resolved source. A whole-tree run rejects ``out`` anywhere in
++    ``source``; a bundle rejects ``out`` equal to the source or equal to or
++    inside a selected item (invalid ``items`` fail first). Returns a failed
++    :class:`StepResult` (the caller yields it and returns before walking),
+     otherwise ``None``.
+     """
+     source_resolved = source.resolve()
+     out_resolved = out.parent.resolve() / out.name
+-    if out_resolved == source_resolved or source_resolved in out_resolved.parents:
++    if _same_path(out_resolved, source_resolved) or (
++        selected is None and any(_same_path(parent, source_resolved) for parent in out_resolved.parents)
++    ):
+         return StepResult(
+             label,
+             success=False,
+             message=(f"out path {out} is inside source {source}; choose an out path outside the backup source"),
+         )
++    for relative in selected or ():
++        item = source_resolved / relative
++        if _same_path(out_resolved, item) or (
++            not item.is_symlink() and any(_same_path(parent, item) for parent in out_resolved.parents)
++        ):
++            return StepResult(
++                label,
++                success=False,
++                message=(
++                    f"out path {out} is inside selected item {source / relative}; "
++                    "choose an out path outside the bundle's items"
++                ),
++            )
+     return None
+ 
+ 
+@@ -293,12 +324,11 @@ def _no_items_message(source: Path, missing: list[str]) -> str:
+     return f"no selected items to archive in {source}{tail}"
+ 
+ 
+-def _plan_items(source: Path, items: object) -> tuple[str, str]:
++def _plan_items(source: Path, selected: list[Path]) -> tuple[str, str]:
+     """Return the plan ``(status, reason)`` for a bundle's ``items``."""
+     try:
+-        selected = _normalize_items(source, items)
+         found = any(_item_present(source / item) for item in selected)
+-    except (ValueError, OSError) as exc:
++    except OSError as exc:
+         return "fail", str(exc)
+     if found:
+         return "run", ""
+@@ -328,12 +358,14 @@ def _plan_source(label: str, source: Path, out: Path, items: object) -> tuple[st
+         return "skip", f"source not found: {source}"
+     if kind == "file":
+         return "fail", f"source is not a directory: {source}"
+-    containment = _reject_out_inside_source(label, source, out)
++    try:
++        selected = _normalize_items(source, items) if items is not None else None
++        containment = _reject_out_inside_source(label, source, out, selected)
++    except (ValueError, OSError) as exc:
++        return "fail", str(exc)
+     if containment is not None:
+         return "fail", containment.message
+-    if items is not None:
+-        return _plan_items(source, items)
+-    return "run", ""
++    return _plan_items(source, selected) if selected is not None else ("run", "")
+ 
+ 
+ def _item_present(path: Path) -> bool:
+diff --git a/tests/tools/backup/test_bundle_case_containment.py b/tests/tools/backup/test_bundle_case_containment.py
+new file mode 100644
+index 00000000..2f310435
+--- /dev/null
++++ b/tests/tools/backup/test_bundle_case_containment.py
+@@ -0,0 +1,183 @@
++from __future__ import annotations
++
++import os
++import tarfile
++from pathlib import Path
++
++import pytest
++
++from backup.capabilities.tar_archive import TarArchive
++
++
++@pytest.fixture(params=["python-tarfile", "system-tar"])
++def engine(request: pytest.FixtureRequest) -> str:
++    return request.param
++
++
++@pytest.fixture(params=["run", "dry_run", "plan"])
++def mode(request: pytest.FixtureRequest) -> str:
++    return request.param
++
++
++def _outcome(source: Path, out: Path, engine: str, mode: str, items: object) -> tuple[bool, str]:
++    kwargs = {"label": "bundle", "source": str(source), "out": str(out), "engine": engine, "items": items}
++    if mode == "plan":
++        entry = TarArchive().plan(**kwargs)
++        assert entry.status in {"run", "fail"}
++        return entry.status == "run", entry.reason
++    (result,) = list(TarArchive().run(**kwargs, dry_run=mode == "dry_run"))
++    return result.success, result.message
++
++
++def _snapshot(source: Path) -> dict[str, bytes | str | None]:
++    return {
++        str(path.relative_to(source)): (
++            str(path.readlink()) if path.is_symlink() else path.read_bytes() if path.is_file() else None
++        )
++        for path in source.rglob("*")
++    }
++
++
++def _case_alias(directory: Path) -> Path:
++    alias = directory.with_name(directory.name.swapcase())
++    if not alias.exists() or not alias.samefile(directory):
++        pytest.skip("case-alias containment requires a real case-insensitive filesystem")
++    return alias
++
++
++class TestBundleCaseContainment:
++    @pytest.mark.parametrize("error", ["output identity permission denied", "archive metadata access denied"])
++    def test_output_identity_permission_error_fails_without_replacing_output(
++        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, mode: str, error: str
++    ) -> None:
++        source = tmp_path.resolve() / "source"
++        directory = source / "Config"
++        directory.mkdir(parents=True)
++        (directory / "settings").write_bytes(b"selected settings")
++        (source / "other").write_bytes(b"also selected")
++        sibling = source / "Config-backup"
++        sibling.mkdir()
++        out = sibling / "archive.tar.gz"
++        out.write_bytes(error.encode())
++        before = _snapshot(source)
++        real_lstat = Path.lstat
++
++        def denied_lstat(path: Path) -> os.stat_result:
++            if path == out:
++                raise PermissionError(error)
++            return real_lstat(path)
++
++        with monkeypatch.context() as patch:
++            patch.setattr(Path, "lstat", denied_lstat)
++            success, message = _outcome(source, out, engine, mode, ["Config", "other"])
++
++        assert success is False
++        assert error in message
++        assert _snapshot(source) == before
++
++    @pytest.mark.parametrize("selected", ["Config", "Profiles"])
++    @pytest.mark.parametrize("out_rel", ["", "archive.tar.gz", "new/deep/archive.tar.gz"])
++    def test_case_alias_of_selected_directory_rejects_output_without_changes(
++        self, tmp_path: Path, engine: str, mode: str, selected: str, out_rel: str
++    ) -> None:
++        source = tmp_path / "source"
++        directory = source / selected
++        directory.mkdir(parents=True)
++        (directory / "settings").write_bytes(b"selected settings")
++        (source / "other").write_bytes(b"also selected")
++        alias = _case_alias(directory)
++        out = alias / out_rel if out_rel else alias
++        if out_rel == "archive.tar.gz":
++            out.write_bytes(b"previous archive")
++        before = _snapshot(source)
++
++        success, message = _outcome(source, out, engine, mode, ["other", selected])
++
++        assert success is False
++        assert "inside selected item" in message
++        assert str(out) in message
++        assert str(directory) in message
++        assert _snapshot(source) == before
++
++    @pytest.mark.parametrize("selected", ["Config", "Profiles"])
++    def test_near_miss_sibling_allows_output_and_keeps_every_selected_item(
++        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, mode: str, selected: str
++    ) -> None:
++        source = tmp_path / "source"
++        directory = source / selected
++        directory.mkdir(parents=True)
++        (directory / "settings").write_bytes(selected.encode())
++        (source / "other").write_bytes(b"second item")
++        sibling = source / f"{selected}-backup"
++        sibling.mkdir()
++        out = sibling / "archive.tar.gz"
++        out.write_bytes(b"previous archive")
++        before = _snapshot(source)
++        monkeypatch.chdir(sibling)
++
++        success, _ = _outcome(source, Path(out.name), engine, mode, [selected, "other"])
++
++        assert success is True
++        if mode == "run":
++            with tarfile.open(out, "r:gz") as archive:
++                assert set(archive.getnames()) == {selected, f"{selected}/settings", "other"}
++                assert archive.extractfile(f"{selected}/settings").read() == selected.encode()
++                assert archive.extractfile("other").read() == b"second item"
++        else:
++            assert _snapshot(source) == before
++
++    @pytest.mark.parametrize("out_parent", ["target", "link"])
++    def test_final_symlink_items_allow_output_in_target_without_archiving_target_contents(
++        self, tmp_path: Path, engine: str, mode: str, out_parent: str
++    ) -> None:
++        source = tmp_path / "source"
++        target = source / "target"
++        target.mkdir(parents=True)
++        (target / "private").write_bytes(b"do not archive")
++        (source / "link").symlink_to("target", target_is_directory=True)
++        (source / "broken").symlink_to("absent")
++        (source / "other").write_bytes(b"keep")
++        out = source / out_parent / "archive.tar.gz"
++        out.write_bytes(b"previous archive")
++        before = _snapshot(source)
++
++        success, _ = _outcome(source, out, engine, mode, ["link", "broken", "other"])
++
++        assert success is True
++        assert (target / "private").read_bytes() == b"do not archive"
++        assert (source / "link").readlink() == Path("target")
++        if mode == "run":
++            with tarfile.open(out, "r:gz") as archive:
++                members = {member.name: member for member in archive.getmembers()}
++                assert set(members) == {"link", "broken", "other"}
++                assert members["link"].issym()
++                assert members["link"].linkname == "target"
++                assert members["broken"].issym()
++                assert members["broken"].linkname == "absent"
++                assert archive.extractfile("other").read() == b"keep"
++        else:
++            assert _snapshot(source) == before
++
++    @pytest.mark.parametrize(
++        ("items", "message"),
++        [
++            ([], "items must not be empty"),
++            (["Config", "../escape"], "invalid item '../escape': must be a relative path inside the source"),
++            (["Config", None], "items must be a list of relative paths"),
++        ],
++    )
++    def test_invalid_items_take_precedence_over_output_containment(
++        self, tmp_path: Path, engine: str, mode: str, items: object, message: str
++    ) -> None:
++        source = tmp_path / "source"
++        directory = source / "Config"
++        directory.mkdir(parents=True)
++        out = directory / "archive.tar.gz"
++        out.write_bytes(b"previous archive")
++        before = _snapshot(source)
++
++        success, reason = _outcome(source, out, engine, mode, items)
++
++        assert success is False
++        assert reason == message
++        assert _snapshot(source) == before
+diff --git a/tests/tools/backup/test_bundle_items.py b/tests/tools/backup/test_bundle_items.py
+index cc42964b..5539b7f9 100644
+--- a/tests/tools/backup/test_bundle_items.py
++++ b/tests/tools/backup/test_bundle_items.py
+@@ -2,6 +2,7 @@ from __future__ import annotations
+ 
+ import os
+ import tarfile
++from datetime import datetime
+ from pathlib import Path
+ 
+ import pytest
+@@ -326,3 +327,204 @@ class TestBundleItems:
+         assert result.skipped is False
+         assert "vanishing" in result.message
+         assert not out.exists()
++
++
++def _home(root: Path) -> Path:
++    home = root / "home"
++    _tree(
++        home,
++        {
++            ".gitconfig": "git v1",
++            ".npmrc": "npm v1",
++            ".gitconfig-old": "omit",
++            ".config/sub/f": "sub",
++            ".config/tool/t": "tool",
++            ".config/tool/deep/f": "deep",
++            ".local/keep": "keep",
++        },
++    )
++    return home
++
++
++def _source_msg(out: Path, source: Path) -> str:
++    return f"out path {out} is inside source {source}; choose an out path outside the backup source"
++
++
++def _item_msg(out: Path, item: Path) -> str:
++    return f"out path {out} is inside selected item {item}; choose an out path outside the bundle's items"
++
++
++def _names(out: Path) -> set[str]:
++    return {member.name for member in _members(out)}
++
++
++class TestBundleOutContainment:
++    @pytest.mark.parametrize("out_rel", [".local/backup/settings.tar.gz", "settings.tar.gz"])
++    def test_out_under_source_outside_every_item_archives_only_items(
++        self, tmp_path: Path, engine: str, out_rel: str
++    ) -> None:
++        home = _home(tmp_path)
++        out = home / out_rel
++        result = _run(home, out, engine, [".gitconfig", ".npmrc"])
++        assert result.success is True
++        assert result.skipped is False
++        assert result.file_count == 2
++        assert result.out_path == str(out)
++        assert _names(out) == {".gitconfig", ".npmrc"}
++
++    def test_rerun_with_existing_out_under_source_succeeds_without_self_member(
++        self, tmp_path: Path, engine: str
++    ) -> None:
++        home = _home(tmp_path)
++        out = home / ".local/backup/settings.tar.gz"
++        assert _run(home, out, engine, [".gitconfig", ".npmrc"]).success is True
++        (home / ".npmrc").write_text("npm v2", encoding="utf-8")
++        second = _run(home, out, engine, [".gitconfig", ".npmrc"])
++        assert second.success is True
++        assert second.skipped is False
++        assert _names(out) == {".gitconfig", ".npmrc"}
++        with tarfile.open(out, "r:gz") as archive:
++            assert archive.extractfile(".npmrc").read() == b"npm v2"
++
++    @pytest.mark.parametrize(
++        ("items", "out_rel", "item_rel"),
++        [
++            ([".config"], ".config/x.tar.gz", ".config"),
++            ([".config"], ".config/sub/x.tar.gz", ".config"),
++            ([".config"], ".config", ".config"),
++            ([".gitconfig"], ".gitconfig", ".gitconfig"),
++            ([".gitconfig", ".config/./tool/"], ".config/tool/x.tar.gz", ".config/tool"),
++            ([".config/tool", ".config"], ".config/tool/deep/x.tar.gz", ".config"),
++        ],
++    )
++    def test_out_equal_to_or_inside_selected_item_fails_without_writing(
++        self, tmp_path: Path, engine: str, items: list[str], out_rel: str, item_rel: str
++    ) -> None:
++        home = _home(tmp_path)
++        out = home / out_rel
++        if not out.exists():
++            out.write_bytes(b"previous")
++        before = {path: path.read_bytes() for path in home.rglob("*") if path.is_file()}
++        listing = sorted(home.rglob("*"))
++        result = _run(home, out, engine, items)
++        assert result.success is False
++        assert result.skipped is False
++        assert result.message == _item_msg(out, home / item_rel)
++        assert sorted(home.rglob("*")) == listing
++        assert {path: path.read_bytes() for path in home.rglob("*") if path.is_file()} == before
++
++    @pytest.mark.parametrize("items", [[".gitconfig"], [".config", ".npmrc"]])
++    def test_out_equal_to_source_keeps_source_message_with_items(
++        self, tmp_path: Path, engine: str, items: list[str]
++    ) -> None:
++        home = _home(tmp_path)
++        result = _run(home, home, engine, items)
++        assert result.success is False
++        assert result.message == _source_msg(home, home)
++        assert home.is_dir()
++        assert (home / ".gitconfig").read_text(encoding="utf-8") == "git v1"
++
++    @pytest.mark.parametrize(
++        ("items", "out_rel"),
++        [
++            ([".config"], ".config-backup/x.tar.gz"),
++            ([".config"], ".configx.tar.gz"),
++            ([".gitconfig", ".config/tool"], ".config/sub/x.tar.gz"),
++            ([".gitconfig", ".config/tool"], ".config/tool-backup.tar.gz"),
++            ([".config/tool/deep"], ".config/tool/x.tar.gz"),
++        ],
++    )
++    def test_out_under_source_near_an_item_but_outside_it_is_allowed(
++        self, tmp_path: Path, engine: str, items: list[str], out_rel: str
++    ) -> None:
++        home = _home(tmp_path)
++        out = home / out_rel
++        result = _run(home, out, engine, items)
++        assert result.success is True
++        names = _names(out)
++        assert out.name not in {Path(name).name for name in names}
++        assert all(any(name == item or name.startswith(f"{item}/") for item in items) for name in names)
++        assert set(items) <= names
++
++    @pytest.mark.parametrize("items_kwargs", [{}, {"items": None}])
++    def test_whole_tree_out_under_source_keeps_source_message(
++        self, tmp_path: Path, engine: str, items_kwargs: dict[str, object]
++    ) -> None:
++        home = _home(tmp_path)
++        out = home / ".local/backup/all.tar.gz"
++        (result,) = list(
++            TarArchive().run(label="bundle", source=str(home), out=str(out), engine=engine, **items_kwargs),
++        )
++        assert result.success is False
++        assert result.message == _source_msg(out, home)
++        assert not out.exists()
++
++    @pytest.mark.parametrize(
++        ("items", "message"),
++        [
++            ([], "items must not be empty"),
++            (["../x"], "invalid item '../x': must be a relative path inside the source"),
++            (".gitconfig", "items must be a list of relative paths"),
++            ([".gitconfig", None], "items must be a list of relative paths"),
++        ],
++    )
++    def test_invalid_items_win_over_containment(self, tmp_path: Path, engine: str, items: object, message: str) -> None:
++        home = _home(tmp_path)
++        out = home / ".local/backup/x.tar.gz"
++        (result,) = list(TarArchive().run(label="bundle", source=str(home), out=str(out), engine=engine, items=items))
++        assert result.success is False
++        assert result.message == message
++        assert not out.exists()
++
++    def test_symlinked_item_is_archived_as_link_so_out_beside_target_is_allowed(
++        self, tmp_path: Path, engine: str
++    ) -> None:
++        home = _home(tmp_path)
++        _tree(home, {"real/f": "target"})
++        (home / "link").symlink_to("real", target_is_directory=True)
++        out = home / "real/x.tar.gz"
++        result = _run(home, out, engine, ["link"])
++        assert result.success is True
++        members = {member.name: member for member in _members(out)}
++        assert set(members) == {"link"}
++        assert members["link"].issym()
++
++    def test_out_reached_through_symlinked_parent_is_judged_by_its_real_location(
++        self, tmp_path: Path, engine: str
++    ) -> None:
++        home = _home(tmp_path)
++        (home / "alias").symlink_to(home / ".config", target_is_directory=True)
++        out = home / "alias/x.tar.gz"
++        result = _run(home, out, engine, [".config"])
++        assert result.success is False
++        assert result.message == _item_msg(out, home / ".config")
++        assert not (home / ".config/x.tar.gz").exists()
++
++    def test_stamped_out_basename_under_selected_directory_is_rejected(self, tmp_path: Path, engine: str) -> None:
++        home = _home(tmp_path)
++        now = datetime(2026, 11, 4, 9, 30)
++        out = home / ".config/bk-%Y%m%d.tar.gz"
++        result = _run(home, out, engine, [".config"], now=now)
++        assert result.success is False
++        assert result.message == _item_msg(home / ".config/bk-20261104.tar.gz", home / ".config")
++        assert not (home / ".config/bk-20261104.tar.gz").exists()
++
++    def test_stamped_out_basename_outside_items_is_allowed(self, tmp_path: Path, engine: str) -> None:
++        home = _home(tmp_path)
++        now = datetime(2026, 11, 4, 9, 30)
++        out = home / ".local/bk-%Y%m%d-%H%M.tar.gz"
++        result = _run(home, out, engine, [".config"], now=now)
++        assert result.success is True
++        stamped = home / ".local/bk-20261104-0930.tar.gz"
++        assert result.out_path == str(stamped)
++        assert "bk-20261104-0930.tar.gz" not in {Path(name).name for name in _names(stamped)}
++
++    @pytest.mark.parametrize(("cwd_rel", "allowed"), [(".config", False), (".local", True)])
++    def test_relative_out_is_judged_against_the_working_directory(
++        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, cwd_rel: str, allowed: bool
++    ) -> None:
++        home = _home(tmp_path)
++        monkeypatch.chdir(home / cwd_rel)
++        result = _run(home, Path("x.tar.gz"), engine, [".config"])
++        assert result.success is allowed
++        assert (home / cwd_rel / "x.tar.gz").exists() is allowed
+diff --git a/tests/tools/backup/test_plan_validation.py b/tests/tools/backup/test_plan_validation.py
+index a388fc8e..e7c0a675 100644
+--- a/tests/tools/backup/test_plan_validation.py
++++ b/tests/tools/backup/test_plan_validation.py
+@@ -241,3 +241,165 @@ def test_runner_empty_selection_has_no_archive_effects(tmp_path: Path, mode: str
+ 
+     assert results == []
+     assert _snapshot(tmp_path) == before
++
++
++def _bundle_source(root: Path) -> Path:
++    source = _source(root, "home")
++    (source / "data/deep").mkdir(parents=True)
++    (source / "data/inner.txt").write_bytes(b"inner")
++    (source / "data/deep/leaf.txt").write_bytes(b"leaf")
++    return source
++
++
++def _reason(result: PlanEntry | StepResult, mode: str) -> str:
++    return result.reason if mode == "plan" else result.message
++
++
++@pytest.mark.parametrize("interface", ["capability", "runner"])
++@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
++@pytest.mark.parametrize(
++    ("items", "out_rel", "item_rel"),
++    [
++        (["data"], "data/x.tar.gz", "data"),
++        (["tiny.txt", "data/deep"], "data/deep/more/x.tar.gz", "data/deep"),
++        (["data"], "data", "data"),
++        (["tiny.txt"], "tiny.txt", "tiny.txt"),
++    ],
++)
++def test_bundle_out_inside_selected_item_fails_identically_in_every_mode(
++    tmp_path: Path, interface: str, mode: str, items: list[str], out_rel: str, item_rel: str
++) -> None:
++    source = _bundle_source(tmp_path)
++    out = source / out_rel
++    if out.parent.is_dir() and not out.exists():
++        out.write_bytes(b"previous")
++    before = _snapshot(tmp_path)
++
++    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), "items": items})
++
++    message = (
++        f"out path {out} is inside selected item {source / item_rel}; choose an out path outside the bundle's items"
++    )
++    assert result.status == "fail" if mode == "plan" else result.success is False
++    assert _reason(result, mode) == message
++    assert _snapshot(tmp_path) == before
++
++
++@pytest.mark.parametrize("interface", ["capability", "runner"])
++@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
++@pytest.mark.parametrize(
++    ("items", "out_rel", "members"),
++    [
++        (["tiny.txt"], "backups/x.tar.gz", {"tiny.txt"}),
++        (["tiny.txt"], "tiny.txt.tar.gz", {"tiny.txt"}),
++        (
++            ["data", "tiny.txt-copy"],
++            "data-backup.tar.gz",
++            {"data", "data/inner.txt", "data/deep", "data/deep/leaf.txt", "tiny.txt-copy"},
++        ),
++        (["data/deep"], "data/x.tar.gz", {"data/deep", "data/deep/leaf.txt"}),
++    ],
++)
++def test_bundle_out_under_source_outside_items_plans_runs_and_archives_only_items(
++    tmp_path: Path, interface: str, mode: str, items: list[str], out_rel: str, members: set[str]
++) -> None:
++    source = _bundle_source(tmp_path)
++    out = source / out_rel
++    before = _snapshot(tmp_path)
++
++    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), "items": items})
++
++    if mode == "plan":
++        assert result.status == "run"
++        assert result.reason == ""
++        assert result.source == str(source)
++        assert result.out == str(out)
++        assert result.replaces is False
++    else:
++        assert result.success is True
++        assert result.skipped is False
++        assert result.out_path == str(out)
++    if mode != "run":
++        assert _snapshot(tmp_path) == before
++        assert not out.exists()
++        return
++    with tarfile.open(out, "r:gz") as archive:
++        assert {member.name for member in archive.getmembers()} == members
++
++
++@pytest.mark.parametrize("interface", ["capability", "runner"])
++@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
++@pytest.mark.parametrize("extra", [{}, {"items": None}])
++def test_whole_tree_out_under_source_keeps_source_message_in_every_mode(
++    tmp_path: Path, interface: str, mode: str, extra: dict[str, object]
++) -> None:
++    source = _bundle_source(tmp_path)
++    out = source / "backups/all.tar.gz"
++    before = _snapshot(tmp_path)
++
++    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), **extra})
++
++    message = f"out path {out} is inside source {source}; choose an out path outside the backup source"
++    assert result.status == "fail" if mode == "plan" else result.success is False
++    assert _reason(result, mode) == message
++    assert _snapshot(tmp_path) == before
++
++
++@pytest.mark.parametrize("interface", ["capability", "runner"])
++@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
++@pytest.mark.parametrize("items", [["data"], ["tiny.txt", "data/deep"]])
++def test_bundle_out_equal_to_source_keeps_source_message_in_every_mode(
++    tmp_path: Path, interface: str, mode: str, items: list[str]
++) -> None:
++    source = _bundle_source(tmp_path)
++    before = _snapshot(tmp_path)
++
++    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(source), "items": items})
++
++    message = f"out path {source} is inside source {source}; choose an out path outside the backup source"
++    assert result.status == "fail" if mode == "plan" else result.success is False
++    assert _reason(result, mode) == message
++    assert _snapshot(tmp_path) == before
++
++
++@pytest.mark.parametrize("interface", ["capability", "runner"])
++@pytest.mark.parametrize("mode", ["plan", "run", "dry-run"])
++@pytest.mark.parametrize(
++    ("items", "message"),
++    [
++        ([], "items must not be empty"),
++        (["../x"], "invalid item '../x': must be a relative path inside the source"),
++        ("data", "items must be a list of relative paths"),
++    ],
++)
++def test_invalid_items_win_over_containment_in_every_mode(
++    tmp_path: Path, interface: str, mode: str, items: object, message: str
++) -> None:
++    source = _bundle_source(tmp_path)
++    out = source / "backups/x.tar.gz"
++    before = _snapshot(tmp_path)
++
++    (result,) = _invoke(interface, mode, {"source": str(source), "out": str(out), "items": items})
++
++    assert result.status == "fail" if mode == "plan" else result.success is False
++    assert _reason(result, mode) == message
++    assert _snapshot(tmp_path) == before
++
++
++@pytest.mark.parametrize("mode", ["plan", "run"])
++def test_bundle_plan_marks_existing_out_under_source_as_replaced_and_rerun_succeeds(tmp_path: Path, mode: str) -> None:
++    source = _bundle_source(tmp_path)
++    out = source / "backups/x.tar.gz"
++    values = {"source": str(source), "out": str(out), "items": ["tiny.txt"]}
++    (first,) = _invoke("capability", "run", values)
++    assert first.success is True
++
++    (result,) = _invoke("capability", mode, values)
++
++    if mode == "plan":
++        assert result.status == "run"
++        assert result.replaces is True
++    else:
++        assert result.success is True
++        with tarfile.open(out, "r:gz") as archive:
++            assert [member.name for member in archive.getmembers()] == ["tiny.txt"]

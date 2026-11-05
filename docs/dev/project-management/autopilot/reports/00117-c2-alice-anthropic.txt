@@ -1,0 +1,19 @@
+Prior cycle: both fix items are resolved. R1 is fixed because items are normalized once, at src/tools/backup/capabilities/tar_archive.py:160 and src/tools/backup/capabilities/tar_archive.py:362. R2 is fixed because `_same_path` compares by filesystem identity, and the case-alias tests run in the macOS CI tools job.
+
+[ALICE] 🟡 Whole-tree containment and bundle source-equality now compare by filesystem identity (lines 298-299). On APFS, a case alias is now rejected: source `<tmp>/Src` with out `<tmp>/src/x.tar.gz` (old lexical guard allowed it). An out equal to a source alias now gets the source message. No test covers either branch. If both lines go back to lexical comparison, the suite still passes, because the permission test then raises in the item loop instead. Add case-alias cases for whole-tree and for bundle `out == source`, skipped like `_case_alias`. | File: src/tools/backup/capabilities/tar_archive.py:298 | Task: 2
+[ALICE] 🟡 `test_invalid_items_take_precedence_over_output_containment` repeats `test_invalid_items_win_over_containment` (tests/tools/backup/test_bundle_items.py:471) and `test_invalid_items_win_over_containment_in_every_mode` (tests/tools/backup/test_plan_validation.py:375). It uses the same messages, engines and modes. Invalid items can never reach the item branch, so putting `out` inside `Config` tests no new path. Delete it. | File: tests/tools/backup/test_bundle_case_containment.py:169 | Task: 2
+[ALICE] ⚪ Some parametrizations repeat one code path. Both `error` values inject the same `lstat(out)` failure, and the `selected` value "Profiles" exercises the same path as "Config" (:78, :102). Drop the duplicates. | File: tests/tools/backup/test_bundle_case_containment.py:49 | Task: 2
+[ALICE] ⚪ The new default `selected: list[Path] | None = None` is never used, because both callers (lines 161, 362) pass the argument. Make it a required parameter. | File: src/tools/backup/capabilities/tar_archive.py:282 | Task: 2
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: pass
+R10: pass
+R11: pass
+R12: pass
+R13: pass

@@ -1,0 +1,22 @@
+[BLAKE] 🟡 B1/B5: `_same_path` equates distinct hard links. With `items: [config]`, an existing `out` outside every item that hard-links `config` incorrectly fails containment in all modes. Atomic replacement would preserve `config`; compare directory entries rather than inode identity. | File: src/tools/backup/capabilities/tar_archive.py:276 | Task: general
+[BLAKE] ⚪ B15: The required Fixed entry appears under `[0.17.0]`; the specification requires it under `[Unreleased]`, which is empty. | File: CHANGELOG.md:28 | Task: general
+
+B1: fail
+B2: pass
+B3: pass
+B4: pass
+B5: fail
+B6: pass
+B7: pass
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: fail
+B16: pass
+B17: pass
+B18: pass
+B19: pass

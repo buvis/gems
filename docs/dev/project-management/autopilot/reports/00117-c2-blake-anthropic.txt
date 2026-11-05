@@ -1,0 +1,32 @@
+[BLAKE] ⚪ The whole-tree containment branch changed behaviour in a mode the PRD says stays unchanged. Since the cycle-2 case-alias fix, both branches go through `_same_path`, which compares paths by `lstat`/`samestat` identity. A whole-tree `out` that reaches `source` through a case alias or bind mount is now rejected. A permission error from `lstat` on `out` or one of its ancestors now fails the step where a path comparison would not. The new behaviour is stricter and safe. Only bundle tests (`test_bundle_case_containment.py`) pin it, and `TestOutInsideSource` covers plain paths only. | File: src/tools/backup/capabilities/tar_archive.py:298 | Task: Phase 0
+[BLAKE] ⚪ The CHANGELOG entry was written under `[Unreleased]` and then moved into `[0.17.0] - 2026-11-04` by the `v0.17.0` bump. The cycle-2 fixes came after that release: case-alias outputs inside a selected item are now rejected, and output identity errors are reported as failures. `[Unreleased]` is empty, so these user-visible fixes have no entry. The 0.17.0 line claims inside-item outputs always fail, but the shipped 0.17.0 code missed case aliases on case-insensitive filesystems. | File: CHANGELOG.md:8 | Task: Phase 1
+
+The PRD behaviours are all implemented in `src/tools/backup/capabilities/tar_archive.py`:
+- **Order in `run` and `_plan_source`:** both normalize `items` before `_reject_out_inside_source`, inside the same `except (ValueError, OSError)`. Invalid `items` therefore keep their own message and win over containment (`tar_archive.py:159`, `tar_archive.py:354`).
+- **`out` equal to `source`:** it still fails with the source message in both modes.
+- **Whole-tree runs:** with `items` omitted or `null`, any `out` under `source` still fails with the source message.
+- **Bundles:** an `out` equal to or under `source / item` fails with the exact message the PRD asks for. Symlinked items get no parent check, which matches the Risks section.
+- **Plan, run and dry-run:** the plan row carries `containment.message`, and the Runner turns plan `fail` rows into run results. All three modes therefore report the same reason.
+- **Second run:** a bundle archives only its selected members, so an existing `out` under `source` is never a member.
+
+Tests cover every scenario in the PRD's Test Strategy, in both engines where the file already parametrizes them. They are in `test_bundle_items.py` (`TestBundleOutContainment`), `test_plan_validation.py` (all three modes, capability and runner) and `test_bundle_case_containment.py`. `test_out_inside_source_fails_no_archive` and `test_stamped_out_inside_source_fails` are still present in `test_tar_archive.py`. The docs (`docs/source/tools/backup.rst:157`) and the CHANGELOG line both contain "selected item". The docs paragraph is longer than the one sentence the PRD asked for, but it is accurate. The supplied gate evidence says the suite, ruff and mypy pass.
+
+B1: pass
+B2: pass
+B3: pass
+B4: pass
+B5: pass
+B6: pass
+B7: pass
+B8: pass
+B9: pass
+B10: pass
+B11: pass
+B12: pass
+B13: pass
+B14: pass
+B15: pass
+B16: pass
+B17: pass
+B18: pass
+B19: pass

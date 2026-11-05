@@ -1,0 +1,14 @@
+[ALICE] 🟠 Review blocked: this session has no permitted read, glob, or grep tools. Required files remain unread; verdicts below mean unverified, not confirmed defects. | File: N/A | Task: general
+
+R1: fail
+R2: fail
+R3: fail
+R4: fail
+R6: fail
+R7: fail
+R8: fail
+R9: fail
+R10: fail
+R11: fail
+R12: fail
+R13: fail

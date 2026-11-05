@@ -38,5 +38,21 @@
     "issue": "The supplied full-suite gate has three failures attributed to host author identity and configured roots. These concern unrelated tools and do not establish a backup regression.",
     "file": "N/A",
     "reason": "single-voice; unrelated host-dependent suite failures retained separately"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The CHANGELOG entry was written under `[Unreleased]` and then moved into `[0.17.0] - 2026-11-04` by the `v0.17.0` bump. The cycle-2 fixes came after that release: case-alias outputs inside a selected item are now rejected, and output identity errors are reported as failures. `[Unreleased]` is empty, so these user-visible fixes have no entry. The 0.17.0 line claims inside-item outputs always fail, but the shipped 0.17.0 code missed case aliases on case-insensitive filesystems.",
+    "file": "CHANGELOG.md:8",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The docs give the wrong reason for refusing an `out` equal to a selected item. \"because the archive would re-archive itself\" does not fit that case, because writing `out` there would overwrite the selected item. The PRD also asked for one sentence; this paragraph has seven.",
+    "file": "docs/source/tools/backup.rst:159",
+    "reason": "single-voice"
   }
 ]

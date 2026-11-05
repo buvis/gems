@@ -684,3 +684,7 @@
 {"id":"e8354d75","ended_at":1793873565,"elapsed_s":37,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1793873782,"phase":"review","prd":"00117-backup-bundle-out-under-source-v1.md"}
 {"kind":"handoff","site":"review","edge":"resume","at":1793875759,"phase":"review","prd":"00117-backup-bundle-out-under-source-v1.md"}
+{"id":"f4d57cb9","kind":"bob","task":"review-00117-c2","queued_at":1793875959,"prompt_bytes":24974}
+{"id":"f4d57cb9","ended_at":1793876388,"elapsed_s":429,"outcome":"ok","detail":null}
+{"id":"f4d57cb9","ended_at":1793876424,"elapsed_s":465,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1793876486,"phase":"review","prd":"00117-backup-bundle-out-under-source-v1.md"}

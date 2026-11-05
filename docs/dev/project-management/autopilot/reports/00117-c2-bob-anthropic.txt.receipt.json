@@ -1,0 +1,20 @@
+{
+  "provider": "kiro",
+  "model_provider": "anthropic",
+  "lens": "bob",
+  "model": "claude-opus-5.5",
+  "requested_model": "opus",
+  "effort": "xhigh",
+  "started": 1793876005.40012,
+  "completed": 1793876283.22081,
+  "output": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00117-c2-bob-anthropic.txt",
+  "sha256": "b2a75f73a8b8b4f300cbff395ab210be8731e89ef9f51abd8be0143ec79a7aa2",
+  "raw": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/autopilot/reports/00117-c2-bob-anthropic-0fb7a31441c84ba78f593c9a24569b99.jsonl",
+  "raw_sha256": "74e667ffd539f9dc2062e9034b5344dfaafe2f4e095ef0e3ca9f12ab34dd7fb1",
+  "thread_id": "sess_00c58cc3-6a4a-4f38-ba0c-07bec670a7a3",
+  "stderr_sha256": "37a8a1eaaefe72d0a4283e5efac2b6aeb4d3f6bfb3c34371a64069161af21425",
+  "root": "/Users/bob/git/src/github.com/buvis/gems",
+  "prd": "00117-backup-bundle-out-under-source-v1.md",
+  "cycle": 2,
+  "implementation_fingerprint": "0533055e06033927579af93895ef60a9c87a637deffffed24586c91a2b693b84"
+}

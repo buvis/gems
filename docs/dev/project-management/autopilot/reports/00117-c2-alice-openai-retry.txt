@@ -1,0 +1,14 @@
+[ALICE] 🟡 Inode equality rejects valid hard-linked output names outside the selected items. For items ["a"], an external out hard-linked to source/a fails, although atomic replacement preserves a. Distinguish path aliases from distinct hard links and add coverage across both engines and all modes. | File: src/tools/backup/capabilities/tar_archive.py:308 | Task: 2
+
+R1: fail
+R2: pass
+R3: pass
+R4: pass
+R6: pass
+R7: pass
+R8: pass
+R9: fail
+R10: pass
+R11: pass
+R12: pass
+R13: pass
