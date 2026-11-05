@@ -156,20 +156,27 @@ class TarArchive:
             yield StepResult(label, success=missing_source, message=f"{reason}: {source}", skipped=missing_source)
             return
 
-        containment = _reject_out_inside_source(label, source, out, kwargs.get("items"))
+        try:
+            selected = _normalize_items(source, kwargs["items"]) if kwargs.get("items") is not None else None
+        except (ValueError, OSError) as exc:
+            yield StepResult(label, success=False, message=str(exc))
+            return
+        containment = _reject_out_inside_source(label, source, out, selected)
         if containment is not None:
             yield containment
             return
 
-        yield from self._run_validated(label, engine, source, out, kwargs)
+        yield from self._run_validated(label, engine, source, out, kwargs, selected=selected)
 
-    def _run_validated(
+    def _run_validated(  # noqa: PLR0913 — retain archive context plus normalized selection
         self: TarArchive,
         label: str,
         engine: str,
         source: Path,
         out: Path,
         kwargs: dict[str, object],
+        *,
+        selected: list[Path] | None,
     ) -> Iterator[StepResult]:
         cancel = cast("threading.Event | None", kwargs.get("cancel"))
         _check_cancel(cancel)
@@ -178,13 +185,8 @@ class TarArchive:
         progress = None if dry_run else progress
         base_state = ExcludeState(base_excludes=frozenset(_as_str_tuple(kwargs.get("excludes", ()))))
         missing: list[str] = []
-        bundle = kwargs.get("items") is not None
-        if bundle:
-            try:
-                selected = _normalize_items(source, kwargs["items"])
-            except ValueError as exc:
-                yield StepResult(label, success=False, message=str(exc))
-                return
+        bundle = selected is not None
+        if selected is not None:
             _emit_progress(progress, ProgressEvent(label, "scanning", None, None))
             try:
                 walk, missing = _select_items(source, base_state, selected)
@@ -266,7 +268,19 @@ class TarArchive:
         )
 
 
-def _reject_out_inside_source(label: str, source: Path, out: Path, items: object = None) -> StepResult | None:
+def _same_path(left: Path, right: Path) -> bool:
+    """Compare existing filesystem entries without following their final symlinks."""
+    if left == right:
+        return True
+    try:
+        return os.path.samestat(left.lstat(), right.lstat())
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+
+
+def _reject_out_inside_source(
+    label: str, source: Path, out: Path, selected: list[Path] | None = None
+) -> StepResult | None:
     """Reject an ``out`` path that would be re-archived by the run.
 
     An ``out`` under ``source`` makes each run re-archive the previous run's
@@ -279,23 +293,21 @@ def _reject_out_inside_source(label: str, source: Path, out: Path, items: object
     :class:`StepResult` (the caller yields it and returns before walking),
     otherwise ``None``.
     """
-    selected: list[Path] = []
-    if items is not None:
-        try:
-            selected = _normalize_items(source, items)
-        except ValueError as exc:
-            return StepResult(label, success=False, message=str(exc))
     source_resolved = source.resolve()
     out_resolved = out.parent.resolve() / out.name
-    if out_resolved == source_resolved or (items is None and source_resolved in out_resolved.parents):
+    if _same_path(out_resolved, source_resolved) or (
+        selected is None and any(_same_path(parent, source_resolved) for parent in out_resolved.parents)
+    ):
         return StepResult(
             label,
             success=False,
             message=(f"out path {out} is inside source {source}; choose an out path outside the backup source"),
         )
-    for relative in selected:
+    for relative in selected or ():
         item = source_resolved / relative
-        if out_resolved == item or item in out_resolved.parents:
+        if _same_path(out_resolved, item) or (
+            not item.is_symlink() and any(_same_path(parent, item) for parent in out_resolved.parents)
+        ):
             return StepResult(
                 label,
                 success=False,
@@ -312,12 +324,11 @@ def _no_items_message(source: Path, missing: list[str]) -> str:
     return f"no selected items to archive in {source}{tail}"
 
 
-def _plan_items(source: Path, items: object) -> tuple[str, str]:
+def _plan_items(source: Path, selected: list[Path]) -> tuple[str, str]:
     """Return the plan ``(status, reason)`` for a bundle's ``items``."""
     try:
-        selected = _normalize_items(source, items)
         found = any(_item_present(source / item) for item in selected)
-    except (ValueError, OSError) as exc:
+    except OSError as exc:
         return "fail", str(exc)
     if found:
         return "run", ""
@@ -347,12 +358,14 @@ def _plan_source(label: str, source: Path, out: Path, items: object) -> tuple[st
         return "skip", f"source not found: {source}"
     if kind == "file":
         return "fail", f"source is not a directory: {source}"
-    containment = _reject_out_inside_source(label, source, out, items)
+    try:
+        selected = _normalize_items(source, items) if items is not None else None
+    except (ValueError, OSError) as exc:
+        return "fail", str(exc)
+    containment = _reject_out_inside_source(label, source, out, selected)
     if containment is not None:
         return "fail", containment.message
-    if items is not None:
-        return _plan_items(source, items)
-    return "run", ""
+    return _plan_items(source, selected) if selected is not None else ("run", "")
 
 
 def _item_present(path: Path) -> bool:
