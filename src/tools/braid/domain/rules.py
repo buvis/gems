@@ -325,7 +325,6 @@ def _report_rule_orphans(
     run_pass: _Pass,
     report: Callable[..., None],
 ) -> None:
-    """Report unrecorded links into the rule union views (CHECK and DRY_RUN only)."""
     if settings.mode is Mode.SYNC:
         return
     agents = settings.agents_root
@@ -360,7 +359,6 @@ def sync_rules(
     *,
     emit: Callable[[str], None],
 ) -> RuleState | None:
-    """Project rules into union views, directory hosts, generated files and instruction links."""
     # engine imports this module at load time for run(); a module-level import back is a cycle.
     from braid.domain.engine import (
         _backup,
