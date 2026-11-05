@@ -510,7 +510,8 @@ def test_windows_user_file_at_a_recorded_instruction_path_stays_unmanaged_when_i
     assert codex.read_bytes() == mine and not codex.samefile(generated_file(config, "codex"))
     assert before == {"codex": str(codex), "copilot": str(copilot)}
     assert read_state(config)["rules"]["instructions"] == before
-    assert not (config.agents_root / "backups").exists()
+    assert list((config.agents_root / "backups").glob("*/instructions/codex/*")) == []
+    assert len(list((config.agents_root / "backups").glob("*/instructions/copilot/*"))) == 1
     for host in ("codex", "copilot"):
         assert f"GENERATE {generated_file(config, host)}" in emitted
         assert generated_file(config, host).read_text() == f"{GENERATED_HEADER}\n\nTone, revised.\n"

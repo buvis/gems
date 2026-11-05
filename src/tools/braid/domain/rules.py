@@ -233,11 +233,11 @@ def _sync_generated(
     backups: Path,
     backup: Callable[..., None],
 ) -> tuple[dict[str, str], set[str]]:
-    """Bring each single-file host's AGENTS.md in line; return (recorded paths, hosts written this run)."""
+    """Bring each single-file host's AGENTS.md in line; return (recorded paths, hosts whose hard link it detached)."""
     mode, result, emit = run_pass.mode, run_pass.result, run_pass.emit
     shared = _eligible(inventory.shared, ignored)
     generated: dict[str, str] = {}
-    regenerated: set[str] = set()
+    detached: set[str] = set()
     for host in SINGLE_FILE_HOSTS:
         result.ignored += _ignored_count(inventory, ignored, host)
         path = settings.agents_root / "hosts" / host / "AGENTS.md"
@@ -256,6 +256,10 @@ def _sync_generated(
             path.parent.mkdir(parents=True, exist_ok=True)
             if _present(path) and previous.generated.get(host) != str(path):
                 backup(path, backups, f"generated/{host}", result, emit)
+            # A Windows hard link shares this file's inode; the atomic write below detaches it.
+            link = Path.home() / HOST_INSTRUCTION_PATHS[host]
+            if path.is_file() and link.is_file() and link.samefile(path):
+                detached.add(host)
             try:
                 atomic_write_bytes(path, expected)
             except OSError as error:
@@ -263,17 +267,16 @@ def _sync_generated(
             result.generated += 1
             emit(f"GENERATE {path}")
             generated[host] = str(path)
-            regenerated.add(host)
         if len(expected) > GENERATED_LIMIT:
             result.drift += 1
             emit(f"MISMATCH OVERSIZE {path} is {len(expected)} bytes; limit {GENERATED_LIMIT}")
-    return generated, regenerated
+    return generated, detached
 
 
 def _sync_instruction_links(
     settings: Settings,
     previous: RuleState,
-    regenerated: set[str],
+    detached: set[str],
     *,
     run_pass: _Pass,
     backups: Path,
@@ -294,7 +297,7 @@ def _sync_instruction_links(
             continue
         recorded = previous.instructions.get(host) == str(link)
         # A Windows hard link this run's regeneration detached is still Braid's regular file.
-        owned = recorded and (link.is_symlink() or (platform == "nt" and link.is_file() and host in regenerated))
+        owned = recorded and (link.is_symlink() or (platform == "nt" and host in detached))
         if _present(link) and not owned:
             result.unmanaged += 1
             emit(f"UNMANAGED {link}")
@@ -421,7 +424,6 @@ def sync_rules(
     ignored: set[str],
     previous: RuleState | None,
     result: Result,
-    *,
     emit: Callable[[str], None],
 ) -> RuleState | None:
     # engine imports this module at load time for run(); a module-level import back is a cycle.
@@ -454,12 +456,12 @@ def sync_rules(
     for view in views:
         _remove_stale_links(view, run_pass)
 
-    generated, regenerated = _sync_generated(
+    generated, detached = _sync_generated(
         settings, inventory, ignored, previous, run_pass=run_pass, backups=backups, backup=_backup
     )
     engine_links = (_points_to, _backup, create_file_link)
     instructions = _sync_instruction_links(
-        settings, previous, regenerated, run_pass=run_pass, backups=backups, engine_links=engine_links
+        settings, previous, detached, run_pass=run_pass, backups=backups, engine_links=engine_links
     )
     _report_rule_orphans(settings, inventory, ignored, previous, run_pass=run_pass, report=_report_orphan_links)
     return RuleState(union=union, hosts=hosts, projected=projected, generated=generated, instructions=instructions)

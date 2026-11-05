@@ -184,4 +184,4 @@ combine-as-imports = true
 # intentionally reach into the dataclass's internal handle.
 "src/tools/sysup/runlog.py" = ["PLR0913", "SLF001"]
 # sync_rules' six-parameter signature is the PRD 00116 verbatim contract (same precedent as runlog.py).
-"src/tools/braid/domain/rules.py" = ["PLR0913"]
+"src/tools/braid/domain/rules.py" = ["PLR0913", "PLR0917"]
