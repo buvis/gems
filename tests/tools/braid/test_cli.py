@@ -308,6 +308,25 @@ def test_cli_reports_an_unreadable_state_file_on_one_line_and_exits_2(tmp_path: 
     assert state_path.read_bytes() == invalid_bytes
 
 
+@pytest.mark.parametrize(
+    "relative",
+    ["personal/skills/portable/SKILL.md", "empty-config/sources.d/bad", "empty-config/.braidignore"],
+    ids=["skill", "sources-d", "braidignore"],
+)
+def test_cli_reports_a_non_utf8_input_file_on_one_line_and_exits_2(tmp_path: Path, relative: str) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    bad_file = tmp_path / relative
+    bad_file.parent.mkdir(parents=True, exist_ok=True)
+    bad_file.write_bytes(b"\xff\xfe\x00")
+
+    result = CliRunner().invoke(cli, [*roots(tmp_path, source), "--no-kiro"])
+
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
+    assert_one_error_line(result.output, f"braid: cannot read {bad_file}: ", "codec can't decode")
+
+
 def test_cli_check_exits_1_on_drift(tmp_path: Path) -> None:
     source = tmp_path / "personal"
     make_skill(source, "portable")

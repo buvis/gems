@@ -130,12 +130,16 @@ def _discard(_line: str) -> None:
     """Default emit: the domain never writes to a stream itself."""
 
 
+def _read_lines(path: Path) -> list[str]:
+    try:
+        return path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        raise BraidError(f"cannot read {path}: {error}") from error
+
+
 def _skill_name(skill_directory: Path) -> str:
     skill_file = skill_directory / "SKILL.md"
-    try:
-        lines = skill_file.read_text(encoding="utf-8").splitlines()
-    except OSError as error:
-        raise BraidError(f"cannot read {skill_file}: {error}") from error
+    lines = _read_lines(skill_file)
 
     if not lines or lines[0] != "---":
         raise BraidError(f"invalid skill frontmatter: {skill_file}")
@@ -196,7 +200,7 @@ def read_configured_sources(config_root: Path) -> tuple[Path, ...]:
     for source_file in sorted(sources_directory.iterdir(), key=lambda path: path.name):
         if not source_file.is_file() or source_file.name.startswith("."):
             continue
-        for raw_line in source_file.read_text(encoding="utf-8").splitlines():
+        for raw_line in _read_lines(source_file):
             value = raw_line.split("#", 1)[0].strip()
             if not value:
                 continue
@@ -212,7 +216,7 @@ def read_ignored(policy_files: Iterable[Path]) -> set[str]:
     for policy_file in policy_files:
         if not policy_file.is_file():
             continue
-        for raw_line in policy_file.read_text(encoding="utf-8").splitlines():
+        for raw_line in _read_lines(policy_file):
             value = raw_line.split("#", 1)[0].strip()
             if value:
                 ignored.add(value)
