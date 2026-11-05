@@ -11,6 +11,7 @@ import pytest
 from braid.domain.engine import BraidError, Mode, Settings, run
 from braid.domain.rules import (
     GENERATED_HEADER,
+    GENERATED_LIMIT,
     HOST_INSTRUCTION_PATHS,
     SINGLE_FILE_HOSTS,
     discover_rules,
@@ -189,6 +190,45 @@ def test_edited_recorded_generated_file_is_overwritten_without_backup(tmp_path: 
     assert not (config.agents_root / "backups").exists()
 
 
+def test_same_length_edit_of_a_generated_file_is_drift_and_is_regenerated(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone", "Tone.")
+    config = settings(tmp_path, source)
+    run(config)
+    path = generated_file(config, "codex")
+    expected = path.read_bytes()
+    edited = expected.replace(b"Tone.", b"Tonx.")
+    assert len(edited) == len(expected) and edited != expected
+    path.write_bytes(edited)
+    reported: list[str] = []
+    emitted: list[str] = []
+
+    check = run(config.with_mode(Mode.CHECK), emit=reported.append)
+    assert path.read_bytes() == edited
+    result = run(config, emit=emitted.append)
+
+    assert reported == [f"MISMATCH GENERATED {path}"] and check.drift == 1
+    assert emitted == [f"GENERATE {path}"] and result.generated == 1
+    assert path.read_bytes() == expected
+
+
+def test_shared_rules_alone_can_push_a_generated_file_over_the_limit(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    big = make_rule(source, "big", "x" * (GENERATED_LIMIT - len(GENERATED_HEADER) - 2))
+    assert len(render_host_file({"big": big}, {}).encode("utf-8")) == GENERATED_LIMIT + 1
+    config = settings(tmp_path, source)
+    run(config)
+    reported: list[str] = []
+
+    check = run(config.with_mode(Mode.CHECK), emit=reported.append)
+
+    assert reported == [
+        f"MISMATCH OVERSIZE {generated_file(config, host)} is {GENERATED_LIMIT + 1} bytes; limit 32768"
+        for host in SINGLE_FILE_HOSTS
+    ]
+    assert check.drift == len(SINGLE_FILE_HOSTS)
+
+
 @pytest.mark.parametrize(
     ("mode", "generate", "link"),
     [(Mode.DRY_RUN, "WOULD GENERATE", "WOULD LINK"), (Mode.CHECK, "MISMATCH GENERATED", "MISMATCH")],
@@ -232,12 +272,16 @@ def test_recorded_instruction_link_replaced_by_a_file_is_unmanaged_and_keeps_its
     elsewhere.write_text("elsewhere\n")
     copilot.unlink()
     copilot.symlink_to(elsewhere)
+    before_sync: list[str] = []
     emitted: list[str] = []
     reported: list[str] = []
 
+    stale = run(config.with_mode(Mode.CHECK), emit=before_sync.append)
     result = run(config, emit=emitted.append)
     check = run(config.with_mode(Mode.CHECK), emit=reported.append)
 
+    assert before_sync == [f"UNMANAGED {codex}", f"MISMATCH {copilot} -> {generated_file(config, 'copilot')}"]
+    assert stale.drift >= 1
     assert f"UNMANAGED {codex}" in emitted and result.unmanaged == 1
     assert codex.read_text() == "mine\n" and not codex.is_symlink()
     assert before == {"codex": str(codex), "copilot": str(copilot)}
@@ -275,11 +319,13 @@ def test_duplicate_rule_across_sources_writes_nothing(tmp_path: Path) -> None:
 def test_check_reports_a_stray_rule_link_into_the_union_view_as_an_orphan(tmp_path: Path) -> None:
     source = tmp_path / "personal"
     make_rule(source, "tone")
-    config = settings(tmp_path, source)
+    config = enroll(settings(tmp_path, source))
     run(config)
     rules_dir = config.claude_root / "rules"
     stray = rules_dir / "stray.md"
     stray.symlink_to(config.agents_root / "rules" / "tone" / "RULE.md")
+    kiro_stray = kiro_root(config) / "steering" / "stray.md"
+    kiro_stray.symlink_to(config.agents_root / "rules" / "tone" / "RULE.md")
     outside = tmp_path / "outside.md"
     outside.write_text("mine")
     (rules_dir / "own.md").symlink_to(outside)
@@ -288,9 +334,9 @@ def test_check_reports_a_stray_rule_link_into_the_union_view_as_an_orphan(tmp_pa
 
     result = run(config.with_mode(Mode.CHECK), emit=reported.append)
 
-    assert reported == [f"MISMATCH ORPHAN {stray}"]
-    assert result.drift == 1
-    assert stray.is_symlink() and (rules_dir / "own.md").is_symlink()
+    assert sorted(reported) == sorted([f"MISMATCH ORPHAN {stray}", f"MISMATCH ORPHAN {kiro_stray}"])
+    assert result.drift == 2
+    assert stray.is_symlink() and kiro_stray.is_symlink() and (rules_dir / "own.md").is_symlink()
     assert (rules_dir / "notes.md").read_text() == "notes"
 
 
@@ -320,25 +366,37 @@ def test_skipped_directory_host_carries_its_previous_projection_over(tmp_path: P
 
 @pytest.mark.parametrize(
     ("enrolled", "project_claude", "expected"),
-    [(True, True, 7), (False, True, 6), (True, False, 6)],
+    [(True, True, 9), (False, True, 7), (True, False, 7)],
     ids=["claude-and-kiro", "claude-only", "kiro-only"],
 )
 def test_ignored_rule_counts_once_per_host_projection_that_runs(
     tmp_path: Path, enrolled: bool, project_claude: bool, expected: int
 ) -> None:
     source = tmp_path / "personal"
-    make_rule(source, "secret")
-    make_rule(source, "tone")
-    make_host_rule(source, "codex", "codex-secret")
+    make_rule(source, "secret", "Shared secret.")
+    make_rule(source, "tone", "Tone.")
+    make_host_rule(source, "codex", "codex-secret", "Codex secret.")
+    make_host_rule(source, "claude", "claude-secret")
+    make_host_rule(source, "kiro", "kiro-secret")
     make_host_rule(source, "kiro", "kiro-kept")
-    policy = write_policy(tmp_path / "policy", "secret", "codex-secret")
+    policy = write_policy(tmp_path / "policy", "secret", "codex-secret", "claude-secret", "kiro-secret")
     config = replace(settings(tmp_path, source, policy_files=(policy,)), project_claude=project_claude)
     config = enroll(config) if enrolled else config
 
     result = run(config)
 
     assert result.ignored == expected
-    assert ("kiro" in read_state(config)["rules"]["projected"]) is enrolled
+    projected = read_state(config)["rules"]["projected"]
+    assert ("kiro" in projected) is enrolled
+    codex = generated_file(config, "codex").read_text()
+    assert "Tone." in codex and "Shared secret." not in codex and "Codex secret." not in codex
+    if project_claude:
+        assert sorted(path.name for path in (config.claude_root / "rules").iterdir()) == ["tone.md"]
+        assert set(projected["claude"]) == {"tone"}
+    if enrolled:
+        assert sorted(path.name for path in (kiro_root(config) / "steering").iterdir()) == ["kiro-kept.md", "tone.md"]
+        assert set(projected["kiro"]) == {"tone", "kiro-kept"}
+    assert (config.agents_root / "hosts" / "claude" / "rules" / "claude-secret").is_symlink()
 
 
 # --- Windows removal -----------------------------------------------------------------------
@@ -386,3 +444,52 @@ def test_windows_hard_link_of_a_deleted_rule_is_backed_up(tmp_path: Path, monkey
     assert f"REMOVE {config.agents_root / 'rules' / 'tone'}" in emitted
     assert not os.path.lexists(hard_link)
     assert (config.claude_root / "rules" / "kept.md").samefile(kept / "rules" / "kept" / "RULE.md")
+
+
+def test_windows_recorded_instruction_file_not_regenerated_this_run_is_unmanaged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "personal"
+    make_rule(source, "tone", "Tone.")
+    config = replace(settings(tmp_path, source), platform="nt")
+    make_host_roots(config, "codex")
+    deny_file_symlinks(monkeypatch)
+    run(config)
+    codex = instruction_link(config, "codex")
+    assert codex.is_file() and not codex.is_symlink() and codex.samefile(generated_file(config, "codex"))
+    before = read_state(config)["rules"]["instructions"]
+    codex.unlink()
+    codex.write_text("mine\n")
+    emitted: list[str] = []
+
+    result = run(config, emit=emitted.append)
+
+    assert emitted == [f"UNMANAGED {codex}"] and result.unmanaged == 1
+    assert codex.read_text() == "mine\n" and not codex.samefile(generated_file(config, "codex"))
+    assert read_state(config)["rules"]["instructions"] == before == {"codex": str(codex)}
+    assert not (config.agents_root / "backups").exists()
+
+
+# --- pre-existing files in directory hosts -------------------------------------------------
+
+
+def test_real_file_at_a_directory_host_rule_path_is_backed_up_before_linking(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    tone = make_rule(source, "tone", "Tone.")
+    config = enroll(settings(tmp_path, source))
+    claude_file = config.claude_root / "rules" / "tone.md"
+    kiro_file = kiro_root(config) / "steering" / "tone.md"
+    for path, text in ((claude_file, "claude mine\n"), (kiro_file, "kiro mine\n")):
+        path.parent.mkdir(parents=True)
+        path.write_text(text)
+    emitted: list[str] = []
+
+    run(config, emit=emitted.append)
+
+    for path, backups, text in (
+        (claude_file, config.claude_root / "rules-backup", "claude mine\n"),
+        (kiro_file, kiro_root(config) / "steering-backup", "kiro mine\n"),
+    ):
+        assert [backup.read_text() for backup in backups.rglob("tone.md")] == [text]
+        assert any(line.startswith(f"BACKUP {path} -> ") for line in emitted)
+        assert path.is_symlink() and path.resolve() == (tone / "RULE.md").resolve()
