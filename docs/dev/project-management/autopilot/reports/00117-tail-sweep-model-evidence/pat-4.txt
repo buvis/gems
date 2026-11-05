@@ -1,0 +1,4 @@
+CLOSURE | resolved | "🟡 `test_invalid_items_take_precedence_over_output_containment` repeats `test_invalid_items_win_over_containment` ... Delete it." | The diff removes the whole test and its parametrize block, and the other two tests it duplicates are untouched.
+CLOSURE | resolved | "⚪ Some parametrizations repeat one code path. Both `error` values inject the same `lstat(out)` failure, and the `selected` value "Profiles" exercises the same path as "Config" (:78, :102). Drop the duplicates." | The `error` parametrize is dropped in favor of `error = "output identity permission denied"`. Both `selected` parametrizations, on the case-alias test and the near-miss test, are dropped in favor of `selected = "Config"`. The quoted line numbers don't match the current file, so I judged by the parametrizations in the diff. I can't check the rest of the file from this prompt.
+
+NO FINDINGS

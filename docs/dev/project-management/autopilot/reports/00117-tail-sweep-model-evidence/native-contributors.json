@@ -1,0 +1,80 @@
+[
+  {
+    "task": "3",
+    "role": "coordinator-changelog",
+    "dispatch": null,
+    "session": "01a1ab5f-cc65-7b30-b8fb-d803d0d333bf",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "provider": "openai",
+    "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/coordinator-through-micro.jsonl",
+    "line": 10,
+    "sha256": "6e2db2d788ce06ad77958b114096baf38e34c01032384141a0dee9e1d43b800a",
+    "file_sha256": "aa1007946d4c6b89cdf7ee046bac01c4d1d9a23619b2f20c89c033ff6497eee4"
+  },
+  {
+    "task": "4",
+    "role": "micro-orchestrator",
+    "dispatch": null,
+    "session": "01a1ab5f-cc65-7b30-b8fb-d803d0d333bf",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "provider": "openai",
+    "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/coordinator-through-micro.jsonl",
+    "line": 10,
+    "sha256": "6e2db2d788ce06ad77958b114096baf38e34c01032384141a0dee9e1d43b800a",
+    "file_sha256": "aa1007946d4c6b89cdf7ee046bac01c4d1d9a23619b2f20c89c033ff6497eee4"
+  },
+  {
+    "task": "3",
+    "role": "tess",
+    "dispatch": "74ba12e3",
+    "session": "01a1ab61-2730-7bc3-be75-d6d9cb098480",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "provider": "openai",
+    "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-03-53-01a1ab61-2730-7bc3-be75-d6d9cb098480.jsonl",
+    "line": 10,
+    "sha256": "1d64853f431a887cfe327a50900625d9d1b9dd00cf757d98f2aa2e89023c3df3",
+    "file_sha256": "f7e9d311b020f92a30a406c116dc6c59fca09f9eaaac3c8fa6770d909d6925bd"
+  },
+  {
+    "task": "3",
+    "role": "ivan",
+    "dispatch": "b3f8a271",
+    "session": "01a1ab62-fc4e-7c51-8e26-dca9215307eb",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "provider": "openai",
+    "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-05-53-01a1ab62-fc4e-7c51-8e26-dca9215307eb.jsonl",
+    "line": 10,
+    "sha256": "842ecdbe0073a4c10065d6a730bc3471c9df6d3981455c07c1bc88711f29bccd",
+    "file_sha256": "6042ae7d4e97f6253f16ac14b7df194bd670915bfd9af98bdf399d4f66c1a429"
+  },
+  {
+    "task": "3",
+    "role": "tess-retry",
+    "dispatch": "df3baf11",
+    "session": "01a1ab64-6173-75f1-9a71-287954c91d49",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "provider": "openai",
+    "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-07-24-01a1ab64-6173-75f1-9a71-287954c91d49.jsonl",
+    "line": 10,
+    "sha256": "7acd10cdede2e638aaaf64592e7f959785114c6d69cf073d2d9dbbbc26342a38",
+    "file_sha256": "77e756588def234543ad7f3c9ac949817c3f454534d012974b95c931710e4e23"
+  },
+  {
+    "task": "3",
+    "role": "ivan-commit-repair",
+    "dispatch": "7958465c",
+    "session": "01a1ab65-7ea6-71a0-b4ac-d27d99cf4158",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "provider": "openai",
+    "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-08-37-01a1ab65-7ea6-71a0-b4ac-d27d99cf4158.jsonl",
+    "line": 10,
+    "sha256": "ebf8170841dc70cd782d2f7a445118312cc2acd0956d3f89e321638410fb4a90",
+    "file_sha256": "8d1e4ce15336120c1bc9d6dd258b1b6ec543915f1a98f8336d601a7da0738eb0"
+  }
+]

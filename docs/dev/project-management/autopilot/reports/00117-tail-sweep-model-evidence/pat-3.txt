@@ -1,0 +1,7 @@
+CLOSURE | resolved | "No test covers either branch" (case-alias whole-tree containment and bundle `out == source`) | `test_whole_tree_rejects_output_beneath_source_case_alias_without_changes` (items `None` and omitted) and `test_bundle_rejects_output_equal_to_source_case_alias_with_source_message` assert the "inside source" message across both engines and both modes. Recorded run: case aliases ran on the real case-insensitive filesystem with no skips.
+
+CLOSURE | resolved | "Inode equality rejects valid hard-linked output names outside the selected items" | `_same_path` now returns False for non-directories when the parents match, the names differ, and both literal names appear in `os.listdir` (distinct hard links). `test_distinct_hard_link_output_preserves_selected_bytes_and_archives_every_item` covers both engines and plan/run. Its red check before the fix was 6 failures, and it passes now. Case aliases are still rejected via the `not in names` branch, and `test_case_alias_of_selected_file_rejects_output_without_changes` covers that.
+
+CLOSURE | resolved | "The new default `selected: list[Path] | None = None` is never used ... Make it a required parameter" | The signature is now `selected: list[Path] | None` with no default.
+
+NO FINDINGS

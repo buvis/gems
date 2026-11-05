@@ -1,0 +1,212 @@
+{
+  "fingerprint": "67447a8b920361eee146a75524593813b1efd830e066f4bb13e8af8a91fc870a",
+  "snapshot": {
+    "prd": "00117-backup-bundle-out-under-source-v1.md",
+    "cycle": 2,
+    "work_start_sha": "5ae5c53e49ad95d94562b60df99aa272e0772cc5",
+    "tasks": [
+      {
+        "id": "1",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "claude-sonnet-5-5",
+            "actual_provider": "anthropic",
+            "implementor": "claude",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "2",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "codex",
+            "outcome": "completed"
+          }
+        ]
+      },
+      {
+        "id": "4",
+        "attempts": [
+          {
+            "attempt": 1,
+            "actual_model": "gpt-6.1-sol",
+            "actual_provider": "openai",
+            "implementor": "orchestrator",
+            "outcome": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 1,
+      "sha256": "932547e153415d729213d5bb12e18a66be55b55fd482811380c4069d3454c734"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 3,
+      "sha256": "fc4966fdaabc223261de07e790f25ffa02b3c841744409ac398c163b2ca2c386"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 5,
+      "sha256": "a4067ec86382d37fdb7f81ccf95853de690514631ad0bd1949c8f2713fbe2d76"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/tess.jsonl",
+      "line": 9,
+      "sha256": "29f554fc5e3f8a0db378031fff0dcc1932d59b6a47e48ffe4b1f16788aeca2b1"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 3,
+      "sha256": "e11127f2ef03281f3e13d3e26b7f0fd9db50f289d16aa632521aa139f0bcf876"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 5,
+      "sha256": "f0025fa622b3cf46d9f5e5d1e1da0f42b1bc3004a017d5629bbfd5504dc0725f"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 7,
+      "sha256": "56b24a8284fa0bfe7179050b245a70c9c4bdd4ac2b6cb1d3d3d6f8f82d959515"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/ivan.jsonl",
+      "line": 9,
+      "sha256": "02b5c6c98be92e88094b8eb64f7263b236481767dd759ede16b3e77a2dc8ffc0"
+    },
+    {
+      "task": "1",
+      "role": "implementation",
+      "model": "claude-sonnet-5-5",
+      "path": "docs/dev/project-management/autopilot/reports/00117-recovery-evidence/coordinator.jsonl",
+      "line": 13,
+      "sha256": "b2191edfa90028089d437226a86bffc597463612c9a1786c847e7d86075c7854"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-03-32-01a1ab29-e892-7f21-85d0-323f9bb5be45.jsonl",
+      "line": 10,
+      "sha256": "793e8027aac34a6bbe12b117e94af750bb5d176ccb0f999fd045e648d410bd77"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-03-32-01a1ab29-e892-7f21-85d0-323f9bb5be45.jsonl",
+      "line": 72,
+      "sha256": "790a197cce92c213fc0aaf4ce4edf7ef5128ea2923ad8f03a912c56e50e6105c"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-06-05-01a1ab2c-3cdb-75a1-a423-c4dcb707ec13.jsonl",
+      "line": 10,
+      "sha256": "7ea1e5dbda78c5f51f131d0be2475c66d961f5d3eff39e604ff4e078551429ff"
+    },
+    {
+      "task": "2",
+      "role": "implementation",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-06-05-01a1ab2c-3cdb-75a1-a423-c4dcb707ec13.jsonl",
+      "line": 104,
+      "sha256": "582f0cdedcf5040207dc5786a8390d812121dbe20aa981d46b494b622da10f68"
+    },
+    {
+      "task": "3",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/coordinator-through-micro.jsonl",
+      "line": 10,
+      "sha256": "6e2db2d788ce06ad77958b114096baf38e34c01032384141a0dee9e1d43b800a",
+      "role": "implementation"
+    },
+    {
+      "task": "4",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/coordinator-through-micro.jsonl",
+      "line": 10,
+      "sha256": "6e2db2d788ce06ad77958b114096baf38e34c01032384141a0dee9e1d43b800a",
+      "role": "implementation"
+    },
+    {
+      "task": "3",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-03-53-01a1ab61-2730-7bc3-be75-d6d9cb098480.jsonl",
+      "line": 10,
+      "sha256": "1d64853f431a887cfe327a50900625d9d1b9dd00cf757d98f2aa2e89023c3df3",
+      "role": "implementation"
+    },
+    {
+      "task": "3",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-05-53-01a1ab62-fc4e-7c51-8e26-dca9215307eb.jsonl",
+      "line": 10,
+      "sha256": "842ecdbe0073a4c10065d6a730bc3471c9df6d3981455c07c1bc88711f29bccd",
+      "role": "implementation"
+    },
+    {
+      "task": "3",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-07-24-01a1ab64-6173-75f1-9a71-287954c91d49.jsonl",
+      "line": 10,
+      "sha256": "7acd10cdede2e638aaaf64592e7f959785114c6d69cf073d2d9dbbbc26342a38",
+      "role": "implementation"
+    },
+    {
+      "task": "3",
+      "model": "gpt-6.1-sol",
+      "path": "docs/dev/project-management/autopilot/reports/00117-tail-sweep-model-evidence/rollout-2026-11-05T12-08-37-01a1ab65-7ea6-71a0-b4ac-d27d99cf4158.jsonl",
+      "line": 10,
+      "sha256": "ebf8170841dc70cd782d2f7a445118312cc2acd0956d3f89e321638410fb4a90",
+      "role": "implementation"
+    }
+  ]
+}
