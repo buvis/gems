@@ -269,18 +269,27 @@ class TarArchive:
 
 
 def _same_path(left: Path, right: Path) -> bool:
-    """Compare existing filesystem entries without following their final symlinks."""
+    """Compare entries without conflating distinct hard links or following final symlinks."""
     if left == right:
         return True
     try:
-        return os.path.samestat(left.lstat(), right.lstat())
+        left_stat = left.lstat()
+        if not os.path.samestat(left_stat, right.lstat()):
+            return False
+        if stat.S_ISDIR(left_stat.st_mode):
+            return True
+        if os.path.samestat(left.parent.stat(), right.parent.stat()):
+            if left.name == right.name:
+                return True
+            # Case aliases name one entry; distinct hard links have two literal names.
+            names = os.listdir(left.parent)
+            return left.name not in names or right.name not in names
     except (FileNotFoundError, NotADirectoryError):
-        return False
+        pass
+    return False
 
 
-def _reject_out_inside_source(
-    label: str, source: Path, out: Path, selected: list[Path] | None = None
-) -> StepResult | None:
+def _reject_out_inside_source(label: str, source: Path, out: Path, selected: list[Path] | None) -> StepResult | None:
     """Reject an ``out`` path that would be re-archived by the run.
 
     An ``out`` under ``source`` makes each run re-archive the previous run's

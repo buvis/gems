@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **backup**: distinct hard-linked output names outside selected items are allowed without changing the selected source file; case aliases of selected paths remain rejected.
+
 ## [0.17.0] - 2026-11-04
 
 ### Added
