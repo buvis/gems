@@ -6,7 +6,9 @@ braid
 Agent skill composer. ``braid`` reads the skill repos listed in
 ``~/.config/braid/sources.d``, links every skill into the ``~/.agents/skills``
 union, and projects that union into Claude Code (``~/.claude/skills``) and,
-once enrolled, Kiro (``~/.kiro/skills``). It records what it manages in
+once enrolled, Kiro (``~/.kiro/skills``). It also composes always-on rules
+into Claude Code, Kiro and generated Codex, Copilot, Pi and Gemini instruction
+files (see `Rules`_). It records what it manages in
 ``<agents_root>/.braid-state.json`` and only removes links it owns.
 
 Usage
@@ -23,16 +25,19 @@ Usage
     braid --agents-root DIR --claude-root DIR --config-root DIR   # override roots
 
 ``--dry-run`` and ``--check`` cannot be combined. A sync prints one line per
-change (``LINK[symlink]`` or ``LINK[junction]``, ``BACKUP``, ``REMOVE``); a dry
-run prints ``WOULD LINK`` and ``WOULD REMOVE``; a check prints ``MISMATCH``,
-``MISMATCH STALE``, ``MISMATCH CHANGED``, ``MISMATCH ORPHAN`` and
-``MISMATCH STATE``. Every run ends with a summary:
+change (``LINK[symlink]``, ``LINK[junction]`` or ``LINK[hardlink]``,
+``GENERATE``, ``BACKUP``, ``REMOVE``); a dry run prints ``WOULD LINK``,
+``WOULD GENERATE`` and ``WOULD REMOVE``; a check prints ``MISMATCH``,
+``MISMATCH GENERATED``, ``MISMATCH STALE``, ``MISMATCH CHANGED``,
+``MISMATCH ORPHAN`` and ``MISMATCH STATE``. Any mode can print
+``MISMATCH OVERSIZE`` and ``UNMANAGED``. Every run ends with a summary:
 
 .. code-block:: text
 
-    braid: 3 linked, 40 current, 2 ignored, 0 removed, 1 backed up, 0 configured, 3 change(s)
+    braid: 3 linked, 1 generated, 40 current, 2 ignored, 0 removed, 1 backed up, 0 configured, 1 unmanaged, 4 change(s)
 
-A check reports ``drift`` in place of ``change(s)``.
+A check reports ``drift`` in place of ``change(s)``. ``UNMANAGED`` never counts
+as drift.
 
 Sources
 -------
@@ -48,8 +53,9 @@ against the ``sources.d`` directory.
     ~/git/src/github.com/buvis/agent-skills
     ../../../git/src/github.com/me/private-skills   # relative to sources.d
 
-A source is a repo root that holds a ``skills/`` directory, or a ``skills/``
-directory itself. Each subdirectory with a ``SKILL.md`` is a skill; its name
+A source is a repo root that holds any of ``skills/``, ``rules/`` and
+``hosts/``, or a ``skills/`` directory itself (which adds skills only). Each
+subdirectory of ``skills/`` with a ``SKILL.md`` is a skill; its name
 must match the directory. Two sources that ship the same skill name stop the
 run with an error. With no source in ``sources.d`` and no ``--source``, braid
 stops and names the ``sources.d`` path to fill.
@@ -66,6 +72,90 @@ that exists from these places:
 - ``<config_root>/.braidignore``
 - each source's repo root (the directory that holds ``skills/``)
 - each ``--policy`` file
+
+The same names also drop rules. Unlike skills, an ignored rule leaves every
+host projection and every generated file, Kiro included. It stays in the
+``~/.agents`` union views.
+
+Rules
+-----
+
+Rules are always-on instructions. A source ships them in this layout:
+
+.. code-block:: text
+
+    rules/<name>/RULE.md                 # shared: every host gets it
+    hosts/<host>/rules/<name>/RULE.md    # one host only
+
+The known hosts are ``claude``, ``kiro``, ``codex``, ``copilot``, ``pi`` and
+``gemini``; any other directory under ``hosts/`` stops the run with an error.
+A rule name uses ``a-z``, ``0-9`` and ``-``. Rule names never clash with skill
+names. These are errors:
+
+- two sources ship the same shared rule
+- a host rule has the same name as a shared rule
+- two sources ship the same rule for one host
+
+braid links each rule into a union view, ``~/.agents/rules/<name>`` or
+``~/.agents/hosts/<host>/rules/<name>``, then projects the views into each
+host:
+
+=======  ========================================  ========================================
+Host     Host path                                 Links to
+=======  ========================================  ========================================
+Claude   ``~/.claude/rules/<name>.md``             the rule's ``RULE.md`` in the view
+Kiro     ``<kiro-root>/steering/<name>.md``        the rule's ``RULE.md`` in the view
+Codex    ``~/.codex/AGENTS.md``                    ``~/.agents/hosts/codex/AGENTS.md``
+Copilot  ``~/.copilot/copilot-instructions.md``    ``~/.agents/hosts/copilot/AGENTS.md``
+Pi       ``~/.pi/agent/AGENTS.md``                 ``~/.agents/hosts/pi/AGENTS.md``
+Gemini   ``~/.gemini/GEMINI.md``                   ``~/.agents/hosts/gemini/AGENTS.md``
+=======  ========================================  ========================================
+
+Claude and Kiro get one file link per rule. Kiro gets rules only once
+enrolled, and ``--no-claude`` or ``--no-kiro`` skip that host. Codex, Copilot,
+Pi and Gemini read one file, so braid writes a generated file per host at
+``~/.agents/hosts/<host>/AGENTS.md`` and links the host path to it. A
+``--agents-root`` run still touches these home host paths.
+
+Generated files
+~~~~~~~~~~~~~~~
+
+A generated file starts with this header line and a blank line:
+
+.. code-block:: text
+
+    <!-- Generated by braid. Edit the rule sources, not this file. -->
+
+Then come the shared rule bodies, then the host rule bodies, each group in
+source order, then by name. braid strips trailing whitespace from each body,
+puts one blank line between bodies and ends the file with one newline. A file
+over 32768 bytes is still written, but ``MISMATCH OVERSIZE`` reports it as
+drift on every run, so ``--check`` keeps failing until you trim the rules.
+
+Unmanaged host files
+~~~~~~~~~~~~~~~~~~~~
+
+braid never replaces or backs up a host path it did not create. When
+``~/.codex/AGENTS.md`` or another host path is already there, braid reports
+``UNMANAGED`` and leaves it. This is not drift. To hand the path to braid,
+remove it once; the next sync links it. When a host root such as ``~/.codex``
+is missing, braid skips that host without a word. If you remove a host root
+after braid recorded its link, the next check shows ``MISMATCH STATE`` once.
+
+Windows
+~~~~~~~
+
+When Windows denies a file symlink (winerror 5 or 1314), braid makes a hard
+link and prints ``LINK[hardlink]``. A hard link counts as current while it is
+the same file as its target. A stale one is backed up and linked again.
+
+Notes
+~~~~~
+
+- A rule named ``agents`` clashes with ``AGENTS.md`` in Kiro steering on a
+  case-insensitive filesystem: braid backs up ``AGENTS.md``, then replaces it.
+- To retire rules, remove the ``rules`` key from ``.braid-state.json`` and the
+  links by hand.
 
 Kiro
 ----
@@ -97,6 +187,8 @@ first, under a per-run ``<stamp>`` directory:
 - ``<agents_root>/backups/<stamp>/compose/``
 - ``<claude_root>/skills-backup/<stamp>/project/``
 - ``<kiro_root>/skills-backup/<stamp>/project/``
+- ``<claude_root>/rules-backup/<stamp>/project/`` for rule links
+- ``<kiro_root>/steering-backup/<stamp>/project/`` for rule links
 - ``<kiro_root>/agent-backup/<stamp>/agents/`` for edited Kiro agent files
 
 Configuration
