@@ -28,7 +28,7 @@ Generated: 2026-11-04 (feat/braid worktree)
 ## Active Work
 
 ### Batch 202611042342 (feat/braid worktree, `~/git/src/worktrees/gems/braid`)
-- [ ] 00115-braid-port-skills-parity-v1.md (wip): port `buvis/agent-skills` braid (ref d535891) into `src/tools/braid/` at parity.
+- [x] 00115-braid-port-skills-parity-v1.md (2 cycles): braid ported into `src/tools/braid/`; two deliberate parity breaks fixed in cycle 1 (Windows junction via `_winapi`, not cmd.exe; non-UTF-8 inputs exit 2). The cmd.exe junction injection still lives upstream in agent-skills braid.
 - [ ] 00116-braid-rules-kind-v1.md (backlog): rules kind on top of 00115.
 - `wip/` here also holds 00117, which belongs to the master checkout's batch 202611040755 (converged, waiting at its done gate). This worktree's batch must not select or move 00117; pick braid PRDs by explicit argument.
 - New tool gotcha: `src/tools/` now holds 17 tools (backup, klyreon, postup not in the AGENTS.md tree), so the README "15 -> 16" count in 00115 must be checked against the real README count.
