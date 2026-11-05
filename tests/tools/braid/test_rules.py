@@ -191,14 +191,17 @@ def test_discover_collects_host_rules_only_for_hosts_that_have_rules(tmp_path: P
     kiro = make_host_rule(source, "kiro", "steer")
     (source / "hosts" / "claude").mkdir()
     (source / "hosts" / "gemini" / "rules").mkdir(parents=True)
+    second = tmp_path / "second"
+    codex_0 = make_host_rule(second, "codex", "0-codex")
 
-    inventory = discover_rules([source])
+    inventory = discover_rules([source, second])
 
     assert inventory.shared == {"tone": shared.resolve()}
     assert set(inventory.hosts) == {"codex", "kiro"}
     assert list(inventory.hosts["codex"].items()) == [
         ("a-codex", codex_a.resolve()),
         ("b-codex", codex_b.resolve()),
+        ("0-codex", codex_0.resolve()),
     ]
     assert inventory.hosts["kiro"] == {"steer": kiro.resolve()}
 
@@ -255,10 +258,13 @@ def test_discover_ignores_rules_inside_a_configured_legacy_skills_directory(tmp_
     nested = tmp_path / "personal"
     make_skill(nested, "portable")
     shown = make_rule(nested, "shown-rule")
+    wrapped = tmp_path / "wrapped" / "skills"
+    make_skill(wrapped, "wrapped-skill")
+    kept = make_rule(wrapped, "x")
 
-    inventory = discover_rules([legacy, nested])
+    inventory = discover_rules([legacy, nested, wrapped])
 
-    assert inventory.shared == {"shown-rule": shown.resolve()}
+    assert inventory.shared == {"shown-rule": shown.resolve(), "x": kept.resolve()}
 
 
 def test_discover_skips_a_source_already_seen_through_an_alias(tmp_path: Path) -> None:
@@ -274,7 +280,7 @@ def test_discover_skips_a_source_already_seen_through_an_alias(tmp_path: Path) -
     assert inventory.hosts == {"copilot": {"terse": host.resolve()}}
 
 
-@pytest.mark.parametrize("name", ["Tone", "tone_style", "tone.md", "tone style"])
+@pytest.mark.parametrize("name", ["Tone", "tone_style", "tone.md", "tone style", "tone@x", "tóne", "tone+1"])
 def test_discover_refuses_an_invalid_shared_rule_name(tmp_path: Path, name: str) -> None:
     source = tmp_path / "personal"
     make_rule(source, "tone-2")
@@ -317,10 +323,11 @@ def test_discover_accepts_every_known_host_directory(tmp_path: Path, host: str) 
     assert discover_rules([source]).hosts == {host: {"tone": rule.resolve()}}
 
 
-def test_discover_refuses_a_non_utf8_rule(tmp_path: Path) -> None:
+@pytest.mark.parametrize("kind", ["shared", "host"])
+def test_discover_refuses_a_non_utf8_rule(tmp_path: Path, kind: str) -> None:
     source = tmp_path / "personal"
     make_rule(source, "fine")
-    broken = make_host_rule(source, "pi", "broken")
+    broken = make_rule(source, "broken") if kind == "shared" else make_host_rule(source, "pi", "broken")
     (broken / "RULE.md").write_bytes(NOT_UTF8)
 
     with pytest.raises(BraidError, match=re.escape(f"cannot read {broken / 'RULE.md'}: ")):
@@ -438,13 +445,14 @@ def test_render_of_discovered_rules_follows_inventory_order(tmp_path: Path) -> N
     second = tmp_path / "second"
     make_rule(second, "b-shared", "Second source.")
     make_rule(first, "z-shared", "First source.")
-    make_host_rule(first, "gemini", "only-gemini", "Gemini only.")
+    make_host_rule(first, "gemini", "z-gemini", "Gemini first.")
+    make_host_rule(second, "gemini", "a-gemini", "Gemini second.")
     make_host_rule(first, "codex", "only-codex", "Codex only.")
 
     inventory = discover_rules([first, second])
     rendered = render_host_file(inventory.shared, inventory.hosts["gemini"])
 
-    assert rendered == f"{GENERATED_HEADER}\n\nFirst source.\n\nSecond source.\n\nGemini only.\n"
+    assert rendered == f"{GENERATED_HEADER}\n\nFirst source.\n\nSecond source.\n\nGemini first.\n\nGemini second.\n"
 
 
 def test_render_refuses_an_unreadable_rule(tmp_path: Path) -> None:
@@ -509,6 +517,9 @@ def missing(key: str) -> dict[str, object]:
         None,
         missing("instructions"),
         missing("union"),
+        missing("hosts"),
+        missing("projected"),
+        missing("generated"),
         corrupt("union", ["tone"]),
         corrupt("union", {"tone": 1}),
         corrupt("generated", {"codex": None}),
@@ -519,12 +530,20 @@ def missing(key: str) -> dict[str, object]:
         corrupt("projected", {"claude": {"tone": ["x"]}}),
         corrupt("generated", {"claude": "/home/.agents/hosts/claude/AGENTS.md"}),
         corrupt("instructions", {"kiro": "/home/.kiro/AGENTS.md"}),
+        corrupt("projected", {"vscode": {}}),
+        corrupt("generated", {"vscode": "/x"}),
+        corrupt("instructions", {"vscode": "/x"}),
+        corrupt("instructions", {"codex": 1}),
+        corrupt("instructions", {"codex": None}),
     ],
     ids=[
         "list",
         "null",
         "no-instructions",
         "no-union",
+        "no-hosts",
+        "no-projected",
+        "no-generated",
         "union-list",
         "union-int-value",
         "generated-null-value",
@@ -535,6 +554,11 @@ def missing(key: str) -> dict[str, object]:
         "projected-list-value",
         "generated-directory-host",
         "instructions-directory-host",
+        "projected-unknown_host",
+        "generated-unknown_host",
+        "instructions-unknown_host",
+        "instructions-int-value",
+        "instructions-null-value",
     ],
 )
 def test_layout_of_a_corrupt_rule_state_is_refused(tmp_path: Path, payload: object) -> None:
