@@ -1,0 +1,5 @@
+uv run pytest tests/tools/backup/test_bundle_case_containment.py -q --tb=line
+Exit: 0
+........................................................................ [ 80%]
+..................                                                       [100%]
+90 passed in 0.26s

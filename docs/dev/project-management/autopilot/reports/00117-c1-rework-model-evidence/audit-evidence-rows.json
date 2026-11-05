@@ -1,0 +1,34 @@
+[
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-03-32-01a1ab29-e892-7f21-85d0-323f9bb5be45.jsonl",
+    "line": 10,
+    "sha256": "793e8027aac34a6bbe12b117e94af750bb5d176ccb0f999fd045e648d410bd77"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-03-32-01a1ab29-e892-7f21-85d0-323f9bb5be45.jsonl",
+    "line": 72,
+    "sha256": "790a197cce92c213fc0aaf4ce4edf7ef5128ea2923ad8f03a912c56e50e6105c"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-06-05-01a1ab2c-3cdb-75a1-a423-c4dcb707ec13.jsonl",
+    "line": 10,
+    "sha256": "7ea1e5dbda78c5f51f131d0be2475c66d961f5d3eff39e604ff4e078551429ff"
+  },
+  {
+    "task": "2",
+    "role": "implementation",
+    "model": "gpt-6.1-sol",
+    "path": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-06-05-01a1ab2c-3cdb-75a1-a423-c4dcb707ec13.jsonl",
+    "line": 104,
+    "sha256": "582f0cdedcf5040207dc5786a8390d812121dbe20aa981d46b494b622da10f68"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "role": "tess",
+    "task": "2",
+    "dispatch": "ad588f5d",
+    "source": "/Users/bob/.codex/sessions/2026/11/05/rollout-2026-11-05T11-03-32-01a1ab29-e892-7f21-85d0-323f9bb5be45.jsonl",
+    "copy": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-03-32-01a1ab29-e892-7f21-85d0-323f9bb5be45.jsonl",
+    "sha256": "c205aed934f4b1e2c91c1eb75ed56938f53eae64ef9acf203c9bb8a87acd4f1d"
+  },
+  {
+    "role": "ivan",
+    "task": "2",
+    "dispatch": "f9ec96bf",
+    "source": "/Users/bob/.codex/sessions/2026/11/05/rollout-2026-11-05T11-06-05-01a1ab2c-3cdb-75a1-a423-c4dcb707ec13.jsonl",
+    "copy": "docs/dev/project-management/autopilot/reports/00117-c1-rework-model-evidence/rollout-2026-11-05T11-06-05-01a1ab2c-3cdb-75a1-a423-c4dcb707ec13.jsonl",
+    "sha256": "ef3460f25c271f918f5f7b74b1614081a1a0482f08ee30e769b34560c183b3ad"
+  }
+]

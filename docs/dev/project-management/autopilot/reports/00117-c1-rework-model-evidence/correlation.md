@@ -1,0 +1,7 @@
+# Cycle 1 rework task 2 model evidence
+
+Tess ad588f5d, session 01a1ab29-e892-7f21-85d0-323f9bb5be45 authored test_bundle_case_containment.py, committed 80c90eca. Ivan f9ec96bf, session 01a1ab2c-3cdb-75a1-a423-c4dcb707ec13 authored tar_archive.py, committed 64458f89. Both raw logs record model_provider=openai and turn_context.model=gpt-6.1-sol with effort medium. Logical tier sonnet; native Codex workers. No other contributing worker or repair attempt. Pat is read-only and excluded from implementation provenance.
+
+Source routing row 7 selected native worker at logical sonnet. Existing codex probe unhealthy; Qwen eligibility absent. Host mapping yields OpenAI gpt-6.1-sol/medium. Independent Anthropic per-task runner supported and dispatched; fresh cycle 2 must cover mixed original Anthropic plus this OpenAI contribution with both complete rosters. Preserve cycle 1 implementation audit and receipts unchanged; regenerate canonical audit before cycle 2 review.
+
+Tess retry d7e0ed6e authored PermissionError tests (74d2e145); Ivan retry fa6d26ec fixed containment error conversion (2698031c), same sessions/model/effort. Pre-commit formatting is deterministic, not another model contributor. Pat first review found the MEDIUM; delta review confirmed closure. The delta review elevated the unchanged redundant is_symlink check to MEDIUM without identifying any correctness defect; adjudicated LOW per the supplied severity contract. Other LOW suggestions remain in raw Pat outputs for completion review.
