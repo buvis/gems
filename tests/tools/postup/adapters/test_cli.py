@@ -49,6 +49,10 @@ class TestCli:
     def test_collect_runs_and_reports(self, tmp_path, mocker, monkeypatch):
         # No roots configured -> command returns failure, CLI renders it without crashing.
         monkeypatch.delenv("BUVIS_POSTUP_ROOTS", raising=False)
+        # Keep host config (~/.config/buvis, $BUVIS_CONFIG_DIR, cwd) from supplying roots.
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
         result = CliRunner().invoke(cli, ["collect", "--no-fetch"])
         assert result.exit_code == 0

@@ -15,6 +15,7 @@ Every subprocess call is non-interactive and scoped with ``git -C <root>``.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,13 +50,16 @@ class GitIdentity:
     email: str
 
 
-def _run_git(root: Path, args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
+def _run_git(
+    root: Path, args: list[str], *, check: bool = True, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     """Run ``git -C <root> <args>`` capturing text output, non-interactively."""
     completed = subprocess.run(
         ["git", "-C", str(root), *args],
         capture_output=True,
         text=True,
         check=False,
+        env=env,
     )
     if check and completed.returncode != 0:
         msg = f"git {' '.join(args)} failed: {completed.stderr.strip()}"
@@ -120,6 +124,15 @@ def commit(root: Path, paths: list[str], subject: str, identity: GitIdentity) ->
             "--",
             *paths,
         ],
+        # GIT_AUTHOR_*/GIT_COMMITTER_* in the caller's env outrank -c user.*,
+        # which would stamp machine commits with the human's identity.
+        env={
+            **os.environ,
+            "GIT_AUTHOR_NAME": identity.name,
+            "GIT_AUTHOR_EMAIL": identity.email,
+            "GIT_COMMITTER_NAME": identity.name,
+            "GIT_COMMITTER_EMAIL": identity.email,
+        },
     )
     sha = _run_git(root, ["rev-parse", "HEAD"]).stdout.strip()
     return sha

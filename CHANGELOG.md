@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **klyreon**: vault commits keep the klyreon identity when `GIT_AUTHOR_*` or `GIT_COMMITTER_*` is set in the environment, so they are no longer mistaken for human edits.
+
 ## [0.17.1] - 2026-11-05
 
 ### Fixed
