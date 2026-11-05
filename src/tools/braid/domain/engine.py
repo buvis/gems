@@ -507,6 +507,16 @@ def _backup_suffix() -> str:
     return f"{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}-{os.getpid()}"
 
 
+def _settle_state(mode: Mode, state_path: Path, previous_state: State, next_state: State, run_pass: _Pass) -> None:
+    """Count a state-only change as drift; write the state file under SYNC."""
+    if next_state != previous_state and run_pass.result.drift == 0:
+        run_pass.result.drift += 1
+        if mode is not Mode.SYNC:
+            run_pass.emit(f"MISMATCH STATE {state_path}")
+    if mode is Mode.SYNC:
+        _write_state(state_path, next_state)
+
+
 def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
     inventory = discover_inventory(settings.sources)
     rule_inventory = discover_rules(settings.sources)  # before any write: a bad rule exits with nothing written
@@ -552,12 +562,7 @@ def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
     _report_orphans(settings, union_root, _OrphanScope(inventory, eligible, previous_state, kiro), result, emit)
 
     next_state = State(union=union, hosts=hosts, kiro=kiro, rules=rules_state)
-    if next_state != previous_state and result.drift == 0:
-        result.drift += 1
-        if settings.mode is not Mode.SYNC:
-            emit(f"MISMATCH STATE {state_path}")
-    if settings.mode is Mode.SYNC:
-        _write_state(state_path, next_state)
+    _settle_state(settings.mode, state_path, previous_state, next_state, run_pass)
     return result
 
 

@@ -350,6 +350,71 @@ def _report_rule_orphans(
         report(root, owner_roots, recorded, run_pass.result, run_pass.emit)
 
 
+def _sync_union_views(
+    settings: Settings,
+    inventory: RuleInventory,
+    previous: RuleState,
+    *,
+    run_pass: _Pass,
+    backups: Path,
+    engine_sync: tuple[type[_Projection], Callable[[_Projection, _Pass], dict[str, str]]],
+) -> tuple[list[_Projection], dict[str, str], dict[str, dict[str, str]]]:
+    """Create/refresh the union views; return (full projections for stale removal, union, hosts)."""
+    projection_type, sync_links = engine_sync
+    shared_view = projection_type(
+        desired=inventory.shared,
+        previous=previous.union,
+        destination_root=settings.agents_root / "rules",
+        backup_root=backups,
+        backup_category="rules",
+        preserve_real_sources=True,
+    )
+    host_views = {
+        host: projection_type(
+            desired=inventory.hosts.get(host, {}),
+            previous=previous.hosts.get(host, {}),
+            destination_root=settings.agents_root / "hosts" / host / "rules",
+            backup_root=backups,
+            backup_category=f"hosts/{host}/rules",
+            preserve_real_sources=True,
+        )
+        for host in sorted(set(inventory.hosts) | set(previous.hosts))
+    }
+    union = sync_links(_without_stale(shared_view), run_pass)
+    hosts = {host: links for host, view in host_views.items() if (links := sync_links(_without_stale(view), run_pass))}
+    return [shared_view, *host_views.values()], union, hosts
+
+
+def _sync_directory_hosts(
+    settings: Settings,
+    inventory: RuleInventory,
+    ignored: set[str],
+    previous: RuleState,
+    *,
+    run_pass: _Pass,
+    suffix: str,
+    engine_sync: tuple[type[_Projection], Callable[[_Projection, _Pass], dict[str, str]]],
+) -> dict[str, dict[str, str]]:
+    """Link Claude/Kiro rule files into the union views; carry over a skipped host's record."""
+    projection_type, sync_links = engine_sync
+    skipped = {"claude": not settings.project_claude, "kiro": not settings.project_kiro}
+    projected = {host: links for host, links in previous.projected.items() if skipped[host]}
+    for host, root, folder in _directory_hosts(settings):
+        run_pass.result.ignored += _ignored_count(inventory, ignored, host)
+        projection = projection_type(
+            desired=_view_files(settings, inventory, ignored, host),
+            previous=previous.projected.get(host, {}),
+            destination_root=root / folder,
+            backup_root=root / f"{folder}-backup" / suffix,
+            backup_category="project",
+            preserve_real_sources=False,
+            entry_suffix=".md",
+            file_links=True,
+        )
+        projected[host] = sync_links(projection, run_pass)
+    return projected
+
+
 def sync_rules(
     settings: Settings,
     inventory: RuleInventory,
@@ -379,44 +444,14 @@ def sync_rules(
     run_pass = _Pass(mode=settings.mode, platform=settings.platform, result=result, emit=emit)
     backups = settings.agents_root / "backups" / suffix
 
-    shared_view = _Projection(
-        desired=inventory.shared,
-        previous=previous.union,
-        destination_root=settings.agents_root / "rules",
-        backup_root=backups,
-        backup_category="rules",
-        preserve_real_sources=True,
+    engine_sync = (_Projection, _sync_links)
+    views, union, hosts = _sync_union_views(
+        settings, inventory, previous, run_pass=run_pass, backups=backups, engine_sync=engine_sync
     )
-    host_views = {
-        host: _Projection(
-            desired=inventory.hosts.get(host, {}),
-            previous=previous.hosts.get(host, {}),
-            destination_root=settings.agents_root / "hosts" / host / "rules",
-            backup_root=backups,
-            backup_category=f"hosts/{host}/rules",
-            preserve_real_sources=True,
-        )
-        for host in sorted(set(inventory.hosts) | set(previous.hosts))
-    }
-    union = _sync_links(_without_stale(shared_view), run_pass)
-    hosts = {host: links for host, view in host_views.items() if (links := _sync_links(_without_stale(view), run_pass))}
-
-    skipped = {"claude": not settings.project_claude, "kiro": not settings.project_kiro}
-    projected = {host: links for host, links in previous.projected.items() if skipped[host]}
-    for host, root, folder in _directory_hosts(settings):
-        result.ignored += _ignored_count(inventory, ignored, host)
-        projection = _Projection(
-            desired=_view_files(settings, inventory, ignored, host),
-            previous=previous.projected.get(host, {}),
-            destination_root=root / folder,
-            backup_root=root / f"{folder}-backup" / suffix,
-            backup_category="project",
-            preserve_real_sources=False,
-            entry_suffix=".md",
-            file_links=True,
-        )
-        projected[host] = _sync_links(projection, run_pass)
-    for view in (shared_view, *host_views.values()):
+    projected = _sync_directory_hosts(
+        settings, inventory, ignored, previous, run_pass=run_pass, suffix=suffix, engine_sync=engine_sync
+    )
+    for view in views:
         _remove_stale_links(view, run_pass)
 
     generated, regenerated = _sync_generated(
