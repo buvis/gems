@@ -141,7 +141,7 @@ Jira sync, and a web dashboard.</p>
 <td><p>Root directory for zettels</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path_archive</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">~/bim/reference/40-archives/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/Documents/reference/40-archives/</span></code></p></td>
 <td><p>Archive directory</p></td>
 </tr>
 </tbody>
@@ -278,7 +278,7 @@ bim<span class="w"> </span>format<span class="w"> </span>~/bim/notes/my-note.md<
 <p>Mark zettel(s) as processed and move to archive directory.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>archive<span class="w"> </span>~/bim/notes/done-note.md
 bim<span class="w"> </span>archive<span class="w"> </span>~/bim/notes/a.md<span class="w"> </span>~/bim/notes/b.md
-bim<span class="w"> </span>archive<span class="w"> </span>--undo<span class="w"> </span>~/bim/reference/40-archives/done-note.md
+bim<span class="w"> </span>archive<span class="w"> </span>--undo<span class="w"> </span>~/Documents/reference/40-archives/done-note.md
 </pre></div>
 </div>
 <p>Options:</p>
@@ -400,7 +400,7 @@ regardless of this flag.</p></li>
 <p>Outcomes (printed to console and recorded in <code class="docutils literal notranslate"><span class="pre">state.db</span></code>):</p>
 <ul class="simple">
 <li><p><strong>filed</strong> — PDF moved to <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/&lt;issuer-slug&gt;/&lt;canonical&gt;.pdf</span></code>
-and zettel written to <code class="docutils literal notranslate"><span class="pre">&lt;vault_root&gt;/Zettelkasten/documents/&lt;issuer-slug&gt;/&lt;canonical&gt;.md</span></code>
+and zettel written to <code class="docutils literal notranslate"><span class="pre">&lt;vault_root&gt;/notes/documents/&lt;issuer-slug&gt;/&lt;canonical&gt;.md</span></code>
 (per-issuer subfolder; the vault layout mirrors the business root).</p></li>
 <li><p><strong>triaged</strong> — confidence too low or required field missing. The PDF lands
 in <code class="docutils literal notranslate"><span class="pre">&lt;business_root&gt;/_triage/</span></code> with a <code class="docutils literal notranslate"><span class="pre">.proposed.yml</span></code> sidecar awaiting
