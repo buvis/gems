@@ -47,6 +47,7 @@ __all__ = [
     "Settings",
     "State",
     "create_directory_link",
+    "create_file_link",
     "discover_inventory",
     "prepare_kiro_agents",
     "read_configured_sources",
@@ -115,6 +116,8 @@ class _Projection:
     backup_root: Path
     backup_category: str
     preserve_real_sources: bool
+    entry_suffix: str = ""
+    file_links: bool = False
 
 
 @dataclass(frozen=True)
@@ -254,6 +257,27 @@ def create_directory_link(
     return "junction"
 
 
+def create_file_link(
+    destination: Path,
+    target: Path,
+    *,
+    platform: str = os.name,
+    hard_link: Callable[[str, str], None] = os.link,
+) -> str:
+    try:
+        os.symlink(str(target), str(destination))
+        return "symlink"
+    except OSError as error:
+        if platform != "nt" or getattr(error, "winerror", None) not in {5, 1314}:
+            raise BraidError(f"cannot link {destination} -> {target}: {error}") from error
+
+    try:
+        hard_link(str(target), str(destination))
+    except OSError as error:
+        raise BraidError(f"cannot create hard link {destination} -> {target}: {error}") from error
+    return "hardlink"
+
+
 def _points_to(path: Path, target: Path, platform: str) -> bool:
     if path.is_symlink():
         raw_target = Path(os.readlink(path))
@@ -262,6 +286,11 @@ def _points_to(path: Path, target: Path, platform: str) -> bool:
         return _resolved(raw_target) == _resolved(target)
     if platform == "nt" and path.is_dir():
         return _resolved(path) == _resolved(target)
+    if platform == "nt" and path.is_file():
+        try:
+            return os.path.samefile(path, target)
+        except OSError:
+            return False
     return False
 
 
@@ -331,6 +360,9 @@ def _remove_owned_link(path: Path, target: Path, platform: str) -> None:
     if platform == "nt" and path.is_dir() and _points_to(path, target, platform):
         os.rmdir(path)
         return
+    if platform == "nt" and path.is_file() and _points_to(path, target, platform):
+        path.unlink()
+        return
     raise BraidError(f"refusing to remove changed or unowned path: {path}")
 
 
@@ -392,7 +424,7 @@ def _sync_links(projection: _Projection, run_pass: _Pass) -> dict[str, str]:
     managed: dict[str, str] = {}
 
     for name, target in sorted(desired.items()):
-        destination = destination_root / name
+        destination = destination_root / f"{name}{projection.entry_suffix}"
         if preserve_real_sources and _absolute(destination) == _absolute(target):
             result.current += 1
             continue
@@ -410,7 +442,8 @@ def _sync_links(projection: _Projection, run_pass: _Pass) -> dict[str, str]:
         destination_root.mkdir(parents=True, exist_ok=True)
         if _present(destination):
             _backup(destination, backup_root, backup_category, result, emit)
-        backend = create_directory_link(destination, target, platform=platform)
+        link = create_file_link if projection.file_links else create_directory_link
+        backend = link(destination, target, platform=platform)
         result.linked += 1
         managed[name] = str(target)
         emit(f"LINK[{backend}] {destination} -> {target}")
@@ -425,11 +458,15 @@ def _remove_stale_links(projection: _Projection, run_pass: _Pass) -> None:
     for name, raw_target in sorted(previous.items()):
         if name in desired:
             continue
-        destination = destination_root / name
+        destination = destination_root / f"{name}{projection.entry_suffix}"
         if not _present(destination):
             continue
         old_target = Path(raw_target)
         if not _points_to(destination, old_target, platform):
+            if mode is Mode.SYNC and projection.file_links:
+                result.drift += 1
+                _backup(destination, projection.backup_root, projection.backup_category, result, emit)
+                continue
             if mode is Mode.SYNC:
                 raise BraidError(f"refusing to clean changed managed path: {destination}")
             result.drift += 1
@@ -461,6 +498,10 @@ def _project_host(
     )
 
 
+def _backup_suffix() -> str:
+    return f"{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}-{os.getpid()}"
+
+
 def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
     inventory = discover_inventory(settings.sources)
     ignored = read_ignored(settings.policy_files)
@@ -468,8 +509,7 @@ def run(settings: Settings, emit: Callable[[str], None] = _discard) -> Result:
     previous_state = _load_state(state_path)
     kiro = select_kiro(settings, previous_state.kiro)
     kiro_edits = prepare_kiro_agents(kiro, settings.agents_root) if kiro is not None and settings.project_kiro else ()
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    suffix = f"{timestamp}-{os.getpid()}"
+    suffix = _backup_suffix()
     result = Result()
     run_pass = _Pass(mode=settings.mode, platform=settings.platform, result=result, emit=emit)
     union_root = settings.agents_root / "skills"
