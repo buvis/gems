@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-11-05
+
 ### Added
 
 - **sysup**: on macOS, an `obsidian-plugins` step updates community plugins through the Obsidian CLI when `obsidian` is installed and the app is running; it skips when Obsidian is closed.
@@ -639,7 +641,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.17.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.17.2...HEAD
+[0.17.2]: https://github.com/buvis/gems/compare/gems-v0.17.1...gems-v0.17.2
 [0.17.1]: https://github.com/buvis/gems/compare/gems-v0.17.0...gems-v0.17.1
 [0.17.0]: https://github.com/buvis/gems/compare/gems-v0.16.0...gems-v0.17.0
 [0.16.0]: https://github.com/buvis/gems/compare/gems-v0.15.3...gems-v0.16.0
