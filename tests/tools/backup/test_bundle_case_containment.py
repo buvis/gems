@@ -8,6 +8,8 @@ import pytest
 
 from backup.capabilities.tar_archive import TarArchive
 
+_OMITTED = object()
+
 
 @pytest.fixture(params=["python-tarfile", "system-tar"])
 def engine(request: pytest.FixtureRequest) -> str:
@@ -19,8 +21,10 @@ def mode(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
-def _outcome(source: Path, out: Path, engine: str, mode: str, items: object) -> tuple[bool, str]:
-    kwargs = {"label": "bundle", "source": str(source), "out": str(out), "engine": engine, "items": items}
+def _outcome(source: Path, out: Path, engine: str, mode: str, items: object = _OMITTED) -> tuple[bool, str]:
+    kwargs: dict[str, object] = {"label": "bundle", "source": str(source), "out": str(out), "engine": engine}
+    if items is not _OMITTED:
+        kwargs["items"] = items
     if mode == "plan":
         entry = TarArchive().plan(**kwargs)
         assert entry.status in {"run", "fail"}
@@ -46,6 +50,89 @@ def _case_alias(directory: Path) -> Path:
 
 
 class TestBundleCaseContainment:
+    @pytest.mark.parametrize("items", [None, _OMITTED], ids=["none", "omitted"])
+    def test_whole_tree_rejects_output_beneath_source_case_alias_without_changes(
+        self, tmp_path: Path, engine: str, mode: str, items: object
+    ) -> None:
+        source = tmp_path / "Source"
+        source.mkdir()
+        (source / "a").write_bytes(b"first selected file")
+        (source / "other").write_bytes(b"second selected file")
+        out = _case_alias(source) / "new" / "deep" / "archive.tar.gz"
+        before = _snapshot(source)
+
+        success, message = _outcome(source, out, engine, mode, items)
+
+        assert success is False
+        assert "inside source" in message
+        assert "inside selected item" not in message
+        assert str(out) in message
+        assert _snapshot(source) == before
+
+    def test_bundle_rejects_output_equal_to_source_case_alias_with_source_message(
+        self, tmp_path: Path, engine: str, mode: str
+    ) -> None:
+        source = tmp_path / "Source"
+        source.mkdir()
+        (source / "a").write_bytes(b"first selected file")
+        (source / "other").write_bytes(b"second selected file")
+        out = _case_alias(source)
+        before = _snapshot(source)
+
+        success, message = _outcome(source, out, engine, mode, ["a", "other"])
+
+        assert success is False
+        assert "inside source" in message
+        assert "inside selected item" not in message
+        assert str(out) in message
+        assert _snapshot(source) == before
+
+    def test_distinct_hard_link_output_preserves_selected_bytes_and_archives_every_item(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, mode: str
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        selected = source / "a"
+        selected.write_bytes(b"first selected file")
+        (source / "other").write_bytes(b"second selected file")
+        out = source / "a-backup.tar.gz"
+        out.hardlink_to(selected)
+        assert out.samefile(selected)
+        before = _snapshot(source)
+        monkeypatch.chdir(source)
+
+        success, _ = _outcome(source, Path(out.name), engine, mode, ["a", "other"])
+
+        assert success is True
+        assert selected.read_bytes() == b"first selected file"
+        assert (source / "other").read_bytes() == b"second selected file"
+        if mode == "run":
+            with tarfile.open(out, "r:gz") as archive:
+                assert set(archive.getnames()) == {"a", "other"}
+                assert archive.extractfile("a").read() == b"first selected file"
+                assert archive.extractfile("other").read() == b"second selected file"
+        else:
+            assert _snapshot(source) == before
+            assert out.samefile(selected)
+
+    @pytest.mark.parametrize("selected", ["a", "other"])
+    def test_output_equal_to_selected_file_is_rejected_without_changes(
+        self, tmp_path: Path, engine: str, mode: str, selected: str
+    ) -> None:
+        source = tmp_path / "source"
+        source.mkdir()
+        (source / "a").write_bytes(b"first selected file")
+        (source / "other").write_bytes(b"second selected file")
+        out = source / selected
+        before = _snapshot(source)
+
+        success, message = _outcome(source, out, engine, mode, ["a", "other"])
+
+        assert success is False
+        assert "inside selected item" in message
+        assert str(out) in message
+        assert _snapshot(source) == before
+
     @pytest.mark.parametrize("error", ["output identity permission denied", "archive metadata access denied"])
     def test_output_identity_permission_error_fails_without_replacing_output(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, mode: str, error: str
