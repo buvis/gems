@@ -794,3 +794,4 @@
 {"id":"47f45b0f","ended_at":1793919806,"elapsed_s":339,"outcome":"ok","detail":null}
 {"id":"8aadb7dd","ended_at":1793919806,"elapsed_s":339,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1793919830,"phase":"done","prd":"00116-braid-rules-kind-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1794003561,"phase":"done","prd":"00116-braid-rules-kind-v1.md"}
