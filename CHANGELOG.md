@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-08
+
 ### Added
 
 - **bim**: `bim --skill` prints the bundled agent skill (`SKILL.md`) verbatim, like `herdr --skill`, and `bim --help` ends with a pointer to it for AI agents.
@@ -655,7 +657,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.18.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.19.0...HEAD
+[0.19.0]: https://github.com/buvis/gems/compare/gems-v0.18.1...gems-v0.19.0
 [0.18.1]: https://github.com/buvis/gems/compare/gems-v0.18.0...gems-v0.18.1
 [0.18.0]: https://github.com/buvis/gems/compare/gems-v0.17.2...gems-v0.18.0
 [0.17.2]: https://github.com/buvis/gems/compare/gems-v0.17.1...gems-v0.17.2
