@@ -14,6 +14,13 @@
       "detail": "Prerequisite 00118 is held and unimplemented. PRD 00119 requires CreateZettelUseCase.prepare, bounded id collision retry, and bim create --json from 00118; current create_zettel_use_case.py has only execute and no retry. Implementing these here would silently absorb the held prerequisite. No implementation or completion review ran.",
       "op_id": "93cfe7fd824e",
       "prd": "00119-bim-create-vault-templates-v1.md"
+    },
+    {
+      "type": "stall",
+      "site": "blocking_escalation",
+      "detail": "Prerequisite PRDs 00118 and 00119 remain held and unimplemented; required body/source, dry-run, JSON, prepare/date/wikilink contracts are absent. See reports/00120-bootstrap.md. Do not absorb held prerequisite scope.",
+      "op_id": "aa7ab4ae7943",
+      "prd": "00120-bim-create-vault-links-v1.md"
     }
   ]
 }

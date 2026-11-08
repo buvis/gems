@@ -847,3 +847,5 @@
 {"kind":"handoff","site":"build","edge":"leave","at":1794180448,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1794180457,"phase":"build","prd":"00119-bim-create-vault-templates-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1794180530,"phase":"build","prd":"00119-bim-create-vault-templates-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794180538,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794180609,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
