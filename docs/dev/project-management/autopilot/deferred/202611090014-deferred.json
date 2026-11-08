@@ -1,0 +1,12 @@
+{
+  "batch_id": "202611090014",
+  "items": [
+    {
+      "type": "stall",
+      "site": "plan_expansion",
+      "detail": "module_drift 2 > 1 (., tests/lib/zettel/entities/zettel); note docs/dev/project-management/autopilot/split-notes/00118-bim-create-scripting-contract-v1.md",
+      "op_id": "b193f0aad0a2",
+      "prd": "00118-bim-create-scripting-contract-v1.md"
+    }
+  ]
+}

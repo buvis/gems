@@ -843,3 +843,5 @@
 {"id":"84b52053","kind":"bob","task":"review-feat-braid-20261108","queued_at":1794163402,"prompt_bytes":403682}
 {"id":"84b52053","ended_at":1794163479,"elapsed_s":77,"outcome":"ok","detail":null}
 {"id":"05255974","ended_at":1794163647,"elapsed_s":6141,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"resume","at":1794179673,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794180448,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
