@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>braid &mdash; buvis-gems  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="dot" href="dot.html" />
+    <link rel="prev" title="bim" href="bim.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            buvis-gems
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Library:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html#api-reference">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../formatting.html">Formatting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filesystem.html">Filesystem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adapters.html">Adapters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../zettel.html">Zettel</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">CLI Tools:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../tools.html">CLI Tools</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tools.html#common-options">Common Options</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../tools.html#extending-tools">Extending Tools</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="backup.html">backup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bim.html">bim</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">braid</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sources">Sources</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#braidignore"><code class="docutils literal notranslate"><span class="pre">.braidignore</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rules">Rules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#kiro">Kiro</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#backups">Backups</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#exit-codes">Exit codes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dot.html">dot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fctracker.html">fctracker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fren.html">fren</a></li>
+<li class="toctree-l3"><a class="reference internal" href="klyreon.html">klyreon</a></li>
+<li class="toctree-l3"><a class="reference internal" href="morph.html">morph</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muc.html">muc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="netscan.html">netscan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="outlookctl.html">outlookctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pinger.html">pinger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="puc.html">puc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="postup.html">postup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="readerctl.html">readerctl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sysup.html">sysup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="vuc.html">vuc</a></li>
+<li class="toctree-l3"><a class="reference internal" href="zseq.html">zseq</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../completions.html">Shell Completions</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development.html">Development</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">buvis-gems</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tools.html">CLI Tools</a></li>
+      <li class="breadcrumb-item active">braid</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tools/braid.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="braid">
+<span id="tool-braid"></span><h1>braid<a class="headerlink" href="#braid" title="Link to this heading"></a></h1>
+<p>Agent skill composer. <code class="docutils literal notranslate"><span class="pre">braid</span></code> reads the skill repos listed in
+<code class="docutils literal notranslate"><span class="pre">~/.config/braid/sources.d</span></code>, links every skill into the <code class="docutils literal notranslate"><span class="pre">~/.agents/skills</span></code>
+union, and projects that union into Claude Code (<code class="docutils literal notranslate"><span class="pre">~/.claude/skills</span></code>) and,
+once enrolled, Kiro (<code class="docutils literal notranslate"><span class="pre">~/.kiro/skills</span></code>). It also composes always-on rules
+into Claude Code, Kiro and generated Codex, Copilot, Pi and Gemini instruction
+files (see <a class="reference internal" href="#rules">Rules</a>). It records what it manages in
+<code class="docutils literal notranslate"><span class="pre">&lt;agents_root&gt;/.braid-state.json</span></code> and only removes links it owns.</p>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>braid<span class="w">                               </span><span class="c1"># sync links, backups and state</span>
+braid<span class="w"> </span>--dry-run<span class="w">                     </span><span class="c1"># report what a sync would change, write nothing</span>
+braid<span class="w"> </span>--check<span class="w">                       </span><span class="c1"># exit 1 when links, resources or state drift</span>
+braid<span class="w"> </span>--source<span class="w"> </span>~/git/src/my-skills<span class="w">  </span><span class="c1"># add a source for this run (repeatable)</span>
+braid<span class="w"> </span>--policy<span class="w"> </span>./extra.braidignore<span class="w">  </span><span class="c1"># load one more .braidignore (repeatable)</span>
+braid<span class="w"> </span>--no-claude<span class="w">                   </span><span class="c1"># skip the Claude projection</span>
+braid<span class="w"> </span>--agents-root<span class="w"> </span>DIR<span class="w"> </span>--claude-root<span class="w"> </span>DIR<span class="w"> </span>--config-root<span class="w"> </span>DIR<span class="w">   </span><span class="c1"># override roots</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> and <code class="docutils literal notranslate"><span class="pre">--check</span></code> cannot be combined. A sync prints one line per
+change (<code class="docutils literal notranslate"><span class="pre">LINK[symlink]</span></code>, <code class="docutils literal notranslate"><span class="pre">LINK[junction]</span></code> or <code class="docutils literal notranslate"><span class="pre">LINK[hardlink]</span></code>,
+<code class="docutils literal notranslate"><span class="pre">GENERATE</span></code>, <code class="docutils literal notranslate"><span class="pre">BACKUP</span></code>, <code class="docutils literal notranslate"><span class="pre">REMOVE</span></code>); a dry run prints <code class="docutils literal notranslate"><span class="pre">WOULD</span> <span class="pre">LINK</span></code>,
+<code class="docutils literal notranslate"><span class="pre">WOULD</span> <span class="pre">GENERATE</span></code> and <code class="docutils literal notranslate"><span class="pre">WOULD</span> <span class="pre">REMOVE</span></code>; a check prints <code class="docutils literal notranslate"><span class="pre">MISMATCH</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">GENERATED</span></code>, <code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">STALE</span></code>, <code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">CHANGED</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">ORPHAN</span></code> and <code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">STATE</span></code>. Any mode can print
+<code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">OVERSIZE</span></code> and <code class="docutils literal notranslate"><span class="pre">UNMANAGED</span></code>. Every run ends with a summary:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>braid: 3 linked, 1 generated, 40 current, 2 ignored, 0 removed, 1 backed up, 0 configured, 1 unmanaged, 4 change(s)
+</pre></div>
+</div>
+<p>A check reports <code class="docutils literal notranslate"><span class="pre">drift</span></code> in place of <code class="docutils literal notranslate"><span class="pre">change(s)</span></code>. <code class="docutils literal notranslate"><span class="pre">UNMANAGED</span></code> never counts
+as drift.</p>
+</section>
+<section id="sources">
+<h2>Sources<a class="headerlink" href="#sources" title="Link to this heading"></a></h2>
+<p>Each file in <code class="docutils literal notranslate"><span class="pre">~/.config/braid/sources.d</span></code> (dot files are skipped) lists one
+path per line. Text after <code class="docutils literal notranslate"><span class="pre">#</span></code> is a comment and blank lines are ignored. A
+leading <code class="docutils literal notranslate"><span class="pre">~</span></code> expands to the home directory, and a relative path resolves
+against the <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> directory.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ~/.config/braid/sources.d/repos
+~/git/src/github.com/buvis/agent-skills
+../../../git/src/github.com/me/private-skills   # relative to sources.d
+</pre></div>
+</div>
+<p>A source is a repo root that holds any of <code class="docutils literal notranslate"><span class="pre">skills/</span></code>, <code class="docutils literal notranslate"><span class="pre">rules/</span></code> and
+<code class="docutils literal notranslate"><span class="pre">hosts/</span></code>, or a <code class="docutils literal notranslate"><span class="pre">skills/</span></code> directory itself (which adds skills only). Each
+subdirectory of <code class="docutils literal notranslate"><span class="pre">skills/</span></code> with a <code class="docutils literal notranslate"><span class="pre">SKILL.md</span></code> is a skill; its name
+must match the directory. Two sources that ship the same skill name stop the
+run with an error. With no source in <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> and no <code class="docutils literal notranslate"><span class="pre">--source</span></code>, braid
+stops and names the <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> path to fill.</p>
+</section>
+<section id="braidignore">
+<h2><code class="docutils literal notranslate"><span class="pre">.braidignore</span></code><a class="headerlink" href="#braidignore" title="Link to this heading"></a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">.braidignore</span></code> file lists skill names to keep out of the Claude
+projection, one per line, with <code class="docutils literal notranslate"><span class="pre">#</span></code> comments. Ignored skills stay in the
+<code class="docutils literal notranslate"><span class="pre">~/.agents/skills</span></code> union and Kiro still gets them. braid loads every file
+that exists from these places:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;agents_root&gt;/.braidignore</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;config_root&gt;/.braidignore</span></code></p></li>
+<li><p>each source’s repo root (the directory that holds <code class="docutils literal notranslate"><span class="pre">skills/</span></code>)</p></li>
+<li><p>each <code class="docutils literal notranslate"><span class="pre">--policy</span></code> file</p></li>
+</ul>
+<p>The same names also drop rules. Unlike skills, an ignored rule leaves every
+host projection and every generated file, Kiro included. It stays in the
+<code class="docutils literal notranslate"><span class="pre">~/.agents</span></code> union views.</p>
+</section>
+<section id="rules">
+<h2>Rules<a class="headerlink" href="#rules" title="Link to this heading"></a></h2>
+<p>Rules are always-on instructions. A source ships them in this layout:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>rules/&lt;name&gt;/RULE.md                 # shared: every host gets it
+hosts/&lt;host&gt;/rules/&lt;name&gt;/RULE.md    # one host only
+</pre></div>
+</div>
+<p>The known hosts are <code class="docutils literal notranslate"><span class="pre">claude</span></code>, <code class="docutils literal notranslate"><span class="pre">kiro</span></code>, <code class="docutils literal notranslate"><span class="pre">codex</span></code>, <code class="docutils literal notranslate"><span class="pre">copilot</span></code>, <code class="docutils literal notranslate"><span class="pre">pi</span></code> and
+<code class="docutils literal notranslate"><span class="pre">gemini</span></code>; any other directory under <code class="docutils literal notranslate"><span class="pre">hosts/</span></code> stops the run with an error.
+A rule name uses <code class="docutils literal notranslate"><span class="pre">a-z</span></code>, <code class="docutils literal notranslate"><span class="pre">0-9</span></code> and <code class="docutils literal notranslate"><span class="pre">-</span></code>. Rule names never clash with skill
+names. These are errors:</p>
+<ul class="simple">
+<li><p>two sources ship the same shared rule</p></li>
+<li><p>a host rule has the same name as a shared rule</p></li>
+<li><p>two sources ship the same rule for one host</p></li>
+</ul>
+<p>braid links each rule into a union view, <code class="docutils literal notranslate"><span class="pre">~/.agents/rules/&lt;name&gt;</span></code> or
+<code class="docutils literal notranslate"><span class="pre">~/.agents/hosts/&lt;host&gt;/rules/&lt;name&gt;</span></code>, then projects the views into each
+host:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Host</p></th>
+<th class="head"><p>Host path</p></th>
+<th class="head"><p>Links to</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Claude</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.claude/rules/&lt;name&gt;.md</span></code></p></td>
+<td><p>the rule’s <code class="docutils literal notranslate"><span class="pre">RULE.md</span></code> in the view</p></td>
+</tr>
+<tr class="row-odd"><td><p>Kiro</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;kiro-root&gt;/steering/&lt;name&gt;.md</span></code></p></td>
+<td><p>the rule’s <code class="docutils literal notranslate"><span class="pre">RULE.md</span></code> in the view</p></td>
+</tr>
+<tr class="row-even"><td><p>Codex</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.codex/AGENTS.md</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.agents/hosts/codex/AGENTS.md</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Copilot</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.copilot/copilot-instructions.md</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.agents/hosts/copilot/AGENTS.md</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Pi</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.pi/agent/AGENTS.md</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.agents/hosts/pi/AGENTS.md</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Gemini</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.gemini/GEMINI.md</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.agents/hosts/gemini/AGENTS.md</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Claude and Kiro get one file link per rule. Kiro gets rules only once
+enrolled, and <code class="docutils literal notranslate"><span class="pre">--no-claude</span></code> or <code class="docutils literal notranslate"><span class="pre">--no-kiro</span></code> skip that host. Codex, Copilot,
+Pi and Gemini read one file, so braid writes a generated file per host at
+<code class="docutils literal notranslate"><span class="pre">~/.agents/hosts/&lt;host&gt;/AGENTS.md</span></code> and links the host path to it. A
+<code class="docutils literal notranslate"><span class="pre">--agents-root</span></code> run still touches these home host paths.</p>
+<section id="generated-files">
+<h3>Generated files<a class="headerlink" href="#generated-files" title="Link to this heading"></a></h3>
+<p>A generated file starts with this header line and a blank line:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&lt;!-- Generated by braid. Edit the rule sources, not this file. --&gt;
+</pre></div>
+</div>
+<p>Then come the shared rule bodies, then the host rule bodies, each group in
+source order, then by name. braid strips trailing whitespace from each body,
+puts one blank line between bodies and ends the file with one newline. A file
+over 32768 bytes is still written, but <code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">OVERSIZE</span></code> reports it as
+drift on every run, so <code class="docutils literal notranslate"><span class="pre">--check</span></code> keeps failing until you trim the rules.</p>
+</section>
+<section id="unmanaged-host-files">
+<h3>Unmanaged host files<a class="headerlink" href="#unmanaged-host-files" title="Link to this heading"></a></h3>
+<p>braid never replaces or backs up a host path it did not create. When
+<code class="docutils literal notranslate"><span class="pre">~/.codex/AGENTS.md</span></code> or another host path is already there, braid reports
+<code class="docutils literal notranslate"><span class="pre">UNMANAGED</span></code> and leaves it. This is not drift. To hand the path to braid,
+remove it once; the next sync links it. When a host root such as <code class="docutils literal notranslate"><span class="pre">~/.codex</span></code>
+is missing, braid skips that host without a word. If you remove a host root
+after braid recorded its link, the next check shows <code class="docutils literal notranslate"><span class="pre">MISMATCH</span> <span class="pre">STATE</span></code> once.</p>
+</section>
+<section id="windows">
+<h3>Windows<a class="headerlink" href="#windows" title="Link to this heading"></a></h3>
+<p>When Windows denies a file symlink (winerror 5 or 1314), braid makes a hard
+link and prints <code class="docutils literal notranslate"><span class="pre">LINK[hardlink]</span></code>. A hard link counts as current while it is
+the same file as its target. A stale one is backed up and linked again.</p>
+</section>
+<section id="notes">
+<h3>Notes<a class="headerlink" href="#notes" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>A rule named <code class="docutils literal notranslate"><span class="pre">agents</span></code> clashes with <code class="docutils literal notranslate"><span class="pre">AGENTS.md</span></code> in Kiro steering on a
+case-insensitive filesystem: braid backs up <code class="docutils literal notranslate"><span class="pre">AGENTS.md</span></code>, then replaces it.</p></li>
+<li><p>To retire rules, remove the <code class="docutils literal notranslate"><span class="pre">rules</span></code> key from <code class="docutils literal notranslate"><span class="pre">.braid-state.json</span></code> and the
+links by hand.</p></li>
+</ul>
+</section>
+</section>
+<section id="kiro">
+<h2>Kiro<a class="headerlink" href="#kiro" title="Link to this heading"></a></h2>
+<p>Kiro is opt-in. <code class="docutils literal notranslate"><span class="pre">--kiro</span></code> enrolls <code class="docutils literal notranslate"><span class="pre">~/.kiro</span></code> once; later runs remember the
+enrollment from the state file.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>braid<span class="w"> </span>--kiro<span class="w">                        </span><span class="c1"># enroll ~/.kiro and project skills into it</span>
+braid<span class="w"> </span>--kiro-root<span class="w"> </span>DIR<span class="w">               </span><span class="c1"># enroll another Kiro root</span>
+braid<span class="w"> </span>--kiro-agent<span class="w"> </span>reviewer<span class="w">         </span><span class="c1"># manage skill resources in &lt;kiro-root&gt;/agents/reviewer.json</span>
+braid<span class="w"> </span>--forget-kiro-agent<span class="w"> </span>reviewer<span class="w">  </span><span class="c1"># stop managing it; keep its existing resources</span>
+braid<span class="w"> </span>--no-kiro<span class="w">                     </span><span class="c1"># skip Kiro this run; keep its links and enrollment</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--kiro-root</span></code> wins over <code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_KIRO_ROOT</span></code>, which wins over the saved
+enrollment. A non-empty <code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_KIRO_ROOT</span></code> enrolls Kiro on its own, like
+<code class="docutils literal notranslate"><span class="pre">--kiro-root</span></code>; an empty one counts as unset. A saved enrollment cannot move to
+another root. <code class="docutils literal notranslate"><span class="pre">--kiro-agent</span></code> needs an existing agent file and is repeatable, as
+is <code class="docutils literal notranslate"><span class="pre">--forget-kiro-agent</span></code>. <code class="docutils literal notranslate"><span class="pre">--no-kiro</span></code> cannot be combined with any other
+Kiro option.</p>
+</section>
+<section id="backups">
+<h2>Backups<a class="headerlink" href="#backups" title="Link to this heading"></a></h2>
+<p>braid never deletes a real file or directory in its way. A sync moves it aside
+first, under a per-run <code class="docutils literal notranslate"><span class="pre">&lt;stamp&gt;</span></code> directory:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;agents_root&gt;/backups/&lt;stamp&gt;/compose/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;claude_root&gt;/skills-backup/&lt;stamp&gt;/project/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;kiro_root&gt;/skills-backup/&lt;stamp&gt;/project/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;claude_root&gt;/rules-backup/&lt;stamp&gt;/project/</span></code> for rule links</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;kiro_root&gt;/steering-backup/&lt;stamp&gt;/project/</span></code> for rule links</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;kiro_root&gt;/agent-backup/&lt;stamp&gt;/agents/</span></code> for edited Kiro agent files</p></li>
+</ul>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p>Each root has a flag, an env name and a default. The flag wins over the env
+name.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Flag</p></th>
+<th class="head"><p>Env name</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--agents-root</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_AGENTS_ROOT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.agents</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--claude-root</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_CLAUDE_ROOT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.claude</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--config-root</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_CONFIG_ROOT</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/.config/braid</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--kiro-root</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_KIRO_ROOT</span></code></p></td>
+<td><p>unset (<code class="docutils literal notranslate"><span class="pre">~/.kiro</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+<section id="moving-from-agent-skills">
+<h3>Moving from agent-skills<a class="headerlink" href="#moving-from-agent-skills" title="Link to this heading"></a></h3>
+<p>braid no longer reads the old <code class="docutils literal notranslate"><span class="pre">AGENTS_ROOT</span></code>, <code class="docutils literal notranslate"><span class="pre">CLAUDE_ROOT</span></code>, <code class="docutils literal notranslate"><span class="pre">KIRO_ROOT</span></code>
+and <code class="docutils literal notranslate"><span class="pre">AGENT_SKILLS_CONFIG</span></code> env names or <code class="docutils literal notranslate"><span class="pre">~/.config/agent-skills</span></code>. Move
+<code class="docutils literal notranslate"><span class="pre">sources.d</span></code> to <code class="docutils literal notranslate"><span class="pre">~/.config/braid/sources.d</span></code> and rename any env names you
+set to the <code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_</span></code> names above.</p>
+</section>
+</section>
+<section id="exit-codes">
+<h2>Exit codes<a class="headerlink" href="#exit-codes" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Code</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>success</p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--check</span></code> found drift</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p>a rejected option combination, or an error, printed as
+<code class="docutils literal notranslate"><span class="pre">braid:</span> <span class="pre">&lt;error&gt;</span></code> (bad source, duplicate skill, unreadable state,
+a path braid refuses to replace, a filesystem error)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="bim.html" class="btn btn-neutral float-left" title="bim" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dot.html" class="btn btn-neutral float-right" title="dot" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2026, Tomáš Bouška.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
