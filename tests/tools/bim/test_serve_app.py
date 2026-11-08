@@ -43,6 +43,19 @@ class TestServeHealth:
         assert response.json() == {"status": "ok"}
 
 
+class TestServeLifespan:
+    def test_watcher_runs_for_app_lifetime(self, tmp_path: Path) -> None:
+        with (
+            patch("bim.commands.serve._app.start_watcher", new_callable=AsyncMock) as start,
+            patch("bim.commands.serve._app.stop_watcher", new_callable=AsyncMock) as stop,
+        ):
+            app = create_app(default_directory=str(tmp_path), archive_directory="archive")
+            with TestClient(app):
+                start.assert_awaited_once_with(str(tmp_path))
+                stop.assert_not_awaited()
+            stop.assert_awaited_once()
+
+
 class TestServeTrustedHost:
     def test_foreign_host_header_rejected(self, tmp_path: Path) -> None:
         zettels_dir = tmp_path / "zettels"

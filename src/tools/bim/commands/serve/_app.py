@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from buvis.pybase.adapters import console
@@ -21,7 +23,15 @@ def create_app(
     business_triage_root: str | None = None,
     doc_settings: object = None,
 ) -> FastAPI:
-    app = FastAPI(title="bim dashboard")
+    @asynccontextmanager
+    async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        await start_watcher(default_directory)
+        try:
+            yield
+        finally:
+            await stop_watcher()
+
+    app = FastAPI(title="bim dashboard", lifespan=_lifespan)
     app.state.default_directory = default_directory
     app.state.archive_directory = archive_directory
     app.state.business_triage_root = business_triage_root
@@ -31,14 +41,6 @@ def create_app(
 
     app.include_router(api_router, prefix="/api")
     app.include_router(sse_router, prefix="/api")
-
-    @app.on_event("startup")
-    async def _startup() -> None:
-        await start_watcher(default_directory)
-
-    @app.on_event("shutdown")
-    async def _shutdown() -> None:
-        await stop_watcher()
 
     if STATIC_DIR.is_dir() and any(STATIC_DIR.iterdir()):
 
