@@ -61,6 +61,7 @@
 <li class="toctree-l3"><a class="reference internal" href="backup.html">backup</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">bim</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#agent-skill">Agent skill</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#commands">Commands</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#bim-doc">bim doc</a></li>
 </ul>
@@ -147,6 +148,17 @@ Jira sync, and a web dashboard.</p>
 </tbody>
 </table>
 <p>Env vars: <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ZETTELKASTEN</span></code>, <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ARCHIVE</span></code>.</p>
+</section>
+<section id="agent-skill">
+<h2>Agent skill<a class="headerlink" href="#agent-skill" title="Link to this heading"></a></h2>
+<p>bim ships the skill file that teaches an AI coding agent how to drive it, the
+same way <code class="docutils literal notranslate"><span class="pre">herdr</span> <span class="pre">--skill</span></code> does. <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">--help</span></code> ends with a pointer to it.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>--skill<span class="w">                                   </span><span class="c1"># print the skill to stdout</span>
+bim<span class="w"> </span>--skill<span class="w"> </span>&gt;<span class="w"> </span>~/.agents/skills/bim/SKILL.md<span class="w">   </span><span class="c1"># or save it where your agent looks</span>
+</pre></div>
+</div>
+<p>The output is the bundled <code class="docutils literal notranslate"><span class="pre">SKILL.md</span></code> byte for byte: no console markers, no
+wrapping, so it can be redirected into a file or piped to another tool.</p>
 </section>
 <section id="commands">
 <h2>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h2>
