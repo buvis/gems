@@ -27,6 +27,20 @@ Configuration
 
 Env vars: ``BUVIS_BIM_PATH_ZETTELKASTEN``, ``BUVIS_BIM_PATH_ARCHIVE``.
 
+Agent skill
+-----------
+
+bim ships the skill file that teaches an AI coding agent how to drive it, the
+same way ``herdr --skill`` does. ``bim --help`` ends with a pointer to it.
+
+.. code-block:: bash
+
+    bim --skill                                   # print the skill to stdout
+    bim --skill > ~/.agents/skills/bim/SKILL.md   # or save it where your agent looks
+
+The output is the bundled ``SKILL.md`` byte for byte: no console markers, no
+wrapping, so it can be redirected into a file or piped to another tool.
+
 Commands
 --------
 

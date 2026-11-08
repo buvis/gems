@@ -1,6 +1,19 @@
 from __future__ import annotations
 
-from bim.cli import cli
+from bim.cli import SKILL_PATH, cli
+
+
+class TestBimSkill:
+    def test_skill_prints_bundled_skill_file_verbatim(self, runner) -> None:
+        result = runner.invoke(cli, ["--skill"])
+        assert result.exit_code == 0
+        assert result.output == SKILL_PATH.read_text(encoding="utf-8")
+        assert result.output.startswith("---\nname: bim\n")
+
+    def test_help_points_agents_at_skill_flag(self, runner) -> None:
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "bim --skill" in result.output
 
 
 class TestBimCliHelp:

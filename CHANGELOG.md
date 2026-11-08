@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **bim**: `bim --skill` prints the bundled agent skill (`SKILL.md`) verbatim, like `herdr --skill`, and `bim --help` ends with a pointer to it for AI agents.
+
 ## [0.18.1] - 2026-11-08
 
 ## [0.18.0] - 2026-11-06
