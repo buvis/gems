@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **bim**: with `backend: llamacpp`, `bim doc` no longer fails with "Could not parse classifier JSON response" when the model wraps its JSON in a markdown fence; the request now sends a JSON schema, which llama-server enforces.
+
 ## [0.19.0] - 2026-11-08
 
 ### Added
