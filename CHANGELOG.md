@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-11-08
+
 ### Fixed
 
 - **muc**: `muc tidy` restores Finder info, the resource fork and every extended attribute from `._` AppleDouble files instead of storing the whole `._` file as the resource fork, and keeps a `._` file it cannot read rather than deleting it.
@@ -676,7 +678,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.19.1...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.19.2...HEAD
+[0.19.2]: https://github.com/buvis/gems/compare/gems-v0.19.1...gems-v0.19.2
 [0.19.1]: https://github.com/buvis/gems/compare/gems-v0.19.0...gems-v0.19.1
 [0.19.0]: https://github.com/buvis/gems/compare/gems-v0.18.1...gems-v0.19.0
 [0.18.1]: https://github.com/buvis/gems/compare/gems-v0.18.0...gems-v0.18.1
