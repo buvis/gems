@@ -7,6 +7,13 @@
       "detail": "module_drift 2 > 1 (., tests/lib/zettel/entities/zettel); note docs/dev/project-management/autopilot/split-notes/00118-bim-create-scripting-contract-v1.md",
       "op_id": "b193f0aad0a2",
       "prd": "00118-bim-create-scripting-contract-v1.md"
+    },
+    {
+      "type": "stall",
+      "site": "blocking_escalation",
+      "detail": "Prerequisite 00118 is held and unimplemented. PRD 00119 requires CreateZettelUseCase.prepare, bounded id collision retry, and bim create --json from 00118; current create_zettel_use_case.py has only execute and no retry. Implementing these here would silently absorb the held prerequisite. No implementation or completion review ran.",
+      "op_id": "93cfe7fd824e",
+      "prd": "00119-bim-create-vault-templates-v1.md"
     }
   ]
 }
