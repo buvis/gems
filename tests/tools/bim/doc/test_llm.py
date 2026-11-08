@@ -46,11 +46,16 @@ class TestChatRequest:
         assert url == "http://localhost:11434/api/chat"
         assert body == {"model": "qwen3:14b", "messages": _MESSAGES, "format": "json", "stream": False}
 
-    def test_llamacpp_uses_openai_chat_completions_in_json_mode(self) -> None:
+    def test_llamacpp_enforces_json_with_a_schema_grammar(self) -> None:
+        # llama-server ignores {"type": "json_object"} (live: the model wrapped
+        # its reply in a ```json fence); only a json_schema compiles a grammar.
         url, body = chat_request(_LLAMACPP, "any", _MESSAGES)
 
         assert url == "http://localhost:8002/v1/chat/completions"
-        assert body["response_format"] == {"type": "json_object"}
+        assert body["response_format"] == {
+            "type": "json_schema",
+            "json_schema": {"name": "reply", "schema": {"type": "object"}},
+        }
         assert body["stream"] is False
         assert "format" not in body
 

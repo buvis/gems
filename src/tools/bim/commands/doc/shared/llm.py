@@ -27,7 +27,12 @@ def chat_request(
         return f"{base}/v1/chat/completions", {
             "model": model,
             "messages": messages,
-            "response_format": {"type": "json_object"},
+            # llama-server ignores {"type": "json_object"} and lets the model
+            # wrap JSON in a ```json fence; a json_schema compiles a grammar.
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "reply", "schema": {"type": "object"}},
+            },
             # Classification needs no reasoning trace; thinking only slows the
             # reply and can break the JSON grammar on Qwen3-style templates.
             "chat_template_kwargs": {"enable_thinking": False},

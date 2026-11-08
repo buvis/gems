@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **braid**: compose agent skills from sources.d into ~/.agents and project them to Claude Code and Kiro (ported from agent-skills); sources.d now lives in ~/.config/braid, and the old ~/.config/agent-skills location and env names are not read
 - **braid**: compose always-on rules from rules/ and hosts/<host>/rules/ into Claude Code, Kiro and generated Codex, Copilot, Pi and Gemini instruction files
 
+### Fixed
+
+- **bim**: with `backend: llamacpp`, `bim doc` no longer fails with "Could not parse classifier JSON response" when the model wraps its JSON in a markdown fence; the request now sends a JSON schema, which llama-server enforces.
+
 ## [0.19.0] - 2026-11-08
 
 ### Added
