@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import platform
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -136,15 +137,16 @@ class TestMergeMacMetadata:
         assert not orphan.exists()
 
     def test_merges_xattr_from_underscore_files(self, tmp_path: Path) -> None:
-        import xattr
-
         data_file = tmp_path / "file.txt"
         data_file.write_text("content")
         apple_double = tmp_path / "._file.txt"
-        apple_double.write_bytes(b"resource fork data")
+        apple_double.write_bytes((Path(__file__).parent / "fixtures" / "apple_double_track.flac.bin").read_bytes())
 
         DirTree.merge_mac_metadata(tmp_path)
 
         assert not apple_double.exists()
-        attrs = xattr.listxattr(str(data_file))
-        assert "com.apple.ResourceFork" in attrs
+        for name, value in (("com.example.tag", "hello"), ("com.apple.ResourceFork", "RSRCDATA")):
+            read = subprocess.run(
+                ["/usr/bin/xattr", "-p", name, str(data_file)], capture_output=True, text=True, check=True
+            )
+            assert read.stdout.strip() == value

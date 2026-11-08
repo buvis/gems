@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **bim**: with `backend: llamacpp`, `bim doc` no longer fails with "Could not parse classifier JSON response" when the model wraps its JSON in a markdown fence; the request now sends a JSON schema, which llama-server enforces.
+- **muc**: `muc tidy` restores Finder info, the resource fork and every extended attribute from `._` AppleDouble files instead of storing the whole `._` file as the resource fork, and keeps a `._` file it cannot read rather than deleting it.
+
+### Changed
+
+- **gems**: drop the `xattr` dependency, so installing on Python 3.15 no longer needs a C compiler for it.
 
 ## [0.19.0] - 2026-11-08
 
