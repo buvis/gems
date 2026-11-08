@@ -1,7 +1,7 @@
-"""LLM-backed structured field extractor (Ollama /api/chat).
+"""LLM-backed structured field extractor (Ollama or llama.cpp, see ``llm.py``).
 
-Sends OCR text plus the already-determined ``doc_type`` to a local Ollama
-instance and parses the JSON response into an ``ExtractResult``. The
+Sends OCR text plus the already-determined ``doc_type`` to a local LLM
+server and parses the JSON response into an ``ExtractResult``. The
 ``requests`` import is deferred until ``extract`` runs so the module is
 loadable without the optional ``[doc]`` extra installed.
 """
@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
+from bim.commands.doc.shared.llm import chat_content, chat_request
 from bim.commands.doc.shared.naming import DOC_TYPES
 
 if TYPE_CHECKING:
@@ -290,7 +291,7 @@ def _coerce_parsed(parsed: dict[str, object]) -> tuple[dict[str, object], list[s
 
 
 class Extractor:
-    """Extract structured fields from OCR text via an Ollama /api/chat endpoint."""
+    """Extract structured fields from OCR text via the configured chat backend."""
 
     def __init__(self, settings: LLMSettings) -> None:
         self._settings = settings
@@ -351,16 +352,14 @@ class Extractor:
         # Lazy import keeps the module loadable without the [doc] extra installed.
         import requests
 
-        url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
-        body = {
-            "model": model,
-            "messages": [
+        url, body = chat_request(
+            self._settings,
+            model,
+            [
                 {"role": "system", "content": _system_prompt(doc_type)},
                 {"role": "user", "content": _user_prompt(ocr_text, hints)},
             ],
-            "format": "json",
-            "stream": False,
-        }
+        )
 
         try:
             response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
@@ -373,7 +372,7 @@ class Extractor:
             raise IncompleteExtraction([f"HTTP error: {exc}"], transient=True) from exc
 
         try:
-            raw_content = payload["message"]["content"]
+            raw_content = chat_content(self._settings, payload)
             parsed = json.loads(raw_content)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise IncompleteExtraction([f"could not parse model response as JSON: {exc}"]) from exc
@@ -428,16 +427,14 @@ class Extractor:
         # Lazy import keeps the module loadable without the [doc] extra installed.
         import requests
 
-        url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
-        body = {
-            "model": model,
-            "messages": [
+        url, body = chat_request(
+            self._settings,
+            model,
+            [
                 {"role": "system", "content": _reduced_system_prompt(doc_type, omit_fields=set(normalized_coerced))},
                 {"role": "user", "content": _user_prompt(ocr_text, hints)},
             ],
-            "format": "json",
-            "stream": False,
-        }
+        )
 
         try:
             response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
@@ -450,7 +447,7 @@ class Extractor:
             raise IncompleteExtraction([f"HTTP error: {exc}"], transient=True) from exc
 
         try:
-            raw_content = payload["message"]["content"]
+            raw_content = chat_content(self._settings, payload)
             parsed = json.loads(raw_content)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise IncompleteExtraction([f"could not parse model response as JSON: {exc}"]) from exc

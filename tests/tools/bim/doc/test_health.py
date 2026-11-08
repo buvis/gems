@@ -116,6 +116,32 @@ class TestCheckHealth:
             check_health(settings)
 
 
+class TestLlamacppBackend:
+    @pytest.fixture
+    def llamacpp_settings(self, settings: DocSettings) -> DocSettings:
+        classifier = settings.classifier.model_copy(update={"backend": "llamacpp", "endpoint": "http://localhost:8002"})
+        return settings.model_copy(update={"classifier": classifier})
+
+    def test_probes_v1_models_without_model_check(self, llamacpp_settings: DocSettings, mocker: MockerFixture) -> None:
+        mocker.patch("bim.commands.doc.shared.health.subprocess.run", return_value=_ok_proc())
+        fake_requests = mocker.MagicMock()
+        fake_requests.get.return_value = _MockResponse({"data": [{"id": "whatever-is-loaded"}]})
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        check_health(llamacpp_settings)
+
+        assert fake_requests.get.call_args.args[0] == "http://localhost:8002/v1/models"
+
+    def test_unreachable_names_llamacpp(self, llamacpp_settings: DocSettings, mocker: MockerFixture) -> None:
+        mocker.patch("bim.commands.doc.shared.health.subprocess.run", return_value=_ok_proc())
+        fake_requests = mocker.MagicMock()
+        fake_requests.get.side_effect = ConnectionError("refused")
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(MissingDependency, match="llama.cpp server not reachable"):
+            check_health(llamacpp_settings)
+
+
 class TestLazyImport:
     def test_module_imports_without_requests_at_module_load(self, mocker: MockerFixture) -> None:
         import builtins

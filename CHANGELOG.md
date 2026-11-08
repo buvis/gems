@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **bim**: `bim --skill` prints the bundled agent skill (`SKILL.md`) verbatim, like `herdr --skill`, and `bim --help` ends with a pointer to it for AI agents.
+- **bim**: `doc.classifier.backend: llamacpp` runs `bim doc` classification and extraction against a llama.cpp `llama-server` (OpenAI-compatible `/v1/chat/completions`, thinking off) instead of Ollama; the health check probes `/v1/models`. `ollama` stays the default.
 
 ## [0.18.1] - 2026-11-08
 

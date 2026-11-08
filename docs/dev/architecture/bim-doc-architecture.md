@@ -187,8 +187,8 @@ doc:
     skip_text: true                   # don't re-OCR docs that already have text
 
   classifier:
-    backend: ollama
-    endpoint: http://localhost:11434
+    backend: ollama                   # or llamacpp: llama-server's /v1/chat/completions
+    endpoint: http://localhost:11434  # llamacpp: e.g. http://localhost:8002
     primary_model: qwen2.5:7b-instruct
     fallback_model: qwen2.5:14b-instruct
     triage_threshold: 0.85

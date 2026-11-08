@@ -1,6 +1,6 @@
-"""LLM-backed document classifier (Ollama /api/chat).
+"""LLM-backed document classifier (Ollama or llama.cpp, see ``llm.py``).
 
-Sends OCR text to a local Ollama instance and parses the JSON response into a
+Sends OCR text to a local LLM server and parses the JSON response into a
 ``ClassifyResult``. The ``requests`` import is deferred until ``classify`` runs
 so the module is loadable without the optional ``[doc]`` extra installed.
 """
@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict
 
 from bim.commands.doc.shared.issuers import resolve_alias
+from bim.commands.doc.shared.llm import chat_content, chat_request
 from bim.commands.doc.shared.naming import slugify
 from bim.commands.doc.shared.rules.models import SourceMetadata
 
@@ -276,7 +277,7 @@ def _resolve_classified_payload(
 
 
 class Classifier:
-    """Classify OCR text via an Ollama /api/chat endpoint."""
+    """Classify OCR text via the configured chat backend."""
 
     def __init__(self, settings: ClassifierSettings) -> None:
         self._settings = settings
@@ -326,17 +327,15 @@ class Classifier:
         # Lazy import keeps the module loadable without the [doc] extra installed.
         import requests
 
-        url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
         system_prompt = _doc_type_only_system_prompt() if doc_type_only else _full_system_prompt(registry)
-        body = {
-            "model": model,
-            "messages": [
+        url, body = chat_request(
+            self._settings,
+            model,
+            [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": _user_prompt(ocr_text, source_metadata, doc_type_only=doc_type_only)},
             ],
-            "format": "json",
-            "stream": False,
-        }
+        )
 
         try:
             response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
@@ -349,7 +348,7 @@ class Classifier:
             raise ClassifierError(f"HTTP error calling {url}: {exc}", transient=True) from exc
 
         try:
-            raw_content = payload["message"]["content"]
+            raw_content = chat_content(self._settings, payload)
             parsed = json.loads(raw_content)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             # Model produced unparseable output; another attempt against the
@@ -447,16 +446,14 @@ class Classifier:
         # Lazy import keeps the module loadable without the [doc] extra installed.
         import requests
 
-        url = f"{self._settings.endpoint.rstrip('/')}/api/chat"
-        body = {
-            "model": model,
-            "messages": [
+        url, body = chat_request(
+            self._settings,
+            model,
+            [
                 {"role": "system", "content": _reduced_system_prompt(registry, omit=omit)},
                 {"role": "user", "content": _user_prompt(ocr_text, source_metadata, doc_type_only=False)},
             ],
-            "format": "json",
-            "stream": False,
-        }
+        )
         try:
             response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
             response.raise_for_status()
@@ -467,7 +464,7 @@ class Classifier:
             raise ClassifierError(f"HTTP error calling {url}: {exc}", transient=True) from exc
 
         try:
-            raw_content = payload["message"]["content"]
+            raw_content = chat_content(self._settings, payload)
             parsed = json.loads(raw_content)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise ClassifierError(f"Could not parse classifier JSON response: {exc}", transient=False) from exc

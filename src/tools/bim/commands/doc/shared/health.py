@@ -58,6 +58,20 @@ def _check_ollama(endpoint: str, primary_model: str) -> None:
         raise MissingDependency(f"Ollama model {primary_model!r} not pulled (run `ollama pull {primary_model}`)")
 
 
+def _check_llamacpp(endpoint: str) -> None:
+    # No model check: llama-server serves the one model it was started with
+    # and ignores the request's ``model`` field.
+    import requests
+
+    url = f"{endpoint.rstrip('/')}/v1/models"
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        response.json()
+    except Exception as exc:
+        raise MissingDependency(f"llama.cpp server not reachable at {endpoint}: {exc}") from exc
+
+
 def check_health(settings: DocSettings) -> None:
     """Validate that all external dependencies are present and reachable.
 
@@ -65,4 +79,7 @@ def check_health(settings: DocSettings) -> None:
     """
     _check_binary("tesseract")
     _check_binary("ocrmypdf")
-    _check_ollama(settings.classifier.endpoint, settings.classifier.primary_model)
+    if settings.classifier.backend == "llamacpp":
+        _check_llamacpp(settings.classifier.endpoint)
+    else:
+        _check_ollama(settings.classifier.endpoint, settings.classifier.primary_model)
