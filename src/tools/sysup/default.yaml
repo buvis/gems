@@ -101,6 +101,22 @@ commands:
         echo "$out"
         ! grep -q FAILED <<<"$out"
 
+  # Herdr app mods installed from herdr.dev, tracked by hmod (herdr-mod-updater,
+  # run through the shim in the Herdr home). `update --all` checks GitHub itself
+  # and skips edited, unlinked and never-manually-updated mods by hmod's own
+  # rules; the Mod updates dialog handles those. hmod runs `herdr-app check` on
+  # every candidate, so skip when the window is closed. After mise: bun comes
+  # from mise.
+  herdr-mods:
+    order: 78
+    when: { os: darwin, check: herdr-app }
+    steps:
+      - |
+        hmod="$HOME/.config/herdr-app/bin/hmod"
+        [ -x "$hmod" ] || { echo "hmod not installed, skipping"; exit 0; }
+        herdr-app status >/dev/null 2>&1 || { echo "Herdr not running, skipping"; exit 0; }
+        "$hmod" update --all
+
   # --- WSL / Linux (former `sysup wsl`) -----------------------------------
   apt:
     order: 10

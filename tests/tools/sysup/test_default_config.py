@@ -32,6 +32,7 @@ class TestDefaultConfigEquivalence:
             "pipx-python",
             "nvim",
             "obsidian-plugins",
+            "herdr-mods",
         ]
         assert names.index("rustup") < names.index("mise") < names.index("pipx-python") < names.index("nvim")
 
@@ -127,6 +128,21 @@ class TestDefaultConfigEquivalence:
         assert [s.label for s in entry.steps] == ["rustup update"]
         assert entry.when.check == "rustup"
         assert entry.order < cfg.commands["mise"].order
+
+    def test_herdr_mods_skips_without_hmod_or_window_and_runs_after_mise(self, mocker) -> None:
+        """hmod updates Herdr app mods, but only where the shim exists and the
+        window is open (`herdr-app check` needs it); bun comes from mise, so the
+        step sorts after `mise upgrade`."""
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
+        cfg = load_config()
+        entry = cfg.commands["herdr-mods"]
+        assert entry.when.os == "darwin"
+        assert entry.when.check == "herdr-app"
+        assert entry.order > cfg.commands["mise"].order
+        (step,) = entry.steps
+        assert '[ -x "$hmod" ] || { echo "hmod not installed, skipping"; exit 0; }' in step.label
+        assert "herdr-app status >/dev/null 2>&1 ||" in step.label
+        assert step.label.rstrip().endswith('"$hmod" update --all')
 
     def test_npm_check_is_interactive(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
