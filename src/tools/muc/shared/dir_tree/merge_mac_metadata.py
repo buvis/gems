@@ -91,12 +91,12 @@ def _check_range(data: bytes, offset: int, length: int) -> None:
 
 def _setxattr(path: Path, name: str, value: bytes) -> None:
     """Set one extended attribute, replacing any existing value."""
-    if hasattr(os, "setxattr"):
-        os.setxattr(path, name, value)
+    if sys.platform == "darwin":
+        if _libc.setxattr(os.fsencode(path), name.encode(), value, len(value), 0, 0) != 0:
+            err = ctypes.get_errno()
+            raise OSError(err, os.strerror(err), str(path))
         return
-    if _libc.setxattr(os.fsencode(path), name.encode(), value, len(value), 0, 0) != 0:
-        err = ctypes.get_errno()
-        raise OSError(err, os.strerror(err), str(path))
+    os.setxattr(path, name, value)
 
 
 def merge_mac_metadata(directory: Path) -> None:
