@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-11-08
+
 ## [0.18.0] - 2026-11-06
 
 ### Changed
@@ -648,7 +650,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.18.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.18.1...HEAD
+[0.18.1]: https://github.com/buvis/gems/compare/gems-v0.18.0...gems-v0.18.1
 [0.18.0]: https://github.com/buvis/gems/compare/gems-v0.17.2...gems-v0.18.0
 [0.17.2]: https://github.com/buvis/gems/compare/gems-v0.17.1...gems-v0.17.2
 [0.17.1]: https://github.com/buvis/gems/compare/gems-v0.17.0...gems-v0.17.1
