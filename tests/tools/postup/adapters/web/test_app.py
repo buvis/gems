@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 pytest.importorskip("fastapi")
-pytest.importorskip("httpx")
+pytest.importorskip("httpx2")
 
 from postup.adapters.web.app import create_app
 from starlette.testclient import TestClient

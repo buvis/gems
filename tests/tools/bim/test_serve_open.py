@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 pytest.importorskip("fastapi")
-pytest.importorskip("httpx")
+pytest.importorskip("httpx2")
 
 from starlette.testclient import TestClient
 

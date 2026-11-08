@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 pytest.importorskip("fastapi")
-pytest.importorskip("httpx")
+pytest.importorskip("httpx2")
 
 from bim.commands.serve._app import create_app
 from bim.commands.serve.serve import CommandServe
