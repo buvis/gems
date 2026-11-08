@@ -1,16 +1,60 @@
-# PRD 00112 assumptions
+# PRD 00116 assumptions
 
-Task 1: Tess and Ivan reported ASSUMPTIONS: none.
+## 1: braid: discover and render rules (rules.py foundation, source layout relax)
 
-## 2: Emit archive engine progress
-Tess quality retry: Clearing PATH represents unavailable system tar; real fallback-message assertion passed. Other test writers and implementors reported none.
+- Tess: `make_rule`/`make_host_rule` default `body` is the literal `"..."`; every body-checking test passes one explicitly.
+- Tess: `tmp_path` is already resolved, so configured and resolved paths print the same in error messages; only the first duplicate source is passed relative.
+- Tess: `RuleState.as_json()` returns stored dicts unchanged, including empty inner dicts.
+- Tess: `from_json` refuses `None` and list payloads ("unless payload is a dict").
+- Tess: `engine.run` never links a rule-only source's rules under `<root>/skills`.
+- Tess: `Settings.policy_files` values are path-like; tests compare `Path(...).resolve()`.
+- Tess: `resolve_settings` needs no content in `config_root` and does not parse `.braidignore` contents.
+- Tess: the bad name `tóne` keeps its spelling on disk under APFS, so the expected error text matches `iterdir`.
+- Ivan: `RuleState.from_json` accepts extra top-level keys beyond the five required ones.
+- Ivan: when a shared rule's name was first used by host rules on several hosts, the duplicate error names the earliest host rule's source.
+- Ivan: `discover_rules` tests already-seen before legacy on the resolved source; order is not observable.
 
-## 6: Tail sweep archive progress
+## 2: braid: file-link projections and Windows hard-link support in the engine
 
-Tess: System tar is available. Empty-input coverage uses an empty file. Persistent filesystem failure preserves the observed OSError behavior.
+- Tess: `_Pass` exposes its `Result` as `.result`; `preserve_real_sources=False` is neutral for rule projections.
+- Tess: a BACKUP line starts with "BACKUP " and names the destination; the backup layout under `backup_root` is not pinned.
+- Tess: a recorded stale hard link whose target was rewritten is backed up and relinked on SYNC (task text), not removed as owned.
+- Tess: `_backup_suffix` reads the clock through engine's module-level `datetime`; `_sync_links` finds `create_file_link` by module-global name.
+- Tess: on a file-link pass `_backup` adds no drift of its own.
+- Ivan: the stale file-link backup branch counts `drift += 1` before `_backup` counts `backed_up`.
 
-Ivan initial: Fallback retains the system-tar engine string so done_bytes remains None. The assumption that duplicate archiving on early fallback was acceptable was rejected against the existing exact-event test and corrected by the bounded repair. Ivan repair reported none.
+## 3: braid: sync_rules projections, generated host files, instruction links and rules state
 
-## 7: Tail sweep observer documentation
+- Tess: `REMOVE` lines are exactly `REMOVE {path}`; order is directory hosts, then union shared, then union hosts.
+- Tess: backups land at `backups/<suffix>/<category>/<name>`; tests glob `*/generated/codex/*` and `*/instructions/<host>/*`.
+- Tess: the `LINK[...]` backend tag and link-target absoluteness are not pinned; links are checked with `resolve()`.
+- Tess: without a `rules` key, top-level state keys are a subset of `{version, union, hosts, kiro}`.
+- Tess: a fully current SYNC emits nothing; DRY_RUN/CHECK with nothing on disk create no agents root.
+- Tess: `.braidignore` matches exact rule names; production calls `os.symlink(src, dst, target_is_directory)` without `dir_fd`.
+- Tess: orphan lines across scans compared order-insensitively; a pre-existing real file at a directory-host path follows `_sync_links` backup behavior.
+- Ivan: `emit` is keyword-only in `sync_rules` (`..., result, *, emit`) to satisfy ruff PLR0917 without a second per-file ignore; PRD names and order kept.
+- Ivan: engine helpers reach the per-step helpers as parameters so the single function-local import holds.
+- Ivan: empty `projected[host]` maps are kept in state; only empty union `hosts` maps are dropped.
+- Ivan: when Kiro is not enrolled (`project_kiro` true, `kiro_root` None) the previous `projected["kiro"]` is dropped; `--no-kiro`/`--no-claude` carry it over.
+- Ivan: the orphan-scan `layout` dedupes resolved sources, keeping order.
 
-Ivan: Plan suppression means the planning phase emits no progress events. The idle tick interval comes from completed.get(timeout=0.2). Coordinator verified both against Runner.plan/_plan and _collect_completion; paused-yield timing is stated explicitly.
+## 4: braid: summary line and CLI with generated and unmanaged counts
+
+- Tess: test_cli.py summary literals were split into adjacent strings to satisfy ruff E501; asserted values are byte-identical.
+- Tess: in SYNC each link and each generated write counts as one change; the CHECK label is not asserted, only the summary prefix.
+- Tess: the `braid:` error line may carry a console marker prefix, so it is checked with `endswith`.
+- Tess: `~/.copilot/copilot-instructions.md` as a hand-made regular file reports UNMANAGED.
+- Orchestrator: `--no-claude` help reads "skip projecting skills and rules into the Claude root"; the plan's "into claude-root" wraps at the hyphen at 80 columns and breaks `test_parser_documents_previously_bare_options_with_help_text`.
+
+## 5: braid: document rules (braid.rst, README, CHANGELOG)
+
+- Ivan: the braid.rst example summary numbers are illustrative, not derived.
+- Ivan: rule backup paths (`rules-backup`, `steering-backup`) and rule-name characters come from the design contract; both added to braid.rst.
+
+## 6: [D1] braid rules: Windows foreign instruction file stays UNMANAGED on regeneration; sync_rules takes emit positionally
+
+- Tess: `ignored`/`previous` types are not pinned; the positional test passes `frozenset()`/`None`, then `frozenset({"tone"})` and the first call's `RuleState`.
+- Tess: the direct `sync_rules` call needs `agents_root` to exist, standing in for the engine's skill phase.
+- Tess: `RuleState.union`/`hosts` are compared by keys only.
+- Ivan: Windows instruction-file ownership means "same file as the generated `AGENTS.md` just before this run rewrote it"; content plays no part.
+- Ivan: a detached hard link is braid's stale output and can be unlinked without backup. Overruled by the orchestrator: the design backs up any present owned path before relinking, because edits made through a hard link land in the detached file.

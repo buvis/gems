@@ -43,6 +43,7 @@ all = ["buvis-gems[backup,bim,bim-web,doc,dot,fren,morph,muc,pinger,postup,postu
 [project.scripts]
 backup = "backup.cli:cli"
 bim = "bim.cli:cli"
+braid = "braid.cli:cli"
 dot = "dot.cli:cli"
 fctracker = "fctracker.cli:cli"
 fren = "fren.cli:cli"
@@ -83,6 +84,7 @@ packages = [
   "src/lib/buvis",
   "src/tools/backup",
   "src/tools/bim",
+  "src/tools/braid",
   "src/tools/dot",
   "src/tools/fctracker",
   "src/tools/fren",
@@ -110,6 +112,7 @@ addopts = ["--import-mode=importlib"]
 markers = [
     "backup: backup tests",
     "bim: bim tests",
+    "braid: braid tests",
     "dot: dot tests",
     "fctracker: fctracker tests",
     "fren: fren tests",
@@ -180,3 +183,5 @@ combine-as-imports = true
 # doc's verbatim contract (PRD 00098); module-level helpers in the same file
 # intentionally reach into the dataclass's internal handle.
 "src/tools/sysup/runlog.py" = ["PLR0913", "SLF001"]
+# sync_rules' six-parameter signature is the PRD 00116 verbatim contract (same precedent as runlog.py).
+"src/tools/braid/domain/rules.py" = ["PLR0913", "PLR0917"]

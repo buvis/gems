@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-10-29
+Generated: 2026-11-08 (feat/braid merged into master)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -27,16 +27,29 @@ Generated: 2026-10-29
 
 ## Active Work
 
+### Batch 202611042342 (feat/braid worktree, `~/git/src/worktrees/gems/braid`)
+- [x] 00115-braid-port-skills-parity-v1.md (2 cycles): braid ported into `src/tools/braid/`; two deliberate parity breaks fixed in cycle 1 (Windows junction via `_winapi`, not cmd.exe; non-UTF-8 inputs exit 2). The cmd.exe junction injection still lives upstream in agent-skills braid.
+- [x] 00116-braid-rules-kind-v1.md (2 cycles): rules as a second kind (`domain/rules.py`), generated single-file host instructions, `UNMANAGED` host links. Cycle-2 rework: Windows instruction-file ownership judged by pre-write identity, `sync_rules` emit taken positionally.
+- The worktree's `wip/` also held a stale copy of 00117, which belonged to the master checkout's batch 202611040755 and was never selected there; the 2026-11-08 merge into master kept master's `done/` move.
+- Pre-merge branch review (2026-11-08, `reviews/feat-braid-branch-review-1.md`): 4 single-voice Lows, no rework; full suite 6824 passed at b27b48b5.
+- New tool gotcha: `src/tools/` now holds 17 tools (backup, klyreon, postup not in the AGENTS.md tree), so the README "15 -> 16" count in 00115 must be checked against the real README count.
+
 ### Batch 202611040755
 - [x] 00117-backup-bundle-out-under-source-v1.md (2 cycles)
 
 Observations: Batch drained; all four tasks completed, including the cycle-2 Tail sweep. Both provider rosters and the original and companion implementation audits passed the host evidence gate. Final isolated suite: 6654 passed, 16 skipped, 1 xfailed; backup ruff and mypy passed. Earlier host-dependent test isolation failures remain in the deferred ledger. Evidence: `autopilot/reports/202611040755-report.md` and `autopilot/reports/00117-tail-sweep-work.md`.
 
 ## Related context
-No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
+2026-11-05 (topic "braid" / "braid: add rules as a second composed kind"): engram skipped by `autopilot catchup-probe` (unregistered), no query ran, no hits. Source discovery: `~/.claude/docs/dev/project-management/discovery/00182-layer-agent-rules-across-hosts.md`.
+
+2026-11-04 (topic "braid" / "braid: port the skill composer into gems at parity"): engram skipped by `autopilot catchup-probe`, so no query ran and no hits are recorded. Reference code lives at `~/git/src/github.com/buvis/agent-skills/src/agent_skills_braid/cli.py` and `tests/test_braid*.py`.
+
+Previous (2026-10-29): No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
 
 ## GitHub State
-- 1 open issue: #252 (sysup timeout orphans multi-command shell steps; deferred from the #253 review, 2026-10-28).
+- 2026-11-05: 0 open issues, 0 open PRs. gems-v0.17.0 published (Publish to PyPI run on the tag: success), so the 2026-11-04 orphaned-tag worry is resolved. Master Test runs 2026-11-04 still red from `lib` = `abandoned` (macOS capacity), not test failures. feat/braid: no failing runs. local master now at 70394a1a (00117 work, separate batch).
+- 2026-11-04: 0 open issues, 0 open PRs. master 235a1d36 (v0.17.0 bump). **Publish run 41875005542 for tag `gems-v0.17.0` failed**: its reusable test job saw `lib` = `abandoned` (macOS capacity-cancel trap, not a test failure), so 0.17.0 is likely not on PyPI. Recover per the release gotcha (`release patch` leapfrog, never re-tag). Master Test runs on 235a1d36, 247c251c, 8e0abc76 and 4343cf5a show the same `abandoned` lib result. feat/braid has no failing runs.
+- 2026-10-29 snapshot: 1 open issue: #252 (sysup timeout orphans multi-command shell steps; deferred from the #253 review, 2026-10-28).
 - 2 open PRs, both Renovate majors from 2026-10-04 still reporting artifact-update failures: #220 SvelteKit v3, #219 adapter-static v4. #249/#248/#245/#231 merged since the previous capsule; the postup build was rebuilt after them (a47081b5). Branch `renovate/patch-all-non-major-dependencies` is a reused branch whose latest PR (#251) merged 2026-10-29; nothing open on it.
 - master `ce65015c` == origin/master, tip author Tomáš Bouška, working tree clean, no stray `v*` tags (only `gems-v*`), verified after `git fetch` 2026-10-29.
 - Latest release gems-v0.16.0 (2026-10-29). Zero unreleased commits. Publish run 40849147923 and master Test run 40849147682 were both mid-matrix at catchup: `lint` and all eight `lib` cells green, `tools` cells running, macOS cells queued. Last completed master Test (b73a8c5c, 2026-10-29 00:14) succeeded.
