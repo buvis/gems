@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-11-08
+
 ### Added
 
 - **braid**: compose agent skills from sources.d into ~/.agents and project them to Claude Code and Kiro (ported from agent-skills); sources.d now lives in ~/.config/braid, and the old ~/.config/agent-skills location and env names are not read
@@ -666,7 +668,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.19.0...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.19.1...HEAD
+[0.19.1]: https://github.com/buvis/gems/compare/gems-v0.19.0...gems-v0.19.1
 [0.19.0]: https://github.com/buvis/gems/compare/gems-v0.18.1...gems-v0.19.0
 [0.18.1]: https://github.com/buvis/gems/compare/gems-v0.18.0...gems-v0.18.1
 [0.18.0]: https://github.com/buvis/gems/compare/gems-v0.17.2...gems-v0.18.0
