@@ -226,23 +226,34 @@ Body in Markdown.
 ```
 
 - The file name is the `id` and never changes. A rare variant carries a
-  suffix (`<id>_a.md`); prefer a new note.
+  suffix (`<id>_a.md`); prefer a new note. Hub and table-of-contents notes may
+  be named `<slug>.hub.md` or `<slug>.toc.md`; they still carry an `id`.
+- One note, one idea: split a note that grows unrelated sections. The title
+  stands alone, like a line in an index.
+- Every note has `id`, `title`, `date` and `type`. Keys are lowercase with
+  dashes; quote a value only when YAML needs it (a colon); booleans are
+  `true` and `false`.
 - The H1 matches `title` exactly. Older problem resolution reports prefix it
   with `PRR: `. Index (MOC) titles start with `§`.
 - Tools write `publish: false` and `processed: false` only; the owner flips
   them after review.
-- Tags: three to five, kebab-case, nested broad to narrow with `/`
-  (`lang/rust`). Reuse existing tags. Older notes use a block list.
+- Tags: three to five (more than seven is a smell), kebab-case, nested broad
+  to narrow with `/` (`lang/rust`), `tags: []` when there are none. Reuse
+  existing tags. Older notes use a block list.
 - Backmatter is everything after the last `---`: Dataview fields written as
-  `- key:: value`. The rule stays even when the backmatter is empty. Common
-  keys: `parent`, `project`, `ticket`, `sr`, `us`, `psd`, `web`, `teams`,
-  `article`, `book`, `referral`, `repo`, `shop`. Put Microsoft Teams URLs in
-  `teams::`, never `web::`. Keep every key you do not recognize when you
-  rewrite a note.
+  `- key:: value`, where the value is text, a URL, a Markdown link or a
+  wikilink. The rule stays even when the backmatter is empty. Common keys:
+  `parent`, `project`, `ticket`, `sr`, `us`, `psd`, `web`, `teams`, `article`,
+  `book`, `referral`, `twitter`, `intranet`, `repo`, `shop`. Put Microsoft
+  Teams URLs in `teams::`, never `web::`. A note that comes from a web page
+  keeps the URL in `web::`, not only in the body. Keep every key you do not
+  recognize when you rewrite a note.
 - `type` is a closed vocabulary: the bundled templates plus `configuration`,
   `customizing`, `project-tracker`, `tracker`, `index`, `toc`, `ai-prompt`,
-  `budget`, `meter-reading`, `itinerary`, `poem`, `joke` and `application`.
-  When unsure, use `note`; never invent a type.
+  `budget`, `meter-reading`, `itinerary`, `poem`, `joke` and `application`
+  (older reports use `problem-resolution`). When unsure, use `note`; never
+  invent a type. Some older notes carry one-off types; report an unknown
+  type, do not coerce it.
 
 Type-specific frontmatter:
 
@@ -257,11 +268,27 @@ Type-specific frontmatter:
 - `snippet`: `language` (the fence language). `course`: `provider`, `length`,
   `status`.
 
+Body shapes:
+
+| Type | Body |
+|------|------|
+| `note` | A short essay or structured explainer. |
+| `definition` | One term in one or two paragraphs, then an optional `## Example`. Longer explanations are a `note`. |
+| `procedure` | One numbered list; sub-steps are nested numbered lists; prose between steps stays short. |
+| `wiki-article` | One setting, tweak or trick in two to ten lines, plus at most one code block. Grown past that, it becomes a `note` or a `procedure`. |
+| `cheatsheet` | Bullets or a table, no long paragraphs. |
+| `list` | A short lead-in, then bullets; sub-headings group the items. |
+| `snippet` | One code block with one or two lines above it. |
+| `recipe` | Ingredients, then steps. |
+| `project` | `## Description` (why the project exists, rarely revised), `## Log` (the working record, newest on top), `## Plan` (a checklist; an item moves to the Log once acted on), `## Solution` (written at closure; the placeholder may stay while open). |
+| `meeting-minutes` | `## Agenda` (may be empty), `## Log` (plain bullets as things happen), `## Post-processing` (a fixed block: move the actions under its GTD tags and write `summary`). |
+
 ### Links
 
 - Internal links are wikilinks with the vault-absolute path and the title as
   alias: `[[notes/<id>|Title]]`, `[[notes/contact/<slug>|Name]]`,
-  `[[notes/book/<slug>|Title]]`.
+  `[[notes/book/<slug>|Title]]`, `[[notes/<slug>.hub|Title]]`. The alias is
+  optional but preferred.
 - External URLs and local paths are Markdown links: `[Title](https://...)`.
 - Embeds: `![[note#Heading]]` for a section, `![alt|240](path.jpeg)` for a
   sized image.
@@ -272,13 +299,18 @@ Type-specific frontmatter:
   (scheduled), `🛫` (start), `✅` (done) or `❌` (cancelled) with a date, and
   priority `⏬ 🔽 🔼 ⏫ 🔺`.
 - States: `[ ]` open, `[x]` done, `[i]` information, `[>]` forwarded,
-  `[-]` cancelled, `[/]` in progress.
-- GTD lists are tags on tasks: `#gtd/act/now`, `#gtd/act/next`,
-  `#gtd/act/later`, `#gtd/act/someday`, `#gtd/wait`. `#gtd/inbox` marks a note
-  whose checkboxes still need processing; `#gtd/ignore` keeps checkboxes that
-  are not actions out of the lists.
-- Project log entry, newest on top, never rewritten:
-  `- [ ] YYYY-MM-DD HH:mm - what happened => next action | #gtd/act/now 📅 YYYY-MM-DD`.
+  `[-]` cancelled, `[/]` in progress. Any other state is an error; report it.
+- GTD lists are tags on tasks: `#gtd/act/now` (today), `#gtd/act/next` (once
+  the now items clear), `#gtd/act/later` (reconsider at the next review),
+  `#gtd/act/someday` (maybe), `#gtd/wait` (blocked on someone or something
+  else). `#gtd/inbox` marks a note whose checkboxes still need processing;
+  `#gtd/ignore` keeps checkboxes that are not actions out of the lists.
+- Project log entry, newest on top, never rewritten (new understanding goes
+  on a new line):
+  `- [STATE] YYYY-MM-DD HH:mm - what happened => next action | #gtd/act/now 📅 YYYY-MM-DD`.
+  The fact comes first, in the past tense; `=>` and the decision, the GTD
+  tag, and the date markers are optional. A line may carry a planning and a
+  closure marker (`📅 2026-05-11 ✅ 2026-05-14`).
 - Daily log entry (QuickAdd): `- [ ] _DD.MM.YYYY HH:mm:ss_ - entry` under
   `## Log` in `notes/calendar/daily/YYYY-MM-DD.md`.
 
