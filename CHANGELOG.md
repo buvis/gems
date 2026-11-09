@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **bim**: prepare notes without saving, append supplied body content, and allocate note paths with collision-safe exclusive reservations.
 - **sysup**: update Herdr app mods through hmod (`herdr-mods`, macOS); skipped when Herdr is closed or hmod is not installed
 
 ### Changed
