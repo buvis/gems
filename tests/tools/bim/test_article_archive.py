@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 from bim.shared.article_archive import archive_file_name, archive_original, archive_path, archive_text
@@ -41,10 +42,10 @@ class TestArchiveOriginal:
 
         assert not root.parent.exists()
 
-    def test_write_failure_removes_owned_archive(self, tmp_path: Path, mocker) -> None:
+    def test_write_failure_removes_owned_archive(self, tmp_path: Path, mocker: Any) -> None:
         original_open = Path.open
 
-        def fail_write(path: Path, *args, **kwargs):
+        def fail_write(path: Path, *args: Any, **kwargs: Any) -> Any:
             handle = original_open(path, *args, **kwargs)
             wrapped = mocker.MagicMock(wraps=handle)
             wrapped.__enter__.return_value = wrapped

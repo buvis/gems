@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
+if TYPE_CHECKING:
+    from tests.tools.bim.create_note_helpers import ScratchVault
 
 MINIMAL_ZETTEL = """\
 ---
@@ -49,7 +53,7 @@ def client(tmp_path: Path):
 
 
 @pytest.fixture
-def scratch_vault(tmp_path: Path):
+def scratch_vault(tmp_path: Path) -> ScratchVault:
     from tests.tools.bim.create_note_helpers import scratch_vault as make_vault
 
     return make_vault(tmp_path)
