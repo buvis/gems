@@ -40,33 +40,20 @@ class TestCreateNoteCli:
         with (
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
-            patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.dependencies.get_templates") as mock_get_templates,
-            patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
+            patch("bim.dependencies.get_repo"),
+            patch("bim.dependencies.get_templates"),
+            patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
-            mock_get_repo.return_value = MagicMock()
-            mock_get_templates.return_value = MagicMock()
-            mock_get_hook_runner.return_value = MagicMock()
-            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True, output="Created note.md")
 
-            result = runner.invoke(
-                create_note,
-                ["-t", "note", "--title", "Test"],
-                catch_exceptions=False,
-            )
+            result = runner.invoke(create_note, ["-t", "note", "--title", "Test"], catch_exceptions=False)
 
             assert result.exit_code == 0
             mock_cmd.assert_called_once_with(
-                params=CreateNoteParams(
-                    zettel_type="note",
-                    title="Test",
-                    tags=None,
-                    extra_answers={},
-                ),
+                params=CreateNoteParams(zettel_type="note", title="Test", tags=None, extra_answers={}),
                 path_zettelkasten=Path("/tmp/zk").expanduser().resolve(),
                 repo=ANY,
                 templates=ANY,
@@ -79,33 +66,18 @@ class TestCreateNoteCli:
         with (
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
-            patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.dependencies.get_templates") as mock_get_templates,
-            patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
+            patch("bim.dependencies.get_repo"),
+            patch("bim.dependencies.get_templates"),
+            patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
-            mock_get_repo.return_value = MagicMock()
-            mock_get_templates.return_value = MagicMock()
-            mock_get_hook_runner.return_value = MagicMock()
-            mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True, output="Created note.md")
 
             result = runner.invoke(
                 create_note,
-                [
-                    "-t",
-                    "note",
-                    "--title",
-                    "Test",
-                    "--tags",
-                    "a,b",
-                    "-a",
-                    "first=1",
-                    "-a",
-                    "second=two",
-                ],
+                ["-t", "note", "--title", "Test", "--tags", "a,b", "-a", "first=1", "-a", "second=two"],
                 catch_exceptions=False,
             )
 
@@ -132,11 +104,7 @@ class TestCreateNoteCli:
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
 
-            result = runner.invoke(
-                create_note,
-                ["--tags", "a,b"],
-                catch_exceptions=False,
-            )
+            result = runner.invoke(create_note, ["--tags", "a,b"], catch_exceptions=False)
 
             assert result.exit_code == 0
             mock_app.assert_called_once_with(
@@ -153,16 +121,12 @@ class TestCreateNoteCli:
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
             patch("bim.note_write_cli.console") as mock_console,
-            patch("bim.dependencies.get_repo") as mock_get_repo,
-            patch("bim.dependencies.get_templates") as mock_get_templates,
-            patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
-            patch("bim.dependencies.get_formatter") as mock_get_formatter,
+            patch("bim.dependencies.get_repo"),
+            patch("bim.dependencies.get_templates"),
+            patch("bim.dependencies.get_hook_runner"),
+            patch("bim.dependencies.get_formatter"),
         ):
             mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
-            mock_get_repo.return_value = MagicMock()
-            mock_get_templates.return_value = MagicMock()
-            mock_get_hook_runner.return_value = MagicMock()
-            mock_get_formatter.return_value = MagicMock()
             mock_cmd.side_effect = FileNotFoundError("missing template")
 
             result = runner.invoke(create_note, ["-t", "note", "--title", "X"], catch_exceptions=False)
@@ -274,7 +238,7 @@ class TestCommandCreateNote:
 
     @pytest.mark.parametrize("title,tags", [("My Note", "a,b"), ("Other Topic", "work/home,équipe")])
     def test_metadata_has_relative_path_and_wikilink(self, scratch_vault: ScratchVault, title: str, tags: str) -> None:
-        notes, repo, formatter = scratch_vault
+        notes, repo, _ = scratch_vault
         params = CreateNoteParams(zettel_type="note", title=title, tags=tags, body="First\n\nSecond")
 
         result = create_command(scratch_vault, params).execute()
@@ -298,7 +262,9 @@ class TestCommandCreateNote:
         assert saved.tags == sorted(tags.split(","))
         assert saved.id is not None
         assert str(saved.id) == path.stem
-        assert "First\n\nSecond" in formatter.format(saved.get_data())
+        assert path.read_text().endswith(
+            f"\n# {title}\n\nTemplate default  \n\nFirst  \n\nSecond  \n\n# Details\n\nKeep this section  \n\n---"
+        )
         assert "Keep this section" in path.read_text()
         json.dumps(result.metadata)
 
@@ -331,6 +297,7 @@ class TestCommandCreateNote:
         [
             (" #Work ,work,OTHER,work, ", "work,other"),
             ("Équipe/Sous_1,équipe/sous_1,#two-2,2two", "équipe/sous_1,two-2,2two"),
+            ("Ⅳ,²/Ⅳ", "ⅳ,²/ⅳ"),
             (" , , ", ""),
         ],
     )
@@ -400,7 +367,9 @@ class TestCommandCreateNote:
         assert result.error == "Missing required answer: required_field"
         assert list(scratch_vault[0].iterdir()) == []
 
-    @pytest.mark.parametrize("relative", ["outside.md", "inbox-copy/item.md", "inbox/item.txt", "inbox/missing.md"])
+    @pytest.mark.parametrize(
+        "relative", ["outside.md", "inbox-copy/item.md", "inbox/item.txt", "inbox/item.MD", "inbox/missing.md"]
+    )
     def test_source_outside_inbox_is_rejected(self, scratch_vault: ScratchVault, relative: str) -> None:
         notes, _, _ = scratch_vault
         source = notes.parent / relative
@@ -465,7 +434,7 @@ class TestCommandCreateNote:
     def test_source_frontmatter_is_stripped_and_file_trashed(
         self, scratch_vault: ScratchVault, title: str | None, filename: str, expected: str
     ) -> None:
-        notes, repo, formatter = scratch_vault
+        notes, repo, _ = scratch_vault
         source = notes.parent / "inbox" / filename
         original = "---\r\ntitle: Discarded\r\ntags: [discarded]\r\n---\r\nFirst\r\n\r\nSecond\r\n"
         source.write_bytes(original.encode())
@@ -478,8 +447,12 @@ class TestCommandCreateNote:
         assert result.metadata["title"] == expected
         assert result.metadata["tags"] == []
         saved = repo.find_by_location(result.metadata["path"])
-        content = formatter.format(saved.get_data())
-        assert "First\n\nSecond" in content
+        assert saved.title == expected
+        assert saved.tags == []
+        content = Path(result.metadata["path"]).read_text()
+        assert content.endswith(
+            f"\n# {expected}\n\nTemplate default  \n\nFirst  \n\nSecond  \n\n# Details\n\nKeep this section  \n\n---"
+        )
         assert "Discarded" not in content
         assert "discarded" not in content
         assert "\r" not in content
@@ -499,7 +472,27 @@ class TestCommandCreateNote:
         assert result.success is True
         content = Path(result.metadata["path"]).read_text()
         assert "Remove me" not in content
-        assert "---\nkeep: this\n---\nBody" in content
+        assert "---  \nkeep: this  \n---  \nBody  \n\n# Details\n\nKeep this section  \n\n---" in content
+
+    def test_source_frontmatter_closing_at_eof_remains_body_content(self, scratch_vault: ScratchVault) -> None:
+        notes, _, _ = scratch_vault
+        source = notes.parent / "inbox" / "EOF.md"
+        original = "---\ntitle: Keep me\n---"
+        source.write_text(original)
+
+        result = create_command(scratch_vault, CreateNoteParams(zettel_type="note", source=source)).execute()
+
+        assert result.success is True
+        assert (
+            Path(result.metadata["path"])
+            .read_text()
+            .endswith(
+                "\n# EOF\n\nTemplate default  \n\n---  \ntitle: Keep me  \n---  \n\n"
+                "# Details\n\nKeep this section  \n\n---"
+            )
+        )
+        assert not source.exists()
+        assert Path(result.metadata["trashed_source"]).read_text() == original
 
     def test_source_trash_uses_next_available_name_without_overwriting(self, scratch_vault: ScratchVault) -> None:
         notes, _, _ = scratch_vault
@@ -718,6 +711,33 @@ class TestCommandCreateNote:
         assert result.metadata["title"] == saved.title
         assert result.metadata["wikilink"].endswith("|After Hook]]")
 
+    def test_metadata_returns_empty_tags_when_saved_readback_has_none(self, scratch_vault: ScratchVault) -> None:
+        _, repo, _ = scratch_vault
+        readback = repo.find_by_location
+
+        class UntaggedReadback:
+            tags = None
+
+            def __init__(self, saved: Zettel) -> None:
+                self.saved = saved
+
+            def __getattr__(self, name: str) -> Any:
+                return getattr(self.saved, name)
+
+        def without_tags(location: str) -> UntaggedReadback:
+            return UntaggedReadback(readback(location))
+
+        with patch.object(repo, "find_by_location", side_effect=without_tags):
+            result = create_command(scratch_vault, CreateNoteParams(zettel_type="note", title="Test")).execute()
+
+        assert result.success is True
+        saved = readback(result.metadata["path"])
+        assert result.metadata["tags"] == []
+        assert result.metadata["id"] == str(saved.id)
+        assert result.metadata["title"] == saved.title
+        assert result.metadata["type"] == saved.get_data().metadata["type"]
+        json.dumps(result.metadata)
+
     def test_hook_failure_reports_saved_path_and_retains_source(self, scratch_vault: ScratchVault) -> None:
         notes, _, _ = scratch_vault
         source = notes.parent / "inbox" / "Retained.md"
@@ -744,11 +764,11 @@ class TestCommandCreateNote:
     @pytest.mark.parametrize(
         "body,expected",
         [
-            ("", "Template default"),
-            (" \t\r\n\r\n", "Template default"),
-            ("Body alpha", "Template default\n\nBody alpha"),
-            ("Body beta", "Template default\n\nBody beta"),
-            ("\r\n \t\r\n  Body\r\n  indented\r\n\r\n", "Template default\n\n  Body\n  indented"),
+            ("", "Template default  "),
+            (" \t\r\n\r\n", "Template default  "),
+            ("Body alpha", "Template default  \n\nBody alpha  "),
+            ("Body beta", "Template default  \n\nBody beta  "),
+            ("\r\n \t\r\n  Body\r\n  indented\r\n\r\n", "Template default  \n\n  Body  \n  indented  "),
         ],
     )
     def test_explicit_body_appends_to_template_and_blank_body_preserves_content(
@@ -760,8 +780,11 @@ class TestCommandCreateNote:
         ).execute()
 
         assert result.success is True
-        saved = scratch_vault[1].find_by_location(result.metadata["path"])
-        assert saved.get_data().sections == [("# Test", expected), ("# Details", "Keep this section")]
+        assert (
+            Path(result.metadata["path"])
+            .read_text()
+            .endswith(f"\n# Test\n\n{expected}\n\n# Details\n\nKeep this section  \n\n---")
+        )
 
     def test_trash_symlink_outside_vault_is_reported_after_save(
         self, scratch_vault: ScratchVault, tmp_path: Path
