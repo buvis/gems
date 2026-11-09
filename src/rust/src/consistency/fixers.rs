@@ -22,23 +22,6 @@ pub fn remove_duplicate_tags(data: &mut ZettelData) {
     }
 }
 
-/// Sort tags alphabetically.
-pub fn sort_tags(data: &mut ZettelData) {
-    if let Some(YamlValue::List(tags)) = data.metadata.get_mut("tags") {
-        tags.sort_by(|a, b| {
-            let sa = match a {
-                YamlValue::String(s) => s.as_str(),
-                _ => "",
-            };
-            let sb = match b {
-                YamlValue::String(s) => s.as_str(),
-                _ => "",
-            };
-            sa.cmp(sb)
-        });
-    }
-}
-
 /// Fix title format: trim whitespace and capitalize first letter.
 /// The Python version calls replace_abbreviations(level=0) with empty list,
 /// which is a no-op, so we skip it.
@@ -183,24 +166,6 @@ mod tests {
         remove_duplicate_tags(&mut data);
         let tags = data.metadata.get("tags").unwrap().as_list().unwrap();
         assert_eq!(tags.len(), 2);
-    }
-
-    #[test]
-    fn test_sort_tags() {
-        let mut data = ZettelData::new();
-        data.metadata.insert(
-            "tags".to_string(),
-            YamlValue::List(vec![
-                YamlValue::String("c".to_string()),
-                YamlValue::String("a".to_string()),
-                YamlValue::String("b".to_string()),
-            ]),
-        );
-        sort_tags(&mut data);
-        let tags = data.metadata.get("tags").unwrap().as_list().unwrap();
-        assert_eq!(tags[0].as_str(), Some("a"));
-        assert_eq!(tags[1].as_str(), Some("b"));
-        assert_eq!(tags[2].as_str(), Some("c"));
     }
 
     #[test]

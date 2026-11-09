@@ -55,6 +55,13 @@ class TestZettelConsistencyService:
         assert zettel_data.metadata["title"] == "Test title"
         assert zettel_data.sections == [("# Test title", "\n\nTest content")]
 
+    def test_consistency_keeps_tags_in_written_order(self, zettel_data: ZettelData) -> None:
+        zettel_data.metadata["tags"] = ["zebra", "alpha", "zebra", "mango"]
+
+        ZettelConsistencyService.ensure_consistency(zettel_data)
+
+        assert zettel_data.metadata["tags"] == ["zebra", "alpha", "mango"]
+
     @pytest.mark.parametrize(
         "metadata",
         [

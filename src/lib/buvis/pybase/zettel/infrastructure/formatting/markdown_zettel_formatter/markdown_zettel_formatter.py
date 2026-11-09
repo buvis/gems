@@ -28,8 +28,8 @@ class MarkdownZettelFormatter(ZettelFormatter):
         "id",
         "title",
         "date",
-        "type",
         "tags",
+        "type",
         "publish",
         "processed",
     )

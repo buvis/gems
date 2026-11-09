@@ -12,7 +12,6 @@ from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_publish impor
 from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_tags import set_default_tags
 from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_title import set_default_title
 from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_type import set_default_type
-from buvis.pybase.zettel.domain.entities.zettel.fixers.sort_tags import sort_tags
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
@@ -29,7 +28,7 @@ class ZettelConsistencyService:
         "processed": set_default_processed,
     }
 
-    _POST_FIXERS = [remove_duplicate_tags, sort_tags, fix_title_format, align_h1_to_title]
+    _POST_FIXERS = [remove_duplicate_tags, fix_title_format, align_h1_to_title]
 
     @staticmethod
     def set_missing_defaults(zettel_data: ZettelData) -> None:
