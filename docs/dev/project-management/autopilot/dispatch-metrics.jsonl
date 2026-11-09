@@ -924,3 +924,15 @@
 {"kind":"handoff","site":"build","edge":"resume","at":1794214507,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1794214568,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1794214619,"phase":"done","prd":"00120-bim-create-vault-links-v1.md"}
+{"id":"2759e323","kind":"bob","task":"review-20261109-00118","queued_at":1794229591,"prompt_bytes":395048}
+{"id":"6b831412","kind":"carl","task":"review-20261109-00118","queued_at":1794229592,"prompt_bytes":6611}
+{"id":"b44b2f7a","kind":"bob","task":"review-20261109-00119","queued_at":1794229594,"prompt_bytes":370417}
+{"id":"ee96ccf0","kind":"carl","task":"review-20261109-00119","queued_at":1794229596,"prompt_bytes":6611}
+{"id":"d868b103","kind":"bob","task":"review-20261109-00120","queued_at":1794229598,"prompt_bytes":365930}
+{"id":"653411a0","kind":"carl","task":"review-20261109-00120","queued_at":1794229600,"prompt_bytes":6611}
+{"id":"2759e323","ended_at":1794229832,"elapsed_s":241,"outcome":"ok","detail":null}
+{"id":"b44b2f7a","ended_at":1794229833,"elapsed_s":239,"outcome":"ok","detail":null}
+{"id":"d868b103","ended_at":1794229834,"elapsed_s":236,"outcome":"ok","detail":null}
+{"id":"ee96ccf0","ended_at":1794229941,"elapsed_s":345,"outcome":"ok","detail":null}
+{"id":"653411a0","ended_at":1794229942,"elapsed_s":342,"outcome":"ok","detail":null}
+{"id":"6b831412","ended_at":1794230169,"elapsed_s":577,"outcome":"ok","detail":null}
