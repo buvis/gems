@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
 from buvis.pybase.adapters import console
@@ -14,6 +14,9 @@ from bim.params.delete_note import DeleteNoteParams
 from bim.params.edit_note import EditNoteParams
 from bim.settings import BimSettings
 from bim.shared.query_paths import resolve_paths
+
+if TYPE_CHECKING:
+    from bim.params.create_note import CreateNoteParams
 
 __all__ = ["register_note_write_commands"]
 
@@ -128,15 +131,6 @@ def create_note(
     link_contacts: bool,
     list_templates: bool,
 ) -> None:
-    scripted = (
-        as_json
-        or dry_run
-        or body_file is not None
-        or source is not None
-        or summary_file is not None
-        or not daily_log
-        or not link_contacts
-    )
     if list_templates:
         if as_json:
             _fail_json(ctx, "--list cannot be combined with --json")
@@ -147,44 +141,77 @@ def create_note(
         return
 
     settings = get_settings(ctx, BimSettings)
-    extra_answers: dict[str, str] = {}
-    for a in answer:
-        if "=" in a:
-            k, v = a.split("=", 1)
-            extra_answers[k] = v
+    from bim.params.create_note import CreateNoteParams
+
+    extra_answers = dict(a.split("=", 1) for a in answer if "=" in a)
+    params = CreateNoteParams(
+        zettel_type=zettel_type,
+        title=title,
+        tags=tags,
+        extra_answers=extra_answers,
+        source=Path(source).expanduser() if source is not None else None,
+        dry_run=dry_run,
+        daily_log=daily_log,
+        link_contacts=link_contacts,
+    )
+    _dispatch_create(settings, ctx, params, body_file, summary_file, as_json=as_json)
+
+
+def _dispatch_create(
+    settings: BimSettings,
+    ctx: click.Context,
+    params: CreateNoteParams,
+    body_file: str | None,
+    summary_file: str | None,
+    *,
+    as_json: bool,
+) -> None:
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
     path_projects = Path(settings.path_projects).expanduser()
     path_daily = Path(settings.path_daily).expanduser()
     path_articles = Path(settings.path_articles).expanduser()
-    if scripted or (zettel_type and title):
+    if any(
+        (
+            as_json,
+            params.dry_run,
+            body_file is not None,
+            params.source is not None,
+            summary_file is not None,
+            not params.daily_log,
+            not params.link_contacts,
+            params.zettel_type and params.title,
+        )
+    ):
         _create_note_scripted(
             ctx,
             path_zettelkasten,
             path_projects=path_projects,
             path_daily=path_daily,
             path_articles=path_articles,
-            zettel_type=zettel_type,
-            title=title,
-            tags=tags,
-            extra_answers=extra_answers,
+            params=params,
             body_file=body_file,
-            source=source,
             summary_file=summary_file,
-            dry_run=dry_run,
             as_json=as_json,
-            daily_log=daily_log,
-            link_contacts=link_contacts,
         )
         return
+    _create_note_interactive(path_zettelkasten, path_projects, path_daily, path_articles, params)
 
+
+def _create_note_interactive(
+    path_zettelkasten: Path,
+    path_projects: Path,
+    path_daily: Path,
+    path_articles: Path,
+    params: CreateNoteParams,
+) -> None:
     from bim.tui.create_note import CreateNoteApp
 
     app = CreateNoteApp(
         path_zettelkasten=path_zettelkasten,
-        preselected_type=zettel_type,
-        preselected_title=title,
-        preselected_tags=tags,
-        extra_answers=extra_answers,
+        preselected_type=params.zettel_type,
+        preselected_title=params.title,
+        preselected_tags=params.tags,
+        extra_answers=params.extra_answers,
         path_projects=path_projects,
         path_daily=path_daily,
         path_articles=path_articles,
@@ -206,52 +233,28 @@ def _create_note_scripted(
     path_projects: Path,
     path_daily: Path,
     path_articles: Path,
-    zettel_type: str | None,
-    title: str | None,
-    tags: str | None,
-    extra_answers: dict[str, str],
+    params: CreateNoteParams,
     body_file: str | None,
-    source: str | None,
     summary_file: str | None,
-    dry_run: bool,
     as_json: bool,
-    daily_log: bool,
-    link_contacts: bool,
 ) -> None:
     from bim.commands.create_note.create_note import CommandCreateNote
     from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
-    from bim.params.create_note import CreateNoteParams
 
     def fail(message: str) -> None:
         if as_json:
             _fail_json(ctx, message)
         console.panic(message)
 
-    if body_file is not None and source is not None:
+    if body_file is not None and params.source is not None:
         fail("--body-file and --source are mutually exclusive")
         return
-    if summary_file is not None and zettel_type != "article":
+    if summary_file is not None and params.zettel_type != "article":
         fail("--summary-file is only for the article template")
         return
     try:
-        body = None
-        if body_file == "-":
-            body = sys.stdin.read()
-        elif body_file is not None:
-            body = Path(body_file).expanduser().read_text(encoding="utf-8")
-        summary = Path(summary_file).expanduser().read_text(encoding="utf-8") if summary_file is not None else None
-        params = CreateNoteParams(
-            zettel_type=zettel_type,
-            title=title,
-            tags=tags,
-            extra_answers=extra_answers,
-            body=body,
-            source=Path(source).expanduser() if source is not None else None,
-            dry_run=dry_run,
-            daily_log=daily_log,
-            link_contacts=link_contacts,
-            summary=summary,
-        )
+        params.body = _read_create_input(body_file, stdin=True)
+        params.summary = _read_create_input(summary_file)
         cmd = CommandCreateNote(
             params=params,
             path_zettelkasten=path_zettelkasten,
@@ -265,10 +268,19 @@ def _create_note_scripted(
     except (OSError, UnicodeError) as exc:
         fail(str(exc))
         return
-    result = cmd.execute()
+    _render_create_result(ctx, cmd.execute(), as_json=as_json)
+
+
+def _read_create_input(path: str | None, *, stdin: bool = False) -> str | None:
+    if stdin and path == "-":
+        return sys.stdin.read()
+    return Path(path).expanduser().read_text(encoding="utf-8") if path is not None else None
+
+
+def _render_create_result(ctx: click.Context, result: Any, *, as_json: bool) -> None:
     if as_json:
         if not result.success:
-            fail(result.error or "Create failed")
+            _fail_json(ctx, result.error or "Create failed")
             return
         payload = {**result.metadata, "warnings": result.warnings} if result.warnings else result.metadata
         click.echo(json.dumps(payload, ensure_ascii=False))
