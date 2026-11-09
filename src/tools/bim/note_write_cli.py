@@ -106,34 +106,7 @@ def create_note(
             extra_answers[k] = v
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
     if zettel_type and title:
-        from bim.commands.create_note.create_note import CommandCreateNote
-        from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
-        from bim.params.create_note import CreateNoteParams
-
-        try:
-            params = CreateNoteParams(
-                zettel_type=zettel_type,
-                title=title,
-                tags=tags,
-                extra_answers=extra_answers,
-            )
-            cmd = CommandCreateNote(
-                params=params,
-                path_zettelkasten=path_zettelkasten,
-                repo=get_repo(),
-                templates=get_templates(),
-                hook_runner=get_hook_runner(),
-                formatter=get_formatter(),
-            )
-        except FileNotFoundError as exc:
-            console.panic(str(exc))
-            return
-        result = cmd.execute()
-        console.report_result(
-            result,
-            on_success=lambda r: console.success(r.output or "Created"),
-            failure_msg="Create failed",
-        )
+        _create_note_scripted(path_zettelkasten, zettel_type, title, tags, extra_answers)
         return
 
     from bim.tui.create_note import CreateNoteApp
@@ -146,6 +119,43 @@ def create_note(
         extra_answers=extra_answers,
     )
     app.run()
+
+
+def _create_note_scripted(
+    path_zettelkasten: Path,
+    zettel_type: str,
+    title: str,
+    tags: str | None,
+    extra_answers: dict[str, str],
+) -> None:
+    from bim.commands.create_note.create_note import CommandCreateNote
+    from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
+    from bim.params.create_note import CreateNoteParams
+
+    try:
+        params = CreateNoteParams(
+            zettel_type=zettel_type,
+            title=title,
+            tags=tags,
+            extra_answers=extra_answers,
+        )
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=path_zettelkasten,
+            repo=get_repo(),
+            templates=get_templates(),
+            hook_runner=get_hook_runner(),
+            formatter=get_formatter(),
+        )
+    except FileNotFoundError as exc:
+        console.panic(str(exc))
+        return
+    result = cmd.execute()
+    console.report_result(
+        result,
+        on_success=lambda r: console.success(r.output or "Created"),
+        failure_msg="Create failed",
+    )
 
 
 @click.command("edit", help="Edit zettel metadata")
