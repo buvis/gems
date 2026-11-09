@@ -168,7 +168,7 @@ class TestFormatHandlerOutputBranches:
         with patch("bim.shared.query_paths.console") as mock_console:
             result = runner.invoke(cli, ["format"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_console.failure.assert_called_once_with("Provide paths or -Q/-q")
 
 
@@ -580,5 +580,25 @@ class TestResolvePathsBranches:
         with patch("bim.shared.query_paths.console") as mock_console:
             result = runner.invoke(cli, ["format", str(note), "-q", "sort: title"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_console.failure.assert_called_once_with("Provide paths or -Q/-q, not both")
+
+
+class TestEditFailureExit:
+    def test_failed_result_exits_one(self, runner: CliRunner, tmp_path: Path) -> None:
+        with (
+            patch("bim.commands.edit_note.edit_note.CommandEditNote") as command,
+            patch("bim.dependencies.get_repo"),
+        ):
+            command.return_value.execute.return_value = CommandResult(success=False, error="Cannot edit")
+            result = runner.invoke(cli, ["edit", str(tmp_path / "note.md"), "--title", "Changed"])
+        assert result.exit_code == 1
+        assert "Cannot edit" in result.output
+
+    def test_tui_missing_path_exits_one(self, runner: CliRunner, tmp_path: Path) -> None:
+        result = runner.invoke(cli, ["edit", str(tmp_path / "missing.md")])
+        assert result.exit_code == 1
+
+    def test_tui_multiple_paths_exits_one(self, runner: CliRunner, tmp_path: Path) -> None:
+        result = runner.invoke(cli, ["edit", str(tmp_path / "one.md"), str(tmp_path / "two.md")])
+        assert result.exit_code == 1

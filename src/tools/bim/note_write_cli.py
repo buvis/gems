@@ -46,6 +46,7 @@ def import_note(
 
     if not scripted and len(paths) > 1:
         console.failure("interactive import requires a single path")
+        ctx.exit(1)
         return
 
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
@@ -311,10 +312,12 @@ def edit_note(
     if not changes:
         if len(resolved) > 1:
             console.failure("TUI edit requires a single path")
+            ctx.exit(1)
             return
         path = resolved[0]
         if not path.is_file():
             console.failure(f"{path} doesn't exist")
+            ctx.exit(1)
             return
         from bim.tui.edit_note import EditNoteApp
 

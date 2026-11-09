@@ -196,7 +196,7 @@ class TestImportCommand:
                 catch_exceptions=False,
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             assert "interactive import requires a single path" in result.output
 
 

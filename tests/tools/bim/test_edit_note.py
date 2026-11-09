@@ -195,7 +195,7 @@ class TestEditCliCommand:
 
     def test_edit_missing_file(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["edit", "/nonexistent.md"], catch_exceptions=False)
-        assert result.exit_code == 0
+        assert result.exit_code == 1
         assert "doesn't exist" in result.output
 
     def test_edit_multiple_no_changes_errors(self, runner: CliRunner, tmp_path: Path, minimal_zettel: str) -> None:
@@ -210,5 +210,5 @@ class TestEditCliCommand:
             catch_exceptions=False,
         )
 
-        assert result.exit_code == 0
+        assert result.exit_code == 1
         assert "TUI edit requires a single path" in result.output
