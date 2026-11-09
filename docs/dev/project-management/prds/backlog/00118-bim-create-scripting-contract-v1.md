@@ -7,6 +7,10 @@ model_tier_rationale: id allocation under concurrency and a JSON contract anothe
 
 Source: conversation assessment of 2026-11-08 comparing `bim create` (buvis-gems 0.18.1) with the `create-note` skill's `create_note.py` in buvis/agent-skills; the user skipped a discovery doc. First of three PRDs (00118 contract, 00119 vault templates, 00120 vault links) that let `bim create` replace that script, so the skill can shrink to `bim --skill` plus a thin wrapper.
 
+## Execution prerequisite
+
+Run first. The 2026-11-09 scope reconciliation is recorded in `../../autopilot/reports/00118-00120-unblock-20261109.md`.
+
 ## Overview
 
 ### Problem Statement
@@ -107,6 +111,8 @@ src/tools/bim/tui/create_note.py                                                
 src/tools/bim/SKILL.md                                                          # Maps to: documentation
 docs/source/tools/bim.rst                                                       # Maps to: documentation
 CHANGELOG.md                                                                    # Maps to: documentation
+README.md                                                                       # Maps to: scripting example
+tests/lib/zettel/entities/zettel/test_zettel_consistency_service.py               # Maps to: preserve existing ids
 tests/lib/zettel/entities/zettel/fixers/test_set_default_date.py
 tests/lib/zettel/entities/zettel/fixers/test_set_default_id.py
 tests/lib/zettel/application/test_create_zettel_use_case.py
@@ -165,7 +171,7 @@ No dependencies - built first.
 **Goal**: New notes get local-time ids and two creates never share a file.
 
 **Tasks**:
-- [ ] Change `set_default_date` to `datetime.now().astimezone().replace(microsecond=0)` and `set_default_id` to `int(date.strftime("%Y%m%d%H%M%S"))`; add tests `id_keeps_the_dates_own_offset` (`+02:00` noon gives `20240913120000`) and `date_defaults_to_local_offset` (`utcoffset()` equals `datetime.now().astimezone().utcoffset()`) (no deps) - Acceptance: `uv run pytest tests/lib/zettel/entities/zettel/fixers -q` passes.
+- [ ] Change `set_default_date` to `datetime.now().astimezone().replace(microsecond=0)` and `set_default_id` to `int(date.strftime("%Y%m%d%H%M%S"))`; add tests `id_keeps_the_dates_own_offset` (`+02:00` noon gives `20240913120000`) and `date_defaults_to_local_offset` (`utcoffset()` equals `datetime.now().astimezone().utcoffset()`); verify in `test_zettel_consistency_service.py` that consistency preserves an existing UTC-derived id with a non-UTC date (no deps) - Acceptance: `uv run pytest tests/lib/zettel/entities/zettel/fixers tests/lib/zettel/entities/zettel/test_zettel_consistency_service.py -q` passes.
 - [ ] Add `prepare` and the collision wait to `CreateZettelUseCase`, and the `O_EXCL` reservation to `execute`; tests `waits_for_next_second_on_collision` (patch `time.sleep`, pre-create the first path, assert the second id and one sleep), `gives_up_after_five_attempts`, `second_writer_loses_reservation_and_retries` (no deps) - Acceptance: `uv run pytest tests/lib/zettel/application/test_create_zettel_use_case.py -q` passes.
 
 **Exit Criteria**: `uv run pytest tests/lib/zettel -q` passes.
@@ -183,7 +189,7 @@ No dependencies - built first.
 **Goal**: Documented for humans and agents.
 
 **Tasks**:
-- [ ] Document the four new flags and the exit code in the "bim create" section of `docs/source/tools/bim.rst`; rewrite the Create section of `src/tools/bim/SKILL.md` to recommend `--json` and `--dry-run`, drop the sentence about exit 0 and add the tag rules; add `Added` and `Changed` (`bim` exits 1 on failure; ids follow local time) lines under `[Unreleased]` in `CHANGELOG.md` prefixed `**bim**:` (depends on: Phase 1) - Acceptance: `rg -c "\-\-json" docs/source/tools/bim.rst src/tools/bim/SKILL.md` prints at least 1 for each file and `rg -c "still exits 0" src/tools/bim/SKILL.md` prints 0.
+- [ ] Document the four new flags and the exit code in the "bim create" section of `docs/source/tools/bim.rst`; rewrite the Create section of `src/tools/bim/SKILL.md` to recommend `--json` and `--dry-run`, drop the sentence about exit 0 and add the tag rules; add `Added` and `Changed` (`bim` exits 1 on failure; ids follow local time) lines under `[Unreleased]` in `CHANGELOG.md` prefixed `**bim**:`; add a scripting example to `README.md` (depends on: Phase 1) - Acceptance: `rg -c "\-\-json" docs/source/tools/bim.rst src/tools/bim/SKILL.md` prints at least 1 for each file and `rg -c "still exits 0" src/tools/bim/SKILL.md` prints 0.
 
 **Exit Criteria**: `uv run pytest -q` passes; `uv run ruff check src tests` and `uv run mypy src/lib/ src/tools/` are clean.
 
