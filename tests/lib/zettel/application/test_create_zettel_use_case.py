@@ -162,6 +162,7 @@ class TestPrepareBody:
         [
             ("\r\n \t\r\n    indented\r\n\tinside  \r\n\r\n", "    indented\n\tinside"),
             ("\n\n  second  \n\nnext  \t", "  second  \n\nnext"),
+            ("The train arrived before dawn.", "The train arrived before dawn."),
         ],
     )
     def test_normalizes_body_preserving_content_indentation(
@@ -192,26 +193,27 @@ class TestPrepareBody:
         assert data.sections == sections
 
     @pytest.mark.parametrize("method", ["prepare", "execute"])
+    @pytest.mark.parametrize("heading", ["## Body", "## Commentary"])
     def test_matches_exact_first_heading_and_preserves_other_sections(
-        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, method: str
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, method: str, heading: str
     ) -> None:
         sections = [
             ("# Example Title", "intro"),
-            ("## Body Extra", "prefix"),
-            ("### Body", "level"),
-            ("## Body", "target"),
-            ("## Body", "duplicate"),
+            (f"{heading} Extra", "prefix"),
+            (f"#{heading}", "level"),
+            (heading, "target"),
+            (heading, "duplicate"),
         ]
 
         _, data = _run_with_body(
             create_zettel_use_case,
             mock_zettel_writer,
-            FreshTemplate(sections=sections, body_section="## Body"),
+            FreshTemplate(sections=sections, body_section=heading),
             method,
             "supplied",
         )
 
-        assert data.sections == [*sections[:3], ("## Body", "target\n\nsupplied"), sections[4]]
+        assert data.sections == [*sections[:3], (heading, "target\n\nsupplied"), sections[4]]
 
     @pytest.mark.parametrize("heading", [None, "## Missing", "## Body Extra"])
     def test_missing_exact_heading_falls_back_to_first_section(
@@ -245,7 +247,7 @@ class TestPrepareBody:
 
         assert data.sections == [sections[0], ("## Notes", "  supplied")]
 
-    @pytest.mark.parametrize("title", ["Example Title", "Another Title"])
+    @pytest.mark.parametrize("title", ["Example Title", "Another Title", "Field Journal"])
     @pytest.mark.parametrize("method", ["prepare", "execute"])
     def test_initializes_missing_sections_with_answer_title(
         self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, title: str, method: str
