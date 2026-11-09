@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: preserve body/source conflict validation before expanding scripted source paths.
+
 - **bim**: exit 1 for missing or conflicting note paths, interactive multi-file import, and invalid TUI edit requests.
 
 - **bim**: create notes with normal umask permissions, confine template destinations, and validate question answers and tags. Keep saved notes successful when daily-log decoding fails, clean up failed or interrupted article archives, preserve original whitespace after stripping frontmatter, and protect contact links and daily-log headings in Markdown.

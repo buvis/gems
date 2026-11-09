@@ -147,3 +147,17 @@ class TestCreateNoteCli:
 
             assert result.exit_code == 0
             mock_console.panic.assert_called_once_with("missing template")
+
+    def test_body_source_conflict_precedes_source_expansion(self, runner: CliRunner, tmp_path: Path) -> None:
+        with patch("bim.note_write_cli.get_settings") as settings:
+            settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path),
+                path_projects=str(tmp_path),
+                path_daily=str(tmp_path),
+                path_articles=str(tmp_path),
+            )
+            result = runner.invoke(
+                create_note, ["--body-file", "missing.md", "--source", "~bim_nonexistent_user/inbox.md", "--json"]
+            )
+        assert result.exit_code == 1
+        assert result.output.strip() == '{"error": "--body-file and --source are mutually exclusive"}'

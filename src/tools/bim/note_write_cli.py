@@ -149,7 +149,7 @@ def create_note(
         title=title,
         tags=tags,
         extra_answers=extra_answers,
-        source=Path(source).expanduser() if source is not None else None,
+        source=Path(source) if source is not None else None,
         dry_run=dry_run,
         daily_log=daily_log,
         link_contacts=link_contacts,
@@ -255,6 +255,8 @@ def _create_note_scripted(
     try:
         params.body = _read_create_input(body_file, stdin=True)
         params.summary = _read_create_input(summary_file)
+        if params.source is not None:
+            params.source = params.source.expanduser()
         cmd = CommandCreateNote(
             params=params,
             path_zettelkasten=path_zettelkasten,
