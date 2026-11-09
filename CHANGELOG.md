@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CI**: run development tooling tests, fail the final gate when path detection fails, handle docs-only changes, and explicitly run the full suite for reusable workflow calls. Tool jobs no longer wait for the library matrix.
 - **bim**: keep create/edit Markdown stable: omit empty backmatter separators, end notes with one newline, and preserve body text without adding hard-break spaces, including inside Excalidraw code fences.
 
 - **bim**: preserve body/source conflict validation before expanding scripted source paths.
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **bim**: new note dates and IDs use local time, matching the vault's Templater notes, in both the Python and the Rust `_core` paths; a 14-digit filename is read back as local time; existing IDs are preserved. ID generation rejects date-only and other non-datetime values.
 - **bim**: `project` asks `deliverable` (`fix`, `enhancement`, `support`) and an optional `ticket` instead of `dev_type`, and writes Description, Log, Plan and Solution sections with `parent`, `ticket`, `us` and `psd` backmatter; `contact` drops the `contact_type` question; `meeting-minutes` is titled `YYYY-MM-DD | <Subject> meeting minutes`, asks `location` as `webex`, `teams`, `phone` or `face to face`, and carries the GTD post-processing block. Template hooks now run before the note is saved, so their metadata lands in the file.
 - **bim**: `create`, `import`, `edit`, `archive`, `delete`, `format`, `sync`, `show` and `query` without a spec exit 1 on failure instead of 0.
+- **CI**: group tool tests into three jobs per OS/Python combination, collect only selected test directories, omit development dependencies from test jobs, and cancel superseded PR runs. Preserve the full platform matrix and per-tool coverage thresholds.
 
 ## [0.19.2] - 2026-11-08
 
