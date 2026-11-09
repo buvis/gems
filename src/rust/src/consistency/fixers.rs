@@ -72,8 +72,8 @@ pub fn fix_lists_bullets(data: &mut ZettelData) {
             let fixed: String = content
                 .lines()
                 .map(|line| {
-                    if line.starts_with("* ") {
-                        format!("- {}", line[2..].trim())
+                    if let Some(item) = line.strip_prefix("* ") {
+                        format!("- {}", item.trim())
                     } else {
                         line.trim().to_string()
                     }
@@ -189,7 +189,8 @@ mod tests {
             "title".to_string(),
             YamlValue::String("My title".to_string()),
         );
-        data.sections.push(("# Old title".to_string(), "body".to_string()));
+        data.sections
+            .push(("# Old title".to_string(), "body".to_string()));
         align_h1_to_title(&mut data);
         assert_eq!(data.sections[0].0, "# My title");
     }
@@ -197,7 +198,8 @@ mod tests {
     #[test]
     fn test_fix_lists_bullets() {
         let mut data = ZettelData::new();
-        data.sections.push(("# T".to_string(), "* item1\n* item2\n- item3".to_string()));
+        data.sections
+            .push(("# T".to_string(), "* item1\n* item2\n- item3".to_string()));
         fix_lists_bullets(&mut data);
         assert!(data.sections[0].1.contains("- item1"));
         assert!(data.sections[0].1.contains("- item2"));

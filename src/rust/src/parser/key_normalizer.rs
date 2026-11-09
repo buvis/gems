@@ -9,8 +9,7 @@ use crate::types::YamlValue;
 // non-alpha->alpha boundaries — same behavior as inflection.underscore()
 static UNDERSCORE_RE1: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"([A-Z]+)([A-Z][a-z])").unwrap());
-static UNDERSCORE_RE2: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([a-z\d])([A-Z])").unwrap());
+static UNDERSCORE_RE2: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([a-z\d])([A-Z])").unwrap());
 
 /// Port of StringCaseTools.as_note_field_name():
 /// underscore(text).replace("_", "-").lower()
@@ -21,7 +20,7 @@ pub fn as_note_field_name(text: &str) -> String {
 
 /// Port of inflection.underscore(): CamelCase -> snake_case
 fn underscore(text: &str) -> String {
-    let s = text.replace('-', "_").replace(' ', "_");
+    let s = text.replace(['-', ' '], "_");
     let s = UNDERSCORE_RE1.replace_all(&s, "${1}_${2}");
     let s = UNDERSCORE_RE2.replace_all(&s, "${1}_${2}");
     s.to_lowercase()

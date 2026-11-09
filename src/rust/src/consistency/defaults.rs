@@ -15,11 +15,7 @@ pub fn set_missing_defaults(data: &mut ZettelData) {
 }
 
 fn is_missing(data: &ZettelData, key: &str) -> bool {
-    match data.metadata.get(key) {
-        None => true,
-        Some(YamlValue::Null) => true,
-        _ => false,
-    }
+    matches!(data.metadata.get(key), None | Some(YamlValue::Null))
 }
 
 /// Local time, like the vault's Templater notes and the Python `set_default_date` fixer.
@@ -50,8 +46,8 @@ fn set_default_title(data: &mut ZettelData) {
     if is_missing(data, "title") {
         // Try extracting from first section heading
         let title = if let Some((heading, _)) = data.sections.first() {
-            if heading.starts_with("# ") {
-                heading[2..].to_string()
+            if let Some(stripped) = heading.strip_prefix("# ") {
+                stripped.to_string()
             } else {
                 "Unknown title".to_string()
             }
@@ -113,8 +109,10 @@ mod tests {
     #[test]
     fn test_does_not_override_existing() {
         let mut data = ZettelData::new();
-        data.metadata
-            .insert("title".to_string(), YamlValue::String("My title".to_string()));
+        data.metadata.insert(
+            "title".to_string(),
+            YamlValue::String("My title".to_string()),
+        );
 
         set_missing_defaults(&mut data);
 

@@ -4,8 +4,7 @@ use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone};
 use regex::Regex;
 use std::sync::LazyLock;
 
-static DATETIME_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(\d{14}|\d{12})").unwrap());
+static DATETIME_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d{14}|\d{12})").unwrap());
 
 /// Extract date from filename stem (YYYYMMDDHHMMSS or YYYYMMDDHHMM).
 ///
@@ -35,9 +34,9 @@ pub fn title_from_filename(stem: &str) -> Option<String> {
         None
     } else {
         let mut chars = title.chars();
-        let capitalized = match chars.next() {
-            Some(c) => c.to_uppercase().to_string() + chars.as_str(),
-            None => return None,
+        let capitalized = {
+            let c = chars.next()?;
+            c.to_uppercase().to_string() + chars.as_str()
         };
         Some(capitalized)
     }
@@ -68,7 +67,10 @@ mod tests {
     #[test]
     fn test_filename_digits_are_local_wall_clock() {
         let dt = date_from_filename("20240115143022").unwrap();
-        assert_eq!(dt.offset(), &Local.offset_from_utc_datetime(&dt.naive_utc()));
+        assert_eq!(
+            dt.offset(),
+            &Local.offset_from_utc_datetime(&dt.naive_utc())
+        );
         assert_eq!(dt.naive_local().format("%H%M%S").to_string(), "143022");
     }
 

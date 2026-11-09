@@ -4,14 +4,14 @@ use std::sync::LazyLock;
 
 use crate::types::{YamlValue, ZettelData};
 
-static LOG_ENTRY_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}) - (.*?)(?:\s*=>\s*(.*))?$").unwrap());
+static LOG_ENTRY_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}) - (.*?)(?:\s*=>\s*(.*))?$").unwrap()
+});
 
 static DATE_PATTERN_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\b(\d{4}-\d{2}-\d{2})\b").unwrap());
 
-static WIKI_LINK_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\[\[(.*?)\]\]").unwrap());
+static WIKI_LINK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[\[(.*?)\]\]").unwrap());
 
 struct NextAction {
     gtd_list: String,
@@ -77,7 +77,8 @@ pub fn migrate_parent_reference(data: &mut ZettelData) {
         format!("[[{}]]", link)
     };
 
-    data.reference.insert("parent".to_string(), YamlValue::String(new_parent));
+    data.reference
+        .insert("parent".to_string(), YamlValue::String(new_parent));
 }
 
 struct LogEntry {
@@ -118,10 +119,10 @@ fn extract_log_entries(content: &str) -> (Vec<LogEntry>, Vec<String>) {
 
 fn get_next_action_properties(data: &mut ZettelData) -> NextAction {
     let priority_map: &[(&str, &str)] = &[
-        ("could", "\u{23EC}"),  // ⏬
-        ("would", "\u{1F53D}"), // 🔽
+        ("could", "\u{23EC}"),   // ⏬
+        ("would", "\u{1F53D}"),  // 🔽
         ("should", "\u{1F53C}"), // 🔼
-        ("must", "\u{23EB}"),   // ⏫
+        ("must", "\u{23EB}"),    // ⏫
     ];
     let before_map: &[(&str, &str)] = &[
         ("start", "start"),
@@ -150,7 +151,7 @@ fn get_next_action_properties(data: &mut ZettelData) -> NextAction {
                 gtd_list: "#gtd/inbox".to_string(),
                 priority: "\u{1F53C}".to_string(), // 🔼
                 dates: String::new(),
-            }
+            };
         }
     };
 
@@ -213,10 +214,9 @@ fn parse_date_string(input: &str) -> DateParseResult {
     let input = input.trim();
     if let Some(caps) = DATE_PATTERN_RE.captures(input) {
         let date_str = caps.get(1).unwrap().as_str();
-        if let Ok(date) = NaiveDateTime::parse_from_str(
-            &format!("{} 00:00:00", date_str),
-            "%Y-%m-%d %H:%M:%S",
-        ) {
+        if let Ok(date) =
+            NaiveDateTime::parse_from_str(&format!("{} 00:00:00", date_str), "%Y-%m-%d %H:%M:%S")
+        {
             let before = input[..caps.get(1).unwrap().start()].trim().to_string();
             return DateParseResult {
                 date: Some(date),
@@ -240,9 +240,9 @@ fn create_dates_section(milestone: &DateParseResult) -> String {
     let formatted = date.format("%Y-%m-%d").to_string();
 
     match milestone.before.as_str() {
-        "" | "before" => format!("\u{1F4C5} {}", formatted),     // 📅
+        "" | "before" => format!("\u{1F4C5} {}", formatted), // 📅
         "start" | "after" => format!("\u{1F6EB} {}", formatted), // 🛫
-        "on" => format!("\u{23F3} {}", formatted),               // ⏳
+        "on" => format!("\u{23F3} {}", formatted),           // ⏳
         _ => String::new(),
     }
 }
@@ -292,9 +292,16 @@ mod tests {
     #[test]
     fn test_parent_link_matching_id_points_at_notes_folder() {
         let mut data = ZettelData::new();
-        data.metadata.insert("id".to_string(), YamlValue::String("123".to_string()));
-        data.metadata.insert("title".to_string(), YamlValue::String("My Note".to_string()));
-        data.reference.insert("parent".to_string(), YamlValue::String("[[123]]".to_string()));
+        data.metadata
+            .insert("id".to_string(), YamlValue::String("123".to_string()));
+        data.metadata.insert(
+            "title".to_string(),
+            YamlValue::String("My Note".to_string()),
+        );
+        data.reference.insert(
+            "parent".to_string(),
+            YamlValue::String("[[123]]".to_string()),
+        );
 
         migrate_parent_reference(&mut data);
 

@@ -32,7 +32,8 @@ mod tests {
     #[test]
     fn test_moves_single_tag() {
         let mut data = ZettelData::new();
-        data.metadata.insert("tag".to_string(), YamlValue::String("foo".to_string()));
+        data.metadata
+            .insert("tag".to_string(), YamlValue::String("foo".to_string()));
 
         migrate(&mut data);
 
@@ -48,7 +49,8 @@ mod tests {
             "tags".to_string(),
             YamlValue::List(vec![YamlValue::String("existing".to_string())]),
         );
-        data.metadata.insert("tag".to_string(), YamlValue::String("new".to_string()));
+        data.metadata
+            .insert("tag".to_string(), YamlValue::String("new".to_string()));
 
         migrate(&mut data);
 
