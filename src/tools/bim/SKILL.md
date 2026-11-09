@@ -52,21 +52,36 @@ lookups: https://github.com/buvis/gems/blob/master/docs/source/bim-query-example
 ## Create
 
 ```bash
-bim create -t note --title "Why caches lie" --tags "cache,debugging"
-bim create -t project --title "Redesign homepage" -a dev_type=feature
-bim create -t contact --title "Ada Lovelace" -a contact_type=friend -a email=ada@example.com
-bim create -t meeting-minutes --title "Weekly sync" -a "location=face to face" -a "organizer=Ada Lovelace"
+bim create -t note --title "Why caches lie" --tags "cache,debugging" --json
+bim create -t note --title "Meeting takeaways" --body-file takeaways.md --json
+bim create -t note --source ~/bim/inbox/draft.md --json      # title from the file name; file moves to .trash/
+bim create -t project --title "Redesign homepage" -a dev_type=feature --dry-run --json
+bim create -t contact --title "Ada Lovelace" -a contact_type=friend -a email=ada@example.com --json
+bim create -t meeting-minutes --title "Weekly sync" -a "location=face to face" -a "organizer=Ada Lovelace" --json
 ```
 
-Always pass both `-t` and `--title` when scripting; without them `bim create`
-opens an interactive TUI. `-a key=value` answers a template question, and a
-missing required answer fails with `Missing required answer: <key>`. Success
-prints `Created <path>`. A failed create prints the reason and still exits 0,
-so read the output, not the exit code. Bundled templates: `note`, `project`,
-`contact`, `meeting-minutes`, `article`, `definition`, `how-to`, `list`,
-`procedure`, `quote`, `recipe`, `snippet`, `cheatsheet`, `course`,
-`wiki-article`. A YAML file in `~/.config/buvis/templates/` with the same
-`name` overrides a bundled template.
+Always pass `-t` plus `--title` or `--source`; a bare `bim create` opens an
+interactive TUI. Prefer `--json`: it prints one object with `id`, `type`,
+`title`, `tags`, `path`, `relative_path` and `wikilink` (paste the `wikilink`
+into other notes), and on failure `{"error": "<reason>"}` with exit 1. Run
+with `--dry-run` first to see the rendered note in `content` without writing
+anything. A failed create writes nothing. When the JSON has `errors`, the note
+exists but a follow-up step (moving the source to `.trash/`) failed.
+
+- `--body-file PATH` (`-` for stdin) appends Markdown to the template's body
+  section. `--source PATH` converts a file from `<vault>/inbox/`: its
+  frontmatter is dropped, its name is the default title, and it moves to
+  `.trash/` once the note is written. Never combine the two.
+- `-a key=value` answers a template question; a missing required answer fails
+  with `Missing required answer: <key>`.
+- Tags: comma-separated, `#` optional, lowercased, deduplicated. Use letters,
+  digits, `-`, `_` and `/` for nesting; a tag with spaces or only digits fails.
+- Ids equal the local-time digits of `date`, like the vault's own notes.
+
+Bundled templates: `note`, `project`, `contact`, `meeting-minutes`, `article`,
+`definition`, `how-to`, `list`, `procedure`, `quote`, `recipe`, `snippet`,
+`cheatsheet`, `course`, `wiki-article`. A YAML file in
+`~/.config/buvis/templates/` with the same `name` overrides a bundled template.
 
 ## Edit metadata
 
@@ -107,5 +122,5 @@ pipeline; both have their own `--help`.
   automation: they open a TUI or a prompt and hang.
 - Do not invent ids and do not edit `id` or `date` by hand.
 - Delete only when the user asked for deletion; archive otherwise.
-- Human-facing lines are prefixed with status markers such as `✓` and `✘`.
-  Treat `✘` as failure regardless of the exit code.
+- Every note command exits 1 on failure. Human-facing lines are prefixed with
+  status markers such as `✓` and `✘`; with `--json` read the `error` key.

@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **bim**: validate explicit tags, ingest body or inbox Markdown sources with recoverable trash cleanup, and preview notes with dry-run metadata.
-- **bim**: prepare notes without saving, append supplied body content, and allocate note paths with collision-safe exclusive reservations and safe cleanup on allocation failures.
+- **bim**: `bim create` is scriptable: `--body-file PATH` (or `-` for stdin) appends a body, `--source PATH` converts an inbox file (frontmatter dropped, title from the file name, file moved to `.trash/`), `--dry-run` renders without writing, and `--json` prints one object with `id`, `type`, `title`, `tags`, `path`, `relative_path` and `wikilink` (plus `dry_run`/`content`, `trashed_source`, `errors` when relevant) or `{"error": ...}` on failure.
+- **bim**: `bim create --tags` are normalised (`#` dropped, lowercased, deduplicated) and validated; a tag with spaces or only digits fails before anything is written. Two creates in the same second no longer fail: the second waits for the next free id.
 - **sysup**: update Herdr app mods through hmod (`herdr-mods`, macOS); skipped when Herdr is closed or hmod is not installed
 
 ### Changed
 
-- **bim**: new note dates and IDs use local time; existing IDs are preserved. ID generation rejects date-only and other non-datetime values.
+- **bim**: new note dates and IDs use local time, matching the vault's Templater notes; existing IDs are preserved. ID generation rejects date-only and other non-datetime values.
+- **bim**: `create`, `import`, `edit`, `archive`, `delete`, `format`, `sync`, `show` and `query` without a spec exit 1 on failure instead of 0.
 
 ## [0.19.2] - 2026-11-08
 

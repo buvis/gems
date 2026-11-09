@@ -61,15 +61,68 @@ Create a new zettel from a template.
     bim create -l
 
     # pre-fill template answers
-    bim create -t meeting -a "attendees=Alice,Bob" -a "date=2025-01-15"
+    bim create -t meeting-minutes --title "Weekly sync" -a "location=teams"
+
+    # scripting: body from a file, machine-readable result
+    bim create -t note --title "Why caches lie" --body-file notes.md --json
+
+    # convert an inbox file (title from the file name), preview only
+    bim create -t note --source ~/bim/inbox/draft.md --dry-run
 
 Options:
 
 - ``-t, --type TEXT`` — template type (note, project, etc.)
-- ``--title TEXT`` — zettel title
-- ``--tags TEXT`` — comma-separated tags
+- ``--title TEXT`` — zettel title; with ``--source`` it defaults to the file stem
+- ``--tags TEXT`` — comma-separated tags. Each tag is trimmed, a leading ``#``
+  is dropped and it is lowercased; duplicates are removed. A tag must match
+  ``[\w-]+(/[\w-]+)*`` and must not be purely numeric, otherwise the command
+  fails and nothing is written.
 - ``-a, --answer TEXT`` — template answer as ``key=value`` (repeatable)
+- ``--body-file PATH`` — Markdown appended to the template's body section;
+  ``-`` reads stdin
+- ``--source PATH`` — a Markdown file inside ``<vault>/inbox/`` to convert: a
+  leading frontmatter block is dropped and the file is moved to
+  ``<vault>/.trash/`` after the note is written. Mutually exclusive with
+  ``--body-file``.
+- ``--dry-run`` — render the note without writing anything: no file, no
+  hooks, no move
+- ``--json`` — print one JSON object and nothing else
 - ``-l, --list`` — list available templates
+
+Any scripting flag (``--body-file``, ``--source``, ``--dry-run``, ``--json``)
+runs the command directly, even without ``--title``. A bare ``bim create``
+still opens the TUI.
+
+Scripting contract (v1)
+^^^^^^^^^^^^^^^^^^^^^^^
+
+With ``--json`` a successful create prints one object::
+
+    {"id": "20261108134925", "type": "note", "title": "Why caches lie",
+     "tags": ["cache"], "path": "/Users/me/bim/notes/20261108134925.md",
+     "relative_path": "notes/20261108134925.md",
+     "wikilink": "[[notes/20261108134925|Why caches lie]]"}
+
+``relative_path`` and ``wikilink`` are relative to the vault root, the parent
+of ``path_zettelkasten``. Extra keys appear when relevant: ``dry_run`` and
+``content`` (the rendered note) on a dry run, ``trashed_source`` after an
+inbox file was moved, and ``errors`` (a list) when the note was written but a
+follow-up step such as that move failed. On failure the output is
+``{"error": "<message>"}`` and the exit code is 1. The keys and their types
+are stable: later versions only add keys, so consumers must ignore unknown
+ones.
+
+Ids follow local time: ``id`` equals the digits of the note's ``date`` in the
+machine's timezone, the same as the vault's Templater notes. Two creates in
+the same second do not collide; the second waits for the next free id.
+
+Exit codes
+^^^^^^^^^^
+
+Every note command (``create``, ``import``, ``edit``, ``archive``,
+``delete``, ``format``, ``sync``, ``show``, and ``query`` without a spec)
+exits 1 when it fails. Earlier releases exited 0 and only printed the ``✘``
+line.
 
 bim query
 ~~~~~~~~~

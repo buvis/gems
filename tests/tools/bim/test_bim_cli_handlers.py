@@ -160,7 +160,7 @@ class TestFormatHandlerOutputBranches:
 
             result = runner.invoke(cli, ["format", str(note)], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Parse error")
             mock_warning.assert_called_once_with("warn1")
 
@@ -216,7 +216,7 @@ class TestSyncHandlerBranches:
 
             result = runner.invoke(cli, ["sync", str(note), "-t", "jira"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Sync error")
 
     def test_sync_not_supported(self, runner: CliRunner, tmp_path: Path) -> None:
@@ -310,7 +310,7 @@ class TestImportHandlerBranches:
                 catch_exceptions=False,
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Import failed")
             mock_warning.assert_called_once_with("w1")
 
@@ -359,7 +359,7 @@ class TestArchiveHandlerBranches:
 
             result = runner.invoke(cli, ["archive", str(note)], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Archive error")
 
 
@@ -427,7 +427,7 @@ class TestCreateHandlerBranches:
                 catch_exceptions=False,
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Template error")
             mock_warning.assert_called_once_with("w1")
 
@@ -492,7 +492,7 @@ class TestDeleteHandlerBranches:
 
             result = runner.invoke(cli, ["delete", str(note), "--force"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Delete error")
 
     def test_delete_batch_confirm_denied(self, runner: CliRunner, tmp_path: Path) -> None:
@@ -553,7 +553,7 @@ class TestShowHandlerBranches:
 
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Show error")
 
 

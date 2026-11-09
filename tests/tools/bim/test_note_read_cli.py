@@ -52,7 +52,7 @@ class TestShowCommand:
             )
 
             result = runner.invoke(cli, ["show", "/nonexistent.md"], catch_exceptions=False)
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_cmd.assert_called_once_with(
                 params=ShowNoteParams(paths=[Path("/nonexistent.md")]),
                 repo=ANY,

@@ -175,6 +175,6 @@ class TestQueryCli:
             mock_settings.return_value = MagicMock()
             result = runner.invoke(query, [], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_console.failure.assert_called_once_with("Provide -Q/--query-file or -q/--query")
             mock_cmd.assert_not_called()

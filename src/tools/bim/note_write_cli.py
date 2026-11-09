@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +75,8 @@ def import_note(
     )
     result = cmd.execute()
     console.report_result(result, failure_msg="Import failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("create", help="Create a new zettel from template")
@@ -80,18 +84,31 @@ def import_note(
 @click.option("--title", default=None, help="Zettel title")
 @click.option("--tags", default=None, help="Comma-separated tags")
 @click.option("-a", "--answer", multiple=True, help="Template question answer as key=value")
+@click.option("--body-file", default=None, help="Markdown file with the note body, or - for stdin")
+@click.option(
+    "--source", default=None, help="Inbox Markdown file to convert; moved to .trash/ after the note is written"
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Render the note without writing anything")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Print the result as one JSON object")
 @click.option("-l", "--list", "list_templates", is_flag=True, default=False, help="List available templates")
 @click.pass_context
 def create_note(
     ctx: click.Context,
+    *,
     zettel_type: str | None,
     title: str | None,
     tags: str | None,
     answer: tuple[str, ...],
-    *,
+    body_file: str | None,
+    source: str | None,
+    dry_run: bool,
+    as_json: bool,
     list_templates: bool,
 ) -> None:
+    scripted = as_json or dry_run or body_file is not None or source is not None
     if list_templates:
+        if as_json:
+            _fail_json(ctx, "--list cannot be combined with --json")
         from bim.dependencies import get_templates
 
         for name in sorted(get_templates()):
@@ -105,8 +122,19 @@ def create_note(
             k, v = a.split("=", 1)
             extra_answers[k] = v
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
-    if zettel_type and title:
-        _create_note_scripted(path_zettelkasten, zettel_type, title, tags, extra_answers)
+    if scripted or (zettel_type and title):
+        _create_note_scripted(
+            ctx,
+            path_zettelkasten,
+            zettel_type=zettel_type,
+            title=title,
+            tags=tags,
+            extra_answers=extra_answers,
+            body_file=body_file,
+            source=source,
+            dry_run=dry_run,
+            as_json=as_json,
+        )
         return
 
     from bim.tui.create_note import CreateNoteApp
@@ -121,23 +149,52 @@ def create_note(
     app.run()
 
 
+def _fail_json(ctx: click.Context, message: str) -> None:
+    # Scripting contract v1 (PRD 00118): the JSON payload is the one sanctioned
+    # bypass of the console adapter, because Rich would wrap a long line.
+    click.echo(json.dumps({"error": message}, ensure_ascii=False))
+    ctx.exit(1)
+
+
 def _create_note_scripted(
+    ctx: click.Context,
     path_zettelkasten: Path,
-    zettel_type: str,
-    title: str,
+    *,
+    zettel_type: str | None,
+    title: str | None,
     tags: str | None,
     extra_answers: dict[str, str],
+    body_file: str | None,
+    source: str | None,
+    dry_run: bool,
+    as_json: bool,
 ) -> None:
     from bim.commands.create_note.create_note import CommandCreateNote
     from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
     from bim.params.create_note import CreateNoteParams
 
+    def fail(message: str) -> None:
+        if as_json:
+            _fail_json(ctx, message)
+        console.panic(message)
+
+    if body_file is not None and source is not None:
+        fail("--body-file and --source are mutually exclusive")
+        return
     try:
+        body = None
+        if body_file == "-":
+            body = sys.stdin.read()
+        elif body_file is not None:
+            body = Path(body_file).expanduser().read_text(encoding="utf-8")
         params = CreateNoteParams(
             zettel_type=zettel_type,
             title=title,
             tags=tags,
             extra_answers=extra_answers,
+            body=body,
+            source=Path(source).expanduser() if source is not None else None,
+            dry_run=dry_run,
         )
         cmd = CommandCreateNote(
             params=params,
@@ -147,15 +204,26 @@ def _create_note_scripted(
             hook_runner=get_hook_runner(),
             formatter=get_formatter(),
         )
-    except FileNotFoundError as exc:
-        console.panic(str(exc))
+    except (OSError, UnicodeError) as exc:
+        fail(str(exc))
         return
     result = cmd.execute()
-    console.report_result(
-        result,
-        on_success=lambda r: console.success(r.output or "Created"),
-        failure_msg="Create failed",
-    )
+    if as_json:
+        if not result.success:
+            fail(result.error or "Create failed")
+            return
+        click.echo(json.dumps(result.metadata, ensure_ascii=False))
+        return
+
+    def report_success(r: Any) -> None:
+        if r.metadata.get("dry_run"):
+            console.print(r.metadata["content"], mode="raw")
+        else:
+            console.success(r.output or "Created")
+
+    console.report_result(result, on_success=report_success, failure_msg="Create failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("edit", help="Edit zettel metadata")
@@ -203,6 +271,8 @@ def edit_note(
     cmd = CommandEditNote(params=params, repo=get_repo())
     result = cmd.execute()
     console.report_result(result, failure_msg="Edit failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("archive", help="Archive zettel(s): set processed + move to archive dir")
@@ -236,6 +306,8 @@ def archive_note(
     )
     result = cmd.execute()
     console.report_result(result, failure_msg="Archive failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("delete", help="Permanently delete zettel(s)")
@@ -282,3 +354,5 @@ def delete_note(
         ),
         failure_msg="Delete failed",
     )
+    if not result.success:
+        ctx.exit(1)
