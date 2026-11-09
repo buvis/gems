@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **sysup**: update Herdr app mods through hmod (`herdr-mods`, macOS); skipped when Herdr is closed or hmod is not installed
 
+### Changed
+
+- **bim**: new note dates and IDs use local time; existing IDs are preserved.
+
 ## [0.19.2] - 2026-11-08
 
 ### Fixed
