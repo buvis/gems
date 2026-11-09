@@ -1,0 +1,38 @@
+{
+  "phase": "done",
+  "next_phase": "",
+  "schema_version": 1,
+  "batch": {
+    "id": "202611090739",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "catchup_completed_at": "2026-11-09T06:41:39.759539+00:00",
+    "catchup_head_sha": "d8692476e79aa35cd9aa776b8442343c16c527f0",
+    "parks_consecutive": 0
+  },
+  "prd": "00120-bim-create-vault-links-v1.md",
+  "catchup_mode": "run",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "full",
+  "lane_reason": "design",
+  "lane_effective": "full",
+  "catchup_probe": {
+    "batch_id": "202611090739",
+    "gh": "ok",
+    "engram": "unregistered",
+    "checked_at": "2026-11-09T06:39:59Z"
+  },
+  "tasks_total": 0,
+  "tasks_completed": 0,
+  "replan_count": 0,
+  "phases_completed": [],
+  "cycle": 1,
+  "contract_card": "step: batch drained; no selectable PRD in wip or backlog\ninvariants: preserve held PRDs and all implementation/review evidence; do not claim held work completed\nnext: none; operator resolves held prerequisites before another batch"
+}
