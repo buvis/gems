@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **bim**: keep create/edit Markdown stable: omit empty backmatter separators, end notes with one newline, and preserve body text without adding hard-break spaces, including inside Excalidraw code fences.
 
+- **bim**: write `tags` the way most vault notes do: a one-line flow list (`tags: [a, b]`) before `type`, in the order given. `bim create`, `bim edit` and `bim format` no longer sort tags or turn them into a block list after `type`.
+
 - **bim**: preserve body/source conflict validation before expanding scripted source paths.
 
 - **bim**: exit 1 for missing or conflicting note paths, interactive multi-file import, and invalid TUI edit requests.

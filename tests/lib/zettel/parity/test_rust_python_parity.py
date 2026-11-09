@@ -132,8 +132,8 @@ class TestParseFileParity:
     def test_duplicate_tags(self):
         py_data, rust_data = self._parse_both("duplicate_tags.md")
         _compare_metadata(py_data.metadata, rust_data.metadata)
-        # Tags should be deduplicated and sorted
-        assert rust_data.metadata["tags"] == ["alpha", "beta", "zebra"]
+        # Tags are deduplicated and keep their written order, like the vault's notes
+        assert rust_data.metadata["tags"] == ["zebra", "alpha", "beta"]
 
     def test_multiple_sections(self):
         py_data, rust_data = self._parse_both("multiple_sections.md")

@@ -8,7 +8,7 @@ description: "Use when reading, searching, creating, editing, or archiving notes
 `bim` manages a zettelkasten of Markdown notes with YAML frontmatter. Notes live
 in one directory (default `~/bim/notes/`), archived notes in another (default
 `~/Documents/reference/40-archives/`). A note bim creates carries `id` (14
-digits, `YYYYMMDDHHMMSS`), `title`, `date`, `type`, `tags`, `publish` and
+digits, `YYYYMMDDHHMMSS`), `title`, `date`, `tags`, `type`, `publish` and
 `processed`, then a `# Title` heading and sections. bim assigns `id` and
 `date` itself.
 When the notes live in a BIM vault, read "The BIM vault" at the end before you
@@ -147,9 +147,9 @@ bim edit -q '{filter: {field: type, op: eq, value: note}}' --processed
 ```
 
 Without a change flag `bim edit PATH` opens a TUI. Edit the body with your file
-tools. `bim edit` and `bim format PATH` rewrite the frontmatter in bim's own
-shape (`type` before `tags`, tags as a sorted block list); `bim format PATH -d`
-shows the diff first.
+tools, then run `bim format PATH` to normalise frontmatter and spacing;
+`bim format PATH -d` shows the diff first. Both keep tags in place and in
+order, and list keys after `processed` alphabetically.
 
 ## Import
 
@@ -241,8 +241,8 @@ Body in Markdown.
   them after review.
 - Tags: three to five (more than seven is a smell), kebab-case, nested broad
   to narrow with `/` (`lang/rust`), `tags: []` when there are none. Reuse
-  existing tags. Most notes write them as a flow list before `type`, as above;
-  bim writes a block list after `type`. Both parse the same.
+  existing tags. They are a flow list before `type`, in the order written, as
+  above; some older notes use a block list.
 - Backmatter is everything after the last `---`: Dataview fields written as
   `- key:: value`, where the value is text, a URL, a Markdown link or a
   wikilink. bim omits the rule when the backmatter is empty. Common keys:

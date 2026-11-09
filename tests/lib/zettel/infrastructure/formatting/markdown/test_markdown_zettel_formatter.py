@@ -148,6 +148,58 @@ class TestFormat:
         assert parsed.reference["related"] == "[[200]]"
 
 
+VAULT_STYLE_NOTE = """---
+id: 20260105093012
+title: Sourdough starter care
+date: 2026-01-05T09:30:12+01:00
+tags: [cooking, bread, lang/rust]
+type: note
+publish: false
+processed: false
+summary: Feed it daily
+---
+
+# Sourdough starter care
+
+Body in Markdown.
+
+---
+
+- web:: [Starter basics](https://example.com/starter)
+"""
+
+
+class TestVaultTagShape:
+    def test_writes_tags_as_flow_list_before_type(self) -> None:
+        data = ZettelData(
+            metadata={
+                "id": 1,
+                "title": "Probe",
+                "date": datetime(2024, 6, 15, 10, 0, 0, tzinfo=timezone.utc),
+                "type": "note",
+                "tags": ["zebra", "alpha"],
+                "publish": False,
+                "processed": False,
+            },
+            sections=[("# Probe", "")],
+        )
+        lines = MarkdownZettelFormatter.format(data).splitlines()
+        assert "tags: [zebra, alpha]" in lines
+        assert lines.index("tags: [zebra, alpha]") < lines.index("type: note")
+
+    def test_writes_no_tags_as_empty_flow_list(self) -> None:
+        data = ZettelData(metadata={"title": "Probe", "tags": []}, sections=[("# Probe", "")])
+        assert "tags: []" in MarkdownZettelFormatter.format(data).splitlines()
+
+    def test_keeps_a_long_tag_list_on_one_line(self) -> None:
+        tags = [f"area/long-tag-name-{n}" for n in range(12)]
+        data = ZettelData(metadata={"title": "Probe", "tags": tags}, sections=[("# Probe", "")])
+        assert f"tags: [{', '.join(tags)}]" in MarkdownZettelFormatter.format(data).splitlines()
+
+    def test_vault_style_note_round_trips_unchanged(self) -> None:
+        assert MarkdownZettelFormatter.format(MarkdownZettelFileParser.parse(VAULT_STYLE_NOTE)) == VAULT_STYLE_NOTE
+
+
 class TestStableBodyFormatting:
     def test_empty_backmatter_round_trip_is_stable(self) -> None:
         data = ZettelData(metadata={"title": "Probe"}, sections=[("# Probe", "Text")])

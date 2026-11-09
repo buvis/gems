@@ -72,13 +72,13 @@ class TestCommandCreateNote:
             "id": str(saved.id),
             "type": "note",
             "title": title,
-            "tags": sorted(tags.split(",")),
+            "tags": tags.split(","),
             "path": str(path.resolve()),
             "relative_path": relative_path,
             "wikilink": f"[[{relative_path[:-3]}|{title}]]",
         }
         assert saved.title == title
-        assert saved.tags == sorted(tags.split(","))
+        assert saved.tags == tags.split(",")
         assert saved.id is not None
         assert str(saved.id) == path.stem
         assert path.read_text().endswith(
@@ -130,7 +130,7 @@ class TestCommandCreateNote:
 
         assert result.success is True
         assert template.answers["tags"] == expected
-        assert result.metadata["tags"] == (sorted(expected.split(",")) if expected else [])
+        assert result.metadata["tags"] == (expected.split(",") if expected else [])
 
     def test_tag_question_does_not_override_validated_tags(self, scratch_vault: ScratchVault) -> None:
         template = NoteTemplate([Question("tags", "Tags", default="bad tag", required=True)])
@@ -145,7 +145,7 @@ class TestCommandCreateNote:
 
         assert result.success is True
         assert template.answers["tags"] == "work,home"
-        assert result.metadata["tags"] == ["home", "work"]
+        assert result.metadata["tags"] == ["work", "home"]
 
     @pytest.mark.parametrize("extra_answers", [None, {}])
     def test_omitted_tags_and_optional_answers_stay_omitted(
@@ -373,7 +373,7 @@ class TestCommandCreateNote:
         metadata = result.metadata
         assert metadata["dry_run"] is True
         assert metadata["title"] == params.title
-        assert metadata["tags"] == ["other", "preview"]
+        assert metadata["tags"] == ["preview", "other"]
         assert metadata["type"] == "note"
         assert metadata["id"] == Path(metadata["path"]).stem
         assert Path(metadata["path"]).parent == notes

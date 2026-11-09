@@ -8,7 +8,6 @@ use crate::types::ZettelData;
 pub fn ensure_consistency(data: &mut ZettelData) {
     defaults::set_missing_defaults(data);
     fixers::remove_duplicate_tags(data);
-    fixers::sort_tags(data);
     fixers::fix_title_format(data);
     fixers::align_h1_to_title(data);
 }
