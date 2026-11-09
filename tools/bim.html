@@ -146,9 +146,22 @@ Jira sync, and a web dashboard.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">~/Documents/reference/40-archives/</span></code></p></td>
 <td><p>Archive directory</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_projects</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/Documents/reference/10-projects/</span></code></p></td>
+<td><p>Root for project resources folders (<code class="docutils literal notranslate"><span class="pre">&lt;id&gt;-&lt;slug&gt;</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path_daily</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/bim/notes/calendar/daily/</span></code></p></td>
+<td><p>Daily notes; a new note is logged under today’s <code class="docutils literal notranslate"><span class="pre">##</span> <span class="pre">Log</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_articles</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">~/Documents/reference/40-archives/articles/</span></code></p></td>
+<td><p>Archive of article originals (<code class="docutils literal notranslate"><span class="pre">&lt;YYYY&gt;/&lt;YYYYMM&gt;00/&lt;title&gt;.md</span></code>)</p></td>
+</tr>
 </tbody>
 </table>
-<p>Env vars: <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ZETTELKASTEN</span></code>, <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ARCHIVE</span></code>.</p>
+<p>Env vars: <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ZETTELKASTEN</span></code>, <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ARCHIVE</span></code>,
+<code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_PROJECTS</span></code>, <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_DAILY</span></code>, <code class="docutils literal notranslate"><span class="pre">BUVIS_BIM_PATH_ARTICLES</span></code>.</p>
 </section>
 <section id="agent-skill">
 <h2>Agent skill<a class="headerlink" href="#agent-skill" title="Link to this heading"></a></h2>
@@ -176,17 +189,198 @@ bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </sp
 bim<span class="w"> </span>create<span class="w"> </span>-l
 
 <span class="c1"># pre-fill template answers</span>
-bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>meeting<span class="w"> </span>-a<span class="w"> </span><span class="s2">"attendees=Alice,Bob"</span><span class="w"> </span>-a<span class="w"> </span><span class="s2">"date=2025-01-15"</span>
+bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>meeting-minutes<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Weekly sync"</span><span class="w"> </span>-a<span class="w"> </span><span class="s2">"location=teams"</span>
+
+<span class="c1"># scripting: body from a file, machine-readable result</span>
+bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>note<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Why caches lie"</span><span class="w"> </span>--body-file<span class="w"> </span>notes.md<span class="w"> </span>--json
+
+<span class="c1"># convert an inbox file (title from the file name), preview only</span>
+bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>note<span class="w"> </span>--source<span class="w"> </span>~/bim/inbox/draft.md<span class="w"> </span>--dry-run
 </pre></div>
 </div>
 <p>Options:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">-t,</span> <span class="pre">--type</span> <span class="pre">TEXT</span></code> — template type (note, project, etc.)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--title</span> <span class="pre">TEXT</span></code> — zettel title</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--tags</span> <span class="pre">TEXT</span></code> — comma-separated tags</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--title</span> <span class="pre">TEXT</span></code> — zettel title; with <code class="docutils literal notranslate"><span class="pre">--source</span></code> it defaults to the file stem</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tags</span> <span class="pre">TEXT</span></code> — comma-separated tags. Each tag is trimmed, a leading <code class="docutils literal notranslate"><span class="pre">#</span></code>
+is dropped and it is lowercased; duplicates are removed. A tag must match
+<code class="docutils literal notranslate"><span class="pre">[\w-]+(/[\w-]+)*</span></code> and must not be purely numeric, otherwise the command
+fails and nothing is written.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-a,</span> <span class="pre">--answer</span> <span class="pre">TEXT</span></code> — template answer as <code class="docutils literal notranslate"><span class="pre">key=value</span></code> (repeatable)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--body-file</span> <span class="pre">PATH</span></code> — Markdown appended to the template’s body section;
+<code class="docutils literal notranslate"><span class="pre">-</span></code> reads stdin</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--source</span> <span class="pre">PATH</span></code> — a Markdown file inside <code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/inbox/</span></code> to convert: a
+leading frontmatter block is dropped and the file is moved to
+<code class="docutils literal notranslate"><span class="pre">&lt;vault&gt;/.trash/</span></code> after the note is written. Mutually exclusive with
+<code class="docutils literal notranslate"><span class="pre">--body-file</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--summary-file</span> <span class="pre">PATH</span></code> — <code class="docutils literal notranslate"><span class="pre">article</span></code> only: Markdown with the core facts for
+the note; the body (<code class="docutils literal notranslate"><span class="pre">--body-file</span></code> or <code class="docutils literal notranslate"><span class="pre">--source</span></code>) is archived as the
+original</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> — render the note without writing anything: no file, no
+hooks, no move</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--json</span></code> — print one JSON object and nothing else</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-daily-log</span></code> — do not add the note to today’s daily note</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-link-contacts</span></code> — keep the body verbatim; do not wikilink known
+contacts</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-l,</span> <span class="pre">--list</span></code> — list available templates</p></li>
 </ul>
+<p>Any scripting flag (<code class="docutils literal notranslate"><span class="pre">--body-file</span></code>, <code class="docutils literal notranslate"><span class="pre">--source</span></code>, <code class="docutils literal notranslate"><span class="pre">--summary-file</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>, <code class="docutils literal notranslate"><span class="pre">--json</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-daily-log</span></code>, <code class="docutils literal notranslate"><span class="pre">--no-link-contacts</span></code>) runs
+the command directly, even without <code class="docutils literal notranslate"><span class="pre">--title</span></code>. A bare <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">create</span></code> still
+opens the TUI.</p>
+<section id="templates">
+<h4>Templates<a class="headerlink" href="#templates" title="Link to this heading"></a></h4>
+<p>The bundled templates reproduce the vault’s Templater notes. <code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">key=value</span></code>
+answers a template question; a missing required answer fails with
+<code class="docutils literal notranslate"><span class="pre">Missing</span> <span class="pre">required</span> <span class="pre">answer:</span> <span class="pre">&lt;key&gt;</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 30.0%" />
+<col style="width: 48.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Template</p></th>
+<th class="head"><p>Answers</p></th>
+<th class="head"><p>Placement and shape</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">note</span></code></p></td>
+<td><p>none</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;id&gt;.md</span></code>, <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">note</span></code>. The plain kinds <code class="docutils literal notranslate"><span class="pre">definition</span></code>, <code class="docutils literal notranslate"><span class="pre">how-to</span></code>,
+<code class="docutils literal notranslate"><span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">procedure</span></code>, <code class="docutils literal notranslate"><span class="pre">quote</span></code>, <code class="docutils literal notranslate"><span class="pre">recipe</span></code>, <code class="docutils literal notranslate"><span class="pre">snippet</span></code>,
+<code class="docutils literal notranslate"><span class="pre">cheatsheet</span></code>, <code class="docutils literal notranslate"><span class="pre">course</span></code> and <code class="docutils literal notranslate"><span class="pre">wiki-article</span></code> share this shape with
+their own <code class="docutils literal notranslate"><span class="pre">type</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">project</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">deliverable</span></code> (<code class="docutils literal notranslate"><span class="pre">fix</span></code>, <code class="docutils literal notranslate"><span class="pre">enhancement</span></code>, <code class="docutils literal notranslate"><span class="pre">support</span></code>; required),
+<code class="docutils literal notranslate"><span class="pre">ticket</span></code> (optional)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;id&gt;.md</span></code>; sections Description, Log (with a first GTD task), Plan and
+Solution (the body lands here); backmatter <code class="docutils literal notranslate"><span class="pre">parent</span></code> (the note itself),
+<code class="docutils literal notranslate"><span class="pre">ticket</span></code> when given, <code class="docutils literal notranslate"><span class="pre">us</span></code>, <code class="docutils literal notranslate"><span class="pre">psd</span></code>. <code class="docutils literal notranslate"><span class="pre">resources</span></code> links
+<code class="docutils literal notranslate"><span class="pre">&lt;path_projects&gt;/&lt;id&gt;-&lt;slug&gt;</span></code>, which is created when <code class="docutils literal notranslate"><span class="pre">path_projects</span></code>
+exists and reported as a warning otherwise.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">contact</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">company</span></code>, <code class="docutils literal notranslate"><span class="pre">job-title</span></code>, <code class="docutils literal notranslate"><span class="pre">email</span></code> (optional)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">contact/&lt;slug&gt;.md</span></code>; every word of the title is capitalised, the tag
+<code class="docutils literal notranslate"><span class="pre">person</span></code> is added, <code class="docutils literal notranslate"><span class="pre">contact-type:</span> <span class="pre">person</span></code>; a photo line
+<code class="docutils literal notranslate"><span class="pre">![Title</span> <span class="pre">photo|180](&lt;slug&gt;.jpeg)</span></code> and the sections First contact,
+Timeline, Relationships.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">book</span></code></p></td>
+<td><p>none</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">book/&lt;slug&gt;.md</span></code>; the tag <code class="docutils literal notranslate"><span class="pre">book</span></code> is added; <code class="docutils literal notranslate"><span class="pre">summary</span></code>,
+<code class="docutils literal notranslate"><span class="pre">last-read</span></code>, <code class="docutils literal notranslate"><span class="pre">author</span></code>; a cover line and the sections Thesis,
+Antithesis, Synthesis; backmatter <code class="docutils literal notranslate"><span class="pre">shop</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">meeting-minutes</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">location</span></code> (<code class="docutils literal notranslate"><span class="pre">webex</span></code>, <code class="docutils literal notranslate"><span class="pre">teams</span></code>, <code class="docutils literal notranslate"><span class="pre">phone</span></code>, <code class="docutils literal notranslate"><span class="pre">face</span> <span class="pre">to</span> <span class="pre">face</span></code>;
+required), <code class="docutils literal notranslate"><span class="pre">organizer</span></code> (optional)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;id&gt;.md</span></code>; title <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span> <span class="pre">|</span> <span class="pre">&lt;Subject&gt;</span> <span class="pre">meeting</span> <span class="pre">minutes</span></code> (a
+trailing “meeting minutes” in <code class="docutils literal notranslate"><span class="pre">--title</span></code> is not doubled); <code class="docutils literal notranslate"><span class="pre">start</span></code>,
+<code class="docutils literal notranslate"><span class="pre">end</span></code>, <code class="docutils literal notranslate"><span class="pre">attendees</span></code>, <code class="docutils literal notranslate"><span class="pre">summary</span></code>; sections Agenda, Log (the body lands
+here) and Post-processing with the GTD lists.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">illustrated-note</span></code></p></td>
+<td><p>none</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;id&gt;.md</span></code>; Excalidraw frontmatter, <code class="docutils literal notranslate"><span class="pre">![Title](&lt;id&gt;.svg)</span></code> and the
+empty drawing block.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">youtube</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">video</span></code> (URL or 11-character id; required)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;id&gt;.md</span></code>; <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">note</span></code> with <code class="docutils literal notranslate"><span class="pre">origin:</span> <span class="pre">youtube</span></code> and <code class="docutils literal notranslate"><span class="pre">source</span></code>; the
+embedded player, a summary callout and Notes (the body lands here).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">problem-resolution-report</span></code></p></td>
+<td><p>none</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;id&gt;.md</span></code>; the PRR skeleton from “Define the problem” to “Document and
+report” (the body lands under Gather information); backmatter
+<code class="docutils literal notranslate"><span class="pre">parent</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">article</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">web</span></code> (optional source URL); <code class="docutils literal notranslate"><span class="pre">--summary-file</span></code> plus the original via
+<code class="docutils literal notranslate"><span class="pre">--body-file</span></code> or <code class="docutils literal notranslate"><span class="pre">--source</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;id&gt;.md</span></code>, <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">note</span></code>; the original is archived and the note links
+it (see “Daily log, contact links and articles” below).</p></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">person</span></code> and <code class="docutils literal notranslate"><span class="pre">book</span></code> are reserved for the contact and book templates so
+Auto Note Mover never relocates another note by accident: <code class="docutils literal notranslate"><span class="pre">--tags</span> <span class="pre">person</span></code> on
+a <code class="docutils literal notranslate"><span class="pre">note</span></code> fails. A YAML file in <code class="docutils literal notranslate"><span class="pre">~/.config/buvis/templates/</span></code> with the same
+<code class="docutils literal notranslate"><span class="pre">name</span></code> overrides a bundled template. YAML templates may set <code class="docutils literal notranslate"><span class="pre">folder</span></code>,
+<code class="docutils literal notranslate"><span class="pre">file_stem:</span> <span class="pre">slug</span></code>, <code class="docutils literal notranslate"><span class="pre">default_tags</span></code>, <code class="docutils literal notranslate"><span class="pre">body_section</span></code> and a <code class="docutils literal notranslate"><span class="pre">reference</span></code>
+mapping, and may use <code class="docutils literal notranslate"><span class="pre">{slug}</span></code> wherever <code class="docutils literal notranslate"><span class="pre">{title}</span></code> works.</p>
+<p>Deviations from the Templater output, all deliberate: the <code class="docutils literal notranslate"><span class="pre">resources</span></code> link
+is a plain <code class="docutils literal notranslate"><span class="pre">file://</span></code> URL (Obsidian opens both forms); the PRR heading is
+<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">&lt;title&gt;</span></code> because bim keeps the H1 equal to the title; a title that gives
+an empty slug (no Latin letters or digits) fails instead of writing <code class="docutils literal notranslate"><span class="pre">.md</span></code>.</p>
+</section>
+<section id="daily-log-contact-links-and-articles">
+<h4>Daily log, contact links and articles<a class="headerlink" href="#daily-log-contact-links-and-articles" title="Link to this heading"></a></h4>
+<p>Every created note is logged where QuickAdd would log it: the line
+<code class="docutils literal notranslate"><span class="pre">-</span> <span class="pre">[</span> <span class="pre">]</span> <span class="pre">_DD.MM.YYYY</span> <span class="pre">HH:MM:SS_</span> <span class="pre">-</span> <span class="pre">[[notes/&lt;id&gt;|Title]]</span></code> goes after the last
+entry under <code class="docutils literal notranslate"><span class="pre">##</span> <span class="pre">Log</span></code> in <code class="docutils literal notranslate"><span class="pre">&lt;path_daily&gt;/&lt;YYYY-MM-DD&gt;.md</span></code>. bim never creates
+the daily note and never touches one without a <code class="docutils literal notranslate"><span class="pre">##</span> <span class="pre">Log</span></code> section; the JSON
+<code class="docutils literal notranslate"><span class="pre">daily_log</span></code> object reports <code class="docutils literal notranslate"><span class="pre">added</span></code> or a <code class="docutils literal notranslate"><span class="pre">skipped:</span> <span class="pre">...</span></code> status with the
+entry. <code class="docutils literal notranslate"><span class="pre">--no-daily-log</span></code> turns it off.</p>
+<p>Known people are linked on first mention: the body’s first occurrence of
+each contact’s <code class="docutils literal notranslate"><span class="pre">title</span></code>, each multi-word <code class="docutils literal notranslate"><span class="pre">aliases</span></code> entry or the
+<code class="docutils literal notranslate"><span class="pre">Last,</span> <span class="pre">First</span></code> form (case- and diacritic-insensitive) becomes
+<code class="docutils literal notranslate"><span class="pre">[[notes/contact/&lt;slug&gt;|text</span> <span class="pre">as</span> <span class="pre">written]]</span></code>. Code, existing links and URLs
+are never touched; single-word names and names shared by two contacts are
+never linked; a contact note’s own body is left alone. The links land in
+<code class="docutils literal notranslate"><span class="pre">linked_contacts</span></code>. <code class="docutils literal notranslate"><span class="pre">--no-link-contacts</span></code> keeps the body verbatim, which is
+what an exact copy needs.</p>
+<p><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">create</span> <span class="pre">-t</span> <span class="pre">article</span></code> keeps the original outside the vault and writes a
+<code class="docutils literal notranslate"><span class="pre">note</span></code> holding only the core facts:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bim<span class="w"> </span>create<span class="w"> </span>-t<span class="w"> </span>article<span class="w"> </span>--title<span class="w"> </span><span class="s2">"Why caches lie"</span><span class="w"> </span>--tags<span class="w"> </span>cache<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-a<span class="w"> </span><span class="nv">web</span><span class="o">=</span>https://example.com/post<span class="w"> </span>--body-file<span class="w"> </span>original.md<span class="w"> </span>--summary-file<span class="w"> </span>facts.md<span class="w"> </span>--json
+</pre></div>
+</div>
+<p>The original (<code class="docutils literal notranslate"><span class="pre">--body-file</span></code> or <code class="docutils literal notranslate"><span class="pre">--source</span></code>, frontmatter dropped) is written
+to <code class="docutils literal notranslate"><span class="pre">&lt;path_articles&gt;/&lt;YYYY&gt;/&lt;YYYYMM&gt;00/&lt;title&gt;.md</span></code> as <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">&lt;title&gt;</span></code>, the
+text and <code class="docutils literal notranslate"><span class="pre">Source:</span> <span class="pre">&lt;web&gt;</span></code>. The note’s body is the summary and its backmatter
+is <code class="docutils literal notranslate"><span class="pre">article::</span> <span class="pre">[&lt;title&gt;](file://...)</span></code> plus <code class="docutils literal notranslate"><span class="pre">web::</span> <span class="pre">[&lt;title&gt;](&lt;url&gt;)</span></code>. The
+archive is written first with an exclusive open and removed again when the
+note cannot be written, so a half-done article leaves no orphan. <code class="docutils literal notranslate"><span class="pre">archive</span></code>
+in the JSON holds the archive path, and its <code class="docutils literal notranslate"><span class="pre">content</span></code> on a dry run.</p>
+</section>
+<section id="scripting-contract-v1">
+<h4>Scripting contract (v1)<a class="headerlink" href="#scripting-contract-v1" title="Link to this heading"></a></h4>
+<p>With <code class="docutils literal notranslate"><span class="pre">--json</span></code> a successful create prints one object:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="s2">"20261108134925"</span><span class="p">,</span> <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"note"</span><span class="p">,</span> <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Why caches lie"</span><span class="p">,</span>
+ <span class="s2">"tags"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"cache"</span><span class="p">],</span> <span class="s2">"path"</span><span class="p">:</span> <span class="s2">"/Users/me/bim/notes/20261108134925.md"</span><span class="p">,</span>
+ <span class="s2">"relative_path"</span><span class="p">:</span> <span class="s2">"notes/20261108134925.md"</span><span class="p">,</span>
+ <span class="s2">"wikilink"</span><span class="p">:</span> <span class="s2">"[[notes/20261108134925|Why caches lie]]"</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">relative_path</span></code> and <code class="docutils literal notranslate"><span class="pre">wikilink</span></code> are relative to the vault root, the parent
+of <code class="docutils literal notranslate"><span class="pre">path_zettelkasten</span></code>. Extra keys appear when relevant: <code class="docutils literal notranslate"><span class="pre">dry_run</span></code> and
+<code class="docutils literal notranslate"><span class="pre">content</span></code> (the rendered note) on a dry run, <code class="docutils literal notranslate"><span class="pre">trashed_source</span></code> after an
+inbox file was moved, <code class="docutils literal notranslate"><span class="pre">daily_log</span></code> (status and entry of the daily-note log
+line), <code class="docutils literal notranslate"><span class="pre">linked_contacts</span></code> (the wikilinks added to the body), <code class="docutils literal notranslate"><span class="pre">archive</span></code> (the
+article’s archive path), <code class="docutils literal notranslate"><span class="pre">warnings</span></code> (a list) when a template hook could not
+do all of its work (for example the <code class="docutils literal notranslate"><span class="pre">path_projects</span></code> root is missing), and
+<code class="docutils literal notranslate"><span class="pre">errors</span></code> (a list) when the note was written but a follow-up step such as
+that move or the daily log failed. On failure the output is
+<code class="docutils literal notranslate"><span class="pre">{&quot;error&quot;:</span> <span class="pre">&quot;&lt;message&gt;&quot;}</span></code> and the exit code is 1. An error starting with
+<code class="docutils literal notranslate"><span class="pre">note</span> <span class="pre">saved</span> <span class="pre">at</span></code> means the file exists: do not retry the create. The keys and their types
+are stable: later versions only add keys, so consumers must ignore unknown
+ones.</p>
+<p>Ids follow local time: <code class="docutils literal notranslate"><span class="pre">id</span></code> equals the digits of the note’s <code class="docutils literal notranslate"><span class="pre">date</span></code> in the
+machine’s timezone, the same as the vault’s Templater notes. Two creates in
+the same second do not collide; the second waits for the next free id.</p>
+</section>
+<section id="exit-codes">
+<h4>Exit codes<a class="headerlink" href="#exit-codes" title="Link to this heading"></a></h4>
+<p>Every note command (<code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">import</span></code>, <code class="docutils literal notranslate"><span class="pre">edit</span></code>, <code class="docutils literal notranslate"><span class="pre">archive</span></code>,
+<code class="docutils literal notranslate"><span class="pre">delete</span></code>, <code class="docutils literal notranslate"><span class="pre">format</span></code>, <code class="docutils literal notranslate"><span class="pre">sync</span></code>, <code class="docutils literal notranslate"><span class="pre">show</span></code>, and <code class="docutils literal notranslate"><span class="pre">query</span></code> without a spec)
+exits 1 when it fails. Earlier releases exited 0 and only printed the <code class="docutils literal notranslate"><span class="pre">✘</span></code>
+line.</p>
+</section>
 </section>
 <section id="bim-query">
 <h3>bim query<a class="headerlink" href="#bim-query" title="Link to this heading"></a></h3>

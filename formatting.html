@@ -56,6 +56,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.collapse"><code class="docutils literal notranslate"><span class="pre">StringOperator.collapse()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.replace_abbreviations"><code class="docutils literal notranslate"><span class="pre">StringOperator.replace_abbreviations()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.shorten"><code class="docutils literal notranslate"><span class="pre">StringOperator.shorten()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.slugify"><code class="docutils literal notranslate"><span class="pre">StringOperator.slugify()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#buvis.pybase.formatting.StringOperator.underscore"><code class="docutils literal notranslate"><span class="pre">StringOperator.underscore()</span></code></a></li>
 </ul>
 </li>
@@ -262,6 +263,29 @@ abbreviations sourced from config or code.</p></li>
 <p class="rubric">Example</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">shorten</span><span class="p">(</span><span class="s2">"short"</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
 <span class="go">'short'</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="buvis.pybase.formatting.StringOperator.slugify">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">slugify</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#buvis.pybase.formatting.StringOperator.slugify" title="Link to this definition"></a></dt>
+<dd><p>Turn a title into a file-name slug the way the vault’s Templater does.</p>
+<p>NFKD-normalise, drop combining marks, lowercase, keep only <code class="docutils literal notranslate"><span class="pre">[a-z0-9</span> <span class="pre">-]</span></code>,
+turn whitespace runs into <code class="docutils literal notranslate"><span class="pre">-</span></code> and collapse dash runs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – Title to slugify.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The slug, or <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> when nothing Latin or numeric is left.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">"Ada  Lovelace"</span><span class="p">)</span>
+<span class="go">'ada-lovelace'</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">StringOperator</span><span class="o">.</span><span class="n">slugify</span><span class="p">(</span><span class="s2">"Čapek"</span><span class="p">)</span>
+<span class="go">'capek'</span>
 </pre></div>
 </div>
 </dd></dl>
