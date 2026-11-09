@@ -1,0 +1,222 @@
+[
+  {
+    "agent": "/root/tess_1",
+    "session": "01a1bf0b-8bdc-7460-baa4-e3cc3acf3213",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T07-42-47-01a1bf0b-8bdc-7460-baa4-e3cc3acf3213.jsonl",
+    "source_line": 10,
+    "metadata_line": 2,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/devon_1",
+    "session": "01a1bf0e-5764-7d50-8b5c-d8c8ecd03fa9",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T07-45-50-01a1bf0e-5764-7d50-8b5c-d8c8ecd03fa9.jsonl",
+    "source_line": 10,
+    "metadata_line": 4,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_1",
+    "session": "01a1bf11-3e54-7033-820c-e4f9e6e2ef4f",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T07-49-00-01a1bf11-3e54-7033-820c-e4f9e6e2ef4f.jsonl",
+    "source_line": 10,
+    "metadata_line": 6,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_1_fix",
+    "session": "01a1bf13-b4f4-7a33-8d27-bb4de446a84c",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T07-51-42-01a1bf13-b4f4-7a33-8d27-bb4de446a84c.jsonl",
+    "source_line": 10,
+    "metadata_line": 8,
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_1_date",
+    "session": "01a1bf16-19f6-7070-a4a6-da4ee394a65e",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T07-54-19-01a1bf16-19f6-7070-a4a6-da4ee394a65e.jsonl",
+    "source_line": 10,
+    "metadata_line": 10,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_2",
+    "session": "01a1bf19-34f4-7e33-9072-81c66d6fd474",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T07-57-42-01a1bf19-34f4-7e33-9072-81c66d6fd474.jsonl",
+    "source_line": 10,
+    "metadata_line": 12,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/devon_2",
+    "session": "01a1bf1f-15d0-7702-ab75-4dc69973b274",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-04-07-01a1bf1f-15d0-7702-ab75-4dc69973b274.jsonl",
+    "source_line": 10,
+    "metadata_line": 14,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_2_strengthen",
+    "session": "01a1bf22-c972-7da2-9ce2-0198f0d720f3",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-08-10-01a1bf22-c972-7da2-9ce2-0198f0d720f3.jsonl",
+    "source_line": 10,
+    "metadata_line": 16,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_2",
+    "session": "01a1bf24-99d8-7022-8f5d-5b1d7524add4",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-10-09-01a1bf24-99d8-7022-8f5d-5b1d7524add4.jsonl",
+    "source_line": 10,
+    "metadata_line": 18,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/deslop_2",
+    "session": "01a1bf28-450c-7d11-9aa8-573ab8b2f92e",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-14-09-01a1bf28-450c-7d11-9aa8-573ab8b2f92e.jsonl",
+    "source_line": 10,
+    "metadata_line": 20,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_2_review",
+    "session": "01a1bf2c-3a4f-7d82-91c8-abf9ab16f7c2",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-18-29-01a1bf2c-3a4f-7d82-91c8-abf9ab16f7c2.jsonl",
+    "source_line": 10,
+    "metadata_line": 22,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_2_fix",
+    "session": "01a1bf2e-8ecc-7dd1-9aed-2ef3b8566fcc",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-21-01-01a1bf2e-8ecc-7dd1-9aed-2ef3b8566fcc.jsonl",
+    "source_line": 10,
+    "metadata_line": 24,
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_3",
+    "session": "01a1bf38-8477-7331-8cf5-b5f500ab9d51",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-31-54-01a1bf38-8477-7331-8cf5-b5f500ab9d51.jsonl",
+    "source_line": 10,
+    "metadata_line": 26,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_3_quality",
+    "session": "01a1bf40-982f-75b2-b724-20b1d2b00fef",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-40-43-01a1bf40-982f-75b2-b724-20b1d2b00fef.jsonl",
+    "source_line": 10,
+    "metadata_line": 28,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_3_quality_2",
+    "session": "01a1bf43-c7b4-7e51-a675-389d1292dd39",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-44-12-01a1bf43-c7b4-7e51-a675-389d1292dd39.jsonl",
+    "source_line": 10,
+    "metadata_line": 30,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/devon_3",
+    "session": "01a1bf45-ab37-7582-a263-1e0b92294acf",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-46-16-01a1bf45-ab37-7582-a263-1e0b92294acf.jsonl",
+    "source_line": 10,
+    "metadata_line": 32,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_3",
+    "session": "01a1bf4d-e74e-7f42-b47b-3009206d20e7",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-55-16-01a1bf4d-e74e-7f42-b47b-3009206d20e7.jsonl",
+    "source_line": 10,
+    "metadata_line": 34,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_3_recovery",
+    "session": "01a1bf51-8a5b-70b0-8074-248a0c090773",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T08-59-14-01a1bf51-8a5b-70b0-8074-248a0c090773.jsonl",
+    "source_line": 10,
+    "metadata_line": 36,
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/tess_3_contract_repair",
+    "session": "01a1bf61-20b9-7113-b84f-2333d0f5b1a3",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T09-16-16-01a1bf61-20b9-7113-b84f-2333d0f5b1a3.jsonl",
+    "source_line": 10,
+    "metadata_line": 38,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_3_feedback",
+    "session": "01a1bf67-a98d-7663-803a-f6a1e5364f25",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T09-23-24-01a1bf67-a98d-7663-803a-f6a1e5364f25.jsonl",
+    "source_line": 10,
+    "metadata_line": 40,
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/deslop_3",
+    "session": "01a1bf6c-6f51-7853-af11-64abac28e0fc",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T09-28-37-01a1bf6c-6f51-7853-af11-64abac28e0fc.jsonl",
+    "source_line": 10,
+    "metadata_line": 42,
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "provider": "openai"
+  },
+  {
+    "agent": "/root/ivan_3_style",
+    "session": "01a1bf6e-6258-7d43-b6bc-eaa3cac1204b",
+    "source": "/Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T09-30-44-01a1bf6e-6258-7d43-b6bc-eaa3cac1204b.jsonl",
+    "source_line": 10,
+    "metadata_line": 44,
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "provider": "openai"
+  }
+]

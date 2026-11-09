@@ -28,12 +28,10 @@ Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
 ## Active Work
 
 ### feature/improve-bim-from-skill-experience
-- HEAD `a087e05e3543d2b0c199fba8e0ccd5dabf5bf8ad` equals fetched `origin/master`; no committed branch diff or branch issue references yet.
-- PRD 00118 is parked in `hold/` after bootstrap design and planning. The mandatory plan gate reported two unlisted modules (`.` and the consistency-test directory); no implementation ran. Its reviewed design, exact five-task plan and stall evidence remain in designs, reports, split-notes and batch 202611090014's deferred record. It establishes the `bim create` scripting contract before 00119 (vault templates) and 00120 (vault links): local-time identity, bounded collision handling, body/source input, dry run, JSON metadata, and failure exit codes. Those follow-on PRDs must not be mistaken for evidence that 00118 shipped.
-- Existing uncommitted changes are workflow telemetry, session artifacts and the backlog-to-wip PRD move. Catchup does not alter these or workflow state.
-- Integration seam to preserve: `CreateZettelUseCase.execute` continues returning `Path`; `CommandCreateNote` gains a formatter dependency, so CLI, TUI and WebUI composition sites must move together. JSON payload output is an explicit PRD exception to the general console-only rule.
-- Collision retries must share one five-attempt budget across prepare and exclusive reservation; dry run must avoid reservation, hooks, save and source moves. A source move failure is post-save metadata, not a failed note creation.
-- Full review remains a fresh-session boundary after build handoff; do not invoke completion review from the build session.
+- PRD 00118 is active in wip after the 2026-11-09 scope reconciliation. Prior attempts produced a reviewed design and five-task plan, with no implementation. The PRD now explicitly lists README and consistency-test targets that previously tripped the plan gate.
+- HEAD d8692476 contains workflow/bootstrap artifacts only; the very large branch diff consists of retained session transcripts and PM evidence. Catchup used stat-level inspection for those raw transcripts.
+- Preserve Path return type, shared five-candidate allocation budget, no-write dry run, formatter injection across CLI/TUI/WebUI, and JSON payload exception to console output.
+- PRDs 00119 and 00120 remain dependent follow-ons and must await completion reviews.
 
 ### Batch 202611042342 (feat/braid worktree, `~/git/src/worktrees/gems/braid`)
 - [x] 00115-braid-port-skills-parity-v1.md (2 cycles): braid ported into `src/tools/braid/`; two deliberate parity breaks fixed in cycle 1 (Windows junction via `_winapi`, not cmd.exe; non-UTF-8 inputs exit 2). The cmd.exe junction injection still lives upstream in agent-skills braid.
@@ -59,16 +57,16 @@ Previous (2026-10-29): No topic this session: catchup ran on master with no `prd
 
 ## GitHub State
 - 2026-11-09: 0 open issues; 1 open PR, #267 (`renovate/jsdom-31.x`, jsdom 30.1.3 -> 31.0.0). All listed checks pass. It touches only postup frontend package manifests/lock, with no bim overlap.
-- Latest GitHub release: `gems-v0.19.1` (2026-11-08). Five master commits follow it, including the 0.19.2 version bump; a version bump alone does not establish a published release.
-- Current master `a087e05e`: documentation deployment succeeded; Test run 42529792011 is queued. The preceding version-bump Test is also queued. Latest completed Test, 42519713815 at `4876cad1`, succeeded, as did `f64f21a4`.
+- Latest GitHub release: `gems-v0.19.2` (2026-11-08); two master commits follow it.
+- Current master `a087e05e`: latest Test and documentation deployment completed successfully (2026-11-09 catchup). Latest completed Test, 42519713815 at `4876cad1`, succeeded, as did `f64f21a4`.
 - Most recent historical failure: run 42519342178 (`ad421654`), lint Type check. Fix `f64f21a4` records Linux mypy treating darwin-only `_libc` as undefined and failing to narrow `hasattr(os, "setxattr")`; selecting the backend by `sys.platform` fixed it. Retrieved error: `src/tools/muc/shared/dir_tree/merge_mac_metadata.py:97: error: Name "_libc" is not defined [name-defined]` (1 error, 570 source files checked). No failing runs exist for this feature branch.
 - Remote branches seen: master, gh-pages, renovate/jsdom-31.x, renovate/lock-file-maintenance, claude/python-3.15-wheels. Local `agoge/authored-tests-2026-10-26` remains; cleanup eligibility was not established.
 
 ## Project Health
-- Last completed master CI is green; current HEAD testing remains queued, so HEAD is not yet verified by CI. Catchup ran no local tests and implemented no code.
+- Latest master CI is green; this feature branch has no production changes or CI failures. Catchup ran no local tests and implemented no code.
 - Current dependency PR has green checks. Preserve the existing postup committed-build constraint when assessing its lockfile update.
 - Local tests historically need isolated Cargo/config/state directories and removal of `GIT_AUTHOR_*`/`GIT_COMMITTER_*` noise. Re-evaluate those environment workarounds against the active host before applying them; prior capsule counts are historical evidence, not a baseline for this branch.
-- Capability gaps: engram skipped per probe; memory loader returned no files; task-session listing returned `no_project_data`, so no tasks were restored. `TaskCreate`/`TaskUpdate` are not available in this host. No `agent_docs/`, project decisions/troubleshooting keepers, or global `~/.claude/decisions.md` were found.
+- Capability gaps: engram skipped per probe; memory loader returned no files; task-session listing returned `no_tasks_dir`, so no tasks were restored. `TaskCreate`/`TaskUpdate` are not available in this host. No `agent_docs/`, project decisions/troubleshooting keepers, or global `~/.claude/decisions.md` were found.
 - PRD 00118 has meaningful external behavior changes (local-time ids and nonzero failure exits); keep release notes and all-interface tests aligned. Muc console-output debt is already recorded in intake 00121, outside this batch.
 
 ## Project Memories
