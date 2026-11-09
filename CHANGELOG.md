@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **sysup**: update Herdr app mods through hmod (`herdr-mods`, macOS); skipped when Herdr is closed or hmod is not installed
 
+### Changed
+
+- **CI**: group tool tests into three jobs per OS/Python combination, collect only selected test directories, omit development dependencies from test jobs, and cancel superseded PR runs. Preserve the full platform matrix and per-tool coverage thresholds.
+
+### Fixed
+
+- **CI**: run development tooling tests, fail the final gate when path detection fails, handle docs-only changes, and explicitly run the full suite for reusable workflow calls. Tool jobs no longer wait for the library matrix.
+
 ## [0.19.2] - 2026-11-08
 
 ### Fixed

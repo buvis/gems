@@ -6,7 +6,17 @@ on:
   pull_request:
     branches: [master]
   workflow_call:
+    inputs:
+      full-suite:
+        description: Run all tools when called by another workflow
+        type: boolean
+        default: true
   workflow_dispatch:
+
+# Only superseded PR runs cancel each other. Pushes and releases stay independent.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   BUVIS_SKIP_FRONTEND: "1"
@@ -16,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed_tools: ${{ steps.filter.outputs.changed_tools }}
-      run_all: ${{ steps.filter.outputs.run_all }}
+      tool_groups: ${{ steps.groups.outputs.tool_groups }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -24,54 +34,58 @@ jobs:
 
       - name: Detect changed paths
         id: filter
+        env:
+          # Reusable workflows inherit the caller's event, not "workflow_call".
+          FORCE_ALL: ${{ inputs.full-suite || github.event_name == 'workflow_dispatch' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          ALL_TOOLS=$(find src/tools/ -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -sc .)
+          ALL_TOOLS=$(printf '%s\n' src/tools/*/__init__.py | cut -d/ -f3 | sort | jq -R . | jq -sc .)
 
-          # workflow_dispatch and workflow_call always run everything
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "workflow_call" ]; then
-            echo "run_all=true" >> "$GITHUB_OUTPUT"
+          if [ "$FORCE_ALL" = "true" ]; then
             echo "changed_tools=${ALL_TOOLS}" >> "$GITHUB_OUTPUT"
             exit 0
-          fi
-
-          # determine diff range
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE="${{ github.event.before }}"
           fi
 
           # guard null SHA on first push to a new branch
           NULL_SHA="0000000000000000000000000000000000000000"
-          if [ "${BASE}" = "${NULL_SHA}" ] || [ -z "${BASE}" ]; then
-            echo "run_all=true" >> "$GITHUB_OUTPUT"
+          if [ "${BASE_SHA}" = "${NULL_SHA}" ] || [ -z "${BASE_SHA}" ]; then
             echo "changed_tools=${ALL_TOOLS}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          CHANGED=$(git diff --name-only "${BASE}..HEAD" --)
+          CHANGED=$(git diff --name-only "${BASE_SHA}..HEAD" --)
 
           # check if shared infrastructure changed
           RUN_ALL=false
-          if echo "${CHANGED}" | grep -qE '^(src/lib/|src/rust/|tests/lib/|tests/conftest\.py|pyproject\.toml|uv\.lock|hatch_build\.py|Cargo\.(toml|lock)|\.github/workflows/test\.yml)'; then
+          if echo "${CHANGED}" | grep -E '^(src/lib/|src/rust/|tests/lib/|tests/conftest\.py|pyproject\.toml|uv\.lock|hatch_build\.py|Cargo\.(toml|lock)|\.github/workflows/test\.yml)' > /dev/null; then
             RUN_ALL=true
           fi
 
           if [ "${RUN_ALL}" = "true" ]; then
-            echo "run_all=true" >> "$GITHUB_OUTPUT"
             echo "changed_tools=${ALL_TOOLS}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           # extract tool names from changed paths
-          TOOLS=$(echo "${CHANGED}" | grep -oE '^(src/tools|tests/tools)/[^/]+' | sed 's|.*/||' | sort -u)
+          # sed succeeds with no matches (docs-only changes must not fail detection).
+          TOOLS=$(echo "${CHANGED}" | sed -nE 's#^(src/tools|tests/tools)/([^/]+).*#\2#p' | sort -u)
           JSON="[]"
           if [ -n "${TOOLS}" ]; then
             JSON=$(echo "${TOOLS}" | jq -R . | jq -sc .)
           fi
 
-          echo "run_all=false" >> "$GITHUB_OUTPUT"
           echo "changed_tools=${JSON}" >> "$GITHUB_OUTPUT"
+
+      - name: Group selected tools
+        id: groups
+        env:
+          CHANGED_TOOLS: ${{ steps.filter.outputs.changed_tools }}
+        run: |
+          GROUPS_JSON=$(jq -c '
+            group_by(if . == "dot" or . == "bim" then . else "other" end)
+            | map({name: (if .[0] == "dot" or .[0] == "bim" then .[0] else "other" end), tools: .})
+          ' <<< "$CHANGED_TOOLS")
+          echo "tool_groups=$GROUPS_JSON" >> "$GITHUB_OUTPUT"
 
   lint:
     runs-on: ubuntu-latest
@@ -89,24 +103,27 @@ jobs:
           python-version: "3.15"
 
       - name: Install dependencies
-        run: uv sync --all-extras --group test --group dev
+        run: uv sync --locked --all-extras --group test --group dev
 
       - name: Audit dependencies
         # Ignored CVEs (if any) come from tools/lib/audit/pip-audit-ignores.toml,
         # not anonymous inline flags. check_audit_ignores.py also fails the build if
         # an ignored CVE has since gained a fix in the resolved tree (PRD 00086).
         run: |
-          IGNORE_FLAGS="$(uv run python tools/lib/check_audit_ignores.py --print-ignore-flags)"
-          uv run pip-audit --skip-editable $IGNORE_FLAGS
-          uv run python tools/lib/check_audit_ignores.py
+          IGNORE_FLAGS="$(uv run --no-sync python tools/lib/check_audit_ignores.py --print-ignore-flags)"
+          uv run --no-sync pip-audit --skip-editable $IGNORE_FLAGS
+          uv run --no-sync python tools/lib/check_audit_ignores.py
 
       - name: Lint & format check
         run: |
-          uv run ruff check src/ tests/
-          uv run ruff format --check src/ tests/
+          uv run --no-sync ruff check src/ tests/
+          uv run --no-sync ruff format --check src/ tests/
 
       - name: Type check
-        run: uv run mypy src/lib/ src/tools/
+        run: uv run --no-sync mypy src/lib/ src/tools/
+
+      - name: Run development tooling tests
+        run: uv run --no-sync pytest tests/dev
 
   lib:
     runs-on: ${{ matrix.os }}
@@ -128,20 +145,22 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --group test --group dev
+        run: uv sync --locked --all-extras --no-default-groups --group test
 
       - name: Run library tests
-        run: uv run pytest -m lib --cov=src/lib --cov-report=term-missing --cov-fail-under=80
+        run: uv run --no-sync pytest tests/lib --cov=src/lib --cov-report=term-missing --cov-fail-under=80
 
   tools:
-    needs: [detect, lib]
+    needs: [detect]
     if: needs.detect.outputs.changed_tools != '[]'
     runs-on: ${{ matrix.os }}
+    name: tools (${{ matrix.os }}, ${{ matrix.python-version }}, ${{ matrix.group.name }})
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        tool: ${{ fromJson(needs.detect.outputs.changed_tools) }}
+        group: ${{ fromJson(needs.detect.outputs.tool_groups) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -156,12 +175,26 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --group test --group dev
+        run: uv sync --locked --all-extras --no-default-groups --group test
 
-      - name: Run ${{ matrix.tool }} tests
+      - name: Run selected tool tests
+        id: tests
+        shell: bash
         env:
-          TOOL_MARKER: ${{ matrix.tool }}
-        run: uv run pytest -m "$TOOL_MARKER" --cov="src/tools/$TOOL_MARKER" --cov-report=term-missing --cov-fail-under=50
+          GROUP_TOOLS: ${{ toJson(matrix.group.tools) }}
+        run: |
+          TOOLS=$(jq -r '.[]' <<< "$GROUP_TOOLS")
+          status=0
+          for tool in $TOOLS; do
+            echo "::group::$tool tests and coverage"
+            # Separate invocations retain each tool's coverage floor. Continue
+            # after failures so every tool in this group still gets checked.
+            if ! uv run --no-sync pytest "tests/tools/$tool" --cov="src/tools/$tool" --cov-report=term-missing --cov-fail-under=50; then
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$status"
 
   frontend:
     runs-on: ubuntu-latest
@@ -199,23 +232,38 @@ jobs:
   # Single status check for branch protection / automerge
   test:
     if: always()
-    needs: [lint, lib, tools, frontend]
+    needs: [detect, lint, lib, tools, frontend]
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          if [ "${{ needs.frontend.result }}" != "success" ]; then
+      - id: gate
+        env:
+          DETECT_RESULT: ${{ needs.detect.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          LIB_RESULT: ${{ needs.lib.result }}
+          TOOLS_RESULT: ${{ needs.tools.result }}
+          CHANGED_TOOLS: ${{ needs.detect.outputs.changed_tools }}
+        run: |
+          if [ "$FRONTEND_RESULT" != "success" ]; then
             echo "Frontend checks failed"
             exit 1
           fi
-          if [ "${{ needs.lint.result }}" != "success" ]; then
+          if [ "$DETECT_RESULT" != "success" ]; then
+            echo "Path detection failed"
+            exit 1
+          fi
+          if [ "$LINT_RESULT" != "success" ]; then
             echo "Lint checks failed"
             exit 1
           fi
-          if [ "${{ needs.lib.result }}" != "success" ]; then
+          if [ "$LIB_RESULT" != "success" ]; then
             echo "Lib tests failed"
             exit 1
           fi
-          if [ "${{ needs.tools.result }}" != "success" ] && [ "${{ needs.tools.result }}" != "skipped" ]; then
+          if [ "$TOOLS_RESULT" = "skipped" ] && [ "$CHANGED_TOOLS" = "[]" ]; then
+            exit 0
+          fi
+          if [ "$TOOLS_RESULT" != "success" ]; then
             echo "Tool tests failed"
             exit 1
           fi
