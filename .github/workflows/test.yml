@@ -163,13 +163,50 @@ jobs:
           TOOL_MARKER: ${{ matrix.tool }}
         run: uv run pytest -m "$TOOL_MARKER" --cov="src/tools/$TOOL_MARKER" --cov-report=term-missing --cov-fail-under=50
 
+  frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tool: bim
+            directory: src/tools/bim/commands/serve/frontend
+          - tool: postup
+            directory: src/tools/postup/adapters/web/frontend
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13"
+          cache: npm
+          cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      # BIM has no frontend test suite yet; postup's component tests use jsdom.
+      - name: Test frontend
+        if: matrix.tool == 'postup'
+        run: npm test
+
   # Single status check for branch protection / automerge
   test:
     if: always()
-    needs: [lint, lib, tools]
+    needs: [lint, lib, tools, frontend]
     runs-on: ubuntu-latest
     steps:
       - run: |
+          if [ "${{ needs.frontend.result }}" != "success" ]; then
+            echo "Frontend checks failed"
+            exit 1
+          fi
           if [ "${{ needs.lint.result }}" != "success" ]; then
             echo "Lint checks failed"
             exit 1
