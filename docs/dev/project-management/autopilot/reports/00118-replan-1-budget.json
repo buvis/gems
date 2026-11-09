@@ -1,0 +1,22 @@
+{
+  "prd": "00118-bim-create-scripting-contract-v1.md",
+  "replan_attempt": 1,
+  "budget_tokens": 75000,
+  "split_attempts": 1,
+  "original_documentation_files": [
+    "docs/source/tools/bim.rst",
+    "src/tools/bim/SKILL.md",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "remaining_indivisible_file": "CHANGELOG.md",
+  "file_bytes": 102781,
+  "prd_slice_bytes": 637,
+  "plan_text_bytes": 1109,
+  "overhead_tokens": 55000,
+  "estimated_tokens": 81132,
+  "file_and_overhead_lower_bound_tokens": 80696,
+  "decision": "oversized_task",
+  "implementation_dispatched": false,
+  "work_start_sha": "d8692476e79aa35cd9aa776b8442343c16c527f0"
+}

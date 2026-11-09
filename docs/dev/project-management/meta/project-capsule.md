@@ -28,8 +28,9 @@ Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
 ## Active Work
 
 ### feature/improve-bim-from-skill-experience
-- PRD 00118 is active in wip after the 2026-11-09 scope reconciliation. Prior attempts produced a reviewed design and five-task plan, with no implementation. The PRD now explicitly lists README and consistency-test targets that previously tripped the plan gate.
-- HEAD d8692476 contains workflow/bootstrap artifacts only; the very large branch diff consists of retained session transcripts and PM evidence. Catchup used stat-level inspection for those raw transcripts.
+- PRD 00118 has committed local-time identity, collision-safe allocation, and shared scripted command/body/source/dry-run behavior. Original tasks 1–2 are complete; task 3 has passing tests but lacks Pat review because its assembled review exceeded the 50 KB dispatch cap. CLI scripting flags, failure exits and documentation remain unfinished.
+- Replan attempt 1 has a hard 75,000-token per-task budget. A file-boundary split still leaves the required CHANGELOG.md task at 81,132 tokens under the installed full-file estimator (80,696 before any requirement or plan text). The canonical oversized_task stall parks 00118; see autopilot/reports/00118-replan-1-budget.md and its JSON evidence. No implementation or completion review ran in this replan session.
+- Preserve d8692476 as the original work_start_sha in the archived state and retain all contributing Sol/Astra metadata and raw worker logs. The branch also contains large retained transcripts and PM evidence.
 - Preserve Path return type, shared five-candidate allocation budget, no-write dry run, formatter injection across CLI/TUI/WebUI, and JSON payload exception to console output.
 - PRDs 00119 and 00120 remain dependent follow-ons and must await completion reviews.
 
@@ -63,7 +64,7 @@ Previous (2026-10-29): No topic this session: catchup ran on master with no `prd
 - Remote branches seen: master, gh-pages, renovate/jsdom-31.x, renovate/lock-file-maintenance, claude/python-3.15-wheels. Local `agoge/authored-tests-2026-10-26` remains; cleanup eligibility was not established.
 
 ## Project Health
-- Latest master CI is green; this feature branch has no production changes or CI failures. Catchup ran no local tests and implemented no code.
+- Latest master CI is green; this feature branch has committed production changes but no completion review. This catchup ran no tests and implemented no code. PRDs 00119 and 00120 remain blocked on 00118's implementation and completion review.
 - Current dependency PR has green checks. Preserve the existing postup committed-build constraint when assessing its lockfile update.
 - Local tests historically need isolated Cargo/config/state directories and removal of `GIT_AUTHOR_*`/`GIT_COMMITTER_*` noise. Re-evaluate those environment workarounds against the active host before applying them; prior capsule counts are historical evidence, not a baseline for this branch.
 - Capability gaps: engram skipped per probe; memory loader returned no files; task-session listing returned `no_tasks_dir`, so no tasks were restored. `TaskCreate`/`TaskUpdate` are not available in this host. No `agent_docs/`, project decisions/troubleshooting keepers, or global `~/.claude/decisions.md` were found.

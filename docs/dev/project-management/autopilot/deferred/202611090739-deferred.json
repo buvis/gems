@@ -1,0 +1,12 @@
+{
+  "batch_id": "202611090739",
+  "items": [
+    {
+      "type": "stall",
+      "site": "oversized_task",
+      "detail": "Replan budget 75000: one file-boundary split leaves required CHANGELOG.md (102781 bytes) at 81132 tokens; file plus 55000 overhead alone is 80696. Capability splits retain that file term. See reports/00118-replan-1-budget.json. Prior committed code and provenance retained; task 3 Pat review and CLI/docs remain incomplete. PRDs 00119 and 00120 require 00118 completion review.",
+      "op_id": "e9858f02eb2b",
+      "prd": "00118-bim-create-scripting-contract-v1.md"
+    }
+  ]
+}
