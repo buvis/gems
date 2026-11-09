@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from buvis.pybase.zettel.domain.entities.zettel.fixers.set_default_id import (
@@ -28,7 +28,17 @@ class TestSetDefaultId:
         assert zettel_data.metadata == {"date": date, "id": expected_id, "title": "Keep title"}
         assert zettel_data.metadata["date"] is date
 
-    @pytest.mark.parametrize("date", ["invalid-date", "2024-09-13T12:00:00+02:00", "", None, 20240913120000])
+    @pytest.mark.parametrize(
+        "date",
+        [
+            "invalid-date",
+            "2024-09-13T12:00:00+02:00",
+            "",
+            None,
+            20240913120000,
+            pytest.param(date(2024, 9, 13), id="date-only"),
+        ],
+    )
     def test_raises_on_invalid_date(self, date: object) -> None:
         zettel_data = ZettelData()
         zettel_data.metadata = {"date": date}
