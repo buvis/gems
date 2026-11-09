@@ -166,10 +166,16 @@ def _dispatch_create(
     *,
     as_json: bool,
 ) -> None:
-    path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
-    path_projects = Path(settings.path_projects).expanduser()
-    path_daily = Path(settings.path_daily).expanduser()
-    path_articles = Path(settings.path_articles).expanduser()
+    try:
+        path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
+        path_projects = Path(settings.path_projects).expanduser()
+        path_daily = Path(settings.path_daily).expanduser()
+        path_articles = Path(settings.path_articles).expanduser()
+    except RuntimeError as exc:
+        if as_json:
+            _fail_json(ctx, str(exc))
+        console.panic(str(exc))
+        return
     if any(
         (
             as_json,
@@ -267,7 +273,7 @@ def _create_note_scripted(
             path_daily=path_daily,
             path_articles=path_articles,
         )
-    except (OSError, UnicodeError) as exc:
+    except (OSError, UnicodeError, RuntimeError) as exc:
         fail(str(exc))
         return
     _render_create_result(ctx, cmd.execute(), as_json=as_json)
