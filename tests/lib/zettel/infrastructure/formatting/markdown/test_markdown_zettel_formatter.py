@@ -223,6 +223,46 @@ class TestVaultTagShape:
         assert MarkdownZettelFormatter.format(MarkdownZettelFileParser.parse(VAULT_STYLE_NOTE)) == VAULT_STYLE_NOTE
 
 
+MEETING_NOTE = """---
+id: 20260512090000
+title: 2026-05-12 | Weekly sync meeting minutes
+date: 2026-05-12T09:00:00+02:00
+tags: []
+type: meeting-minutes
+publish: false
+processed: false
+location: teams
+start: 09:00
+end: '10:00'
+organizer: Ada Lovelace
+attendees:
+- Ada Lovelace
+summary: ''
+---
+
+# 2026-05-12 | Weekly sync meeting minutes
+
+## Log
+
+- agreed on the plan
+"""
+
+
+class TestKeyOrder:
+    def test_keeps_keys_after_processed_in_written_order(self) -> None:
+        data = ZettelData(
+            metadata={"title": "Probe", "processed": False, "location": "teams", "end": "x", "attendees": []},
+            sections=[("# Probe", "")],
+        )
+        lines = MarkdownZettelFormatter.format(data).splitlines()
+        after_processed = lines[lines.index("processed: false") + 1 :]
+        assert [line.split(":")[0] for line in after_processed[:3]] == ["location", "end", "attendees"]
+
+    @pytest.mark.usefixtures("vault_timezone")
+    def test_meeting_note_round_trips_unchanged(self) -> None:
+        assert MarkdownZettelFormatter.format(MarkdownZettelFileParser.parse(MEETING_NOTE)) == MEETING_NOTE
+
+
 class TestStableBodyFormatting:
     def test_empty_backmatter_round_trip_is_stable(self) -> None:
         data = ZettelData(metadata={"title": "Probe"}, sections=[("# Probe", "Text")])

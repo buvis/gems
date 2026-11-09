@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **bim**: write `tags` the way most vault notes do: a one-line flow list (`tags: [a, b]`) before `type`, in the order given. `bim create`, `bim edit` and `bim format` no longer sort tags or turn them into a block list after `type`.
 
+- **bim**: keep frontmatter keys after `processed` in the note's own order instead of sorting them alphabetically, so meeting, contact, book and YouTube notes keep the order of the vault's templates; a new project writes `completed`, `resources`, `deliverable` like `page.create-project.tpl`.
+
 - **bim**: preserve body/source conflict validation before expanding scripted source paths.
 
 - **bim**: exit 1 for missing or conflicting note paths, interactive multi-file import, and invalid TUI edit requests.

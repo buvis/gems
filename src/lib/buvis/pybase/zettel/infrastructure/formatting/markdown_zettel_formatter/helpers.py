@@ -24,12 +24,13 @@ def process_metadata(
         first_keys: Tuple of keys which should appear first in the returned dictionary.
 
     Returns:
-        Processed metadata dictionary with specified keys ordered first.
+        Processed metadata dictionary with specified keys ordered first and the
+        rest in their written order, as the vault's templates lay them out.
     """
 
     return {
         **{key: metadata[key] for key in first_keys if key in metadata},
-        **{k: v for k, v in sorted(metadata.items()) if k not in first_keys},
+        **{k: v for k, v in metadata.items() if k not in first_keys},
     }
 
 

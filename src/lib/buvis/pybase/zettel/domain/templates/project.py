@@ -32,6 +32,8 @@ class ProjectTemplate:
         data.metadata["title"] = title
         data.metadata["date"] = now
         data.metadata["completed"] = False
+        # Slot kept in the vault template's order; the create_project_dir hook fills it.
+        data.metadata["resources"] = ""
         data.metadata["deliverable"] = answers.get("deliverable", "")
         tags_raw = answers.get("tags", "")
         if tags_raw:

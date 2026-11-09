@@ -149,7 +149,7 @@ bim edit -q '{filter: {field: type, op: eq, value: note}}' --processed
 Without a change flag `bim edit PATH` opens a TUI. Edit the body with your file
 tools, then run `bim format PATH` to normalise frontmatter and spacing;
 `bim format PATH -d` shows the diff first. Both keep tags in place and in
-order, and list keys after `processed` alphabetically.
+order, and keep the keys after `processed` in the note's own order.
 
 ## Import
 

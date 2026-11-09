@@ -49,6 +49,11 @@ class TestProjectTemplate:
         assert data.reference == {"parent": "", "ticket": "SR-1", "us": "", "psd": ""}
         assert list(data.reference) == ["parent", "ticket", "us", "psd"]
 
+    def test_build_data_orders_project_keys_like_the_vault_template(self) -> None:
+        data = ProjectTemplate().build_data({"title": "Probe", "deliverable": "fix"})
+        keys = [key for key in data.metadata if key in ("completed", "resources", "deliverable")]
+        assert keys == ["completed", "resources", "deliverable"]
+
     def test_blank_ticket_is_left_out_of_backmatter(self) -> None:
         data = ProjectTemplate().build_data({"title": "Probe", "deliverable": "support", "ticket": "  "})
         assert list(data.reference) == ["parent", "us", "psd"]
