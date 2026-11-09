@@ -7,6 +7,13 @@
       "detail": "Replan budget 75000: one file-boundary split leaves required CHANGELOG.md (102781 bytes) at 81132 tokens; file plus 55000 overhead alone is 80696. Capability splits retain that file term. See reports/00118-replan-1-budget.json. Prior committed code and provenance retained; task 3 Pat review and CLI/docs remain incomplete. PRDs 00119 and 00120 require 00118 completion review.",
       "op_id": "e9858f02eb2b",
       "prd": "00118-bim-create-scripting-contract-v1.md"
+    },
+    {
+      "type": "stall",
+      "site": "blocking_escalation",
+      "detail": "Execution prerequisite unmet: PRD 00118 remains in hold after oversized_task; implementation and completion review have not succeeded. Do not absorb or bypass 00118 tasks.",
+      "op_id": "c1e91e5fc3e2",
+      "prd": "00119-bim-create-vault-templates-v1.md"
     }
   ]
 }
