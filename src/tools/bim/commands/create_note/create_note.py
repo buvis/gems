@@ -67,7 +67,7 @@ class CommandCreateNote:
                 metadata["trashed_source"] = str(self._trash_source(source))
             except (OSError, ValueError, RuntimeError) as exc:
                 metadata["errors"] = [str(exc)]
-        return CommandResult(success=True, output=f"Created {path}", metadata=metadata)
+        return CommandResult(success=True, output=f"Created {path}", metadata=metadata, warnings=use_case.warnings)
 
     def _inputs(self) -> tuple[str | None, str | None, Path | None]:
         if self.params.source is None:
@@ -90,19 +90,29 @@ class CommandCreateNote:
 
     def _answers(self, template: Any, title: str) -> dict[str, Any]:
         answers: dict[str, Any] = {"title": title}
-        if self.params.tags is not None:
-            tags: list[str] = []
-            for raw_tag in self.params.tags.split(","):
+        tags: list[str] = list(getattr(template, "default_tags", None) or [])
+        if self.params.tags is not None or tags:
+            for raw_tag in (self.params.tags or "").split(","):
                 tag = raw_tag.strip().removeprefix("#").lower()
                 if not tag:
                     continue
                 if not re.fullmatch(r"[\w-]+(/[\w-]+)*", tag) or re.fullmatch(r"[\d/]+", tag):
                     raise ValueError(f"invalid tag '{tag}': use letters, digits, '-', '_', and '/' for nesting")
+                owner = next(
+                    (
+                        name
+                        for name, other in self.templates.items()
+                        if other is not template and tag in (getattr(other, "default_tags", None) or [])
+                    ),
+                    None,
+                )
+                if owner is not None:
+                    raise ValueError(f"tag '{tag}' is reserved for the {owner} template")
                 if tag not in tags:
                     tags.append(tag)
             answers["tags"] = ",".join(tags)
         for q in template.questions():
-            if q.key == "tags" and self.params.tags is not None:
+            if q.key == "tags" and "tags" in answers:
                 continue
             if q.key in self.extra_answers:
                 answers[q.key] = self.extra_answers[q.key]

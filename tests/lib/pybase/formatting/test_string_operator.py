@@ -63,3 +63,22 @@ class TestReplaceAbbreviationsDelegation:
         result = StringOperator.replace_abbreviations("API", [{"API": "Test"}], 2)
         assert result == "Expanded"
         mock_replace.assert_called_once_with("API", [{"API": "Test"}], 2)
+
+
+class TestSlugify:
+    @pytest.mark.parametrize(
+        ("title", "expected"),
+        [
+            ("Ada  Lovelace", "ada-lovelace"),
+            ("Čapek", "capek"),
+            (" Šňůra - test ", "snura-test"),
+            ("TCP/IP stack", "tcpip-stack"),
+            ("Already-slug-2", "already-slug-2"),
+        ],
+    )
+    def test_slugify_strips_diacritics_and_joins_with_dashes(self, title: str, expected: str) -> None:
+        assert StringOperator.slugify(title) == expected
+
+    @pytest.mark.parametrize("title", ["日本語", "", "   ", "!!!"])
+    def test_slugify_returns_empty_for_non_latin_title(self, title: str) -> None:
+        assert StringOperator.slugify(title) == ""

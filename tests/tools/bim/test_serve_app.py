@@ -276,5 +276,6 @@ class TestCommandServeExecute:
             host="0.0.0.0",
             business_triage_root=None,
             doc_settings=None,
+            path_projects=None,
         )
         mock_uvicorn_run.assert_called_once_with(mock_app, host="0.0.0.0", port=9001, log_level="info")

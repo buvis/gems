@@ -122,10 +122,12 @@ def create_note(
             k, v = a.split("=", 1)
             extra_answers[k] = v
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
+    path_projects = Path(settings.path_projects).expanduser()
     if scripted or (zettel_type and title):
         _create_note_scripted(
             ctx,
             path_zettelkasten,
+            path_projects=path_projects,
             zettel_type=zettel_type,
             title=title,
             tags=tags,
@@ -145,6 +147,7 @@ def create_note(
         preselected_title=title,
         preselected_tags=tags,
         extra_answers=extra_answers,
+        path_projects=path_projects,
     )
     app.run()
 
@@ -160,6 +163,7 @@ def _create_note_scripted(
     ctx: click.Context,
     path_zettelkasten: Path,
     *,
+    path_projects: Path,
     zettel_type: str | None,
     title: str | None,
     tags: str | None,
@@ -201,7 +205,7 @@ def _create_note_scripted(
             path_zettelkasten=path_zettelkasten,
             repo=get_repo(),
             templates=get_templates(),
-            hook_runner=get_hook_runner(),
+            hook_runner=get_hook_runner(path_projects),
             formatter=get_formatter(),
         )
     except (OSError, UnicodeError) as exc:
@@ -212,7 +216,8 @@ def _create_note_scripted(
         if not result.success:
             fail(result.error or "Create failed")
             return
-        click.echo(json.dumps(result.metadata, ensure_ascii=False))
+        payload = {**result.metadata, "warnings": result.warnings} if result.warnings else result.metadata
+        click.echo(json.dumps(payload, ensure_ascii=False))
         return
 
     def report_success(r: Any) -> None:

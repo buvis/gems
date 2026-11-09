@@ -49,6 +49,12 @@ class NoteTemplate:
         return self.hook_list
 
 
+class TaggedTemplate(NoteTemplate):
+    """Contact-like fixture: every note of this template carries ``person``."""
+
+    default_tags = ["person"]
+
+
 class LabeledFormatter(MarkdownZettelFormatter):
     @staticmethod
     def format(zettel_data: ZettelData) -> str:
@@ -567,25 +573,24 @@ class TestCommandCreateNote:
         assert str(source) in errors
         assert str(destination) in errors
 
-    def test_metadata_uses_saved_readback_after_hook_changes_note(self, scratch_vault: ScratchVault) -> None:
+    def test_hook_changes_land_in_saved_note_metadata_and_warnings(self, scratch_vault: ScratchVault) -> None:
         notes, repo, _ = scratch_vault
         called_roots: list[Path] = []
 
-        def update_saved_note(hooks: list[Hook], data: ZettelData, root: Path) -> None:
+        def retitle_before_save(hooks: list[Hook], data: ZettelData, root: Path) -> list[str]:
             assert [hook.name for hook in hooks] == ["retitle"]
             assert data.metadata["title"] == "Before Save"
+            assert next(root.glob("*.md")).read_bytes() == b""
             called_roots.append(root)
-            saved = repo.find_by_location(str(next(root.glob("*.md"))))
-            updated = saved.get_data()
-            updated.metadata["title"] = "After Hook"
-            repo.save(Zettel(updated))
+            data.metadata["title"] = "After Hook"
+            return ["resources folder skipped"]
 
         template = NoteTemplate(hooks=[Hook("retitle")])
         result = create_command(
             scratch_vault,
             CreateNoteParams(zettel_type="note", title="Before Save"),
             template,
-            hook_runner=update_saved_note,
+            hook_runner=retitle_before_save,
         ).execute()
 
         assert result.success is True
@@ -594,6 +599,7 @@ class TestCommandCreateNote:
         assert saved.title == "After Hook"
         assert result.metadata["title"] == saved.title
         assert result.metadata["wikilink"].endswith("|After Hook]]")
+        assert result.warnings == ["resources folder skipped"]
 
     def test_metadata_returns_empty_tags_when_saved_readback_has_none(self, scratch_vault: ScratchVault) -> None:
         _, repo, _ = scratch_vault
@@ -622,7 +628,7 @@ class TestCommandCreateNote:
         assert result.metadata["type"] == saved.get_data().metadata["type"]
         json.dumps(result.metadata)
 
-    def test_hook_failure_reports_saved_path_and_retains_source(self, scratch_vault: ScratchVault) -> None:
+    def test_hook_failure_writes_nothing_and_retains_source(self, scratch_vault: ScratchVault) -> None:
         notes, _, _ = scratch_vault
         source = notes.parent / "inbox" / "Retained.md"
         source.write_text("Keep source")
@@ -637,13 +643,49 @@ class TestCommandCreateNote:
             hook_runner=fail_hook,
         ).execute()
 
-        saved_paths = list(notes.glob("*.md"))
-        assert len(saved_paths) == 1
         assert result.success is False
-        assert result.error == f"note saved at {saved_paths[0]}, but hook failed: hook exploded"
-        assert "Keep source" in saved_paths[0].read_text()
+        assert result.error == "hook failed: hook exploded"
+        assert list(notes.iterdir()) == []
         assert source.read_text() == "Keep source"
         assert not (notes.parent / ".trash").exists()
+
+    def test_default_tags_come_first(self, scratch_vault: ScratchVault) -> None:
+        template = TaggedTemplate()
+
+        result = create_command(
+            scratch_vault, CreateNoteParams(zettel_type="note", title="Ada", tags="Work,#person"), template
+        ).execute()
+
+        assert result.success is True
+        assert template.answers["tags"] == "person,work"
+        assert result.metadata["tags"] == ["person", "work"]
+
+    def test_default_tags_apply_when_no_tags_are_given(self, scratch_vault: ScratchVault) -> None:
+        template = TaggedTemplate()
+
+        result = create_command(scratch_vault, CreateNoteParams(zettel_type="note", title="Ada"), template).execute()
+
+        assert result.success is True
+        assert template.answers["tags"] == "person"
+        assert result.metadata["tags"] == ["person"]
+
+    def test_reserved_tag_of_other_template_is_rejected(self, scratch_vault: ScratchVault) -> None:
+        notes, repo, formatter = scratch_vault
+        plain = NoteTemplate()
+
+        result = CommandCreateNote(
+            params=CreateNoteParams(zettel_type="note", title="T", tags="person"),
+            path_zettelkasten=notes,
+            repo=repo,
+            templates={"note": plain, "contact": TaggedTemplate()},
+            hook_runner=None,
+            formatter=formatter,
+        ).execute()
+
+        assert result.success is False
+        assert result.error == "tag 'person' is reserved for the contact template"
+        assert plain.answers == {}
+        assert list(notes.iterdir()) == []
 
     @pytest.mark.parametrize(
         "body,expected",

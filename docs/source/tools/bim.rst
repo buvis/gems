@@ -24,8 +24,12 @@ Configuration
    * - ``path_archive``
      - ``~/Documents/reference/40-archives/``
      - Archive directory
+   * - ``path_projects``
+     - ``~/Documents/reference/10-projects/``
+     - Root for project resources folders (``<id>-<slug>``)
 
-Env vars: ``BUVIS_BIM_PATH_ZETTELKASTEN``, ``BUVIS_BIM_PATH_ARCHIVE``.
+Env vars: ``BUVIS_BIM_PATH_ZETTELKASTEN``, ``BUVIS_BIM_PATH_ARCHIVE``,
+``BUVIS_BIM_PATH_PROJECTS``.
 
 Agent skill
 -----------
@@ -93,6 +97,81 @@ Any scripting flag (``--body-file``, ``--source``, ``--dry-run``, ``--json``)
 runs the command directly, even without ``--title``. A bare ``bim create``
 still opens the TUI.
 
+Templates
+^^^^^^^^^
+
+The bundled templates reproduce the vault's Templater notes. ``-a key=value``
+answers a template question; a missing required answer fails with
+``Missing required answer: <key>``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 30 48
+
+   * - Template
+     - Answers
+     - Placement and shape
+   * - ``note``
+     - none
+     - ``<id>.md``, ``type: note``. The plain kinds ``definition``, ``how-to``,
+       ``list``, ``procedure``, ``quote``, ``recipe``, ``snippet``,
+       ``cheatsheet``, ``course`` and ``wiki-article`` share this shape with
+       their own ``type``.
+   * - ``project``
+     - ``deliverable`` (``fix``, ``enhancement``, ``support``; required),
+       ``ticket`` (optional)
+     - ``<id>.md``; sections Description, Log (with a first GTD task), Plan and
+       Solution (the body lands here); backmatter ``parent`` (the note itself),
+       ``ticket`` when given, ``us``, ``psd``. ``resources`` links
+       ``<path_projects>/<id>-<slug>``, which is created when ``path_projects``
+       exists and reported as a warning otherwise.
+   * - ``contact``
+     - ``company``, ``job-title``, ``email`` (optional)
+     - ``contact/<slug>.md``; every word of the title is capitalised, the tag
+       ``person`` is added, ``contact-type: person``; a photo line
+       ``![Title photo|180](<slug>.jpeg)`` and the sections First contact,
+       Timeline, Relationships.
+   * - ``book``
+     - none
+     - ``book/<slug>.md``; the tag ``book`` is added; ``summary``,
+       ``last-read``, ``author``; a cover line and the sections Thesis,
+       Antithesis, Synthesis; backmatter ``shop``.
+   * - ``meeting-minutes``
+     - ``location`` (``webex``, ``teams``, ``phone``, ``face to face``;
+       required), ``organizer`` (optional)
+     - ``<id>.md``; title ``YYYY-MM-DD | <Subject> meeting minutes`` (a
+       trailing "meeting minutes" in ``--title`` is not doubled); ``start``,
+       ``end``, ``attendees``, ``summary``; sections Agenda, Log (the body lands
+       here) and Post-processing with the GTD lists.
+   * - ``illustrated-note``
+     - none
+     - ``<id>.md``; Excalidraw frontmatter, ``![Title](<id>.svg)`` and the
+       empty drawing block.
+   * - ``youtube``
+     - ``video`` (URL or 11-character id; required)
+     - ``<id>.md``; ``type: note`` with ``origin: youtube`` and ``source``; the
+       embedded player, a summary callout and Notes (the body lands here).
+   * - ``problem-resolution-report``
+     - none
+     - ``<id>.md``; the PRR skeleton from "Define the problem" to "Document and
+       report" (the body lands under Gather information); backmatter
+       ``parent``.
+   * - ``article``
+     - none
+     - ``<id>.md``, ``type: article``.
+
+``person`` and ``book`` are reserved for the contact and book templates so
+Auto Note Mover never relocates another note by accident: ``--tags person`` on
+a ``note`` fails. A YAML file in ``~/.config/buvis/templates/`` with the same
+``name`` overrides a bundled template. YAML templates may set ``folder``,
+``file_stem: slug``, ``default_tags``, ``body_section`` and a ``reference``
+mapping, and may use ``{slug}`` wherever ``{title}`` works.
+
+Deviations from the Templater output, all deliberate: the ``resources`` link
+is a plain ``file://`` URL (Obsidian opens both forms); the PRR heading is
+``# <title>`` because bim keeps the H1 equal to the title; a title that gives
+an empty slug (no Latin letters or digits) fails instead of writing ``.md``.
+
 Scripting contract (v1)
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -106,8 +185,10 @@ With ``--json`` a successful create prints one object::
 ``relative_path`` and ``wikilink`` are relative to the vault root, the parent
 of ``path_zettelkasten``. Extra keys appear when relevant: ``dry_run`` and
 ``content`` (the rendered note) on a dry run, ``trashed_source`` after an
-inbox file was moved, and ``errors`` (a list) when the note was written but a
-follow-up step such as that move failed. On failure the output is
+inbox file was moved, ``warnings`` (a list) when a template hook could not do
+all of its work (for example the ``path_projects`` root is missing), and
+``errors`` (a list) when the note was written but a follow-up step such as
+that move failed. On failure the output is
 ``{"error": "<message>"}`` and the exit code is 1. The keys and their types
 are stable: later versions only add keys, so consumers must ignore unknown
 ones.

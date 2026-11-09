@@ -18,6 +18,7 @@ class CommandServe:
             host=self.params.host,
             business_triage_root=self.params.business_triage_root,
             doc_settings=self.params.doc_settings,
+            path_projects=self.params.path_projects,
         )
 
         if not self.params.no_browser:

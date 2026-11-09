@@ -8,6 +8,9 @@ Example:
 
 from __future__ import annotations
 
+import re
+import unicodedata
+
 from buvis.pybase.formatting.string_operator.abbr import Abbr, AbbreviationInput
 from buvis.pybase.formatting.string_operator.string_case_tools import StringCaseTools
 
@@ -92,6 +95,29 @@ class StringOperator:
             'FirstName'
         """
         return StringCaseTools.camelize(text)
+
+    @staticmethod
+    def slugify(text: str) -> str:
+        """Turn a title into a file-name slug the way the vault's Templater does.
+
+        NFKD-normalise, drop combining marks, lowercase, keep only ``[a-z0-9 -]``,
+        turn whitespace runs into ``-`` and collapse dash runs.
+
+        Args:
+            text: Title to slugify.
+        Returns:
+            The slug, or ``""`` when nothing Latin or numeric is left.
+        Example:
+            >>> StringOperator.slugify("Ada  Lovelace")
+            'ada-lovelace'
+            >>> StringOperator.slugify("Čapek")
+            'capek'
+        """
+        slug = unicodedata.normalize("NFKD", text)
+        slug = re.sub(r"[̀-ͯ]", "", slug).strip().lower()
+        slug = re.sub(r"[^a-z0-9 -]", "", slug)
+        slug = re.sub(r"\s+", "-", slug)
+        return re.sub(r"-+", "-", slug)
 
     @staticmethod
     def replace_abbreviations(

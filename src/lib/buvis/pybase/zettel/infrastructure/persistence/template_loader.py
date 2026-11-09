@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import yaml
 from buvis.pybase.configuration import get_config_dirs
+from buvis.pybase.formatting import StringOperator
 from buvis.pybase.zettel.domain.templates import (
     Hook,
     ZettelTemplate,
@@ -67,24 +69,63 @@ def discover_templates(evaluator: ExpressionEvaluator) -> dict[str, ZettelTempla
     return templates
 
 
-def _create_project_dir(data: ZettelData, zettelkasten_path: Path) -> None:
-    project_dir = zettelkasten_path.parent / "projects" / str(data.metadata.get("id", "unknown"))
-    project_dir.mkdir(parents=True, exist_ok=True)
+HookHandler = Callable[[ZettelData, Path, "Path | None"], "str | None"]
+"""A hook mutates the prepared data; a returned string is a warning for the user."""
+
+
+def _create_project_dir(data: ZettelData, _zettelkasten_path: Path, path_projects: Path | None) -> str | None:
+    """Link ``<path_projects>/<id>-<slug>`` as the resources folder and create it when the root exists."""
+    if path_projects is None:
+        return "project resources folder skipped: path_projects is not set"
+    slug = StringOperator.slugify(str(data.metadata.get("title", "")))
+    name = "-".join(part for part in (str(data.metadata.get("id", "unknown")), slug) if part)
+    root = path_projects.expanduser().absolute()
+    project_dir = root / name
     data.metadata["resources"] = f"[project resources]({project_dir.as_uri()})"
+    if not root.is_dir():
+        return f"project resources folder {project_dir} not created: {root} does not exist"
+    project_dir.mkdir(exist_ok=True)
+    return None
+
+
+def _set_parent_reference(data: ZettelData, zettelkasten_path: Path, _path_projects: Path | None) -> str | None:
+    note_id, title = data.metadata.get("id", ""), data.metadata.get("title", "")
+    data.reference["parent"] = f"[[{zettelkasten_path.name}/{note_id}|{title}]]"
+    return None
+
+
+def _set_illustration_link(data: ZettelData, _zettelkasten_path: Path, _path_projects: Path | None) -> str | None:
+    if data.sections:
+        heading, body = data.sections[0]
+        data.sections[0] = (heading, body.replace("{id}", str(data.metadata.get("id", ""))))
+    return None
+
+
+_HOOK_REGISTRY: dict[str, HookHandler] = {
+    "create_project_dir": _create_project_dir,
+    "set_parent_reference": _set_parent_reference,
+    "set_illustration_link": _set_illustration_link,
+}
 
 
 def run_template_hooks(
     hooks: list[Hook],
     data: ZettelData,
     zettelkasten_path: Path,
-) -> None:
-    registry = {"create_project_dir": _create_project_dir}
+    *,
+    path_projects: Path | None = None,
+) -> list[str]:
+    """Run ``hooks`` against ``data`` before it is saved; return the warnings they raised."""
+    warnings: list[str] = []
     for hook in hooks:
-        handler = registry.get(hook.name)
+        handler = _HOOK_REGISTRY.get(hook.name)
         if handler is None:
             logger.warning("No hook handler registered for '%s'", hook.name)
             continue
-        handler(data, zettelkasten_path)
+        warning = handler(data, zettelkasten_path, path_projects)
+        if warning:
+            warnings.append(warning)
+    return warnings
 
 
 __all__ = ["discover_templates", "discover_yaml_templates", "run_template_hooks"]

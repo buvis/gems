@@ -64,64 +64,94 @@ class TestDiscoverYamlTemplates:
 
 
 class TestCreateProjectDir:
-    def test_creates_dir_and_sets_metadata(self, tmp_path):
-        zk_path = tmp_path / "zettelkasten" / "notes"
-        zk_path.mkdir(parents=True)
-        data = ZettelData(metadata={"id": "20240115"})
-        _create_project_dir(data, zk_path)
+    def test_creates_id_slug_folder_under_path_projects_and_links_it(self, tmp_path):
+        projects = tmp_path / "10-projects"
+        projects.mkdir()
+        data = ZettelData(metadata={"id": 20240115120000, "title": "Probe run"})
 
-        project_dir = tmp_path / "zettelkasten" / "projects" / "20240115"
+        warning = _create_project_dir(data, tmp_path / "notes", projects)
+
+        project_dir = projects / "20240115120000-probe-run"
+        assert warning is None
         assert project_dir.is_dir()
-        assert "resources" in data.metadata
-        assert "20240115" in data.metadata["resources"]
+        assert data.metadata["resources"] == f"[project resources]({project_dir.as_uri()})"
 
-    def test_missing_id_uses_unknown(self, tmp_path):
-        zk_path = tmp_path / "zettelkasten" / "notes"
-        zk_path.mkdir(parents=True)
+    def test_project_dir_skipped_when_root_missing(self, tmp_path):
+        projects = tmp_path / "absent"
+        data = ZettelData(metadata={"id": 1, "title": "Probe"})
+
+        warning = _create_project_dir(data, tmp_path / "notes", projects)
+
+        assert not projects.exists()
+        assert data.metadata["resources"] == f"[project resources]({(projects / '1-probe').as_uri()})"
+        assert warning == f"project resources folder {projects / '1-probe'} not created: {projects} does not exist"
+
+    def test_unset_root_skips_without_resources_link(self, tmp_path):
+        data = ZettelData(metadata={"id": 1, "title": "Probe"})
+
+        warning = _create_project_dir(data, tmp_path / "notes", None)
+
+        assert warning == "project resources folder skipped: path_projects is not set"
+        assert "resources" not in data.metadata
+
+    def test_missing_title_and_id_still_make_a_folder(self, tmp_path):
         data = ZettelData(metadata={})
-        _create_project_dir(data, zk_path)
-
-        project_dir = tmp_path / "zettelkasten" / "projects" / "unknown"
-        assert project_dir.is_dir()
-
-    def test_idempotent(self, tmp_path):
-        zk_path = tmp_path / "zettelkasten" / "notes"
-        zk_path.mkdir(parents=True)
-        data = ZettelData(metadata={"id": "abc"})
-        _create_project_dir(data, zk_path)
-        _create_project_dir(data, zk_path)
-        assert (tmp_path / "zettelkasten" / "projects" / "abc").is_dir()
+        _create_project_dir(data, tmp_path / "notes", tmp_path)
+        _create_project_dir(data, tmp_path / "notes", tmp_path)
+        assert (tmp_path / "unknown").is_dir()
 
 
 class TestRunTemplateHooks:
-    def test_known_hook_executes(self, tmp_path):
-        zk_path = tmp_path / "zettelkasten" / "notes"
-        zk_path.mkdir(parents=True)
-        data = ZettelData(metadata={"id": "proj1"})
-        hooks = [Hook(name="create_project_dir")]
-        run_template_hooks(hooks, data, zk_path)
+    def test_known_hook_executes_and_reports_no_warning(self, tmp_path):
+        projects = tmp_path / "projects"
+        projects.mkdir()
+        data = ZettelData(metadata={"id": "proj1", "title": "Multi"})
 
-        assert (tmp_path / "zettelkasten" / "projects" / "proj1").is_dir()
+        warnings = run_template_hooks(
+            [Hook(name="create_project_dir")], data, tmp_path / "notes", path_projects=projects
+        )
+
+        assert warnings == []
+        assert (projects / "proj1-multi").is_dir()
         assert "resources" in data.metadata
+
+    def test_set_parent_reference_links_the_note_itself(self, tmp_path):
+        data = ZettelData(metadata={"id": 20240115120000, "title": "Probe"})
+
+        run_template_hooks([Hook(name="set_parent_reference")], data, tmp_path / "notes")
+
+        assert data.reference == {"parent": "[[notes/20240115120000|Probe]]"}
+
+    def test_set_illustration_link_fills_id_in_first_section_only(self):
+        data = ZettelData(
+            metadata={"id": 20240115120000},
+            sections=[("# T", "![T]({id}.svg)"), ("# Text Elements", "{id} stays")],
+        )
+
+        run_template_hooks([Hook(name="set_illustration_link")], data, Path("/dummy"))
+
+        assert data.sections == [("# T", "![T](20240115120000.svg)"), ("# Text Elements", "{id} stays")]
 
     def test_unknown_hook_logs_warning(self, caplog):
         data = ZettelData(metadata={})
         hooks = [Hook(name="nonexistent_hook")]
         with caplog.at_level(logging.WARNING):
-            run_template_hooks(hooks, data, Path("/dummy"))
+            assert run_template_hooks(hooks, data, Path("/dummy")) == []
         assert "No hook handler registered for 'nonexistent_hook'" in caplog.text
 
     def test_empty_hooks_list(self):
         data = ZettelData(metadata={})
-        run_template_hooks([], data, Path("/dummy"))
-        # no error, nothing happens
+        assert run_template_hooks([], data, Path("/dummy")) == []
 
-    def test_multiple_hooks(self, tmp_path, caplog):
-        zk_path = tmp_path / "zettelkasten" / "notes"
-        zk_path.mkdir(parents=True)
-        data = ZettelData(metadata={"id": "multi"})
+    def test_multiple_hooks_collect_warnings_and_log_unknown(self, tmp_path, caplog):
+        projects = tmp_path / "absent"
+        data = ZettelData(metadata={"id": "multi", "title": "Multi"})
         hooks = [Hook(name="create_project_dir"), Hook(name="unknown")]
+
         with caplog.at_level(logging.WARNING):
-            run_template_hooks(hooks, data, zk_path)
-        assert (tmp_path / "zettelkasten" / "projects" / "multi").is_dir()
+            warnings = run_template_hooks(hooks, data, tmp_path / "notes", path_projects=projects)
+
+        assert warnings == [
+            f"project resources folder {projects / 'multi-multi'} not created: {projects} does not exist"
+        ]
         assert "No hook handler registered for 'unknown'" in caplog.text

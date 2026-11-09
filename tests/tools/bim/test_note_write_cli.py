@@ -79,7 +79,7 @@ class TestImportCommand:
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.shared.import_helpers.interactive_import") as mock_interactive,
         ):
-            settings = MagicMock(path_zettelkasten=str(tmp_path))
+            settings = MagicMock(path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects"))
             mock_settings.return_value = settings
 
             result = runner.invoke(cli, ["import", str(note)], catch_exceptions=False)
@@ -97,7 +97,9 @@ class TestImportCommand:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")
+            )
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -135,7 +137,9 @@ class TestImportCommand:
             patch("bim.dependencies.get_repo") as mock_get_repo,
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")
+            )
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -168,7 +172,9 @@ class TestImportCommand:
         b.write_text("# B")
 
         with patch("bim.note_write_cli.get_settings") as mock_settings:
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")
+            )
 
             result = runner.invoke(
                 cli,
@@ -217,7 +223,9 @@ class TestCreateCommand:
             patch("bim.dependencies.get_templates") as mock_get_templates,
             patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")
+            )
             mock_get_repo.return_value = MagicMock()
             mock_get_templates.return_value = MagicMock()
             mock_get_hook_runner.return_value = MagicMock()
@@ -260,7 +268,10 @@ class TestCreateCommand:
 @contextmanager
 def _scripted_create(tmp_path: Path, result: CommandResult) -> Iterator[MagicMock]:
     with (
-        patch("bim.note_write_cli.get_settings", return_value=MagicMock(path_zettelkasten=str(tmp_path))),
+        patch(
+            "bim.note_write_cli.get_settings",
+            return_value=MagicMock(path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")),
+        ),
         patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_cmd,
         patch("bim.dependencies.get_repo"),
         patch("bim.dependencies.get_templates"),
@@ -273,13 +284,14 @@ def _scripted_create(tmp_path: Path, result: CommandResult) -> Iterator[MagicMoc
 class TestCreateScriptingContract:
     def test_json_prints_single_object_and_nothing_else(self, runner, tmp_path):
         metadata = {"id": "20261108134925", "title": "Čaj", "tags": ["a"], "wikilink": "[[notes/20261108134925|Čaj]]"}
-        result = CommandResult(success=True, output="Created x", warnings=["not in json"], metadata=metadata)
+        result = CommandResult(success=True, output="Created x", warnings=["root missing"], metadata=metadata)
         with _scripted_create(tmp_path, result):
             outcome = runner.invoke(cli, ["create", "-t", "note", "--title", "Čaj", "--json"], catch_exceptions=False)
 
         assert outcome.exit_code == 0
-        assert outcome.output == json.dumps(metadata, ensure_ascii=False) + "\n"
-        assert json.loads(outcome.output) == metadata
+        expected = {**metadata, "warnings": ["root missing"]}
+        assert outcome.output == json.dumps(expected, ensure_ascii=False) + "\n"
+        assert json.loads(outcome.output) == expected
 
     def test_json_failure_prints_error_and_exits_1(self, runner, tmp_path):
         result = CommandResult(success=False, error="Unknown template: nonexistent", warnings=["w1"])

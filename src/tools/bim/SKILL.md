@@ -55,9 +55,13 @@ lookups: https://github.com/buvis/gems/blob/master/docs/source/bim-query-example
 bim create -t note --title "Why caches lie" --tags "cache,debugging" --json
 bim create -t note --title "Meeting takeaways" --body-file takeaways.md --json
 bim create -t note --source ~/bim/inbox/draft.md --json      # title from the file name; file moves to .trash/
-bim create -t project --title "Redesign homepage" -a dev_type=feature --dry-run --json
-bim create -t contact --title "Ada Lovelace" -a contact_type=friend -a email=ada@example.com --json
-bim create -t meeting-minutes --title "Weekly sync" -a "location=face to face" -a "organizer=Ada Lovelace" --json
+bim create -t project --title "Redesign homepage" -a deliverable=enhancement -a ticket=SR-1 --json
+bim create -t contact --title "ada lovelace" -a email=ada@example.com --json   # notes/contact/ada-lovelace.md, tag person
+bim create -t book --title "Dune" --json                                         # notes/book/dune.md, tag book
+bim create -t meeting-minutes --title "Weekly sync" -a location=teams --body-file log.md --json
+bim create -t youtube --title "Talk title" -a video=https://youtu.be/dQw4w9WgXcQ --json
+bim create -t illustrated-note --title "Sketch" --json
+bim create -t problem-resolution-report --title "Outage" --json
 ```
 
 Always pass `-t` plus `--title` or `--source`; a bare `bim create` opens an
@@ -69,19 +73,42 @@ anything. A failed create writes nothing. When the JSON has `errors`, the note
 exists but a follow-up step (moving the source to `.trash/`) failed.
 
 - `--body-file PATH` (`-` for stdin) appends Markdown to the template's body
-  section. `--source PATH` converts a file from `<vault>/inbox/`: its
-  frontmatter is dropped, its name is the default title, and it moves to
-  `.trash/` once the note is written. Never combine the two.
+  section: after the H1 for notes, under `## Solution` for projects, `## Log`
+  for meetings, `## Notes` for youtube and `## Gather information` for PRRs.
+  `--source PATH` converts a file from `<vault>/inbox/`: its frontmatter is
+  dropped, its name is the default title, and it moves to `.trash/` once the
+  note is written. Never combine the two.
 - `-a key=value` answers a template question; a missing required answer fails
   with `Missing required answer: <key>`.
 - Tags: comma-separated, `#` optional, lowercased, deduplicated. Use letters,
   digits, `-`, `_` and `/` for nesting; a tag with spaces or only digits fails.
+  `person` and `book` belong to contacts and books, are added automatically
+  and are rejected on any other template.
 - Ids equal the local-time digits of `date`, like the vault's own notes.
 
-Bundled templates: `note`, `project`, `contact`, `meeting-minutes`, `article`,
-`definition`, `how-to`, `list`, `procedure`, `quote`, `recipe`, `snippet`,
-`cheatsheet`, `course`, `wiki-article`. A YAML file in
-`~/.config/buvis/templates/` with the same `name` overrides a bundled template.
+Bundled templates and their answers:
+
+- `note`, and the plain kinds `definition`, `how-to`, `list`, `procedure`,
+  `quote`, `recipe`, `snippet`, `cheatsheet`, `course`, `wiki-article`,
+  `article`: no answers.
+- `project`: `deliverable` (`fix`, `enhancement`, `support`; required) and
+  `ticket` (optional). The note links a resources folder
+  `<path_projects>/<id>-<slug>` (`path_projects` defaults to
+  `~/Documents/reference/10-projects/`); when that root is missing the JSON
+  carries a `warnings` entry and the note is still written.
+- `contact`: full name as `--title` (every word is capitalised); optional
+  `company`, `job-title`, `email`. Written to `notes/contact/<slug>.md`.
+- `book`: the title as printed on the cover. Written to `notes/book/<slug>.md`.
+- `meeting-minutes`: `location` (`webex`, `teams`, `phone`, `face to face`;
+  required) and `organizer`. Give only the subject as `--title`; the note is
+  titled `YYYY-MM-DD | <Subject> meeting minutes`.
+- `youtube`: `video` (URL or 11-character id; required).
+- `illustrated-note`, `problem-resolution-report`: no answers.
+
+A contact or book whose slug already exists fails with `Zettel already
+exists`; open the existing note instead of retrying with another title. A
+YAML file in `~/.config/buvis/templates/` with the same `name` overrides a
+bundled template.
 
 ## Edit metadata
 

@@ -32,7 +32,7 @@ class TestCreateNoteCli:
             patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
+            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True, output="Created note.md")
 
@@ -58,7 +58,7 @@ class TestCreateNoteCli:
             patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
+            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True, output="Created note.md")
 
@@ -89,7 +89,7 @@ class TestCreateNoteCli:
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.tui.create_note.CreateNoteApp") as mock_app,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
+            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
 
             result = runner.invoke(create_note, ["--tags", "a,b"], catch_exceptions=False)
 
@@ -100,6 +100,7 @@ class TestCreateNoteCli:
                 preselected_title=None,
                 preselected_tags="a,b",
                 extra_answers={},
+                path_projects=Path("/tmp/projects"),
             )
             mock_app.return_value.run.assert_called_once_with()
 
@@ -113,7 +114,7 @@ class TestCreateNoteCli:
             patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter"),
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk")
+            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
             mock_cmd.side_effect = FileNotFoundError("missing template")
 
             result = runner.invoke(create_note, ["-t", "note", "--title", "X"], catch_exceptions=False)

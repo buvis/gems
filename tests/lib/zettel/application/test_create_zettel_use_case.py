@@ -487,7 +487,7 @@ class TestCollisionBudget:
 
 class TestReservationAndHooks:
     @pytest.mark.parametrize("zettel_id", [20231026120000, 20231026120001])
-    def test_exclusively_reserves_private_file_before_save_and_hooks(
+    def test_exclusively_reserves_private_file_then_runs_hooks_then_saves(
         self, tmp_path: Path, mocker: Any, zettel_id: int
     ) -> None:
         original_open = os.open
@@ -513,7 +513,7 @@ class TestReservationAndHooks:
             assert hook_list == []
             assert data.file_path == str(path)
             assert root == tmp_path
-            assert path.read_text() == "saved note"
+            assert path.read_bytes() == b""
             events.append("hooks")
 
         mocker.patch("os.open", side_effect=record_open)
@@ -525,7 +525,7 @@ class TestReservationAndHooks:
         assert reservation[0][:3] == (path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         assert len(reservation) == 1
         assert writer.save.call_count == 1
-        assert events == ["save", "hooks"]
+        assert events == ["hooks", "save"]
 
     @pytest.mark.parametrize("error", [PermissionError("denied"), OSError("disk failure")])
     def test_noncollision_reservation_error_is_surfaced_without_retry(
@@ -582,10 +582,10 @@ class TestReservationAndHooks:
         mock_zettel_writer.save.assert_not_called()
 
     @pytest.mark.parametrize("error", [OSError("save failed"), KeyboardInterrupt()])
-    def test_save_failure_removes_owned_placeholder_and_skips_hooks(
+    def test_save_failure_removes_owned_placeholder_after_hooks_ran(
         self, tmp_path: Path, mock_zettel_writer: MagicMock, error: BaseException
     ) -> None:
-        hook_runner = MagicMock()
+        hook_runner = MagicMock(return_value=[])
         mock_zettel_writer.save.side_effect = error
         use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer, hook_runner=hook_runner)
 
@@ -595,7 +595,7 @@ class TestReservationAndHooks:
         assert caught.value is error
         assert list(tmp_path.iterdir()) == []
         mock_zettel_writer.save.assert_called_once()
-        hook_runner.assert_not_called()
+        hook_runner.assert_called_once()
 
     @pytest.mark.parametrize("error", [OSError("save failed"), KeyboardInterrupt()])
     def test_cleanup_preserves_file_that_replaced_owned_placeholder(
@@ -620,28 +620,24 @@ class TestReservationAndHooks:
         assert (path.stat().st_dev, path.stat().st_ino) == replacement_identity
 
     @pytest.mark.parametrize("error", [ValueError("bad hook"), OSError("hook disk failure")])
-    def test_hook_error_reports_saved_path_and_retains_note(
+    def test_hook_error_fails_before_save_and_removes_placeholder(
         self, tmp_path: Path, mock_zettel_writer: MagicMock, error: BaseException
     ) -> None:
-        path = tmp_path / "20231026120000.md"
-        mock_zettel_writer.save.side_effect = lambda zettel: path.write_text("saved note")
         hook_runner = MagicMock(side_effect=error)
         use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer, hook_runner=hook_runner)
 
         with pytest.raises(RuntimeError) as caught:
             use_case.execute(FreshTemplate(), {})
 
-        assert str(caught.value) == f"note saved at {path}, but hook failed: {error}"
+        assert str(caught.value) == f"hook failed: {error}"
         assert caught.value.__cause__ is error
-        assert path.read_text() == "saved note"
-        mock_zettel_writer.save.assert_called_once()
+        assert list(tmp_path.iterdir()) == []
+        mock_zettel_writer.save.assert_not_called()
         hook_runner.assert_called_once()
 
-    def test_hook_keyboard_interrupt_is_preserved_with_saved_note(
+    def test_hook_keyboard_interrupt_is_preserved_and_nothing_is_saved(
         self, tmp_path: Path, mock_zettel_writer: MagicMock
     ) -> None:
-        path = tmp_path / "20231026120000.md"
-        mock_zettel_writer.save.side_effect = lambda zettel: path.write_text("saved note")
         interrupt = KeyboardInterrupt()
         hook_runner = MagicMock(side_effect=interrupt)
         use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer, hook_runner=hook_runner)
@@ -650,4 +646,65 @@ class TestReservationAndHooks:
             use_case.execute(FreshTemplate(), {})
 
         assert caught.value is interrupt
-        assert path.read_text() == "saved note"
+        assert list(tmp_path.iterdir()) == []
+        mock_zettel_writer.save.assert_not_called()
+
+
+class SlugTemplate(FreshTemplate):
+    folder = "contact"
+    file_stem = "slug"
+
+
+class TestTemplatePlacement:
+    def test_slug_template_writes_into_folder(self, tmp_path: Path, mock_zettel_writer: MagicMock) -> None:
+        use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer)
+
+        path = use_case.execute(SlugTemplate(), {"title": "Ada  Lovelace"})
+
+        assert path == tmp_path / "contact" / "ada-lovelace.md"
+        assert (tmp_path / "contact").is_dir()
+        saved = mock_zettel_writer.save.call_args.args[0]
+        assert saved.get_data().file_path == str(path)
+        assert use_case.prepare(SlugTemplate(), {"title": "Alan Turing"})[0] == tmp_path / "contact" / "alan-turing.md"
+
+    def test_slug_collision_fails_without_retry(
+        self, mocker: Any, tmp_path: Path, mock_zettel_writer: MagicMock
+    ) -> None:
+        sleep = mocker.patch("time.sleep", autospec=True)
+        occupied = tmp_path / "contact" / "ada-lovelace.md"
+        occupied.parent.mkdir()
+        occupied.write_text("existing")
+        template = SlugTemplate()
+
+        with pytest.raises(FileExistsError, match=f"^Zettel already exists: {occupied}$"):
+            CreateZettelUseCase(tmp_path, mock_zettel_writer).execute(template, {"title": "Ada Lovelace"})
+
+        assert len(template.built) == 1
+        sleep.assert_not_called()
+        assert occupied.read_text() == "existing"
+        mock_zettel_writer.save.assert_not_called()
+
+    def test_empty_slug_fails_before_any_write(self, tmp_path: Path, mock_zettel_writer: MagicMock) -> None:
+        with pytest.raises(
+            ValueError, match="title '日本語' gives an empty slug; use a title with Latin letters or digits"
+        ):
+            CreateZettelUseCase(tmp_path, mock_zettel_writer).execute(SlugTemplate(), {"title": "日本語"})
+
+        assert list(tmp_path.iterdir()) == []
+        mock_zettel_writer.save.assert_not_called()
+
+    def test_hook_metadata_is_in_the_saved_file(self, tmp_path: Path) -> None:
+        writer = MagicMock(spec=ZettelWriter)
+        seen: dict[str, Any] = {}
+        writer.save.side_effect = lambda zettel: seen.update(zettel.get_data().metadata)
+
+        def hooks(hook_list: list[Any], data: ZettelData, root: Path) -> list[str]:
+            data.metadata["resources"] = "[project resources](file:///tmp/p)"
+            return ["root missing"]
+
+        use_case = CreateZettelUseCase(tmp_path, writer, hook_runner=hooks)
+
+        use_case.execute(FreshTemplate(), {})
+
+        assert seen["resources"] == "[project resources](file:///tmp/p)"
+        assert use_case.warnings == ["root missing"]

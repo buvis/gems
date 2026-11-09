@@ -11,11 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **bim**: `bim create` is scriptable: `--body-file PATH` (or `-` for stdin) appends a body, `--source PATH` converts an inbox file (frontmatter dropped, title from the file name, file moved to `.trash/`), `--dry-run` renders without writing, and `--json` prints one object with `id`, `type`, `title`, `tags`, `path`, `relative_path` and `wikilink` (plus `dry_run`/`content`, `trashed_source`, `errors` when relevant) or `{"error": ...}` on failure.
 - **bim**: `bim create --tags` are normalised (`#` dropped, lowercased, deduplicated) and validated; a tag with spaces or only digits fails before anything is written. Two creates in the same second no longer fail: the second waits for the next free id.
+- **bim**: `bim create` templates reproduce the vault's Templater notes: new `book`, `illustrated-note`, `youtube` and `problem-resolution-report` templates; `contact` writes `contact/<slug>.md` with a capitalised name and the `person` tag, `book` writes `book/<slug>.md` with the `book` tag, and those two tags are rejected on other templates. YAML templates may set `folder`, `file_stem`, `default_tags`, `body_section` and `reference`, and use `{slug}`.
+- **bim**: `path_projects` setting (`BUVIS_BIM_PATH_PROJECTS`, default `~/Documents/reference/10-projects/`): a new project links and creates `<path_projects>/<id>-<slug>` as its resources folder; a missing root is reported as a warning (`warnings` in the `--json` output) and the note is still written.
 - **sysup**: update Herdr app mods through hmod (`herdr-mods`, macOS); skipped when Herdr is closed or hmod is not installed
 
 ### Changed
 
 - **bim**: new note dates and IDs use local time, matching the vault's Templater notes; existing IDs are preserved. ID generation rejects date-only and other non-datetime values.
+- **bim**: `project` asks `deliverable` (`fix`, `enhancement`, `support`) and an optional `ticket` instead of `dev_type`, and writes Description, Log, Plan and Solution sections with `parent`, `ticket`, `us` and `psd` backmatter; `contact` drops the `contact_type` question; `meeting-minutes` is titled `YYYY-MM-DD | <Subject> meeting minutes`, asks `location` as `webex`, `teams`, `phone` or `face to face`, and carries the GTD post-processing block. Template hooks now run before the note is saved, so their metadata lands in the file.
 - **bim**: `create`, `import`, `edit`, `archive`, `delete`, `format`, `sync`, `show` and `query` without a spec exit 1 on failure instead of 0.
 
 ## [0.19.2] - 2026-11-08
