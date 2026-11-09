@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -62,6 +66,7 @@ class TestCreateZettelUseCase:
         assert mock_data.file_path == str(create_zettel_use_case.zettelkasten_path / "20231026120000.md")
 
     def test_raises_file_exists(self, mocker, create_zettel_use_case, tmp_path):
+        mocker.patch("time.sleep", autospec=True)
         mock_factory = _setup_factory_mock(mocker)
         mock_template, mock_data, mock_zettel = _make_template_and_zettel(mock_factory)
 
@@ -96,3 +101,464 @@ class TestCreateZettelUseCase:
 
         expected_path = create_zettel_use_case.zettelkasten_path / "20231026120000.md"
         assert path == expected_path
+
+
+class FreshTemplate:
+    name = "Example"
+
+    def __init__(
+        self,
+        ids: tuple[int, ...] = (20231026120000,),
+        sections: list[tuple[str, str]] | None = None,
+        body_section: str | None = None,
+    ) -> None:
+        self.ids = ids
+        self.sections = sections if sections is not None else [("# Example Title", "existing")]
+        self.body_section = body_section
+        self.built: list[ZettelData] = []
+        self.received: list[dict[str, Any]] = []
+
+    def questions(self) -> list:
+        return []
+
+    def hooks(self) -> list:
+        return []
+
+    def build_data(self, answers: dict[str, Any]) -> ZettelData:
+        zettel_id = self.ids[min(len(self.built), len(self.ids) - 1)]
+        data = ZettelData(
+            metadata={
+                "id": zettel_id,
+                "date": datetime(2023, 10, 26, 12, tzinfo=timezone.utc),
+                "type": "note",
+                "title": answers.get("title", "Example Title"),
+            },
+            sections=list(self.sections),
+        )
+        self.built.append(data)
+        self.received.append(answers)
+        return data
+
+
+def _run_with_body(
+    use_case: CreateZettelUseCase,
+    writer: MagicMock,
+    template: FreshTemplate,
+    method: str,
+    body: str | None,
+    answers: dict[str, Any] | None = None,
+) -> tuple[Path, ZettelData]:
+    answers = answers if answers is not None else {"title": "Example Title"}
+    result = getattr(use_case, method)(template, answers, body=body)
+    if method == "prepare":
+        return result[0], result[1].get_data()
+    return result, writer.save.call_args.args[0].get_data()
+
+
+class TestPrepareBody:
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            ("\r\n \t\r\n    indented\r\n\tinside  \r\n\r\n", "    indented\n\tinside"),
+            ("\n\n  second  \n\nnext  \t", "  second  \n\nnext"),
+        ],
+    )
+    def test_normalizes_body_preserving_content_indentation(
+        self,
+        create_zettel_use_case: CreateZettelUseCase,
+        mock_zettel_writer: MagicMock,
+        method: str,
+        body: str | None,
+        expected: str,
+    ) -> None:
+        template = FreshTemplate()
+
+        _, data = _run_with_body(create_zettel_use_case, mock_zettel_writer, template, method, body)
+
+        assert data.sections == [("# Example Title", f"existing\n\n{expected}")]
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    @pytest.mark.parametrize("body", [None, "", " \t\r\n\n"])
+    def test_absent_or_blank_body_preserves_all_template_content(
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, method: str, body: str | None
+    ) -> None:
+        sections = [("# Example Title", "  original  \n"), ("## Other", "second\n\n")]
+
+        _, data = _run_with_body(
+            create_zettel_use_case, mock_zettel_writer, FreshTemplate(sections=sections), method, body
+        )
+
+        assert data.sections == sections
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_matches_exact_first_heading_and_preserves_other_sections(
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, method: str
+    ) -> None:
+        sections = [
+            ("# Example Title", "intro"),
+            ("## Body Extra", "prefix"),
+            ("### Body", "level"),
+            ("## Body", "target"),
+            ("## Body", "duplicate"),
+        ]
+
+        _, data = _run_with_body(
+            create_zettel_use_case,
+            mock_zettel_writer,
+            FreshTemplate(sections=sections, body_section="## Body"),
+            method,
+            "supplied",
+        )
+
+        assert data.sections == [*sections[:3], ("## Body", "target\n\nsupplied"), sections[4]]
+
+    @pytest.mark.parametrize("heading", [None, "## Missing", "## Body Extra"])
+    def test_missing_exact_heading_falls_back_to_first_section(
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, heading: str | None
+    ) -> None:
+        sections = [("# Example Title", "first"), ("## Body", "second")]
+
+        _, data = _run_with_body(
+            create_zettel_use_case,
+            mock_zettel_writer,
+            FreshTemplate(sections=sections, body_section=heading),
+            "prepare",
+            "added",
+        )
+
+        assert data.sections == [("# Example Title", "first\n\nadded"), sections[1]]
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_empty_target_does_not_add_leading_separator(
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, method: str
+    ) -> None:
+        sections = [("# Example Title", "intro"), ("## Notes", "")]
+
+        _, data = _run_with_body(
+            create_zettel_use_case,
+            mock_zettel_writer,
+            FreshTemplate(sections=sections, body_section="## Notes"),
+            method,
+            "  supplied",
+        )
+
+        assert data.sections == [sections[0], ("## Notes", "  supplied")]
+
+    @pytest.mark.parametrize("title", ["Example Title", "Another Title"])
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_initializes_missing_sections_with_answer_title(
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, title: str, method: str
+    ) -> None:
+        answers = {"title": title}
+
+        _, data = _run_with_body(
+            create_zettel_use_case, mock_zettel_writer, FreshTemplate(sections=[]), method, "  supplied", answers
+        )
+
+        assert data.sections == [(f"# {title}", "  supplied")]
+
+    def test_prepare_returns_path_and_fixed_zettel_without_side_effects(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock
+    ) -> None:
+        root = tmp_path / "missing" / "vault"
+        hooks = MagicMock()
+        use_case = CreateZettelUseCase(root, mock_zettel_writer, hook_runner=hooks)
+        template = FreshTemplate(ids=(20231026120001,))
+        answers = {"title": "Another Title"}
+
+        path, zettel = use_case.prepare(template, answers, body="added")
+
+        assert path == root / "20231026120001.md"
+        assert isinstance(zettel, Zettel)
+        assert zettel.id == 20231026120001
+        assert zettel.get_data().file_path == str(path)
+        assert template.received == [answers]
+        assert not root.exists()
+        mock_zettel_writer.save.assert_not_called()
+        hooks.assert_not_called()
+
+
+class TestCollisionBudget:
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_waits_for_next_second_on_collision(
+        self,
+        mocker: Any,
+        create_zettel_use_case: CreateZettelUseCase,
+        mock_zettel_writer: MagicMock,
+        tmp_path: Path,
+        method: str,
+    ) -> None:
+        sleep = mocker.patch("time.sleep", autospec=True)
+        occupied = tmp_path / "20231026120000.md"
+        occupied.write_text("existing note")
+        template = FreshTemplate(ids=(20231026120000, 20231026120001))
+
+        path, data = _run_with_body(create_zettel_use_case, mock_zettel_writer, template, method, "added")
+
+        assert path == tmp_path / "20231026120001.md"
+        assert data.file_path == str(path)
+        assert data.sections == [("# Example Title", "existing\n\nadded")]
+        assert len(template.built) == 2
+        assert template.built[0] is not template.built[1]
+        assert occupied.read_text() == "existing note"
+        sleep.assert_called_once_with(1)
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_gives_up_after_five_attempts(
+        self,
+        mocker: Any,
+        create_zettel_use_case: CreateZettelUseCase,
+        mock_zettel_writer: MagicMock,
+        tmp_path: Path,
+        method: str,
+    ) -> None:
+        sleep = mocker.patch("time.sleep", autospec=True)
+        occupied = tmp_path / "20231026120000.md"
+        occupied.write_text("existing note")
+        template = FreshTemplate()
+
+        with pytest.raises(FileExistsError, match=f"^Zettel already exists: {occupied}$"):
+            getattr(create_zettel_use_case, method)(template, {"title": "Example Title"})
+
+        assert len(template.built) == 5
+        assert sleep.call_args_list == [((1,), {})] * 4
+        assert occupied.read_text() == "existing note"
+        mock_zettel_writer.save.assert_not_called()
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_attempt_budget_resets_for_each_invocation(
+        self,
+        mocker: Any,
+        create_zettel_use_case: CreateZettelUseCase,
+        mock_zettel_writer: MagicMock,
+        tmp_path: Path,
+        method: str,
+    ) -> None:
+        mocker.patch("time.sleep", autospec=True)
+        (tmp_path / "20231026120000.md").touch()
+        with pytest.raises(FileExistsError):
+            getattr(create_zettel_use_case, method)(FreshTemplate(), {})
+        template = FreshTemplate(ids=(20231026120001,))
+
+        path, data = _run_with_body(create_zettel_use_case, mock_zettel_writer, template, method, "again")
+
+        assert path == tmp_path / "20231026120001.md"
+        assert data.sections[0][1] == "existing\n\nagain"
+        assert len(template.built) == 1
+
+    def test_second_writer_loses_reservation_and_retries(
+        self, mocker: Any, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, tmp_path: Path
+    ) -> None:
+        sleep = mocker.patch("time.sleep", autospec=True)
+        original_open = os.open
+        occupied = tmp_path / "20231026120000.md"
+        template = FreshTemplate(ids=(20231026120000, 20231026120001))
+
+        def race(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
+            if Path(path) == occupied:
+                occupied.write_text("concurrent note")
+            return original_open(path, flags, mode, **kwargs)
+
+        mocker.patch("os.open", side_effect=race)
+
+        path = create_zettel_use_case.execute(template, {"title": "Example Title"})
+
+        assert path == tmp_path / "20231026120001.md"
+        assert occupied.read_text() == "concurrent note"
+        assert len(template.built) == 2
+        mock_zettel_writer.save.assert_called_once()
+        sleep.assert_called_once_with(1)
+
+    def test_existence_and_reservation_collisions_share_five_attempts(
+        self, mocker: Any, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, tmp_path: Path
+    ) -> None:
+        sleep = mocker.patch("time.sleep", autospec=True)
+        original_open = os.open
+        ids = tuple(20231026120000 + index for index in range(6))
+        for zettel_id in (ids[0], ids[2]):
+            (tmp_path / f"{zettel_id}.md").write_text("existing")
+
+        def lose_reservation(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
+            Path(path).write_text("concurrent")
+            return original_open(path, flags, mode, **kwargs)
+
+        mocker.patch("os.open", side_effect=lose_reservation)
+        template = FreshTemplate(ids=ids)
+
+        with pytest.raises(FileExistsError, match=f"Zettel already exists: {tmp_path / f'{ids[4]}.md'}"):
+            create_zettel_use_case.execute(template, {})
+
+        assert len(template.built) == 5
+        assert sleep.call_args_list == [((1,), {})] * 4
+        assert not (tmp_path / f"{ids[5]}.md").exists()
+        assert (tmp_path / f"{ids[4]}.md").read_text() == "concurrent"
+        mock_zettel_writer.save.assert_not_called()
+
+
+class TestReservationAndHooks:
+    @pytest.mark.parametrize("zettel_id", [20231026120000, 20231026120001])
+    def test_exclusively_reserves_private_file_before_save_and_hooks(
+        self, tmp_path: Path, mocker: Any, zettel_id: int
+    ) -> None:
+        original_open = os.open
+        reservation = []
+        events = []
+        path = tmp_path / f"{zettel_id}.md"
+        writer = MagicMock(spec=ZettelWriter)
+
+        def record_open(target: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
+            descriptor = original_open(target, flags, mode, **kwargs)
+            reservation.append((Path(target), flags, mode, descriptor))
+            return descriptor
+
+        def save(zettel: Zettel) -> None:
+            assert path.read_bytes() == b""
+            with pytest.raises(OSError):
+                os.fstat(reservation[0][3])
+            assert zettel.get_data().file_path == str(path)
+            events.append("save")
+            path.write_text("saved note")
+
+        def hooks(hook_list: list[Any], data: ZettelData, root: Path) -> None:
+            assert hook_list == []
+            assert data.file_path == str(path)
+            assert root == tmp_path
+            assert path.read_text() == "saved note"
+            events.append("hooks")
+
+        mocker.patch("os.open", side_effect=record_open)
+        writer.save.side_effect = save
+        use_case = CreateZettelUseCase(tmp_path, writer, hook_runner=hooks)
+
+        assert use_case.execute(FreshTemplate(ids=(zettel_id,)), {}) == path
+
+        assert reservation[0][:3] == (path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        assert len(reservation) == 1
+        assert writer.save.call_count == 1
+        assert events == ["save", "hooks"]
+
+    @pytest.mark.parametrize("error", [PermissionError("denied"), OSError("disk failure")])
+    def test_noncollision_reservation_error_is_surfaced_without_retry(
+        self,
+        mocker: Any,
+        create_zettel_use_case: CreateZettelUseCase,
+        mock_zettel_writer: MagicMock,
+        tmp_path: Path,
+        error: BaseException,
+    ) -> None:
+        sleep = mocker.patch("time.sleep", autospec=True)
+        mocker.patch("os.open", side_effect=error)
+        template = FreshTemplate()
+
+        with pytest.raises(type(error), match=str(error)) as caught:
+            create_zettel_use_case.execute(template, {})
+
+        assert caught.value is error
+        assert len(template.built) == 1
+        assert list(tmp_path.iterdir()) == []
+        mock_zettel_writer.save.assert_not_called()
+        sleep.assert_not_called()
+
+    def test_interrupted_descriptor_close_cleans_owned_reservation(
+        self, mocker: Any, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, tmp_path: Path
+    ) -> None:
+        original_open = os.open
+        original_close = os.close
+        descriptors = []
+        interrupted = False
+
+        def record_open(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
+            descriptor = original_open(path, flags, mode, **kwargs)
+            descriptors.append(descriptor)
+            return descriptor
+
+        def interrupt_once(descriptor: int) -> None:
+            nonlocal interrupted
+            if not interrupted:
+                interrupted = True
+                raise KeyboardInterrupt
+            original_close(descriptor)
+
+        mocker.patch("os.open", side_effect=record_open)
+        mocker.patch("os.close", side_effect=interrupt_once)
+
+        with pytest.raises(KeyboardInterrupt):
+            create_zettel_use_case.execute(FreshTemplate(), {})
+
+        assert len(descriptors) == 1
+        with pytest.raises(OSError):
+            os.fstat(descriptors[0])
+        assert list(tmp_path.iterdir()) == []
+        mock_zettel_writer.save.assert_not_called()
+
+    @pytest.mark.parametrize("error", [OSError("save failed"), KeyboardInterrupt()])
+    def test_save_failure_removes_owned_placeholder_and_skips_hooks(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock, error: BaseException
+    ) -> None:
+        hook_runner = MagicMock()
+        mock_zettel_writer.save.side_effect = error
+        use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer, hook_runner=hook_runner)
+
+        with pytest.raises(type(error)) as caught:
+            use_case.execute(FreshTemplate(), {})
+
+        assert caught.value is error
+        assert list(tmp_path.iterdir()) == []
+        mock_zettel_writer.save.assert_called_once()
+        hook_runner.assert_not_called()
+
+    @pytest.mark.parametrize("error", [OSError("save failed"), KeyboardInterrupt()])
+    def test_cleanup_preserves_file_that_replaced_owned_placeholder(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock, error: BaseException
+    ) -> None:
+        path = tmp_path / "20231026120000.md"
+        replacement = tmp_path / "replacement.md"
+        replacement.write_text("replacement note")
+        replacement_identity = (replacement.stat().st_dev, replacement.stat().st_ino)
+
+        def replace_and_fail(zettel: Zettel) -> None:
+            replacement.replace(path)
+            raise error
+
+        mock_zettel_writer.save.side_effect = replace_and_fail
+        use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer)
+
+        with pytest.raises(type(error)):
+            use_case.execute(FreshTemplate(), {})
+
+        assert path.read_text() == "replacement note"
+        assert (path.stat().st_dev, path.stat().st_ino) == replacement_identity
+
+    @pytest.mark.parametrize("error", [ValueError("bad hook"), OSError("hook disk failure")])
+    def test_hook_error_reports_saved_path_and_retains_note(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock, error: BaseException
+    ) -> None:
+        path = tmp_path / "20231026120000.md"
+        mock_zettel_writer.save.side_effect = lambda zettel: path.write_text("saved note")
+        hook_runner = MagicMock(side_effect=error)
+        use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer, hook_runner=hook_runner)
+
+        with pytest.raises(RuntimeError) as caught:
+            use_case.execute(FreshTemplate(), {})
+
+        assert str(caught.value) == f"note saved at {path}, but hook failed: {error}"
+        assert caught.value.__cause__ is error
+        assert path.read_text() == "saved note"
+        mock_zettel_writer.save.assert_called_once()
+        hook_runner.assert_called_once()
+
+    def test_hook_keyboard_interrupt_is_preserved_with_saved_note(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock
+    ) -> None:
+        path = tmp_path / "20231026120000.md"
+        mock_zettel_writer.save.side_effect = lambda zettel: path.write_text("saved note")
+        interrupt = KeyboardInterrupt()
+        hook_runner = MagicMock(side_effect=interrupt)
+        use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer, hook_runner=hook_runner)
+
+        with pytest.raises(KeyboardInterrupt) as caught:
+            use_case.execute(FreshTemplate(), {})
+
+        assert caught.value is interrupt
+        assert path.read_text() == "saved note"
