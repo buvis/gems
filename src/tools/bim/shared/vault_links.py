@@ -16,7 +16,7 @@ from buvis.pybase.filesystem import atomic_write_text
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---", re.S)
 # Text that must never be rewritten: code, existing links, and bare URLs.
 PROTECTED = re.compile(
-    r"```.*?```|~~~.*?~~~|(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)|\[\[.*?\]\]|!?\[[^\]\n]*\](?:\([^)\n]*\)|\[[^\]\n]*\])|<[a-z][a-z0-9+.-]*:[^>\s]*>|https?://\S+",
+    r"```.*?```|~~~.*?~~~|(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n).)*?(?<!`)\1(?!`)|\[\[.*?\]\]|!?\[[^\]\n]*\](?:\([^)\n]*\)|\[[^\]\n]*\])|<[a-z][a-z0-9+.-]*:[^>\s]*>|https?://\S+",
     re.S | re.I,
 )
 CONTACT_HEAD_BYTES = 2048
@@ -34,9 +34,7 @@ def append_daily_log(path_daily: Path, now: datetime, wikilink: str) -> dict[str
     if not path.is_file():
         return {"status": f"skipped: {path} does not exist (Obsidian creates it)", "entry": entry}
     text = path.read_text(encoding="utf-8")
-    lines = text.splitlines()
-    if text.endswith("\n"):
-        lines.append("")
+    lines = text.split("\n")
     heading = _log_heading(lines)
     if heading is None:
         return {"status": f"skipped: {path} has no '## Log' section", "entry": entry}

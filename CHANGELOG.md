@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: keep YAML anchors unique across frontmatter fields, preserve Unicode separators in daily logs and contact names inside multiline inline code, and report failed home-directory expansion through the create command's JSON or console error output.
 - **CI**: run development tooling tests, fail the final gate when path detection fails, handle docs-only changes, and explicitly run the full suite for reusable workflow calls. Tool jobs no longer wait for the library matrix.
 - **bim**: keep create/edit Markdown stable: omit empty backmatter separators, end notes with one newline, and preserve body text without adding hard-break spaces, including inside Excalidraw code fences.
 

@@ -34,6 +34,27 @@ def vault_timezone() -> Iterator[None]:
 
 
 class TestFormat:
+    def test_round_trip_preserves_nested_yaml_aliases(self) -> None:
+        original = """---
+title: Aliases
+first:
+  primary: &first [one, two]
+  secondary: *first
+second:
+  primary: &second [three, four]
+  secondary: *second
+---
+
+# Aliases
+"""
+        data = MarkdownZettelFileParser.parse(original)
+
+        formatted = MarkdownZettelFormatter.format(data)
+        reparsed = MarkdownZettelFileParser.parse(formatted)
+
+        assert reparsed.metadata == data.metadata
+        assert MarkdownZettelFormatter.format(reparsed) == formatted
+
     def test_round_trip_preserves_data(self):
         data = ZettelData(
             metadata={
