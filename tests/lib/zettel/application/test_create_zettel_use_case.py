@@ -157,6 +157,18 @@ def _run_with_body(
 
 class TestPrepareBody:
     @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_existing_trailing_blank_lines_leave_one_body_separator(
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, method: str
+    ) -> None:
+        sections = [("# Example Title", "existing\n\n"), ("## Other", "  preserved\n")]
+
+        _, data = _run_with_body(
+            create_zettel_use_case, mock_zettel_writer, FreshTemplate(sections=sections), method, "added"
+        )
+
+        assert data.sections == [("# Example Title", "existing\n\nadded"), sections[1]]
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
     @pytest.mark.parametrize(
         ("body", "expected"),
         [
@@ -279,6 +291,81 @@ class TestPrepareBody:
         assert not root.exists()
         mock_zettel_writer.save.assert_not_called()
         hooks.assert_not_called()
+
+
+class TestPreparationWithoutTitleMetadata:
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_body_survives_preparation_when_template_omits_title_metadata(
+        self, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, method: str
+    ) -> None:
+        class UntitledTemplate(FreshTemplate):
+            def build_data(self, answers: dict[str, Any]) -> ZettelData:
+                data = super().build_data(answers)
+                del data.metadata["title"]
+                return data
+
+        path, data = _run_with_body(
+            create_zettel_use_case,
+            mock_zettel_writer,
+            UntitledTemplate(sections=[]),
+            method,
+            "  supplied",
+            {"title": "Answer Title"},
+        )
+
+        assert path == create_zettel_use_case.zettelkasten_path / "20231026120000.md"
+        assert data.file_path == str(path)
+        assert len(data.sections) == 1
+        assert data.sections[0][1] == "  supplied"
+
+
+class TestReservationInspectionFailures:
+    @pytest.mark.parametrize("error", [OSError("inspection failed"), KeyboardInterrupt()])
+    @pytest.mark.parametrize("replace_placeholder", [False, True])
+    def test_inspection_failure_closes_reservation_and_skips_save_and_hooks(
+        self, tmp_path: Path, monkeypatch: Any, error: BaseException, replace_placeholder: bool
+    ) -> None:
+        original_open, original_fstat = os.open, os.fstat
+        descriptors = []
+        path = tmp_path / "20231026120000.md"
+        replacement = tmp_path / "replacement.md"
+        replacement.write_text("replacement note")
+        writer, hooks = MagicMock(spec=ZettelWriter), MagicMock()
+        use_case = CreateZettelUseCase(tmp_path, writer, hook_runner=hooks)
+
+        def record_open(target: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
+            descriptor = original_open(target, flags, mode, **kwargs)
+            if Path(target) == path:
+                descriptors.append(descriptor)
+            return descriptor
+
+        def fail_inspection(descriptor: int) -> os.stat_result:
+            if descriptor in descriptors:
+                if replace_placeholder and replacement.exists():
+                    replacement.replace(path)
+                raise error
+            return original_fstat(descriptor)
+
+        try:
+            with monkeypatch.context() as boundary:
+                boundary.setattr(os, "open", record_open)
+                boundary.setattr(os, "fstat", fail_inspection)
+                with pytest.raises(type(error)) as caught:
+                    use_case.execute(FreshTemplate(), {})
+            assert caught.value is error
+            writer.save.assert_not_called()
+            hooks.assert_not_called()
+            assert len(descriptors) == 1
+            if replace_placeholder:
+                assert path.read_text() == "replacement note"
+            with pytest.raises(OSError):
+                original_fstat(descriptors[0])
+        finally:
+            for descriptor in descriptors:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
 
 
 class TestCollisionBudget:
