@@ -184,6 +184,7 @@ class CreateNoteApp(App[None]):
             repo=get_repo(),
             templates=self.templates,
             hook_runner=get_hook_runner(),
+            formatter=get_formatter(),
         ).execute()
         notify_result(result, self.notify)
         if result.success:

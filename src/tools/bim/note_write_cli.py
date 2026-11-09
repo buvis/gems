@@ -107,7 +107,7 @@ def create_note(
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
     if zettel_type and title:
         from bim.commands.create_note.create_note import CommandCreateNote
-        from bim.dependencies import get_hook_runner, get_repo, get_templates
+        from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
         from bim.params.create_note import CreateNoteParams
 
         try:
@@ -123,6 +123,7 @@ def create_note(
                 repo=get_repo(),
                 templates=get_templates(),
                 hook_runner=get_hook_runner(),
+                formatter=get_formatter(),
             )
         except FileNotFoundError as exc:
             console.panic(str(exc))

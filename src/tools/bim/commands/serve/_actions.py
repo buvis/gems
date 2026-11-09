@@ -61,7 +61,7 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
 
 async def handle_create_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, Any]:
     from bim.commands.create_note.create_note import CommandCreateNote
-    from bim.dependencies import get_hook_runner, get_repo, get_templates
+    from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
     from bim.params.create_note import CreateNoteParams
 
     directory = confine_path(file_path, app_state).parent if file_path else Path(str(app_state.default_directory))
@@ -77,6 +77,7 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
         repo=get_repo(),
         templates=get_templates(),
         hook_runner=get_hook_runner(),
+        formatter=get_formatter(),
     )
     result = cmd.execute()
     return result.to_dict()
