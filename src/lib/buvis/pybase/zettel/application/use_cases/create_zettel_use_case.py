@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -43,11 +44,12 @@ class CreateZettelUseCase:
                     lines.pop(0)
                 content = "\n".join(lines).rstrip()
                 if not data.sections:
-                    data.sections = [(f"# {data.metadata['title']}", content)]
+                    data.sections = [(f"# {answers.get('title', '')}", content)]
                 else:
                     heading = getattr(template, "body_section", None)
                     index = next((i for i, (name, _) in enumerate(data.sections) if name == heading), 0)
                     name, existing = data.sections[index]
+                    existing = existing.rstrip("\r\n")
                     data.sections[index] = (name, f"{existing}\n\n{content}" if existing else content)
             zettel = ZettelFactory.create(Zettel(data))
             path = self.zettelkasten_path / f"{zettel.id}.md"
@@ -70,21 +72,27 @@ class CreateZettelUseCase:
                 time.sleep(1)
                 continue
             break
-        reservation = os.fstat(descriptor)
+        reservation = None
         saved = False
         try:
             try:
-                os.close(descriptor)
-            except BaseException:
-                os.close(descriptor)
-                raise
+                reservation = os.fstat(descriptor)
+            finally:
+                try:
+                    os.close(descriptor)
+                except BaseException:
+                    with suppress(OSError):
+                        os.fstat(descriptor)
+                        os.close(descriptor)
+                    raise
             self.writer.save(zettel)
             saved = True
         finally:
-            if not saved and path.exists():
-                current = path.stat()
-                if (current.st_dev, current.st_ino) == (reservation.st_dev, reservation.st_ino):
-                    path.unlink()
+            if not saved and reservation is not None:
+                with suppress(FileNotFoundError):
+                    current = path.stat()
+                    if (current.st_dev, current.st_ino) == (reservation.st_dev, reservation.st_ino):
+                        path.unlink()
         if self.hook_runner:
             try:
                 self.hook_runner(template.hooks(), zettel.get_data(), self.zettelkasten_path)
