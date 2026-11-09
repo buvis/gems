@@ -242,7 +242,7 @@ Body in Markdown.
   existing tags. Older notes use a block list.
 - Backmatter is everything after the last `---`: Dataview fields written as
   `- key:: value`, where the value is text, a URL, a Markdown link or a
-  wikilink. The rule stays even when the backmatter is empty. Common keys:
+  wikilink. bim omits the rule when the backmatter is empty. Common keys:
   `parent`, `project`, `ticket`, `sr`, `us`, `psd`, `web`, `teams`, `article`,
   `book`, `referral`, `twitter`, `intranet`, `repo`, `shop`. Put Microsoft
   Teams URLs in `teams::`, never `web::`. A note that comes from a web page

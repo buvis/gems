@@ -23,7 +23,7 @@ class TestIllustratedNoteTemplate:
         assert data.sections[0] == ("# Sketch", "![Sketch]({id}.svg)")
         heading, drawing = data.sections[1]
         assert heading == "# Text Elements"
-        assert drawing.startswith("%%\n# Drawing\n```json\n")
+        assert drawing.startswith("%%\n\n# Drawing\n\n```json\n")
         assert drawing.endswith("\n```\n%%")
         fenced = drawing.split("```json\n", 1)[1].rsplit("\n```", 1)[0]
         assert json.loads(fenced)["type"] == "excalidraw"

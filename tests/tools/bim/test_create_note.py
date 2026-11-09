@@ -82,7 +82,7 @@ class TestCommandCreateNote:
         assert saved.id is not None
         assert str(saved.id) == path.stem
         assert path.read_text().endswith(
-            f"\n# {title}\n\nTemplate default  \n\nFirst  \n\nSecond  \n\n# Details\n\nKeep this section  \n\n---"
+            f"\n# {title}\n\nTemplate default\n\nFirst\n\nSecond\n\n# Details\n\nKeep this section\n"
         )
         assert "Keep this section" in path.read_text()
         json.dumps(result.metadata)
@@ -270,7 +270,7 @@ class TestCommandCreateNote:
         assert saved.tags == []
         content = Path(result.metadata["path"]).read_text()
         assert content.endswith(
-            f"\n# {expected}\n\nTemplate default  \n\nFirst  \n\nSecond  \n\n# Details\n\nKeep this section  \n\n---"
+            f"\n# {expected}\n\nTemplate default\n\nFirst\n\nSecond\n\n# Details\n\nKeep this section\n"
         )
         assert "Discarded" not in content
         assert "discarded" not in content
@@ -291,7 +291,7 @@ class TestCommandCreateNote:
         assert result.success is True
         content = Path(result.metadata["path"]).read_text()
         assert "Remove me" not in content
-        assert "---  \nkeep: this  \n---  \nBody  \n\n# Details\n\nKeep this section  \n\n---" in content
+        assert "---\nkeep: this\n---\nBody\n\n# Details\n\nKeep this section\n" in content
 
     def test_source_frontmatter_closing_at_eof_remains_body_content(self, scratch_vault: ScratchVault) -> None:
         notes, _, _ = scratch_vault
@@ -305,10 +305,7 @@ class TestCommandCreateNote:
         assert (
             Path(result.metadata["path"])
             .read_text()
-            .endswith(
-                "\n# EOF\n\nTemplate default  \n\n---  \ntitle: Keep me  \n---  \n\n"
-                "# Details\n\nKeep this section  \n\n---"
-            )
+            .endswith("\n# EOF\n\nTemplate default\n\n---\ntitle: Keep me\n---\n\n# Details\n\nKeep this section\n")
         )
         assert not source.exists()
         assert Path(result.metadata["trashed_source"]).read_text() == original
@@ -635,11 +632,11 @@ class TestCommandCreateNote:
     @pytest.mark.parametrize(
         "body,expected",
         [
-            ("", "Template default  "),
-            (" \t\r\n\r\n", "Template default  "),
-            ("Body alpha", "Template default  \n\nBody alpha  "),
-            ("Body beta", "Template default  \n\nBody beta  "),
-            ("\r\n \t\r\n  Body\r\n  indented\r\n\r\n", "Template default  \n\n  Body  \n  indented  "),
+            ("", "Template default"),
+            (" \t\r\n\r\n", "Template default"),
+            ("Body alpha", "Template default\n\nBody alpha"),
+            ("Body beta", "Template default\n\nBody beta"),
+            ("\r\n \t\r\n  Body\r\n  indented\r\n\r\n", "Template default\n\n  Body\n  indented"),
         ],
     )
     def test_explicit_body_appends_to_template_and_blank_body_preserves_content(
@@ -654,7 +651,7 @@ class TestCommandCreateNote:
         assert (
             Path(result.metadata["path"])
             .read_text()
-            .endswith(f"\n# Test\n\n{expected}\n\n# Details\n\nKeep this section  \n\n---")
+            .endswith(f"\n# Test\n\n{expected}\n\n# Details\n\nKeep this section\n")
         )
 
     def test_trash_symlink_outside_vault_is_reported_after_save(

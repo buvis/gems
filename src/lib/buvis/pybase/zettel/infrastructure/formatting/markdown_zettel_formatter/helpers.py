@@ -154,9 +154,8 @@ def format_sections(sections: list[tuple[str, str]]) -> str:
         Formatted sections string.
     """
 
-    return "\n".join(
-        f"\n{heading}\n\n{convert_markdown_to_preserve_line_breaks(content.strip())}"
-        if content.strip()
-        else f"\n{heading}"
-        for heading, content in sections
-    )
+    formatted = []
+    for heading, content in sections:
+        body = content.strip("\n")
+        formatted.append(f"\n{heading}\n\n{body}" if body.strip() else f"\n{heading}")
+    return "\n".join(formatted)

@@ -51,4 +51,7 @@ class MarkdownZettelFormatter(ZettelFormatter):
         reference_str: str = format_reference(zettel_data.reference)
         sections_str: str = format_sections(zettel_data.sections)
 
-        return (f"---\n{metadata_str}\n---\n{sections_str}\n\n---\n{reference_str}").rstrip()
+        formatted = f"---\n{metadata_str}\n---\n{sections_str}"
+        if reference_str:
+            formatted += f"\n\n---\n{reference_str}"
+        return formatted.rstrip("\n") + "\n"

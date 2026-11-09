@@ -6,7 +6,9 @@ from buvis.pybase.zettel.domain.templates import Hook, Question
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 EXCALIDRAW_DRAWING = """%%
+
 # Drawing
+
 ```json
 {
 \t"type": "excalidraw",

@@ -70,8 +70,8 @@ class TestFormat:
         )
 
         formatted = MarkdownZettelFormatter.format(data)
-        # Should end with empty back matter
-        assert formatted.rstrip().endswith("---")
+        assert formatted.endswith("Text\n")
+        assert formatted.count("---") == 2
 
     def test_sections_ordering_preserved(self):
         data = ZettelData(
@@ -146,3 +146,19 @@ class TestFormat:
 
         assert parsed.reference["parent"] == "[[100]]"
         assert parsed.reference["related"] == "[[200]]"
+
+
+class TestStableBodyFormatting:
+    def test_empty_backmatter_round_trip_is_stable(self) -> None:
+        data = ZettelData(metadata={"title": "Probe"}, sections=[("# Probe", "Text")])
+        formatted = MarkdownZettelFormatter.format(data)
+        assert formatted.endswith("Text\n")
+        assert formatted.count("---") == 2
+        assert MarkdownZettelFormatter.format(MarkdownZettelFileParser.parse(formatted)) == formatted
+
+    def test_explicit_breaks_and_fenced_code_are_preserved(self) -> None:
+        body = 'Line  \nNext\n\n```json\n{\n  "value": 1\n}\n```'
+        data = ZettelData(metadata={"title": "Probe"}, sections=[("# Probe", body)])
+        formatted = MarkdownZettelFormatter.format(data)
+        assert f"# Probe\n\n{body}\n" in formatted
+        assert MarkdownZettelFormatter.format(MarkdownZettelFileParser.parse(formatted)) == formatted

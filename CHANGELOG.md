@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **bim**: keep create/edit Markdown stable: omit empty backmatter separators, end notes with one newline, and preserve body text without adding hard-break spaces, including inside Excalidraw code fences.
+
 - **bim**: preserve body/source conflict validation before expanding scripted source paths.
 
 - **bim**: exit 1 for missing or conflicting note paths, interactive multi-file import, and invalid TUI edit requests.
