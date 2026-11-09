@@ -70,7 +70,9 @@ interactive TUI. Prefer `--json`: it prints one object with `id`, `type`,
 `title`, `tags`, `path`, `relative_path` and `wikilink` (paste the `wikilink`
 into other notes), and on failure `{"error": "<reason>"}` with exit 1. Run
 with `--dry-run` first to see the rendered note in `content` without writing
-anything. A failed create writes nothing. When the JSON has `errors`, the note
+anything. A failed create writes nothing unless its error starts with
+`note saved at`; that error means the file exists, so do not retry.
+When the JSON has `errors`, the note
 exists but a follow-up step (moving the source to `.trash/`) failed.
 
 - `--body-file PATH` (`-` for stdin) appends Markdown to the template's body

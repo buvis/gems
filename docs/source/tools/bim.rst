@@ -241,7 +241,8 @@ article's archive path), ``warnings`` (a list) when a template hook could not
 do all of its work (for example the ``path_projects`` root is missing), and
 ``errors`` (a list) when the note was written but a follow-up step such as
 that move or the daily log failed. On failure the output is
-``{"error": "<message>"}`` and the exit code is 1. The keys and their types
+``{"error": "<message>"}`` and the exit code is 1. An error starting with
+``note saved at`` means the file exists: do not retry the create. The keys and their types
 are stable: later versions only add keys, so consumers must ignore unknown
 ones.
 
