@@ -761,7 +761,7 @@ class TestCommandCreateNote:
 
         assert result.success is True
         saved = scratch_vault[1].find_by_location(result.metadata["path"])
-        assert saved.get_data().sections == [("# Content", expected), ("# Details", "Keep this section")]
+        assert saved.get_data().sections == [("# Test", expected), ("# Details", "Keep this section")]
 
     def test_trash_symlink_outside_vault_is_reported_after_save(
         self, scratch_vault: ScratchVault, tmp_path: Path
