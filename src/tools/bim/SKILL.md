@@ -1,15 +1,16 @@
 ---
 name: bim
-description: "Use when reading, searching, creating, editing, or archiving notes in a BUVIS InfoMesh (BIM) vault or zettelkasten, or when asked how the vault is organized. Triggers on \"bim\", \"zettel\", \"query the vault\", \"bim create\", \"archive this note\"."
+description: "Use when reading, searching, creating, editing, or archiving notes in a BUVIS InfoMesh (BIM) vault or zettelkasten, or when asked how the vault is organised. Triggers on \"bim\", \"zettel\", \"query the vault\", \"bim create\", \"archive this note\"."
 ---
 
 # bim
 
 `bim` manages a zettelkasten of Markdown notes with YAML frontmatter. Notes live
 in one directory (default `~/bim/notes/`), archived notes in another (default
-`~/Documents/reference/40-archives/`). Every note carries `id` (14 digits,
-`YYYYMMDDHHMMSS`), `title`, `date`, `tags`, `type`, `publish` and `processed`,
-then a `# Title` heading and sections. bim assigns `id` and `date` itself.
+`~/Documents/reference/40-archives/`). A note bim creates carries `id` (14
+digits, `YYYYMMDDHHMMSS`), `title`, `date`, `type`, `tags`, `publish` and
+`processed`, then a `# Title` heading and sections. bim assigns `id` and
+`date` itself.
 When the notes live in a BIM vault, read "The BIM vault" at the end before you
 touch anything.
 
@@ -73,9 +74,9 @@ interactive TUI. Prefer `--json`: it prints one object with `id`, `type`,
 into other notes), and on failure `{"error": "<reason>"}` with exit 1. Run
 with `--dry-run` first to see the rendered note in `content` without writing
 anything. A failed create writes nothing unless its error starts with
-`note saved at`; that error means the file exists, so do not retry.
-When the JSON has `errors`, the note
-exists but a follow-up step (moving the source to `.trash/`) failed.
+`note saved at`; that error means the file exists, so do not retry. When the
+JSON has `errors`, the note exists but a follow-up step (moving the source to
+`.trash/`) failed.
 
 - `--body-file PATH` (`-` for stdin) appends Markdown to the template's body
   section: after the H1 for notes, under `## Solution` for projects, `## Log`
@@ -86,7 +87,7 @@ exists but a follow-up step (moving the source to `.trash/`) failed.
 - `-a key=value` answers a template question; a missing required answer fails
   with `Missing required answer: <key>`.
 - Tags: comma-separated, `#` optional, lowercased, deduplicated. Use letters,
-  digits, `-`, `_` and `/` for nesting; a tag with spaces or only digits fails.
+  digits, `-` and `_`, and `/` to nest; a tag with spaces or only digits fails.
   `person` and `book` belong to contacts and books, are added automatically
   and are rejected on any other template.
 - Ids equal the local-time digits of `date`, like the vault's own notes.
@@ -146,8 +147,9 @@ bim edit -q '{filter: {field: type, op: eq, value: note}}' --processed
 ```
 
 Without a change flag `bim edit PATH` opens a TUI. Edit the body with your file
-tools, then run `bim format PATH` so key order, tag sorting and spacing stay
-canonical; `bim format PATH -d` shows the diff first.
+tools. `bim edit` and `bim format PATH` rewrite the frontmatter in bim's own
+shape (`type` before `tags`, tags as a sorted block list); `bim format PATH -d`
+shows the diff first.
 
 ## Import
 
@@ -189,7 +191,7 @@ without Obsidian running.
 
 | Path | Holds | Rules |
 |------|-------|-------|
-| `inbox/` | Raw material: any file name, rarely frontmatter. Obsidian and automations (`inbox/automated/`) put new files here. | Read freely. Turn an item into a note with `bim create --source`, which moves it to `.trash/`. |
+| `inbox/` | Raw material: any file name, rarely frontmatter. Obsidian and automations (`inbox/automated/`) put new files here. | Read freely. Processing turns an item into notes and then moves it to `.trash/`; `bim create --source` does both when the note keeps the item's text. |
 | `notes/` | `<id>.md` zettels, `contact/<slug>.md`, `book/<slug>.md`, `documents/` (`bim doc`), `kanban/` (Kanban plugin boards), `index.md`, `.base` files (Obsidian Bases) | See "Note anatomy". |
 | `notes/calendar/` | `daily/YYYY-MM-DD.md`, `weekly/YYYY-Www.md` | Obsidian creates these; never create them. Append to a daily `## Log` only when asked; `bim create` logs its own notes. |
 | `notes/system/` | System docs, `templates/` (Templater `.tpl`), `scripts/` | Read-only unless asked. |
@@ -239,7 +241,8 @@ Body in Markdown.
   them after review.
 - Tags: three to five (more than seven is a smell), kebab-case, nested broad
   to narrow with `/` (`lang/rust`), `tags: []` when there are none. Reuse
-  existing tags. Older notes use a block list.
+  existing tags. Most notes write them as a flow list before `type`, as above;
+  bim writes a block list after `type`. Both parse the same.
 - Backmatter is everything after the last `---`: Dataview fields written as
   `- key:: value`, where the value is text, a URL, a Markdown link or a
   wikilink. bim omits the rule when the backmatter is empty. Common keys:
@@ -247,7 +250,7 @@ Body in Markdown.
   `book`, `referral`, `twitter`, `intranet`, `repo`, `shop`. Put Microsoft
   Teams URLs in `teams::`, never `web::`. A note that comes from a web page
   keeps the URL in `web::`, not only in the body. Keep every key you do not
-  recognize when you rewrite a note.
+  recognise when you rewrite a note.
 - `type` is a closed vocabulary: the bundled templates plus `configuration`,
   `customizing`, `project-tracker`, `tracker`, `index`, `toc`, `ai-prompt`,
   `budget`, `meter-reading`, `itinerary`, `poem`, `joke` and `application`
@@ -316,8 +319,6 @@ Body shapes:
 
 ### Plugins that act on files
 
-- Templater runs the `.tpl` templates inside Obsidian only; `bim create`
-  reproduces them.
 - Auto Note Mover moves notes tagged `#person` to `notes/contact/` and `#book`
   to `notes/book/`. Never put those tags on other notes.
 - Linter formats on save: it strips trailing spaces, sets blank lines around
@@ -330,12 +331,13 @@ Body shapes:
 
 ### Vault rules
 
-1. Create notes with `bim create` so ids and shapes match the templates.
+1. Create notes with `bim create` so ids and shapes match the vault's
+   Templater templates (`notes/system/templates/`).
 2. Never overwrite, rename or move an existing note: ids and slugs are link
    targets.
-3. To delete a note, move it to `.trash/` and keep its name; on a clash add a
-   space and a number (`Untitled 1.md`). `bim delete` is permanent; use it only
-   when the user asks for it.
+3. When the user asks to delete a note, move it to `.trash/` and keep its
+   name; on a clash add a space and a number (`Untitled 1.md`). Run
+   `bim delete` only when they ask for permanent deletion.
 4. Do not edit `.obsidian/`, `notes/system/templates/`,
    `notes/system/scripts/`, Kanban board structure or Excalidraw JSON unless
    asked.
