@@ -923,3 +923,4 @@
 {"kind":"handoff","site":"build","edge":"leave","at":1794214497,"phase":"build","prd":"00119-bim-create-vault-templates-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1794214507,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1794214568,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794214619,"phase":"done","prd":"00120-bim-create-vault-links-v1.md"}
