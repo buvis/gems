@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import os
+import time
+from collections.abc import Iterator
 from datetime import datetime, timezone
 
+import pytest
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
@@ -9,6 +13,24 @@ from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter imp
 from buvis.pybase.zettel.infrastructure.persistence.file_parsers.parsers.markdown.markdown import (
     MarkdownZettelFileParser,
 )
+
+
+@pytest.fixture
+def vault_timezone() -> Iterator[None]:
+    """Run in the vault's zone: the formatter writes dates in local time, so offsets only round-trip there."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("Controlled system timezone requires time.tzset")
+    original = os.environ.get("TZ")
+    os.environ["TZ"] = "Europe/Prague"
+    time.tzset()
+    try:
+        yield
+    finally:
+        if original is None:
+            del os.environ["TZ"]
+        else:
+            os.environ["TZ"] = original
+        time.tzset()
 
 
 class TestFormat:
@@ -196,6 +218,7 @@ class TestVaultTagShape:
         data = ZettelData(metadata={"title": "Probe", "tags": tags}, sections=[("# Probe", "")])
         assert f"tags: [{', '.join(tags)}]" in MarkdownZettelFormatter.format(data).splitlines()
 
+    @pytest.mark.usefixtures("vault_timezone")
     def test_vault_style_note_round_trips_unchanged(self) -> None:
         assert MarkdownZettelFormatter.format(MarkdownZettelFileParser.parse(VAULT_STYLE_NOTE)) == VAULT_STYLE_NOTE
 
