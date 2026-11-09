@@ -36,9 +36,15 @@ def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
 
 
 def _normalize_datetime(val: Any) -> Any:
-    """Normalize datetime for comparison (strip microseconds, ensure UTC)."""
+    """Normalize datetime for comparison: the same instant in UTC, without microseconds.
+
+    The Rust bridge hands aware dates to Python converted to UTC and reads naive
+    dates as UTC, so an aware Python value is converted and a naive one is labelled.
+    """
     if isinstance(val, datetime):
-        return val.replace(microsecond=0, tzinfo=timezone.utc)
+        if val.tzinfo is None:
+            return val.replace(microsecond=0, tzinfo=timezone.utc)
+        return val.astimezone(timezone.utc).replace(microsecond=0)
     return val
 
 
@@ -99,10 +105,21 @@ class TestParseFileParity:
 
     def test_date_title_from_filename(self):
         py_data, rust_data = self._parse_both("202401151030 Note from filename.md")
-        # Skip date/id: Python has a bug in _get_date_from_file (uses len(fmt_string) instead of digit count).
-        # Rust parses correctly; Python gives 10:03:00 instead of 10:30:00.
-        _compare_metadata(py_data.metadata, rust_data.metadata, skip_keys={"date", "id"})
+        _compare_metadata(py_data.metadata, rust_data.metadata)
         _compare_sections(py_data.sections, rust_data.sections)
+        # Both read the filename digits as local time and derive the id from them.
+        assert py_data.metadata["id"] == rust_data.metadata["id"] == 202401151030_00
+
+    def test_default_id_follows_the_dates_own_offset_in_both_paths(self, tmp_path: Path):
+        note = tmp_path / "offset-note.md"
+        note.write_text("---\ntitle: Offset\ndate: 2024-09-13T12:00:00+02:00\n---\n\n# Offset\n", encoding="utf-8")
+
+        py_zettel = Zettel(ZettelFileParser.from_file(note))
+        py_zettel.ensure_consistency()
+        rust_data = _rust_dict_to_zettel_data(parse_file(str(note)))
+
+        assert py_zettel.get_data().metadata["id"] == 20240913120000
+        assert rust_data.metadata["id"] == 20240913120000
 
     def test_migration(self):
         py_data, rust_data = self._parse_both("needs_migration.md")

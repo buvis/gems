@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -148,4 +148,4 @@ class TestZettelFileParser:
         parsed = ZettelFileParser.from_file(path)
 
         assert parsed.metadata["title"] == "Project alpha"
-        assert parsed.metadata["date"] == datetime(2024, 1, 15, 10, 30, tzinfo=timezone.utc)
+        assert parsed.metadata["date"] == datetime(2024, 1, 15, 10, 30).astimezone()
