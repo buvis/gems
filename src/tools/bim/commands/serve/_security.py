@@ -37,6 +37,9 @@ class AppState:
     doc_settings: Any = None
     # Root for project resources folders (the create_project_dir hook).
     path_projects: str | None = None
+    # Daily notes folder (create logs new notes there) and the articles archive.
+    path_daily: str | None = None
+    path_articles: str | None = None
 
 
 def confine_path(file_path: str, app_state: AppState) -> Path:

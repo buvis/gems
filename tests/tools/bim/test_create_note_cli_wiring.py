@@ -32,7 +32,12 @@ class TestCreateNoteCli:
             patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten="/tmp/zk",
+                path_projects="/tmp/projects",
+                path_daily="/tmp/daily",
+                path_articles="/tmp/articles",
+            )
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True, output="Created note.md")
 
@@ -46,6 +51,8 @@ class TestCreateNoteCli:
                 templates=ANY,
                 hook_runner=ANY,
                 formatter=mock_get_formatter.return_value,
+                path_daily=Path("/tmp/daily"),
+                path_articles=Path("/tmp/articles"),
             )
             instance.execute.assert_called_once_with()
 
@@ -58,7 +65,12 @@ class TestCreateNoteCli:
             patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter") as mock_get_formatter,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten="/tmp/zk",
+                path_projects="/tmp/projects",
+                path_daily="/tmp/daily",
+                path_articles="/tmp/articles",
+            )
             instance = mock_cmd.return_value
             instance.execute.return_value = CommandResult(success=True, output="Created note.md")
 
@@ -81,6 +93,8 @@ class TestCreateNoteCli:
                 templates=ANY,
                 hook_runner=ANY,
                 formatter=mock_get_formatter.return_value,
+                path_daily=Path("/tmp/daily"),
+                path_articles=Path("/tmp/articles"),
             )
             instance.execute.assert_called_once_with()
 
@@ -89,7 +103,12 @@ class TestCreateNoteCli:
             patch("bim.note_write_cli.get_settings") as mock_settings,
             patch("bim.tui.create_note.CreateNoteApp") as mock_app,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten="/tmp/zk",
+                path_projects="/tmp/projects",
+                path_daily="/tmp/daily",
+                path_articles="/tmp/articles",
+            )
 
             result = runner.invoke(create_note, ["--tags", "a,b"], catch_exceptions=False)
 
@@ -101,6 +120,8 @@ class TestCreateNoteCli:
                 preselected_tags="a,b",
                 extra_answers={},
                 path_projects=Path("/tmp/projects"),
+                path_daily=Path("/tmp/daily"),
+                path_articles=Path("/tmp/articles"),
             )
             mock_app.return_value.run.assert_called_once_with()
 
@@ -114,7 +135,12 @@ class TestCreateNoteCli:
             patch("bim.dependencies.get_hook_runner"),
             patch("bim.dependencies.get_formatter"),
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten="/tmp/zk", path_projects="/tmp/projects")
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten="/tmp/zk",
+                path_projects="/tmp/projects",
+                path_daily="/tmp/daily",
+                path_articles="/tmp/articles",
+            )
             mock_cmd.side_effect = FileNotFoundError("missing template")
 
             result = runner.invoke(create_note, ["-t", "note", "--title", "X"], catch_exceptions=False)

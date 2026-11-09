@@ -1,4 +1,0 @@
-name: article
-extends: note
-metadata:
-  type: article

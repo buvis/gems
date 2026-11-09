@@ -62,6 +62,7 @@ bim create -t meeting-minutes --title "Weekly sync" -a location=teams --body-fil
 bim create -t youtube --title "Talk title" -a video=https://youtu.be/dQw4w9WgXcQ --json
 bim create -t illustrated-note --title "Sketch" --json
 bim create -t problem-resolution-report --title "Outage" --json
+bim create -t article --title "Why caches lie" -a web=https://example.com/post --body-file original.md --summary-file facts.md --json
 ```
 
 Always pass `-t` plus `--title` or `--source`; a bare `bim create` opens an
@@ -85,12 +86,33 @@ exists but a follow-up step (moving the source to `.trash/`) failed.
   `person` and `book` belong to contacts and books, are added automatically
   and are rejected on any other template.
 - Ids equal the local-time digits of `date`, like the vault's own notes.
+- Every create logs the note under `## Log` in today's daily note
+  (`path_daily`, default `~/bim/notes/calendar/daily/`; never created, a
+  missing note is reported as `skipped`) and wikilinks the first mention of
+  each person from `notes/contact/` in the body: title, multi-word aliases
+  and `Last, First`, case- and diacritic-insensitive, never inside code,
+  links or URLs, never one-word names or names two contacts share. The JSON
+  reports `daily_log` and `linked_contacts`; mention both to the user. Pass
+  `--no-link-contacts` for an exact copy that must stay verbatim and
+  `--no-daily-log` when the note should not appear in the daily log. When a
+  sender's full name is known but was not linked, write it in full in the body.
+
+Articles (published prose to read and keep: a post, an announcement, a
+newsletter) are a pair: `-t article` archives the original (`--body-file` or
+`--source`, frontmatter dropped) under `path_articles` (default
+`~/Documents/reference/40-archives/articles/<YYYY>/<YYYYMM>00/<title>.md`)
+and writes a `note` with the `--summary-file` core facts whose backmatter has
+`article::` (a `file://` link) and `web::`. Keep the article's own title with
+its casing: it names the archive file. Leave the H1 out of both files. The JSON
+has `archive.path`; report it with the `wikilink`.
 
 Bundled templates and their answers:
 
 - `note`, and the plain kinds `definition`, `how-to`, `list`, `procedure`,
-  `quote`, `recipe`, `snippet`, `cheatsheet`, `course`, `wiki-article`,
-  `article`: no answers.
+  `quote`, `recipe`, `snippet`, `cheatsheet`, `course`, `wiki-article`: no
+  answers.
+- `article`: `web` (optional source URL); needs `--summary-file` and the
+  original text through `--body-file` or `--source`.
 - `project`: `deliverable` (`fix`, `enhancement`, `support`; required) and
   `ticket` (optional). The note links a resources folder
   `<path_projects>/<id>-<slug>` (`path_projects` defaults to

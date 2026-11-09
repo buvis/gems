@@ -88,8 +88,27 @@ def import_note(
 @click.option(
     "--source", default=None, help="Inbox Markdown file to convert; moved to .trash/ after the note is written"
 )
+@click.option(
+    "--summary-file", default=None, help="article only: Markdown file with the core facts; the body is archived"
+)
 @click.option("--dry-run", is_flag=True, default=False, help="Render the note without writing anything")
 @click.option("--json", "as_json", is_flag=True, default=False, help="Print the result as one JSON object")
+@click.option(
+    "--no-daily-log",
+    "daily_log",
+    is_flag=True,
+    flag_value=False,
+    default=True,
+    help="Do not log the new note in today's daily note",
+)
+@click.option(
+    "--no-link-contacts",
+    "link_contacts",
+    is_flag=True,
+    flag_value=False,
+    default=True,
+    help="Keep the body verbatim: do not wikilink known contacts",
+)
 @click.option("-l", "--list", "list_templates", is_flag=True, default=False, help="List available templates")
 @click.pass_context
 def create_note(
@@ -101,11 +120,22 @@ def create_note(
     answer: tuple[str, ...],
     body_file: str | None,
     source: str | None,
+    summary_file: str | None,
     dry_run: bool,
     as_json: bool,
+    daily_log: bool,
+    link_contacts: bool,
     list_templates: bool,
 ) -> None:
-    scripted = as_json or dry_run or body_file is not None or source is not None
+    scripted = (
+        as_json
+        or dry_run
+        or body_file is not None
+        or source is not None
+        or summary_file is not None
+        or not daily_log
+        or not link_contacts
+    )
     if list_templates:
         if as_json:
             _fail_json(ctx, "--list cannot be combined with --json")
@@ -123,19 +153,26 @@ def create_note(
             extra_answers[k] = v
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
     path_projects = Path(settings.path_projects).expanduser()
+    path_daily = Path(settings.path_daily).expanduser()
+    path_articles = Path(settings.path_articles).expanduser()
     if scripted or (zettel_type and title):
         _create_note_scripted(
             ctx,
             path_zettelkasten,
             path_projects=path_projects,
+            path_daily=path_daily,
+            path_articles=path_articles,
             zettel_type=zettel_type,
             title=title,
             tags=tags,
             extra_answers=extra_answers,
             body_file=body_file,
             source=source,
+            summary_file=summary_file,
             dry_run=dry_run,
             as_json=as_json,
+            daily_log=daily_log,
+            link_contacts=link_contacts,
         )
         return
 
@@ -148,6 +185,8 @@ def create_note(
         preselected_tags=tags,
         extra_answers=extra_answers,
         path_projects=path_projects,
+        path_daily=path_daily,
+        path_articles=path_articles,
     )
     app.run()
 
@@ -164,14 +203,19 @@ def _create_note_scripted(
     path_zettelkasten: Path,
     *,
     path_projects: Path,
+    path_daily: Path,
+    path_articles: Path,
     zettel_type: str | None,
     title: str | None,
     tags: str | None,
     extra_answers: dict[str, str],
     body_file: str | None,
     source: str | None,
+    summary_file: str | None,
     dry_run: bool,
     as_json: bool,
+    daily_log: bool,
+    link_contacts: bool,
 ) -> None:
     from bim.commands.create_note.create_note import CommandCreateNote
     from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
@@ -185,12 +229,16 @@ def _create_note_scripted(
     if body_file is not None and source is not None:
         fail("--body-file and --source are mutually exclusive")
         return
+    if summary_file is not None and zettel_type != "article":
+        fail("--summary-file is only for the article template")
+        return
     try:
         body = None
         if body_file == "-":
             body = sys.stdin.read()
         elif body_file is not None:
             body = Path(body_file).expanduser().read_text(encoding="utf-8")
+        summary = Path(summary_file).expanduser().read_text(encoding="utf-8") if summary_file is not None else None
         params = CreateNoteParams(
             zettel_type=zettel_type,
             title=title,
@@ -199,6 +247,9 @@ def _create_note_scripted(
             body=body,
             source=Path(source).expanduser() if source is not None else None,
             dry_run=dry_run,
+            daily_log=daily_log,
+            link_contacts=link_contacts,
+            summary=summary,
         )
         cmd = CommandCreateNote(
             params=params,
@@ -207,6 +258,8 @@ def _create_note_scripted(
             templates=get_templates(),
             hook_runner=get_hook_runner(path_projects),
             formatter=get_formatter(),
+            path_daily=path_daily,
+            path_articles=path_articles,
         )
     except (OSError, UnicodeError) as exc:
         fail(str(exc))

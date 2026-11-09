@@ -27,9 +27,15 @@ Configuration
    * - ``path_projects``
      - ``~/Documents/reference/10-projects/``
      - Root for project resources folders (``<id>-<slug>``)
+   * - ``path_daily``
+     - ``~/bim/notes/calendar/daily/``
+     - Daily notes; a new note is logged under today's ``## Log``
+   * - ``path_articles``
+     - ``~/Documents/reference/40-archives/articles/``
+     - Archive of article originals (``<YYYY>/<YYYYMM>00/<title>.md``)
 
 Env vars: ``BUVIS_BIM_PATH_ZETTELKASTEN``, ``BUVIS_BIM_PATH_ARCHIVE``,
-``BUVIS_BIM_PATH_PROJECTS``.
+``BUVIS_BIM_PATH_PROJECTS``, ``BUVIS_BIM_PATH_DAILY``, ``BUVIS_BIM_PATH_ARTICLES``.
 
 Agent skill
 -----------
@@ -88,14 +94,21 @@ Options:
   leading frontmatter block is dropped and the file is moved to
   ``<vault>/.trash/`` after the note is written. Mutually exclusive with
   ``--body-file``.
+- ``--summary-file PATH`` — ``article`` only: Markdown with the core facts for
+  the note; the body (``--body-file`` or ``--source``) is archived as the
+  original
 - ``--dry-run`` — render the note without writing anything: no file, no
   hooks, no move
 - ``--json`` — print one JSON object and nothing else
+- ``--no-daily-log`` — do not add the note to today's daily note
+- ``--no-link-contacts`` — keep the body verbatim; do not wikilink known
+  contacts
 - ``-l, --list`` — list available templates
 
-Any scripting flag (``--body-file``, ``--source``, ``--dry-run``, ``--json``)
-runs the command directly, even without ``--title``. A bare ``bim create``
-still opens the TUI.
+Any scripting flag (``--body-file``, ``--source``, ``--summary-file``,
+``--dry-run``, ``--json``, ``--no-daily-log``, ``--no-link-contacts``) runs
+the command directly, even without ``--title``. A bare ``bim create`` still
+opens the TUI.
 
 Templates
 ^^^^^^^^^
@@ -157,8 +170,10 @@ answers a template question; a missing required answer fails with
        report" (the body lands under Gather information); backmatter
        ``parent``.
    * - ``article``
-     - none
-     - ``<id>.md``, ``type: article``.
+     - ``web`` (optional source URL); ``--summary-file`` plus the original via
+       ``--body-file`` or ``--source``
+     - ``<id>.md``, ``type: note``; the original is archived and the note links
+       it (see "Daily log, contact links and articles" below).
 
 ``person`` and ``book`` are reserved for the contact and book templates so
 Auto Note Mover never relocates another note by accident: ``--tags person`` on
@@ -171,6 +186,41 @@ Deviations from the Templater output, all deliberate: the ``resources`` link
 is a plain ``file://`` URL (Obsidian opens both forms); the PRR heading is
 ``# <title>`` because bim keeps the H1 equal to the title; a title that gives
 an empty slug (no Latin letters or digits) fails instead of writing ``.md``.
+
+Daily log, contact links and articles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Every created note is logged where QuickAdd would log it: the line
+``- [ ] _DD.MM.YYYY HH:MM:SS_ - [[notes/<id>|Title]]`` goes after the last
+entry under ``## Log`` in ``<path_daily>/<YYYY-MM-DD>.md``. bim never creates
+the daily note and never touches one without a ``## Log`` section; the JSON
+``daily_log`` object reports ``added`` or a ``skipped: ...`` status with the
+entry. ``--no-daily-log`` turns it off.
+
+Known people are linked on first mention: the body's first occurrence of
+each contact's ``title``, each multi-word ``aliases`` entry or the
+``Last, First`` form (case- and diacritic-insensitive) becomes
+``[[notes/contact/<slug>|text as written]]``. Code, existing links and URLs
+are never touched; single-word names and names shared by two contacts are
+never linked; a contact note's own body is left alone. The links land in
+``linked_contacts``. ``--no-link-contacts`` keeps the body verbatim, which is
+what an exact copy needs.
+
+``bim create -t article`` keeps the original outside the vault and writes a
+``note`` holding only the core facts:
+
+.. code-block:: bash
+
+    bim create -t article --title "Why caches lie" --tags cache \
+      -a web=https://example.com/post --body-file original.md --summary-file facts.md --json
+
+The original (``--body-file`` or ``--source``, frontmatter dropped) is written
+to ``<path_articles>/<YYYY>/<YYYYMM>00/<title>.md`` as ``# <title>``, the
+text and ``Source: <web>``. The note's body is the summary and its backmatter
+is ``article:: [<title>](file://...)`` plus ``web:: [<title>](<url>)``. The
+archive is written first with an exclusive open and removed again when the
+note cannot be written, so a half-done article leaves no orphan. ``archive``
+in the JSON holds the archive path, and its ``content`` on a dry run.
 
 Scripting contract (v1)
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -185,10 +235,12 @@ With ``--json`` a successful create prints one object::
 ``relative_path`` and ``wikilink`` are relative to the vault root, the parent
 of ``path_zettelkasten``. Extra keys appear when relevant: ``dry_run`` and
 ``content`` (the rendered note) on a dry run, ``trashed_source`` after an
-inbox file was moved, ``warnings`` (a list) when a template hook could not do
-all of its work (for example the ``path_projects`` root is missing), and
+inbox file was moved, ``daily_log`` (status and entry of the daily-note log
+line), ``linked_contacts`` (the wikilinks added to the body), ``archive`` (the
+article's archive path), ``warnings`` (a list) when a template hook could not
+do all of its work (for example the ``path_projects`` root is missing), and
 ``errors`` (a list) when the note was written but a follow-up step such as
-that move failed. On failure the output is
+that move or the daily log failed. On failure the output is
 ``{"error": "<message>"}`` and the exit code is 1. The keys and their types
 are stable: later versions only add keys, so consumers must ignore unknown
 ones.

@@ -20,3 +20,5 @@ class ServeParams(BaseModel):
     )
     doc_settings: Any = Field(None, description="DocSettings for doc-action handlers, if [doc] is configured")
     path_projects: str | None = Field(None, description="Root for project resources folders")
+    path_daily: str | None = Field(None, description="Daily notes folder for the create log entry")
+    path_articles: str | None = Field(None, description="Archive root for article originals")

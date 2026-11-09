@@ -65,7 +65,10 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
     from bim.params.create_note import CreateNoteParams
 
     directory = confine_path(file_path, app_state).parent if file_path else Path(str(app_state.default_directory))
-    path_projects = getattr(app_state, "path_projects", None)
+    path_projects, path_daily, path_articles = (
+        Path(value).expanduser() if (value := getattr(app_state, name, None)) else None
+        for name in ("path_projects", "path_daily", "path_articles")
+    )
     params = CreateNoteParams(
         zettel_type=args.get("type"),
         title=args.get("title"),
@@ -77,8 +80,10 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
         path_zettelkasten=directory,
         repo=get_repo(),
         templates=get_templates(),
-        hook_runner=get_hook_runner(Path(path_projects).expanduser() if path_projects else None),
+        hook_runner=get_hook_runner(path_projects),
         formatter=get_formatter(),
+        path_daily=path_daily,
+        path_articles=path_articles,
     )
     result = cmd.execute()
     return result.to_dict()

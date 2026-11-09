@@ -299,7 +299,10 @@ class TestImportHandlerBranches:
             patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
             mock_settings.return_value = MagicMock(
-                path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")
+                path_zettelkasten=str(tmp_path),
+                path_projects=str(tmp_path / "projects"),
+                path_daily=str(tmp_path / "daily"),
+                path_articles=str(tmp_path / "articles"),
             )
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
@@ -417,7 +420,10 @@ class TestCreateHandlerBranches:
             patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
             mock_settings.return_value = MagicMock(
-                path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")
+                path_zettelkasten=str(tmp_path),
+                path_projects=str(tmp_path / "projects"),
+                path_daily=str(tmp_path / "daily"),
+                path_articles=str(tmp_path / "articles"),
             )
             mock_get_repo.return_value = MagicMock()
             mock_get_templates.return_value = MagicMock()
@@ -445,7 +451,10 @@ class TestCreateHandlerBranches:
             patch("bim.note_write_cli.console") as mock_console,
         ):
             mock_settings.return_value = MagicMock(
-                path_zettelkasten=str(tmp_path), path_projects=str(tmp_path / "projects")
+                path_zettelkasten=str(tmp_path),
+                path_projects=str(tmp_path / "projects"),
+                path_daily=str(tmp_path / "daily"),
+                path_articles=str(tmp_path / "articles"),
             )
             mock_get_repo.return_value = MagicMock()
             mock_get_templates.return_value = MagicMock()

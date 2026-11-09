@@ -23,6 +23,8 @@ def create_app(
     business_triage_root: str | None = None,
     doc_settings: object = None,
     path_projects: str | None = None,
+    path_daily: str | None = None,
+    path_articles: str | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -38,6 +40,8 @@ def create_app(
     app.state.business_triage_root = business_triage_root
     app.state.doc_settings = doc_settings
     app.state.path_projects = path_projects
+    app.state.path_daily = path_daily
+    app.state.path_articles = path_articles
 
     install_security(app, host)
 
