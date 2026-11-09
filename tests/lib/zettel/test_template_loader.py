@@ -47,6 +47,16 @@ class TestScanYamlDir:
         _scan_yaml_dir(tmp_path, {}, found, python_eval)
         assert found == {}
 
+    def test_skips_template_with_invalid_file_stem_and_warns(self, tmp_path, caplog):
+        (tmp_path / "typo.yaml").write_text(yaml.dump({"name": "typo", "file_stem": "title"}))
+        (tmp_path / "fine.yaml").write_text(yaml.dump({"name": "fine", "file_stem": "slug"}))
+        found: dict = {}
+        with caplog.at_level(logging.WARNING):
+            _scan_yaml_dir(tmp_path, {}, found, python_eval)
+        assert list(found) == ["fine"]
+        assert "Skipping template" in caplog.text
+        assert "file_stem must be 'id' or 'slug', not 'title'" in caplog.text
+
     def test_logs_warning_on_bad_yaml(self, tmp_path, caplog):
         (tmp_path / "bad.yaml").write_text("not: valid: yaml: [")
         found: dict = {}

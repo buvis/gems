@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
@@ -215,6 +216,10 @@ class TestYamlTemplatePlacement:
             }
         )
         assert (t.folder, t.file_stem, t.default_tags, t.body_section) == ("book", "slug", ["book"], "## Thesis")
+
+    def test_rejects_unknown_file_stem(self):
+        with pytest.raises(ValueError, match="template 'book': file_stem must be 'id' or 'slug', not 'title'"):
+            _make_template({"name": "book", "file_stem": "title"})
 
     def test_placement_attributes_inherit_from_base(self):
         base = _make_template({"name": "contact", "folder": "contact", "file_stem": "slug", "default_tags": ["person"]})

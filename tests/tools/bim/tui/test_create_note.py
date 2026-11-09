@@ -110,6 +110,24 @@ class TestCreateNoteApp:
             assert answers["tags"] == "tag1, tag2"
 
     @pytest.mark.anyio
+    async def test_preview_merges_template_default_tags_first(self, mocker):
+        template = _make_template(name="contact")
+        template.default_tags = ["person"]
+        mocker.patch("bim.tui.create_note.get_templates", return_value={"contact": template})
+        mocker.patch("bim.tui.create_note.get_formatter").return_value = MagicMock()
+        mocker.patch("bim.tui.create_note.PrintZettelUseCase").return_value.execute.return_value = "preview"
+
+        from bim.tui.create_note import CreateNoteApp
+
+        app = CreateNoteApp(path_zettelkasten=Path("/tmp/zk"), preselected_type="contact", preselected_title="Ada")
+        async with app.run_test(size=(80, 40)) as pilot:
+            await pilot.pause()
+            app.query_one("#tags-input", Input).value = "work, person"
+            await pilot.pause()
+
+        assert template.build_data.call_args.args[0]["tags"] == "person,work"
+
+    @pytest.mark.anyio
     async def test_create_with_blank_required_answer_notifies_error_and_stays_open(self, mocker, tmp_path):
         template = _make_template(questions=[Question(key="status", prompt="Status", required=True)])
         mocker.patch(

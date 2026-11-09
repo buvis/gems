@@ -199,6 +199,8 @@ class CommandCreateNote:
                     continue
                 if not re.fullmatch(r"[\w-]+(/[\w-]+)*", tag) or re.fullmatch(r"[\d/]+", tag):
                     raise ValueError(f"invalid tag '{tag}': use letters, digits, '-', '_', and '/' for nesting")
+                if tag in tags:
+                    continue
                 owner = next(
                     (
                         name
@@ -209,8 +211,7 @@ class CommandCreateNote:
                 )
                 if owner is not None:
                     raise ValueError(f"tag '{tag}' is reserved for the {owner} template")
-                if tag not in tags:
-                    tags.append(tag)
+                tags.append(tag)
             answers["tags"] = ",".join(tags)
         for q in template.questions():
             if q.key == "tags" and "tags" in answers:

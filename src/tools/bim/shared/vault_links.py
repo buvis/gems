@@ -37,7 +37,13 @@ def append_daily_log(path_daily: Path, now: datetime, wikilink: str) -> dict[str
     heading = next((n for n, line in enumerate(lines) if re.fullmatch(r"## Log[ \t]*", line)), None)
     if heading is None:
         return {"status": f"skipped: {path} has no '## Log' section", "entry": entry}
-    end = next((n for n in range(heading + 1, len(lines)) if re.match(r"#{1,2} ", lines[n])), len(lines))
+    end, fenced = len(lines), False
+    for number in range(heading + 1, len(lines)):
+        if lines[number].lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        elif not fenced and re.match(r"#{1,2} ", lines[number]):
+            end = number
+            break
     insert_at = heading + 1
     for number in range(heading + 1, end):
         if lines[number].strip():

@@ -23,11 +23,6 @@ def set_default_id(zettel_data: ZettelData) -> None:
         raise ValueError("Invalid date format")
 
     try:
-        id_str: str = zettel_data.metadata["date"].strftime("%Y%m%d%H%M%S")
-    except AttributeError as err:
-        raise ValueError("Invalid date format") from err
-
-    try:
-        zettel_data.metadata["id"] = int(id_str)
+        zettel_data.metadata["id"] = int(zettel_data.metadata["date"].strftime("%Y%m%d%H%M%S"))
     except ValueError as err:
         raise ValueError("Invalid ID format") from err

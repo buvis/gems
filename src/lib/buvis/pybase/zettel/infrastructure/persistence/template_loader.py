@@ -47,7 +47,10 @@ def _scan_yaml_dir(
         base = None
         if extends := raw.get("extends"):
             base = base_templates.get(extends) or found.get(extends)
-        found[raw["name"]] = YamlTemplate(raw, base=base, evaluator=evaluator)
+        try:
+            found[raw["name"]] = YamlTemplate(raw, base=base, evaluator=evaluator)
+        except ValueError as exc:
+            logger.warning("Skipping template %s: %s", yaml_file, exc)
 
 
 def discover_yaml_templates(

@@ -28,6 +28,8 @@ class YamlTemplate:
         self.name: str = raw["name"]
         self.folder: str = raw.get("folder", getattr(base, "folder", ""))
         self.file_stem: str = raw.get("file_stem", getattr(base, "file_stem", "id"))
+        if self.file_stem not in ("id", "slug"):
+            raise ValueError(f"template '{self.name}': file_stem must be 'id' or 'slug', not {self.file_stem!r}")
         self.default_tags: list[str] = list(raw.get("default_tags", getattr(base, "default_tags", [])))
         self.body_section: str | None = raw.get("body_section", getattr(base, "body_section", None))
         self._raw = raw

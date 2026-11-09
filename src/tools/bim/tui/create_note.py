@@ -155,6 +155,10 @@ class CreateNoteApp(App[None]):
             preview.update("[waiting for title]")
             create_btn.disabled = True
             return
+        defaults = list(getattr(self._current_template, "default_tags", None) or [])
+        if defaults:
+            user_tags = [tag.strip() for tag in str(answers.get("tags", "")).split(",") if tag.strip()]
+            answers["tags"] = ",".join([*defaults, *[tag for tag in user_tags if tag not in defaults]])
 
         from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
         from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory

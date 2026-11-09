@@ -166,7 +166,7 @@ def create(ctx):
 - Recoverable: `console.failure(msg)` — prints, continues
 - Status: `console.success()`, `console.warning()`, `console.info()`
 - All user-facing output must route through `console`. No `print()`, `sys.stdout.write()`, `sys.stderr.write()`, `click.echo()`, `click.secho()`, or the Python logging module. Plain writes bypass the buvis prefix markers (`✘`, `✓`, etc.) and become indistinguishable from stray output, which is what makes a missed `console.panic` look like a print statement to the user.
-- The one sanctioned exception is the `dot filter` clean/smudge plumbing, which writes git's blob payload as raw bytes on stdout and at most one error line on stderr, because git owns both streams and a console marker would corrupt the payload (discovery R12).
+- Two sanctioned exceptions, both machine-read payloads that a console marker or Rich's wrapping would corrupt: the `dot filter` clean/smudge plumbing, which writes git's blob payload as raw bytes on stdout and at most one error line on stderr because git owns both streams (discovery R12), and `bim create --json`, which prints its one-line JSON object (or `{"error": ...}`) through `click.echo` (PRD 00118, scripting contract v1).
 - Never let raw exceptions (stack traces) reach the user.
 
 ## Invariants (evolution guardrails)

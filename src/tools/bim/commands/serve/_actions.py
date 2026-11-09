@@ -69,11 +69,18 @@ async def handle_create_note(file_path: str, args: dict[str, Any], app_state: Ap
         Path(value).expanduser() if (value := getattr(app_state, name, None)) else None
         for name in ("path_projects", "path_daily", "path_articles")
     )
+    # ``source`` is deliberately not forwarded: it names a path, and the command's inbox
+    # check is the only confinement it would get here.
     params = CreateNoteParams(
         zettel_type=args.get("type"),
         title=args.get("title"),
         tags=args.get("tags"),
         extra_answers=args.get("extra_answers"),
+        body=args.get("body"),
+        summary=args.get("summary"),
+        dry_run=bool(args.get("dry_run", False)),
+        daily_log=bool(args.get("daily_log", True)),
+        link_contacts=bool(args.get("link_contacts", True)),
     )
     cmd = CommandCreateNote(
         params=params,

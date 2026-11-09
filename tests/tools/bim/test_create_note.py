@@ -711,6 +711,22 @@ class TestCommandCreateNote:
         assert plain.answers == {}
         assert list(notes.iterdir()) == []
 
+    def test_inherited_default_tag_is_not_reserved_for_the_child_template(self, scratch_vault: ScratchVault) -> None:
+        notes, repo, formatter = scratch_vault
+        colleague = TaggedTemplate()
+
+        result = CommandCreateNote(
+            params=CreateNoteParams(zettel_type="colleague", title="Ada", tags="person,work"),
+            path_zettelkasten=notes,
+            repo=repo,
+            templates={"contact": TaggedTemplate(), "colleague": colleague},
+            hook_runner=None,
+            formatter=formatter,
+        ).execute()
+
+        assert result.success is True
+        assert colleague.answers["tags"] == "person,work"
+
 
 class TestVaultLinks:
     def test_daily_log_runs_after_save(self, scratch_vault: ScratchVault) -> None:

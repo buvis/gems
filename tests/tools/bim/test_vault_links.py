@@ -40,6 +40,14 @@ class TestDailyLog:
 
         assert daily.read_text() == f"## Log\n{ENTRY}\n\n## Notes\n"
 
+    def test_comment_lines_inside_fenced_code_are_not_headings(self, tmp_path: Path) -> None:
+        daily = tmp_path / "2026-11-09.md"
+        daily.write_text("## Log\n\n```bash\n# install deps\nmake\n```\n\n## Notes\n")
+
+        append_daily_log(tmp_path, NOW, LINK)
+
+        assert daily.read_text() == f"## Log\n\n```bash\n# install deps\nmake\n```\n{ENTRY}\n\n## Notes\n"
+
     def test_skips_when_daily_note_missing(self, tmp_path: Path) -> None:
         folder = tmp_path / "daily"
 
