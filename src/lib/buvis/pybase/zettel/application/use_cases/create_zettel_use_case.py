@@ -61,7 +61,10 @@ class CreateZettelUseCase:
                 )
         else:
             stem = str(zettel.id)
-        return self.zettelkasten_path / (getattr(template, "folder", "") or "") / f"{stem}.md"
+        path = (self.zettelkasten_path / (getattr(template, "folder", "") or "") / f"{stem}.md").resolve()
+        if not path.is_relative_to(self.zettelkasten_path.resolve()):
+            raise ValueError(f"Note destination must be inside {self.zettelkasten_path}")
+        return path
 
     def execute(self, template: ZettelTemplate, answers: dict[str, Any], *, body: str | None = None) -> Path:
         self.warnings = []
@@ -70,7 +73,7 @@ class CreateZettelUseCase:
             path, zettel, remaining_attempts = self._prepare(template, answers, body, remaining_attempts)
             path.parent.mkdir(parents=True, exist_ok=True)
             try:
-                descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
             except FileExistsError:
                 if not _retries_on_collision(template) or not remaining_attempts:
                     raise FileExistsError(f"Zettel already exists: {path}") from None
@@ -83,13 +86,7 @@ class CreateZettelUseCase:
             try:
                 reservation = os.fstat(descriptor)
             finally:
-                try:
-                    os.close(descriptor)
-                except BaseException:
-                    with suppress(OSError):
-                        os.fstat(descriptor)
-                        os.close(descriptor)
-                    raise
+                os.close(descriptor)
             if self.hook_runner:
                 try:
                     reported = self.hook_runner(template.hooks(), zettel.get_data(), self.zettelkasten_path)

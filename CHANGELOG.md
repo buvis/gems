@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **bim**: create notes with normal umask permissions, confine template destinations, and validate question answers and tags. Keep saved notes successful when daily-log decoding fails, clean up failed or interrupted article archives, preserve original whitespace after stripping frontmatter, and protect contact links and daily-log headings in Markdown.
+
 ### Added
 
 - **bim**: `bim create` is scriptable: `--body-file PATH` (or `-` for stdin) appends a body, `--source PATH` converts an inbox file (frontmatter dropped, title from the file name, file moved to `.trash/`), `--dry-run` renders without writing, and `--json` prints one object with `id`, `type`, `title`, `tags`, `path`, `relative_path` and `wikilink` (plus `dry_run`/`content`, `trashed_source`, `errors` when relevant) or `{"error": ...}` on failure.
@@ -21,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **bim**: the `article` template writes `type: note` with `article::` and `web::` backmatter instead of `type: article`, and needs `--summary-file` plus the original text.
-
 - **bim**: new note dates and IDs use local time, matching the vault's Templater notes, in both the Python and the Rust `_core` paths; a 14-digit filename is read back as local time; existing IDs are preserved. ID generation rejects date-only and other non-datetime values.
 - **bim**: `project` asks `deliverable` (`fix`, `enhancement`, `support`) and an optional `ticket` instead of `dev_type`, and writes Description, Log, Plan and Solution sections with `parent`, `ticket`, `us` and `psd` backmatter; `contact` drops the `contact_type` question; `meeting-minutes` is titled `YYYY-MM-DD | <Subject> meeting minutes`, asks `location` as `webex`, `teams`, `phone` or `face to face`, and carries the GTD post-processing block. Template hooks now run before the note is saved, so their metadata lands in the file.
 - **bim**: `create`, `import`, `edit`, `archive`, `delete`, `format`, `sync`, `show` and `query` without a spec exit 1 on failure instead of 0.

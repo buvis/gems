@@ -138,3 +138,25 @@ class TestLinkContacts:
         assert link_contacts("Ada Lovelaces", NAMES, "notes/contact") == ("Ada Lovelaces", [])
         assert link_contacts("", NAMES, "notes/contact") == ("", [])
         assert link_contacts("Ada Lovelace", {}, "notes/contact") == ("Ada Lovelace", [])
+
+
+class TestReviewParsing:
+    def test_log_heading_inside_fence_is_ignored(self, tmp_path: Path) -> None:
+        daily = tmp_path / "2026-11-09.md"
+        daily.write_text("```md\n## Log\n```\n\n## Log\n\n## Notes\n")
+        append_daily_log(tmp_path, NOW, LINK)
+        assert daily.read_text() == f"```md\n## Log\n```\n\n## Log\n{ENTRY}\n\n## Notes\n"
+
+    def test_crlf_log_heading(self, tmp_path: Path) -> None:
+        daily = tmp_path / "2026-11-09.md"
+        daily.write_bytes(b"## Log\r\n\r\n## Notes\r\n")
+        result = append_daily_log(tmp_path, NOW, LINK)
+        assert result["status"] == "added"
+
+    def test_inline_code_and_reference_links_are_protected(self) -> None:
+        text = "``Ada Lovelace ` code`` [Ada Lovelace][person]"
+        assert link_contacts(text, NAMES, "notes/contact") == (text, [])
+
+    def test_quoted_alias_with_comma(self, tmp_path: Path) -> None:
+        _write_contact(tmp_path, "ada", 'title: Ada Lovelace\naliases: [Countess Lovelace, "Byron, Ada Lovelace"]')
+        assert contact_names(tmp_path)["byron, ada lovelace"] == "ada"

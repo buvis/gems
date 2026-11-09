@@ -41,6 +41,27 @@ class TestArchiveOriginal:
 
         assert not root.parent.exists()
 
+    def test_write_failure_removes_owned_archive(self, tmp_path: Path, mocker) -> None:
+        original_open = Path.open
+
+        def fail_write(path: Path, *args, **kwargs):
+            handle = original_open(path, *args, **kwargs)
+            wrapped = mocker.MagicMock(wraps=handle)
+            wrapped.__enter__.return_value = wrapped
+            wrapped.__exit__.side_effect = handle.__exit__
+
+            def partial_write(content: bytes) -> None:
+                handle.write(content[:3])
+                raise OSError("write failed")
+
+            wrapped.write.side_effect = partial_write
+            return wrapped
+
+        mocker.patch.object(Path, "open", autospec=True, side_effect=fail_write)
+        with pytest.raises(OSError, match="write failed"):
+            archive_original(tmp_path / "articles", "T", "Body", "", NOW)
+        assert not archive_path(tmp_path / "articles", "T", NOW).exists()
+
 
 class TestArchiveFileName:
     def test_archive_name_replaces_path_characters(self) -> None:

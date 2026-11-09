@@ -1,123 +1,28 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
-from urllib.parse import quote
 
 import pytest
 from bim.commands.create_note.create_note import CommandCreateNote
 from bim.params.create_note import CreateNoteParams
 from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
 from buvis.pybase.zettel.domain.templates import Hook, Question
-from buvis.pybase.zettel.domain.templates.article import ArticleTemplate
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
     MarkdownZettelFormatter,
 )
-from buvis.pybase.zettel.infrastructure.persistence.markdown_zettel_repository.markdown_zettel_repository import (
-    MarkdownZettelRepository,
+
+from tests.tools.bim.create_note_helpers import (
+    LabeledFormatter,
+    NoteTemplate,
+    ScratchVault,
+    TaggedTemplate,
+    create_command,
+    create_symlink,
 )
-
-
-class NoteTemplate:
-    """Public template fixture that records answers and emits distinct content."""
-
-    name = "note"
-    body_section = "# Content"
-
-    def __init__(self, questions: list[Question] | None = None, hooks: list[Hook] | None = None) -> None:
-        self.prompts = questions or []
-        self.hook_list = hooks or []
-        self.answers: dict[str, Any] = {}
-
-    def questions(self) -> list[Question]:
-        return self.prompts
-
-    def build_data(self, answers: dict[str, Any]) -> ZettelData:
-        self.answers = answers.copy()
-        tags = str(answers.get("tags", "")).split(",")
-        return ZettelData(
-            metadata={
-                "type": "note",
-                "title": answers["title"],
-                "tags": [tag for tag in tags if tag],
-            },
-            sections=[("# Content", "Template default"), ("# Details", "Keep this section")],
-        )
-
-    def hooks(self) -> list[Hook]:
-        return self.hook_list
-
-
-class TaggedTemplate(NoteTemplate):
-    """Contact-like fixture: every note of this template carries ``person``."""
-
-    default_tags = ["person"]
-
-
-class LabeledFormatter(MarkdownZettelFormatter):
-    @staticmethod
-    def format(zettel_data: ZettelData) -> str:
-        return "Formatter dependency\n" + MarkdownZettelFormatter.format(zettel_data)
-
-
-ScratchVault = tuple[Path, MarkdownZettelRepository, MarkdownZettelFormatter]
-
-
-def create_symlink(path: Path, target: Path, *, target_is_directory: bool = False) -> None:
-    try:
-        path.symlink_to(target, target_is_directory=target_is_directory)
-    except OSError as error:
-        pytest.skip(f"symlink fixture unavailable: {error}")
-
-
-@pytest.fixture
-def scratch_vault(tmp_path: Path) -> ScratchVault:
-    notes = tmp_path / "vault" / "notes"
-    notes.mkdir(parents=True)
-    (notes.parent / "inbox").mkdir()
-    return notes, MarkdownZettelRepository(notes), MarkdownZettelFormatter()
-
-
-def create_command(
-    scratch_vault: ScratchVault,
-    params: CreateNoteParams,
-    template: NoteTemplate | None = None,
-    hook_runner: Any = None,
-    **paths: Path,
-) -> CommandCreateNote:
-    notes, repo, formatter = scratch_vault
-    return CommandCreateNote(
-        params=params,
-        path_zettelkasten=notes,
-        repo=repo,
-        templates={"note": template or NoteTemplate()},
-        hook_runner=hook_runner,
-        formatter=formatter,
-        **paths,
-    )
-
-
-def write_contact(notes: Path, slug: str, title: str) -> None:
-    (notes / "contact").mkdir(exist_ok=True)
-    (notes / "contact" / f"{slug}.md").write_text(f"---\ntitle: {title}\ntype: contact\n---\n\n# {title}\n")
-
-
-def article_command(scratch_vault: ScratchVault, tmp_path: Path, params: CreateNoteParams) -> CommandCreateNote:
-    notes, repo, formatter = scratch_vault
-    (tmp_path / "archives").mkdir(exist_ok=True)
-    return CommandCreateNote(
-        params=params,
-        path_zettelkasten=notes,
-        repo=repo,
-        templates={"article": ArticleTemplate()},
-        hook_runner=None,
-        formatter=formatter,
-        path_articles=tmp_path / "archives" / "articles",
-    )
 
 
 class TestCommandCreateNote:
@@ -727,186 +632,6 @@ class TestCommandCreateNote:
         assert result.success is True
         assert colleague.answers["tags"] == "person,work"
 
-
-class TestVaultLinks:
-    def test_daily_log_runs_after_save(self, scratch_vault: ScratchVault) -> None:
-        notes, repo, _ = scratch_vault
-        daily_dir = notes / "calendar" / "daily"
-        daily_dir.mkdir(parents=True)
-        daily = daily_dir / f"{datetime.now().astimezone():%Y-%m-%d}.md"
-        daily.write_text("# Today\n\n## Log\n\n- [ ] _old_ - existing\n\n## Notes\n")
-
-        result = create_command(
-            scratch_vault, CreateNoteParams(zettel_type="note", title="Logged"), path_daily=daily_dir
-        ).execute()
-
-        assert result.success is True
-        saved = repo.find_by_location(result.metadata["path"])
-        local = saved.date.astimezone()
-        assert f"{local:%Y%m%d%H%M%S}" == str(saved.id)
-        entry = f"- [ ] _{local:%d.%m.%Y %H:%M:%S}_ - {result.metadata['wikilink']}"
-        assert result.metadata["daily_log"] == {"status": "added", "path": str(daily), "entry": entry}
-        assert daily.read_text() == f"# Today\n\n## Log\n\n- [ ] _old_ - existing\n{entry}\n\n## Notes\n"
-        assert "errors" not in result.metadata
-
-    def test_daily_log_is_skipped_or_off_without_touching_the_vault(self, scratch_vault: ScratchVault) -> None:
-        notes, _, _ = scratch_vault
-        daily_dir = notes / "calendar" / "daily"
-
-        skipped = create_command(
-            scratch_vault, CreateNoteParams(zettel_type="note", title="One"), path_daily=daily_dir
-        ).execute()
-        off = create_command(
-            scratch_vault, CreateNoteParams(zettel_type="note", title="Two", daily_log=False), path_daily=daily_dir
-        ).execute()
-
-        assert skipped.success is True
-        assert skipped.metadata["daily_log"]["status"].startswith("skipped: ")
-        assert skipped.metadata["daily_log"]["entry"].endswith(f"- {skipped.metadata['wikilink']}")
-        assert not daily_dir.exists()
-        assert off.success is True
-        assert "daily_log" not in off.metadata
-
-    def test_dry_run_reports_daily_log_as_not_written(self, scratch_vault: ScratchVault) -> None:
-        notes, _, _ = scratch_vault
-
-        result = create_command(
-            scratch_vault, CreateNoteParams(zettel_type="note", title="Preview", dry_run=True), path_daily=notes / "d"
-        ).execute()
-
-        assert result.metadata["daily_log"]["status"] == "not written (dry run)"
-        assert result.metadata["daily_log"]["entry"].endswith(f"- {result.metadata['wikilink']}")
-        assert list(notes.iterdir()) == []
-
-    def test_body_mentions_of_contacts_are_linked_once(self, scratch_vault: ScratchVault) -> None:
-        notes, _, _ = scratch_vault
-        write_contact(notes, "ada-lovelace", "Ada Lovelace")
-        link = "[[notes/contact/ada-lovelace|Ada Lovelace]]"
-
-        result = create_command(
-            scratch_vault,
-            CreateNoteParams(zettel_type="note", title="Meeting", body="Ada Lovelace spoke. Ada Lovelace again."),
-        ).execute()
-
-        assert result.success is True
-        assert result.metadata["linked_contacts"] == [link]
-        assert f"{link} spoke. Ada Lovelace again." in Path(result.metadata["path"]).read_text()
-
-    def test_link_contacts_can_be_switched_off(self, scratch_vault: ScratchVault) -> None:
-        notes, _, _ = scratch_vault
-        write_contact(notes, "ada-lovelace", "Ada Lovelace")
-
-        result = create_command(
-            scratch_vault,
-            CreateNoteParams(zettel_type="note", title="Copy", body="Ada Lovelace verbatim.", link_contacts=False),
-        ).execute()
-
-        assert "linked_contacts" not in result.metadata
-        assert "Ada Lovelace verbatim." in Path(result.metadata["path"]).read_text()
-
-    def test_contact_template_body_is_not_linked(self, scratch_vault: ScratchVault) -> None:
-        notes, _, _ = scratch_vault
-        write_contact(notes, "ada-lovelace", "Ada Lovelace")
-
-        class ContactLike(NoteTemplate):
-            folder = "contact"
-
-        result = create_command(
-            scratch_vault,
-            CreateNoteParams(zettel_type="note", title="Alan", body="Knows Ada Lovelace."),
-            ContactLike(),
-        ).execute()
-
-        assert result.success is True
-        assert "linked_contacts" not in result.metadata
-        content = Path(result.metadata["path"]).read_text()
-        assert "Knows Ada Lovelace." in content
-        assert "[[" not in content
-
-
-class TestArticleWorkflow:
-    def test_article_without_summary_fails(self, scratch_vault: ScratchVault, tmp_path: Path) -> None:
-        result = article_command(
-            scratch_vault, tmp_path, CreateNoteParams(zettel_type="article", title="T", body="Original")
-        ).execute()
-
-        assert result.success is False
-        assert result.error == "article needs --summary-file with the core facts"
-        assert list(scratch_vault[0].iterdir()) == []
-        assert not (tmp_path / "archives" / "articles").exists()
-
-    def test_article_without_original_fails(self, scratch_vault: ScratchVault, tmp_path: Path) -> None:
-        result = article_command(
-            scratch_vault, tmp_path, CreateNoteParams(zettel_type="article", title="T", summary="Facts", body=" \n")
-        ).execute()
-
-        assert result.success is False
-        assert result.error == "article needs the original text: pass --body-file or --source"
-        assert not (tmp_path / "archives" / "articles").exists()
-
-    def test_article_archives_original_and_links_it(self, scratch_vault: ScratchVault, tmp_path: Path) -> None:
-        notes, repo, _ = scratch_vault
-        write_contact(notes, "ada-lovelace", "Ada Lovelace")
-        source = notes.parent / "inbox" / "Big News.md"
-        source.write_text("---\ntitle: ignored\n---\nOriginal text by Ada Lovelace.\n")
-        params = CreateNoteParams(
-            zettel_type="article",
-            source=source,
-            summary="\n\nCore facts from Ada Lovelace.\n",
-            extra_answers={"web": "https://example.com/news"},
-        )
-
-        result = article_command(scratch_vault, tmp_path, params).execute()
-
-        assert result.success is True
-        saved = repo.find_by_location(result.metadata["path"])
-        archive = Path(result.metadata["archive"]["path"])
-        assert archive.name == "Big News.md"
-        assert archive.parent.name == f"{saved.date:%Y%m}00"
-        assert archive.parent.parent == tmp_path / "archives" / "articles" / f"{saved.date:%Y}"
-        assert archive.read_text() == (
-            "# Big News\n\nOriginal text by Ada Lovelace.\n\n---\n\nSource: https://example.com/news\n"
-        )
-        content = Path(result.metadata["path"]).read_text()
-        assert result.metadata["type"] == "note"
-        assert result.metadata["title"] == "Big News"
-        assert f"- article:: [Big News](file://{quote(str(archive), safe='/')})" in content
-        assert "- web:: [Big News](https://example.com/news)" in content
-        assert "Core facts from [[notes/contact/ada-lovelace|Ada Lovelace]]." in content
-        assert "Original text" not in content
-        assert result.metadata["linked_contacts"] == ["[[notes/contact/ada-lovelace|Ada Lovelace]]"]
-        assert not source.exists()
-        assert result.metadata["trashed_source"] == str(notes.parent / ".trash" / "Big News.md")
-
-    def test_article_dry_run_writes_nothing(self, scratch_vault: ScratchVault, tmp_path: Path) -> None:
-        notes, _, _ = scratch_vault
-        params = CreateNoteParams(zettel_type="article", title="T", body="Original", summary="Facts", dry_run=True)
-
-        result = article_command(scratch_vault, tmp_path, params).execute()
-
-        assert result.success is True
-        assert result.metadata["archive"]["content"] == "# T\n\nOriginal\n"
-        assert Path(result.metadata["archive"]["path"]).name == "T.md"
-        assert "Facts" in result.metadata["content"]
-        assert not (tmp_path / "archives" / "articles").exists()
-        assert list(notes.iterdir()) == []
-
-    def test_article_archive_is_removed_when_note_fails(self, scratch_vault: ScratchVault, tmp_path: Path) -> None:
-        notes, repo, _ = scratch_vault
-        source = notes.parent / "inbox" / "Big News.md"
-        source.write_text("Original")
-        params = CreateNoteParams(zettel_type="article", source=source, summary="Facts")
-
-        with patch.object(repo, "save", autospec=True, side_effect=OSError("disk full")):
-            result = article_command(scratch_vault, tmp_path, params).execute()
-
-        assert result.success is False
-        assert "disk full" in (result.error or "")
-        assert list((tmp_path / "archives" / "articles").rglob("*.md")) == []
-        assert list(notes.iterdir()) == []
-        assert source.read_text() == "Original"
-        assert not (notes.parent / ".trash").exists()
-
     @pytest.mark.parametrize(
         "body,expected",
         [
@@ -950,3 +675,56 @@ class TestArticleWorkflow:
         assert list(outside.iterdir()) == []
         assert "trashed_source" not in result.metadata
         assert result.metadata["errors"]
+
+
+class TestReviewRegressions:
+    def test_note_mode_matches_sibling(self, scratch_vault: ScratchVault) -> None:
+        sibling = scratch_vault[0] / "sibling.md"
+        sibling.write_text("existing")
+        result = create_command(scratch_vault, CreateNoteParams(zettel_type="note", title="Test")).execute()
+        assert result.success
+        assert Path(result.metadata["path"]).stat().st_mode == sibling.stat().st_mode
+
+    def test_folder_cannot_escape_notes(self, scratch_vault: ScratchVault) -> None:
+        template = NoteTemplate()
+        template.folder = "../outside"
+        result = create_command(scratch_vault, CreateNoteParams(zettel_type="note", title="Test"), template).execute()
+        assert not result.success
+        assert not (scratch_vault[0].parent / "outside").exists()
+
+    @pytest.mark.parametrize("value", ["", "   ", "online"])
+    def test_required_and_choice_answers_are_validated(self, scratch_vault: ScratchVault, value: str) -> None:
+        template = NoteTemplate(questions=[Question(key="location", prompt="Where?", required=True, choices=["home"])])
+        result = create_command(
+            scratch_vault, CreateNoteParams(zettel_type="note", title="T", extra_answers={"location": value}), template
+        ).execute()
+        assert not result.success
+        assert list(scratch_vault[0].iterdir()) == []
+
+    @pytest.mark.parametrize("from_default", [False, True])
+    @pytest.mark.parametrize("value", ["#Work", "123", "person"])
+    def test_question_tags_use_tag_validation(
+        self, scratch_vault: ScratchVault, value: str, from_default: bool
+    ) -> None:
+        template = NoteTemplate(
+            questions=[Question(key="tags", prompt="Tags?", default=value if from_default else None)]
+        )
+        cmd = create_command(
+            scratch_vault,
+            CreateNoteParams(zettel_type="note", title="T", extra_answers={} if from_default else {"tags": value}),
+            template,
+        )
+        cmd.templates["contact"] = TaggedTemplate()
+        result = cmd.execute()
+        if value == "#Work":
+            assert result.success
+            assert template.answers["tags"] == "work"
+        else:
+            assert not result.success
+
+    def test_unexpected_exception_returns_failure(self, scratch_vault: ScratchVault) -> None:
+        cmd = create_command(scratch_vault, CreateNoteParams(zettel_type="note", title="T"))
+        with patch.object(cmd, "_execute", side_effect=TypeError("unexpected")):
+            result = cmd.execute()
+        assert not result.success
+        assert result.error == "unexpected"

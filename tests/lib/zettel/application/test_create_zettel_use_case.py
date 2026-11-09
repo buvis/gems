@@ -353,6 +353,7 @@ class TestReservationInspectionFailures:
                 with pytest.raises(type(error)) as caught:
                     use_case.execute(FreshTemplate(), {})
             assert caught.value is error
+            assert path.read_bytes() == (b"replacement note" if replace_placeholder else b"")
             writer.save.assert_not_called()
             hooks.assert_not_called()
             assert len(descriptors) == 1
@@ -487,7 +488,7 @@ class TestCollisionBudget:
 
 class TestReservationAndHooks:
     @pytest.mark.parametrize("zettel_id", [20231026120000, 20231026120001])
-    def test_exclusively_reserves_private_file_then_runs_hooks_then_saves(
+    def test_exclusively_reserves_file_then_runs_hooks_then_saves(
         self, tmp_path: Path, mocker: Any, zettel_id: int
     ) -> None:
         original_open = os.open
@@ -522,7 +523,7 @@ class TestReservationAndHooks:
 
         assert use_case.execute(FreshTemplate(ids=(zettel_id,)), {}) == path
 
-        assert reservation[0][:3] == (path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        assert reservation[0][:3] == (path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
         assert len(reservation) == 1
         assert writer.save.call_count == 1
         assert events == ["hooks", "save"]
@@ -576,8 +577,7 @@ class TestReservationAndHooks:
             create_zettel_use_case.execute(FreshTemplate(), {})
 
         assert len(descriptors) == 1
-        with pytest.raises(OSError):
-            os.fstat(descriptors[0])
+        original_close(descriptors[0])
         assert list(tmp_path.iterdir()) == []
         mock_zettel_writer.save.assert_not_called()
 

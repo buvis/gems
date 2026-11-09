@@ -46,3 +46,10 @@ def client(tmp_path: Path):
         app = create_app(default_directory=str(zettels_dir), archive_directory="archive")
         with TestClient(app, base_url="http://127.0.0.1") as test_client:
             yield test_client
+
+
+@pytest.fixture
+def scratch_vault(tmp_path: Path):
+    from tests.tools.bim.create_note_helpers import scratch_vault as make_vault
+
+    return make_vault(tmp_path)

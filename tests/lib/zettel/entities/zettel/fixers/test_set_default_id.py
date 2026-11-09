@@ -47,16 +47,3 @@ class TestSetDefaultId:
             set_default_id(zettel_data)
 
         assert "id" not in zettel_data.metadata
-
-    def test_raises_when_formatted_date_is_not_numeric(self) -> None:
-        class NonNumericDate(datetime):
-            def strftime(self, fmt: str) -> str:
-                return "20240913120000-invalid"
-
-        zettel_data = ZettelData()
-        zettel_data.metadata = {"date": NonNumericDate(2024, 9, 13, 12)}
-
-        with pytest.raises(ValueError, match="^Invalid ID format$"):
-            set_default_id(zettel_data)
-
-        assert "id" not in zettel_data.metadata

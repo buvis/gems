@@ -73,7 +73,7 @@ class CommandCreateNote:
     def execute(self) -> CommandResult:
         try:
             return self._execute()
-        except (OSError, ValueError, RuntimeError) as exc:
+        except Exception as exc:
             return CommandResult(success=False, error=str(exc))
 
     def _execute(self) -> CommandResult:
@@ -116,7 +116,7 @@ class CommandCreateNote:
             archive_original(self._articles_root(), plan.title, plan.original, plan.web, plan.now)
         try:
             path = use_case.execute(plan.template, plan.answers, body=plan.body)
-        except (OSError, ValueError, RuntimeError):
+        except BaseException:
             if plan.archive is not None:
                 plan.archive.unlink(missing_ok=True)
             raise
@@ -139,7 +139,7 @@ class CommandCreateNote:
         if self.params.daily_log and self.path_daily is not None:
             try:
                 metadata["daily_log"] = append_daily_log(self.path_daily, now, metadata["wikilink"])
-            except OSError as exc:
+            except (OSError, ValueError) as exc:
                 errors.append(f"cannot add the daily note log entry: {exc}")
         if source is not None:
             try:
@@ -165,7 +165,8 @@ class CommandCreateNote:
         ):
             raise ValueError(f"--source must be a Markdown file inside {inbox}")
         body = source.read_text(encoding="utf-8")
-        body = re.sub(r"\A---\n[\s\S]*?\n---\n", "", body, count=1)
+        if self.params.zettel_type != "article":
+            body = re.sub(r"\A---\n[\s\S]*?\n---\n", "", body, count=1)
         return self.params.title if self.params.title is not None else source.stem, body, source
 
     def _article_inputs(self, body: str | None) -> tuple[str, str]:
@@ -173,8 +174,8 @@ class CommandCreateNote:
         summary = _clean(self.params.summary or "")
         if not summary:
             raise ValueError("article needs --summary-file with the core facts")
-        original = _clean(body or "")
-        if not original:
+        original = re.sub(r"\A---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)", "", body or "", count=1)
+        if not original.strip():
             raise ValueError("article needs the original text: pass --body-file or --source")
         return original, summary
 
@@ -189,11 +190,32 @@ class CommandCreateNote:
         names = contact_names(self.path_zettelkasten / "contact")
         return link_contacts(body, names, f"{self.path_zettelkasten.name}/contact")
 
-    def _answers(self, template: Any, title: str) -> dict[str, Any]:
+    def _question_answers(self, template: Any, title: str) -> dict[str, Any]:
         answers: dict[str, Any] = {"title": title}
+        for q in template.questions():
+            if q.key == "tags" and self.params.tags is not None:
+                answers[q.key] = self.params.tags
+            elif q.key in self.extra_answers:
+                answers[q.key] = self.extra_answers[q.key]
+            elif q.key == "tags" and getattr(template, "default_tags", None):
+                answers[q.key] = ",".join(template.default_tags)
+            elif q.default is not None:
+                answers[q.key] = q.default
+            elif q.required:
+                raise ValueError(f"Missing required answer: {q.key}")
+            value = answers.get(q.key)
+            if q.required and (value is None or not str(value).strip()):
+                raise ValueError(f"Missing required answer: {q.key}")
+            if value is not None and q.choices and value not in q.choices:
+                raise ValueError(f"Invalid answer for {q.key}: {value}; choose from {', '.join(q.choices)}")
+        return answers
+
+    def _answers(self, template: Any, title: str) -> dict[str, Any]:
+        answers = self._question_answers(template, title)
         tags: list[str] = list(getattr(template, "default_tags", None) or [])
-        if self.params.tags is not None or tags:
-            for raw_tag in (self.params.tags or "").split(","):
+        supplied_tags = self.params.tags if self.params.tags is not None else answers.get("tags")
+        if supplied_tags is not None or tags:
+            for raw_tag in (supplied_tags or "").split(","):
                 tag = raw_tag.strip().removeprefix("#").lower()
                 if not tag:
                     continue
@@ -213,15 +235,6 @@ class CommandCreateNote:
                     raise ValueError(f"tag '{tag}' is reserved for the {owner} template")
                 tags.append(tag)
             answers["tags"] = ",".join(tags)
-        for q in template.questions():
-            if q.key == "tags" and "tags" in answers:
-                continue
-            if q.key in self.extra_answers:
-                answers[q.key] = self.extra_answers[q.key]
-            elif q.default is not None:
-                answers[q.key] = q.default
-            elif q.required:
-                raise ValueError(f"Missing required answer: {q.key}")
         return answers
 
     def _metadata(self, path: Path, zettel: Zettel) -> dict[str, Any]:
@@ -234,7 +247,7 @@ class CommandCreateNote:
             "tags": zettel.tags or [],
             "path": str(path),
             "relative_path": relative_path,
-            "wikilink": f"[[{relative_path[:-3]}|{zettel.title}]]",
+            "wikilink": f"[[{relative_path.removesuffix('.md')}|{zettel.title}]]",
         }
 
     def _trash_source(self, source: Path) -> Path:

@@ -16,7 +16,7 @@ from buvis.pybase.filesystem import atomic_write_text
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---", re.S)
 # Text that must never be rewritten: code, existing links, and bare URLs.
 PROTECTED = re.compile(
-    r"```.*?```|~~~.*?~~~|`[^`\n]*`|\[\[.*?\]\]|!?\[[^\]\n]*\]\([^)\n]*\)|<[a-z][a-z0-9+.-]*:[^>\s]*>|https?://\S+",
+    r"```.*?```|~~~.*?~~~|(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)|\[\[.*?\]\]|!?\[[^\]\n]*\](?:\([^)\n]*\)|\[[^\]\n]*\])|<[a-z][a-z0-9+.-]*:[^>\s]*>|https?://\S+",
     re.S | re.I,
 )
 CONTACT_HEAD_BYTES = 2048
@@ -33,8 +33,11 @@ def append_daily_log(path_daily: Path, now: datetime, wikilink: str) -> dict[str
     entry = daily_log_entry(now, wikilink)
     if not path.is_file():
         return {"status": f"skipped: {path} does not exist (Obsidian creates it)", "entry": entry}
-    lines = path.read_text(encoding="utf-8").split("\n")
-    heading = next((n for n, line in enumerate(lines) if re.fullmatch(r"## Log[ \t]*", line)), None)
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    if text.endswith("\n"):
+        lines.append("")
+    heading = _log_heading(lines)
     if heading is None:
         return {"status": f"skipped: {path} has no '## Log' section", "entry": entry}
     end, fenced = len(lines), False
@@ -51,6 +54,21 @@ def append_daily_log(path_daily: Path, now: datetime, wikilink: str) -> dict[str
     lines.insert(insert_at, entry)
     atomic_write_text(path, "\n".join(lines))
     return {"status": "added", "path": str(path), "entry": entry}
+
+
+def _log_heading(lines: list[str]) -> int | None:
+    fence = ""
+    for number, line in enumerate(lines):
+        marker = re.match(r"[ \t]*(`{3,}|~{3,})", line)
+        if marker:
+            delimiter = marker.group(1)
+            if not fence:
+                fence = delimiter
+            elif delimiter[0] == fence[0] and len(delimiter) >= len(fence):
+                fence = ""
+        elif not fence and re.fullmatch(r"## Log[ \t]*", line):
+            return number
+    return None
 
 
 def _fold(text: str) -> tuple[str, list[int]]:
@@ -82,7 +100,8 @@ def _frontmatter_names(frontmatter: str) -> tuple[str, list[str]]:
         elif key == "aliases":
             value = value.strip()
             if value.startswith("["):
-                aliases = [_unquote(item) for item in value.strip("[]").split(",")]
+                items = re.findall(r"\s*(\"[^\"]*\"|'[^']*'|[^,]+)\s*(?:,|$)", value.strip("[]"))
+                aliases = [_unquote(item) for item in items]
             elif value:
                 aliases = [_unquote(item) for item in value.split(",")]
             else:

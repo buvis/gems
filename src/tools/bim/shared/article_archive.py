@@ -37,8 +37,13 @@ def archive_original(path_articles: Path, title: str, original: str, web: str, n
         raise ValueError(f"{root.parent} does not exist; set path_articles")
     target = archive_path(root, title, now)
     target.parent.mkdir(parents=True, exist_ok=True)
-    with target.open("xb") as handle:
-        handle.write(archive_text(title, original, web).encode("utf-8"))
+    handle = target.open("xb")
+    try:
+        with handle:
+            handle.write(archive_text(title, original, web).encode("utf-8"))
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
     return target
 
 
