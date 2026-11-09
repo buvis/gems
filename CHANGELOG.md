@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **bim**: new note dates and IDs use local time; existing IDs are preserved.
+- **bim**: new note dates and IDs use local time; existing IDs are preserved. ID generation rejects date-only and other non-datetime values.
 
 ## [0.19.2] - 2026-11-08
 

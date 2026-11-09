@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 
@@ -17,6 +19,9 @@ def set_default_id(zettel_data: ZettelData) -> None:
     Raises:
         ValueError: If the ID conversion fails or if the date isn't a date.
     """
+    if not isinstance(zettel_data.metadata["date"], datetime):
+        raise ValueError("Invalid date format")
+
     try:
         id_str: str = zettel_data.metadata["date"].strftime("%Y%m%d%H%M%S")
     except AttributeError as err:
