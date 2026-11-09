@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from buvis.pybase.zettel.domain.templates.yaml_template import YamlTemplate
 from buvis.pybase.zettel.infrastructure.query.expression_engine import python_eval
 
@@ -196,5 +197,48 @@ class TestYamlTemplateExtends:
             {"name": "custom-project", "extends": "project"},
             base=base,
         )
-        assert len(child.hooks()) == 1
-        assert child.hooks()[0].name == "create_project_dir"
+        assert [hook.name for hook in child.hooks()] == ["set_parent_reference", "create_project_dir"]
+
+
+class TestYamlTemplatePlacement:
+    def test_placement_attributes_default_to_id_in_zettelkasten_root(self):
+        t = _make_template({"name": "test"})
+        assert (t.folder, t.file_stem, t.default_tags, t.body_section) == ("", "id", [], None)
+
+    def test_placement_attributes_are_read_from_yaml(self):
+        t = _make_template(
+            {
+                "name": "book",
+                "folder": "book",
+                "file_stem": "slug",
+                "default_tags": ["book"],
+                "body_section": "## Thesis",
+            }
+        )
+        assert (t.folder, t.file_stem, t.default_tags, t.body_section) == ("book", "slug", ["book"], "## Thesis")
+
+    def test_rejects_unknown_file_stem(self):
+        with pytest.raises(ValueError, match="template 'book': file_stem must be 'id' or 'slug', not 'title'"):
+            _make_template({"name": "book", "file_stem": "title"})
+
+    def test_placement_attributes_inherit_from_base(self):
+        base = _make_template({"name": "contact", "folder": "contact", "file_stem": "slug", "default_tags": ["person"]})
+        child = _make_template({"name": "colleague", "extends": "contact"}, base=base)
+        assert (child.folder, child.file_stem, child.default_tags) == ("contact", "slug", ["person"])
+
+    def test_yaml_reference_lands_in_data_reference(self):
+        t = _make_template({"name": "test", "reference": {"shop": "", "web": "[{title}]({url})"}})
+        data = t.build_data({"title": "Dune", "url": "https://example.com"})
+        assert data.reference == {"shop": "", "web": "[Dune](https://example.com)"}
+
+    def test_yaml_slug_is_available_in_sections(self):
+        t = _make_template(
+            {
+                "name": "test",
+                "metadata": {"photo": "{slug}.jpeg"},
+                "sections": [{"heading": "# {title}", "body": "![{title}]({slug}.cover.jpeg)"}],
+            }
+        )
+        data = t.build_data({"title": "Ada  Lovelace"})
+        assert data.metadata["photo"] == "ada-lovelace.jpeg"
+        assert data.sections == [("# Ada  Lovelace", "![Ada  Lovelace](ada-lovelace.cover.jpeg)")]

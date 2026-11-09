@@ -7,6 +7,10 @@ model_tier_rationale: contact-name matching is a heuristic with protected spans 
 
 Source: conversation assessment of 2026-11-08; third of three PRDs after 00118 (scripting contract) and 00119 (vault templates). Ports the last three behaviours of `create_note.py` and `vault_links.py` from the `create-note` skill in https://github.com/buvis/agent-skills (`skills/create-note/scripts/`); read both before implementing. When this lands, that skill shrinks to `bim --skill` plus a wrapper, which is a change in the other repository and not a task here.
 
+## Execution prerequisite
+
+Start only after PRDs 00118 and 00119 are implemented and pass their completion reviews. Do not absorb their tasks into this PRD.
+
 ## Overview
 
 ### Problem Statement

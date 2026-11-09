@@ -1,8 +1,7 @@
 use regex::Regex;
 use std::sync::LazyLock;
 
-static HEADING_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(#{1,6} .+?)\n").unwrap());
+static HEADING_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(#{1,6} .+?)\n").unwrap());
 
 /// Split content into (heading, body) sections.
 /// Mirrors Python's split_content_into_sections().
@@ -35,7 +34,10 @@ mod tests {
     #[test]
     fn test_split_no_headings() {
         let result = split_into_sections("just some text\n");
-        assert_eq!(result, vec![("".to_string(), "just some text\n".to_string())]);
+        assert_eq!(
+            result,
+            vec![("".to_string(), "just some text\n".to_string())]
+        );
     }
 
     #[test]

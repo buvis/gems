@@ -110,6 +110,28 @@ class TestDiscoverTemplates:
         assert "note" in templates
         assert "project" in templates
 
+    def test_bundled_book_and_prr_yaml_carry_vault_placement(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+
+        templates = discover_templates(python_eval)
+
+        book = templates["book"]
+        assert (book.folder, book.file_stem, book.default_tags) == ("book", "slug", ["book"])
+        data = book.build_data({"title": "Dune", "tags": "book"})
+        assert data.metadata["type"] == "book"
+        assert data.metadata["tags"] == ["book"]
+        assert data.sections[0] == ("# Dune", "![Dune cover|240](resources/book-cover/dune.cover.jpeg)")
+        assert data.reference == {"shop": ""}
+        prr = templates["problem-resolution-report"]
+        assert prr.body_section == "## Gather information"
+        data = prr.build_data({"title": "Outage"})
+        assert data.metadata["type"] == "problem-resolution-report"
+        assert data.sections[0][0] == "# Outage"
+        assert data.reference == {"parent": ""}
+        assert "contact" in templates
+        assert "meeting-minutes" in templates
+
     def test_includes_yaml_templates(self, tmp_path, monkeypatch):
         templates_dir = tmp_path / "templates"
         templates_dir.mkdir()

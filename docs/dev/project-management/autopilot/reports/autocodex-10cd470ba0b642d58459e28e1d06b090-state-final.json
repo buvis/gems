@@ -1,0 +1,38 @@
+{
+  "phase": "done",
+  "next_phase": "",
+  "schema_version": 1,
+  "batch": {
+    "id": "202611090014",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "catchup_head_sha": "a087e05e3543d2b0c199fba8e0ccd5dabf5bf8ad",
+    "catchup_completed_at": "2026-11-08T23:16:54.966812+00:00",
+    "parks_consecutive": 0
+  },
+  "prd": "00120-bim-create-vault-links-v1.md",
+  "catchup_mode": "run",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "full",
+  "lane_reason": "design",
+  "lane_effective": "full",
+  "catchup_probe": {
+    "batch_id": "202611090014",
+    "gh": "ok",
+    "engram": "unregistered",
+    "checked_at": "2026-11-08T23:14:47Z"
+  },
+  "tasks_total": 0,
+  "phases_completed": [],
+  "cycle": 1,
+  "tasks_completed": 0,
+  "replan_count": 0,
+  "contract_card": "step: batch drained; no selectable PRD in wip or backlog\ninvariants: statectl sole writer; held PRDs remain held; no implementation or review ran\nevidence: autopilot enter returned stop=drained\nnext: wrapper closes batch; prerequisites must ship before held successors resume"
+}

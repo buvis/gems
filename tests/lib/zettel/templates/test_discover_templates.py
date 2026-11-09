@@ -9,6 +9,12 @@ class TestDiscoverTemplates:
         assert "project" in templates
         assert templates["project"].name == "project"
 
+    def test_discovers_vault_python_templates(self) -> None:
+        templates = _discover_python_templates()
+        assert {"note", "project", "contact", "meeting-minutes", "illustrated-note", "youtube", "article"} <= set(
+            templates
+        )
+
     def test_template_has_questions(self) -> None:
         templates = _discover_python_templates()
         for name, tmpl in templates.items():

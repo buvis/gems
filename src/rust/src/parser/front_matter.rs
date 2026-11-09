@@ -5,8 +5,7 @@ use std::sync::LazyLock;
 
 use crate::types::YamlValue;
 
-static METADATA_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?s)---\n(.*?)\n---").unwrap());
+static METADATA_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?s)---\n(.*?)\n---").unwrap());
 
 /// Match tag/tags lines with inline values (not YAML list form).
 /// Uses `[ \t]*` instead of `\s*` to avoid matching across newlines.
@@ -44,8 +43,7 @@ fn normalize_tags(text: &str) -> String {
 
             // Remove unsafe chars
             let cleaned = tags_part
-                .replace('[', "")
-                .replace(']', "")
+                .replace(['[', ']'], "")
                 .replace(", ", " ")
                 .replace(',', " ");
 
@@ -84,7 +82,10 @@ mod tests {
         assert!(meta.is_some(), "Front matter should be parsed");
         let meta = meta.unwrap();
         assert_eq!(meta.get("id").and_then(|v| v.as_int()), Some(42));
-        assert_eq!(meta.get("title").and_then(|v| v.as_str()), Some("Simple test note"));
+        assert_eq!(
+            meta.get("title").and_then(|v| v.as_str()),
+            Some("Simple test note")
+        );
         assert!(remaining.contains("## Content"));
     }
 

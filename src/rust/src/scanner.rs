@@ -12,6 +12,11 @@ use crate::migration;
 use crate::parser;
 use crate::types::{YamlValue, ZettelData};
 
+/// Parsed notes plus `(path, error)` for each file that failed to parse.
+type ScanResult = Result<(Vec<ZettelData>, Vec<(String, String)>), String>;
+/// One file's cache key, cache entry and matching note, or `(path, error)`.
+type ParsedEntry = Result<(String, CacheEntry, Option<ZettelData>), (String, String)>;
+
 /// Simple filter value for metadata eq matching.
 #[derive(Debug, Clone)]
 pub enum MetaFilterValue {
@@ -29,22 +34,26 @@ fn yaml_eq_filter(yaml: &YamlValue, filter: &MetaFilterValue) -> bool {
     }
 }
 
-fn metadata_matches(meta: &IndexMap<String, YamlValue>, conditions: &[(String, MetaFilterValue)]) -> bool {
+fn metadata_matches(
+    meta: &IndexMap<String, YamlValue>,
+    conditions: &[(String, MetaFilterValue)],
+) -> bool {
     conditions.iter().all(|(key, expected)| {
-        meta.get(key).map_or(false, |actual| yaml_eq_filter(actual, expected))
+        meta.get(key)
+            .is_some_and(|actual| yaml_eq_filter(actual, expected))
     })
 }
 
 /// Scan a directory for markdown files, parse all in parallel with migration + consistency.
 /// Returns (results, errors) where errors are (path, message) pairs.
-pub fn load_all(directory: &str, extensions: &[String]) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
+pub fn load_all(directory: &str, extensions: &[String]) -> ScanResult {
     let files = collect_files(directory, extensions)?;
 
     let results: Vec<Result<ZettelData, (String, String)>> = files
         .par_iter()
         .map(|path| {
-            let mut data = parser::parse_file(path)
-                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
+            let mut data =
+                parser::parse_file(path).map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             Ok(data)
         })
@@ -68,14 +77,14 @@ pub fn load_filtered(
     directory: &str,
     extensions: &[String],
     conditions: &[(String, MetaFilterValue)],
-) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
+) -> ScanResult {
     let files = collect_files(directory, extensions)?;
 
     let results: Vec<Result<Option<ZettelData>, (String, String)>> = files
         .par_iter()
         .map(|path| {
-            let mut data = parser::parse_file(path)
-                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
+            let mut data =
+                parser::parse_file(path).map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             if metadata_matches(&data.metadata, conditions) {
                 Ok(Some(data))
@@ -151,7 +160,7 @@ pub fn load_cached(
     extensions: &[String],
     conditions: &[(String, MetaFilterValue)],
     cache_path: &str,
-) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
+) -> ScanResult {
     let cp = Path::new(cache_path);
     let cache = load_cache(cp);
 
@@ -170,8 +179,8 @@ pub fn load_cached(
     let results: Vec<Result<ZettelData, (String, String)>> = match_paths
         .par_iter()
         .map(|path| {
-            let mut data = parser::parse_file(path)
-                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
+            let mut data =
+                parser::parse_file(path).map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             Ok(data)
         })
@@ -196,14 +205,14 @@ fn load_cached_cold(
     extensions: &[String],
     conditions: &[(String, MetaFilterValue)],
     cache_path: &Path,
-) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
+) -> ScanResult {
     let files = collect_files_opt(directory, extensions, false)?;
 
-    let parsed: Vec<Result<(String, CacheEntry, Option<ZettelData>), (String, String)>> = files
+    let parsed: Vec<ParsedEntry> = files
         .par_iter()
         .map(|path| {
-            let mut data = parser::parse_file(path)
-                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
+            let mut data =
+                parser::parse_file(path).map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             let key = path.to_string_lossy().to_string();
             let (secs, nanos) = get_mtime(path).unwrap_or((0, 0));
@@ -252,15 +261,17 @@ pub fn refresh_cache(
     let old_cache = load_cache(cp);
     let files = collect_files(directory, extensions)?;
 
-    let old_keys: std::collections::HashSet<&str> =
-        old_cache.keys().map(|k| k.as_str()).collect();
+    let old_keys: std::collections::HashSet<&str> = old_cache.keys().map(|k| k.as_str()).collect();
     let new_keys: std::collections::HashSet<String> = files
         .iter()
         .map(|p| p.to_string_lossy().to_string())
         .collect();
 
     // Count new and deleted files
-    let n_new = new_keys.iter().filter(|k| !old_keys.contains(k.as_str())).count();
+    let n_new = new_keys
+        .iter()
+        .filter(|k| !old_keys.contains(k.as_str()))
+        .count();
     let n_deleted = old_keys.iter().filter(|k| !new_keys.contains(**k)).count();
 
     // Find stale files (mtime changed)
@@ -291,17 +302,20 @@ pub fn refresh_cache(
     let new_entries: Vec<Result<(String, CacheEntry), (String, String)>> = stale_or_new
         .par_iter()
         .map(|path| {
-            let mut data = parser::parse_file(path)
-                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
+            let mut data =
+                parser::parse_file(path).map_err(|e| (path.to_string_lossy().to_string(), e))?;
             process_zettel(&mut data);
             let key = path.to_string_lossy().to_string();
             let (secs, nanos) = get_mtime(path).unwrap_or((0, 0));
-            Ok((key, CacheEntry {
-                mtime_secs: secs,
-                mtime_nanos: nanos,
-                metadata: data.metadata,
-                reference: data.reference,
-            }))
+            Ok((
+                key,
+                CacheEntry {
+                    mtime_secs: secs,
+                    mtime_nanos: nanos,
+                    metadata: data.metadata,
+                    reference: data.reference,
+                },
+            ))
         })
         .collect();
 
@@ -309,7 +323,9 @@ pub fn refresh_cache(
     let mut n_errors = 0usize;
     for item in new_entries {
         match item {
-            Ok((key, entry)) => { cache.insert(key, entry); }
+            Ok((key, entry)) => {
+                cache.insert(key, entry);
+            }
             Err(_) => n_errors += 1,
         }
     }
@@ -337,11 +353,18 @@ pub fn refresh_cache(
 }
 
 /// Collect file paths matching extensions from a directory tree.
-fn collect_files(directory: &str, extensions: &[String]) -> Result<Vec<std::path::PathBuf>, String> {
+fn collect_files(
+    directory: &str,
+    extensions: &[String],
+) -> Result<Vec<std::path::PathBuf>, String> {
     collect_files_opt(directory, extensions, true)
 }
 
-fn collect_files_opt(directory: &str, extensions: &[String], follow_links: bool) -> Result<Vec<std::path::PathBuf>, String> {
+fn collect_files_opt(
+    directory: &str,
+    extensions: &[String],
+    follow_links: bool,
+) -> Result<Vec<std::path::PathBuf>, String> {
     let dir = Path::new(directory);
     if !dir.is_dir() {
         return Err(format!("Not a directory: {}", directory));
@@ -398,15 +421,15 @@ fn matches_query(data: &ZettelData, query_lower: &str) -> bool {
 
 /// Full-text search: scan directory, parse in parallel, return matches.
 /// Searches raw content first, only runs migration+consistency on matches.
-pub fn search(directory: &str, query: &str, extensions: &[String]) -> Result<(Vec<ZettelData>, Vec<(String, String)>), String> {
+pub fn search(directory: &str, query: &str, extensions: &[String]) -> ScanResult {
     let files = collect_files(directory, extensions)?;
     let query_lower = query.to_lowercase();
 
     let results: Vec<Result<Option<ZettelData>, (String, String)>> = files
         .par_iter()
         .map(|path| {
-            let mut data = parser::parse_file(path)
-                .map_err(|e| (path.to_string_lossy().to_string(), e))?;
+            let mut data =
+                parser::parse_file(path).map_err(|e| (path.to_string_lossy().to_string(), e))?;
 
             // Search on raw parsed data (before expensive pipeline)
             if !matches_query(&data, &query_lower) {

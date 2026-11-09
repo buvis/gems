@@ -17,7 +17,8 @@ mod tests {
     #[test]
     fn test_moves_zkn_id_to_id() {
         let mut data = ZettelData::new();
-        data.metadata.insert("zkn-id".to_string(), YamlValue::Int(123));
+        data.metadata
+            .insert("zkn-id".to_string(), YamlValue::Int(123));
 
         migrate(&mut data);
 
@@ -29,7 +30,8 @@ mod tests {
     fn test_keeps_existing_id() {
         let mut data = ZettelData::new();
         data.metadata.insert("id".to_string(), YamlValue::Int(456));
-        data.metadata.insert("zkn-id".to_string(), YamlValue::Int(123));
+        data.metadata
+            .insert("zkn-id".to_string(), YamlValue::Int(123));
 
         migrate(&mut data);
 

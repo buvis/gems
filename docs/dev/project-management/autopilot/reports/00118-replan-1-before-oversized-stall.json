@@ -1,0 +1,88 @@
+{
+  "phase": "build",
+  "next_phase": "build",
+  "schema_version": 1,
+  "batch": {
+    "id": "202611090739",
+    "mode": "autopilot",
+    "completed_prds": [],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "catchup_completed_at": "2026-11-09T06:41:39.759539+00:00",
+    "catchup_head_sha": "d8692476e79aa35cd9aa776b8442343c16c527f0"
+  },
+  "prd_budget_since": "2026-11-09T06:39:49Z",
+  "prd": "00118-bim-create-scripting-contract-v1.md",
+  "catchup_mode": "run",
+  "design_mode": "run",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "full",
+  "lane_reason": "design",
+  "lane_effective": "full",
+  "catchup_probe": {
+    "batch_id": "202611090739",
+    "gh": "ok",
+    "engram": "unregistered",
+    "checked_at": "2026-11-09T06:39:59Z"
+  },
+  "tasks": [
+    {
+      "name": "Document remaining scripting contract in changelog",
+      "description": "Finish the required Unreleased changelog documentation for PRD 00118.\n\nLocation: CHANGELOG.md\n\nReuse: Existing Added and Changed sections; retain already committed local-time and shared-command entries.\n\nContract (verbatim \u2014 reviewed design):\nThe scripting contract is version 1. Its keys and types are stable; future additions are additive and consumers must ignore unknown keys. Removing or retyping a key requires a new contract flag or a major package release. Document this policy and the failure-exit behavior change in the CLI docs, agent skill and changelog; do not add an unrequested schema key.\n\nDetails:\nAdd the remaining JSON scripting contract and non-zero failure exit documentation. This is the single-file split of the original four-destination documentation task; do not edit other files.\n\nAcceptance criteria:\n`rg -c \"\\-\\-json\" docs/source/tools/bim.rst src/tools/bim/SKILL.md` prints at least 1 for each file and `rg -c \"still exits 0\" src/tools/bim/SKILL.md` prints 0.\n\nVerify: Inspect the Added and Changed entries under Unreleased for the remaining contract and failure-exit behavior.\n",
+      "files": [
+        "CHANGELOG.md"
+      ],
+      "blocked_by": [],
+      "estimated_tokens": 81132,
+      "est_context_peak": 101132,
+      "qwen_eligible": false,
+      "qwen_excluded_reason": "tier",
+      "model": "opus",
+      "tier_reason": "floor",
+      "id": "1",
+      "status": "pending"
+    }
+  ],
+  "tasks_total": 1,
+  "work_start_sha": "d8692476e79aa35cd9aa776b8442343c16c527f0",
+  "repo_root": "/Users/bob/git/src/worktrees/gems/feature-improve-bim-from-skill-experience",
+  "tasks_completed": 0,
+  "task_aborts": [
+    {
+      "task_id": "3",
+      "turn": -1,
+      "total_input_tokens": 19697,
+      "cause": "subagent_prompt_overrun"
+    }
+  ],
+  "contract_card": "step: build/replan-1 prepared\ninvariants: preserve work_start_sha, completed code, archived attempt provenance and raw worker evidence; no review in this session\nnext: fresh build session plans remaining scope using replan-context.md at 75000 tokens per task",
+  "replan_count": 1,
+  "rework_task_ids": [],
+  "loop_entry": {
+    "entered_by": "loop",
+    "prd": "00118-bim-create-scripting-contract-v1.md",
+    "result": {
+      "stop": null,
+      "detail": "",
+      "prd": "00118-bim-create-scripting-contract-v1.md",
+      "source": "wip",
+      "parked": null,
+      "custody_pending": 0,
+      "lane_effective": "full",
+      "catchup": "full",
+      "design": "reuse",
+      "resume_target": "build: catchup then planning",
+      "batch": "open"
+    }
+  },
+  "stall_reason": {
+    "stalled": "oversized_task",
+    "task": "1",
+    "estimated_tokens": 81132
+  }
+}

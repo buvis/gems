@@ -15,12 +15,12 @@ pub fn parse_content(content: &str) -> ZettelData {
 
     let (metadata, remaining) = front_matter::extract_metadata(content);
     data.metadata = metadata
-        .map(|m| key_normalizer::normalize_keys(m))
+        .map(key_normalizer::normalize_keys)
         .unwrap_or_default();
 
     let (reference, remaining) = back_matter::extract_reference(&remaining);
     data.reference = reference
-        .map(|r| key_normalizer::normalize_keys(r))
+        .map(key_normalizer::normalize_keys)
         .unwrap_or_default();
 
     data.sections = sections::split_into_sections(&remaining);
@@ -40,12 +40,14 @@ pub fn parse_file(path: &Path) -> Result<ZettelData, String> {
     if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
         if !data.metadata.contains_key("date") {
             if let Some(dt) = enrichment::date_from_filename(stem) {
-                data.metadata.insert("date".to_string(), YamlValue::DateTime(dt));
+                data.metadata
+                    .insert("date".to_string(), YamlValue::DateTime(dt));
             }
         }
         if !data.metadata.contains_key("title") {
             if let Some(title) = enrichment::title_from_filename(stem) {
-                data.metadata.insert("title".to_string(), YamlValue::String(title));
+                data.metadata
+                    .insert("title".to_string(), YamlValue::String(title));
             }
         }
     }
@@ -61,7 +63,8 @@ pub fn parse_file_with_fallback(path: &Path) -> Result<ZettelData, String> {
     // Fallback: if no date from filename, try filesystem creation date
     if !data.metadata.contains_key("date") {
         if let Some(dt) = enrichment::date_from_filesystem(path) {
-            data.metadata.insert("date".to_string(), YamlValue::DateTime(dt));
+            data.metadata
+                .insert("date".to_string(), YamlValue::DateTime(dt));
         }
     }
 

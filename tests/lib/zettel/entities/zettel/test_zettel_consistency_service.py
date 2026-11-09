@@ -4,7 +4,7 @@ Test cases for the ZettelConsistencyService class.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from buvis.pybase.zettel.domain.entities.zettel.zettel_consistency_service import (
@@ -28,9 +28,12 @@ class TestZettelConsistencyService:
         """
         Test that set_missing_defaults sets default values for missing metadata fields.
         """
+        before = datetime.now().astimezone().replace(microsecond=0)
         ZettelConsistencyService.set_missing_defaults(zettel_data)
+        after = datetime.now().astimezone().replace(microsecond=0)
 
-        assert zettel_data.metadata["date"] == datetime.now(timezone.utc).replace(microsecond=0)
+        assert before <= zettel_data.metadata["date"] <= after
+        assert zettel_data.metadata["date"].utcoffset() == before.utcoffset()
         assert zettel_data.metadata["id"] is not None
         assert zettel_data.metadata["title"] == "Unknown title"
         assert zettel_data.metadata["type"] == "note"
@@ -51,6 +54,13 @@ class TestZettelConsistencyService:
         assert zettel_data.metadata["tags"] == ["tag1", "tag2"]
         assert zettel_data.metadata["title"] == "Test title"
         assert zettel_data.sections == [("# Test title", "\n\nTest content")]
+
+    def test_consistency_keeps_tags_in_written_order(self, zettel_data: ZettelData) -> None:
+        zettel_data.metadata["tags"] = ["zebra", "alpha", "zebra", "mango"]
+
+        ZettelConsistencyService.ensure_consistency(zettel_data)
+
+        assert zettel_data.metadata["tags"] == ["zebra", "alpha", "mango"]
 
     @pytest.mark.parametrize(
         "metadata",
@@ -75,3 +85,21 @@ class TestZettelConsistencyService:
 
         for key, value in metadata.items():
             assert zettel_data.metadata[key] == value
+
+    @pytest.mark.parametrize(
+        ("date", "existing_id"),
+        [
+            (datetime(2024, 9, 13, 12, tzinfo=timezone(timedelta(hours=2))), 20240913100000),
+            (datetime(2025, 1, 1, 1, tzinfo=timezone(timedelta(hours=5, minutes=30))), 20241231193000),
+        ],
+        ids=["utc-derived-id", "utc-derived-id-previous-day"],
+    )
+    def test_consistency_preserves_existing_utc_derived_id_with_non_utc_date(
+        self, zettel_data: ZettelData, date: datetime, existing_id: int
+    ) -> None:
+        zettel_data.metadata.update({"date": date, "id": existing_id})
+
+        ZettelConsistencyService.ensure_consistency(zettel_data)
+
+        assert zettel_data.metadata["id"] == existing_id
+        assert zettel_data.metadata["date"] is date

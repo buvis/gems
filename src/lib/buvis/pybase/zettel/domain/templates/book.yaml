@@ -1,0 +1,18 @@
+name: book
+extends: note
+folder: book
+file_stem: slug
+default_tags: [book]
+metadata:
+  type: book
+  summary: ""
+  last-read: 9999-12-31
+  author: ""
+sections:
+  - heading: "# {title}"
+    body: "![{title} cover|240](resources/book-cover/{slug}.cover.jpeg)"
+  - heading: "## Thesis"
+  - heading: "## Antithesis"
+  - heading: "## Synthesis"
+reference:
+  shop: ""

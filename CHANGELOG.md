@@ -7,17 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI**: run development tooling tests, fail the final gate when path detection fails, handle docs-only changes, and explicitly run the full suite for reusable workflow calls. Tool jobs no longer wait for the library matrix.
+- **bim**: keep create/edit Markdown stable: omit empty backmatter separators, end notes with one newline, and preserve body text without adding hard-break spaces, including inside Excalidraw code fences.
+
+- **bim**: write `tags` the way most vault notes do: a one-line flow list (`tags: [a, b]`) before `type`, in the order given. `bim create`, `bim edit` and `bim format` no longer sort tags or turn them into a block list after `type`.
+
+- **bim**: keep frontmatter keys after `processed` in the note's own order instead of sorting them alphabetically, so meeting, contact, book and YouTube notes keep the order of the vault's templates; a new project writes `completed`, `resources`, `deliverable` like `page.create-project.tpl`.
+
+- **bim**: preserve body/source conflict validation before expanding scripted source paths.
+
+- **bim**: exit 1 for missing or conflicting note paths, interactive multi-file import, and invalid TUI edit requests.
+
+- **bim**: create notes with normal umask permissions, confine template destinations, and validate question answers and tags. Keep saved notes successful when daily-log decoding fails, clean up failed or interrupted article archives, preserve original whitespace after stripping frontmatter, and protect contact links and daily-log headings in Markdown.
+
 ### Added
 
+- **bim**: `bim create` is scriptable: `--body-file PATH` (or `-` for stdin) appends a body, `--source PATH` converts an inbox file (frontmatter dropped, title from the file name, file moved to `.trash/`), `--dry-run` renders without writing, and `--json` prints one object with `id`, `type`, `title`, `tags`, `path`, `relative_path` and `wikilink` (plus `dry_run`/`content`, `trashed_source`, `errors` when relevant) or `{"error": ...}` on failure.
+- **bim**: `bim create --tags` are normalised (`#` dropped, lowercased, deduplicated) and validated; a tag with spaces or only digits fails before anything is written. Two creates in the same second no longer fail: the second waits for the next free id.
+- **bim**: `bim create` templates reproduce the vault's Templater notes: new `book`, `illustrated-note`, `youtube` and `problem-resolution-report` templates; `contact` writes `contact/<slug>.md` with a capitalised name and the `person` tag, `book` writes `book/<slug>.md` with the `book` tag, and those two tags are rejected on other templates. YAML templates may set `folder`, `file_stem` (`id` or `slug`; anything else is reported and the template skipped), `default_tags`, `body_section` and `reference`, and use `{slug}`.
+- **bim**: `path_projects` setting (`BUVIS_BIM_PATH_PROJECTS`, default `~/Documents/reference/10-projects/`): a new project links and creates `<path_projects>/<id>-<slug>` as its resources folder; a missing root is reported as a warning (`warnings` in the `--json` output) and the note is still written.
+- **bim**: `bim create` logs every new note under `## Log` in today's daily note (`path_daily`, `BUVIS_BIM_PATH_DAILY`, default `~/bim/notes/calendar/daily/`; `--no-daily-log` skips it, a missing daily note is reported as skipped) and wikilinks the first mention of each known contact in the body (`--no-link-contacts` keeps it verbatim); the JSON reports `daily_log` and `linked_contacts`.
+- **bim**: `bim create -t article --summary-file FACTS` archives the original text under `path_articles` (`BUVIS_BIM_PATH_ARTICLES`, default `~/Documents/reference/40-archives/articles/`) as `<YYYY>/<YYYYMM>00/<title>.md` and writes a `note` whose backmatter links the archive (`article::`) and the source (`web::`); the archive is removed again when the note cannot be written.
+- **bim**: `bim --skill` also describes the BIM vault: layout, note anatomy, type vocabulary, body shape per type, links, GTD task and log syntax, the Obsidian plugins that act on files, and the rules agents follow in the vault.
+- **bim**: the `bim serve` `create_note` action accepts `body`, `summary`, `dry_run`, `daily_log` and `link_contacts` in its `args`, so the web UI drives the same create as the CLI (`source` stays CLI-only because it names a path).
 - **sysup**: update Herdr app mods through hmod (`herdr-mods`, macOS); skipped when Herdr is closed or hmod is not installed
 
 ### Changed
 
+- **bim**: the `article` template writes `type: note` with `article::` and `web::` backmatter instead of `type: article`, and needs `--summary-file` plus the original text.
+- **bim**: new note dates and IDs use local time, matching the vault's Templater notes, in both the Python and the Rust `_core` paths; a 14-digit filename is read back as local time; existing IDs are preserved. ID generation rejects date-only and other non-datetime values.
+- **bim**: `project` asks `deliverable` (`fix`, `enhancement`, `support`) and an optional `ticket` instead of `dev_type`, and writes Description, Log, Plan and Solution sections with `parent`, `ticket`, `us` and `psd` backmatter; `contact` drops the `contact_type` question; `meeting-minutes` is titled `YYYY-MM-DD | <Subject> meeting minutes`, asks `location` as `webex`, `teams`, `phone` or `face to face`, and carries the GTD post-processing block. Template hooks now run before the note is saved, so their metadata lands in the file.
+- **bim**: `create`, `import`, `edit`, `archive`, `delete`, `format`, `sync`, `show` and `query` without a spec exit 1 on failure instead of 0.
 - **CI**: group tool tests into three jobs per OS/Python combination, collect only selected test directories, omit development dependencies from test jobs, and cancel superseded PR runs. Preserve the full platform matrix and per-tool coverage thresholds.
-
-### Fixed
-
-- **CI**: run development tooling tests, fail the final gate when path detection fails, handle docs-only changes, and explicitly run the full suite for reusable workflow calls. Tool jobs no longer wait for the library matrix.
 
 ## [0.19.2] - 2026-11-08
 

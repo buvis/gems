@@ -15,4 +15,4 @@ processed: false
 
 ## Content
 
-Tags should be deduplicated and sorted.
+Tags should be deduplicated and keep their written order.

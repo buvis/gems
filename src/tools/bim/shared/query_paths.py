@@ -24,6 +24,7 @@ def resolve_paths(
 
     if has_paths and has_query:
         console.failure("Provide paths or -Q/-q, not both")
+        ctx.exit(1)
         return None
 
     if has_query:
@@ -35,6 +36,7 @@ def resolve_paths(
         return [Path(p) for p in paths]
 
     console.failure("Provide paths or -Q/-q")
+    ctx.exit(1)
     return None
 
 

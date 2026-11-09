@@ -22,6 +22,12 @@ impl ZettelData {
     }
 }
 
+impl Default for ZettelData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Dynamic YAML value type that can be converted to Python objects.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum YamlValue {
@@ -89,11 +95,14 @@ impl From<serde_yml::Value> for YamlValue {
                 // Try parsing as datetime (serde_yml returns dates as strings)
                 if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&s) {
                     YamlValue::DateTime(dt)
-                } else if let Ok(dt) = chrono::DateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S %z") {
+                } else if let Ok(dt) = chrono::DateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S %z")
+                {
                     YamlValue::DateTime(dt)
                 } else if let Ok(dt) = chrono::DateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S%z") {
                     YamlValue::DateTime(dt)
-                } else if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S") {
+                } else if let Ok(dt) =
+                    chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
+                {
                     let fixed = chrono::TimeZone::from_utc_datetime(&chrono::Utc, &dt);
                     YamlValue::DateTime(fixed.fixed_offset())
                 } else if let Ok(dt) = chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d") {
@@ -102,7 +111,9 @@ impl From<serde_yml::Value> for YamlValue {
                         &dt.and_hms_opt(0, 0, 0).unwrap(),
                     );
                     YamlValue::DateTime(fixed.fixed_offset())
-                } else if let Ok(dt) = chrono::NaiveDate::parse_from_str(s.trim_end_matches('T'), "%Y-%m-%d") {
+                } else if let Ok(dt) =
+                    chrono::NaiveDate::parse_from_str(s.trim_end_matches('T'), "%Y-%m-%d")
+                {
                     // Handle truncated ISO format: "2025-01-30T"
                     let fixed = chrono::TimeZone::from_utc_datetime(
                         &chrono::Utc,
@@ -117,8 +128,10 @@ impl From<serde_yml::Value> for YamlValue {
                 YamlValue::List(seq.into_iter().map(YamlValue::from).collect())
             }
             serde_yml::Value::Mapping(m) => {
-                let map: IndexMap<String, YamlValue> =
-                    m.into_iter().map(|(k, v)| (k, YamlValue::from(v))).collect();
+                let map: IndexMap<String, YamlValue> = m
+                    .into_iter()
+                    .map(|(k, v)| (k, YamlValue::from(v)))
+                    .collect();
                 YamlValue::Dict(map)
             }
             serde_yml::Value::Tagged(tagged) => YamlValue::from(tagged.value().clone()),

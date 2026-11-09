@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,10 +56,10 @@ def get_templates() -> dict[str, ZettelTemplate]:
     return discover_templates(get_evaluator())
 
 
-def get_hook_runner() -> HookRunner:
+def get_hook_runner(path_projects: Path | None = None) -> HookRunner:
     from buvis.pybase.zettel.infrastructure.persistence.template_loader import run_template_hooks
 
-    return run_template_hooks
+    return functools.partial(run_template_hooks, path_projects=path_projects)
 
 
 def get_cache_path() -> str:

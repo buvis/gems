@@ -24,12 +24,13 @@ def process_metadata(
         first_keys: Tuple of keys which should appear first in the returned dictionary.
 
     Returns:
-        Processed metadata dictionary with specified keys ordered first.
+        Processed metadata dictionary with specified keys ordered first and the
+        rest in their written order, as the vault's templates lay them out.
     """
 
     return {
         **{key: metadata[key] for key in first_keys if key in metadata},
-        **{k: v for k, v in sorted(metadata.items()) if k not in first_keys},
+        **{k: v for k, v in metadata.items() if k not in first_keys},
     }
 
 
@@ -61,14 +62,21 @@ def metadata_to_yaml(
         datetime_keys: List of keys that have datetime values converted to strings.
 
     Returns:
-        YAML formatted string with unquoted datetime values.
+        YAML formatted string with unquoted datetime values. ``tags`` is a flow
+        list on one line (``tags: [a, b]``), as the vault's notes write it.
     """
-    metadata_str = yaml.dump(
-        full_metadata,
-        default_flow_style=False,
-        sort_keys=False,
-        allow_unicode=True,
-    ).strip()
+    metadata_str = "\n".join(
+        yaml.dump(
+            {key: value},
+            default_flow_style=None if key == "tags" else False,
+            width=float("inf") if key == "tags" else 80,
+            sort_keys=False,
+            allow_unicode=True,
+        ).strip()
+        for key, value in full_metadata.items()
+    )
+    if not full_metadata:
+        metadata_str = "{}"
     datetime_regex = re.compile(rf"^({'|'.join(datetime_keys)}): '([^']*)'(.*)$", flags=re.MULTILINE)
 
     return datetime_regex.sub(r"\1: \2\3", metadata_str)
@@ -154,9 +162,8 @@ def format_sections(sections: list[tuple[str, str]]) -> str:
         Formatted sections string.
     """
 
-    return "\n".join(
-        f"\n{heading}\n\n{convert_markdown_to_preserve_line_breaks(content.strip())}"
-        if content.strip()
-        else f"\n{heading}"
-        for heading, content in sections
-    )
+    formatted = []
+    for heading, content in sections:
+        body = content.strip("\n")
+        formatted.append(f"\n{heading}\n\n{body}" if body.strip() else f"\n{heading}")
+    return "\n".join(formatted)

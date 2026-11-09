@@ -42,6 +42,9 @@ def serve(
         no_browser=no_browser,
         business_triage_root=business_triage_root,
         doc_settings=doc_settings,
+        path_projects=str(Path(settings.path_projects).expanduser()),
+        path_daily=str(Path(settings.path_daily).expanduser()),
+        path_articles=str(Path(settings.path_articles).expanduser()),
     )
     cmd = CommandServe(params=params)
     cmd.execute()

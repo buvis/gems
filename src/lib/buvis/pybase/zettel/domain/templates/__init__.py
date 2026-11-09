@@ -27,10 +27,27 @@ class Hook:
     name: str
 
 
-HookRunner = Callable[[list[Hook], ZettelData, Path], None]
+HookRunner = Callable[[list[Hook], ZettelData, Path], "list[str] | None"]
+"""Runs a template's hooks against the prepared data; returns warnings, if any."""
 
 
 class ZettelTemplate(Protocol):
+    """A note template.
+
+    Templates may also expose these optional attributes; readers use
+    ``getattr(template, name, default)`` so a template without them keeps working:
+
+    - ``folder`` (``str``, default ``""``): subdirectory of the zettelkasten the
+      note is written to.
+    - ``file_stem`` (``"id"`` or ``"slug"``, default ``"id"``): name the file
+      after the id or after the slugified title. A slug path that exists fails
+      at once instead of waiting for the next id.
+    - ``default_tags`` (``list[str]``, default ``[]``): tags every note of this
+      template carries; another template's note cannot use them.
+    - ``body_section`` (``str | None``, default ``None``): heading of the
+      section a supplied body is appended to; the first section otherwise.
+    """
+
     name: str
 
     def questions(self) -> list[Question]: ...

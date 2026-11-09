@@ -62,7 +62,7 @@ module there and ``discover_templates()`` finds it automatically — no
 registration needed.
 
 Built-in templates: ``note`` (minimal, no questions) and ``project`` (asks for
-dev type, creates project dir).
+deliverable, creates project dir).
 
 Writing a template
 ~~~~~~~~~~~~~~~~~~
@@ -264,7 +264,7 @@ Example extending ``project`` to inherit its directory-creation hook:
 
     metadata:
       type: project
-      dev-type: spike
+      deliverable: enhancement
       hypothesis: "{hypothesis}"
 
 Template protocol
@@ -278,6 +278,14 @@ Template protocol
      - Purpose
    * - ``name``
      - String used in ``-t/--type``. Must be unique across templates.
+   * - ``folder``
+     - Destination subfolder inside the zettelkasten (default: root).
+   * - ``file_stem``
+     - Filename strategy: ``id`` (default) or ``slug``.
+   * - ``default_tags``
+     - Tags applied before user-supplied tags.
+   * - ``body_section``
+     - Heading of the section that receives the supplied body.
    * - ``questions()``
      - Returns ``list[Question]``. Each question becomes an input field in the
        TUI or a ``-a key=value`` flag in scripted mode. Return ``[]`` for no
@@ -288,7 +296,7 @@ Template protocol
        Consistency defaults (date, id, publish, processed) are filled
        automatically by the Zettel entity — don't set them here.
    * - ``hooks()``
-     - Returns ``list[Hook]``. Each hook runs after the file is written.
+     - Returns ``list[Hook]``. Each hook runs before the file is written.
        Receives ``(ZettelData, zettelkasten_path)``. Return ``[]`` for no
        hooks.
 
@@ -351,7 +359,7 @@ CLI usage
     bim create -t note --title "My note" --tags "foo,bar"
 
     # With template-specific answers
-    bim create -t project --title "Auth refactor" -a dev_type=spike
+    bim create -t project --title "Auth refactor" -a deliverable=enhancement
 
 CreateZettelUseCase
 ~~~~~~~~~~~~~~~~~~~

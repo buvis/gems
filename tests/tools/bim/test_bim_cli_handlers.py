@@ -160,7 +160,7 @@ class TestFormatHandlerOutputBranches:
 
             result = runner.invoke(cli, ["format", str(note)], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Parse error")
             mock_warning.assert_called_once_with("warn1")
 
@@ -168,7 +168,7 @@ class TestFormatHandlerOutputBranches:
         with patch("bim.shared.query_paths.console") as mock_console:
             result = runner.invoke(cli, ["format"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_console.failure.assert_called_once_with("Provide paths or -Q/-q")
 
 
@@ -216,7 +216,7 @@ class TestSyncHandlerBranches:
 
             result = runner.invoke(cli, ["sync", str(note), "-t", "jira"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Sync error")
 
     def test_sync_not_supported(self, runner: CliRunner, tmp_path: Path) -> None:
@@ -298,7 +298,12 @@ class TestImportHandlerBranches:
             patch("bim.note_write_cli.console.warning") as mock_warning,
             patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path),
+                path_projects=str(tmp_path / "projects"),
+                path_daily=str(tmp_path / "daily"),
+                path_articles=str(tmp_path / "articles"),
+            )
             mock_get_repo.return_value = MagicMock()
             mock_get_formatter.return_value = MagicMock()
             instance = mock_cmd.return_value
@@ -310,7 +315,7 @@ class TestImportHandlerBranches:
                 catch_exceptions=False,
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Import failed")
             mock_warning.assert_called_once_with("w1")
 
@@ -359,7 +364,7 @@ class TestArchiveHandlerBranches:
 
             result = runner.invoke(cli, ["archive", str(note)], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Archive error")
 
 
@@ -414,7 +419,12 @@ class TestCreateHandlerBranches:
             patch("bim.note_write_cli.console.warning") as mock_warning,
             patch("bim.note_write_cli.console.failure") as mock_failure,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path),
+                path_projects=str(tmp_path / "projects"),
+                path_daily=str(tmp_path / "daily"),
+                path_articles=str(tmp_path / "articles"),
+            )
             mock_get_repo.return_value = MagicMock()
             mock_get_templates.return_value = MagicMock()
             mock_get_hook_runner.return_value = MagicMock()
@@ -427,7 +437,7 @@ class TestCreateHandlerBranches:
                 catch_exceptions=False,
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Template error")
             mock_warning.assert_called_once_with("w1")
 
@@ -440,7 +450,12 @@ class TestCreateHandlerBranches:
             patch("bim.dependencies.get_hook_runner") as mock_get_hook_runner,
             patch("bim.note_write_cli.console") as mock_console,
         ):
-            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path))
+            mock_settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path),
+                path_projects=str(tmp_path / "projects"),
+                path_daily=str(tmp_path / "daily"),
+                path_articles=str(tmp_path / "articles"),
+            )
             mock_get_repo.return_value = MagicMock()
             mock_get_templates.return_value = MagicMock()
             mock_get_hook_runner.return_value = MagicMock()
@@ -492,7 +507,7 @@ class TestDeleteHandlerBranches:
 
             result = runner.invoke(cli, ["delete", str(note), "--force"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Delete error")
 
     def test_delete_batch_confirm_denied(self, runner: CliRunner, tmp_path: Path) -> None:
@@ -553,7 +568,7 @@ class TestShowHandlerBranches:
 
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_failure.assert_called_once_with("Show error")
 
 
@@ -565,5 +580,25 @@ class TestResolvePathsBranches:
         with patch("bim.shared.query_paths.console") as mock_console:
             result = runner.invoke(cli, ["format", str(note), "-q", "sort: title"], catch_exceptions=False)
 
-            assert result.exit_code == 0
+            assert result.exit_code == 1
             mock_console.failure.assert_called_once_with("Provide paths or -Q/-q, not both")
+
+
+class TestEditFailureExit:
+    def test_failed_result_exits_one(self, runner: CliRunner, tmp_path: Path) -> None:
+        with (
+            patch("bim.commands.edit_note.edit_note.CommandEditNote") as command,
+            patch("bim.dependencies.get_repo"),
+        ):
+            command.return_value.execute.return_value = CommandResult(success=False, error="Cannot edit")
+            result = runner.invoke(cli, ["edit", str(tmp_path / "note.md"), "--title", "Changed"])
+        assert result.exit_code == 1
+        assert "Cannot edit" in result.output
+
+    def test_tui_missing_path_exits_one(self, runner: CliRunner, tmp_path: Path) -> None:
+        result = runner.invoke(cli, ["edit", str(tmp_path / "missing.md")])
+        assert result.exit_code == 1
+
+    def test_tui_multiple_paths_exits_one(self, runner: CliRunner, tmp_path: Path) -> None:
+        result = runner.invoke(cli, ["edit", str(tmp_path / "one.md"), str(tmp_path / "two.md")])
+        assert result.exit_code == 1

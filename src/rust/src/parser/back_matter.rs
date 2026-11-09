@@ -5,11 +5,9 @@ use std::sync::LazyLock;
 
 use crate::types::YamlValue;
 
-static REFERENCE_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?s)\n---\n(.*)$").unwrap());
+static REFERENCE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?s)\n---\n(.*)$").unwrap());
 
-static DATAVIEW_KEY_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(\S+)::").unwrap());
+static DATAVIEW_KEY_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\S+)::").unwrap());
 
 /// Extract back matter (reference section) from content.
 /// Returns (parsed reference dict, content with back matter removed).
@@ -64,9 +62,7 @@ fn quote_unsafe_strings(text: &str) -> String {
                 (k, String::new())
             };
 
-            let needs_quoting = (value.contains(':')
-                || value.contains('[')
-                || value.contains(']'))
+            let needs_quoting = (value.contains(':') || value.contains('[') || value.contains(']'))
                 && !value.starts_with('"')
                 && !value.ends_with('"');
 
@@ -170,7 +166,10 @@ Body.
         let keys: Vec<&str> = reference.keys().map(|k| k.as_str()).collect();
         assert_eq!(
             keys,
-            vec!["key-z", "key-a", "key-m", "key-f", "key-r", "key-c", "key-x", "key-e", "key-p", "key-b"]
+            vec![
+                "key-z", "key-a", "key-m", "key-f", "key-r", "key-c", "key-x", "key-e", "key-p",
+                "key-b"
+            ]
         );
     }
 }

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
 from buvis.pybase.adapters import console
@@ -12,6 +14,9 @@ from bim.params.delete_note import DeleteNoteParams
 from bim.params.edit_note import EditNoteParams
 from bim.settings import BimSettings
 from bim.shared.query_paths import resolve_paths
+
+if TYPE_CHECKING:
+    from bim.params.create_note import CreateNoteParams
 
 __all__ = ["register_note_write_commands"]
 
@@ -44,6 +49,7 @@ def import_note(
 
     if not scripted and len(paths) > 1:
         console.failure("interactive import requires a single path")
+        ctx.exit(1)
         return
 
     path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
@@ -73,6 +79,8 @@ def import_note(
     )
     result = cmd.execute()
     console.report_result(result, failure_msg="Import failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("create", help="Create a new zettel from template")
@@ -80,18 +88,52 @@ def import_note(
 @click.option("--title", default=None, help="Zettel title")
 @click.option("--tags", default=None, help="Comma-separated tags")
 @click.option("-a", "--answer", multiple=True, help="Template question answer as key=value")
+@click.option("--body-file", default=None, help="Markdown file with the note body, or - for stdin")
+@click.option(
+    "--source", default=None, help="Inbox Markdown file to convert; moved to .trash/ after the note is written"
+)
+@click.option(
+    "--summary-file", default=None, help="article only: Markdown file with the core facts; the body is archived"
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Render the note without writing anything")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Print the result as one JSON object")
+@click.option(
+    "--no-daily-log",
+    "daily_log",
+    is_flag=True,
+    flag_value=False,
+    default=True,
+    help="Do not log the new note in today's daily note",
+)
+@click.option(
+    "--no-link-contacts",
+    "link_contacts",
+    is_flag=True,
+    flag_value=False,
+    default=True,
+    help="Keep the body verbatim: do not wikilink known contacts",
+)
 @click.option("-l", "--list", "list_templates", is_flag=True, default=False, help="List available templates")
 @click.pass_context
 def create_note(
     ctx: click.Context,
+    *,
     zettel_type: str | None,
     title: str | None,
     tags: str | None,
     answer: tuple[str, ...],
-    *,
+    body_file: str | None,
+    source: str | None,
+    summary_file: str | None,
+    dry_run: bool,
+    as_json: bool,
+    daily_log: bool,
+    link_contacts: bool,
     list_templates: bool,
 ) -> None:
     if list_templates:
+        if as_json:
+            _fail_json(ctx, "--list cannot be combined with --json")
         from bim.dependencies import get_templates
 
         for name in sorted(get_templates()):
@@ -99,52 +141,162 @@ def create_note(
         return
 
     settings = get_settings(ctx, BimSettings)
-    extra_answers: dict[str, str] = {}
-    for a in answer:
-        if "=" in a:
-            k, v = a.split("=", 1)
-            extra_answers[k] = v
-    path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
-    if zettel_type and title:
-        from bim.commands.create_note.create_note import CommandCreateNote
-        from bim.dependencies import get_hook_runner, get_repo, get_templates
-        from bim.params.create_note import CreateNoteParams
+    from bim.params.create_note import CreateNoteParams
 
-        try:
-            params = CreateNoteParams(
-                zettel_type=zettel_type,
-                title=title,
-                tags=tags,
-                extra_answers=extra_answers,
-            )
-            cmd = CommandCreateNote(
-                params=params,
-                path_zettelkasten=path_zettelkasten,
-                repo=get_repo(),
-                templates=get_templates(),
-                hook_runner=get_hook_runner(),
-            )
-        except FileNotFoundError as exc:
-            console.panic(str(exc))
-            return
-        result = cmd.execute()
-        console.report_result(
-            result,
-            on_success=lambda r: console.success(r.output or "Created"),
-            failure_msg="Create failed",
+    extra_answers = dict(a.split("=", 1) for a in answer if "=" in a)
+    params = CreateNoteParams(
+        zettel_type=zettel_type,
+        title=title,
+        tags=tags,
+        extra_answers=extra_answers,
+        source=Path(source) if source is not None else None,
+        dry_run=dry_run,
+        daily_log=daily_log,
+        link_contacts=link_contacts,
+    )
+    _dispatch_create(settings, ctx, params, body_file, summary_file, as_json=as_json)
+
+
+def _dispatch_create(
+    settings: BimSettings,
+    ctx: click.Context,
+    params: CreateNoteParams,
+    body_file: str | None,
+    summary_file: str | None,
+    *,
+    as_json: bool,
+) -> None:
+    path_zettelkasten = Path(settings.path_zettelkasten).expanduser().resolve()
+    path_projects = Path(settings.path_projects).expanduser()
+    path_daily = Path(settings.path_daily).expanduser()
+    path_articles = Path(settings.path_articles).expanduser()
+    if any(
+        (
+            as_json,
+            params.dry_run,
+            body_file is not None,
+            params.source is not None,
+            summary_file is not None,
+            not params.daily_log,
+            not params.link_contacts,
+            params.zettel_type and params.title,
+        )
+    ):
+        _create_note_scripted(
+            ctx,
+            path_zettelkasten,
+            path_projects=path_projects,
+            path_daily=path_daily,
+            path_articles=path_articles,
+            params=params,
+            body_file=body_file,
+            summary_file=summary_file,
+            as_json=as_json,
         )
         return
+    _create_note_interactive(path_zettelkasten, path_projects, path_daily, path_articles, params)
 
+
+def _create_note_interactive(
+    path_zettelkasten: Path,
+    path_projects: Path,
+    path_daily: Path,
+    path_articles: Path,
+    params: CreateNoteParams,
+) -> None:
     from bim.tui.create_note import CreateNoteApp
 
     app = CreateNoteApp(
         path_zettelkasten=path_zettelkasten,
-        preselected_type=zettel_type,
-        preselected_title=title,
-        preselected_tags=tags,
-        extra_answers=extra_answers,
+        preselected_type=params.zettel_type,
+        preselected_title=params.title,
+        preselected_tags=params.tags,
+        extra_answers=params.extra_answers,
+        path_projects=path_projects,
+        path_daily=path_daily,
+        path_articles=path_articles,
     )
     app.run()
+
+
+def _fail_json(ctx: click.Context, message: str) -> None:
+    # Scripting contract v1 (PRD 00118): the JSON payload is the one sanctioned
+    # bypass of the console adapter, because Rich would wrap a long line.
+    click.echo(json.dumps({"error": message}, ensure_ascii=False))
+    ctx.exit(1)
+
+
+def _create_note_scripted(
+    ctx: click.Context,
+    path_zettelkasten: Path,
+    *,
+    path_projects: Path,
+    path_daily: Path,
+    path_articles: Path,
+    params: CreateNoteParams,
+    body_file: str | None,
+    summary_file: str | None,
+    as_json: bool,
+) -> None:
+    from bim.commands.create_note.create_note import CommandCreateNote
+    from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
+
+    def fail(message: str) -> None:
+        if as_json:
+            _fail_json(ctx, message)
+        console.panic(message)
+
+    if body_file is not None and params.source is not None:
+        fail("--body-file and --source are mutually exclusive")
+        return
+    if summary_file is not None and params.zettel_type != "article":
+        fail("--summary-file is only for the article template")
+        return
+    try:
+        params.body = _read_create_input(body_file, stdin=True)
+        params.summary = _read_create_input(summary_file)
+        if params.source is not None:
+            params.source = params.source.expanduser()
+        cmd = CommandCreateNote(
+            params=params,
+            path_zettelkasten=path_zettelkasten,
+            repo=get_repo(),
+            templates=get_templates(),
+            hook_runner=get_hook_runner(path_projects),
+            formatter=get_formatter(),
+            path_daily=path_daily,
+            path_articles=path_articles,
+        )
+    except (OSError, UnicodeError) as exc:
+        fail(str(exc))
+        return
+    _render_create_result(ctx, cmd.execute(), as_json=as_json)
+
+
+def _read_create_input(path: str | None, *, stdin: bool = False) -> str | None:
+    if stdin and path == "-":
+        return sys.stdin.read()
+    return Path(path).expanduser().read_text(encoding="utf-8") if path is not None else None
+
+
+def _render_create_result(ctx: click.Context, result: Any, *, as_json: bool) -> None:
+    if as_json:
+        if not result.success:
+            _fail_json(ctx, result.error or "Create failed")
+            return
+        payload = {**result.metadata, "warnings": result.warnings} if result.warnings else result.metadata
+        click.echo(json.dumps(payload, ensure_ascii=False))
+        return
+
+    def report_success(r: Any) -> None:
+        if r.metadata.get("dry_run"):
+            console.print(r.metadata["content"], mode="raw")
+        else:
+            console.success(r.output or "Created")
+
+    console.report_result(result, on_success=report_success, failure_msg="Create failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("edit", help="Edit zettel metadata")
@@ -174,10 +326,12 @@ def edit_note(
     if not changes:
         if len(resolved) > 1:
             console.failure("TUI edit requires a single path")
+            ctx.exit(1)
             return
         path = resolved[0]
         if not path.is_file():
             console.failure(f"{path} doesn't exist")
+            ctx.exit(1)
             return
         from bim.tui.edit_note import EditNoteApp
 
@@ -192,6 +346,8 @@ def edit_note(
     cmd = CommandEditNote(params=params, repo=get_repo())
     result = cmd.execute()
     console.report_result(result, failure_msg="Edit failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("archive", help="Archive zettel(s): set processed + move to archive dir")
@@ -225,6 +381,8 @@ def archive_note(
     )
     result = cmd.execute()
     console.report_result(result, failure_msg="Archive failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("delete", help="Permanently delete zettel(s)")
@@ -271,3 +429,5 @@ def delete_note(
         ),
         failure_msg="Delete failed",
     )
+    if not result.success:
+        ctx.exit(1)

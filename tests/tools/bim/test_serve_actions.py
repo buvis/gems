@@ -105,6 +105,36 @@ class TestServeActions:
         assert response.status_code == 200
         assert response.json()["success"] is True
 
+    def test_create_note_action_forwards_scripting_params_but_not_source(self, client: TestClient) -> None:
+        client.app.state.buvis_token = "test-token"
+
+        with patch("bim.commands.create_note.create_note.CommandCreateNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, metadata={"dry_run": True})
+
+            response = client.post(
+                "/api/actions/create_note",
+                json={
+                    "file_path": "",
+                    "args": {
+                        "type": "article",
+                        "title": "T",
+                        "body": "Original",
+                        "summary": "Facts",
+                        "dry_run": True,
+                        "daily_log": False,
+                        "link_contacts": False,
+                        "source": "inbox/x.md",
+                    },
+                    "row": {},
+                },
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        params = mock_command.call_args.kwargs["params"]
+        assert (params.zettel_type, params.title, params.body, params.summary) == ("article", "T", "Original", "Facts")
+        assert (params.dry_run, params.daily_log, params.link_contacts, params.source) == (True, False, False, None)
+
     def test_patch_action_failure_returns_422(self, client: TestClient, tmp_path: Path) -> None:
         client.app.state.buvis_token = "test-token"
         real_file = tmp_path / "zettels" / "note.md"

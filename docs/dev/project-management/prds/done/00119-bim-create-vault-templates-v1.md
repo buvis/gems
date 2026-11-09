@@ -7,6 +7,10 @@ model_tier_rationale: the templates must reproduce the vault's Templater output 
 
 Source: conversation assessment of 2026-11-08; second of three PRDs after 00118 (scripting contract). The target shapes are the eight templates the `create-note` skill ported from the vault's Templater files: `skills/create-note/assets/templates/*.md` in https://github.com/buvis/agent-skills, read them before writing a template.
 
+## Execution prerequisite
+
+Start only after PRD 00118 is implemented and passes its completion review. Do not absorb its tasks into this PRD.
+
 ## Overview
 
 ### Problem Statement

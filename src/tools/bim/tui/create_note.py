@@ -31,9 +31,15 @@ class CreateNoteApp(App[None]):
         preselected_title: str | None = None,
         preselected_tags: str | None = None,
         extra_answers: dict[str, str] | None = None,
+        path_projects: Path | None = None,
+        path_daily: Path | None = None,
+        path_articles: Path | None = None,
     ) -> None:
         super().__init__()
         self.path_zettelkasten = path_zettelkasten
+        self.path_projects = path_projects
+        self.path_daily = path_daily
+        self.path_articles = path_articles
         self.preselected_type = preselected_type
         self.preselected_title = preselected_title
         self.preselected_tags = preselected_tags
@@ -149,11 +155,20 @@ class CreateNoteApp(App[None]):
             preview.update("[waiting for title]")
             create_btn.disabled = True
             return
+        defaults = list(getattr(self._current_template, "default_tags", None) or [])
+        if defaults:
+            user_tags = [tag.strip() for tag in str(answers.get("tags", "")).split(",") if tag.strip()]
+            answers["tags"] = ",".join([*defaults, *[tag for tag in user_tags if tag not in defaults]])
 
         from buvis.pybase.zettel.domain.entities.zettel.zettel import Zettel
         from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 
-        data = self._current_template.build_data(answers)
+        try:
+            data = self._current_template.build_data(answers)
+        except ValueError as exc:
+            preview.update(str(exc))
+            create_btn.disabled = True
+            return
         zettel = Zettel(data)
         zettel = ZettelFactory.create(zettel)
         content = PrintZettelUseCase(get_formatter()).execute(zettel.get_data())
@@ -183,7 +198,10 @@ class CreateNoteApp(App[None]):
             params=params,
             repo=get_repo(),
             templates=self.templates,
-            hook_runner=get_hook_runner(),
+            hook_runner=get_hook_runner(self.path_projects),
+            formatter=get_formatter(),
+            path_daily=self.path_daily,
+            path_articles=self.path_articles,
         ).execute()
         notify_result(result, self.notify)
         if result.success:

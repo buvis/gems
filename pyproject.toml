@@ -184,3 +184,7 @@ combine-as-imports = true
 "src/tools/sysup/runlog.py" = ["PLR0913", "SLF001"]
 # sync_rules' six-parameter signature is the PRD 00116 verbatim contract (same precedent as runlog.py).
 "src/tools/braid/domain/rules.py" = ["PLR0913", "PLR0917"]
+# bim's create composition roots take one keyword per vault path (PRDs 00119/00120); the
+# TUI and serve entry points mirror the CLI flags one to one instead of bundling them.
+"src/tools/bim/commands/serve/_app.py" = ["PLR0913", "PLR0917"]
+"src/tools/bim/tui/create_note.py" = ["PLR0913", "PLR0917"]

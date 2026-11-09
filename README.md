@@ -168,6 +168,18 @@ it onto that commit to get the edit back, then delete the patch. `dot status`
 and the TUI status bar warn while a patch is pending. Edited secrets are
 saved encrypted; see `docs/source/tools/dot.rst` for recovery.
 
+### bim create from scripts
+
+`bim create` is built for agents and scripts: `--json` prints one object with
+`id`, `path`, `relative_path` and `wikilink`; a failure prints
+`{"error": "..."}` and exits 1. Ids follow local time like the vault's own
+notes.
+
+```bash
+bim create -t note --title "Why caches lie" --tags "cache,debugging" --body-file notes.md --json
+bim create -t note --source ~/bim/inbox/draft.md --dry-run --json   # preview, nothing written
+```
+
 ### bim doc subsystem
 
 `bim doc ingest` watches the staging inbox and either auto-files a PDF

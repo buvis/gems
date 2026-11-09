@@ -843,3 +843,96 @@
 {"id":"84b52053","kind":"bob","task":"review-feat-braid-20261108","queued_at":1794163402,"prompt_bytes":403682}
 {"id":"84b52053","ended_at":1794163479,"elapsed_s":77,"outcome":"ok","detail":null}
 {"id":"05255974","ended_at":1794163647,"elapsed_s":6141,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"resume","at":1794179673,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794180448,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794180457,"phase":"build","prd":"00119-bim-create-vault-templates-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794180530,"phase":"build","prd":"00119-bim-create-vault-templates-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794180538,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794180609,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794180655,"phase":"done","prd":"00120-bim-create-vault-links-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794206389,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"id":"40d3a3a8","kind":"tess","task":"1","queued_at":1794206551,"prompt_bytes":8443}
+{"id":"40d3a3a8","ended_at":1794206725,"elapsed_s":174,"outcome":"ok","detail":null}
+{"id":"091463db","kind":"devon","task":"1","queued_at":1794206743,"prompt_bytes":12893}
+{"id":"70a6ca6f","kind":"ivan","task":"1","queued_at":1794206758,"prompt_bytes":28245}
+{"id":"091463db","ended_at":1794206928,"elapsed_s":185,"outcome":"error","detail":"Adversarial validation inconclusive; invalid baseline mutation batches; cap exceeded; no further attempts"}
+{"id":"70a6ca6f","ended_at":1794207025,"elapsed_s":267,"outcome":"ok","detail":null}
+{"id":"9990ae19","kind":"pat","task":"1","queued_at":1794207039,"prompt_bytes":20580}
+{"id":"9990ae19","ended_at":1794207088,"elapsed_s":49,"outcome":"ok","detail":null}
+{"id":"2e434ee5","kind":"ivan","task":"1","queued_at":1794207088,"prompt_bytes":28862}
+{"id":"2e434ee5","ended_at":1794207159,"elapsed_s":71,"outcome":"ok","detail":null}
+{"id":"0056302b","kind":"pat","task":"1","queued_at":1794207194,"prompt_bytes":3783}
+{"id":"0056302b","ended_at":1794207230,"elapsed_s":36,"outcome":"ok","detail":null}
+{"id":"6799fd6f","kind":"tess","task":"1","queued_at":1794207250,"prompt_bytes":5389}
+{"id":"6799fd6f","ended_at":1794207320,"elapsed_s":70,"outcome":"ok","detail":null}
+{"id":"b68feb6b","kind":"pat","task":"1","queued_at":1794207340,"prompt_bytes":21584}
+{"id":"b68feb6b","ended_at":1794207432,"elapsed_s":92,"outcome":"ok","detail":null}
+{"id":"ee2a7cd1","kind":"tess","task":"2","queued_at":1794207452,"prompt_bytes":16134}
+{"id":"ee2a7cd1","ended_at":1794207831,"elapsed_s":379,"outcome":"ok","detail":null}
+{"id":"27a2fdc9","kind":"devon","task":"2","queued_at":1794207837,"prompt_bytes":27097}
+{"id":"27a2fdc9","ended_at":1794208081,"elapsed_s":244,"outcome":"ok","detail":null}
+{"id":"0a8a28d1","kind":"tess","task":"2","queued_at":1794208081,"prompt_bytes":10490}
+{"id":"0a8a28d1","ended_at":1794208185,"elapsed_s":104,"outcome":"ok","detail":null}
+{"id":"65652a77","kind":"ivan","task":"2","queued_at":1794208198,"prompt_bytes":43008}
+{"id":"65652a77","ended_at":1794208345,"elapsed_s":147,"outcome":"ok","detail":null}
+{"id":"4638ecc7","kind":"deslop","task":"2","queued_at":1794208410,"prompt_bytes":13438}
+{"id":"4638ecc7","ended_at":1794208440,"elapsed_s":30,"outcome":"error","detail":"Absolute prefix duplicated by prompt construction; corrected before any dispatch"}
+{"id":"a362d05d","kind":"deslop","task":"2","queued_at":1794208441,"prompt_bytes":13210}
+{"id":"a362d05d","ended_at":1794208541,"elapsed_s":100,"outcome":"ok","detail":null}
+{"id":"d681a11f","kind":"pat","task":"2","queued_at":1794208542,"prompt_bytes":35246}
+{"id":"d681a11f","ended_at":1794208700,"elapsed_s":158,"outcome":"ok","detail":null}
+{"id":"9d7409a5","kind":"tess","task":"2","queued_at":1794208700,"prompt_bytes":9722}
+{"id":"9d7409a5","ended_at":1794208821,"elapsed_s":121,"outcome":"ok","detail":null}
+{"id":"bdd22665","kind":"ivan","task":"2","queued_at":1794208852,"prompt_bytes":48452}
+{"id":"bdd22665","ended_at":1794209028,"elapsed_s":176,"outcome":"ok","detail":null}
+{"id":"eaa5633a","kind":"pat","task":"2","queued_at":1794209069,"prompt_bytes":12433}
+{"id":"eaa5633a","ended_at":1794209263,"elapsed_s":194,"outcome":"ok","detail":null}
+{"id":"18d23f40","kind":"tess","task":"3","queued_at":1794209475,"prompt_bytes":34329}
+{"id":"18d23f40","ended_at":1794210034,"elapsed_s":559,"outcome":"ok","detail":null}
+{"id":"79d7a248","kind":"tess","task":"3","queued_at":1794210034,"prompt_bytes":14050}
+{"id":"79d7a248","ended_at":1794210162,"elapsed_s":128,"outcome":"ok","detail":null}
+{"id":"1320d8ee","kind":"tess","task":"3","queued_at":1794210245,"prompt_bytes":13117}
+{"id":"1320d8ee","ended_at":1794210358,"elapsed_s":113,"outcome":"ok","detail":null}
+{"id":"0e8e198d","kind":"devon","task":"3","queued_at":1794210359,"prompt_bytes":39929}
+{"id":"0e8e198d","ended_at":1794210795,"elapsed_s":436,"outcome":"ok","detail":null}
+{"id":"fc10a5b7","kind":"ivan","task":"3","queued_at":1794210796,"prompt_bytes":57333}
+{"id":"fc10a5b7","ended_at":1794210839,"elapsed_s":43,"outcome":"error","detail":"57333-byte prompt blocked before dispatch; one allowed trim removes full inline AGENTS; no task abort unless trimmed prompt remains oversized"}
+{"id":"a512351e","kind":"ivan","task":"3","queued_at":1794210840,"prompt_bytes":44134}
+{"id":"a512351e","ended_at":1794211018,"elapsed_s":178,"outcome":"error","detail":"Worker reported context_overrun from 115123 bytes, not tokens; no edits; investigating unit error"}
+{"id":"f24415bf","kind":"ivan","task":"3","queued_at":1794211139,"prompt_bytes":45346}
+{"id":"f24415bf","ended_at":1794211476,"elapsed_s":337,"outcome":"error","detail":"Task3 code retained; 47 passed/10 failed; worker reports existing formatter/parser contract conflict"}
+{"id":"d269757d","kind":"tess","task":"3","queued_at":1794212080,"prompt_bytes":15767}
+{"id":"d269757d","ended_at":1794212411,"elapsed_s":331,"outcome":"ok","detail":null}
+{"id":"3fb94cc1","kind":"ivan","task":"3","queued_at":1794212554,"prompt_bytes":50272}
+{"id":"3fb94cc1","ended_at":1794212580,"elapsed_s":26,"outcome":"error","detail":"50272-byte feedback prompt blocked before dispatch; single allowed trim removes redundant inline project prose, canonical AGENTS read retained"}
+{"id":"50f936b5","kind":"ivan","task":"3","queued_at":1794212580,"prompt_bytes":49788}
+{"id":"50f936b5","ended_at":1794212822,"elapsed_s":242,"outcome":"ok","detail":null}
+{"id":"ab09587a","kind":"deslop","task":"3","queued_at":1794212909,"prompt_bytes":18505}
+{"id":"ab09587a","ended_at":1794212955,"elapsed_s":46,"outcome":"ok","detail":null}
+{"id":"c5227cb6","kind":"ivan","task":"3","queued_at":1794213037,"prompt_bytes":5825}
+{"id":"c5227cb6","ended_at":1794213279,"elapsed_s":242,"outcome":"ok","detail":null}
+{"id":"d139c608","kind":"pat","task":"3","queued_at":1794213325,"prompt_bytes":82068}
+{"id":"d139c608","ended_at":1794213669,"elapsed_s":344,"outcome":"error","detail":"82068-byte Pat prompt blocked before dispatch; single contract-preserving trim follows"}
+{"id":"a827f6bc","kind":"pat","task":"3","queued_at":1794213669,"prompt_bytes":78785}
+{"id":"a827f6bc","ended_at":1794213737,"elapsed_s":68,"outcome":"error","detail":"78785 bytes after one permitted trim still exceeds50000; no Pat launched; canonical subagent_prompt_overrun handoff required"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794213954,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794214049,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794214057,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794214423,"phase":"build","prd":"00118-bim-create-scripting-contract-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794214433,"phase":"build","prd":"00119-bim-create-vault-templates-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794214497,"phase":"build","prd":"00119-bim-create-vault-templates-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794214507,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794214568,"phase":"build","prd":"00120-bim-create-vault-links-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794214619,"phase":"done","prd":"00120-bim-create-vault-links-v1.md"}
+{"id":"2759e323","kind":"bob","task":"review-20261109-00118","queued_at":1794229591,"prompt_bytes":395048}
+{"id":"6b831412","kind":"carl","task":"review-20261109-00118","queued_at":1794229592,"prompt_bytes":6611}
+{"id":"b44b2f7a","kind":"bob","task":"review-20261109-00119","queued_at":1794229594,"prompt_bytes":370417}
+{"id":"ee96ccf0","kind":"carl","task":"review-20261109-00119","queued_at":1794229596,"prompt_bytes":6611}
+{"id":"d868b103","kind":"bob","task":"review-20261109-00120","queued_at":1794229598,"prompt_bytes":365930}
+{"id":"653411a0","kind":"carl","task":"review-20261109-00120","queued_at":1794229600,"prompt_bytes":6611}
+{"id":"2759e323","ended_at":1794229832,"elapsed_s":241,"outcome":"ok","detail":null}
+{"id":"b44b2f7a","ended_at":1794229833,"elapsed_s":239,"outcome":"ok","detail":null}
+{"id":"d868b103","ended_at":1794229834,"elapsed_s":236,"outcome":"ok","detail":null}
+{"id":"ee96ccf0","ended_at":1794229941,"elapsed_s":345,"outcome":"ok","detail":null}
+{"id":"653411a0","ended_at":1794229942,"elapsed_s":342,"outcome":"ok","detail":null}
+{"id":"6b831412","ended_at":1794230169,"elapsed_s":577,"outcome":"ok","detail":null}

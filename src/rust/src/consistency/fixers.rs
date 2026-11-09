@@ -22,23 +22,6 @@ pub fn remove_duplicate_tags(data: &mut ZettelData) {
     }
 }
 
-/// Sort tags alphabetically.
-pub fn sort_tags(data: &mut ZettelData) {
-    if let Some(YamlValue::List(tags)) = data.metadata.get_mut("tags") {
-        tags.sort_by(|a, b| {
-            let sa = match a {
-                YamlValue::String(s) => s.as_str(),
-                _ => "",
-            };
-            let sb = match b {
-                YamlValue::String(s) => s.as_str(),
-                _ => "",
-            };
-            sa.cmp(sb)
-        });
-    }
-}
-
 /// Fix title format: trim whitespace and capitalize first letter.
 /// The Python version calls replace_abbreviations(level=0) with empty list,
 /// which is a no-op, so we skip it.
@@ -89,8 +72,8 @@ pub fn fix_lists_bullets(data: &mut ZettelData) {
             let fixed: String = content
                 .lines()
                 .map(|line| {
-                    if line.starts_with("* ") {
-                        format!("- {}", line[2..].trim())
+                    if let Some(item) = line.strip_prefix("* ") {
+                        format!("- {}", item.trim())
                     } else {
                         line.trim().to_string()
                     }
@@ -186,24 +169,6 @@ mod tests {
     }
 
     #[test]
-    fn test_sort_tags() {
-        let mut data = ZettelData::new();
-        data.metadata.insert(
-            "tags".to_string(),
-            YamlValue::List(vec![
-                YamlValue::String("c".to_string()),
-                YamlValue::String("a".to_string()),
-                YamlValue::String("b".to_string()),
-            ]),
-        );
-        sort_tags(&mut data);
-        let tags = data.metadata.get("tags").unwrap().as_list().unwrap();
-        assert_eq!(tags[0].as_str(), Some("a"));
-        assert_eq!(tags[1].as_str(), Some("b"));
-        assert_eq!(tags[2].as_str(), Some("c"));
-    }
-
-    #[test]
     fn test_fix_title_format() {
         let mut data = ZettelData::new();
         data.metadata.insert(
@@ -224,7 +189,8 @@ mod tests {
             "title".to_string(),
             YamlValue::String("My title".to_string()),
         );
-        data.sections.push(("# Old title".to_string(), "body".to_string()));
+        data.sections
+            .push(("# Old title".to_string(), "body".to_string()));
         align_h1_to_title(&mut data);
         assert_eq!(data.sections[0].0, "# My title");
     }
@@ -232,7 +198,8 @@ mod tests {
     #[test]
     fn test_fix_lists_bullets() {
         let mut data = ZettelData::new();
-        data.sections.push(("# T".to_string(), "* item1\n* item2\n- item3".to_string()));
+        data.sections
+            .push(("# T".to_string(), "* item1\n* item2\n- item3".to_string()));
         fix_lists_bullets(&mut data);
         assert!(data.sections[0].1.contains("- item1"));
         assert!(data.sections[0].1.contains("- item2"));

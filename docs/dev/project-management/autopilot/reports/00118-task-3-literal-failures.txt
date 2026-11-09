@@ -1,0 +1,25 @@
+Source: /Users/bob/.codex/sessions/2026/11/09/rollout-2026-11-09T09-16-16-01a1bf61-20b9-7113-b84f-2333d0f5b1a3.jsonl:80
+....................F..........F.......F.............F.......            [100%]
+=================================== FAILURES ===================================
+E   assert False is True
+     +  where False = CommandResult(success=False, output=None, error="invalid tag 'ⅳ': use letters, digits, '-', '_', and '/' for nesting", info=[], warnings=[], metadata={}).success
+/Users/bob/git/src/worktrees/gems/feature-improve-bim-from-skill-experience/tests/tools/bim/test_create_note.py:310: assert False is True
+E   AssertionError: assert True is False
+     +  where True = CommandResult(success=True, output='Created /private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pyt...s/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-3312/test_source_outside_inbox_is_r3/vault/.trash/item.MD'}).success
+/Users/bob/git/src/worktrees/gems/feature-improve-bim-from-skill-experience/tests/tools/bim/test_create_note.py:382: AssertionError: assert True is False
+E   AssertionError: assert False
+     +  where False = <built-in method endswith of str object at 0x1088c3960>('\n# EOF\n\nTemplate default  \n\n---  \ntitle: Keep me  \n---  \n\n# Details\n\nKeep this section  \n\n---')
+     +    where <built-in method endswith of str object at 0x1088c3960> = '---\nid: 20261109091854\ntitle: EOF\ndate: 2026-11-09T09:18:54+01:00\ntype: note\ntags: []\npublish: false\nprocessed: false\n---\n\n# EOF\n\nTemplate default  \n\n# Details\n\nKeep this section  \n\n---'.endswith
+     +      where '---\nid: 20261109091854\ntitle: EOF\ndate: 2026-11-09T09:18:54+01:00\ntype: note\ntags: []\npublish: false\nprocessed: false\n---\n\n# EOF\n\nTemplate default  \n\n# Details\n\nKeep this section  \n\n---' = read_text()
+     +        where read_text = PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-3312/test_source_frontmatter_closin0/vault/notes/20261109091854.md').read_text
+     +          where PosixPath('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-3312/test_source_frontmatter_closin0/vault/notes/20261109091854.md') = Path('/private/var/folders/m6/1mnc9pdn28d5vdxy4hxyr1m40000gn/T/pytest-of-bob/pytest-3312/test_source_frontmatter_closin0/vault/notes/20261109091854.md')
+/Users/bob/git/src/worktrees/gems/feature-improve-bim-from-skill-experience/tests/tools/bim/test_create_note.py:484: AssertionError: assert False
+E   assert None == []
+/Users/bob/git/src/worktrees/gems/feature-improve-bim-from-skill-experience/tests/tools/bim/test_create_note.py:729: assert None == []
+=========================== short test summary info ============================
+FAILED tests/tools/bim/test_create_note.py::TestCommandCreateNote::test_dedupes_tags_case_insensitively[\u2163,\xb2/\u2163-\u2173,\xb2/\u2173]
+FAILED tests/tools/bim/test_create_note.py::TestCommandCreateNote::test_source_outside_inbox_is_rejected[inbox/item.MD]
+FAILED tests/tools/bim/test_create_note.py::TestCommandCreateNote::test_source_frontmatter_closing_at_eof_remains_body_content
+FAILED tests/tools/bim/test_create_note.py::TestCommandCreateNote::test_metadata_returns_empty_tags_when_saved_readback_has_none
+4 failed, 57 passed in 0.26s
+EXACT_EXIT_CODE=1

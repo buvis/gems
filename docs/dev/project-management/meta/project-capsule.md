@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-11-08 (feat/braid merged into master)
+Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -27,6 +27,13 @@ Generated: 2026-11-08 (feat/braid merged into master)
 
 ## Active Work
 
+### feature/improve-bim-from-skill-experience
+- PRD 00118 has committed local-time identity, collision-safe allocation, and shared scripted command/body/source/dry-run behavior. Original tasks 1–2 are complete; task 3 has passing tests but lacks Pat review because its assembled review exceeded the 50 KB dispatch cap. CLI scripting flags, failure exits and documentation remain unfinished.
+- Replan attempt 1 has a hard 75,000-token per-task budget. A file-boundary split still leaves the required CHANGELOG.md task at 81,132 tokens under the installed full-file estimator (80,696 before any requirement or plan text). The canonical oversized_task stall parks 00118; see autopilot/reports/00118-replan-1-budget.md and its JSON evidence. No implementation or completion review ran in this replan session.
+- Preserve d8692476 as the original work_start_sha in the archived state and retain all contributing Sol/Astra metadata and raw worker logs. The branch also contains large retained transcripts and PM evidence.
+- Preserve Path return type, shared five-candidate allocation budget, no-write dry run, formatter injection across CLI/TUI/WebUI, and JSON payload exception to console output.
+- PRDs 00119 and 00120 remain dependent follow-ons and must await completion reviews.
+
 ### Batch 202611042342 (feat/braid worktree, `~/git/src/worktrees/gems/braid`)
 - [x] 00115-braid-port-skills-parity-v1.md (2 cycles): braid ported into `src/tools/braid/`; two deliberate parity breaks fixed in cycle 1 (Windows junction via `_winapi`, not cmd.exe; non-UTF-8 inputs exit 2). The cmd.exe junction injection still lives upstream in agent-skills braid.
 - [x] 00116-braid-rules-kind-v1.md (2 cycles): rules as a second kind (`domain/rules.py`), generated single-file host instructions, `UNMANAGED` host links. Cycle-2 rework: Windows instruction-file ownership judged by pre-write identity, `sync_rules` emit taken positionally.
@@ -40,6 +47,9 @@ Generated: 2026-11-08 (feat/braid merged into master)
 Observations: Batch drained; all four tasks completed, including the cycle-2 Tail sweep. Both provider rosters and the original and companion implementation audits passed the host evidence gate. Final isolated suite: 6654 passed, 16 skipped, 1 xfailed; backup ruff and mypy passed. Earlier host-dependent test isolation failures remain in the deferred ledger. Evidence: `autopilot/reports/202611040755-report.md` and `autopilot/reports/00117-tail-sweep-work.md`.
 
 ## Related context
+
+2026-11-09: engram review harvest, indexing and related queries skipped per catchup probe; engram unavailable/unregistered. Topic: "improve bim from skill experience — bim create: scripting contract for agents". No query or portfolio staleness stamp was obtained. Source rationale is the 2026-11-08 create-note comparison recorded in PRD 00118; no discovery document was created.
+
 2026-11-05 (topic "braid" / "braid: add rules as a second composed kind"): engram skipped by `autopilot catchup-probe` (unregistered), no query ran, no hits. Source discovery: `~/.claude/docs/dev/project-management/discovery/00182-layer-agent-rules-across-hosts.md`.
 
 2026-11-04 (topic "braid" / "braid: port the skill composer into gems at parity"): engram skipped by `autopilot catchup-probe`, so no query ran and no hits are recorded. Reference code lives at `~/git/src/github.com/buvis/agent-skills/src/agent_skills_braid/cli.py` and `tests/test_braid*.py`.
@@ -47,19 +57,18 @@ Observations: Batch drained; all four tasks completed, including the cycle-2 Tai
 Previous (2026-10-29): No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
 
 ## GitHub State
-- 2026-11-05: 0 open issues, 0 open PRs. gems-v0.17.0 published (Publish to PyPI run on the tag: success), so the 2026-11-04 orphaned-tag worry is resolved. Master Test runs 2026-11-04 still red from `lib` = `abandoned` (macOS capacity), not test failures. feat/braid: no failing runs. local master now at 70394a1a (00117 work, separate batch).
-- 2026-11-04: 0 open issues, 0 open PRs. master 235a1d36 (v0.17.0 bump). **Publish run 41875005542 for tag `gems-v0.17.0` failed**: its reusable test job saw `lib` = `abandoned` (macOS capacity-cancel trap, not a test failure), so 0.17.0 is likely not on PyPI. Recover per the release gotcha (`release patch` leapfrog, never re-tag). Master Test runs on 235a1d36, 247c251c, 8e0abc76 and 4343cf5a show the same `abandoned` lib result. feat/braid has no failing runs.
-- 2026-10-29 snapshot: 1 open issue: #252 (sysup timeout orphans multi-command shell steps; deferred from the #253 review, 2026-10-28).
-- 2 open PRs, both Renovate majors from 2026-10-04 still reporting artifact-update failures: #220 SvelteKit v3, #219 adapter-static v4. #249/#248/#245/#231 merged since the previous capsule; the postup build was rebuilt after them (a47081b5). Branch `renovate/patch-all-non-major-dependencies` is a reused branch whose latest PR (#251) merged 2026-10-29; nothing open on it.
-- master `ce65015c` == origin/master, tip author Tomáš Bouška, working tree clean, no stray `v*` tags (only `gems-v*`), verified after `git fetch` 2026-10-29.
-- Latest release gems-v0.16.0 (2026-10-29). Zero unreleased commits. Publish run 40849147923 and master Test run 40849147682 were both mid-matrix at catchup: `lint` and all eight `lib` cells green, `tools` cells running, macOS cells queued. Last completed master Test (b73a8c5c, 2026-10-29 00:14) succeeded.
-- The five red master Test runs of 2026-10-24..26 are all on autopilot telemetry commits and report `tools` as `abandoned`, not failed; the runs around them are green. Not a regression signal.
+- 2026-11-09: 0 open issues; 1 open PR, #267 (`renovate/jsdom-31.x`, jsdom 30.1.3 -> 31.0.0). All listed checks pass. It touches only postup frontend package manifests/lock, with no bim overlap.
+- Latest GitHub release: `gems-v0.19.2` (2026-11-08); two master commits follow it.
+- Current master `a087e05e`: latest Test and documentation deployment completed successfully (2026-11-09 catchup). Latest completed Test, 42519713815 at `4876cad1`, succeeded, as did `f64f21a4`.
+- Most recent historical failure: run 42519342178 (`ad421654`), lint Type check. Fix `f64f21a4` records Linux mypy treating darwin-only `_libc` as undefined and failing to narrow `hasattr(os, "setxattr")`; selecting the backend by `sys.platform` fixed it. Retrieved error: `src/tools/muc/shared/dir_tree/merge_mac_metadata.py:97: error: Name "_libc" is not defined [name-defined]` (1 error, 570 source files checked). No failing runs exist for this feature branch.
+- Remote branches seen: master, gh-pages, renovate/jsdom-31.x, renovate/lock-file-maintenance, claude/python-3.15-wheels. Local `agoge/authored-tests-2026-10-26` remains; cleanup eligibility was not established.
 
 ## Project Health
-- CI green on the last completed master run; the v0.16.0 publish is not yet confirmed. Release rule: the tag is not the release, PyPI moving is. Check `gh run list --workflow publish.yml` or the PyPI JSON before treating 0.16.0 as shipped; an orphaned tag is recovered by `release patch`, never by re-tagging.
-- A `lib` failure skips the `tools` matrix; a `queued` rollup usually already has `lint` and the ubuntu `lib` cells done (macOS runners are the bottleneck; the scoped PAT cannot cancel runs).
-- Local tests: `uv sync` and every `uv run` need `CARGO_HOME=<scratchpad>/cargo-home` + `BUVIS_SKIP_FRONTEND=1`; the full suite's 3 env-noise failures isolate by dropping `GIT_AUTHOR_*`/`GIT_COMMITTER_*`, scratch `XDG_STATE_HOME`, and a scratch `BUVIS_CONFIG_DIR` holding `buvis-postup.local.yaml` with `roots: []`. #253 recorded 5706 passed / 0 failed / 2 skipped / 1 xfailed under that isolation.
-- Debt: #252 and the 00108 test follow-ups are small and sysup-local; the two Svelte majors have sat 25 days blocked on Renovate's own artifact step and will need a manual lock update or a close.
+- Latest master CI is green; this feature branch has committed production changes but no completion review. This catchup ran no tests and implemented no code. PRDs 00119 and 00120 remain blocked on 00118's implementation and completion review.
+- Current dependency PR has green checks. Preserve the existing postup committed-build constraint when assessing its lockfile update.
+- Local tests historically need isolated Cargo/config/state directories and removal of `GIT_AUTHOR_*`/`GIT_COMMITTER_*` noise. Re-evaluate those environment workarounds against the active host before applying them; prior capsule counts are historical evidence, not a baseline for this branch.
+- Capability gaps: engram skipped per probe; memory loader returned no files; task-session listing returned `no_tasks_dir`, so no tasks were restored. `TaskCreate`/`TaskUpdate` are not available in this host. No `agent_docs/`, project decisions/troubleshooting keepers, or global `~/.claude/decisions.md` were found.
+- PRD 00118 has meaningful external behavior changes (local-time ids and nonzero failure exits); keep release notes and all-interface tests aligned. Muc console-output debt is already recorded in intake 00121, outside this batch.
 
 ## Project Memories
 - Release: verify PyPI moved after every release (`release-publish-gotcha`).

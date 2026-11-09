@@ -70,9 +70,7 @@ fn map_to_pydict(
 fn errors_to_pylist(py: Python<'_>, errors: &[(String, String)]) -> PyResult<Py<PyList>> {
     let items: Vec<Py<PyTuple>> = errors
         .iter()
-        .map(|(path, msg)| {
-            Ok(PyTuple::new(py, &[path.as_str(), msg.as_str()])?.unbind())
-        })
+        .map(|(path, msg)| Ok(PyTuple::new(py, [path.as_str(), msg.as_str()])?.unbind()))
         .collect::<PyResult<_>>()?;
     Ok(PyList::new(py, &items)?.unbind())
 }
@@ -82,7 +80,7 @@ fn sections_to_pylist(py: Python<'_>, sections: &[(String, String)]) -> PyResult
     let items: Vec<Py<PyTuple>> = sections
         .iter()
         .map(|(heading, content)| {
-            Ok(PyTuple::new(py, &[heading.as_str(), content.as_str()])?.unbind())
+            Ok(PyTuple::new(py, [heading.as_str(), content.as_str()])?.unbind())
         })
         .collect::<PyResult<_>>()?;
     Ok(PyList::new(py, &items)?.unbind())
@@ -94,13 +92,7 @@ fn zettel_data_to_pydict(py: Python<'_>, data: &ZettelData) -> PyResult<Py<PyAny
     dict.set_item("metadata", map_to_pydict(py, &data.metadata)?)?;
     dict.set_item("reference", map_to_pydict(py, &data.reference)?)?;
     dict.set_item("sections", sections_to_pylist(py, &data.sections)?)?;
-    dict.set_item(
-        "file_path",
-        data.file_path
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or(""),
-    )?;
+    dict.set_item("file_path", data.file_path.as_deref().unwrap_or(""))?;
     Ok(dict.into_any().unbind())
 }
 
@@ -110,7 +102,7 @@ fn zettel_data_to_pydict(py: Python<'_>, data: &ZettelData) -> PyResult<Py<PyAny
 pub fn parse_file(py: Python<'_>, path: &str) -> PyResult<Py<PyAny>> {
     let file_path = Path::new(path);
     let mut data = parser::parse_file_with_fallback(file_path)
-        .map_err(|e| pyo3::exceptions::PyIOError::new_err(e))?;
+        .map_err(pyo3::exceptions::PyIOError::new_err)?;
 
     apply_pipeline(&mut data);
     zettel_data_to_pydict(py, &data)
@@ -120,10 +112,14 @@ pub fn parse_file(py: Python<'_>, path: &str) -> PyResult<Py<PyAny>> {
 /// Returns (list_of_dicts, list_of_error_tuples).
 #[pyfunction]
 #[pyo3(signature = (directory, extensions=None))]
-pub fn load_all(py: Python<'_>, directory: &str, extensions: Option<Vec<String>>) -> PyResult<Py<PyAny>> {
+pub fn load_all(
+    py: Python<'_>,
+    directory: &str,
+    extensions: Option<Vec<String>>,
+) -> PyResult<Py<PyAny>> {
     let exts = extensions.unwrap_or_else(|| vec!["md".to_string()]);
-    let (results, errors) = scanner::load_all(directory, &exts)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+    let (results, errors) =
+        scanner::load_all(directory, &exts).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
 
     let py_list: Vec<Py<PyAny>> = results
         .iter()
@@ -131,10 +127,15 @@ pub fn load_all(py: Python<'_>, directory: &str, extensions: Option<Vec<String>>
         .collect::<PyResult<_>>()?;
 
     let py_errors = errors_to_pylist(py, &errors)?;
-    Ok(PyTuple::new(py, &[
-        PyList::new(py, &py_list)?.into_any().unbind(),
-        py_errors.into_any(),
-    ])?.into_any().unbind())
+    Ok(PyTuple::new(
+        py,
+        &[
+            PyList::new(py, &py_list)?.into_any().unbind(),
+            py_errors.into_any(),
+        ],
+    )?
+    .into_any()
+    .unbind())
 }
 
 /// Bulk load with metadata eq filtering. Returns (matching_dicts, error_tuples).
@@ -164,7 +165,7 @@ pub fn load_filtered(
     } else {
         scanner::load_filtered(directory, &exts, &conditions)
     }
-    .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+    .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
 
     let py_list: Vec<Py<PyAny>> = results
         .iter()
@@ -172,14 +173,22 @@ pub fn load_filtered(
         .collect::<PyResult<_>>()?;
 
     let py_errors = errors_to_pylist(py, &errors)?;
-    Ok(PyTuple::new(py, &[
-        PyList::new(py, &py_list)?.into_any().unbind(),
-        py_errors.into_any(),
-    ])?.into_any().unbind())
+    Ok(PyTuple::new(
+        py,
+        &[
+            PyList::new(py, &py_list)?.into_any().unbind(),
+            py_errors.into_any(),
+        ],
+    )?
+    .into_any()
+    .unbind())
 }
 
 /// Convert a Python dict of {str: value} to Rust filter conditions.
-fn pydict_to_conditions(_py: Python<'_>, dict: &Bound<'_, PyDict>) -> PyResult<Vec<(String, MetaFilterValue)>> {
+fn pydict_to_conditions(
+    _py: Python<'_>,
+    dict: &Bound<'_, PyDict>,
+) -> PyResult<Vec<(String, MetaFilterValue)>> {
     let mut conditions = Vec::new();
     for (key, value) in dict.iter() {
         let key_str: String = key.extract()?;
@@ -190,9 +199,10 @@ fn pydict_to_conditions(_py: Python<'_>, dict: &Bound<'_, PyDict>) -> PyResult<V
         } else if let Ok(s) = value.extract::<String>() {
             MetaFilterValue::Str(s)
         } else {
-            return Err(pyo3::exceptions::PyTypeError::new_err(
-                format!("Unsupported filter value type for key '{}'", key_str),
-            ));
+            return Err(pyo3::exceptions::PyTypeError::new_err(format!(
+                "Unsupported filter value type for key '{}'",
+                key_str
+            )));
         };
         conditions.push((key_str, filter_val));
     }
@@ -210,7 +220,7 @@ pub fn search(
 ) -> PyResult<Py<PyAny>> {
     let exts = extensions.unwrap_or_else(|| vec!["md".to_string()]);
     let (results, errors) = scanner::search(directory, query, &exts)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
 
     let py_list: Vec<Py<PyAny>> = results
         .iter()
@@ -218,10 +228,15 @@ pub fn search(
         .collect::<PyResult<_>>()?;
 
     let py_errors = errors_to_pylist(py, &errors)?;
-    Ok(PyTuple::new(py, &[
-        PyList::new(py, &py_list)?.into_any().unbind(),
-        py_errors.into_any(),
-    ])?.into_any().unbind())
+    Ok(PyTuple::new(
+        py,
+        &[
+            PyList::new(py, &py_list)?.into_any().unbind(),
+            py_errors.into_any(),
+        ],
+    )?
+    .into_any()
+    .unbind())
 }
 
 /// Background cache refresh: walk directory, update cache, write stale marker if changed.
@@ -235,7 +250,7 @@ pub fn refresh_cache(
 ) -> PyResult<String> {
     let exts = extensions.unwrap_or_else(|| vec!["md".to_string()]);
     scanner::refresh_cache(directory, &exts, cache_path)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 /// Apply the full zettel processing pipeline.

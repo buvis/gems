@@ -10,7 +10,6 @@ from .set_default_publish import set_default_publish
 from .set_default_tags import set_default_tags
 from .set_default_title import set_default_title
 from .set_default_type import set_default_type
-from .sort_tags import sort_tags
 
 __all__ = [
     "align_h1_to_title",
@@ -23,5 +22,4 @@ __all__ = [
     "set_default_tags",
     "set_default_title",
     "set_default_type",
-    "sort_tags",
 ]

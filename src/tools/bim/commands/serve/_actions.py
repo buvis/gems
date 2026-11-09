@@ -61,22 +61,36 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
 
 async def handle_create_note(file_path: str, args: dict[str, Any], app_state: AppState) -> dict[str, Any]:
     from bim.commands.create_note.create_note import CommandCreateNote
-    from bim.dependencies import get_hook_runner, get_repo, get_templates
+    from bim.dependencies import get_formatter, get_hook_runner, get_repo, get_templates
     from bim.params.create_note import CreateNoteParams
 
     directory = confine_path(file_path, app_state).parent if file_path else Path(str(app_state.default_directory))
+    path_projects, path_daily, path_articles = (
+        Path(value).expanduser() if (value := getattr(app_state, name, None)) else None
+        for name in ("path_projects", "path_daily", "path_articles")
+    )
+    # ``source`` is deliberately not forwarded: it names a path, and the command's inbox
+    # check is the only confinement it would get here.
     params = CreateNoteParams(
         zettel_type=args.get("type"),
         title=args.get("title"),
         tags=args.get("tags"),
         extra_answers=args.get("extra_answers"),
+        body=args.get("body"),
+        summary=args.get("summary"),
+        dry_run=bool(args.get("dry_run", False)),
+        daily_log=bool(args.get("daily_log", True)),
+        link_contacts=bool(args.get("link_contacts", True)),
     )
     cmd = CommandCreateNote(
         params=params,
         path_zettelkasten=directory,
         repo=get_repo(),
         templates=get_templates(),
-        hook_runner=get_hook_runner(),
+        hook_runner=get_hook_runner(path_projects),
+        formatter=get_formatter(),
+        path_daily=path_daily,
+        path_articles=path_articles,
     )
     result = cmd.execute()
     return result.to_dict()

@@ -81,6 +81,8 @@ def format_note(
 
     result = cmd.execute()
     console.report_result(result, on_success=_report_format_success, failure_msg="Format failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("sync", help="Synchronize note(s) with external system")
@@ -122,13 +124,15 @@ def sync_note(
             formatter=get_formatter(),
         )
         result = cmd.execute()
-        console.report_result(result, failure_msg="Sync failed")
     except (ValueError, FileNotFoundError) as exc:
         console.panic(str(exc))
         return
     except NotImplementedError:
         console.panic(f"Sync target '{target_system}' not supported")
         return
+    console.report_result(result, failure_msg="Sync failed")
+    if not result.success:
+        ctx.exit(1)
 
 
 @click.command("query", help="Query zettels with YAML filter/sort/output spec")
@@ -171,7 +175,7 @@ def query(
         spec = parse_query_string(query_string)
     else:
         console.failure("Provide -Q/--query-file or -q/--query")
-        return
+        ctx.exit(1)
 
     default_directory = str(Path(settings.path_zettelkasten).expanduser().resolve())
     archive_directory = str(Path(settings.path_archive).expanduser().resolve())
@@ -238,3 +242,5 @@ def show_note(
         on_success=lambda r: console.print(r.output, mode="raw") if r.output else None,
         failure_msg="Show failed",
     )
+    if not result.success:
+        ctx.exit(1)
