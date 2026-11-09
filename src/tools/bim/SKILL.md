@@ -1,6 +1,6 @@
 ---
 name: bim
-description: "Use when reading, searching, creating, editing, or archiving notes in a BUVIS InfoMesh zettelkasten through the bim CLI. Triggers on \"bim\", \"zettel\", \"query the vault\", \"bim create\", \"archive this note\"."
+description: "Use when reading, searching, creating, editing, or archiving notes in a BUVIS InfoMesh (BIM) vault or zettelkasten, or when asked how the vault is organized. Triggers on \"bim\", \"zettel\", \"query the vault\", \"bim create\", \"archive this note\"."
 ---
 
 # bim
@@ -10,6 +10,8 @@ in one directory (default `~/bim/notes/`), archived notes in another (default
 `~/Documents/reference/40-archives/`). Every note carries `id` (14 digits,
 `YYYYMMDDHHMMSS`), `title`, `date`, `tags`, `type`, `publish` and `processed`,
 then a `# Title` heading and sections. bim assigns `id` and `date` itself.
+When the notes live in a BIM vault, read "The BIM vault" at the end before you
+touch anything.
 
 ## Learn the installed CLI
 
@@ -175,3 +177,136 @@ pipeline; both have their own `--help`.
 - Delete only when the user asked for deletion; archive otherwise.
 - Every note command exits 1 on failure. Human-facing lines are prefixed with
   status markers such as `✓` and `✘`; with `--json` read the `error` key.
+
+## The BIM vault
+
+A BIM vault is an Obsidian vault that blends GTD, Zettelkasten and PARA. Its
+root is the parent of `path_zettelkasten` (default `~/bim/`). The vault
+documents itself in `notes/system/`; start at `notes/system/index.md`. Work
+without Obsidian running.
+
+### Layout
+
+| Path | Holds | Rules |
+|------|-------|-------|
+| `inbox/` | Raw material: any file name, rarely frontmatter. Obsidian and automations (`inbox/automated/`) put new files here. | Read freely. Turn an item into a note with `bim create --source`, which moves it to `.trash/`. |
+| `notes/` | `<id>.md` zettels, `contact/<slug>.md`, `book/<slug>.md`, `documents/` (`bim doc`), `kanban/` (Kanban plugin boards), `index.md`, `.base` files (Obsidian Bases) | See "Note anatomy". |
+| `notes/calendar/` | `daily/YYYY-MM-DD.md`, `weekly/YYYY-Www.md` | Obsidian creates these; never create them. Append to a daily `## Log` only when asked; `bim create` logs its own notes. |
+| `notes/system/` | System docs, `templates/` (Templater `.tpl`), `scripts/` | Read-only unless asked. |
+| `resources/<category>/` | Assets: `book-cover/`, `contact-picture/`, `notes-attachments/` (Obsidian's attachment folder), `screenshots/`, `icon/`, `media-lib/`, and topic folders | Put a new asset in the matching category and link it from a note. Leave `media-lib/` alone. |
+| `.obsidian/` | App and plugin config | Never edit. |
+| `.trash/` | Obsidian's local trash | Move files here instead of deleting them. |
+
+PARA reference material lives outside the vault, in
+`~/Documents/reference/{10-projects,20-areas,30-resources,40-archives}`.
+`path_projects`, `path_archive` and `path_articles` point into it. Notes never
+go there.
+
+### Note anatomy
+
+```markdown
+---
+id: 20260105093012
+title: Sourdough starter care
+date: 2026-01-05T09:30:12+01:00
+tags: [cooking, bread]
+type: note
+publish: false
+processed: false
+---
+
+# Sourdough starter care
+
+Body in Markdown.
+
+---
+
+- parent:: [[notes/20251220181544|§ Baking]]
+- web:: [Starter basics](https://example.com/starter)
+```
+
+- The file name is the `id` and never changes. A rare variant carries a
+  suffix (`<id>_a.md`); prefer a new note.
+- The H1 matches `title` exactly. Older problem resolution reports prefix it
+  with `PRR: `. Index (MOC) titles start with `§`.
+- Tools write `publish: false` and `processed: false` only; the owner flips
+  them after review.
+- Tags: three to five, kebab-case, nested broad to narrow with `/`
+  (`lang/rust`). Reuse existing tags. Older notes use a block list.
+- Backmatter is everything after the last `---`: Dataview fields written as
+  `- key:: value`. The rule stays even when the backmatter is empty. Common
+  keys: `parent`, `project`, `ticket`, `sr`, `us`, `psd`, `web`, `teams`,
+  `article`, `book`, `referral`, `repo`, `shop`. Put Microsoft Teams URLs in
+  `teams::`, never `web::`. Keep every key you do not recognize when you
+  rewrite a note.
+- `type` is a closed vocabulary: the bundled templates plus `configuration`,
+  `customizing`, `project-tracker`, `tracker`, `index`, `toc`, `ai-prompt`,
+  `budget`, `meter-reading`, `itinerary`, `poem`, `joke` and `application`.
+  When unsure, use `note`; never invent a type.
+
+Type-specific frontmatter:
+
+- `project`: `completed`, `deliverable`, `resources`.
+- `meeting-minutes`: `location`, `start` and `end` (`HH:mm`), `organizer`,
+  `attendees` (list), `summary`.
+- `contact`: `contact-type` (comma-separated: `person`, `colleague`, `author`,
+  `schoolmate`, `friend`, `family`, `business`), `summary`, `company`,
+  `job-title`, `email`; rarely `birthday`, `location`, `socials`.
+- `book`: `summary`, `author`, `last-read` (`9999-12-31` means unread).
+- YouTube note: `origin: youtube`, `source` (watch URL), `author`, `summary`.
+- `snippet`: `language` (the fence language). `course`: `provider`, `length`,
+  `status`.
+
+### Links
+
+- Internal links are wikilinks with the vault-absolute path and the title as
+  alias: `[[notes/<id>|Title]]`, `[[notes/contact/<slug>|Name]]`,
+  `[[notes/book/<slug>|Title]]`.
+- External URLs and local paths are Markdown links: `[Title](https://...)`.
+- Embeds: `![[note#Heading]]` for a section, `![alt|240](path.jpeg)` for a
+  sized image.
+
+### GTD tasks and logs
+
+- Tasks follow the Tasks plugin: `- [ ] text`, then `📅` (due), `⏳`
+  (scheduled), `🛫` (start), `✅` (done) or `❌` (cancelled) with a date, and
+  priority `⏬ 🔽 🔼 ⏫ 🔺`.
+- States: `[ ]` open, `[x]` done, `[i]` information, `[>]` forwarded,
+  `[-]` cancelled, `[/]` in progress.
+- GTD lists are tags on tasks: `#gtd/act/now`, `#gtd/act/next`,
+  `#gtd/act/later`, `#gtd/act/someday`, `#gtd/wait`. `#gtd/inbox` marks a note
+  whose checkboxes still need processing; `#gtd/ignore` keeps checkboxes that
+  are not actions out of the lists.
+- Project log entry, newest on top, never rewritten:
+  `- [ ] YYYY-MM-DD HH:mm - what happened => next action | #gtd/act/now 📅 YYYY-MM-DD`.
+- Daily log entry (QuickAdd): `- [ ] _DD.MM.YYYY HH:mm:ss_ - entry` under
+  `## Log` in `notes/calendar/daily/YYYY-MM-DD.md`.
+
+### Plugins that act on files
+
+- Templater runs the `.tpl` templates inside Obsidian only; `bim create`
+  reproduces them.
+- Auto Note Mover moves notes tagged `#person` to `notes/contact/` and `#book`
+  to `notes/book/`. Never put those tags on other notes.
+- Linter formats on save: it strips trailing spaces, sets blank lines around
+  headings and rules, and drops empty list markers. Write output that already
+  passes.
+- Dataview, Tasks and Checklist read `type`, `processed`, `status` and task
+  tags. Keep them accurate.
+- Front Matter Title shows `title` in place of the file name, so no `aliases`
+  key is needed. Excalidraw owns the drawing section of illustrated notes.
+
+### Vault rules
+
+1. Create notes with `bim create` so ids and shapes match the templates.
+2. Never overwrite, rename or move an existing note: ids and slugs are link
+   targets.
+3. To delete a note, move it to `.trash/` and keep its name; on a clash add a
+   space and a number (`Untitled 1.md`). `bim delete` is permanent; use it only
+   when the user asks for it.
+4. Do not edit `.obsidian/`, `notes/system/templates/`,
+   `notes/system/scripts/`, Kanban board structure or Excalidraw JSON unless
+   asked.
+5. Write UTF-8 with LF line endings and one trailing newline.
+6. The vault is private. Do not copy note content into shared repos, tickets
+   or third-party services unless asked.
