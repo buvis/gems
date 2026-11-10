@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from buvis.pybase.result import CommandResult
+
 from .delete_by_extension import delete_by_extension
 from .lowercase_file_extensions import (
     lowercase_file_extensions,
@@ -61,7 +63,7 @@ class DirTree:
         return max(len(p.relative_to(directory).parts) for p in paths)
 
     @staticmethod
-    def delete_by_extension(directory: Path, extensions_to_delete: list[str]) -> None:
+    def delete_by_extension(directory: Path, extensions_to_delete: list[str]) -> CommandResult:
         """Delete files with specific extensions in the given directory.
 
         Args:
@@ -69,12 +71,12 @@ class DirTree:
             extensions_to_delete: List of file extensions to delete.
 
         Returns:
-            None. The function modifies the directory in place.
+            Completed actions and recoverable failures.
         """
-        delete_by_extension(directory, extensions_to_delete)
+        return delete_by_extension(directory, extensions_to_delete)
 
     @staticmethod
-    def normalize_file_extensions(directory: Path) -> None:
+    def normalize_file_extensions(directory: Path) -> CommandResult:
         """Normalize file extensions in the given directory:
         1) lowercase the extensions
         2) replace equivalents
@@ -83,9 +85,9 @@ class DirTree:
             directory: Path to the directory to process.
 
         Returns:
-            None. The function modifies the directory in place.
+            Completed actions and recoverable failures from both passes.
         """
-        lowercase_file_extensions(directory)
+        lowercase_result = lowercase_file_extensions(directory)
 
         # TODO: this should be configurable
         equivalent_extensions = [
@@ -93,10 +95,15 @@ class DirTree:
             ["mp3", "mp2"],
             ["flac", "fla"],
         ]
-        rename_equivalent_extensions(directory, equivalent_extensions)
+        equivalent_result = rename_equivalent_extensions(directory, equivalent_extensions)
+        return CommandResult(
+            success=True,
+            info=lowercase_result.info + equivalent_result.info,
+            warnings=lowercase_result.warnings + equivalent_result.warnings,
+        )
 
     @staticmethod
-    def remove_empty_directories(directory: Path) -> None:
+    def remove_empty_directories(directory: Path) -> CommandResult:
         """Recursively remove all empty directories.
 
         Traverses bottom-up to remove directories that become empty
@@ -105,14 +112,17 @@ class DirTree:
         Args:
             directory: Root directory to clean.
 
+        Returns:
+            Completed actions and recoverable failures.
+
         Note:
             Modifies the directory tree in place. Non-empty directories
             and files are preserved.
         """
-        remove_empty_directories(directory)
+        return remove_empty_directories(directory)
 
     @staticmethod
-    def merge_mac_metadata(directory: Path) -> None:
+    def merge_mac_metadata(directory: Path) -> CommandResult:
         """Restore macOS metadata from AppleDouble helper files.
 
         Walks the directory tree for AppleDouble files (._*) and, when not on
@@ -122,5 +132,8 @@ class DirTree:
 
         Args:
             directory: Directory containing files and AppleDouble metadata.
+
+        Returns:
+            Completed actions and warnings for metadata files that were kept.
         """
-        merge_mac_metadata(directory)
+        return merge_mac_metadata(directory)

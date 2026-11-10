@@ -1,6 +1,6 @@
 # muc: report tidy actions through CommandResult, not the logging module
 
-Status: new. Recorded 2026-11-08.
+Status: implemented on `feature/muc-tidy-reporting`, 2026-11-10. Recorded 2026-11-08.
 
 ## Problem
 
@@ -37,8 +37,11 @@ is invisible.
 - Drop `import logging` from muc. Keep the existing error policy (a failure
   never aborts the rest of the tidy).
 
-## Open questions
+## Decisions
 
-- Should a long action list be summarized (counts per kind) with the full list
-  only under `--log-level debug`?
-- Should a non-empty `warnings` list make `muc tidy` exit non-zero?
+- Report every completed action using the existing console renderer; no new
+  verbosity flag or summary mode.
+- Recoverable failures remain warnings and do not change exit status 0.
+  Catch individual filesystem errors so remaining items and cleanup stages run.
+- Keep result messages as plain text for programmatic callers; escape Rich
+  markup only in the CLI so bracketed filenames display literally.

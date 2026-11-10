@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import call, patch
 
+from buvis.pybase.result import CommandResult
 from muc.commands.tidy.tidy import CommandTidy
 
 
@@ -20,18 +21,22 @@ class TestCommandTidy:
 
     def test_execute_calls_in_order(self, tmp_path) -> None:
         junk = [".log"]
-        call_order: list[str] = []
 
         with patch("muc.commands.tidy.tidy.DirTree") as mock_dirtree:
-            mock_dirtree.merge_mac_metadata.side_effect = lambda d: call_order.append("merge_mac_metadata")
-            mock_dirtree.normalize_file_extensions.side_effect = lambda d: call_order.append("normalize")
-            mock_dirtree.delete_by_extension.side_effect = lambda d, e: call_order.append("delete")
-            mock_dirtree.remove_empty_directories.side_effect = lambda d: call_order.append("remove_empty")
+            mock_dirtree.merge_mac_metadata.return_value = CommandResult(success=True)
+            mock_dirtree.normalize_file_extensions.return_value = CommandResult(success=True)
+            mock_dirtree.delete_by_extension.return_value = CommandResult(success=True)
+            mock_dirtree.remove_empty_directories.return_value = CommandResult(success=True)
 
             cmd = CommandTidy(directory=tmp_path, junk_extensions=junk)
             cmd.execute()
 
-        assert call_order == ["merge_mac_metadata", "normalize", "delete", "remove_empty"]
+        assert mock_dirtree.mock_calls == [
+            call.merge_mac_metadata(tmp_path),
+            call.normalize_file_extensions(tmp_path),
+            call.delete_by_extension(tmp_path, junk),
+            call.remove_empty_directories(tmp_path),
+        ]
 
     def test_execute_returns_command_result(self, tmp_path) -> None:
         with patch("muc.commands.tidy.tidy.DirTree"):
