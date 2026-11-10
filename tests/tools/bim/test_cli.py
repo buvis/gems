@@ -10,6 +10,11 @@ class TestBimSkill:
         assert result.output == SKILL_PATH.read_text(encoding="utf-8")
         assert result.output.startswith("---\nname: bim\n")
 
+    def test_skill_forbids_reading_notes_without_approval(self, runner) -> None:
+        result = runner.invoke(cli, ["--skill"])
+        assert "must not reach your session without\nthe user's explicit approval" in result.output
+        assert "Read freely" not in result.output
+
     def test_help_points_agents_at_skill_flag(self, runner) -> None:
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
