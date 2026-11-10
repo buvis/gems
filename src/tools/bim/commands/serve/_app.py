@@ -62,7 +62,7 @@ def create_app(
                     html = html.replace("</head>", f"{script}</head>", 1)
                 else:
                     console.warning("bim serve: index.html has no </head>; auth token was not injected")
-            return HTMLResponse(html)
+            return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
         app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
     else:

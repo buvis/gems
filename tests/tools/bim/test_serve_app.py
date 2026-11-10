@@ -84,7 +84,7 @@ class TestServeTrustedHost:
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
-    def test_non_loopback_host_installs_wildcard_allowed_hosts_and_warns(self, tmp_path: Path) -> None:
+    def test_non_loopback_host_installs_explicit_allowed_hosts_and_warns(self, tmp_path: Path) -> None:
         zettels_dir = tmp_path / "zettels"
         zettels_dir.mkdir()
         with (
@@ -101,7 +101,7 @@ class TestServeTrustedHost:
         trusted_host_middlewares = [m for m in app.user_middleware if m.cls is TrustedHostMiddleware]
 
         assert len(trusted_host_middlewares) == 1
-        assert trusted_host_middlewares[0].kwargs["allowed_hosts"] == ["*"]
+        assert set(trusted_host_middlewares[0].kwargs["allowed_hosts"]) == {"127.0.0.1", "localhost", "[::1]"}
         assert "0.0.0.0" in capture.get()
 
     def test_non_loopback_host_still_rejects_mutating_request_without_token(self, tmp_path: Path) -> None:
@@ -170,6 +170,7 @@ class TestServeIndexTokenInjection:
         ):
             app = create_app(default_directory=str(zettels_dir), archive_directory="archive", host="0.0.0.0")
             with TestClient(app, base_url="http://127.0.0.1") as test_client:
+                test_client.auth = ("bim", app.state.buvis_token)
                 index_response = test_client.get("/")
 
         token = app.state.buvis_token
@@ -280,4 +281,61 @@ class TestCommandServeExecute:
             path_daily=None,
             path_articles=None,
         )
-        mock_uvicorn_run.assert_called_once_with(mock_app, host="0.0.0.0", port=9001, log_level="info")
+        mock_uvicorn_run.assert_called_once_with(
+            mock_app, host="0.0.0.0", port=9001, log_level="info", access_log=False
+        )
+
+
+class TestRemoteTokenHandoff:
+    @pytest.mark.parametrize("interrupt", [False, True])
+    def test_private_file_exists_only_during_server_lifetime(self, tmp_path: Path, interrupt: bool) -> None:
+        from bim.params.serve import ServeParams
+
+        params = ServeParams(default_directory=str(tmp_path), host="0.0.0.0", no_browser=True)
+        written = []
+        from buvis.pybase.filesystem.atomic_write import atomic_write_text
+
+        def record_write(path, content, **kwargs):
+            written.append(path)
+            atomic_write_text(path, content, **kwargs)
+
+        def run_server(app, **kwargs):
+            assert len(written) == 1
+            token_path = written[0]
+            assert token_path.read_text() == app.state.buvis_token
+            assert token_path.stat().st_mode & 0o777 == 0o600
+            assert token_path.parent.stat().st_mode & 0o777 == 0o700
+            assert kwargs["access_log"] is False
+            if interrupt:
+                raise KeyboardInterrupt
+
+        with (
+            patch("buvis.pybase.filesystem.atomic_write.atomic_write_text", side_effect=record_write),
+            patch("uvicorn.run", side_effect=run_server),
+            console.capture() as capture,
+        ):
+            if interrupt:
+                with pytest.raises(KeyboardInterrupt):
+                    CommandServe(params).execute()
+            else:
+                CommandServe(params).execute()
+        assert len(written) == 1
+        assert not written[0].parent.exists()
+        assert str(written[0]) in capture.get().replace("\n", "")
+
+
+class TestServeBrowserStartup:
+    @pytest.mark.parametrize("host", ["0.0.0.0", "192.0.2.1"])
+    def test_remote_bind_leaves_browser_to_tunnel_client(self, tmp_path: Path, host: str) -> None:
+        from bim.params.serve import ServeParams
+
+        with patch("webbrowser.open") as open_browser, patch("uvicorn.run"):
+            CommandServe(ServeParams(default_directory=str(tmp_path), host=host)).execute()
+        open_browser.assert_not_called()
+
+    def test_loopback_still_opens_local_browser(self, tmp_path: Path) -> None:
+        from bim.params.serve import ServeParams
+
+        with patch("webbrowser.open") as open_browser, patch("uvicorn.run"):
+            CommandServe(ServeParams(default_directory=str(tmp_path))).execute()
+        open_browser.assert_called_once_with("http://127.0.0.1:8000")
