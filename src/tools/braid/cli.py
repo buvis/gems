@@ -118,6 +118,8 @@ def cli(
         project_kiro=not no_kiro,
     )
     result = CommandCompose(request).execute()
+    for warning in result.warnings:
+        console.console.print(console.format_warning(escape(warning)), soft_wrap=True)
     for line in (result.output or "").splitlines():
         console.console.out(line, highlight=False)
     if result.error:

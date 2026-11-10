@@ -571,7 +571,7 @@ def _expand_configured(key: str, entries: Iterable[Path]) -> tuple[Path, ...]:
     return tuple(expanded)
 
 
-def resolve_settings(request: ComposeRequest) -> Settings:
+def resolve_settings(request: ComposeRequest, *, warn: Callable[[str], None] | None = None) -> Settings:
     agents_root = _expand_user(request.agents_root)
     claude_root = _expand_user(request.claude_root)
     configured_sources = _expand_configured("sources", request.configured_sources)
@@ -585,15 +585,20 @@ def resolve_settings(request: ComposeRequest) -> Settings:
     for source in sources:
         policy_root = source.parent if is_legacy_skills_source(source) else source
         candidates.append(policy_root / ".braidignore")
-    candidates.extend(configured_policies)
-    candidates.extend(request.policies)
-    policy_files = tuple(path for path in _deduplicate(candidates) if path.is_file())
+    explicit_policies = _deduplicate([*configured_policies, *request.policies])
+    candidates.extend(explicit_policies)
+    policy_files: list[Path] = []
+    for path in _deduplicate(candidates):
+        if path.is_file():
+            policy_files.append(path)
+        elif path in explicit_policies and warn is not None:
+            warn(f"braid: policy is missing or not a regular file; skipping: {path}")
     return Settings(
         sources=sources,
         agents_root=_resolved(agents_root),
         claude_root=_resolved(claude_root),
         mode=request.mode,
-        policy_files=policy_files,
+        policy_files=tuple(policy_files),
         project_claude=request.project_claude,
         enable_kiro=request.enable_kiro,
         kiro_root=request.kiro_root,

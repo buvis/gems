@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **braid**: warn with the path when an explicit policy is missing or not a regular file, while continuing sync, skipping special files without reading them, and keeping absent implicit policies silent.
 - **braid**: report unknown users and embedded NUL characters in configured source or policy paths as clean exit-2 errors before changing files or links.
 - **config**: honor `extra="forbid"` before dropping unknown tool-specific YAML keys, including misspelled directives and braid's removed `config_root`; preserve shared files, other tools' namespaces, and separately validated sysup/backup plan keys.
 - **config**: explicit `--config FILE` uses the discovered-file environment substitution and list-directive pipeline (`sources+`, `policies+`, `policies-`) while remaining the exclusive file layer.
