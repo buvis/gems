@@ -170,7 +170,7 @@ it:
 
 .. code-block:: yaml
 
-    # buvis-backup.local.yaml  (machine-local, never `dot add`ed)
+    # ~/.local/.config/buvis/buvis-backup.yaml  (machine-local, never `dot add`ed)
     excludes+: [scratch-notes]   # add to the inherited list
     excludes-: [target]          # drop a default on this box only
 

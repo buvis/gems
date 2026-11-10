@@ -316,11 +316,13 @@ File Locations
 Config files are discovered in order (first found wins):
 
 1. ``$BUVIS_CONFIG_DIR/buvis.yaml`` (if env var set)
-2. ``$XDG_CONFIG_HOME/buvis/buvis.yaml`` (or ``~/.config/buvis/buvis.yaml``)
-3. ``~/.buvis/buvis.yaml`` (legacy)
-4. ``./buvis.yaml`` (current directory)
+2. ``~/.local/.config/buvis/buvis.yaml`` (machine-local overrides)
+3. ``$XDG_CONFIG_HOME/buvis/buvis.yaml`` (or ``~/.config/buvis/buvis.yaml``)
+4. ``~/.buvis/buvis.yaml`` (legacy)
+5. ``./buvis.yaml`` (current directory)
 
-For tool-specific config, files named ``buvis-{tool}.yaml`` are also checked.
+For tool-specific config, files named ``buvis-{tool}.yaml`` are also checked,
+including under ``~/.local/.config/buvis/`` for machine-local overrides.
 
 File Format
 ~~~~~~~~~~~
@@ -389,7 +391,7 @@ entry to a shared list has to re-list the whole thing. Directive keys let a laye
     # layer 2 — user-wide (~/.config/buvis), higher priority: ADD, don't replace
     excludes+: [.terraform, .gradle]
 
-    # layer 3 — machine-local (*.local.yaml), higher still: ADD one, CANCEL a default
+    # layer 3 — machine-local (~/.local/.config/buvis), higher still: ADD one, CANCEL a default
     excludes+: [.cache]
     excludes-: [.venv]
 
@@ -713,9 +715,10 @@ YAML Not Loading
 Check file locations (in order):
 
 1. ``$BUVIS_CONFIG_DIR/buvis.yaml``
-2. ``~/.config/buvis/buvis.yaml``
-3. ``~/.buvis/buvis.yaml``
-4. ``./buvis.yaml``
+2. ``~/.local/.config/buvis/buvis.yaml`` (machine-local overrides)
+3. ``~/.config/buvis/buvis.yaml``
+4. ``~/.buvis/buvis.yaml``
+5. ``./buvis.yaml``
 
 Debug with:
 

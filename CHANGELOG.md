@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **config**: a new machine-local config directory, `~/.local/.config/buvis`, layers between the shared `~/.config/buvis` directory and `$BUVIS_CONFIG_DIR`, so a machine-only override lives in its own untracked directory instead of a sibling file.
+
+### Removed
+
+- **config**: the `config.local.yaml` / `buvis.local.yaml` / `buvis-<tool>.local.yaml` sibling-twin convention is removed, with no deprecation period. Move any such file's content to the matching file under `~/.local/.config/buvis/` (for example `buvis-sysup.local.yaml` -> `~/.local/.config/buvis/buvis-sysup.yaml`).
+
 ### Fixed
 
 - **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it

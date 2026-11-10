@@ -168,11 +168,16 @@ class ConfigurationLoader:
         Returns:
             list[Path]: Search paths from highest to lowest priority:
                 1. config_dir / BUVIS_CONFIG_DIR (if set and non-empty)
-                2. ~/.config/buvis (default)
-                3. Current working directory
+                2. ~/.local/.config/buvis (machine-local overrides)
+                3. ~/.config/buvis (default)
+                4. Current working directory
         """
         if config_dir is not None:
-            paths = [Path(config_dir).expanduser(), Path.home() / ".config" / "buvis"]
+            paths = [
+                Path(config_dir).expanduser(),
+                Path.home() / ".local" / ".config" / "buvis",
+                Path.home() / ".config" / "buvis",
+            ]
         else:
             paths = get_config_dirs()
         paths.append(Path.cwd())
@@ -230,18 +235,18 @@ class ConfigurationLoader:
 
         Returns:
             Ordered list of candidate paths per location (lowest to highest
-            priority within a location): config.yaml, config.local.yaml,
-            buvis.yaml, buvis.local.yaml, buvis-{tool}.yaml,
-            buvis-{tool}.local.yaml. Each ``*.local.yaml`` machine-local twin sits
-            immediately after (higher priority than) its shared file. See
-            :meth:`find_config_files_ranked` for a clean low-to-high ordering.
+            priority within a location): config.yaml, buvis.yaml,
+            buvis-{tool}.yaml. Machine-local overrides come from a separate
+            search directory (``~/.local/.config/buvis``, see
+            :func:`get_config_dirs`), not from a sibling ``*.local.yaml`` file.
+            See :meth:`find_config_files_ranked` for a clean low-to-high
+            ordering.
         """
         candidates: list[Path] = []
         stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
         for base in paths:
             for stem in stems:
                 candidates.append(base / f"{stem}.yaml")
-                candidates.append(base / f"{stem}.local.yaml")
         return candidates
 
     @staticmethod
@@ -358,11 +363,10 @@ class ConfigurationLoader:
         entries have higher precedence. Feed the result directly to
         :meth:`merge_configs` (where later wins) without reversing.
 
-        Precedence, lowest first: cwd < ~/.config/buvis < $BUVIS_CONFIG_DIR
-        across directories, and config.yaml < config.local.yaml < buvis.yaml <
-        buvis.local.yaml < buvis-{tool}.yaml < buvis-{tool}.local.yaml within each
-        directory (each machine-local ``*.local.yaml`` twin outranks its shared
-        file). An explicit ``config_path`` (from ``--config FILE``) is EXCLUSIVE:
+        Precedence, lowest first: cwd < ~/.config/buvis < ~/.local/.config/buvis
+        < $BUVIS_CONFIG_DIR across directories, and config.yaml < buvis.yaml <
+        buvis-{tool}.yaml within each directory. An explicit ``config_path``
+        (from ``--config FILE``) is EXCLUSIVE:
         when given and readable it is the sole layer, and discovery is skipped
         entirely — matching :meth:`ConfigResolver._load_yaml`, so a tool's plan
         and its settings resolve from the same single file (no discovered layer
@@ -395,10 +399,7 @@ class ConfigurationLoader:
                 logger.debug("Cannot stat explicit config path: %s", explicit)
 
         paths = ConfigurationLoader._get_search_paths(config_dir)
-        base_stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
-        # Interleave each stem with its .local twin so the twin gets a higher
-        # stem_rank (wins) than its shared file.
-        stems = [s for stem in base_stems for s in (stem, f"{stem}.local")]
+        stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
 
         # dir_rank: 0 = highest-priority dir (paths[0]); stem_rank: 0 = lowest stem.
         # LOW-to-HIGH sort key: higher dir_rank (lower priority) first, then lower
@@ -466,10 +467,12 @@ def get_config_dirs() -> list[Path]:
     """Config dirs in priority order (highest first).
 
     1. $BUVIS_CONFIG_DIR (if set and non-empty)
-    2. ~/.config/buvis (default)
+    2. ~/.local/.config/buvis (machine-local overrides)
+    3. ~/.config/buvis (default)
     """
     dirs: list[Path] = []
     if env_dir := os.getenv("BUVIS_CONFIG_DIR"):
         dirs.append(Path(env_dir).expanduser())
+    dirs.append(Path.home() / ".local" / ".config" / "buvis")
     dirs.append(Path.home() / ".config" / "buvis")
     return dirs

@@ -175,14 +175,15 @@ Sharing across machines
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The buvis config stack is itself managed by ``dot``. Track ``buvis-sysup.yaml``
-(``dot add``) to share your updater set across machines. For a value that must
-live on **one** machine only, put it in a sibling ``buvis-sysup.local.yaml`` and
-**do not** ``dot add`` it: the loader gives ``*.local.yaml`` a higher priority
-than its shared twin, so it overrides per-key while staying untracked.
+under ``~/.config/buvis`` (``dot add``) to share your updater set across
+machines. For a value that must live on **one** machine only, put it in
+``~/.local/.config/buvis/buvis-sysup.yaml`` and **do not** ``dot add`` it: the
+loader ranks ``~/.local/.config/buvis`` above the shared ``~/.config/buvis``
+directory, so it overrides per-key while staying untracked.
 
 .. code-block:: yaml
 
-    # buvis-sysup.local.yaml  (machine-local, never `dot add`ed)
+    # ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local, never `dot add`ed)
     commands:
       helm:
         enabled: false        # this box has no helm repos — skip it here only
@@ -190,8 +191,8 @@ than its shared twin, so it overrides per-key while staying untracked.
         order: 5
         steps: [sudo work-vpn-refresh]
 
-Because ``*.local.yaml`` is deliberately untracked, it is not backed up by the
-dotfiles repo; keep a separate backup of anything only it holds.
+Because ``~/.local/.config/buvis`` is deliberately untracked, it is not backed
+up by the dotfiles repo; keep a separate backup of anything only it holds.
 
 Priming sudo
 -------------
@@ -295,7 +296,7 @@ notifications. Group options go before the subcommand:
 ``sysup status --only brew`` is a usage error.
 
 Configure optional ntfy pushes in the same config stack, including the
-machine-local twin:
+machine-local directory:
 
 .. code-block:: yaml
 
@@ -332,7 +333,7 @@ record.
 
 .. code-block:: yaml
 
-    # buvis-sysup.yaml / buvis-sysup.local.yaml
+    # ~/.config/buvis/buvis-sysup.yaml or ~/.local/.config/buvis/buvis-sysup.yaml
     expiry:
       gh-agent:
         enabled: true
@@ -355,12 +356,13 @@ A command may declare ``needs: [item]``. While a needed item is ``expired`` or
 
 The bundled ``gh-agent`` item ships **disabled** with no probe, so tracking stays
 off until you opt in. Enable it on one host from the untracked
-``buvis-sysup.local.yaml`` by supplying a private-repository ``probe`` and
-``enabled: true``; the bundled ``config_dir`` and refresh procedure merge in:
+``~/.local/.config/buvis/buvis-sysup.yaml`` by supplying a private-repository
+``probe`` and ``enabled: true``; the bundled ``config_dir`` and refresh
+procedure merge in:
 
 .. code-block:: yaml
 
-    # buvis-sysup.local.yaml  (machine-local, never `dot add`ed)
+    # ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local, never `dot add`ed)
     expiry:
       gh-agent:
         enabled: true
