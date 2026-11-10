@@ -19,6 +19,16 @@ _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 _ESCAPE_PLACEHOLDER = "\x00ESCAPED_DOLLAR\x00"
 
 
+def _parse_yaml_mapping(content: str, file_path: Path) -> dict[str, Any]:
+    """Parse a mapping, distinguishing an empty document from a null root."""
+    data = yaml.safe_load(content)
+    if data is None and yaml.compose(content) is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ConfigurationError(f"{file_path}: YAML root must be a mapping")
+    return data
+
+
 @cache
 def _warn_retired_twin(path: Path, destination: Path) -> None:
     """Warn once per file and destination in this process, across loader callers."""
@@ -331,7 +341,7 @@ class ConfigurationLoader:
         if missing:
             raise MissingEnvVarError(sorted(missing))
 
-        return yaml.safe_load(content) or {}
+        return _parse_yaml_mapping(content, file_path)
 
     @staticmethod
     def find_config_files(tool_name: str | None = None, *, config_dir: str | None = None) -> list[Path]:

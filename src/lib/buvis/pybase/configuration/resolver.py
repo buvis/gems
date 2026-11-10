@@ -36,10 +36,10 @@ from typing import Any, TypeVar
 
 import yaml
 from pydantic import ValidationError
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsError
 
-from .exceptions import ConfigurationError
-from .loader import ConfigurationLoader
+from .exceptions import ConfigurationError, MissingEnvVarError
+from .loader import ConfigurationLoader, _parse_yaml_mapping, _split_directive
 from .validators import is_sensitive_field
 
 __all__ = ["ConfigResolver", "ConfigSource"]
@@ -80,8 +80,7 @@ def _load_yaml_config(file_path: Path | None = None) -> dict[str, Any]:
         return {}
 
     try:
-        with file_path.open() as f:
-            return yaml.safe_load(f) or {}
+        return _parse_yaml_mapping(file_path.read_text(encoding="utf-8"), file_path)
     except yaml.YAMLError as e:
         mark = getattr(e, "problem_mark", None)
         line_num = mark.line + 1 if mark else "unknown"
@@ -99,7 +98,7 @@ def _extract_tool_name(env_prefix: str) -> str | None:
     return match.group(1).lower()
 
 
-def _format_validation_errors(error: ValidationError) -> str:
+def _format_validation_errors(error: ValidationError, sources: dict[tuple[str, ...], list[Path]] | None = None) -> str:
     """Format Pydantic validation errors into user-friendly message.
 
     Masks error details for sensitive fields (password, token, etc.)
@@ -118,8 +117,38 @@ def _format_validation_errors(error: ValidationError) -> str:
             msg = "invalid value (hidden)"
         else:
             msg = err["msg"]
-        lines.append(f"  {field_path}: {msg}")
+        field = tuple(str(loc) for loc in err["loc"])
+        source = None
+        while field and source is None:
+            source = (sources or {}).get(field)
+            field = field[:-1]
+        location = f" ({', '.join(map(str, source))})" if source else ""
+        lines.append(f"  {field_path}{location}: {msg}")
     return "Configuration validation failed:\n" + "\n".join(lines)
+
+
+def _record_yaml_sources(
+    layer: dict[str, Any],
+    path: Path,
+    sources: dict[tuple[str, ...], list[Path]],
+    prefix: tuple[str, ...] = (),
+) -> None:
+    """Retain the source of nested values when a later layer merges siblings."""
+    for key, value in layer.items():
+        base, directive = _split_directive(key)
+        field = (*prefix, base)
+        if directive:
+            # A list error may originate in any contributing layer.
+            sources[field] = list(dict.fromkeys([*sources.get(field, []), path]))
+            continue
+        if isinstance(value, dict):
+            _record_yaml_sources(value, path, sources, field)
+        else:
+            # A replacement also discards provenance of any former children.
+            for previous in list(sources):
+                if previous[: len(field)] == field:
+                    del sources[previous]
+        sources[field] = [path]
 
 
 class ConfigResolver:
@@ -170,6 +199,7 @@ class ConfigResolver:
         """Create a resolver."""
         self.loader = ConfigurationLoader()
         self._sources: dict[str, ConfigSource] = {}
+        self._yaml_sources: dict[tuple[str, ...], list[Path]] = {}
         logger.debug("ConfigResolver initialized")
 
     def _load_yaml(
@@ -183,13 +213,28 @@ class ConfigResolver:
         """Load YAML config from explicit path or discovered files."""
         if config_dir is not None:
             logger.debug("Using config_dir override: %s", config_dir)
-        if config_path is not None:
-            return _load_yaml_config(config_path)
-        discovered_files = self.loader.find_config_files_ranked(
-            tool_name, config_dir=config_dir, include_cwd=include_cwd
+        self._yaml_sources.clear()
+        discovered_files = (
+            [config_path]
+            if config_path is not None
+            else self.loader.find_config_files_ranked(tool_name, config_dir=config_dir, include_cwd=include_cwd)
         )
-        loaded_configs = [self.loader.load_yaml(path) for path in discovered_files]
-        return self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
+        merged: dict[str, Any] = {}
+        for path in discovered_files:
+            try:
+                layer = _load_yaml_config(path) if config_path is not None else self.loader.load_yaml(path)
+                merged = layer if config_path is not None else self.loader.merge_configs(merged, layer)
+            except yaml.YAMLError as exc:
+                mark = getattr(exc, "problem_mark", None)
+                location = f"{path}:{mark.line + 1}" if mark else str(path)
+                problem = getattr(exc, "problem", None) or str(exc)
+                raise ConfigurationError(f"YAML syntax error in {location}: {problem}") from exc
+            except (MissingEnvVarError, ConfigurationError) as exc:
+                if str(exc).startswith(f"{path}:"):
+                    raise
+                raise ConfigurationError(f"{path}: {exc}") from exc
+            _record_yaml_sources(layer, path, self._yaml_sources)
+        return merged
 
     @staticmethod
     def _merge_overrides(
@@ -252,12 +297,18 @@ class ConfigResolver:
 
         try:
             base_settings = settings_class()
+        except ValidationError as exc:
+            raise ConfigurationError(_format_validation_errors(exc)) from exc
+        except SettingsError as exc:
+            raise ConfigurationError(str(exc)) from exc
+
+        try:
             final_settings = self._merge_overrides(settings_class, base_settings, yaml_config, cli_overrides)
             self._track_sources(settings_class, env_prefix, yaml_config, cli_overrides)
             self._log_sources()
             return final_settings
         except ValidationError as e:
-            raise ConfigurationError(_format_validation_errors(e)) from e
+            raise ConfigurationError(_format_validation_errors(e, self._yaml_sources)) from e
 
     def _log_sources(self) -> None:
         """Log config field sources. Sensitive fields use INFO, others DEBUG.

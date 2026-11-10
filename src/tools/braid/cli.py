@@ -63,7 +63,7 @@ from braid.settings import BraidSettings
     help="stop managing a custom agent; keep its existing resources (repeatable)",
 )
 @click.option("--no-kiro", is_flag=True, help="skip Kiro for this run; preserve its links/enrollment")
-@buvis_options(settings_class=BraidSettings)
+@buvis_options(settings_class=BraidSettings, config_error_exit_code=2)
 @click.pass_context
 def cli(
     ctx: click.Context,
