@@ -450,6 +450,20 @@ def test_machine_local_sources_append_to_shared_buvis_braid_yaml(
     assert (home / ".agents" / "skills" / "local-skill").is_symlink()
 
 
+def test_cli_expands_home_in_a_buvis_braid_yaml_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    make_skill(home / "personal", "home-skill")
+    config_dir = buvis_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "buvis-braid.yaml").write_text("sources:\n  - ~/personal\n")
+
+    result = CliRunner().invoke(cli, root_flags(home))
+
+    assert result.exit_code == 0
+    assert (home / ".agents" / "skills" / "home-skill").is_symlink()
+
+
 def test_cli_reports_an_os_error_after_a_backup_and_exits_2(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = tmp_path / "personal"
     make_skill(source, "portable")
