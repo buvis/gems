@@ -172,6 +172,12 @@ muc<span class="w"> </span>limit<span class="w"> </span>~/music/hi-res-album/<sp
 <h3>muc tidy<a class="headerlink" href="#muc-tidy" title="Link to this heading"></a></h3>
 <p>Clean up a music directory: merge macOS metadata, normalize extensions,
 remove junk files, delete empty directories.</p>
+<p>Reports every completed rename, metadata merge, file deletion and empty-directory
+removal through the standard console. Filesystem failures and metadata files that
+could not be merged produce warnings; tidy continues with the remaining items.
+Warnings alone do not change the exit status (0). Actions and warnings are also
+available to programmatic callers in <code class="docutils literal notranslate"><span class="pre">CommandResult.info</span></code> and
+<code class="docutils literal notranslate"><span class="pre">CommandResult.warnings</span></code>.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>muc<span class="w"> </span>tidy<span class="w"> </span>~/music/album/
 muc<span class="w"> </span>tidy<span class="w"> </span>~/music/album/<span class="w"> </span>-y<span class="w">     </span><span class="c1"># skip confirmation</span>
 </pre></div>

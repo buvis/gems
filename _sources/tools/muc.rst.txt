@@ -53,6 +53,13 @@ muc tidy
 Clean up a music directory: merge macOS metadata, normalize extensions,
 remove junk files, delete empty directories.
 
+Reports every completed rename, metadata merge, file deletion and empty-directory
+removal through the standard console. Filesystem failures and metadata files that
+could not be merged produce warnings; tidy continues with the remaining items.
+Warnings alone do not change the exit status (0). Actions and warnings are also
+available to programmatic callers in ``CommandResult.info`` and
+``CommandResult.warnings``.
+
 .. code-block:: bash
 
     muc tidy ~/music/album/
