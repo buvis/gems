@@ -68,7 +68,10 @@ def _expand_user(path: str | Path) -> Path:
         return Path.home()
     if value.startswith(("~/", "~\\")):
         return Path.home() / value[2:]
-    return Path(value).expanduser()
+    try:
+        return Path(value).expanduser()
+    except RuntimeError as error:  # ~unknownuser
+        raise BraidError(f"invalid path {value!r}: {error}") from error
 
 
 def _resolved(path: Path) -> Path:

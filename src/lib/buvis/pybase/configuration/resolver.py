@@ -59,37 +59,6 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseSettings)
 
 
-def _load_yaml_config(file_path: Path | None = None) -> dict[str, Any]:
-    """Load YAML config, return empty dict if not found.
-
-    Args:
-        file_path: Path to YAML file. If None, uses BUVIS_CONFIG_FILE env var
-            or defaults to ~/.config/buvis/config.yaml.
-
-    Returns:
-        Parsed YAML as dict, or empty dict if file doesn't exist.
-
-    Raises:
-        ConfigurationError: If YAML syntax is invalid.
-    """
-    if file_path is None:
-        default = Path.home() / ".config" / "buvis" / "config.yaml"
-        file_path = Path(os.getenv("BUVIS_CONFIG_FILE", str(default)))
-
-    if not file_path.exists():
-        return {}
-
-    try:
-        return ConfigurationLoader.load_yaml(file_path)
-    except yaml.YAMLError as e:
-        mark = getattr(e, "problem_mark", None)
-        line_num = mark.line + 1 if mark else "unknown"
-        raise ConfigurationError(f"YAML syntax error in {file_path}:{line_num}: {e}") from e
-    except PermissionError:
-        logger.warning("Permission denied reading %s, skipping", file_path)
-        return {}
-
-
 def _extract_tool_name(env_prefix: str) -> str | None:
     """Extract tool name from env prefix like BUVIS_FOO_ -> foo."""
     match = re.match(r"^BUVIS_([A-Z][A-Z0-9_]*)_$", env_prefix)
@@ -223,7 +192,8 @@ class ConfigResolver:
         merged: dict[str, Any] = {}
         for path in discovered_files:
             try:
-                layer = _load_yaml_config(path) if config_path is not None else self.loader.load_yaml(path)
+                # A missing explicit file is an empty layer; Click already rejects it at the CLI.
+                layer = {} if config_path is not None and not path.exists() else self.loader.load_yaml(path)
                 # Shared files carry global keys and other tools' namespaces.
                 # Tool-specific (including explicit custom) files must respect
                 # extra="forbid" before projection discards their unknown keys.
@@ -241,6 +211,8 @@ class ConfigResolver:
                 if str(exc).startswith(f"{path}:"):
                     raise
                 raise ConfigurationError(f"{path}: {exc}") from exc
+            except (OSError, UnicodeError) as exc:
+                raise ConfigurationError(f"{path}: cannot read config: {exc}") from exc
             _record_yaml_sources(layer, path, self._yaml_sources)
         return merged
 

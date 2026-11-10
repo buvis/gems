@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import signal
 import webbrowser
 from contextlib import ExitStack
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import FrameType
 
 from bim.params.serve import ServeParams
+
+
+def _exit_on_signal(signum: int, _frame: FrameType | None) -> None:
+    raise SystemExit(128 + signum)
 
 
 class CommandServe:
@@ -37,6 +43,12 @@ class CommandServe:
                 token_path = Path(directory) / "token"
                 atomic_write_text(token_path, app.state.buvis_token, mode=0o600)
                 console.info(f"Private token file: {token_path} (removed when the server stops)")
+                # uvicorn re-raises SIGTERM/SIGHUP after shutdown; with the default
+                # handler that kills the process before the token directory unwinds.
+                for name in ("SIGTERM", "SIGHUP"):
+                    signum = getattr(signal, name, None)
+                    if signum is not None:
+                        stack.callback(signal.signal, signum, signal.signal(signum, _exit_on_signal))
 
             if not self.params.no_browser and app.state.token_in_page:
                 browser_host = f"[{self.params.host}]" if ":" in self.params.host else self.params.host

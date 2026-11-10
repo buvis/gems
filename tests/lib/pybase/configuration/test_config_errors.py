@@ -74,6 +74,34 @@ class TestConfigurationErrors:
         assert diagnostic in result.output
 
     @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
+    @pytest.mark.parametrize("defect", ["unreadable", "non-utf8"])
+    def test_unreadable_config_is_rendered_not_raised(self, tmp_path, command, args, exit_code, defect):
+        name = "buvis-braid.yaml" if command is braid_cli else "buvis-sysup.yaml"
+        path = tmp_path / "home/.config/buvis" / name
+        path.parent.mkdir(parents=True)
+        if defect == "unreadable":
+            if os.geteuid() == 0:
+                pytest.skip("root reads mode-000 files")
+            path.write_text("debug: true\n")
+            path.chmod(0o000)
+        else:
+            path.write_bytes(b"debug: \xff\xfe\n")
+        result = CliRunner().invoke(command, args)
+        assert result.exit_code == exit_code
+        assert isinstance(result.exception, SystemExit)
+        assert str(path) in result.output
+        assert "cannot read config" in result.output
+
+    @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
+    def test_explicit_yaml_error_names_file_once(self, tmp_path, command, args, exit_code):
+        path = tmp_path / "custom.yaml"
+        path.write_text("debug: [unclosed")
+        result = CliRunner().invoke(command, ["--config", str(path), *args])
+        assert result.exit_code == exit_code
+        assert result.output.count(str(path)) == 1
+        assert "<unicode string>" not in result.output
+
+    @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
     def test_missing_variable_names_source(self, tmp_path, command, args, exit_code):
         path = tmp_path / "home/.local/.config/buvis/buvis.yaml"
         path.parent.mkdir(parents=True)

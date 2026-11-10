@@ -178,13 +178,13 @@ class ConfigurationLoader:
     @staticmethod
     def _warn_retired_twins(paths: list[Path], tool_name: str | None) -> None:
         """Report obsolete sibling overrides without loading their contents."""
-        destination_name = f"buvis-{tool_name}.yaml" if tool_name else "buvis.yaml"
-        destination = Path.home() / ".local" / ".config" / "buvis" / destination_name
+        local_dir = Path.home() / ".local" / ".config" / "buvis"
         for candidate in ConfigurationLoader._get_candidate_files(paths, tool_name):
             twin = candidate.with_suffix(".local.yaml")
             try:
                 if twin.is_file():
-                    _warn_retired_twin(twin.absolute(), destination)
+                    # A shared twin's values belong in the shared file, not a tool file.
+                    _warn_retired_twin(twin.absolute(), local_dir / candidate.name)
             except PermissionError:
                 logger.debug("Permission denied: %s", twin)
 
@@ -236,34 +236,37 @@ class ConfigurationLoader:
 
     @staticmethod
     def _validate_parent_directory(file_path: Path) -> Path:
-        """Resolve the file and reject a parent permitting untrusted replacement.
+        """Resolve the file and reject any directory permitting untrusted replacement.
 
-        On POSIX, sticky directories protect existing entries only when both
-        owners (directory and file) are trusted: root or the effective user.
-        Other platforms lack these Unix permission semantics; leave their
-        access control to the OS. This checks the immediate resolved parent,
-        not ancestor permissions, ACLs, or concurrent filesystem changes.
+        Every directory holding a link of the symlink chain is checked, not just
+        the final one: a symlink in a world-writable directory can be replaced to
+        point anywhere. On POSIX, sticky directories protect existing entries only
+        when both owners (directory and entry) are trusted: root or the effective
+        user. Other platforms lack these Unix permission semantics; leave their
+        access control to the OS. Ancestors above each holding directory, ACLs,
+        and concurrent filesystem changes are not checked.
         """
         if os.name != "posix":
             return file_path
-        resolved = file_path.resolve()
-        parent = resolved.parent
-        directory_stat = parent.stat()
-        if not directory_stat.st_mode & stat.S_IWOTH:
-            return resolved
         trusted_owners = {0, os.geteuid()}
-        if (
-            directory_stat.st_mode & stat.S_ISVTX
-            and directory_stat.st_uid in trusted_owners
-            and resolved.stat().st_uid in trusted_owners
-        ):
-            return resolved
-        raise ConfigurationError(
-            f"{file_path}: unsafe world-writable config directory {parent}; "
-            "sticky protection requires both directory and file owners to be root or the effective user. "
-            "Remove other-user write permission from this directory (chmod o-w), "
-            "or move the config to a private directory."
-        )
+        entry = file_path.absolute()
+        for _ in range(40):  # same bound as the kernel's symlink loop limit
+            directory_stat = entry.parent.stat()
+            if directory_stat.st_mode & stat.S_IWOTH and not (
+                directory_stat.st_mode & stat.S_ISVTX
+                and directory_stat.st_uid in trusted_owners
+                and entry.stat(follow_symlinks=False).st_uid in trusted_owners
+            ):
+                raise ConfigurationError(
+                    f"{file_path}: unsafe world-writable config directory {entry.parent.resolve()}; "
+                    "sticky protection requires both directory and file owners to be root or the effective user. "
+                    "Remove other-user write permission from this directory (chmod o-w), "
+                    "or move the config to a private directory."
+                )
+            if not entry.is_symlink():
+                return file_path.resolve()
+            entry = entry.parent / os.readlink(entry)
+        raise ConfigurationError(f"{file_path}: too many levels of symbolic links")
 
     @staticmethod
     def _is_safe_path(candidate: Path, allowed_bases: list[Path]) -> bool:

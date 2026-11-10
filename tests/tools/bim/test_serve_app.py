@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import signal
+import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -322,6 +324,32 @@ class TestRemoteTokenHandoff:
         assert len(written) == 1
         assert not written[0].parent.exists()
         assert str(written[0]) in capture.get().replace("\n", "")
+
+    @pytest.mark.skipif(not hasattr(signal, "SIGHUP"), reason="POSIX signals only")
+    @pytest.mark.parametrize("signame", ["SIGTERM", "SIGHUP"])
+    def test_token_directory_removed_when_uvicorn_reraises_stop_signal(self, tmp_path: Path, signame: str) -> None:
+        from bim.params.serve import ServeParams
+
+        signum = getattr(signal, signame)
+        previous = signal.getsignal(signum)
+        token_dirs = []
+
+        def run_server(app, **kwargs):
+            token_dirs.extend(Path(tempfile.gettempdir()).glob("bim-serve-*"))
+            # uvicorn restores the prior handler, then re-raises the captured signal.
+            signal.raise_signal(signum)
+
+        params = ServeParams(default_directory=str(tmp_path), host="0.0.0.0", no_browser=True)
+        with (
+            patch.object(tempfile, "tempdir", str(tmp_path)),
+            patch("uvicorn.run", side_effect=run_server),
+            pytest.raises(SystemExit),
+        ):
+            CommandServe(params).execute()
+
+        assert len(token_dirs) == 1
+        assert not token_dirs[0].exists()
+        assert signal.getsignal(signum) == previous
 
 
 class TestServeBrowserStartup:

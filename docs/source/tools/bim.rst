@@ -276,7 +276,7 @@ Query zettels with a YAML filter/sort/output spec.
     }'
 
     # load saved query from file
-    bim query -f my-query
+    bim query -Q my-query
 
     # list saved queries
     bim query -l
@@ -289,13 +289,13 @@ Query zettels with a YAML filter/sort/output spec.
 
 Options:
 
-- ``-f, --file TEXT`` — query name or path to YAML spec
+- ``-Q, --query-file TEXT`` — query name or path to YAML spec
 - ``-q, --query TEXT`` — inline YAML query string
 - ``-e, --edit`` — pick result with fzf and open in nvim
 - ``--tui`` — render output in interactive TUI
 - ``-l, --list`` — list available queries
 
-Saved query names (for example, ``bim query -f my-query``) resolve to
+Saved query names (for example, ``bim query -Q my-query``) resolve to
 ``<name>.yaml`` in this search order; the first matching file wins:
 
 1. ``$BUVIS_CONFIG_DIR/queries/`` (if set)

@@ -44,7 +44,9 @@ class TestFindConfigFiles:
         assert merged == {"enabled": True}
         warnings = [record.getMessage() for record in caplog.records if str(twin) in record.getMessage()]
         assert len(warnings) == 1
-        assert str(tmp_path / ".local/.config/buvis/buvis-sysup.yaml") in warnings[0]
+        # Shared twins migrate to the shared file; following the advice must not break a tool.
+        destination = name.replace(".local.yaml", ".yaml")
+        assert f"move its values to {tmp_path / '.local/.config/buvis' / destination}" in warnings[0]
         assert "ignored" in warnings[0]
 
     def test_no_files_returns_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

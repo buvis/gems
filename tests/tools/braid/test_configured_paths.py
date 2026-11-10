@@ -91,6 +91,22 @@ class TestMalformedConfiguredPaths:
         assert snapshot(tmp_path) == before
 
 
+@pytest.mark.parametrize(
+    "field",
+    ["sources", "policies", "claude_root", "agents_root"],
+)
+def test_unknown_user_in_flag_or_root_is_a_clean_exit_2(request_with_skill: ComposeRequest, field: str) -> None:
+    # --source/--policy/--claude-root and YAML roots bypass the configured-entry guard.
+    entry = Path("~nosuchuser_agoge/x")
+    value = (entry,) if field in {"sources", "policies"} else entry
+
+    result = CommandCompose(replace(request_with_skill, **{field: value})).execute()
+
+    assert not result.success
+    assert result.metadata["exit_code"] == 2
+    assert repr(str(entry)) in result.error
+
+
 @pytest.fixture(params=["missing", "directory", "fifo", "device"])
 def non_file_policy(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     path = tmp_path / "[red]policy"

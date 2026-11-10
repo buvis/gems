@@ -575,12 +575,14 @@ Security Considerations
 Configuration Directory Permissions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On POSIX systems, the YAML loader checks the immediate parent of the resolved
-configuration file before reading its contents, including paths reached through
-directory or file symlinks. A world-writable parent is rejected unless it has
-the sticky bit and **both** the directory and the file are owned by root (UID 0)
-or the process's effective user. The sticky bit alone is insufficient: another
-directory owner or file owner can still replace the configuration.
+On POSIX systems, the YAML loader checks, before reading any content, the
+directory holding the configuration file and, when that file is a symlink, the
+directory holding every link in the chain up to the real file. Directory
+symlinks are followed. A world-writable holding directory is rejected unless it
+has the sticky bit and **both** the directory and the entry in it are owned by
+root (UID 0) or the process's effective user. The sticky bit alone is
+insufficient: another directory owner or entry owner can still replace the
+configuration, and anyone can replace a symlink in a world-writable directory.
 
 This is a compatibility change for all discovered layers and explicit
 ``--config FILE`` selections. Rejection raises ``ConfigurationError``; the CLI
@@ -593,7 +595,7 @@ Ordinary private directories keep their existing behavior. A world-writable
 **file** in an accepted directory still produces the existing warning and is
 loaded. Non-POSIX platforms, including Windows, skip the directory check because
 Unix permission bits and ownership do not describe their access controls.
-This check does not assess ancestor directories, group permissions, ACLs, or
+This check does not assess ancestors of those directories, group permissions, ACLs, or
 protect against concurrent filesystem changes between inspection and reading.
 
 Sensitive Fields

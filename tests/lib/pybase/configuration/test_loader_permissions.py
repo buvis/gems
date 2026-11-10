@@ -43,6 +43,32 @@ class TestParentDirectoryTrust:
         assert "world-writable" in str(error.value)
         assert "chmod o-w" in str(error.value)
 
+    def test_rejects_symlink_entry_in_world_writable_dir_pointing_to_private_subdir(self, tmp_path: Path) -> None:
+        # Anyone can swap the link in a 0777 directory, whatever its target's parent.
+        drop = tmp_path / "drop"
+        private = drop / "sub"
+        private.mkdir(parents=True)
+        (private / "real.yaml").write_text("key: value\n")
+        private.chmod(0o755)
+        drop.chmod(0o777)
+        link = drop / "buvis-braid.yaml"
+        link.symlink_to("sub/real.yaml")
+
+        with pytest.raises(ConfigurationError, match="world-writable") as error:
+            ConfigurationLoader.load_yaml(link)
+
+        assert str(drop.resolve()) in str(error.value)
+
+    def test_safe_symlink_chain_into_private_directory_loads(self, tmp_path: Path) -> None:
+        target = tmp_path / "target"
+        target.mkdir()
+        (target / "real.yaml").write_text("key: value\n")
+        first = tmp_path / "first.yaml"
+        first.symlink_to(tmp_path / "second.yaml")
+        (tmp_path / "second.yaml").symlink_to("target/real.yaml")
+
+        assert ConfigurationLoader.load_yaml(first) == {"key": "value"}
+
     @pytest.mark.parametrize("mode", [0o700, 0o755, 0o770, 0o1777])
     @pytest.mark.parametrize("symlink", [False, True])
     def test_safe_directory_loads(self, tmp_path: Path, mode: int, symlink: bool) -> None:

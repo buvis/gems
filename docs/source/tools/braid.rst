@@ -241,5 +241,8 @@ Code  Meaning
 1     ``--check`` found drift
 2     a rejected option combination, or an error, printed as
       ``braid: <error>`` (bad source, duplicate skill, unreadable state,
-      a path braid refuses to replace, a filesystem error)
+      a path braid refuses to replace, a filesystem error); configuration
+      errors (YAML syntax, unknown keys, missing variables, invalid values,
+      unreadable or unsafe files) print with the offending file's path
+      instead
 ====  ================================================================

@@ -11,10 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **config**: a new machine-local config directory, `~/.local/.config/buvis`, layers between the shared `~/.config/buvis` directory and `$BUVIS_CONFIG_DIR`, so a machine-only override lives in its own untracked directory instead of a sibling file.
 
+### Changed
+
+- **BREAKING — bim serve**: non-loopback binds now authenticate every HTTP request, including note/query reads, health, events, and the browser bootstrap. Connect through an SSH tunnel with a loopback Host; arbitrary Hosts and direct LAN Host names are rejected. Sign in as `bim` using the per-process token from a private temporary file, or send `X-Buvis-Token` from API clients. Tokens are no longer printed at startup; access logging is disabled for every bind, loopback included. Browser requests and event streams reuse HTTP Basic credentials, with cross-origin mutation protection. Loopback authentication behavior is unchanged.
+- **BREAKING — config**: reject YAML before reading it when a directory that holds it, or holds any link of its symlink chain, is world-writable. On POSIX, a sticky directory is allowed only when both the directory and the entry in it are owned by root or the effective user. Remove other-user write permission from the named directory (`chmod o-w`) or move the config to a private directory. This applies to discovered and explicit files; world-writable files still warn and load when their directories are accepted. Platforms without Unix permission semantics skip the directory check.
+- **BREAKING — config**: a tool-specific config file (`buvis-<tool>.yaml` or an explicit `--config FILE`) with a key the tool does not know now stops the tool with `unknown configuration key(s): <key>` instead of silently ignoring it; misspelled directives and braid's removed `config_root` are caught too. Delete the key, or move a shared or other-tool value to `config.yaml` / `buvis.yaml`. Shared files, other tools' namespaces, and separately validated sysup/backup plan keys are unaffected.
+
 ### Removed
 
 - **BREAKING — config**: the `config.local.yaml` / `buvis.local.yaml` / `buvis-<tool>.local.yaml` sibling-twin convention is removed; these files are not loaded.
-  Migration: move their values into `~/.local/.config/buvis/buvis-<tool>.yaml` (for example `buvis-sysup.local.yaml` -> `~/.local/.config/buvis/buvis-sysup.yaml`).
+  Migration: move each file's values into the same name without `.local` under `~/.local/.config/buvis/` (for example `buvis-sysup.local.yaml` -> `~/.local/.config/buvis/buvis-sysup.yaml`, `config.local.yaml` -> `~/.local/.config/buvis/config.yaml`).
 - **braid**: `--config-root`, `BUVIS_BRAID_CONFIG_ROOT` and the `~/.config/braid` directory (`sources.d`, `.braidignore`); list sources under `sources` and extra policy files under `policies` in `~/.config/buvis/buvis-braid.yaml`, machine-only ones as `sources+:` in `~/.local/.config/buvis/buvis-braid.yaml`.
 
 ### Fixed
@@ -22,15 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **sysup**: preserve literal `[run]` and `[use:...]` kind labels in `--list` output by escaping them before console markup rendering (audit finding 13).
 - **bim docs**: document saved-query lookup and listing precedence, including `~/.local/.config/buvis/queries/` and direct file paths (audit finding 12).
 - **config docs**: describe the actual directory and filename merge order, per-key precedence, and list directives instead of claiming the first discovered file wins (audit finding 11).
-- **BREAKING — bim serve**: non-loopback binds now authenticate every HTTP request, including note/query reads, health, events, and the browser bootstrap. Connect through an SSH tunnel with a loopback Host; arbitrary Hosts and direct LAN Host names are rejected. Sign in as `bim` using the per-process token from a private temporary file, or send `X-Buvis-Token` from API clients. Tokens are no longer printed at startup; access logging is disabled. Browser requests and event streams reuse HTTP Basic credentials, with cross-origin mutation protection. Loopback authentication behavior is unchanged.
-- **BREAKING — config**: reject YAML before reading it when its resolved parent is world-writable, including through symlinks. On POSIX, a sticky directory is allowed only when both directory and file are owned by root or the effective user. Remove other-user write permission from the named directory (`chmod o-w`) or move the config to a private directory. This applies to discovered and explicit files; world-writable files still warn and load when their parent is accepted. Platforms without Unix permission semantics skip the directory check.
+- **bim serve**: remove the private token file when the server stops on SIGTERM or SIGHUP, not only on Ctrl-C.
 - **braid**: warn with the path when an explicit policy is missing or not a regular file, while continuing sync, skipping special files without reading them, and keeping absent implicit policies silent.
-- **braid**: report unknown users and embedded NUL characters in configured source or policy paths as clean exit-2 errors before changing files or links.
-- **config**: honor `extra="forbid"` before dropping unknown tool-specific YAML keys, including misspelled directives and braid's removed `config_root`; preserve shared files, other tools' namespaces, and separately validated sysup/backup plan keys.
-- **config**: explicit `--config FILE` uses the discovered-file environment substitution and list-directive pipeline (`sources+`, `policies+`, `policies-`) while remaining the exclusive file layer.
-- **config**: reject non-mapping YAML roots and report YAML, missing-variable, and settings-validation failures with their source filename at the CLI boundary; braid exits 2 for configuration errors and retains exit 1 for drift.
+- **braid**: report unknown users in source, policy and root paths (configured, `--source`, `--policy`, `--claude-root`) and embedded NUL characters in configured paths as clean exit-2 errors before changing files or links.
+- **config**: explicit `--config FILE` uses the discovered-file environment substitution and list-directive pipeline (`sources+`, `policies+`, `policies-`) while remaining the exclusive file layer, and reports YAML errors in the same one-line form.
+- **config**: reject non-mapping YAML roots and report YAML, missing-variable, settings-validation, unreadable-file, and non-UTF-8 failures with their source filename at the CLI boundary; braid exits 2 for configuration errors and retains exit 1 for drift.
 - **braid**: warn when the retired `~/.config/braid` directory or `BUVIS_BRAID_CONFIG_ROOT` is present, directing migration to `sources` and `policies` in `buvis-braid.yaml` while continuing sync.
-- **config**: warn once per run for each retired `*.local.yaml` sibling in config search directories, naming its replacement path.
+- **config**: warn once per run for each retired `*.local.yaml` sibling in config search directories, naming its replacement (the same file name without `.local` under `~/.local/.config/buvis/`).
 - **braid**: exclude the current directory from config discovery so cloned repositories cannot inject skill sources or redirect the Claude root; other tools retain their cwd layer.
 - **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
 
