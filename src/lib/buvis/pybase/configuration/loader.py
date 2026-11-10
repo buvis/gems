@@ -159,11 +159,12 @@ class ConfigurationLoader:
     """
 
     @staticmethod
-    def _get_search_paths(config_dir: str | None = None) -> list[Path]:
+    def _get_search_paths(config_dir: str | None = None, *, include_cwd: bool = True) -> list[Path]:
         """Build ordered list of config directories to search.
 
         Args:
             config_dir: Explicit config directory override (bypasses env lookup).
+            include_cwd: Whether to discover config in the working directory.
 
         Returns:
             list[Path]: Search paths from highest to lowest priority:
@@ -180,7 +181,8 @@ class ConfigurationLoader:
             ]
         else:
             paths = get_config_dirs()
-        paths.append(Path.cwd())
+        if include_cwd:
+            paths.append(Path.cwd())
         return paths
 
     @staticmethod
@@ -355,6 +357,7 @@ class ConfigurationLoader:
         *,
         config_dir: str | None = None,
         config_path: str | Path | None = None,
+        include_cwd: bool = True,
     ) -> list[Path]:
         """Find existing config files in LOW-to-HIGH priority order.
 
@@ -374,6 +377,7 @@ class ConfigurationLoader:
 
         Args:
             tool_name: Optional tool identifier for the ``buvis-{tool}.yaml`` slot.
+            include_cwd: Whether to discover config in the working directory.
             config_dir: Explicit config directory override (bypasses env lookup).
             config_path: Explicit config FILE (from ``--config``). When given and
                 readable it is EXCLUSIVE — the returned list is exactly that one
@@ -398,7 +402,7 @@ class ConfigurationLoader:
             except OSError:
                 logger.debug("Cannot stat explicit config path: %s", explicit)
 
-        paths = ConfigurationLoader._get_search_paths(config_dir)
+        paths = ConfigurationLoader._get_search_paths(config_dir, include_cwd=include_cwd)
         stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
 
         # dir_rank: 0 = highest-priority dir (paths[0]); stem_rank: 0 = lowest stem.

@@ -177,13 +177,17 @@ class ConfigResolver:
         tool_name: str | None,
         config_dir: str | None,
         config_path: Path | None,
+        *,
+        include_cwd: bool = True,
     ) -> dict[str, Any]:
         """Load YAML config from explicit path or discovered files."""
         if config_dir is not None:
             logger.debug("Using config_dir override: %s", config_dir)
         if config_path is not None:
             return _load_yaml_config(config_path)
-        discovered_files = self.loader.find_config_files_ranked(tool_name, config_dir=config_dir)
+        discovered_files = self.loader.find_config_files_ranked(
+            tool_name, config_dir=config_dir, include_cwd=include_cwd
+        )
         loaded_configs = [self.loader.load_yaml(path) for path in discovered_files]
         return self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
 
@@ -241,7 +245,9 @@ class ConfigResolver:
         env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
         tool_name = _extract_tool_name(env_prefix)
 
-        yaml_config = self._load_yaml(tool_name, config_dir, config_path)
+        yaml_config = self._load_yaml(
+            tool_name, config_dir, config_path, include_cwd=getattr(settings_class, "config_include_cwd", True)
+        )
         logger.debug("Loaded YAML config: %s", yaml_config)
 
         try:

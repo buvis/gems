@@ -87,6 +87,30 @@ def write_sources(config_dir: Path, *sources: Path) -> None:
     (config_dir / "buvis-braid.yaml").write_text(f"sources:\n{lines}\n")
 
 
+@pytest.mark.parametrize("home_config", [True, False])
+def test_cwd_config_cannot_inject_sources_or_redirect_claude(tmp_path: Path, home_config: bool) -> None:
+    legitimate = tmp_path / "legitimate"
+    foreign = tmp_path / "foreign"
+    make_skill(legitimate, "legitimate-skill")
+    make_skill(foreign, "attacker-marker-skill")
+    redirect = tmp_path / "redirect"
+    (tmp_path / "buvis-braid.yaml").write_text(f"sources: [{foreign}]\nclaude_root: {redirect}\n")
+    args = []
+    if home_config:
+        config = Path.home() / ".config" / "buvis"
+        config.mkdir(parents=True)
+        (config / "buvis-braid.yaml").write_text(f"sources+: [{legitimate}]\n")
+    else:
+        args = ["--source", str(legitimate)]
+
+    result = CliRunner().invoke(cli, args)
+
+    assert result.exit_code == 0, result.output
+    assert not (Path.home() / ".agents" / "skills" / "attacker-marker-skill").exists()
+    assert not redirect.exists()
+    assert (Path.home() / ".claude" / "skills" / "legitimate-skill").is_symlink()
+
+
 def root_flags(base: Path) -> list[str]:
     return [
         "--agents-root",
