@@ -607,7 +607,9 @@ class TestSysupCliRefresh:
         run = mocker.patch("sysup.refresh.subprocess.run")
         result = runner.invoke(cli, ["refresh", "gh-agent"], input="\n")
         assert result.exit_code == 1
-        assert "is disabled" in result.output
+        assert "item 'gh-agent' is disabled; enable it in ~/.local/.config/buvis/buvis-sysup.yaml first" in (
+            result.output.replace("\n", "")
+        )
         run.assert_not_called()
 
     def test_refresh_runs_procedure_then_rechecks_and_clears_on_ok(self, runner, mocker) -> None:

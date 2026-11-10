@@ -140,12 +140,17 @@ class TestFindConfigFilesRanked:
 
         assert merged["k"] == "only"
 
-    def test_local_twin_overrides_shared_and_adds_keys(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A buvis-<tool>.local.yaml overrides its shared twin and adds machine keys."""
-        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
-        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
-        (tmp_path / "buvis-sysup.yaml").write_text("shared: base\noverridden: from_shared\n")
-        (tmp_path / "buvis-sysup.local.yaml").write_text("overridden: from_local\nmachine_only: present\n")
+    def test_machine_local_dir_overrides_shared_tool_key(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A buvis-<tool>.yaml under ~/.local/.config/buvis overrides the same key in
+        ~/.config/buvis/buvis-<tool>.yaml and adds a machine-only key."""
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        shared_dir = tmp_path / ".config" / "buvis"
+        local_dir = tmp_path / ".local" / ".config" / "buvis"
+        shared_dir.mkdir(parents=True)
+        local_dir.mkdir(parents=True)
+        (shared_dir / "buvis-sysup.yaml").write_text("shared: base\noverridden: from_shared\n")
+        (local_dir / "buvis-sysup.yaml").write_text("overridden: from_local\nmachine_only: present\n")
 
         ranked = ConfigurationLoader.find_config_files_ranked(tool_name="sysup")
         merged = ConfigurationLoader.merge_configs(*[ConfigurationLoader.load_yaml(p) for p in ranked])
@@ -154,38 +159,42 @@ class TestFindConfigFilesRanked:
         assert merged["overridden"] == "from_local"  # local wins
         assert merged["machine_only"] == "present"  # local adds
 
-    def test_local_twin_ordered_immediately_above_shared(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Ranked order places each .local twin directly after (above) its shared file."""
-        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
-        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
-        for name in ("config", "buvis", "buvis-sysup"):
-            (tmp_path / f"{name}.yaml").write_text("x: 1\n")
-            (tmp_path / f"{name}.local.yaml").write_text("x: 1\n")
+    def test_machine_local_dir_ranks_between_shared_and_buvis_config_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Precedence low-to-high: ~/.config/buvis < ~/.local/.config/buvis < $BUVIS_CONFIG_DIR."""
+        env_dir = tmp_path / "env"
+        env_dir.mkdir()
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(env_dir))
+        monkeypatch.setenv("HOME", str(tmp_path))
+        shared_dir = tmp_path / ".config" / "buvis"
+        local_dir = tmp_path / ".local" / ".config" / "buvis"
+        shared_dir.mkdir(parents=True)
+        local_dir.mkdir(parents=True)
+        (shared_dir / "buvis.yaml").write_text("k: shared\n")
+        (local_dir / "buvis.yaml").write_text("k: local\n")
+        (env_dir / "buvis.yaml").write_text("k: env\n")
 
-        ranked = ConfigurationLoader.find_config_files_ranked(tool_name="sysup")
-
-        names = [p.name for p in ranked]
-        assert names == [
-            "config.yaml",
-            "config.local.yaml",
-            "buvis.yaml",
-            "buvis.local.yaml",
-            "buvis-sysup.yaml",
-            "buvis-sysup.local.yaml",
-        ]
-
-    def test_no_local_file_is_backward_compatible(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """With no .local.yaml present, resolution is unchanged (additive-only)."""
-        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
-        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
-        (tmp_path / "buvis.yaml").write_text("k: base\n")
-        (tmp_path / "buvis-sysup.yaml").write_text("k: tool\n")
-
-        ranked = ConfigurationLoader.find_config_files_ranked(tool_name="sysup")
+        ranked = ConfigurationLoader.find_config_files_ranked()
         merged = ConfigurationLoader.merge_configs(*[ConfigurationLoader.load_yaml(p) for p in ranked])
 
-        assert [p.name for p in ranked] == ["buvis.yaml", "buvis-sysup.yaml"]
-        assert merged["k"] == "tool"
+        assert ranked == [
+            (shared_dir / "buvis.yaml").resolve(),
+            (local_dir / "buvis.yaml").resolve(),
+            (env_dir / "buvis.yaml").resolve(),
+        ]
+        assert merged["k"] == "env"
+
+    def test_sibling_local_twin_is_ignored(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A buvis-<tool>.local.yaml sibling to its shared file is no longer a config source."""
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        (tmp_path / "buvis-sysup.yaml").write_text("k: shared\n")
+        (tmp_path / "buvis-sysup.local.yaml").write_text("k: local\n")
+
+        ranked = ConfigurationLoader.find_config_files_ranked(tool_name="sysup")
+
+        assert [p.name for p in ranked] == ["buvis-sysup.yaml"]
 
 
 class TestIsSafePath:
@@ -430,19 +439,21 @@ class TestGetSearchPaths:
 
         paths = ConfigurationLoader._get_search_paths()
 
-        assert len(paths) == 3
+        assert len(paths) == 4
         assert paths[0] == Path("/custom/config")
-        assert paths[1] == Path.home() / ".config" / "buvis"
-        assert paths[2] == Path.cwd()
+        assert paths[1] == Path.home() / ".local" / ".config" / "buvis"
+        assert paths[2] == Path.home() / ".config" / "buvis"
+        assert paths[3] == Path.cwd()
 
     def test_without_buvis_config_dir(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
 
         paths = ConfigurationLoader._get_search_paths()
 
-        assert len(paths) == 2
-        assert paths[0] == Path.home() / ".config" / "buvis"
-        assert paths[1] == Path.cwd()
+        assert len(paths) == 3
+        assert paths[0] == Path.home() / ".local" / ".config" / "buvis"
+        assert paths[1] == Path.home() / ".config" / "buvis"
+        assert paths[2] == Path.cwd()
 
     def test_cwd_always_last(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", "/override")
@@ -463,9 +474,7 @@ class TestGetCandidateFiles:
 
         assert result == [
             Path("/cfg/config.yaml"),
-            Path("/cfg/config.local.yaml"),
             Path("/cfg/buvis.yaml"),
-            Path("/cfg/buvis.local.yaml"),
         ]
 
     def test_multiple_paths_no_tool(self) -> None:
@@ -475,13 +484,9 @@ class TestGetCandidateFiles:
 
         assert result == [
             Path("/a/config.yaml"),
-            Path("/a/config.local.yaml"),
             Path("/a/buvis.yaml"),
-            Path("/a/buvis.local.yaml"),
             Path("/b/config.yaml"),
-            Path("/b/config.local.yaml"),
             Path("/b/buvis.yaml"),
-            Path("/b/buvis.local.yaml"),
         ]
 
     def test_single_path_with_tool(self) -> None:
@@ -489,31 +494,22 @@ class TestGetCandidateFiles:
 
         assert result == [
             Path("/cfg/config.yaml"),
-            Path("/cfg/config.local.yaml"),
             Path("/cfg/buvis.yaml"),
-            Path("/cfg/buvis.local.yaml"),
             Path("/cfg/buvis-payroll.yaml"),
-            Path("/cfg/buvis-payroll.local.yaml"),
         ]
 
-    def test_multiple_paths_with_tool_maintains_interleaved_order(self) -> None:
+    def test_multiple_paths_with_tool_maintains_order(self) -> None:
         paths = [Path("/a"), Path("/b")]
 
         result = ConfigurationLoader._get_candidate_files(paths, "myapp")
 
         expected = [
             Path("/a/config.yaml"),
-            Path("/a/config.local.yaml"),
             Path("/a/buvis.yaml"),
-            Path("/a/buvis.local.yaml"),
             Path("/a/buvis-myapp.yaml"),
-            Path("/a/buvis-myapp.local.yaml"),
             Path("/b/config.yaml"),
-            Path("/b/config.local.yaml"),
             Path("/b/buvis.yaml"),
-            Path("/b/buvis.local.yaml"),
             Path("/b/buvis-myapp.yaml"),
-            Path("/b/buvis-myapp.local.yaml"),
         ]
         assert result == expected
 
@@ -522,9 +518,7 @@ class TestGetCandidateFiles:
 
         assert result == [
             Path("/cfg/config.yaml"),
-            Path("/cfg/config.local.yaml"),
             Path("/cfg/buvis.yaml"),
-            Path("/cfg/buvis.local.yaml"),
         ]
 
 
@@ -735,6 +729,33 @@ class TestFindConfigFilesLogging:
 
         assert result == []
         assert "Permission denied" in caplog.text
+
+    def test_machine_local_symlink_outside_search_paths_is_skipped(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A symlink under ~/.local/.config/buvis pointing outside every search path is
+        skipped and logged as unsafe, same as a symlink in the shared dir."""
+        import logging
+
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        local_dir = tmp_path / ".local" / ".config" / "buvis"
+        local_dir.mkdir(parents=True)
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        target = outside / "secret.yaml"
+        target.write_text("key: value\n")
+        link = local_dir / "buvis.yaml"
+        link.symlink_to(target)
+
+        with caplog.at_level(logging.WARNING):
+            result = ConfigurationLoader.find_config_files()
+
+        assert result == []
+        assert "unsafe" in caplog.text.lower()
 
     def test_explicit_config_path_is_exclusive(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """An explicit config_path is the SOLE layer; discovery is skipped (PRD 00084, review #181)."""
