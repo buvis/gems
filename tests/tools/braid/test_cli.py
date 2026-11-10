@@ -111,6 +111,36 @@ def test_cwd_config_cannot_inject_sources_or_redirect_claude(tmp_path: Path, hom
     assert (Path.home() / ".claude" / "skills" / "legitimate-skill").is_symlink()
 
 
+@pytest.mark.parametrize("trigger", ["directory", "env", "empty-env"])
+def test_legacy_config_warns_without_changing_links(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    trigger: str,
+) -> None:
+    source = tmp_path / "source"
+    make_skill(source, "a")
+    make_skill(source, "secret")
+    foreign = tmp_path / "foreign"
+    make_skill(foreign, "legacy-only")
+    legacy = Path.home() / ".config" / "braid" if trigger == "directory" else tmp_path / "legacy"
+    (legacy / "sources.d").mkdir(parents=True)
+    (legacy / "sources.d" / "extra").write_text(f"{foreign}\n")
+    (legacy / ".braidignore").write_text("secret\n")
+    if trigger != "directory":
+        monkeypatch.setenv("BUVIS_BRAID_CONFIG_ROOT", "" if trigger == "empty-env" else str(legacy))
+
+    result = CliRunner().invoke(cli, ["--source", str(source)])
+
+    assert result.exit_code == 0, result.output
+    assert (Path.home() / ".claude" / "skills" / "secret").is_symlink()
+    assert (Path.home() / ".claude" / "skills" / "a").is_symlink()
+    assert not (Path.home() / ".agents" / "skills" / "legacy-only").exists()
+    assert ("~/.config/braid" if trigger == "directory" else "BUVIS_BRAID_CONFIG_ROOT") in result.output
+    assert "sources" in result.output
+    assert "policies" in result.output
+    assert "buvis-braid.yaml" in result.output
+
+
 def root_flags(base: Path) -> list[str]:
     return [
         "--agents-root",

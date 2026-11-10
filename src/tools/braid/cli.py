@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import click
@@ -87,6 +88,16 @@ def cli(
         console.failure("--no-kiro cannot be combined with Kiro enrollment options")
         ctx.exit(2)
     settings = get_settings(ctx, BraidSettings)
+    legacy = []
+    if (Path.home() / ".config" / "braid").exists():
+        legacy.append("~/.config/braid")
+    if "BUVIS_BRAID_CONFIG_ROOT" in os.environ:
+        legacy.append("BUVIS_BRAID_CONFIG_ROOT")
+    if legacy:
+        console.warning(
+            f"{', '.join(legacy)} is ignored; migrate sources.d entries to sources and "
+            ".braidignore paths to policies in ~/.config/buvis/buvis-braid.yaml."
+        )
 
     from braid.commands.compose.compose import CommandCompose
     from braid.domain.engine import ComposeRequest, Mode

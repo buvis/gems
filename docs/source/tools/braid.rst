@@ -208,6 +208,20 @@ Flag                          Env name                      Default
 ``--kiro-root``               ``BUVIS_BRAID_KIRO_ROOT``     unset (``~/.kiro``)
 ============================  ============================  ======================
 
+Moving from ~/.config/braid
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+braid warns about but no longer reads ``~/.config/braid`` or
+``BUVIS_BRAID_CONFIG_ROOT``; sync still runs. Move the paths from ``sources.d``
+into ``sources`` in ``~/.config/buvis/buvis-braid.yaml`` and list your old
+``.braidignore`` file under ``policies`` to keep its exclusions active.
+Relative ``sources.d`` entries are no longer accepted: convert them to absolute
+paths or paths beginning with ``~``. Put machine-only sources and policies in
+``~/.local/.config/buvis/buvis-braid.yaml`` using ``sources+:`` and ``policies+:``.
+If the old directory contains your policy file, move that file and update
+``policies`` first. After migrating, remove the old directory and unset
+``BUVIS_BRAID_CONFIG_ROOT``.
+
 Moving from agent-skills
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
