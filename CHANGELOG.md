@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **config**: honor `extra="forbid"` before dropping unknown tool-specific YAML keys, including misspelled directives and braid's removed `config_root`; preserve shared files, other tools' namespaces, and separately validated sysup/backup plan keys.
 - **config**: explicit `--config FILE` uses the discovered-file environment substitution and list-directive pipeline (`sources+`, `policies+`, `policies-`) while remaining the exclusive file layer.
 - **config**: reject non-mapping YAML roots and report YAML, missing-variable, and settings-validation failures with their source filename at the CLI boundary; braid exits 2 for configuration errors and retains exit 1 for drift.
 - **braid**: warn when the retired `~/.config/braid` directory or `BUVIS_BRAID_CONFIG_ROOT` is present, directing migration to `sources` and `policies` in `buvis-braid.yaml` while continuing sync.

@@ -209,6 +209,7 @@ class ConfigResolver:
         config_path: Path | None,
         *,
         include_cwd: bool = True,
+        known_keys: set[str] | None = None,
     ) -> dict[str, Any]:
         """Load YAML config from explicit path or discovered files."""
         if config_dir is not None:
@@ -223,6 +224,13 @@ class ConfigResolver:
         for path in discovered_files:
             try:
                 layer = _load_yaml_config(path) if config_path is not None else self.loader.load_yaml(path)
+                # Shared files carry global keys and other tools' namespaces.
+                # Tool-specific (including explicit custom) files must respect
+                # extra="forbid" before projection discards their unknown keys.
+                if known_keys is not None and path.name not in {"config.yaml", "buvis.yaml"}:
+                    unknown = [key for key in layer if _split_directive(key)[0] not in known_keys]
+                    if unknown:
+                        raise ConfigurationError(f"unknown configuration key(s): {', '.join(sorted(unknown))}")
                 merged = self.loader.merge_configs(merged, layer)
             except yaml.YAMLError as exc:
                 mark = getattr(exc, "problem_mark", None)
@@ -290,8 +298,17 @@ class ConfigResolver:
         env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
         tool_name = _extract_tool_name(env_prefix)
 
+        known_keys = None
+        if tool_name is not None and settings_class.model_config.get("extra") == "forbid":
+            # Some tools validate their plan separately from runtime settings.
+            # The tool owns that key set; the library must not import its schema.
+            known_keys = set(settings_class.model_fields) | set(getattr(settings_class, "config_deferred_keys", ()))
         yaml_config = self._load_yaml(
-            tool_name, config_dir, config_path, include_cwd=getattr(settings_class, "config_include_cwd", True)
+            tool_name,
+            config_dir,
+            config_path,
+            include_cwd=getattr(settings_class, "config_include_cwd", True),
+            known_keys=known_keys,
         )
         logger.debug("Loaded YAML config: %s", yaml_config)
 
