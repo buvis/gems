@@ -567,6 +567,30 @@ For non-Click applications or custom resolution:
 Security Considerations
 -----------------------
 
+Configuration Directory Permissions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On POSIX systems, the YAML loader checks the immediate parent of the resolved
+configuration file before reading its contents, including paths reached through
+directory or file symlinks. A world-writable parent is rejected unless it has
+the sticky bit and **both** the directory and the file are owned by root (UID 0)
+or the process's effective user. The sticky bit alone is insufficient: another
+directory owner or file owner can still replace the configuration.
+
+This is a compatibility change for all discovered layers and explicit
+``--config FILE`` selections. Rejection raises ``ConfigurationError``; the CLI
+reports the unsafe path and exits without applying the file (braid exits 2).
+Remove other-user write permission from the named directory with ``chmod o-w``
+or move the configuration into a private directory. The loader never changes
+permissions itself.
+
+Ordinary private directories keep their existing behavior. A world-writable
+**file** in an accepted directory still produces the existing warning and is
+loaded. Non-POSIX platforms, including Windows, skip the directory check because
+Unix permission bits and ownership do not describe their access controls.
+This check does not assess ancestor directories, group permissions, ACLs, or
+protect against concurrent filesystem changes between inspection and reading.
+
 Sensitive Fields
 ~~~~~~~~~~~~~~~~
 

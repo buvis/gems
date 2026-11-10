@@ -235,6 +235,37 @@ class ConfigurationLoader:
             return False
 
     @staticmethod
+    def _validate_parent_directory(file_path: Path) -> Path:
+        """Resolve the file and reject a parent permitting untrusted replacement.
+
+        On POSIX, sticky directories protect existing entries only when both
+        owners (directory and file) are trusted: root or the effective user.
+        Other platforms lack these Unix permission semantics; leave their
+        access control to the OS. This checks the immediate resolved parent,
+        not ancestor permissions, ACLs, or concurrent filesystem changes.
+        """
+        if os.name != "posix":
+            return file_path
+        resolved = file_path.resolve()
+        parent = resolved.parent
+        directory_stat = parent.stat()
+        if not directory_stat.st_mode & stat.S_IWOTH:
+            return resolved
+        trusted_owners = {0, os.geteuid()}
+        if (
+            directory_stat.st_mode & stat.S_ISVTX
+            and directory_stat.st_uid in trusted_owners
+            and resolved.stat().st_uid in trusted_owners
+        ):
+            return resolved
+        raise ConfigurationError(
+            f"{file_path}: unsafe world-writable config directory {parent}; "
+            "sticky protection requires both directory and file owners to be root or the effective user. "
+            "Remove other-user write permission from this directory (chmod o-w), "
+            "or move the config to a private directory."
+        )
+
+    @staticmethod
     def _is_safe_path(candidate: Path, allowed_bases: list[Path]) -> bool:
         """Reject symlinks pointing outside expected directories.
 
@@ -320,14 +351,16 @@ class ConfigurationLoader:
             Parsed YAML content as dict. Empty files return {}.
 
         Raises:
+            ConfigurationError: If the resolved parent permits untrusted replacement.
             MissingEnvVarError: If required environment variables are missing.
             FileNotFoundError: If file doesn't exist.
             yaml.YAMLError: If YAML syntax is invalid. Check problem_mark for line/col.
         """
-        if ConfigurationLoader._is_world_writable(file_path):
+        resolved = ConfigurationLoader._validate_parent_directory(file_path)
+        if ConfigurationLoader._is_world_writable(resolved):
             logger.warning("Config file %s is world-writable", file_path)
 
-        content = file_path.read_text(encoding="utf-8")
+        content = resolved.read_text(encoding="utf-8")
 
         # Escape $${VAR} -> placeholder (preserves literal syntax)
         content = ConfigurationLoader._escape_literals(content)

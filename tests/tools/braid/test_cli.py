@@ -87,6 +87,36 @@ def write_sources(config_dir: Path, *sources: Path) -> None:
     (config_dir / "buvis-braid.yaml").write_text(f"sources:\n{lines}\n")
 
 
+@pytest.mark.skipif(os.name != "posix", reason="Requires Unix directory permissions")
+@pytest.mark.parametrize("symlink", [False, True])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_unsafe_config_directory_cannot_inject_skills(tmp_path: Path, symlink: bool, explicit: bool) -> None:
+    foreign = tmp_path / "foreign"
+    make_skill(foreign, "attacker-marker-skill")
+    config_dir = Path.home() / ".local" / ".config" / "buvis"
+    config_dir.parent.mkdir(parents=True)
+    if symlink:
+        target = tmp_path / "drop"
+        target.mkdir()
+        config_dir.symlink_to(target, target_is_directory=True)
+    else:
+        config_dir.mkdir()
+    write_sources(config_dir, foreign)
+    config = config_dir / "buvis-braid.yaml"
+    config.chmod(0o644)
+    config_dir.chmod(0o777)
+
+    result = CliRunner().invoke(cli, ["--config", str(config)] if explicit else [])
+
+    assert result.exit_code == 2, result.output
+    assert "world-writable" in result.output
+    assert str(config_dir.resolve()) in result.output.replace("\n", "")
+    assert "chmod o-w" in result.output
+    assert "Traceback" not in result.output
+    assert not (Path.home() / ".agents").exists()
+    assert not (Path.home() / ".claude").exists()
+
+
 @pytest.mark.parametrize("home_config", [True, False])
 def test_cwd_config_cannot_inject_sources_or_redirect_claude(tmp_path: Path, home_config: bool) -> None:
     legitimate = tmp_path / "legitimate"
