@@ -27,24 +27,22 @@ def roots(tmp_path: Path, source: Path) -> list[str]:
         str(tmp_path / "home" / ".agents"),
         "--claude-root",
         str(tmp_path / "home" / ".claude"),
-        "--config-root",
-        str(tmp_path / "empty-config"),
         "--source",
         str(source),
     ]
 
 
 def configured_roots(tmp_path: Path, *sources: Path) -> list[str]:
-    sources_d = tmp_path / "config" / "sources.d"
-    sources_d.mkdir(parents=True)
-    (sources_d / "list").write_text("".join(f"{source}\n" for source in sources))
+    """Root flags for a run whose sources come only from buvis-braid.yaml in BUVIS_CONFIG_DIR."""
+    config_dir = Path(os.environ["BUVIS_CONFIG_DIR"])
+    config_dir.mkdir(parents=True, exist_ok=True)
+    lines = "\n".join(f"  - {source}" for source in sources)
+    (config_dir / "buvis-braid.yaml").write_text(f"sources:\n{lines}\n")
     return [
         "--agents-root",
         str(tmp_path / "home" / ".agents"),
         "--claude-root",
         str(tmp_path / "home" / ".claude"),
-        "--config-root",
-        str(tmp_path / "config"),
     ]
 
 
@@ -241,12 +239,11 @@ def test_check_exits_0_when_generated_files_are_untouched(tmp_path: Path) -> Non
 
 
 def compose_request(tmp_path: Path, source: Path, mode: Mode = Mode.SYNC) -> ComposeRequest:
-    config_root = tmp_path / "config"
-    config_root.mkdir(exist_ok=True)
     return ComposeRequest(
         agents_root=tmp_path / "home" / ".agents",
         claude_root=tmp_path / "home" / ".claude",
-        config_root=config_root,
+        configured_sources=(),
+        configured_policies=(),
         sources=(source,),
         mode=mode,
     )
