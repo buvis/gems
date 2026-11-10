@@ -39,12 +39,6 @@ from braid.settings import BraidSettings
     default=None,
     help="override the ~/.claude root, ahead of BUVIS_BRAID_CLAUDE_ROOT",
 )
-@click.option(
-    "--config-root",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="override the ~/.config/braid directory holding sources.d, ahead of BUVIS_BRAID_CONFIG_ROOT",
-)
 @click.option("--no-claude", is_flag=True, help="skip projecting skills and rules into the Claude root")
 @click.option("--kiro", is_flag=True, help="enroll Kiro once; later runs remember it")
 @click.option(
@@ -79,7 +73,6 @@ def cli(
     policies: tuple[Path, ...],
     agents_root: Path | None,
     claude_root: Path | None,
-    config_root: Path | None,
     no_claude: bool,
     kiro: bool,
     kiro_root: Path | None,
@@ -101,7 +94,8 @@ def cli(
     request = ComposeRequest(
         agents_root=agents_root or settings.agents_root,
         claude_root=claude_root or settings.claude_root,
-        config_root=config_root or settings.config_root,
+        configured_sources=settings.sources,
+        configured_policies=settings.policies,
         sources=sources,
         policies=policies,
         mode=Mode.CHECK if check else Mode.DRY_RUN if dry_run else Mode.SYNC,

@@ -18,7 +18,8 @@ class BraidSettings(GlobalSettings):
 
     agents_root: Path = Path("~/.agents")
     claude_root: Path = Path("~/.claude")
-    config_root: Path = Path("~/.config/braid")
+    sources: tuple[Path, ...] = ()
+    policies: tuple[Path, ...] = ()
     kiro_root: Path | None = None
 
     @field_validator("kiro_root", mode="before")
