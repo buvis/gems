@@ -936,3 +936,29 @@
 {"id":"ee96ccf0","ended_at":1794229941,"elapsed_s":345,"outcome":"ok","detail":null}
 {"id":"653411a0","ended_at":1794229942,"elapsed_s":342,"outcome":"ok","detail":null}
 {"id":"6b831412","ended_at":1794230169,"elapsed_s":577,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"resume","at":1794310061,"phase":"build","prd":"00122-config-machine-local-layer-v1.md"}
+{"id":"9287c317","kind":"fast-track:tess","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794310217,"prompt_bytes":328839}
+{"id":"9287c317","ended_at":1794310652,"elapsed_s":435,"outcome":"ok","detail":null}
+{"id":"3af896dd","kind":"fast-track:ivan","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794310667,"prompt_bytes":105652}
+{"id":"3af896dd","ended_at":1794310990,"elapsed_s":323,"outcome":"ok","detail":null}
+{"id":"68182a16","kind":"fast-track:fanout","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311392,"prompt_bytes":6259}
+{"id":"92885d1e","kind":"fast-track:blake","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311396,"prompt_bytes":13203}
+{"id":"a1c7e06f","kind":"fast-track:eve","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311400,"prompt_bytes":4581}
+{"id":"73470194","kind":"fast-track:bob","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311404,"prompt_bytes":9448}
+{"id":"53394025","kind":"fast-track:carl","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311408,"prompt_bytes":6615}
+{"id":"68182a16","ended_at":1794311433,"elapsed_s":41,"outcome":"error","detail":"skipped: using autopilot:alice subagent directly to conserve orchestration budget for this card"}
+{"id":"254add65","kind":"fast-track:alice","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311438,"prompt_bytes":6259}
+{"id":"73470194","ended_at":1794311587,"elapsed_s":183,"outcome":"ok","detail":null}
+{"id":"92885d1e","ended_at":1794311590,"elapsed_s":194,"outcome":"ok","detail":null}
+{"id":"254add65","ended_at":1794311700,"elapsed_s":262,"outcome":"ok","detail":null}
+{"id":"53394025","ended_at":1794311799,"elapsed_s":391,"outcome":"ok","detail":null}
+{"id":"9a627d98","kind":"fast-track:bob","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311813,"prompt_bytes":9448}
+{"id":"9a627d98","ended_at":1794311873,"elapsed_s":60,"outcome":"error","detail":"codex sandbox_apply failed twice (environment bug), retry budget exhausted"}
+{"id":"24598bb8","kind":"fast-track:victor","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311906,"prompt_bytes":3272}
+{"id":"24598bb8","ended_at":1794311929,"elapsed_s":23,"outcome":"ok","detail":null}
+{"id":"a1c7e06f","ended_at":1794312135,"elapsed_s":735,"outcome":"ok","detail":null}
+{"id":"76594303","kind":"fast-track:ivan","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794312240,"prompt_bytes":23216}
+{"id":"76594303","ended_at":1794312364,"elapsed_s":124,"outcome":"ok","detail":null}
+{"id":"747371f2","kind":"fast-track:delta","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794312422,"prompt_bytes":6144}
+{"id":"747371f2","ended_at":1794312825,"elapsed_s":403,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1794313049,"phase":"done","prd":"00122-config-machine-local-layer-v1.md"}
