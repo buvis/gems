@@ -962,3 +962,5 @@
 {"id":"747371f2","kind":"fast-track:delta","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794312422,"prompt_bytes":6144}
 {"id":"747371f2","ended_at":1794312825,"elapsed_s":403,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"leave","at":1794313049,"phase":"done","prd":"00122-config-machine-local-layer-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1794313073,"phase":"done","prd":"00122-config-machine-local-layer-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794313152,"phase":"build","prd":"00122-config-machine-local-layer-v1.md"}

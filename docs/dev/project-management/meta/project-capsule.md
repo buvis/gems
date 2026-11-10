@@ -27,6 +27,9 @@ Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
 
 ## Active Work
 
+### Batch 202611101200 (feat/config-local-layer-braid worktree, `~/git/src/worktrees/gems/feat-config-local-layer-braid`)
+- [x] 00122-config-machine-local-layer-v1.md (1 cycle, fast-track lane): dropped `local.yaml` sibling twins for a `~/.local/.config/buvis` machine-local config layer, per `~/.claude/AGENTS.md`'s "machine-local config never sits loose beside tracked config" rule.
+
 ### feature/improve-bim-from-skill-experience
 - PRD 00118 has committed local-time identity, collision-safe allocation, and shared scripted command/body/source/dry-run behavior. Original tasks 1–2 are complete; task 3 has passing tests but lacks Pat review because its assembled review exceeded the 50 KB dispatch cap. CLI scripting flags, failure exits and documentation remain unfinished.
 - Replan attempt 1 has a hard 75,000-token per-task budget. A file-boundary split still leaves the required CHANGELOG.md task at 81,132 tokens under the installed full-file estimator (80,696 before any requirement or plan text). The canonical oversized_task stall parks 00118; see autopilot/reports/00118-replan-1-budget.md and its JSON evidence. No implementation or completion review ran in this replan session.
