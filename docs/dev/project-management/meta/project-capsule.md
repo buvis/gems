@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
+Generated: 2026-11-10 (catchup: feat/config-local-layer-braid)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -29,6 +29,7 @@ Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
 
 ### Batch 202611101200 (feat/config-local-layer-braid worktree, `~/git/src/worktrees/gems/feat-config-local-layer-braid`)
 - [x] 00122-config-machine-local-layer-v1.md (1 cycle, fast-track lane): dropped `local.yaml` sibling twins for a `~/.local/.config/buvis` machine-local config layer, per `~/.claude/AGENTS.md`'s "machine-local config never sits loose beside tracked config" rule.
+- [ ] 00123-braid-config-in-buvis-yaml-v1.md (in progress, design: skip, lane: full): braid drops `~/.config/braid/sources.d` and `--config-root`/`BUVIS_BRAID_CONFIG_ROOT` for `sources`/`policies` lists in `buvis-braid.yaml`, read through the shared loader so 00122's machine-local layer composes them via `sources+:`. Depends on 00122 (done). Source: gems#272; sibling issue #273 (config loader machine-local read path) is a separate PRD, not in scope here.
 
 ### feature/improve-bim-from-skill-experience
 - PRD 00118 has committed local-time identity, collision-safe allocation, and shared scripted command/body/source/dry-run behavior. Original tasks 1–2 are complete; task 3 has passing tests but lacks Pat review because its assembled review exceeded the 50 KB dispatch cap. CLI scripting flags, failure exits and documentation remain unfinished.

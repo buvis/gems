@@ -964,3 +964,13 @@
 {"kind":"handoff","site":"build","edge":"leave","at":1794313049,"phase":"done","prd":"00122-config-machine-local-layer-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1794313073,"phase":"done","prd":"00122-config-machine-local-layer-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1794313152,"phase":"build","prd":"00122-config-machine-local-layer-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794313161,"phase":"build","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"id":"385ad62d","kind":"tess","task":"1","queued_at":1794313468,"prompt_bytes":56129}
+{"id":"93937e34","kind":"tess","task":"1","queued_at":1794313475,"prompt_bytes":54226}
+{"id":"f360c319","kind":"tess","task":"1","queued_at":1794313491,"prompt_bytes":41590}
+{"id":"793828bc","kind":"tess","task":"3","queued_at":1794313997,"prompt_bytes":48626}
+{"id":"385ad62d","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"93937e34","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"f360c319","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"793828bc","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794314747,"phase":"review","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
