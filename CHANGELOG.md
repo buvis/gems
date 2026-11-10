@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **config**: the `config.local.yaml` / `buvis.local.yaml` / `buvis-<tool>.local.yaml` sibling-twin convention is removed, with no deprecation period. Move any such file's content to the matching file under `~/.local/.config/buvis/` (for example `buvis-sysup.local.yaml` -> `~/.local/.config/buvis/buvis-sysup.yaml`).
+- **braid**: `--config-root`, `BUVIS_BRAID_CONFIG_ROOT` and the `~/.config/braid` directory (`sources.d`, `.braidignore`); list sources under `sources` and extra policy files under `policies` in `~/.config/buvis/buvis-braid.yaml`, machine-only ones as `sources+:` in `~/.local/.config/buvis/buvis-braid.yaml`.
 
 ### Fixed
 
