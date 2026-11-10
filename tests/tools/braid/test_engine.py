@@ -12,19 +12,20 @@ import pytest
 from braid.domain import engine
 from braid.domain.engine import (
     BraidError,
+    ComposeRequest,
     KiroAgentEdit,
     KiroRegistration,
     Mode,
     Result,
     Settings,
     create_directory_link,
-    read_configured_sources,
+    resolve_settings,
     run,
     select_kiro,
     sync_kiro_agent,
 )
 
-from tests.tools.braid.helpers import enroll, kiro_root, make_skill, read_state, settings, write_agent
+from tests.tools.braid.helpers import enroll, kiro_root, make_skill, read_state, settings, write_agent, write_policy
 
 
 def test_sync_composes_union_and_projects_only_eligible_skills(tmp_path: Path) -> None:
@@ -283,22 +284,119 @@ def test_windows_link_error_other_than_privilege_is_not_retried_as_a_junction(
     assert calls == []
 
 
-def test_configured_sources_support_comments_home_and_relative_paths(
+def compose_request(tmp_path: Path, **changes: object) -> ComposeRequest:
+    return ComposeRequest(
+        agents_root=tmp_path / "home" / ".agents",
+        claude_root=tmp_path / "home" / ".claude",
+        **changes,
+    )
+
+
+def resolved(paths: tuple[Path, ...]) -> list[Path]:
+    return [Path(path).resolve() for path in paths]
+
+
+def test_configured_sources_expand_home_and_come_before_cli_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    home = tmp_path / "home"
-    config_root = home / ".config" / "agent-skills"
-    source_list = config_root / "sources.d" / "work"
-    source_list.parent.mkdir(parents=True)
-    source_list.write_text("# private source\n~/work-skills\n../../shared-skills\n")
-    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
-
-    sources = read_configured_sources(config_root)
-
-    assert sources == (
-        (home / "work-skills").resolve(),
-        (source_list.parent / "../../shared-skills").resolve(),
+    home = tmp_path / "work-home"
+    monkeypatch.setenv("HOME", str(home))
+    work = home / "work-skills"
+    near_miss = home / "work-skills-old"
+    shared = tmp_path / "shared"
+    cli_source = tmp_path / "cli"
+    for source in (work, near_miss, shared, cli_source):
+        make_skill(source, source.name)
+    request = compose_request(
+        tmp_path,
+        configured_sources=(Path("~/work-skills"), shared),
+        sources=(cli_source, work, near_miss, shared),
     )
+
+    config = resolve_settings(request)
+
+    assert resolved(config.sources) == resolved((work, shared, cli_source, near_miss))
+
+
+def test_without_configured_sources_the_cli_sources_are_used_in_order(tmp_path: Path) -> None:
+    second = tmp_path / "second"
+    first = tmp_path / "first"
+    make_skill(second, "two")
+    make_skill(first, "one")
+
+    config = resolve_settings(compose_request(tmp_path, sources=(second, first)))
+
+    assert resolved(config.sources) == resolved((second, first))
+
+
+def test_no_sources_is_refused_without_reading_the_old_sources_d(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    legacy = tmp_path / "legacy"
+    make_skill(legacy, "legacy")
+    for root in (tmp_path / "home" / ".config" / "braid", tmp_path / "old-config"):
+        (root / "sources.d").mkdir(parents=True)
+        (root / "sources.d" / "work").write_text(f"{legacy}\n")
+    monkeypatch.setenv("BUVIS_BRAID_CONFIG_ROOT", str(tmp_path / "old-config"))
+
+    with pytest.raises(BraidError) as raised:
+        resolve_settings(compose_request(tmp_path))
+
+    assert str(raised.value) == (
+        "no skill sources configured; add a path to sources in ~/.config/buvis/buvis-braid.yaml or pass --source"
+    )
+
+
+@pytest.mark.parametrize("entry", ["relative-skills", "nested/skills"])
+def test_relative_configured_source_is_refused(tmp_path: Path, entry: str) -> None:
+    valid = tmp_path / "valid"
+    make_skill(valid, "valid")
+    make_skill(tmp_path / entry, "relative")
+    request = compose_request(tmp_path, configured_sources=(valid, Path(entry)), sources=(valid,))
+
+    with pytest.raises(BraidError) as raised:
+        resolve_settings(request)
+
+    assert str(raised.value) == f"sources entry must be absolute or start with ~: {Path(entry)}"
+
+
+@pytest.mark.parametrize("entry", ["policies/.braidignore", ".braidignore"])
+def test_relative_configured_policy_is_refused(tmp_path: Path, entry: str) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    valid = write_policy(tmp_path / "valid-policy", "portable")
+    write_policy((tmp_path / entry).parent, "portable")
+    request = compose_request(tmp_path, sources=(source,), configured_policies=(valid, Path(entry)))
+
+    with pytest.raises(BraidError) as raised:
+        resolve_settings(request)
+
+    assert str(raised.value) == f"policies entry must be absolute or start with ~: {Path(entry)}"
+
+
+def test_configured_policy_keeps_the_skill_out_of_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "policy-home"
+    monkeypatch.setenv("HOME", str(home))
+    source = tmp_path / "personal"
+    for name in ("secret", "secrets", "portable"):
+        make_skill(source, name)
+    agents_policy = write_policy(tmp_path / "home" / ".agents", "agents-only")
+    source_policy = write_policy(source, "source-only")
+    configured = write_policy(home / "policies", "secret")
+    cli_policy = write_policy(tmp_path / "cli-policy", "cli-only")
+    request = compose_request(
+        tmp_path,
+        sources=(source,),
+        configured_policies=(Path("~/policies/.braidignore"), Path("~/missing/.braidignore")),
+        policies=(cli_policy,),
+    )
+
+    config = resolve_settings(request)
+    run(config)
+
+    assert resolved(config.policy_files) == resolved((agents_policy, source_policy, configured, cli_policy))
+    assert sorted(path.name for path in (config.claude_root / "skills").iterdir()) == ["portable", "secrets"]
+    assert (config.agents_root / "skills" / "secret").is_symlink()
 
 
 def test_a_symlinked_skill_directory_outside_the_source_is_not_inventoried(

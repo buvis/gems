@@ -97,12 +97,11 @@ def test_layout_refuses_rules_and_hosts_that_are_files_not_directories(tmp_path:
 
 
 def policy_files_for(tmp_path: Path, source: Path) -> tuple[Path, ...]:
-    config_root = tmp_path / "config"
-    config_root.mkdir(exist_ok=True)
     request = engine.ComposeRequest(
         agents_root=tmp_path / "home" / ".agents",
         claude_root=tmp_path / "home" / ".claude",
-        config_root=config_root,
+        configured_sources=(),
+        configured_policies=(),
         sources=(source,),
     )
     return tuple(engine.resolve_settings(request).policy_files)
