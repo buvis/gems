@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **braid**: warn when the retired `~/.config/braid` directory or `BUVIS_BRAID_CONFIG_ROOT` is present, directing migration to `sources` and `policies` in `buvis-braid.yaml` while continuing sync.
 - **config**: warn once per run for each retired `*.local.yaml` sibling in config search directories, naming its replacement (the same file name without `.local` under `~/.local/.config/buvis/`).
 - **braid**: exclude the current directory from config discovery so cloned repositories cannot inject skill sources or redirect the Claude root; other tools retain their cwd layer.
+- **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
 - **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
 
 ## [0.20.0] - 2026-11-10

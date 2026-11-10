@@ -63,14 +63,16 @@ class TestMergeMacMetadata:
         apple_double.write_bytes(FIXTURE)
 
         with patch(SETXATTR) as mock_setxattr:
-            merge_mac_metadata(tmp_path)
+            result = merge_mac_metadata(tmp_path)
 
         written = {call.args[1]: call.args[2] for call in mock_setxattr.call_args_list}
         assert written == FIXTURE_ATTRS
         assert {call.args[0] for call in mock_setxattr.call_args_list} == {data_file}
         assert not apple_double.exists()
+        assert result.info == [f"Merged metadata from {apple_double} to {data_file}"]
+        assert result.warnings == []
 
-    def test_non_apple_double_file_is_kept(self, tmp_path: Path) -> None:
+    def test_non_apple_double_file_is_kept(self, tmp_path: Path, caplog) -> None:
         """A ._ file that is not AppleDouble is not written into the data file."""
         data_file = tmp_path / "photo.jpg"
         data_file.write_bytes(b"\xff\xd8\xff")
@@ -78,10 +80,13 @@ class TestMergeMacMetadata:
         apple_double.write_bytes(b"resource fork data")
 
         with patch(SETXATTR) as mock_setxattr:
-            merge_mac_metadata(tmp_path)
+            result = merge_mac_metadata(tmp_path)
 
         mock_setxattr.assert_not_called()
         assert apple_double.exists()
+        assert result.info == []
+        assert result.warnings == [f"Kept {apple_double}: not an AppleDouble file"]
+        assert caplog.records == []
 
     def test_oserror_on_setxattr_keeps_apple_double(self, tmp_path: Path) -> None:
         data_file = tmp_path / "photo.jpg"
@@ -90,10 +95,12 @@ class TestMergeMacMetadata:
         apple_double.write_bytes(FIXTURE)
 
         with patch(SETXATTR, side_effect=OSError("xattr failed")):
-            merge_mac_metadata(tmp_path)
+            result = merge_mac_metadata(tmp_path)
 
         assert apple_double.exists()
         assert data_file.exists()
+        assert result.info == []
+        assert result.warnings == [f"Kept {apple_double}: xattr failed"]
 
     def test_oserror_on_unlink_orphan_is_caught(self, tmp_path: Path) -> None:
         """OSError during orphan ._ file deletion is caught."""
@@ -108,7 +115,10 @@ class TestMergeMacMetadata:
             return original_unlink(self, *args, **kwargs)
 
         with patch.object(Path, "unlink", mock_unlink):
-            merge_mac_metadata(tmp_path)
+            result = merge_mac_metadata(tmp_path)
+
+        assert result.warnings == [f"Kept {apple_double}: busy"]
+        assert result.info == []
 
     def test_skips_non_file_apple_double(self, tmp_path: Path) -> None:
         """Directories named ._ are not processed."""

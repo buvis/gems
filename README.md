@@ -168,6 +168,12 @@ it onto that commit to get the edit back, then delete the patch. `dot status`
 and the TUI status bar warn while a patch is pending. Edited secrets are
 saved encrypted; see `docs/source/tools/dot.rst` for recovery.
 
+### muc tidy reporting
+
+`muc tidy ~/music/album/` reports every completed cleanup action and warns when
+an operation fails. Recoverable failures do not stop the remaining cleanup or
+change the exit status (0).
+
 ### bim create from scripts
 
 `bim create` is built for agents and scripts: `--json` prints one object with
