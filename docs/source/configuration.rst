@@ -313,15 +313,18 @@ YAML Configuration
 File Locations
 ~~~~~~~~~~~~~~
 
-Config files are discovered in order (first found wins):
+Discovered config files are merged in this order, from lowest to highest priority:
 
-1. ``$BUVIS_CONFIG_DIR/buvis.yaml`` (if env var set)
-2. ``~/.local/.config/buvis/buvis.yaml`` (machine-local overrides)
-3. ``~/.config/buvis/buvis.yaml`` (default)
-4. ``./buvis.yaml`` (current directory)
+1. Current directory (except braid, which excludes it)
+2. ``~/.config/buvis/`` (shared config)
+3. ``~/.local/.config/buvis/`` (machine-local overrides)
+4. ``$BUVIS_CONFIG_DIR/`` (if set; ``--config-dir`` overrides this directory)
 
-For tool-specific config, files named ``buvis-{tool}.yaml`` are also checked,
-including under ``~/.local/.config/buvis/`` for machine-local overrides.
+Within each directory, files merge in the order ``config.yaml``, ``buvis.yaml``,
+then ``buvis-{tool}.yaml``. Later values win per key; nested mappings merge
+recursively, and plain list values replace earlier lists. See
+:ref:`config-list-merge-directives` to append or remove list entries.
+An explicit ``--config FILE`` uses only that file instead of discovered files.
 
 File Format
 ~~~~~~~~~~~
@@ -365,6 +368,8 @@ Substitution is applied automatically by ``ConfigResolver`` when it loads YAML:
 
     resolver = ConfigResolver()
     settings = resolver.resolve(PhotoSettings)
+
+.. _config-list-merge-directives:
 
 List Merge Directives (``key+`` / ``key-``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
