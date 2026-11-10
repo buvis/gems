@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- **config**: the `config.local.yaml` / `buvis.local.yaml` / `buvis-<tool>.local.yaml` sibling-twin convention is removed, with no deprecation period. Move any such file's content to the matching file under `~/.local/.config/buvis/` (for example `buvis-sysup.local.yaml` -> `~/.local/.config/buvis/buvis-sysup.yaml`).
+- **BREAKING — config**: the `config.local.yaml` / `buvis.local.yaml` / `buvis-<tool>.local.yaml` sibling-twin convention is removed; these files are not loaded.
+  Migration: move their values into `~/.local/.config/buvis/buvis-<tool>.yaml` (for example `buvis-sysup.local.yaml` -> `~/.local/.config/buvis/buvis-sysup.yaml`).
 - **braid**: `--config-root`, `BUVIS_BRAID_CONFIG_ROOT` and the `~/.config/braid` directory (`sources.d`, `.braidignore`); list sources under `sources` and extra policy files under `policies` in `~/.config/buvis/buvis-braid.yaml`, machine-only ones as `sources+:` in `~/.local/.config/buvis/buvis-braid.yaml`.
 
 ### Fixed
 
+- **config**: warn once per run for each retired `*.local.yaml` sibling in config search directories, naming its replacement path.
 - **braid**: exclude the current directory from config discovery so cloned repositories cannot inject skill sources or redirect the Claude root; other tools retain their cwd layer.
 - **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
 

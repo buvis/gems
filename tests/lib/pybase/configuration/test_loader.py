@@ -14,6 +14,39 @@ from buvis.pybase.configuration.loader import (
 class TestFindConfigFiles:
     """Tests for find_config_files method."""
 
+    @pytest.mark.parametrize("name", ["config.local.yaml", "buvis.local.yaml", "buvis-sysup.local.yaml"])
+    @pytest.mark.parametrize("layer", ["cwd", ".config/buvis", ".local/.config/buvis", "override"])
+    def test_retired_twin_warns_once_without_loading(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        name: str,
+        layer: str,
+    ) -> None:
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path / "override"))
+        cwd = tmp_path / "cwd"
+        cwd.mkdir()
+        monkeypatch.chdir(cwd)
+        directory = tmp_path / layer
+        directory.mkdir(parents=True, exist_ok=True)
+        twin = directory / name
+        twin.write_text("enabled: false\n")
+        (directory / "buvis-sysup.yaml").write_text("enabled: true\n")
+
+        # Settings and commands can discover the same files during one run.
+        ConfigurationLoader.find_config_files("sysup")
+        paths = ConfigurationLoader.find_config_files_ranked("sysup")
+        ConfigurationLoader.find_config_files_ranked("sysup")
+        merged = ConfigurationLoader.merge_configs(*(ConfigurationLoader.load_yaml(path) for path in paths))
+
+        assert merged == {"enabled": True}
+        warnings = [record.getMessage() for record in caplog.records if str(twin) in record.getMessage()]
+        assert len(warnings) == 1
+        assert str(tmp_path / ".local/.config/buvis/buvis-sysup.yaml") in warnings[0]
+        assert "ignored" in warnings[0]
+
     def test_no_files_returns_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Empty directory returns empty list."""
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))

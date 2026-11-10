@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import stat
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,12 @@ logger = logging.getLogger(__name__)
 
 _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 _ESCAPE_PLACEHOLDER = "\x00ESCAPED_DOLLAR\x00"
+
+
+@cache
+def _warn_retired_twin(path: Path, destination: Path) -> None:
+    """Warn once per file and destination in this process, across loader callers."""
+    logger.warning("Retired config file %s is ignored; move its values to %s", path, destination)
 
 
 def _substitute(content: str) -> tuple[str, list[str]]:
@@ -157,6 +164,19 @@ class ConfigurationLoader:
     Provides static methods for loading configuration files with support for
     environment variable interpolation using ${VAR} or ${VAR:-default} syntax.
     """
+
+    @staticmethod
+    def _warn_retired_twins(paths: list[Path], tool_name: str | None) -> None:
+        """Report obsolete sibling overrides without loading their contents."""
+        destination_name = f"buvis-{tool_name}.yaml" if tool_name else "buvis.yaml"
+        destination = Path.home() / ".local" / ".config" / "buvis" / destination_name
+        for candidate in ConfigurationLoader._get_candidate_files(paths, tool_name):
+            twin = candidate.with_suffix(".local.yaml")
+            try:
+                if twin.is_file():
+                    _warn_retired_twin(twin.absolute(), destination)
+            except PermissionError:
+                logger.debug("Permission denied: %s", twin)
 
     @staticmethod
     def _get_search_paths(config_dir: str | None = None, *, include_cwd: bool = True) -> list[Path]:
@@ -334,6 +354,7 @@ class ConfigurationLoader:
             directories and across stems within a directory.
         """
         paths = ConfigurationLoader._get_search_paths(config_dir)
+        ConfigurationLoader._warn_retired_twins(paths, tool_name)
         candidates = ConfigurationLoader._get_candidate_files(paths, tool_name)
         result: list[Path] = []
 
@@ -403,6 +424,7 @@ class ConfigurationLoader:
                 logger.debug("Cannot stat explicit config path: %s", explicit)
 
         paths = ConfigurationLoader._get_search_paths(config_dir, include_cwd=include_cwd)
+        ConfigurationLoader._warn_retired_twins(paths, tool_name)
         stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
 
         # dir_rank: 0 = highest-priority dir (paths[0]); stem_rank: 0 = lowest stem.
