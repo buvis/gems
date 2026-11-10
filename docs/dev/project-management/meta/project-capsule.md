@@ -29,8 +29,9 @@ Generated: 2026-11-10 (catchup: feature/muc-tidy-reporting)
 
 ### feature/muc-tidy-reporting
 - Implemented intake `00121-muc-tidy-report-through-console/idea.md`: all five helpers return actions and recoverable warnings through `CommandResult`, aggregated by `DirTree` and `CommandTidy`. No logging remains in muc.
-- Decisions: show every action, continue after individual failures, keep warnings at exit status 0. CLI escapes Rich markup while programmatic results retain plain text. Case-only extension changes compare names rather than Windows case-insensitive Path equality.
+- Decisions: show every action, continue after individual failures, keep warnings at exit status 0. CLI selects literal console rendering while programmatic results retain plain text. Case-only extension changes compare names rather than Windows case-insensitive Path equality.
 - Created from master at `7cae3a37` on 2026-11-10 00:12 CET; no PR or wip PRD. Implementation verified with the muc suite, ruff and mypy.
+- Independent native Claude Sonnet 5.5 review at high effort found no blockers; follow-up fixes passed re-review with no remaining actionable findings. Evidence and deferred pre-existing risks: `reviews/muc-tidy-reporting-independent-review.md`.
 - The older BIM progress notes below are historical: PRDs 00118–00120 landed in #269, the branch's starting commit.
 
 ### feature/improve-bim-from-skill-experience

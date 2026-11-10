@@ -88,6 +88,7 @@ class TestTidyReporting:
         assert not other.exists()
 
     def test_cli_renders_actions_and_warnings_without_failing(self, runner, tmp_path, monkeypatch):
+        monkeypatch.setenv("COLUMNS", "500")
         monkeypatch.chdir(tmp_path)
         (tmp_path / "track.mp3").touch()
         (tmp_path / "[bold].txt").touch()
@@ -120,6 +121,7 @@ class TestTidyReporting:
         assert result.warnings == []
 
     def test_cli_preserves_brackets_in_filenames(self, runner, tmp_path, monkeypatch):
+        monkeypatch.setenv("COLUMNS", "500")
         monkeypatch.chdir(tmp_path)
         (tmp_path / "[bold].TXT").touch()
 
@@ -128,6 +130,17 @@ class TestTidyReporting:
         assert result.exit_code == 0
         assert "[bold].TXT" in result.output
         assert "[bold].txt" in result.output
+
+    def test_cli_preserves_emoji_codes_in_messages(self, runner, tmp_path, monkeypatch):
+        monkeypatch.setenv("COLUMNS", "500")
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "track.mp3").touch()
+        with patch.object(Path, "rename", autospec=True, side_effect=OSError(":heart:")):
+            (tmp_path / "track.MP2").touch()
+            result = runner.invoke(cli, ["tidy", "-y", "."])
+
+        assert result.exit_code == 0
+        assert ":heart:" in result.output
 
     def test_normalization_warnings_reach_command_result(self, tmp_path):
         track = tmp_path / "track.MP2"

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
-from rich.markup import escape
 
 from muc.settings import MucSettings
 
@@ -85,16 +83,7 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
         directory=path_directory,
         junk_extensions=settings.tidy_junk_extensions,
     )
-    result = cmd.execute()
-    console.report_result(
-        replace(
-            result,
-            output=escape(result.output) if result.output else None,
-            error=escape(result.error) if result.error else None,
-            info=[escape(message) for message in result.info],
-            warnings=[escape(message) for message in result.warnings],
-        )
-    )
+    console.report_result(cmd.execute(), literal=True)
 
 
 @cli.command("cover", help="Keep only the newest cover image per directory")

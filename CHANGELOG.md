@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
-
 - **CI**: run development tooling tests, fail the final gate when path detection fails, handle docs-only changes, and explicitly run the full suite for reusable workflow calls. Tool jobs no longer wait for the library matrix.
 - **bim**: keep create/edit Markdown stable: omit empty backmatter separators, end notes with one newline, and preserve body text without adding hard-break spaces, including inside Excalidraw code fences.
 

@@ -259,7 +259,7 @@ class ConsoleAdapter:
 
         return self.console.print(columns)
 
-    def report_result(
+    def report_result(  # noqa: PLR0913  # Keep existing callbacks and message overrides compatible.
         self: ConsoleAdapter,
         result: CommandResult,
         *,
@@ -267,6 +267,7 @@ class ConsoleAdapter:
         failure_msg: str = "Failed",
         on_success: Callable[[CommandResult], None] | None = None,
         on_failure: Callable[[CommandResult], None] | None = None,
+        literal: bool = False,
     ) -> None:
         """Print warnings then success/failure from a CommandResult.
 
@@ -276,20 +277,29 @@ class ConsoleAdapter:
             failure_msg: Fallback message on failure (default: "Failed").
             on_success: Custom handler called instead of default success output.
             on_failure: Custom handler called instead of default failure output.
+            literal: Preserve markup and emoji codes in standard messages.
+                Custom callbacks still receive the original result.
         """
+
+        def emit(message: str, reporter: Callable[[str], None], marker: str, style: str) -> None:
+            if literal:
+                self.render(Text.from_markup(f" {marker} ").append(message, style=style))
+            else:
+                reporter(message)
+
         for i in result.info:
-            self.success(i)
+            emit(i, self.success, CHECKMARK, STYLE_SUCCESS_MSG)
         for w in result.warnings:
-            self.warning(w)
+            emit(w, self.warning, WARNING, STYLE_WARNING_MSG)
         if result.success:
             if on_success is not None:
                 on_success(result)
             elif success_msg or result.output:
-                self.success(success_msg or result.output or "")
+                emit(success_msg or result.output or "", self.success, CHECKMARK, STYLE_SUCCESS_MSG)
         elif on_failure is not None:
             on_failure(result)
         else:
-            self.failure(result.error or failure_msg)
+            emit(result.error or failure_msg, self.failure, CROSSMARK, STYLE_FAILURE_MSG)
 
     def require_import(self: ConsoleAdapter, extra: str, tool_name: str | None = None) -> None:
         """Panic with a standardized install hint for a missing optional extra.

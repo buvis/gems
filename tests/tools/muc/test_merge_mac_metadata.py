@@ -115,7 +115,10 @@ class TestMergeMacMetadata:
             return original_unlink(self, *args, **kwargs)
 
         with patch.object(Path, "unlink", mock_unlink):
-            merge_mac_metadata(tmp_path)
+            result = merge_mac_metadata(tmp_path)
+
+        assert result.warnings == [f"Kept {apple_double}: busy"]
+        assert result.info == []
 
     def test_skips_non_file_apple_double(self, tmp_path: Path) -> None:
         """Directories named ._ are not processed."""

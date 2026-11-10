@@ -43,5 +43,6 @@ is invisible.
   verbosity flag or summary mode.
 - Recoverable failures remain warnings and do not change exit status 0.
   Catch individual filesystem errors so remaining items and cleanup stages run.
-- Keep result messages as plain text for programmatic callers; escape Rich
-  markup only in the CLI so bracketed filenames display literally.
+- Keep result messages as plain text for programmatic callers. The CLI selects
+  `console.report_result(..., literal=True)` so markup and emoji codes in
+  filenames display literally.
