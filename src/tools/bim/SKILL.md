@@ -81,8 +81,8 @@ interactive TUI. Prefer `--json`: it prints one object with `id`, `type`,
 into other notes), and on failure `{"error": "<reason>"}` with exit 1. Run
 with `--dry-run` first to see the rendered note in `content` without writing
 anything. A failed create normally writes nothing. A filesystem failure while
-inspecting a reserved filename can leave an empty file; inspect the destination
-before retrying. An error starting with `note saved at` means the note exists,
+inspecting a reserved filename can leave an empty file; ask the user before you
+inspect the destination or retry. An error starting with `note saved at` means the note exists,
 so do not retry. When the
 JSON has `errors`, the note exists but a follow-up step (moving the source to
 `.trash/`) failed.
@@ -142,7 +142,8 @@ Bundled templates and their answers:
 - `illustrated-note`, `problem-resolution-report`: no answers.
 
 A contact or book whose slug already exists fails with `Zettel already
-exists`; open the existing note instead of retrying with another title. A
+exists`; tell the user the note exists (open it only if they approve)
+instead of retrying with another title. A
 YAML file in `~/.config/buvis/templates/` with the same `name` overrides a
 bundled template.
 
