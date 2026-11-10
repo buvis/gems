@@ -93,7 +93,7 @@ All 16 CLIs (`backup`, `bim`, `braid`, `dot`, `fctracker`, `fren`, `morph`, `muc
 |------|---------|
 | backup | Config-driven tar archiver (git-src backup) |
 | bim | BUVIS InfoMesh (zettel integration) |
-| braid | Agent skill and rule composer (sources.d to `~/.agents`, Claude Code and Kiro, plus generated Codex, Copilot, Pi and Gemini instruction files) |
+| braid | Agent skill and rule composer (sources in buvis-braid.yaml to `~/.agents`, Claude Code and Kiro, plus generated Codex, Copilot, Pi and Gemini instruction files) |
 | dot | Dotfiles manager, with host-specific config links via a `host-links` manifest |
 | fctracker | Foreign currency account tracker |
 | fren | File renamer toolkit |
@@ -197,8 +197,8 @@ consumes that list and moves each zettel into its per-issuer subfolder
 
 ### braid
 
-`braid` links every skill from the repos listed in
-`~/.config/braid/sources.d` into `~/.agents/skills`, then projects them into
+`braid` links every skill from the repos listed under
+`sources` in `buvis-braid.yaml` into `~/.agents/skills`, then projects them into
 `~/.claude/skills` and, once enrolled with `--kiro`, into `~/.kiro/skills`.
 It also links always-on rules (`rules/` and `hosts/<host>/rules/`) into Claude
 Code and Kiro, and writes one generated instruction file each for Codex,

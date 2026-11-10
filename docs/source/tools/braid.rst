@@ -3,8 +3,8 @@
 braid
 =====
 
-Agent skill composer. ``braid`` reads the skill repos listed in
-``~/.config/braid/sources.d``, links every skill into the ``~/.agents/skills``
+Agent skill composer. ``braid`` reads the skill repos listed under
+``sources`` in ``~/.config/buvis/buvis-braid.yaml``, links every skill into the ``~/.agents/skills``
 union, and projects that union into Claude Code (``~/.claude/skills``) and,
 once enrolled, Kiro (``~/.kiro/skills``). It also composes always-on rules
 into Claude Code, Kiro and generated Codex, Copilot, Pi and Gemini instruction
@@ -22,7 +22,7 @@ Usage
     braid --source ~/git/src/my-skills  # add a source for this run (repeatable)
     braid --policy ./extra.braidignore  # load one more .braidignore (repeatable)
     braid --no-claude                   # skip the Claude projection
-    braid --agents-root DIR --claude-root DIR --config-root DIR   # override roots
+    braid --agents-root DIR --claude-root DIR   # override roots
 
 ``--dry-run`` and ``--check`` cannot be combined. A sync prints one line per
 change (``LINK[symlink]``, ``LINK[junction]`` or ``LINK[hardlink]``,
@@ -42,23 +42,26 @@ as drift.
 Sources
 -------
 
-Each file in ``~/.config/braid/sources.d`` (dot files are skipped) lists one
-path per line. Text after ``#`` is a comment and blank lines are ignored. A
-leading ``~`` expands to the home directory, and a relative path resolves
-against the ``sources.d`` directory.
+``sources`` in ``~/.config/buvis/buvis-braid.yaml`` lists one path per entry.
+Each entry must be absolute or start with ``~`` (which expands to the home
+directory); a relative entry stops the run with an error.
 
-.. code-block:: text
+.. code-block:: yaml
 
-    # ~/.config/braid/sources.d/repos
-    ~/git/src/github.com/buvis/agent-skills
-    ../../../git/src/github.com/me/private-skills   # relative to sources.d
+    # ~/.config/buvis/buvis-braid.yaml
+    sources:
+      - ~/git/src/github.com/buvis/agent-skills
+
+A machine-only source goes in ``~/.local/.config/buvis/buvis-braid.yaml`` as
+``sources+: [~/work/skills]`` and is appended to the shared list by the
+config loader's list directives - no braid code handles the merge.
 
 A source is a repo root that holds any of ``skills/``, ``rules/`` and
 ``hosts/``, or a ``skills/`` directory itself (which adds skills only). Each
 subdirectory of ``skills/`` with a ``SKILL.md`` is a skill; its name
 must match the directory. Two sources that ship the same skill name stop the
-run with an error. With no source in ``sources.d`` and no ``--source``, braid
-stops and names the ``sources.d`` path to fill.
+run with an error. With no source configured and no ``--source``, braid
+stops and names ``sources`` in ``~/.config/buvis/buvis-braid.yaml`` to fill.
 
 ``.braidignore``
 ----------------
@@ -69,8 +72,8 @@ projection, one per line, with ``#`` comments. Ignored skills stay in the
 that exists from these places:
 
 - ``<agents_root>/.braidignore``
-- ``<config_root>/.braidignore``
 - each source's repo root (the directory that holds ``skills/``)
+- each path in ``policies`` in ``buvis-braid.yaml``
 - each ``--policy`` file
 
 The same names also drop rules. Unlike skills, an ignored rule leaves every
@@ -202,7 +205,6 @@ Flag                          Env name                      Default
 ============================  ============================  ======================
 ``--agents-root``             ``BUVIS_BRAID_AGENTS_ROOT``   ``~/.agents``
 ``--claude-root``             ``BUVIS_BRAID_CLAUDE_ROOT``   ``~/.claude``
-``--config-root``             ``BUVIS_BRAID_CONFIG_ROOT``   ``~/.config/braid``
 ``--kiro-root``               ``BUVIS_BRAID_KIRO_ROOT``     unset (``~/.kiro``)
 ============================  ============================  ======================
 
@@ -210,9 +212,10 @@ Moving from agent-skills
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 braid no longer reads the old ``AGENTS_ROOT``, ``CLAUDE_ROOT``, ``KIRO_ROOT``
-and ``AGENT_SKILLS_CONFIG`` env names or ``~/.config/agent-skills``. Move
-``sources.d`` to ``~/.config/braid/sources.d`` and rename any env names you
-set to the ``BUVIS_BRAID_`` names above.
+and ``AGENT_SKILLS_CONFIG`` env names or ``~/.config/agent-skills``. Put the
+paths from ``sources.d`` under ``sources`` in
+``~/.config/buvis/buvis-braid.yaml`` and rename any env names you set to the
+``BUVIS_BRAID_`` names above.
 
 Exit codes
 ----------
