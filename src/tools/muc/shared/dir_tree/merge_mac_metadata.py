@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import ctypes
-import logging
 import os
 import struct
 import sys
 from pathlib import Path
 
-from .safe_rglob import safe_rglob
+from buvis.pybase.result import CommandResult
 
-logger = logging.getLogger(__name__)
+from .safe_rglob import safe_rglob
 
 # AppleDouble layout (RFC 1740 plus Apple's packed-xattr extension used by copyfile).
 _MAGIC = 0x00051607
@@ -99,7 +98,7 @@ def _setxattr(path: Path, name: str, value: bytes) -> None:
     os.setxattr(path, name, value)
 
 
-def merge_mac_metadata(directory: Path) -> None:
+def merge_mac_metadata(directory: Path) -> CommandResult:
     """Clean Mac metadata by merging extended attributes and removing ._ files.
 
     Mimics the behavior of 'dot_clean -mn':
@@ -111,26 +110,24 @@ def merge_mac_metadata(directory: Path) -> None:
 
     Args:
         directory: Path to the directory to process.
+
+    Returns:
+        Completed actions and warnings for metadata files that were kept.
     """
+    result = CommandResult(success=True)
     for apple_double in safe_rglob(directory, "._*"):
-        if apple_double.is_file():
-            data_file = apple_double.with_name(apple_double.name[2:])
-            if os.name != "nt" and data_file.exists():
-                try:
+        try:
+            if apple_double.is_file():
+                data_file = apple_double.with_name(apple_double.name[2:])
+                if os.name != "nt" and data_file.exists():
                     for name, value in parse_apple_double(apple_double.read_bytes()):
                         _setxattr(data_file, name, value)
                     apple_double.unlink()
-                    logger.info(
-                        "Merged metadata from %s to %s",
-                        apple_double,
-                        data_file,
-                    )
-                except (OSError, ValueError) as exc:
-                    logger.warning("Kept %s: %s", apple_double, exc)
-            else:
-                # If there's no corresponding data file, just remove the ._ file
-                try:
+                    result.info.append(f"Merged metadata from {apple_double} to {data_file}")
+                else:
+                    # Preserve the existing orphan/Windows cleanup policy.
                     apple_double.unlink()
-                    logger.info("Deleted %s", apple_double)
-                except OSError:
-                    pass
+                    result.info.append(f"Deleted {apple_double}")
+        except (OSError, ValueError) as exc:
+            result.warnings.append(f"Kept {apple_double}: {exc}")
+    return result

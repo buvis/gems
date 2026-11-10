@@ -212,6 +212,19 @@ class TestLoggingToConsole:
 
 
 class TestReportResult:
+    @pytest.mark.parametrize("success", [True, False])
+    @pytest.mark.parametrize("message", [r"C:\music\[bold]\:heart:.mp3", "path\\", "path\\\\"])
+    def test_literal_messages_preserve_markup_and_emoji_codes(self, capsys, console_adapter, success, message):
+        result = CommandResult(success=success, info=[message], warnings=[message], output=message, error=message)
+
+        console_adapter.report_result(result, literal=True)
+
+        output = capsys.readouterr().out
+        assert output.count(message) == 3
+        assert "✔" in output
+        assert "⚠" in output
+        assert result.info == [message]
+
     def test_success_with_output(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
         result = CommandResult(success=True, output="Created note")
         console_adapter.report_result(result)

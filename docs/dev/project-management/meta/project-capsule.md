@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
+Generated: 2026-11-10 (catchup: feature/muc-tidy-reporting)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -27,6 +27,13 @@ Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
 
 ## Active Work
 
+### feature/muc-tidy-reporting
+- Implemented intake `00121-muc-tidy-report-through-console/idea.md`: all five helpers return actions and recoverable warnings through `CommandResult`, aggregated by `DirTree` and `CommandTidy`. No logging remains in muc.
+- Decisions: show every action, continue after individual failures, keep warnings at exit status 0. CLI selects literal console rendering while programmatic results retain plain text. Case-only extension changes compare names rather than Windows case-insensitive Path equality.
+- Created from master at `7cae3a37` on 2026-11-10 00:12 CET; no PR or wip PRD. Implementation verified with the muc suite, ruff and mypy.
+- Independent native Claude Sonnet 5.5 review at high effort found no blockers; follow-up fixes passed re-review with no remaining actionable findings. Evidence and deferred pre-existing risks: `reviews/muc-tidy-reporting-independent-review.md`.
+- The older BIM progress notes below are historical: PRDs 00118–00120 landed in #269, the branch's starting commit.
+
 ### feature/improve-bim-from-skill-experience
 - PRD 00118 has committed local-time identity, collision-safe allocation, and shared scripted command/body/source/dry-run behavior. Original tasks 1–2 are complete; task 3 has passing tests but lacks Pat review because its assembled review exceeded the 50 KB dispatch cap. CLI scripting flags, failure exits and documentation remain unfinished.
 - Replan attempt 1 has a hard 75,000-token per-task budget. A file-boundary split still leaves the required CHANGELOG.md task at 81,132 tokens under the installed full-file estimator (80,696 before any requirement or plan text). The canonical oversized_task stall parks 00118; see autopilot/reports/00118-replan-1-budget.md and its JSON evidence. No implementation or completion review ran in this replan session.
@@ -47,6 +54,8 @@ Generated: 2026-11-09 (catchup: feature/improve-bim-from-skill-experience)
 Observations: Batch drained; all four tasks completed, including the cycle-2 Tail sweep. Both provider rosters and the original and companion implementation audits passed the host evidence gate. Final isolated suite: 6654 passed, 16 skipped, 1 xfailed; backup ruff and mypy passed. Earlier host-dependent test isolation failures remain in the deferred ledger. Evidence: `autopilot/reports/202611040755-report.md` and `autopilot/reports/00117-tail-sweep-work.md`.
 
 ## Related context
+
+2026-11-10: topic `muc tidy reporting`. Repo indexing/query and review harvest could not resolve this unregistered worktree. Portfolio hit: `gems/src/tools/muc/cli.py:60-86` — 0.0164, the existing tidy renderer. Other returned hits were unrelated. Portfolio status reported stale/dead rows (exit 1), including code stale=34/dead=133; results are not a fresh repo index. Task restore returned `no_project_data`.
 
 2026-11-09: engram review harvest, indexing and related queries skipped per catchup probe; engram unavailable/unregistered. Topic: "improve bim from skill experience — bim create: scripting contract for agents". No query or portfolio staleness stamp was obtained. Source rationale is the 2026-11-08 create-note comparison recorded in PRD 00118; no discovery document was created.
 
