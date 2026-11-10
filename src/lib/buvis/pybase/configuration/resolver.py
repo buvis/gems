@@ -39,7 +39,7 @@ from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsError
 
 from .exceptions import ConfigurationError, MissingEnvVarError
-from .loader import ConfigurationLoader, _parse_yaml_mapping, _split_directive
+from .loader import ConfigurationLoader, _split_directive
 from .validators import is_sensitive_field
 
 __all__ = ["ConfigResolver", "ConfigSource"]
@@ -80,7 +80,7 @@ def _load_yaml_config(file_path: Path | None = None) -> dict[str, Any]:
         return {}
 
     try:
-        return _parse_yaml_mapping(file_path.read_text(encoding="utf-8"), file_path)
+        return ConfigurationLoader.load_yaml(file_path)
     except yaml.YAMLError as e:
         mark = getattr(e, "problem_mark", None)
         line_num = mark.line + 1 if mark else "unknown"
@@ -223,7 +223,7 @@ class ConfigResolver:
         for path in discovered_files:
             try:
                 layer = _load_yaml_config(path) if config_path is not None else self.loader.load_yaml(path)
-                merged = layer if config_path is not None else self.loader.merge_configs(merged, layer)
+                merged = self.loader.merge_configs(merged, layer)
             except yaml.YAMLError as exc:
                 mark = getattr(exc, "problem_mark", None)
                 location = f"{path}:{mark.line + 1}" if mark else str(path)
