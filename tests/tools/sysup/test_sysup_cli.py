@@ -121,6 +121,23 @@ class TestSysupCliRun:
 
 
 class TestSysupCliList:
+    @pytest.mark.parametrize(
+        ("command", "label"),
+        [({"steps": [["echo", "probe"]]}, "[run]"), ({"use": "pip-outdated"}, "[use:pip-outdated]")],
+    )
+    def test_list_preserves_literal_kind_labels(
+        self, runner: CliRunner, tmp_path: Path, command: dict[str, object], label: str
+    ) -> None:
+        import yaml
+
+        config = tmp_path / "buvis-sysup.yaml"
+        config.write_text(yaml.safe_dump({"commands": {"kind_probe": {"order": 4, **command}}}))
+
+        result = runner.invoke(cli, ["--config", str(config), "--list", "--only", "kind_probe"])
+
+        assert result.exit_code == 0, result.output
+        assert f"4  kind_probe  {label}" in result.output
+
     def test_list_prints_plan_and_runs_nothing(self, runner) -> None:
         cfg = _cfg({"brew": {"order": 10, "when": {"os": "darwin", "check": "brew"}, "steps": [["brew"]]}})
         plan = [("brew", cfg.commands["brew"])]

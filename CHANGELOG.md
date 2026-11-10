@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **sysup**: preserve literal `[run]` and `[use:...]` kind labels in `--list` output by escaping them before console markup rendering (audit finding 13).
 - **bim docs**: document saved-query lookup and listing precedence, including `~/.local/.config/buvis/queries/` and direct file paths (audit finding 12).
 - **config docs**: describe the actual directory and filename merge order, per-key precedence, and list directives instead of claiming the first discovered file wins (audit finding 11).
 - **BREAKING — bim serve**: non-loopback binds now authenticate every HTTP request, including note/query reads, health, events, and the browser bootstrap. Connect through an SSH tunnel with a loopback Host; arbitrary Hosts and direct LAN Host names are rejected. Sign in as `bim` using the per-process token from a private temporary file, or send `X-Buvis-Token` from API clients. Tokens are no longer printed at startup; access logging is disabled. Browser requests and event streams reuse HTTP Basic credentials, with cross-origin mutation protection. Loopback authentication behavior is unchanged.
