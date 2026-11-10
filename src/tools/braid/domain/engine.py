@@ -560,10 +560,14 @@ def _deduplicate(paths: Iterable[Path]) -> tuple[Path, ...]:
 def _expand_configured(key: str, entries: Iterable[Path]) -> tuple[Path, ...]:
     expanded: list[Path] = []
     for entry in entries:
-        path = _expand_user(entry)
+        try:
+            path = _expand_user(entry)
+            resolved = path.resolve()
+        except (RuntimeError, ValueError) as error:
+            raise BraidError(f"invalid {key} entry {str(entry)!r}: {error}") from error
         if not path.is_absolute():
             raise BraidError(f"{key} entry must be absolute or start with ~: {entry}")
-        expanded.append(path)
+        expanded.append(resolved)
     return tuple(expanded)
 
 
