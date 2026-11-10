@@ -78,7 +78,8 @@ Configuration
 -------------
 
 Instances live in ``buvis-backup.yaml`` in the buvis config stack
-(``$BUVIS_CONFIG_DIR`` → ``~/.config/buvis`` → cwd), deep-merged over a bundled
+(``$BUVIS_CONFIG_DIR`` → ``~/.local/.config/buvis`` → ``~/.config/buvis`` → cwd),
+deep-merged over a bundled
 default. Instances are a **name-keyed map**, so a machine layer adds an instance
 under a new key and overrides a field of an existing instance by that key.
 

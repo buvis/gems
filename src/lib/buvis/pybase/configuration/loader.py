@@ -238,7 +238,7 @@ class ConfigurationLoader:
             priority within a location): config.yaml, buvis.yaml,
             buvis-{tool}.yaml. Machine-local overrides come from a separate
             search directory (``~/.local/.config/buvis``, see
-            :func:`get_config_dirs`), not from a sibling ``*.local.yaml`` file.
+            :func:`get_config_dirs`).
             See :meth:`find_config_files_ranked` for a clean low-to-high
             ordering.
         """
@@ -322,8 +322,8 @@ class ConfigurationLoader:
         Returns:
             list[Path]: Existing config files as candidates. NOTE: this list is
             NOT a single monotonic priority ranking. Directories are ordered
-            highest-priority-first ($BUVIS_CONFIG_DIR, then ~/.config/buvis, then
-            cwd), but WITHIN each directory the stems are ordered lowest-first
+            highest-priority-first ($BUVIS_CONFIG_DIR, then ~/.local/.config/buvis,
+            then ~/.config/buvis, then cwd), but WITHIN each directory the stems are ordered lowest-first
             (config.yaml < buvis.yaml < buvis-{tool}.yaml, per
             _get_candidate_files). The result is therefore mixed-order. Callers
             that need a clean precedence order (e.g. to feed merge_configs, where

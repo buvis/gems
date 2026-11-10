@@ -133,8 +133,8 @@ You can also define templates as YAML files without writing Python. Place
 ``.yaml`` files in your config directory under ``templates/``:
 
 - ``$BUVIS_CONFIG_DIR/templates/`` (highest priority)
+- ``~/.local/.config/buvis/templates/``
 - ``~/.config/buvis/templates/``
-- ``~/.buvis/templates/``
 
 A YAML template with the same ``name`` as a Python template overrides it.
 Higher-priority config dirs override lower-priority ones.

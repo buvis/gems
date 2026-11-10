@@ -462,6 +462,16 @@ class TestGetSearchPaths:
 
         assert paths[-1] == Path.cwd()
 
+    def test_explicit_config_dir_argument(self) -> None:
+        paths = ConfigurationLoader._get_search_paths(config_dir="/x")
+
+        assert paths == [
+            Path("/x"),
+            Path.home() / ".local" / ".config" / "buvis",
+            Path.home() / ".config" / "buvis",
+            Path.cwd(),
+        ]
+
 
 class TestGetCandidateFiles:
     def test_empty_paths_returns_empty(self) -> None:
@@ -753,8 +763,10 @@ class TestFindConfigFilesLogging:
 
         with caplog.at_level(logging.WARNING):
             result = ConfigurationLoader.find_config_files()
+            ranked = ConfigurationLoader.find_config_files_ranked()
 
         assert result == []
+        assert ranked == []
         assert "unsafe" in caplog.text.lower()
 
     def test_explicit_config_path_is_exclusive(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

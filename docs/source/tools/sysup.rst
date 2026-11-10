@@ -29,7 +29,8 @@ Configuration
 -------------
 
 Updaters live in ``buvis-sysup.yaml`` in the buvis config stack
-(``$BUVIS_CONFIG_DIR`` → ``~/.config/buvis`` → cwd), deep-merged over a bundled
+(``$BUVIS_CONFIG_DIR`` → ``~/.local/.config/buvis`` → ``~/.config/buvis`` → cwd),
+deep-merged over a bundled
 default. The updater collection is a **flat map keyed by name**, so a machine
 layer adds an entry with a new key and overrides a field of an existing entry
 by that key — no list-append syntax, and every base key survives unless
@@ -191,8 +192,8 @@ directory, so it overrides per-key while staying untracked.
         order: 5
         steps: [sudo work-vpn-refresh]
 
-Because ``~/.local/.config/buvis`` is deliberately untracked, it is not backed
-up by the dotfiles repo; keep a separate backup of anything only it holds.
+Because ``~/.local/.config/buvis`` is deliberately untracked, it is outside
+the dotfiles repo and is backed up with the machine.
 
 Priming sudo
 -------------
@@ -296,7 +297,7 @@ notifications. Group options go before the subcommand:
 ``sysup status --only brew`` is a usage error.
 
 Configure optional ntfy pushes in the same config stack, including the
-machine-local directory:
+machine-local directory (``~/.local/.config/buvis/buvis-sysup.yaml``):
 
 .. code-block:: yaml
 

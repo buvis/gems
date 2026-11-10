@@ -2,10 +2,10 @@
 #
 # Reproduces the behaviour of the former `sysup mac` and `sysup wsl`
 # subcommands, host-selected via each entry's `when`. It is the lowest-priority
-# layer: any `buvis-sysup.yaml` (shared or, for machine-local overrides, under
-# ~/.local/.config/buvis/buvis-sysup.yaml) in the config stack deep-merges on
-# top by key, so a machine can add, reorder, or disable (`enabled: false`) an
-# entry without redefining this base.
+# layer: any `buvis-sysup.yaml` in the config stack (`~/.config/buvis`, or
+# `~/.local/.config/buvis` for machine-local overrides) deep-merges on top by
+# key, so a machine can add, reorder, or disable (`enabled: false`) an entry
+# without redefining this base.
 
 commands:
   # --- macOS (former `sysup mac`) -----------------------------------------

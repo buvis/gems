@@ -317,9 +317,8 @@ Config files are discovered in order (first found wins):
 
 1. ``$BUVIS_CONFIG_DIR/buvis.yaml`` (if env var set)
 2. ``~/.local/.config/buvis/buvis.yaml`` (machine-local overrides)
-3. ``$XDG_CONFIG_HOME/buvis/buvis.yaml`` (or ``~/.config/buvis/buvis.yaml``)
-4. ``~/.buvis/buvis.yaml`` (legacy)
-5. ``./buvis.yaml`` (current directory)
+3. ``~/.config/buvis/buvis.yaml`` (default)
+4. ``./buvis.yaml`` (current directory)
 
 For tool-specific config, files named ``buvis-{tool}.yaml`` are also checked,
 including under ``~/.local/.config/buvis/`` for machine-local overrides.
@@ -717,8 +716,7 @@ Check file locations (in order):
 1. ``$BUVIS_CONFIG_DIR/buvis.yaml``
 2. ``~/.local/.config/buvis/buvis.yaml`` (machine-local overrides)
 3. ``~/.config/buvis/buvis.yaml``
-4. ``~/.buvis/buvis.yaml``
-5. ``./buvis.yaml``
+4. ``./buvis.yaml``
 
 Debug with:
 
