@@ -377,6 +377,7 @@ def test_relative_configured_policy_is_refused(tmp_path: Path, entry: str) -> No
 def test_configured_policy_keeps_the_skill_out_of_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     home = tmp_path / "policy-home"
     monkeypatch.setenv("HOME", str(home))
+    write_policy(home / ".config" / "braid", "portable")
     source = tmp_path / "personal"
     for name in ("secret", "secrets", "portable"):
         make_skill(source, name)
