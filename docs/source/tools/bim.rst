@@ -295,6 +295,20 @@ Options:
 - ``--tui`` — render output in interactive TUI
 - ``-l, --list`` — list available queries
 
+Saved query names (for example, ``bim query -f my-query``) resolve to
+``<name>.yaml`` in this search order; the first matching file wins:
+
+1. ``$BUVIS_CONFIG_DIR/queries/`` (if set)
+2. ``~/.local/.config/buvis/queries/`` (machine-local queries)
+3. ``~/.config/buvis/queries/`` (shared queries)
+4. The bundled queries shipped with bim
+
+``bim query -l`` lists queries from all these locations, using the same
+precedence for duplicate names. Query files are not merged. A value containing
+``/`` or ending in ``.yaml`` or ``.yml`` is treated as a file path directly,
+without searching these locations. Named queries do not search the current
+directory; ``--config`` and ``--config-dir`` do not change their search path.
+
 Output formats: ``table``, ``csv``, ``markdown``, ``json``, ``jsonl``, ``html``, ``pdf``, ``kanban``.
 
 See `bim-query-examples.md <https://github.com/buvis/gems/blob/master/docs/source/bim-query-examples.md>`_
