@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from itertools import count
 from typing import Any
 
 import yaml
@@ -65,9 +66,17 @@ def metadata_to_yaml(
         YAML formatted string with unquoted datetime values. ``tags`` is a flow
         list on one line (``tags: [a, b]``), as the vault's notes write it.
     """
+    anchors = count(1)
+
+    class MetadataDumper(yaml.Dumper):
+        def generate_anchor(self, _node: yaml.Node) -> str:
+            # Separate key dumps still share one YAML document's anchor namespace.
+            return f"id{next(anchors):03d}"
+
     metadata_str = "\n".join(
         yaml.dump(
             {key: value},
+            Dumper=MetadataDumper,
             default_flow_style=None if key == "tags" else False,
             width=float("inf") if key == "tags" else 80,
             sort_keys=False,

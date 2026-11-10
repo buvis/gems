@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
+import pytest
 from bim.note_write_cli import create_note
 from bim.params.create_note import CreateNoteParams
 from buvis.pybase.result import CommandResult
@@ -10,6 +12,41 @@ from click.testing import CliRunner
 
 
 class TestCreateNoteCli:
+    @pytest.mark.parametrize("option", ["--source", "--body-file", "--summary-file", "settings"])
+    @pytest.mark.parametrize("as_json", [True, False])
+    def test_home_expansion_failure_is_reported(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, option: str, as_json: bool
+    ) -> None:
+        original_expanduser = Path.expanduser
+
+        def expanduser(path: Path) -> Path:
+            if str(path).startswith("~missing/"):
+                raise RuntimeError("Could not determine home directory.")
+            return original_expanduser(path)
+
+        monkeypatch.setattr(Path, "expanduser", expanduser)
+        args = ["-t", "article", "--title", "Test"]
+        if option != "settings":
+            args.extend([option, "~missing/input.md"])
+        if as_json:
+            args.append("--json")
+        with patch("bim.note_write_cli.get_settings", autospec=True) as settings:
+            settings.return_value = MagicMock(
+                path_zettelkasten=str(tmp_path),
+                path_projects="~missing/projects" if option == "settings" else str(tmp_path),
+                path_daily=str(tmp_path),
+                path_articles=str(tmp_path),
+            )
+            result = runner.invoke(create_note, args, catch_exceptions=False)
+
+        assert result.exit_code == 1
+        if as_json:
+            assert json.loads(result.output) == {"error": "Could not determine home directory."}
+        else:
+            assert "Could not determine home directory." in result.output
+            assert "Traceback" not in result.output
+        assert list(tmp_path.iterdir()) == []
+
     def test_list_templates(self, runner: CliRunner) -> None:
         with (
             patch("bim.dependencies.get_templates") as mock_templates,

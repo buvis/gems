@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 from bim.shared.vault_links import append_daily_log, contact_names, daily_log_entry, link_contacts
 
 NOW = datetime(2026, 11, 9, 13, 49, 25, tzinfo=timezone(timedelta(hours=1)))
@@ -17,6 +18,16 @@ def _write_contact(folder: Path, slug: str, frontmatter: str) -> None:
 
 
 class TestDailyLog:
+    @pytest.mark.parametrize("separator", ["\u2028", "\u2029", "\u0085", "\x0b", "\x0c"])
+    def test_preserves_non_newline_separators(self, tmp_path: Path, separator: str) -> None:
+        daily = tmp_path / "2026-11-09.md"
+        original = f"## Log\n\nPasted{separator}text\n\n## Notes\n"
+        daily.write_text(original, encoding="utf-8")
+
+        append_daily_log(tmp_path, NOW, LINK)
+
+        assert daily.read_text(encoding="utf-8") == original.replace("text\n", f"text\n{ENTRY}\n")
+
     def test_log_entry_matches_quickadd_shape(self) -> None:
         assert daily_log_entry(NOW, LINK) == ENTRY
 
@@ -141,6 +152,16 @@ class TestLinkContacts:
 
 
 class TestReviewParsing:
+    def test_unmatched_backtick_does_not_protect_the_next_paragraph(self) -> None:
+        text = "Use the ` key.\n\nAda Lovelace said `x`."
+        link = "[[notes/contact/ada-lovelace|Ada Lovelace]]"
+        assert link_contacts(text, NAMES, "notes/contact") == (f"Use the ` key.\n\n{link} said `x`.", [link])
+
+    def test_multiline_inline_code_is_protected(self) -> None:
+        text = "`code\nAda Lovelace` then Ada Lovelace."
+        link = "[[notes/contact/ada-lovelace|Ada Lovelace]]"
+        assert link_contacts(text, NAMES, "notes/contact") == (f"`code\nAda Lovelace` then {link}.", [link])
+
     def test_log_heading_inside_fence_is_ignored(self, tmp_path: Path) -> None:
         daily = tmp_path / "2026-11-09.md"
         daily.write_text("```md\n## Log\n```\n\n## Log\n\n## Notes\n")

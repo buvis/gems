@@ -14,6 +14,13 @@ digits, `YYYYMMDDHHMMSS`), `title`, `date`, `tags`, `type`, `publish` and
 When the notes live in a BIM vault, read "The BIM vault" at the end before you
 touch anything.
 
+The notes are private. Their content (notes, inbox, daily notes, archives,
+tags, titles, query and search results) must not reach your session without
+the user's explicit approval. Read only what the user asked you to read, and
+only that. Ask before any other read: tag lookups, duplicate checks, parent
+notes, the vault's own docs, or background context. Creating a note needs no
+approval; the `--json` report holds only paths and metadata.
+
 ## Learn the installed CLI
 
 The installed binary is the authority for syntax:
@@ -73,8 +80,10 @@ interactive TUI. Prefer `--json`: it prints one object with `id`, `type`,
 `title`, `tags`, `path`, `relative_path` and `wikilink` (paste the `wikilink`
 into other notes), and on failure `{"error": "<reason>"}` with exit 1. Run
 with `--dry-run` first to see the rendered note in `content` without writing
-anything. A failed create writes nothing unless its error starts with
-`note saved at`; that error means the file exists, so do not retry. When the
+anything. A failed create normally writes nothing. A filesystem failure while
+inspecting a reserved filename can leave an empty file; ask the user before you
+inspect the destination or retry. An error starting with `note saved at` means the note exists,
+so do not retry. When the
 JSON has `errors`, the note exists but a follow-up step (moving the source to
 `.trash/`) failed.
 
@@ -133,7 +142,8 @@ Bundled templates and their answers:
 - `illustrated-note`, `problem-resolution-report`: no answers.
 
 A contact or book whose slug already exists fails with `Zettel already
-exists`; open the existing note instead of retrying with another title. A
+exists`; tell the user the note exists (open it only if they approve)
+instead of retrying with another title. A
 YAML file in `~/.config/buvis/templates/` with the same `name` overrides a
 bundled template.
 
@@ -184,14 +194,14 @@ pipeline; both have their own `--help`.
 
 A BIM vault is an Obsidian vault that blends GTD, Zettelkasten and PARA. Its
 root is the parent of `path_zettelkasten` (default `~/bim/`). The vault
-documents itself in `notes/system/`; start at `notes/system/index.md`. Work
-without Obsidian running.
+documents itself in `notes/system/` (start at `notes/system/index.md`, after
+the user approves that read). Work without Obsidian running.
 
 ### Layout
 
 | Path | Holds | Rules |
 |------|-------|-------|
-| `inbox/` | Raw material: any file name, rarely frontmatter. Obsidian and automations (`inbox/automated/`) put new files here. | Read freely. Processing turns an item into notes and then moves it to `.trash/`; `bim create --source` does both when the note keeps the item's text. |
+| `inbox/` | Raw material: any file name, rarely frontmatter. Obsidian and automations (`inbox/automated/`) put new files here. | Read an item only when the user asks you to process it. Processing turns an item into notes and then moves it to `.trash/`; `bim create --source` does both when the note keeps the item's text. |
 | `notes/` | `<id>.md` zettels, `contact/<slug>.md`, `book/<slug>.md`, `documents/` (`bim doc`), `kanban/` (Kanban plugin boards), `index.md`, `.base` files (Obsidian Bases) | See "Note anatomy". |
 | `notes/calendar/` | `daily/YYYY-MM-DD.md`, `weekly/YYYY-Www.md` | Obsidian creates these; never create them. Append to a daily `## Log` only when asked; `bim create` logs its own notes. |
 | `notes/system/` | System docs, `templates/` (Templater `.tpl`), `scripts/` | Read-only unless asked. |
@@ -241,7 +251,7 @@ Body in Markdown.
   them after review.
 - Tags: three to five (more than seven is a smell), kebab-case, nested broad
   to narrow with `/` (`lang/rust`), `tags: []` when there are none. Reuse
-  existing tags. They are a flow list before `type`, in the order written, as
+  existing tags when the user approves looking them up. They are a flow list before `type`, in the order written, as
   above; some older notes use a block list.
 - Backmatter is everything after the last `---`: Dataview fields written as
   `- key:: value`, where the value is text, a URL, a Markdown link or a

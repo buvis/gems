@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
+- **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
+
+## [0.20.0] - 2026-11-10
+
+### Fixed
+
+- **bim**: keep YAML anchors unique across frontmatter fields, preserve Unicode separators in daily logs and contact names inside multiline inline code, and report failed home-directory expansion through the create command's JSON or console error output.
 - **CI**: run development tooling tests, fail the final gate when path detection fails, handle docs-only changes, and explicitly run the full suite for reusable workflow calls. Tool jobs no longer wait for the library matrix.
 - **bim**: keep create/edit Markdown stable: omit empty backmatter separators, end notes with one newline, and preserve body text without adding hard-break spaces, including inside Excalidraw code fences.
 
@@ -714,7 +721,8 @@ Initial release.
 - **config**: Pydantic-based settings with Click option generation
 - **ci**: GitHub Actions with test matrix, coverage, ruff lint, mypy, dep audit, GitHub releases
 
-[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.19.2...HEAD
+[Unreleased]: https://github.com/buvis/gems/compare/gems-v0.20.0...HEAD
+[0.20.0]: https://github.com/buvis/gems/compare/gems-v0.19.2...gems-v0.20.0
 [0.19.2]: https://github.com/buvis/gems/compare/gems-v0.19.1...gems-v0.19.2
 [0.19.1]: https://github.com/buvis/gems/compare/gems-v0.19.0...gems-v0.19.1
 [0.19.0]: https://github.com/buvis/gems/compare/gems-v0.18.1...gems-v0.19.0
