@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
+
 ## [0.20.0] - 2026-11-10
 
 ### Fixed
