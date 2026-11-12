@@ -117,6 +117,28 @@ def test_unsafe_config_directory_cannot_inject_skills(tmp_path: Path, symlink: b
     assert not (Path.home() / ".claude").exists()
 
 
+@pytest.mark.skipif(os.name != "posix", reason="Requires Unix directory permissions")
+@pytest.mark.parametrize("explicit", [False, True])
+def test_config_link_in_world_writable_directory_cannot_inject_skills(tmp_path: Path, explicit: bool) -> None:
+    foreign = tmp_path / "foreign"
+    make_skill(foreign, "attacker-marker-skill")
+    config_dir = Path.home() / ".local" / ".config" / "buvis"
+    private = config_dir / "sub"
+    private.mkdir(parents=True)
+    write_sources(private, foreign)
+    link = config_dir / "buvis-braid.yaml"
+    link.symlink_to("sub/buvis-braid.yaml")
+    private.chmod(0o755)
+    config_dir.chmod(0o777)
+
+    result = CliRunner().invoke(cli, ["--config", str(link)] if explicit else [])
+
+    assert result.exit_code == 2, result.output
+    assert "world-writable" in result.output
+    assert not (Path.home() / ".agents").exists()
+    assert not (Path.home() / ".claude").exists()
+
+
 @pytest.mark.parametrize("home_config", [True, False])
 def test_cwd_config_cannot_inject_sources_or_redirect_claude(tmp_path: Path, home_config: bool) -> None:
     legitimate = tmp_path / "legitimate"

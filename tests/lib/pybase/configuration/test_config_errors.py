@@ -93,6 +93,31 @@ class TestConfigurationErrors:
         assert "cannot read config" in result.output
 
     @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
+    @pytest.mark.parametrize("defect", ["missing", "directory", "dangling-link"])
+    def test_bad_explicit_config_path_is_rendered_by_the_console(self, tmp_path, command, args, exit_code, defect):
+        path = tmp_path / "custom.yaml"
+        if defect == "directory":
+            path.mkdir()
+        elif defect == "dangling-link":
+            path.symlink_to("nowhere.yaml")
+        result = CliRunner().invoke(command, ["--config", str(path), *args])
+        assert result.exit_code == exit_code
+        assert "Usage:" not in result.output
+        assert str(path) in result.output
+        assert "cannot read config" in result.output
+
+    @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
+    def test_dangling_discovered_config_link_is_rendered(self, tmp_path, command, args, exit_code):
+        name = "buvis-braid.yaml" if command is braid_cli else "buvis-sysup.yaml"
+        path = tmp_path / "home/.local/.config/buvis" / name
+        path.parent.mkdir(parents=True)
+        path.symlink_to("nowhere.yaml")
+        result = CliRunner().invoke(command, args)
+        assert result.exit_code == exit_code
+        assert str(path) in result.output
+        assert "cannot read config" in result.output
+
+    @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
     def test_explicit_yaml_error_names_file_once(self, tmp_path, command, args, exit_code):
         path = tmp_path / "custom.yaml"
         path.write_text("debug: [unclosed")

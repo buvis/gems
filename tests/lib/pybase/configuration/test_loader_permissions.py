@@ -59,6 +59,35 @@ class TestParentDirectoryTrust:
 
         assert str(drop.resolve()) in str(error.value)
 
+    def test_rejects_directory_link_held_by_world_writable_dir(self, tmp_path: Path) -> None:
+        # private/c -> drop/dl/real.yaml with dl -> safe/: dl sits in a 0777 dir and can be swapped.
+        safe = tmp_path / "safe"
+        safe.mkdir()
+        (safe / "real.yaml").write_text("key: value\n")
+        drop = tmp_path / "drop"
+        drop.mkdir()
+        (drop / "dl").symlink_to(safe, target_is_directory=True)
+        drop.chmod(0o777)
+        private = tmp_path / "private"
+        private.mkdir()
+        link = private / "c.yaml"
+        link.symlink_to(drop / "dl" / "real.yaml")
+
+        with pytest.raises(ConfigurationError, match="world-writable") as error:
+            ConfigurationLoader.load_yaml(link)
+
+        assert str(drop.resolve()) in str(error.value)
+
+    def test_dotdot_in_link_target_is_followed_from_the_real_directory(self, tmp_path: Path) -> None:
+        real = tmp_path / "real"
+        (real / "nested").mkdir(parents=True)
+        (real / "cfg.yaml").write_text("key: value\n")
+        (tmp_path / "alias").symlink_to(real / "nested", target_is_directory=True)
+        link = tmp_path / "c.yaml"
+        link.symlink_to("alias/../cfg.yaml")  # kernel: real/nested/.. -> real/cfg.yaml
+
+        assert ConfigurationLoader.load_yaml(link) == {"key": "value"}
+
     def test_safe_symlink_chain_into_private_directory_loads(self, tmp_path: Path) -> None:
         target = tmp_path / "target"
         target.mkdir()

@@ -88,14 +88,17 @@ def _check_range(data: bytes, offset: int, length: int) -> None:
         raise ValueError("AppleDouble entry points past end of file")
 
 
+_XATTR_NOFOLLOW = 0x0001  # darwin <sys/xattr.h>
+
+
 def _setxattr(path: Path, name: str, value: bytes) -> None:
-    """Set one extended attribute, replacing any existing value."""
+    """Set one extended attribute on ``path`` itself, never on a symlink's target."""
     if sys.platform == "darwin":
-        if _libc.setxattr(os.fsencode(path), name.encode(), value, len(value), 0, 0) != 0:
+        if _libc.setxattr(os.fsencode(path), name.encode(), value, len(value), 0, _XATTR_NOFOLLOW) != 0:
             err = ctypes.get_errno()
             raise OSError(err, os.strerror(err), str(path))
         return
-    os.setxattr(path, name, value)
+    os.setxattr(path, name, value, follow_symlinks=False)
 
 
 def merge_mac_metadata(directory: Path) -> CommandResult:
@@ -119,7 +122,10 @@ def merge_mac_metadata(directory: Path) -> CommandResult:
         try:
             if apple_double.is_file():
                 data_file = apple_double.with_name(apple_double.name[2:])
-                if os.name != "nt" and data_file.exists():
+                if data_file.is_symlink():
+                    # Its target may sit outside the tree; never write metadata through it.
+                    result.warnings.append(f"Kept {apple_double}: {data_file} is a symlink")
+                elif os.name != "nt" and data_file.exists():
                     for name, value in parse_apple_double(apple_double.read_bytes()):
                         _setxattr(data_file, name, value)
                     apple_double.unlink()

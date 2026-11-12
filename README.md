@@ -172,7 +172,8 @@ saved encrypted; see `docs/source/tools/dot.rst` for recovery.
 
 `muc tidy ~/music/album/` reports every completed cleanup action and warns when
 an operation fails. Recoverable failures do not stop the remaining cleanup or
-change the exit status (0).
+change the exit status (0). It asks for confirmation only for trees over 100
+files or 3 levels deep; smaller trees are tidied at once.
 
 ### bim create from scripts
 

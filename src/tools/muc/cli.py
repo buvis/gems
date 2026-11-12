@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options, get_settings
+from buvis.pybase.result import CommandResult
 
 from muc.settings import MucSettings
 
@@ -83,7 +84,10 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
         directory=path_directory,
         junk_extensions=settings.tidy_junk_extensions,
     )
-    console.report_result(cmd.execute(), literal=True)
+    result = cmd.execute()
+    for step in result.metadata["steps"]:  # each step's actions and warnings in the order they ran
+        console.report_result(step, literal=True)
+    console.report_result(CommandResult(success=result.success, output=result.output), literal=True)
 
 
 @cli.command("cover", help="Keep only the newest cover image per directory")

@@ -192,8 +192,7 @@ class ConfigResolver:
         merged: dict[str, Any] = {}
         for path in discovered_files:
             try:
-                # A missing explicit file is an empty layer; Click already rejects it at the CLI.
-                layer = {} if config_path is not None and not path.exists() else self.loader.load_yaml(path)
+                layer = self.loader.load_yaml(path)
                 # Shared files carry global keys and other tools' namespaces.
                 # Tool-specific (including explicit custom) files must respect
                 # extra="forbid" before projection discards their unknown keys.

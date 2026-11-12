@@ -238,35 +238,58 @@ class ConfigurationLoader:
     def _validate_parent_directory(file_path: Path) -> Path:
         """Resolve the file and reject any directory permitting untrusted replacement.
 
-        Every directory holding a link of the symlink chain is checked, not just
-        the final one: a symlink in a world-writable directory can be replaced to
-        point anywhere. On POSIX, sticky directories protect existing entries only
-        when both owners (directory and entry) are trusted: root or the effective
-        user. Other platforms lack these Unix permission semantics; leave their
-        access control to the OS. Ancestors above each holding directory, ACLs,
-        and concurrent filesystem changes are not checked.
+        The path is resolved one component at a time. The directory holding each
+        symlink met on the way (file or directory link) and the directory holding
+        the final file are checked: an entry in a world-writable directory can be
+        replaced to point anywhere. On POSIX, sticky directories protect existing
+        entries only when both owners (directory and entry) are trusted: root or
+        the effective user. Other platforms lack these Unix permission semantics;
+        leave their access control to the OS. Other ancestors, ACLs, and
+        concurrent filesystem changes are not checked.
         """
         if os.name != "posix":
             return file_path
         trusted_owners = {0, os.geteuid()}
-        entry = file_path.absolute()
-        for _ in range(40):  # same bound as the kernel's symlink loop limit
-            directory_stat = entry.parent.stat()
+
+        def check_holder(directory: Path, entry: Path) -> None:
+            directory_stat = directory.stat()
             if directory_stat.st_mode & stat.S_IWOTH and not (
                 directory_stat.st_mode & stat.S_ISVTX
                 and directory_stat.st_uid in trusted_owners
                 and entry.stat(follow_symlinks=False).st_uid in trusted_owners
             ):
                 raise ConfigurationError(
-                    f"{file_path}: unsafe world-writable config directory {entry.parent.resolve()}; "
+                    f"{file_path}: unsafe world-writable config directory {directory}; "
                     "sticky protection requires both directory and file owners to be root or the effective user. "
                     "Remove other-user write permission from this directory (chmod o-w), "
                     "or move the config to a private directory."
                 )
+
+        absolute = file_path.absolute()
+        current = Path(absolute.anchor)  # always a symlink-free directory
+        pending = list(absolute.parts[1:])
+        links = 0
+        while pending:
+            part = pending.pop(0)
+            if part == "..":
+                current = current.parent
+                continue
+            entry = current / part
             if not entry.is_symlink():
-                return file_path.resolve()
-            entry = entry.parent / os.readlink(entry)
-        raise ConfigurationError(f"{file_path}: too many levels of symbolic links")
+                current = entry
+                continue
+            links += 1
+            if links > 40:  # same bound as the kernel's symlink loop limit
+                raise ConfigurationError(f"{file_path}: too many levels of symbolic links")
+            check_holder(current, entry)
+            target = Path(os.readlink(entry))
+            if target.is_absolute():
+                current = Path(target.anchor)
+                pending[:0] = target.parts[1:]
+            else:
+                pending[:0] = target.parts
+        check_holder(current.parent, current)
+        return current
 
     @staticmethod
     def _is_safe_path(candidate: Path, allowed_bases: list[Path]) -> bool:
@@ -405,18 +428,30 @@ class ConfigurationLoader:
         result: list[Path] = []
 
         for candidate in candidates:
-            try:
-                if not candidate.is_file():
-                    continue
-                if not ConfigurationLoader._is_safe_path(candidate, paths):
-                    logger.warning("Skipping unsafe config path: %s", candidate)
-                    continue
-                result.append(candidate.resolve())
-            except PermissionError:
-                logger.debug("Permission denied: %s", candidate)
+            if not ConfigurationLoader._is_present(candidate):
                 continue
+            if not ConfigurationLoader._is_safe_path(candidate, paths):
+                logger.warning("Skipping unsafe config path: %s", candidate)
+                continue
+            result.append(candidate.absolute())
 
         return result
+
+    @staticmethod
+    def _is_present(candidate: Path) -> bool:
+        """Whether a config candidate exists or cannot be ruled out.
+
+        A dangling link, a non-file, or an entry in an unreadable directory
+        counts as present, so ``load_yaml`` reports it instead of the layer
+        vanishing. Paths stay unresolved: the symlink chain is checked at load.
+        """
+        try:
+            candidate.lstat()
+        except (FileNotFoundError, NotADirectoryError):
+            return False
+        except OSError:
+            return True
+        return True
 
     @staticmethod
     def find_config_files_ranked(
@@ -450,9 +485,9 @@ class ConfigurationLoader:
                 readable it is EXCLUSIVE — the returned list is exactly that one
                 file and discovery is skipped, matching the settings resolver so
                 plan and settings share one source. A path that is not an
-                existing file is skipped (Click's ``--config`` already validates
-                existence; a direct caller passing a missing file falls back to
-                the discovered layers rather than an error here).
+                existing file is skipped (the settings resolver already reports
+                it at the CLI; a direct caller passing a missing file falls back
+                to the discovered layers rather than an error here).
 
         Returns:
             list[Path]: Existing, safe config files, lowest priority first.
@@ -460,12 +495,12 @@ class ConfigurationLoader:
         # An explicit --config FILE is EXCLUSIVE: when readable it is the sole
         # layer and discovery is skipped, matching ConfigResolver._load_yaml so a
         # tool's plan and settings resolve from the same single file. A non-file
-        # falls through to discovery (Click already validates --config existence).
+        # falls through to discovery (the settings resolver already rejected it).
         if config_path is not None:
             explicit = Path(config_path).expanduser()
             try:
                 if explicit.is_file():
-                    return [explicit.resolve()]
+                    return [explicit.absolute()]
             except OSError:
                 logger.debug("Cannot stat explicit config path: %s", explicit)
 
@@ -480,16 +515,12 @@ class ConfigurationLoader:
         for dir_rank, base in enumerate(paths):
             for stem_rank, stem in enumerate(stems):
                 candidate = base / f"{stem}.yaml"
-                try:
-                    if not candidate.is_file():
-                        continue
-                    if not ConfigurationLoader._is_safe_path(candidate, paths):
-                        logger.warning("Skipping unsafe config path: %s", candidate)
-                        continue
-                    ranked.append((-dir_rank, stem_rank, candidate.resolve()))
-                except PermissionError:
-                    logger.debug("Permission denied: %s", candidate)
+                if not ConfigurationLoader._is_present(candidate):
                     continue
+                if not ConfigurationLoader._is_safe_path(candidate, paths):
+                    logger.warning("Skipping unsafe config path: %s", candidate)
+                    continue
+                ranked.append((-dir_rank, stem_rank, candidate.absolute()))
 
         ranked.sort(key=lambda item: (item[0], item[1]))
         return [path for _, _, path in ranked]

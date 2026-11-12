@@ -169,7 +169,11 @@ def query(
 
     settings = get_settings(ctx, BimSettings)
     if query_file:
-        resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)
+        try:
+            resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)
+        except FileNotFoundError as exc:
+            console.panic(str(exc))
+            return
         spec = parse_query_file(str(resolved))
     elif query_string:
         spec = parse_query_string(query_string)
@@ -191,6 +195,9 @@ def query(
     t0 = time.perf_counter()
     result = cmd.execute()
     elapsed = time.perf_counter() - t0
+    if not result.success:
+        console.panic(result.error or "Query failed")
+        return
 
     rows = result.metadata["rows"]
     columns = result.metadata["columns"]

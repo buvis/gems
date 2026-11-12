@@ -238,7 +238,9 @@ def _create_buvis_options(settings_class: type[T], config_error_exit_code: int =
         )
         @click.option(
             "--config",
-            type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+            # No parse-time checks: the resolver reports bad paths through the console,
+            # and resolving here would hide a symlink from the directory check.
+            type=click.Path(),
             help="YAML config file path.",
         )
         @click.option(
@@ -248,7 +250,7 @@ def _create_buvis_options(settings_class: type[T], config_error_exit_code: int =
         )
         @click.option(
             "--config-dir",
-            type=click.Path(exists=True, file_okay=False, resolve_path=True),
+            type=click.Path(exists=True, file_okay=False),
             help="Configuration directory.",
         )
         @click.option(

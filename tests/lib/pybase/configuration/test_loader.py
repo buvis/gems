@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -93,25 +94,32 @@ class TestFindConfigFiles:
 
         assert len(result) == 2
 
-    def test_permission_denied_skipped(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Permission error skips file without crashing."""
+    @pytest.mark.skipif(os.name != "posix" or os.geteuid() == 0, reason="Needs Unix permissions, non-root")
+    def test_unreadable_config_dir_keeps_candidates_so_load_reports_them(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A layer the user cannot read must fail loud at load, not vanish."""
+        locked = tmp_path / "locked"
+        locked.mkdir()
+        (locked / "buvis.yaml").write_text("key: value\n")
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(locked))
+        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
+        locked.chmod(0o000)
+        try:
+            result = ConfigurationLoader.find_config_files()
+        finally:
+            locked.chmod(0o755)
+
+        assert locked / "buvis.yaml" in result
+
+    def test_dangling_config_link_is_kept_so_load_reports_it(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
         monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
-        config = tmp_path / "buvis.yaml"
-        config.write_text("key: value\n")
+        (tmp_path / "buvis.yaml").symlink_to("nowhere.yaml")
 
-        original_is_file = Path.is_file
-
-        def mock_is_file(self):
-            if self == config:
-                raise PermissionError("Access denied")
-            return original_is_file(self)
-
-        monkeypatch.setattr(Path, "is_file", mock_is_file)
-
-        result = ConfigurationLoader.find_config_files()
-
-        assert result == []
+        assert ConfigurationLoader.find_config_files() == [tmp_path / "buvis.yaml"]
 
 
 class TestFindConfigFilesRanked:
@@ -745,35 +753,6 @@ class TestFindConfigFilesLogging:
 
             assert result == []
             assert "unsafe" in caplog.text.lower()
-
-    def test_permission_denied_logged_debug(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        """Permission error is logged at debug level."""
-        import logging
-
-        monkeypatch.setenv("BUVIS_CONFIG_DIR", str(tmp_path))
-        monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
-        config = tmp_path / "buvis.yaml"
-        config.write_text("key: value")
-
-        original_is_file = Path.is_file
-
-        def mock_is_file(self):
-            if self == config:
-                raise PermissionError("Access denied")
-            return original_is_file(self)
-
-        monkeypatch.setattr(Path, "is_file", mock_is_file)
-
-        with caplog.at_level(logging.DEBUG):
-            result = ConfigurationLoader.find_config_files()
-
-        assert result == []
-        assert "Permission denied" in caplog.text
 
     def test_machine_local_symlink_outside_search_paths_is_skipped(
         self,

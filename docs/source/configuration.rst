@@ -106,22 +106,8 @@ For nested fields (e.g., ``db.host``), flatten them in cli_overrides:
 Tool-Specific Configuration Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can separate tool configuration from global settings using dedicated files.
-The loader searches for both ``buvis.yaml`` AND ``buvis-{tool}.yaml``:
-
-**Option 1: Section in global file**
-
-.. code-block:: yaml
-
-    # ~/.config/buvis/buvis.yaml
-    debug: false
-    log_level: INFO
-
-    photo:                    # Tool section (from BUVIS_PHOTO_ prefix)
-      library_path: /media/photos
-      quality: 90
-
-**Option 2: Separate tool file**
+Put tool settings in a dedicated file, as top-level keys. The loader reads
+``config.yaml``, ``buvis.yaml`` and ``buvis-{tool}.yaml``:
 
 .. code-block:: yaml
 
@@ -129,12 +115,16 @@ The loader searches for both ``buvis.yaml`` AND ``buvis-{tool}.yaml``:
     library_path: /media/photos
     quality: 90
 
-Both are merged. Tool-specific file values override global file values for that tool.
+All files are merged flat, by top-level key. Tool-specific file values override
+shared file values for that tool. A ``<tool>:`` section in a shared file is
+**not** projected onto that tool: ``photo: {library_path: ...}`` in
+``buvis.yaml`` is ignored by the photo tool. Use ``buvis-photo.yaml``, or a
+top-level key in a shared file when every tool should see it.
 
 The tool name is derived from ``env_prefix``:
 
-- ``BUVIS_PHOTO_`` → searches for ``buvis-photo.yaml`` and ``photo:`` section
-- ``BUVIS_`` (default) → only ``buvis.yaml``, no tool section
+- ``BUVIS_PHOTO_`` → searches for ``buvis-photo.yaml``
+- ``BUVIS_`` (default) → only the shared files
 
 **Complete example:**
 
@@ -165,10 +155,9 @@ All equivalent ways to set ``db.host`` to ``"prod.db.local"``:
 
 .. code-block:: yaml
 
-    # YAML (~/.config/buvis/buvis.yaml)
-    photo:
-      db:
-        host: prod.db.local
+    # YAML (~/.config/buvis/buvis-photo.yaml)
+    db:
+      host: prod.db.local
 
 .. code-block:: python
 
@@ -338,13 +327,8 @@ File Format
     ollama_model: llama3.2:3b        # optional, enables LLM features
     ollama_url: http://localhost:11434  # default
 
-    # Tool-specific sections
-    photo:
-      watermark: true
-      default_album: shared
-    music:
-      normalize: true
-      bitrate: 320
+    # Tool settings go in buvis-<tool>.yaml as top-level keys,
+    # not in <tool>: sections here (those are ignored).
 
 Environment Variable Substitution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -575,10 +559,11 @@ Security Considerations
 Configuration Directory Permissions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On POSIX systems, the YAML loader checks, before reading any content, the
-directory holding the configuration file and, when that file is a symlink, the
-directory holding every link in the chain up to the real file. Directory
-symlinks are followed. A world-writable holding directory is rejected unless it
+On POSIX systems, the YAML loader resolves the configuration path one component
+at a time and checks, before reading any content, the directory holding the
+real file and the directory holding every symlink met on the way, file or
+directory link alike. Discovered files, ``--config FILE`` and ``--config-dir``
+are all checked through their unresolved paths. A world-writable holding directory is rejected unless it
 has the sticky bit and **both** the directory and the entry in it are owned by
 root (UID 0) or the process's effective user. The sticky bit alone is
 insufficient: another directory owner or entry owner can still replace the
@@ -595,8 +580,13 @@ Ordinary private directories keep their existing behavior. A world-writable
 **file** in an accepted directory still produces the existing warning and is
 loaded. Non-POSIX platforms, including Windows, skip the directory check because
 Unix permission bits and ownership do not describe their access controls.
-This check does not assess ancestors of those directories, group permissions, ACLs, or
+This check does not assess other ancestors, group permissions, ACLs, or
 protect against concurrent filesystem changes between inspection and reading.
+
+A configuration path that exists but cannot be read stops the tool with
+``<path>: cannot read config: ...`` instead of being skipped: an unreadable
+file, an entry in a directory the user cannot search, a dangling symlink, a
+directory in place of a file, or a missing ``--config FILE``.
 
 Sensitive Fields
 ~~~~~~~~~~~~~~~~

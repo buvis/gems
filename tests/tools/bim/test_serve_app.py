@@ -351,6 +351,47 @@ class TestRemoteTokenHandoff:
         assert not token_dirs[0].exists()
         assert signal.getsignal(signum) == previous
 
+    @pytest.mark.skipif(not hasattr(signal, "SIGHUP"), reason="POSIX signals")
+    def test_sighup_stops_a_real_server_gracefully_without_traceback(self, tmp_path: Path) -> None:
+        import socket
+        import subprocess
+        import sys
+        import time
+
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        script = (
+            "import tempfile\n"
+            f"tempfile.tempdir = {str(tmp_path)!r}\n"
+            "from bim.commands.serve.serve import CommandServe\n"
+            "from bim.params.serve import ServeParams\n"
+            f"CommandServe(ServeParams(default_directory={str(tmp_path)!r}, host='0.0.0.0', port={port},"
+            " no_browser=True)).execute()\n"
+        )
+        server = subprocess.Popen(
+            [sys.executable, "-c", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        try:
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                try:
+                    socket.create_connection(("127.0.0.1", port), timeout=0.2).close()
+                    break
+                except OSError:
+                    time.sleep(0.1)
+            else:
+                pytest.fail("server did not start")
+            server.send_signal(signal.SIGHUP)
+            output, _ = server.communicate(timeout=30)
+        finally:
+            if server.poll() is None:
+                server.kill()
+
+        assert "Traceback" not in output
+        assert "Shutting down" in output
+        assert not list(tmp_path.glob("bim-serve-*"))
+
 
 class TestServeBrowserStartup:
     @pytest.mark.parametrize("host", ["0.0.0.0", "192.0.2.1"])
