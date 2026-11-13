@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import stat
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,22 @@ logger = logging.getLogger(__name__)
 
 _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 _ESCAPE_PLACEHOLDER = "\x00ESCAPED_DOLLAR\x00"
+
+
+def _parse_yaml_mapping(content: str, file_path: Path) -> dict[str, Any]:
+    """Parse a mapping, distinguishing an empty document from a null root."""
+    data = yaml.safe_load(content)
+    if data is None and yaml.compose(content) is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ConfigurationError(f"{file_path}: YAML root must be a mapping")
+    return data
+
+
+@cache
+def _warn_retired_twin(path: Path, destination: Path) -> None:
+    """Warn once per file and destination in this process, across loader callers."""
+    logger.warning("Retired config file %s is ignored; move its values to %s", path, destination)
 
 
 def _substitute(content: str) -> tuple[str, list[str]]:
@@ -159,23 +176,43 @@ class ConfigurationLoader:
     """
 
     @staticmethod
-    def _get_search_paths(config_dir: str | None = None) -> list[Path]:
+    def _warn_retired_twins(paths: list[Path], tool_name: str | None) -> None:
+        """Report obsolete sibling overrides without loading their contents."""
+        local_dir = Path.home() / ".local" / ".config" / "buvis"
+        for candidate in ConfigurationLoader._get_candidate_files(paths, tool_name):
+            twin = candidate.with_suffix(".local.yaml")
+            try:
+                if twin.is_file():
+                    # A shared twin's values belong in the shared file, not a tool file.
+                    _warn_retired_twin(twin.absolute(), local_dir / candidate.name)
+            except PermissionError:
+                logger.debug("Permission denied: %s", twin)
+
+    @staticmethod
+    def _get_search_paths(config_dir: str | None = None, *, include_cwd: bool = True) -> list[Path]:
         """Build ordered list of config directories to search.
 
         Args:
             config_dir: Explicit config directory override (bypasses env lookup).
+            include_cwd: Whether to discover config in the working directory.
 
         Returns:
             list[Path]: Search paths from highest to lowest priority:
                 1. config_dir / BUVIS_CONFIG_DIR (if set and non-empty)
-                2. ~/.config/buvis (default)
-                3. Current working directory
+                2. ~/.local/.config/buvis (machine-local overrides)
+                3. ~/.config/buvis (default)
+                4. Current working directory
         """
         if config_dir is not None:
-            paths = [Path(config_dir).expanduser(), Path.home() / ".config" / "buvis"]
+            paths = [
+                Path(config_dir).expanduser(),
+                Path.home() / ".local" / ".config" / "buvis",
+                Path.home() / ".config" / "buvis",
+            ]
         else:
             paths = get_config_dirs()
-        paths.append(Path.cwd())
+        if include_cwd:
+            paths.append(Path.cwd())
         return paths
 
     @staticmethod
@@ -196,6 +233,63 @@ class ConfigurationLoader:
             return bool(mode & stat.S_IWOTH)
         except OSError:
             return False
+
+    @staticmethod
+    def _validate_parent_directory(file_path: Path) -> Path:
+        """Resolve the file and reject any directory permitting untrusted replacement.
+
+        The path is resolved one component at a time. The directory holding each
+        symlink met on the way (file or directory link) and the directory holding
+        the final file are checked: an entry in a world-writable directory can be
+        replaced to point anywhere. On POSIX, sticky directories protect existing
+        entries only when both owners (directory and entry) are trusted: root or
+        the effective user. Other platforms lack these Unix permission semantics;
+        leave their access control to the OS. Other ancestors, ACLs, and
+        concurrent filesystem changes are not checked.
+        """
+        if os.name != "posix":
+            return file_path
+        trusted_owners = {0, os.geteuid()}
+
+        def check_holder(directory: Path, entry: Path) -> None:
+            directory_stat = directory.stat()
+            if directory_stat.st_mode & stat.S_IWOTH and not (
+                directory_stat.st_mode & stat.S_ISVTX
+                and directory_stat.st_uid in trusted_owners
+                and entry.stat(follow_symlinks=False).st_uid in trusted_owners
+            ):
+                raise ConfigurationError(
+                    f"{file_path}: unsafe world-writable config directory {directory}; "
+                    "sticky protection requires both directory and file owners to be root or the effective user. "
+                    "Remove other-user write permission from this directory (chmod o-w), "
+                    "or move the config to a private directory."
+                )
+
+        absolute = file_path.absolute()
+        current = Path(absolute.anchor)  # always a symlink-free directory
+        pending = list(absolute.parts[1:])
+        links = 0
+        while pending:
+            part = pending.pop(0)
+            if part == "..":
+                current = current.parent
+                continue
+            entry = current / part
+            if not entry.is_symlink():
+                current = entry
+                continue
+            links += 1
+            if links > 40:  # same bound as the kernel's symlink loop limit
+                raise ConfigurationError(f"{file_path}: too many levels of symbolic links")
+            check_holder(current, entry)
+            target = Path(os.readlink(entry))
+            if target.is_absolute():
+                current = Path(target.anchor)
+                pending[:0] = target.parts[1:]
+            else:
+                pending[:0] = target.parts
+        check_holder(current.parent, current)
+        return current
 
     @staticmethod
     def _is_safe_path(candidate: Path, allowed_bases: list[Path]) -> bool:
@@ -230,18 +324,18 @@ class ConfigurationLoader:
 
         Returns:
             Ordered list of candidate paths per location (lowest to highest
-            priority within a location): config.yaml, config.local.yaml,
-            buvis.yaml, buvis.local.yaml, buvis-{tool}.yaml,
-            buvis-{tool}.local.yaml. Each ``*.local.yaml`` machine-local twin sits
-            immediately after (higher priority than) its shared file. See
-            :meth:`find_config_files_ranked` for a clean low-to-high ordering.
+            priority within a location): config.yaml, buvis.yaml,
+            buvis-{tool}.yaml. Machine-local overrides come from a separate
+            search directory (``~/.local/.config/buvis``, see
+            :func:`get_config_dirs`).
+            See :meth:`find_config_files_ranked` for a clean low-to-high
+            ordering.
         """
         candidates: list[Path] = []
         stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
         for base in paths:
             for stem in stems:
                 candidates.append(base / f"{stem}.yaml")
-                candidates.append(base / f"{stem}.local.yaml")
         return candidates
 
     @staticmethod
@@ -283,14 +377,20 @@ class ConfigurationLoader:
             Parsed YAML content as dict. Empty files return {}.
 
         Raises:
+            ConfigurationError: If the file or a directory holding it or a link to it
+                permits untrusted replacement.
             MissingEnvVarError: If required environment variables are missing.
             FileNotFoundError: If file doesn't exist.
             yaml.YAMLError: If YAML syntax is invalid. Check problem_mark for line/col.
         """
-        if ConfigurationLoader._is_world_writable(file_path):
-            logger.warning("Config file %s is world-writable", file_path)
+        resolved = ConfigurationLoader._validate_parent_directory(file_path)
+        if ConfigurationLoader._is_world_writable(resolved):
+            raise ConfigurationError(
+                f"{file_path}: unsafe world-writable config file; any local user can change it. "
+                "Remove other-user write permission (chmod o-w)."
+            )
 
-        content = file_path.read_text(encoding="utf-8")
+        content = resolved.read_text(encoding="utf-8")
 
         # Escape $${VAR} -> placeholder (preserves literal syntax)
         content = ConfigurationLoader._escape_literals(content)
@@ -304,7 +404,7 @@ class ConfigurationLoader:
         if missing:
             raise MissingEnvVarError(sorted(missing))
 
-        return yaml.safe_load(content) or {}
+        return _parse_yaml_mapping(content, file_path)
 
     @staticmethod
     def find_config_files(tool_name: str | None = None, *, config_dir: str | None = None) -> list[Path]:
@@ -317,8 +417,8 @@ class ConfigurationLoader:
         Returns:
             list[Path]: Existing config files as candidates. NOTE: this list is
             NOT a single monotonic priority ranking. Directories are ordered
-            highest-priority-first ($BUVIS_CONFIG_DIR, then ~/.config/buvis, then
-            cwd), but WITHIN each directory the stems are ordered lowest-first
+            highest-priority-first ($BUVIS_CONFIG_DIR, then ~/.local/.config/buvis,
+            then ~/.config/buvis, then cwd), but WITHIN each directory the stems are ordered lowest-first
             (config.yaml < buvis.yaml < buvis-{tool}.yaml, per
             _get_candidate_files). The result is therefore mixed-order. Callers
             that need a clean precedence order (e.g. to feed merge_configs, where
@@ -327,22 +427,35 @@ class ConfigurationLoader:
             directories and across stems within a directory.
         """
         paths = ConfigurationLoader._get_search_paths(config_dir)
+        ConfigurationLoader._warn_retired_twins(paths, tool_name)
         candidates = ConfigurationLoader._get_candidate_files(paths, tool_name)
         result: list[Path] = []
 
         for candidate in candidates:
-            try:
-                if not candidate.is_file():
-                    continue
-                if not ConfigurationLoader._is_safe_path(candidate, paths):
-                    logger.warning("Skipping unsafe config path: %s", candidate)
-                    continue
-                result.append(candidate.resolve())
-            except PermissionError:
-                logger.debug("Permission denied: %s", candidate)
+            if not ConfigurationLoader._is_present(candidate):
                 continue
+            if not ConfigurationLoader._is_safe_path(candidate, paths):
+                logger.warning("Skipping unsafe config path: %s", candidate)
+                continue
+            result.append(candidate.absolute())
 
         return result
+
+    @staticmethod
+    def _is_present(candidate: Path) -> bool:
+        """Whether a config candidate exists or cannot be ruled out.
+
+        A dangling link, a non-file, or an entry in an unreadable directory
+        counts as present, so ``load_yaml`` reports it instead of the layer
+        vanishing. Paths stay unresolved: the symlink chain is checked at load.
+        """
+        try:
+            candidate.lstat()
+        except (FileNotFoundError, NotADirectoryError):
+            return False
+        except OSError:
+            return True
+        return True
 
     @staticmethod
     def find_config_files_ranked(
@@ -350,6 +463,7 @@ class ConfigurationLoader:
         *,
         config_dir: str | None = None,
         config_path: str | Path | None = None,
+        include_cwd: bool = True,
     ) -> list[Path]:
         """Find existing config files in LOW-to-HIGH priority order.
 
@@ -358,11 +472,10 @@ class ConfigurationLoader:
         entries have higher precedence. Feed the result directly to
         :meth:`merge_configs` (where later wins) without reversing.
 
-        Precedence, lowest first: cwd < ~/.config/buvis < $BUVIS_CONFIG_DIR
-        across directories, and config.yaml < config.local.yaml < buvis.yaml <
-        buvis.local.yaml < buvis-{tool}.yaml < buvis-{tool}.local.yaml within each
-        directory (each machine-local ``*.local.yaml`` twin outranks its shared
-        file). An explicit ``config_path`` (from ``--config FILE``) is EXCLUSIVE:
+        Precedence, lowest first: cwd < ~/.config/buvis < ~/.local/.config/buvis
+        < $BUVIS_CONFIG_DIR across directories, and config.yaml < buvis.yaml <
+        buvis-{tool}.yaml within each directory. An explicit ``config_path``
+        (from ``--config FILE``) is EXCLUSIVE:
         when given and readable it is the sole layer, and discovery is skipped
         entirely — matching :meth:`ConfigResolver._load_yaml`, so a tool's plan
         and its settings resolve from the same single file (no discovered layer
@@ -370,14 +483,15 @@ class ConfigurationLoader:
 
         Args:
             tool_name: Optional tool identifier for the ``buvis-{tool}.yaml`` slot.
+            include_cwd: Whether to discover config in the working directory.
             config_dir: Explicit config directory override (bypasses env lookup).
             config_path: Explicit config FILE (from ``--config``). When given and
                 readable it is EXCLUSIVE — the returned list is exactly that one
                 file and discovery is skipped, matching the settings resolver so
                 plan and settings share one source. A path that is not an
-                existing file is skipped (Click's ``--config`` already validates
-                existence; a direct caller passing a missing file falls back to
-                the discovered layers rather than an error here).
+                existing file is skipped (the settings resolver already reports
+                it at the CLI; a direct caller passing a missing file falls back
+                to the discovered layers rather than an error here).
 
         Returns:
             list[Path]: Existing, safe config files, lowest priority first.
@@ -385,20 +499,18 @@ class ConfigurationLoader:
         # An explicit --config FILE is EXCLUSIVE: when readable it is the sole
         # layer and discovery is skipped, matching ConfigResolver._load_yaml so a
         # tool's plan and settings resolve from the same single file. A non-file
-        # falls through to discovery (Click already validates --config existence).
+        # falls through to discovery (the settings resolver already rejected it).
         if config_path is not None:
             explicit = Path(config_path).expanduser()
             try:
                 if explicit.is_file():
-                    return [explicit.resolve()]
+                    return [explicit.absolute()]
             except OSError:
                 logger.debug("Cannot stat explicit config path: %s", explicit)
 
-        paths = ConfigurationLoader._get_search_paths(config_dir)
-        base_stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
-        # Interleave each stem with its .local twin so the twin gets a higher
-        # stem_rank (wins) than its shared file.
-        stems = [s for stem in base_stems for s in (stem, f"{stem}.local")]
+        paths = ConfigurationLoader._get_search_paths(config_dir, include_cwd=include_cwd)
+        ConfigurationLoader._warn_retired_twins(paths, tool_name)
+        stems = ["config", "buvis", *([f"buvis-{tool_name}"] if tool_name else [])]
 
         # dir_rank: 0 = highest-priority dir (paths[0]); stem_rank: 0 = lowest stem.
         # LOW-to-HIGH sort key: higher dir_rank (lower priority) first, then lower
@@ -407,16 +519,12 @@ class ConfigurationLoader:
         for dir_rank, base in enumerate(paths):
             for stem_rank, stem in enumerate(stems):
                 candidate = base / f"{stem}.yaml"
-                try:
-                    if not candidate.is_file():
-                        continue
-                    if not ConfigurationLoader._is_safe_path(candidate, paths):
-                        logger.warning("Skipping unsafe config path: %s", candidate)
-                        continue
-                    ranked.append((-dir_rank, stem_rank, candidate.resolve()))
-                except PermissionError:
-                    logger.debug("Permission denied: %s", candidate)
+                if not ConfigurationLoader._is_present(candidate):
                     continue
+                if not ConfigurationLoader._is_safe_path(candidate, paths):
+                    logger.warning("Skipping unsafe config path: %s", candidate)
+                    continue
+                ranked.append((-dir_rank, stem_rank, candidate.absolute()))
 
         ranked.sort(key=lambda item: (item[0], item[1]))
         return [path for _, _, path in ranked]
@@ -466,10 +574,12 @@ def get_config_dirs() -> list[Path]:
     """Config dirs in priority order (highest first).
 
     1. $BUVIS_CONFIG_DIR (if set and non-empty)
-    2. ~/.config/buvis (default)
+    2. ~/.local/.config/buvis (machine-local overrides)
+    3. ~/.config/buvis (default)
     """
     dirs: list[Path] = []
     if env_dir := os.getenv("BUVIS_CONFIG_DIR"):
         dirs.append(Path(env_dir).expanduser())
+    dirs.append(Path.home() / ".local" / ".config" / "buvis")
     dirs.append(Path.home() / ".config" / "buvis")
     return dirs

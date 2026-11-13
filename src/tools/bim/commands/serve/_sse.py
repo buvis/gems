@@ -46,6 +46,9 @@ async def _watch_loop(directory: str) -> None:
 
 async def _event_stream(queue: asyncio.Queue[str]) -> AsyncGenerator[str, None]:
     try:
+        # Flush the authenticated response so browsers can open the stream
+        # without waiting for a file change or the first keepalive timeout.
+        yield ": connected\n\n"
         while True:
             try:
                 msg = await asyncio.wait_for(queue.get(), timeout=30.0)

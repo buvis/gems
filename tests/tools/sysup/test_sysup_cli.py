@@ -121,6 +121,23 @@ class TestSysupCliRun:
 
 
 class TestSysupCliList:
+    @pytest.mark.parametrize(
+        ("command", "label"),
+        [({"steps": [["echo", "probe"]]}, "[run]"), ({"use": "pip-outdated"}, "[use:pip-outdated]")],
+    )
+    def test_list_preserves_literal_kind_labels(
+        self, runner: CliRunner, tmp_path: Path, command: dict[str, object], label: str
+    ) -> None:
+        import yaml
+
+        config = tmp_path / "buvis-sysup.yaml"
+        config.write_text(yaml.safe_dump({"commands": {"kind_probe": {"order": 4, **command}}}))
+
+        result = runner.invoke(cli, ["--config", str(config), "--list", "--only", "kind_probe"])
+
+        assert result.exit_code == 0, result.output
+        assert f"4  kind_probe  {label}" in result.output
+
     def test_list_prints_plan_and_runs_nothing(self, runner) -> None:
         cfg = _cfg({"brew": {"order": 10, "when": {"os": "darwin", "check": "brew"}, "steps": [["brew"]]}})
         plan = [("brew", cfg.commands["brew"])]
@@ -607,7 +624,9 @@ class TestSysupCliRefresh:
         run = mocker.patch("sysup.refresh.subprocess.run")
         result = runner.invoke(cli, ["refresh", "gh-agent"], input="\n")
         assert result.exit_code == 1
-        assert "is disabled" in result.output
+        assert "item 'gh-agent' is disabled; enable it in ~/.local/.config/buvis/buvis-sysup.yaml first" in (
+            result.output.replace("\n", "")
+        )
         run.assert_not_called()
 
     def test_refresh_runs_procedure_then_rechecks_and_clears_on_ok(self, runner, mocker) -> None:

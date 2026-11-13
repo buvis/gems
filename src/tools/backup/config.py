@@ -12,6 +12,7 @@ from buvis.pybase.result import FatalError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backup.capabilities import CAPABILITIES
+from backup.settings import BackupSettings
 
 __all__ = [
     "BackupConfig",
@@ -27,6 +28,7 @@ _DEFAULT_CONFIG_RESOURCE = "default.yaml"
 # buvis.yaml) carries other tools' and global fields; only these are projected
 # into BackupConfig, whose extra="forbid" would otherwise reject them.
 _BACKUP_TOP_LEVEL_KEYS = frozenset({"instances", "excludes"})
+_BACKUP_SETTINGS_KEYS = frozenset(BackupSettings.model_fields)
 
 
 def _is_backup_specific(path: Path) -> bool:
@@ -49,7 +51,7 @@ def _unknown_top_level_keys(data: dict[str, object]) -> set[str]:
     unknown: set[str] = set()
     for key in data:
         base = key[:-1] if key.endswith(("+", "-")) else key
-        if base not in _BACKUP_TOP_LEVEL_KEYS:
+        if base not in _BACKUP_TOP_LEVEL_KEYS | _BACKUP_SETTINGS_KEYS:
             unknown.add(key)
     return unknown
 
@@ -141,25 +143,76 @@ def _load_default() -> dict[str, object]:
     return ConfigurationLoader.load_yaml(resource)
 
 
+def _format_validation_errors(exc: ValidationError, key_sources: dict[tuple[str, ...], Path]) -> str:
+    """One ``<source>: <dotted location>: <message>`` line per pydantic error.
+
+    The source is the config file that last set the entry (``instances.name``),
+    else the top-level key, else ``bundled default``. ``str(exc)`` is never
+    used — it embeds the pydantic documentation URL.
+    """
+    parts: list[str] = []
+    for error in exc.errors():
+        loc = error["loc"]
+        entry = tuple(str(part) for part in loc[:2])
+        source = key_sources.get(entry) or key_sources.get(entry[:1]) or "bundled default"
+        parts.append(f"{source}: {'.'.join(str(part) for part in loc)}: {error['msg']}")
+    return "; ".join(parts)
+
+
+def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[tuple[str, ...], Path]) -> dict[str, object]:
+    """Load one user config file, check its keys and merge it over ``merged``.
+
+    Records in ``key_sources`` which file last set each top-level plan key and,
+    for mapping keys (``instances``), each entry under it.
+
+    Raises:
+        FatalError: on a load or merge failure, or an unknown top-level key in a
+            backup-specific file.
+    """
+    try:
+        data = ConfigurationLoader.load_yaml(path)
+    except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
+        msg = f"failed to load config file {path}: {exc}"
+        raise FatalError(msg) from exc
+    if _is_backup_specific(path):
+        unknown = _unknown_top_level_keys(data)
+        if unknown:
+            allowed = ", ".join(sorted(_BACKUP_TOP_LEVEL_KEYS | _BACKUP_SETTINGS_KEYS))
+            msg = (
+                f"unknown key(s) in {path}: {', '.join(sorted(unknown))}; "
+                f"backup config accepts only: {allowed} (with +/- directive suffixes on list keys)"
+            )
+            raise FatalError(msg)
+    try:
+        result = ConfigurationLoader.merge_configs(merged, data, known_keys={"excludes"})
+    except (ConfigurationError, yaml.YAMLError, MissingEnvVarError) as exc:
+        msg = f"{path}: {exc}"
+        raise FatalError(msg) from exc
+    for key, value in data.items():
+        base = key[:-1] if key.endswith(("+", "-")) else key
+        if base in _BACKUP_TOP_LEVEL_KEYS:
+            key_sources[(base,)] = path
+            if isinstance(value, dict):
+                key_sources.update({(base, str(name)): path for name in value})
+    return result
+
+
 def load_config(config_dir: str | None = None, config_path: str | None = None) -> BackupConfig:
     """Merge the bundled default with user config files and validate.
 
     Layers, lowest priority first: the bundled ``default.yaml``, then the user
     files returned by :meth:`ConfigurationLoader.find_config_files_ranked`
     (already low-to-high — never reverse it). An explicit ``config_path`` (from
-    ``--config FILE``) is the single highest-priority layer, above every
-    discovered file. Merged via :meth:`ConfigurationLoader.merge_configs` (later
-    wins, ``excludes+`` / ``excludes-`` directives applied), validated against
-    :class:`BackupConfig`, and finally checked for unknown capability names /
-    inputs.
+    ``--config FILE``) is the single highest-priority layer. Merged via
+    :meth:`ConfigurationLoader.merge_configs` (later wins, ``excludes+`` /
+    ``excludes-`` directives applied), validated against :class:`BackupConfig`,
+    and finally checked for unknown capability names / inputs.
 
     Args:
-        config_dir: Explicit config directory (from ``--config-dir``), threaded
-            from the CLI so the tool plan is discovered under the SAME directory
-            the settings were resolved from.
-        config_path: Explicit config file (from ``--config``), threaded from the
-            CLI so ``backup --config FILE`` runs the plan from FILE rather than
-            the default locations.
+        config_dir: Explicit config directory (from ``--config-dir``), so the
+            plan is discovered under the SAME directory as the settings.
+        config_path: Explicit config file (from ``--config``), so
+            ``backup --config FILE`` runs the plan from FILE.
 
     Raises:
         FatalError: on malformed YAML in a config file, a merge/directive error,
@@ -167,56 +220,28 @@ def load_config(config_dir: str | None = None, config_path: str | None = None) -
             or an unknown ``with:`` input — every failure the CLI's ``FatalError``
             handler can render, never a raw traceback.
     """
-    layers: list[dict[str, object]] = []
     try:
-        layers.append(_load_default())
+        merged = _load_default()
     except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
         msg = f"failed to load bundled default configuration: {exc}"
         raise FatalError(msg) from exc
+    key_sources: dict[tuple[str, ...], Path] = {}
     ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked(
         "backup", config_dir=config_dir, config_path=config_path
     )
     for path in ranked_files:
-        try:
-            data = ConfigurationLoader.load_yaml(path)
-        except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
-            msg = f"failed to load config file {path}: {exc}"
-            raise FatalError(msg) from exc
-        # A backup-SPECIFIC file (buvis-backup*.yaml) should carry only backup's
-        # keys, so an unknown top-level key there is a typo (instnaces:, exclude:)
-        # to reject — the projection below would otherwise silently drop it and
-        # run the bundled plan. A SHARED file (config.yaml / buvis.yaml) legitimately
-        # carries other tools' + global keys, so its extras are tolerated.
-        if _is_backup_specific(path):
-            unknown = _unknown_top_level_keys(data)
-            if unknown:
-                allowed = ", ".join(sorted(_BACKUP_TOP_LEVEL_KEYS))
-                msg = (
-                    f"unknown key(s) in {path}: {', '.join(sorted(unknown))}; "
-                    f"backup config accepts only: {allowed} (with +/- directive suffixes on list keys)"
-                )
-                raise FatalError(msg)
-        layers.append(data)
-
-    try:
-        merged = ConfigurationLoader.merge_configs(*layers, known_keys={"excludes"})
-    except (ConfigurationError, yaml.YAMLError, MissingEnvVarError) as exc:
-        msg = f"failed to merge backup configuration: {exc}"
-        raise FatalError(msg) from exc
+        merged = _merge_layer(merged, path, key_sources)
 
     # find_config_files_ranked also returns the SHARED config.yaml / buvis.yaml
     # layers, whose global fields (debug, log_level, ...) are not backup's. Project
     # the merged document onto backup's own top-level keys before validation, so a
-    # standard global config no longer trips BackupConfig's extra="forbid". Typos in
-    # a backup-SPECIFIC file are already rejected above; a typo nested under
-    # instances/excludes is caught by the per-instance extra="forbid" and
-    # _validate_capabilities.
+    # standard global config no longer trips BackupConfig's extra="forbid".
     backup_config = {key: value for key, value in merged.items() if key in _BACKUP_TOP_LEVEL_KEYS}
 
     try:
         cfg = BackupConfig.model_validate(backup_config)
     except ValidationError as exc:
-        msg = f"invalid backup configuration: {exc}"
+        msg = f"invalid backup configuration: {_format_validation_errors(exc, key_sources)}"
         raise FatalError(msg) from exc
 
     _validate_capabilities(cfg)

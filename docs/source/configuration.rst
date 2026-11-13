@@ -106,22 +106,8 @@ For nested fields (e.g., ``db.host``), flatten them in cli_overrides:
 Tool-Specific Configuration Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can separate tool configuration from global settings using dedicated files.
-The loader searches for both ``buvis.yaml`` AND ``buvis-{tool}.yaml``:
-
-**Option 1: Section in global file**
-
-.. code-block:: yaml
-
-    # ~/.config/buvis/buvis.yaml
-    debug: false
-    log_level: INFO
-
-    photo:                    # Tool section (from BUVIS_PHOTO_ prefix)
-      library_path: /media/photos
-      quality: 90
-
-**Option 2: Separate tool file**
+Put tool settings in a dedicated file, as top-level keys. The loader reads
+``config.yaml``, ``buvis.yaml`` and ``buvis-{tool}.yaml``:
 
 .. code-block:: yaml
 
@@ -129,12 +115,16 @@ The loader searches for both ``buvis.yaml`` AND ``buvis-{tool}.yaml``:
     library_path: /media/photos
     quality: 90
 
-Both are merged. Tool-specific file values override global file values for that tool.
+All files are merged flat, by top-level key. Tool-specific file values override
+shared file values for that tool. A ``<tool>:`` section in a shared file is
+**not** projected onto that tool: ``photo: {library_path: ...}`` in
+``buvis.yaml`` is ignored by the photo tool. Use ``buvis-photo.yaml``, or a
+top-level key in a shared file when every tool should see it.
 
 The tool name is derived from ``env_prefix``:
 
-- ``BUVIS_PHOTO_`` → searches for ``buvis-photo.yaml`` and ``photo:`` section
-- ``BUVIS_`` (default) → only ``buvis.yaml``, no tool section
+- ``BUVIS_PHOTO_`` → searches for ``buvis-photo.yaml``
+- ``BUVIS_`` (default) → only the shared files
 
 **Complete example:**
 
@@ -165,10 +155,9 @@ All equivalent ways to set ``db.host`` to ``"prod.db.local"``:
 
 .. code-block:: yaml
 
-    # YAML (~/.config/buvis/buvis.yaml)
-    photo:
-      db:
-        host: prod.db.local
+    # YAML (~/.config/buvis/buvis-photo.yaml)
+    db:
+      host: prod.db.local
 
 .. code-block:: python
 
@@ -313,14 +302,18 @@ YAML Configuration
 File Locations
 ~~~~~~~~~~~~~~
 
-Config files are discovered in order (first found wins):
+Discovered config files are merged in this order, from lowest to highest priority:
 
-1. ``$BUVIS_CONFIG_DIR/buvis.yaml`` (if env var set)
-2. ``$XDG_CONFIG_HOME/buvis/buvis.yaml`` (or ``~/.config/buvis/buvis.yaml``)
-3. ``~/.buvis/buvis.yaml`` (legacy)
-4. ``./buvis.yaml`` (current directory)
+1. Current directory (except braid, which excludes it)
+2. ``~/.config/buvis/`` (shared config)
+3. ``~/.local/.config/buvis/`` (machine-local overrides)
+4. ``$BUVIS_CONFIG_DIR/`` (if set; ``--config-dir`` overrides this directory)
 
-For tool-specific config, files named ``buvis-{tool}.yaml`` are also checked.
+Within each directory, files merge in the order ``config.yaml``, ``buvis.yaml``,
+then ``buvis-{tool}.yaml``. Later values win per key; nested mappings merge
+recursively, and plain list values replace earlier lists. See
+:ref:`config-list-merge-directives` to append or remove list entries.
+An explicit ``--config FILE`` uses only that file instead of discovered files.
 
 File Format
 ~~~~~~~~~~~
@@ -334,13 +327,8 @@ File Format
     ollama_model: llama3.2:3b        # optional, enables LLM features
     ollama_url: http://localhost:11434  # default
 
-    # Tool-specific sections
-    photo:
-      watermark: true
-      default_album: shared
-    music:
-      normalize: true
-      bitrate: 320
+    # Tool settings go in buvis-<tool>.yaml as top-level keys,
+    # not in <tool>: sections here (those are ignored).
 
 Environment Variable Substitution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -364,6 +352,8 @@ Substitution is applied automatically by ``ConfigResolver`` when it loads YAML:
 
     resolver = ConfigResolver()
     settings = resolver.resolve(PhotoSettings)
+
+.. _config-list-merge-directives:
 
 List Merge Directives (``key+`` / ``key-``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -389,7 +379,7 @@ entry to a shared list has to re-list the whole thing. Directive keys let a laye
     # layer 2 — user-wide (~/.config/buvis), higher priority: ADD, don't replace
     excludes+: [.terraform, .gradle]
 
-    # layer 3 — machine-local (*.local.yaml), higher still: ADD one, CANCEL a default
+    # layer 3 — machine-local (~/.local/.config/buvis), higher still: ADD one, CANCEL a default
     excludes+: [.cache]
     excludes-: [.venv]
 
@@ -566,6 +556,39 @@ For non-Click applications or custom resolution:
 Security Considerations
 -----------------------
 
+Configuration Directory Permissions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On POSIX systems, the YAML loader resolves the configuration path one component
+at a time and checks, before reading any content, the directory holding the
+real file and the directory holding every symlink met on the way, file or
+directory link alike. Discovered files, ``--config FILE`` and ``--config-dir``
+are all checked through their unresolved paths. A world-writable holding directory is rejected unless it
+has the sticky bit and **both** the directory and the entry in it are owned by
+root (UID 0) or the process's effective user. The sticky bit alone is
+insufficient: another directory owner or entry owner can still replace the
+configuration, and anyone can replace a symlink in a world-writable directory.
+
+This is a compatibility change for all discovered layers and explicit
+``--config FILE`` selections. Rejection raises ``ConfigurationError``; the CLI
+reports the unsafe path and exits without applying the file (braid exits 2).
+Remove other-user write permission from the named directory with ``chmod o-w``
+or move the configuration into a private directory. The loader never changes
+permissions itself.
+
+Ordinary private directories keep their existing behavior. A world-writable
+**file** is rejected the same way, even in an accepted directory: any local user
+could rewrite it. Fix it with ``chmod o-w <file>``. Non-POSIX platforms,
+including Windows, skip these checks because
+Unix permission bits and ownership do not describe their access controls.
+This check does not assess other ancestors, group permissions, ACLs, or
+protect against concurrent filesystem changes between inspection and reading.
+
+A configuration path that exists but cannot be read stops the tool with
+``<path>: cannot read config: ...`` instead of being skipped: an unreadable
+file, an entry in a directory the user cannot search, a dangling symlink, a
+directory in place of a file, or a missing ``--config FILE``.
+
 Sensitive Fields
 ~~~~~~~~~~~~~~~~
 
@@ -713,8 +736,8 @@ YAML Not Loading
 Check file locations (in order):
 
 1. ``$BUVIS_CONFIG_DIR/buvis.yaml``
-2. ``~/.config/buvis/buvis.yaml``
-3. ``~/.buvis/buvis.yaml``
+2. ``~/.local/.config/buvis/buvis.yaml`` (machine-local overrides)
+3. ``~/.config/buvis/buvis.yaml``
 4. ``./buvis.yaml``
 
 Debug with:

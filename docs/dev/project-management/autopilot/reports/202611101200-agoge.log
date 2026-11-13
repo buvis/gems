@@ -1,0 +1,30 @@
+The four armed lanes are running now: walter, heidi, wendy and trudy. judy and peggy stay unarmed. I'll wait for their reports.
+
+The write fence blocks edits to the project memory. I'll record that stale entry in the report instead. Still waiting on heidi and trudy.
+
+Heidi has reported. Only trudy is still running.
+
+I ran the agoge product check on this worktree. It found 13 confirmed problems: 1 HIGH, 4 MEDIUM and 8 LOW. The target repo was left as it was, and both before/after checks found no changes. The run was unattended, so no PRDs were created. The report ends with the `AGOGE-WALKTHROUGH-PENDING` line and waits for you to decide on each finding.
+
+**Lanes:** walter, heidi, wendy and trudy ran against the real `braid`, `sysup` and `bim` commands. trudy, the security lane, was authorized by your `--authorized autoclaude-drain` argument; the profile itself says `not asserted`. judy was off because there is no browser driver here, and peggy because nothing in this batch is worth a speed measurement. The full test suite passed: 7262 passed, 16 skipped, 1 xfailed.
+
+**Most important findings:**
+1. **HIGH:** if you run `braid` inside a cloned repo, a `buvis-braid.yaml` in that repo can link its own skills into `~/.claude/skills`. The config loader reads the current directory as a config layer, and with the `sources+:` form the CHANGELOG recommends, nothing blocks it.
+2. **MEDIUM:** a broken config file crashes `braid` and `sysup` with a Python traceback. `braid --check` then exits 1, which its docs define as "drift found", so a broken config looks like drift.
+3. **MEDIUM:** existing `*.local.yaml` files are now ignored without any warning. A sysup step you turned off in one of them will run again.
+4. **MEDIUM:** braid now ignores `~/.config/braid` without any warning. Skills you hid with `.braidignore` show up in Claude again.
+5. **MEDIUM:** `braid --config FILE` ignores `sources+`/`policies+`/`policies-` lines and does not expand `${VAR}`. `sysup` handles the same file correctly.
+
+The 8 LOW findings cover silent config typos, small edge-case crashes, `bim serve` on 0.0.0.0, docs gaps and a cosmetic `sysup --list` issue.
+
+**Not done:**
+- No regression tests were written. The profile asks for them, but the tree already had uncommitted autopilot files when the run started, and the rule says to skip in that case.
+- My edit to the project memory was blocked by the autopilot write fence. It still tells test runs to use `buvis-postup.local.yaml`, which the loader now ignores. Rename it to `buvis-postup.yaml` in that entry.
+- The new profile is excluded from git by a line in the main repo's `.git/info/exclude`, so git does not track it.
+- The new files are not committed.
+
+Files are in `docs/dev/project-management/audit-results/`:
+- agoge-2026-11-10.md
+- agoge-2026-11-10.json
+
+To decide on each finding, run `/run-agoge --resume docs/dev/project-management/audit-results/agoge-2026-11-10.md`.

@@ -24,4 +24,5 @@ class CommandTidy:
             output=f"Tidied {self.dir}",
             info=[message for result in results for message in result.info],
             warnings=[message for result in results for message in result.warnings],
+            metadata={"steps": results},  # step order, for interfaces that render as it happened
         )

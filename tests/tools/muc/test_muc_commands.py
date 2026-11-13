@@ -28,7 +28,9 @@ class TestMucCommands:
     def test_tidy_success(self, mock_dirtree: MagicMock, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_dirtree.count_files.return_value = 5
         mock_dirtree.get_max_depth.return_value = 1
-        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=True, output="Tidied")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(
+            success=True, output="Tidied", metadata={"steps": []}
+        )
         result = runner.invoke(cli, ["tidy", "-y", str(tmp_path)])
         assert result.exit_code == 0
 

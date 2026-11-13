@@ -144,7 +144,9 @@ def _write(path: Path, text: str) -> None:
 class TestLoadConfig:
     def test_ntfy_local_layer_merges_over_shared_config(self, mocker, tmp_path: Path) -> None:
         shared = tmp_path / "buvis-sysup.yaml"
-        local = tmp_path / "buvis-sysup.local.yaml"
+        local_dir = tmp_path / "local"
+        local_dir.mkdir()
+        local = local_dir / "buvis-sysup.yaml"
         _write(shared, "ntfy:\n  url: https://ntfy.example\n  topic: shared\n")
         _write(local, "ntfy:\n  topic: local\n  credentials_file: ~/.ntfy\n")
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[shared, local])

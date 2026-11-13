@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import click
@@ -39,12 +40,6 @@ from braid.settings import BraidSettings
     default=None,
     help="override the ~/.claude root, ahead of BUVIS_BRAID_CLAUDE_ROOT",
 )
-@click.option(
-    "--config-root",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="override the ~/.config/braid directory holding sources.d, ahead of BUVIS_BRAID_CONFIG_ROOT",
-)
 @click.option("--no-claude", is_flag=True, help="skip projecting skills and rules into the Claude root")
 @click.option("--kiro", is_flag=True, help="enroll Kiro once; later runs remember it")
 @click.option(
@@ -68,7 +63,7 @@ from braid.settings import BraidSettings
     help="stop managing a custom agent; keep its existing resources (repeatable)",
 )
 @click.option("--no-kiro", is_flag=True, help="skip Kiro for this run; preserve its links/enrollment")
-@buvis_options(settings_class=BraidSettings)
+@buvis_options(settings_class=BraidSettings, config_error_exit_code=2)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -79,7 +74,6 @@ def cli(
     policies: tuple[Path, ...],
     agents_root: Path | None,
     claude_root: Path | None,
-    config_root: Path | None,
     no_claude: bool,
     kiro: bool,
     kiro_root: Path | None,
@@ -94,6 +88,16 @@ def cli(
         console.failure("--no-kiro cannot be combined with Kiro enrollment options")
         ctx.exit(2)
     settings = get_settings(ctx, BraidSettings)
+    legacy = []
+    if (Path.home() / ".config" / "braid").exists():
+        legacy.append("~/.config/braid")
+    if "BUVIS_BRAID_CONFIG_ROOT" in os.environ:
+        legacy.append("BUVIS_BRAID_CONFIG_ROOT")
+    if legacy:
+        console.warning(
+            f"{', '.join(legacy)} is ignored; migrate sources.d entries to sources and "
+            ".braidignore paths to policies in ~/.config/buvis/buvis-braid.yaml."
+        )
 
     from braid.commands.compose.compose import CommandCompose
     from braid.domain.engine import ComposeRequest, Mode
@@ -101,7 +105,8 @@ def cli(
     request = ComposeRequest(
         agents_root=agents_root or settings.agents_root,
         claude_root=claude_root or settings.claude_root,
-        config_root=config_root or settings.config_root,
+        configured_sources=settings.sources,
+        configured_policies=settings.policies,
         sources=sources,
         policies=policies,
         mode=Mode.CHECK if check else Mode.DRY_RUN if dry_run else Mode.SYNC,
@@ -113,6 +118,8 @@ def cli(
         project_kiro=not no_kiro,
     )
     result = CommandCompose(request).execute()
+    for warning in result.warnings:
+        console.console.print(console.format_warning(escape(warning)), soft_wrap=True)
     for line in (result.output or "").splitlines():
         console.console.out(line, highlight=False)
     if result.error:

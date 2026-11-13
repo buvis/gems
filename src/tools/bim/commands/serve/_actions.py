@@ -7,6 +7,7 @@ from typing import Any
 
 from buvis.pybase.result import CommandResult
 from fastapi import HTTPException
+from starlette.concurrency import run_in_threadpool
 
 from bim.commands.serve._security import AppState, confine_path
 from bim.commands.shared.os_open import open_in_os
@@ -47,15 +48,17 @@ async def handle_sync_note(file_path: str, args: dict[str, Any], app_state: AppS
     from bim.params.sync_note import SyncNoteParams
 
     target_system = args.get("target_system", "jira")
-    jira_config = args.get("jira_config", {})
+    # The Jira server and token come from the server's own settings, never from the
+    # request: a caller must not choose where the configured credentials are sent.
     params = SyncNoteParams(paths=[fp], target_system=target_system)
     cmd = CommandSyncNote(
         params=params,
-        jira_adapter_config=jira_config,
+        jira_adapter_config=getattr(app_state, "jira_config", None) or {},
         repo=get_repo(),
         formatter=get_formatter(),
     )
-    result = cmd.execute()
+    # A slow or unreachable Jira must not block every other request on the event loop.
+    result = await run_in_threadpool(cmd.execute)
     return result.to_dict()
 
 

@@ -18,6 +18,7 @@ import click
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
+from .exceptions import ConfigurationError
 from .resolver import ConfigResolver
 from .settings import GlobalSettings
 
@@ -211,7 +212,7 @@ def _feedback_callback(ctx: click.Context, _param: click.Parameter, value: bool)
     ctx.exit(0)
 
 
-def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
+def _create_buvis_options(settings_class: type[T], config_error_exit_code: int = 1) -> Callable[[F], F]:
     """Build a decorator that injects settings into the Click context."""
 
     def decorator(f: F) -> F:
@@ -237,7 +238,9 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
         )
         @click.option(
             "--config",
-            type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+            # No parse-time checks: the resolver reports bad paths through the console,
+            # and resolving here would hide a symlink from the directory check.
+            type=click.Path(),
             help="YAML config file path.",
         )
         @click.option(
@@ -247,7 +250,7 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
         )
         @click.option(
             "--config-dir",
-            type=click.Path(exists=True, file_okay=False, resolve_path=True),
+            type=click.Path(exists=True, file_okay=False),
             help="Configuration directory.",
         )
         @click.option(
@@ -288,12 +291,19 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             cli_overrides = {k: v for k, v in {"debug": debug, "log_level": log_level}.items() if v is not None}
 
             resolver = ConfigResolver()
-            settings = resolver.resolve(
-                settings_class,  # type: ignore[type-var]
-                config_dir=config_dir,
-                config_path=Path(config) if config else None,
-                cli_overrides=cli_overrides,
-            )
+            try:
+                settings = resolver.resolve(
+                    settings_class,  # type: ignore[type-var]
+                    config_dir=config_dir,
+                    config_path=Path(config) if config else None,
+                    cli_overrides=cli_overrides,
+                )
+            except ConfigurationError as exc:
+                from buvis.pybase.adapters import console
+                from rich.markup import escape
+
+                console.console.print(console.format_failure(escape(str(exc))), soft_wrap=True)
+                ctx.exit(config_error_exit_code)
 
             ctx.ensure_object(dict)
             ctx.obj[settings_class] = settings
@@ -326,6 +336,7 @@ def buvis_options(
     settings_class_or_func: type[T] | None = ...,
     *,
     settings_class: type[T] | None = ...,
+    config_error_exit_code: int = ...,
 ) -> Callable[[F], F]: ...
 
 
@@ -333,6 +344,7 @@ def buvis_options(  # type: ignore[misc]
     settings_class_or_func: type[T] | F | None = None,
     *,
     settings_class: type[T] | None = None,
+    config_error_exit_code: int = 1,
 ) -> Callable[[F], F] | F:
     """Add standard BUVIS options to a Click command.
 
@@ -340,6 +352,8 @@ def buvis_options(  # type: ignore[misc]
     ``--log-level``, ``--config-dir``, ``--config``, and
     ``--config-create`` options. Resolves settings using ConfigResolver
     and injects into Click context.
+    ``config_error_exit_code`` selects the CLI status for configuration errors
+    (default 1; tools reserving 1 for another outcome can select 2).
     Can be applied as ``@buvis_options``, ``@buvis_options()``, or
     ``@buvis_options(settings_class=CustomSettings)``.
 
@@ -356,7 +370,7 @@ def buvis_options(  # type: ignore[misc]
     _install_parse_args_patch()
 
     if callable(settings_class_or_func) and not isinstance(settings_class_or_func, type):
-        return _create_buvis_options(GlobalSettings)(settings_class_or_func)
+        return _create_buvis_options(GlobalSettings, config_error_exit_code)(settings_class_or_func)
 
     if settings_class is not None:
         chosen_settings_class: type[T] = settings_class
@@ -365,7 +379,7 @@ def buvis_options(  # type: ignore[misc]
     else:
         chosen_settings_class = GlobalSettings  # type: ignore[assignment]
 
-    return _create_buvis_options(chosen_settings_class)
+    return _create_buvis_options(chosen_settings_class, config_error_exit_code)
 
 
 # --- Click option generation from Pydantic models ---

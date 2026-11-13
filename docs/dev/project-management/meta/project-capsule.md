@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-11-10 (catchup: feature/muc-tidy-reporting)
+Generated: 2026-11-13 (catchup: feature/config-local-layer-braid, batch 202611131903)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -26,6 +26,16 @@ Generated: 2026-11-10 (catchup: feature/muc-tidy-reporting)
 - sysup step shape normalization (string/list/object -> argv + `label`) is a config-layer concern (`StepSpec`); `runner.py` only sees resolved argv, the child env and the label used for dry-run and the run log. The timeout ceiling above lives in the runner because that is where the spawn seam is.
 
 ## Active Work
+
+### Batch 202611131903 (feature/config-local-layer-braid worktree, PR #275 open)
+- [ ] 00136-sysup-plan-config-errors-raw-v1.md (lane full, design skip): sysup `load_config` validates the raw merged layers, so shared keys (`debug`, other tools' sections) fail `extra="forbid"`, list directives on unknown-to-merge keys traceback, and `ValidationError` renders raw. `backup/config.py` already projects onto `_BACKUP_TOP_LEVEL_KEYS`, rejects unknown keys only in `buvis-backup*.yaml`, and wraps merge errors in `FatalError` — it is the template. backup still interpolates raw `ValidationError` text (pydantic URL) into its FatalError.
+- Remaining backlog: 00137-00140 (agoge deferred findings from batch 202611101200).
+
+### Batch 202611101200 (feat/config-local-layer-braid worktree, `~/git/src/worktrees/gems/feat-config-local-layer-braid`)
+- [x] 00122-config-machine-local-layer-v1.md (1 cycle, fast-track lane): dropped `local.yaml` sibling twins for a `~/.local/.config/buvis` machine-local config layer, per `~/.claude/AGENTS.md`'s "machine-local config never sits loose beside tracked config" rule.
+- [x] 00123-braid-config-in-buvis-yaml-v1.md (1 cycle, lane: full): braid drops `~/.config/braid/sources.d` and `--config-root`/`BUVIS_BRAID_CONFIG_ROOT` for `sources`/`policies` lists in `buvis-braid.yaml`, read through the shared loader so 00122's machine-local layer composes them via `sources+:`. Depends on 00122 (done). Source: gems#272; sibling issue #273 (config loader machine-local read path) is a separate PRD, not in scope here. Review cycle 1 converged: 12 autonomous-decision findings all single-voice [1/4], discarded to the audit ledger, no CRITICAL/HIGH.
+
+Observations: batch 202611101200 drained (both PRDs done); `docs/dev/project-management/prds/backlog/` was missing in this worktree (recreated via mkdir -p — the Phase 0 lifecycle-dir step should have created it).
 
 ### feature/muc-tidy-reporting
 - Implemented intake `00121-muc-tidy-report-through-console/idea.md`: all five helpers return actions and recoverable warnings through `CommandResult`, aggregated by `DirTree` and `CommandTidy`. No logging remains in muc.
@@ -55,6 +65,8 @@ Observations: Batch drained; all four tasks completed, including the cycle-2 Tai
 
 ## Related context
 
+2026-11-13: topic "config local layer braid / sysup crashes or dumps raw pydantic errors on valid-looking config". engram skipped per `autopilot catchup-probe` (skip list: engram); no query, no hits, no staleness stamp. Source evidence: `audit-results/agoge-2026-11-10-2.md` finding 8 and `agoge-2026-11-12.md`. Task restore: `no_tasks_dir`.
+
 2026-11-10: topic `muc tidy reporting`. Repo indexing/query and review harvest could not resolve this unregistered worktree. Portfolio hit: `gems/src/tools/muc/cli.py:60-86` — 0.0164, the existing tidy renderer. Other returned hits were unrelated. Portfolio status reported stale/dead rows (exit 1), including code stale=34/dead=133; results are not a fresh repo index. Task restore returned `no_project_data`.
 
 2026-11-09: engram review harvest, indexing and related queries skipped per catchup probe; engram unavailable/unregistered. Topic: "improve bim from skill experience — bim create: scripting contract for agents". No query or portfolio staleness stamp was obtained. Source rationale is the 2026-11-08 create-note comparison recorded in PRD 00118; no discovery document was created.
@@ -66,6 +78,7 @@ Observations: Batch drained; all four tasks completed, including the cycle-2 Tai
 Previous (2026-10-29): No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
 
 ## GitHub State
+- 2026-11-13: 2 open issues (#272 braid config, #273 loader machine-local read path, both addressed on this branch). Open PR #275 (this branch -> master), no reviews; its Test run was queued at catchup. Latest release `gems-v0.20.0` (2026-11-10); 8 master commits since (Renovate frontend bumps #276-#278, muc #274). Master Test green. Remote branches: renovate/patch-all-non-major-dependencies, renovate/lock-file-maintenance, claude/python-3.15-wheels.
 - 2026-11-09: 0 open issues; 1 open PR, #267 (`renovate/jsdom-31.x`, jsdom 30.1.3 -> 31.0.0). All listed checks pass. It touches only postup frontend package manifests/lock, with no bim overlap.
 - Latest GitHub release: `gems-v0.19.2` (2026-11-08); two master commits follow it.
 - Current master `a087e05e`: latest Test and documentation deployment completed successfully (2026-11-09 catchup). Latest completed Test, 42519713815 at `4876cad1`, succeeded, as did `f64f21a4`.

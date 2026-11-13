@@ -66,8 +66,11 @@ class TestTidyReporting:
         assert len(result.info) == 1
         assert blocked.exists()
 
-    @pytest.mark.parametrize("method", ["rmdir", "iterdir"])
-    def test_directory_failure_is_reported_and_cleanup_continues(self, tmp_path, method):
+    @pytest.mark.parametrize(
+        ("method", "warning"),
+        [("rmdir", "Could not remove empty directory"), ("iterdir", "Could not read directory")],
+    )
+    def test_directory_failure_is_reported_and_cleanup_continues(self, tmp_path, method, warning):
         blocked = tmp_path / "blocked"
         blocked.mkdir()
         other = tmp_path / "other"
@@ -82,7 +85,7 @@ class TestTidyReporting:
         with patch.object(Path, method, autospec=True, side_effect=fail_one):
             result = remove_empty_directories(tmp_path)
 
-        assert result.warnings == [f"Could not remove empty directory {blocked}: busy"]
+        assert result.warnings == [f"{warning} {blocked}: busy"]
         assert result.info == [f"Removed empty directory {other}"]
         assert blocked.exists()
         assert not other.exists()
@@ -110,6 +113,19 @@ class TestTidyReporting:
         assert "Removed empty directory" in result.output
         assert "Tidied" in result.output
         assert not (tmp_path / "empty").exists()
+
+    def test_cli_prints_each_step_warning_before_later_step_actions(self, runner, tmp_path, monkeypatch):
+        monkeypatch.setenv("COLUMNS", "500")
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "._song.MP3").write_bytes(b"not apple double")  # merge step keeps it with a warning
+        (tmp_path / "song.MP3").touch()
+
+        result = runner.invoke(cli, ["tidy", "-y", "."])
+
+        assert result.exit_code == 0
+        kept = result.output.index("Kept")
+        renamed = result.output.index("Renamed")
+        assert kept < renamed
 
     def test_no_changes_has_no_actions_or_warnings(self, tmp_path):
         (tmp_path / "track.mp3").touch()

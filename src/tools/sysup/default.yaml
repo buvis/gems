@@ -2,9 +2,10 @@
 #
 # Reproduces the behaviour of the former `sysup mac` and `sysup wsl`
 # subcommands, host-selected via each entry's `when`. It is the lowest-priority
-# layer: any `buvis-sysup.yaml` (or its machine-local `.local.yaml` twin) in the
-# config stack deep-merges on top by key, so a machine can add, reorder, or
-# disable (`enabled: false`) an entry without redefining this base.
+# layer: any `buvis-sysup.yaml` in the config stack (`~/.config/buvis`, or
+# `~/.local/.config/buvis` for machine-local overrides) deep-merges on top by
+# key, so a machine can add, reorder, or disable (`enabled: false`) an entry
+# without redefining this base.
 
 commands:
   # --- macOS (former `sysup mac`) -----------------------------------------
@@ -138,9 +139,10 @@ prime:
   - sudo-prime
 
 # Expiring credentials checked before every ordinary run (PRD 00096). gh-agent
-# is a disabled template: in buvis-sysup.local.yaml set `with.probe` to a
-# `gh api` path that needs private-repository access (for example
-# repos/<owner>/<private-repo>) and `enabled: true`. The other fields merge in.
+# is a disabled template: in ~/.local/.config/buvis/buvis-sysup.yaml set
+# `with.probe` to a `gh api` path that needs private-repository access (for
+# example repos/<owner>/<private-repo>) and `enabled: true`. The other fields
+# merge in.
 expiry:
   gh-agent:
     enabled: false
