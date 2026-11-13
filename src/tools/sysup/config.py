@@ -7,11 +7,16 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 import yaml
-from buvis.pybase.configuration import ConfigurationLoader
+from buvis.pybase.configuration import (
+    ConfigurationError,
+    ConfigurationLoader,
+    MissingEnvVarError,
+)
 from buvis.pybase.result import FatalError
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError, model_validator
 
 from sysup.capabilities import CAPABILITIES, EXPIRY_CAPABILITIES
+from sysup.settings import SysupSettings
 
 __all__ = [
     "ExpiryItem",
@@ -167,6 +172,57 @@ class SysupConfig(BaseModel):
     expiry: dict[str, ExpiryItem] = {}
 
 
+# Sysup's own top-level config keys. The shared config stack (config.yaml /
+# buvis.yaml) carries other tools' and global fields; only these plan keys are
+# projected into SysupConfig, whose extra="forbid" would otherwise reject them.
+_SYSUP_TOP_LEVEL_KEYS = frozenset(SysupConfig.model_fields)
+# Global settings keys (debug, log_level, ...) a sysup-specific file may also
+# carry beside the plan keys.
+_SYSUP_SETTINGS_KEYS = frozenset(SysupSettings.model_fields)
+
+
+def _is_sysup_specific(path: Path) -> bool:
+    """Whether ``path`` is a sysup-specific config file (``buvis-sysup*.yaml``).
+
+    A sysup-specific file should carry only sysup's plan keys plus the global
+    settings keys, so an unknown top-level key in it is a typo. A shared file
+    (``config.yaml`` / ``buvis.yaml``) legitimately carries other tools' +
+    global keys and is not checked.
+    """
+    return path.name.startswith("buvis-sysup")
+
+
+def _unknown_top_level_keys(data: dict[str, object]) -> set[str]:
+    """Return top-level keys in ``data`` that are not sysup's.
+
+    A key may carry a ``+`` / ``-`` directive suffix, so the suffix is stripped
+    before the membership check. Non-mapping documents contribute nothing.
+    """
+    allowed = _SYSUP_TOP_LEVEL_KEYS | _SYSUP_SETTINGS_KEYS
+    unknown: set[str] = set()
+    for key in data:
+        base = key[:-1] if key.endswith(("+", "-")) else key
+        if base not in allowed:
+            unknown.add(key)
+    return unknown
+
+
+def _format_validation_errors(exc: ValidationError, key_sources: dict[str, Path]) -> str:
+    """One ``<source>: <dotted location>: <message>`` line per pydantic error.
+
+    The source is the config file that last set the top-level key, or
+    ``bundled default``. ``str(exc)`` is never used — it embeds the pydantic
+    documentation URL.
+    """
+    parts: list[str] = []
+    for error in exc.errors():
+        loc = error["loc"]
+        top = str(loc[0]) if loc else ""
+        source = key_sources.get(top, "bundled default")
+        parts.append(f"{source}: {'.'.join(str(part) for part in loc)}: {error['msg']}")
+    return "; ".join(parts)
+
+
 def _validate_capabilities(cfg: SysupConfig) -> None:
     """Reject unknown ``use:`` names and unknown ``with:`` inputs.
 
@@ -267,10 +323,17 @@ def load_config(config_dir: str | None = None, config_path: str | None = None) -
     Layers, lowest priority first: the bundled ``default.yaml``, then the user
     files returned by :meth:`ConfigurationLoader.find_config_files_ranked`
     (already low-to-high — never reverse it). An explicit ``config_path`` (from
-    ``--config FILE``) is the single highest-priority layer. Merged via
-    :meth:`ConfigurationLoader.merge_configs` (later wins), validated against
-    :class:`SysupConfig`, and finally checked for unknown capability names /
-    inputs against the registry.
+    ``--config FILE``) is the single highest-priority layer. Each user file is
+    loaded with :meth:`ConfigurationLoader.load_yaml` and merged into the
+    running result with :meth:`ConfigurationLoader.merge_configs` (later
+    wins), so a load or merge failure names the offending file. A sysup-specific
+    file (``buvis-sysup*.yaml``) may carry only sysup's plan keys plus the
+    global settings keys; a shared file (``config.yaml`` / ``buvis.yaml``) may
+    carry any key, and its extras are dropped by the projection. The merged
+    document is projected onto sysup's plan keys, validated against
+    :class:`SysupConfig` (each error attributed to the file that set the key),
+    and finally checked for unknown capability names / inputs against the
+    registry.
 
     Args:
         config_dir: Explicit config directory (from ``--config-dir``), threaded
@@ -280,22 +343,58 @@ def load_config(config_dir: str | None = None, config_path: str | None = None) -
             ``sysup --config FILE`` runs the plan from FILE.
 
     Raises:
-        FatalError: on invalid YAML schema, an unknown capability, or an unknown
-            ``with:`` input.
+        FatalError: on malformed YAML in a config file, a merge/directive error,
+            a missing required env var, an unknown top-level key in a
+            sysup-specific file, an invalid schema, an unknown capability, or an
+            unknown ``with:`` input — every failure the CLI's ``FatalError``
+            handler can render, never a raw traceback.
     """
-    layers: list[dict[str, object]] = [_load_default()]
+    merged: dict[str, object] = _load_default()
+    key_sources: dict[str, Path] = {}
     ranked_files: list[Path] = ConfigurationLoader.find_config_files_ranked(
         "sysup", config_dir=config_dir, config_path=config_path
     )
     for path in ranked_files:
-        layers.append(ConfigurationLoader.load_yaml(path))
+        try:
+            data = ConfigurationLoader.load_yaml(path)
+        except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
+            msg = f"{path}: {exc}"
+            raise FatalError(msg) from exc
+        # A sysup-SPECIFIC file (buvis-sysup*.yaml) should carry only sysup's
+        # keys, so an unknown top-level key there is a typo (comands:, primey:)
+        # to reject — the projection below would otherwise silently drop it and
+        # run the bundled plan. A SHARED file (config.yaml / buvis.yaml)
+        # legitimately carries other tools' + global keys, so its extras are
+        # tolerated.
+        if _is_sysup_specific(path):
+            unknown = _unknown_top_level_keys(data)
+            if unknown:
+                allowed = ", ".join(sorted(_SYSUP_TOP_LEVEL_KEYS | _SYSUP_SETTINGS_KEYS))
+                msg = (
+                    f"unknown key(s) in {path}: {', '.join(sorted(unknown))}; "
+                    f"sysup config accepts only: {allowed} (with +/- directive suffixes on list keys)"
+                )
+                raise FatalError(msg)
+        try:
+            merged = ConfigurationLoader.merge_configs(merged, data)
+        except (ConfigurationError, yaml.YAMLError, MissingEnvVarError) as exc:
+            msg = f"{path}: {exc}"
+            raise FatalError(msg) from exc
+        for key in data:
+            base = key[:-1] if key.endswith(("+", "-")) else key
+            if base in _SYSUP_TOP_LEVEL_KEYS:
+                key_sources[base] = path
 
-    merged = ConfigurationLoader.merge_configs(*layers)
+    # The shared config.yaml / buvis.yaml layers carry global fields (debug,
+    # log_level, ...) and other tools' sections that are not sysup's. Project
+    # the merged document onto sysup's own top-level keys before validation, so
+    # a standard global config no longer trips SysupConfig's extra="forbid".
+    projected = {key: value for key, value in merged.items() if key in _SYSUP_TOP_LEVEL_KEYS}
 
     try:
-        cfg = SysupConfig.model_validate(merged)
+        cfg = SysupConfig.model_validate(projected)
     except ValidationError as exc:
-        msg = f"invalid sysup configuration: {exc}"
+        msg = f"invalid sysup configuration: {_format_validation_errors(exc, key_sources)}"
         raise FatalError(msg) from exc
 
     _validate_capabilities(cfg)

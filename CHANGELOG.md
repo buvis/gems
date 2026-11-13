@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **sysup**: shared config keys (`debug`, `log_level`, other tools' sections in `config.yaml` / `buvis.yaml`) no longer stop the plan; a list directive on a plan mapping (`commands-:`) or a type error (`prime: 5`) prints one line naming the file and field instead of a traceback or a pydantic dump, and typos in `buvis-sysup.yaml` are still rejected.
 - **sysup**: preserve literal `[run]` and `[use:...]` kind labels in `--list` output by escaping them before console markup rendering (audit finding 13).
 - **bim docs**: document saved-query lookup and listing precedence, including `~/.local/.config/buvis/queries/` and direct file paths (audit finding 12).
 - **config docs**: describe the actual directory and filename merge order, per-key precedence, and list directives instead of claiming the first discovered file wins (audit finding 11).
