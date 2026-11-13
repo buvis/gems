@@ -1040,3 +1040,19 @@
 {"id":"4cf5bfc2","ended_at":1794605317,"elapsed_s":1640,"outcome":"ok","detail":null}
 {"id":"143a229d","ended_at":1794605317,"elapsed_s":1640,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1794605411,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794605446,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"id":"402d5f1c","kind":"ivan","task":"2","queued_at":1794605556,"prompt_bytes":20549}
+{"id":"402d5f1c","ended_at":1794605645,"elapsed_s":89,"outcome":"ok","detail":null}
+{"id":"89da1807","kind":"pat","task":"2","queued_at":1794605723,"prompt_bytes":7948}
+{"id":"89da1807","ended_at":1794605755,"elapsed_s":32,"outcome":"error","detail":"sonnet-run.sh: OAuth token revoked; rerouted to native pat subagent"}
+{"id":"be173c66","kind":"ivan","task":"3","queued_at":1794606014,"prompt_bytes":24821}
+{"id":"be173c66","ended_at":1794606059,"elapsed_s":45,"outcome":"ok","detail":null}
+{"id":"17488a6b","kind":"deslop","task":"3","queued_at":1794606146,"prompt_bytes":7119}
+{"id":"17488a6b","ended_at":1794606165,"elapsed_s":19,"outcome":"ok","detail":"no slop found"}
+{"id":"c2863b4b","kind":"pat","task":"3","queued_at":1794606215,"prompt_bytes":18547}
+{"id":"c2863b4b","ended_at":1794606241,"elapsed_s":26,"outcome":"ok","detail":"2 CLOSURE resolved, NO FINDINGS"}
+{"id":"4165d339","kind":"ivan","task":"5","queued_at":1794606395,"prompt_bytes":22780}
+{"id":"4165d339","ended_at":1794606537,"elapsed_s":142,"outcome":"ok","detail":"18/20 pass; 2 cases report production gaps"}
+{"id":"a5b252cf","kind":"pat","task":"5","queued_at":1794606676,"prompt_bytes":23223}
+{"id":"a5b252cf","ended_at":1794606703,"elapsed_s":27,"outcome":"ok","detail":"1 CLOSURE resolved, 3 LOW"}
+{"kind":"handoff","site":"review","edge":"leave","at":1794607156,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
