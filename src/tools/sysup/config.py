@@ -208,16 +208,22 @@ def _unknown_top_level_keys(data: dict[str, object]) -> set[str]:
 def _format_validation_errors(exc: ValidationError, key_sources: dict[tuple[str, ...], Path]) -> str:
     """One ``<source>: <dotted location>: <message>`` line per pydantic error.
 
-    The source is the config file that last set the entry (``commands.name``),
-    else the top-level key, else ``bundled default``. ``str(exc)`` is never
-    used — it embeds the pydantic documentation URL.
+    The source is the config file that last set the error's exact nested
+    field path (``commands.name.field``), falling back to the next-shortest
+    recorded prefix, then ``bundled default``. ``str(exc)`` is never used —
+    it embeds the pydantic documentation URL.
     """
     parts: list[str] = []
     for error in exc.errors():
         loc = error["loc"]
-        entry = tuple(str(part) for part in loc[:2])
-        source = key_sources.get(entry) or key_sources.get(entry[:1]) or "bundled default"
-        parts.append(f"{source}: {'.'.join(str(part) for part in loc)}: {error['msg']}")
+        full_loc = tuple(str(part) for part in loc)
+        source: Path | str = "bundled default"
+        for depth in range(len(full_loc), 0, -1):
+            candidate = key_sources.get(full_loc[:depth])
+            if candidate is not None:
+                source = candidate
+                break
+        parts.append(f"{source}: {'.'.join(full_loc)}: {error['msg']}")
     return "; ".join(parts)
 
 
@@ -315,11 +321,29 @@ def _load_default() -> dict[str, object]:
     return data if isinstance(data, dict) else {}
 
 
+def _record_key_sources(
+    prefix: tuple[str, ...], value: object, path: Path, key_sources: dict[tuple[str, ...], Path]
+) -> None:
+    """Record ``path`` as the source of ``prefix`` and, recursively, of every
+    nested field under ``value`` when it is a mapping.
+
+    Tracking the full nested path (not just one level under a top-level key)
+    means two files that each set a different field of the same entry (e.g.
+    ``commands.custom.order`` in one file, ``commands.custom.steps`` in
+    another) are each attributed to the file that actually set that field.
+    """
+    key_sources[prefix] = path
+    if isinstance(value, dict):
+        for name, sub_value in value.items():
+            base = name[:-1] if isinstance(name, str) and name.endswith(("+", "-")) else name
+            _record_key_sources((*prefix, str(base)), sub_value, path, key_sources)
+
+
 def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[tuple[str, ...], Path]) -> dict[str, object]:
     """Load one user config file, check its keys and merge it over ``merged``.
 
-    Records in ``key_sources`` which file last set each top-level plan key and,
-    for mapping keys (``commands``, ``expiry``), each entry under it.
+    Records in ``key_sources`` which file last set each top-level plan key
+    and, recursively, each nested field under it (see :func:`_record_key_sources`).
 
     Raises:
         FatalError: on a load or merge failure, or an unknown top-level key in a
@@ -327,7 +351,7 @@ def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[tuple[
     """
     try:
         data = ConfigurationLoader.load_yaml(path)
-    except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
+    except (ConfigurationError, yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
         msg = f"{path}: {exc}"
         raise FatalError(msg) from exc
     # A sysup-SPECIFIC file (buvis-sysup*.yaml) should carry only sysup's
@@ -352,9 +376,7 @@ def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[tuple[
     for key, value in data.items():
         base = key[:-1] if key.endswith(("+", "-")) else key
         if base in _SYSUP_TOP_LEVEL_KEYS:
-            key_sources[(base,)] = path
-            if isinstance(value, dict):
-                key_sources.update({(base, str(name)): path for name in value})
+            _record_key_sources((base,), value, path, key_sources)
     return result
 
 
