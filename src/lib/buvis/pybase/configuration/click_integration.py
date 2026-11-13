@@ -129,8 +129,31 @@ def _run_force_update_and_exit(ctx: click.Context) -> None:
     ctx.exit(force_update(settings))
 
 
-def _run_update_check_once(ctx: click.Context) -> None:
-    """Run the auto-update check at most once per root invocation."""
+def _extract_config_path(args: list[str]) -> str | None:
+    """Return the ``--config`` option's value from raw argv, if present.
+
+    Honors the ``--`` end-of-options sentinel, same as ``_contains_update_option``.
+    """
+    for i, arg in enumerate(args):
+        if arg == "--":
+            return None
+        if arg == "--config" and i + 1 < len(args):
+            return args[i + 1]
+        if arg.startswith("--config="):
+            return arg[len("--config=") :]
+    return None
+
+
+def _run_update_check_once(ctx: click.Context, args: list[str]) -> None:
+    """Run the auto-update check at most once per root invocation.
+
+    Resolves settings from the same argv the command was invoked with (honoring
+    a ``--config`` YAML file, same as the command's own resolution) so a value
+    that only comes from a config file still suppresses or permits the check,
+    even though this runs before the command's own settings resolution. Any
+    resolution failure is suppressed so a bad config degrades the check
+    cleanly rather than blocking ``--help``/``--version``.
+    """
     root = ctx.find_root()
     if root.meta.get(_BUVIS_META_CHECKED_KEY):
         return
@@ -139,7 +162,16 @@ def _run_update_check_once(ctx: click.Context) -> None:
     with contextlib.suppress(Exception):
         from buvis.pybase.updater import check_and_update
 
-        check_and_update(GlobalSettings())
+        settings_class = _resolve_settings_class(ctx)
+        config_path = _extract_config_path(args)
+        settings = ConfigResolver().resolve(
+            settings_class,
+            config_dir=None,
+            config_path=Path(config_path) if config_path else None,
+            cli_overrides={},
+        )
+        if settings.auto_update:
+            check_and_update(settings)
 
 
 def _install_parse_args_patch() -> None:
@@ -160,7 +192,7 @@ def _install_parse_args_patch() -> None:
 
     def patched_command_parse_args(self: click.Command, ctx: click.Context, args: list[str]) -> list[str]:
         if self.callback in _buvis_callbacks and not ctx.resilient_parsing and not _contains_update_option(args):
-            _run_update_check_once(ctx)
+            _run_update_check_once(ctx, args)
         return original_command_parse_args(self, ctx, args)
 
     def patched_group_parse_args(self: click.Group, ctx: click.Context, args: list[str]) -> list[str]:
@@ -170,7 +202,7 @@ def _install_parse_args_patch() -> None:
                 # even though --update is only declared on the root group.
                 _run_force_update_and_exit(ctx)
             else:
-                _run_update_check_once(ctx)
+                _run_update_check_once(ctx, args)
         return original_group_parse_args(self, ctx, args)
 
     click.Command.parse_args = patched_command_parse_args  # type: ignore[method-assign]

@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **config**: the automatic update check now honours `auto_update: false`/`true` from a YAML config file, not only the `BUVIS_AUTO_UPDATE` environment variable.
 - **sysup**: shared config keys (`debug`, `log_level`, other tools' sections in `config.yaml` / `buvis.yaml`) no longer stop the plan; a list directive on a plan mapping (`commands-:`) or a type error (`prime: 5`) prints one line naming the file that supplied the bad entry and the field instead of a traceback or a pydantic dump, and typos in `buvis-sysup.yaml` are still rejected.
 - **backup**: global settings keys (`debug`, `log_level`) in `buvis-backup.yaml` are accepted, and a plan type error prints one line naming the file that supplied the bad entry and the field instead of a pydantic dump.
 - **sysup**: preserve literal `[run]` and `[use:...]` kind labels in `--list` output by escaping them before console markup rendering (audit finding 13).

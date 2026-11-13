@@ -827,6 +827,11 @@ Click Integration
 
 .. autofunction:: buvis.pybase.configuration.get_settings
 
+The auto-update check that ``@buvis_options`` runs on every invocation honours
+``auto_update`` from the fully resolved settings (CLI > ENV > YAML > defaults),
+so ``auto_update: false`` in a config file suppresses the check the same way
+``BUVIS_AUTO_UPDATE=false`` does.
+
 Exceptions
 ----------
 
