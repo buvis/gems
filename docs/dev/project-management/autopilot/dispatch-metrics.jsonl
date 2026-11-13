@@ -1082,3 +1082,5 @@
 {"id":"10197e85","ended_at":1794610851,"elapsed_s":362,"outcome":"ok","detail":null}
 {"id":"8d1bb2a9","ended_at":1794611080,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
 {"kind":"handoff","site":"build","edge":"leave","at":1794611080,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794611092,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794612997,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
