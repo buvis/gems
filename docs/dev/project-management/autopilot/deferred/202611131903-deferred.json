@@ -5,6 +5,15 @@
       "type": "pre-existing-ci-failure",
       "detail": "Full suite (uv run pytest) at HEAD b03f713f: 86 failed, 10 errors, 7465 passed, 16 skipped, 1 xfailed, 164.03s. Every failing/erroring test is in tests/tools/sysup/ or tests/tools/dot/; none touch tests/lib/pybase/configuration/ or click_integration.py. Matches the pre-existing branch CI failure already recorded in the project capsule (GitHub Actions run 43489852990, 2026-11-13, tools matrix TOOLS_RESULT: failure), predating this PRD. Not a regression from task 1; proceeding to the review phase without a step-7 fix cycle.",
       "prd": "00137-yaml-auto-update-ignored-v1.md"
+    },
+    {
+      "type": "review-finding",
+      "issue": "R4 CRITICAL: the new _run_update_check_once(ctx, args) signature breaks tests/tools/sysup/conftest.py:20 (lambda _ctx: None), producing 86 failed / 10 errors across tests/tools/sysup and tests/tools/dot (76 TypeError occurrences) at head 28a0580d",
+      "severity": "critical",
+      "consensus": "1/4",
+      "cycle": 1,
+      "reason": "Critical severity always records a batch-end deferral; it is also fixed in the cycle-1 rework batch",
+      "prd": "00137-yaml-auto-update-ignored-v1.md"
     }
   ]
 }
