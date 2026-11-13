@@ -212,39 +212,28 @@ class TestIsWorldWritable:
             assert ConfigurationLoader._is_world_writable(config) is False
 
 
-class TestWorldWritableWarning:
-    """Tests for world-writable warning in load_yaml."""
+class TestWorldWritableFile:
+    """A world-writable config file is rejected before it is read."""
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Unix permissions only")
-    def test_warns_on_world_writable_file(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-        """World-writable config file triggers warning."""
+    def test_rejects_world_writable_file_before_reading(self, tmp_path: Path) -> None:
         config = tmp_path / "config.yaml"
         config.write_text("key: value\n")
         config.chmod(0o666)
 
-        with caplog.at_level("WARNING"):
+        with (
+            patch.object(Path, "read_text", side_effect=AssertionError("Unsafe config was read")) as read,
+            pytest.raises(ConfigurationError, match="world-writable config file") as error,
+        ):
             ConfigurationLoader.load_yaml(config)
 
-        assert "world-writable" in caplog.text
-        assert str(config) in caplog.text
+        read.assert_not_called()
+        assert str(config) in str(error.value)
+        assert "chmod o-w" in str(error.value)
 
-    def test_no_warning_on_normal_file(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-        """Normal file does not trigger warning."""
+    def test_private_file_loads(self, tmp_path: Path) -> None:
         config = tmp_path / "config.yaml"
         config.write_text("key: value\n")
+        config.chmod(0o644)
 
-        with caplog.at_level("WARNING"):
-            ConfigurationLoader.load_yaml(config)
-
-        assert "world-writable" not in caplog.text
-
-    @pytest.mark.skipif(sys.platform == "win32", reason="Unix permissions only")
-    def test_still_loads_world_writable_file(self, tmp_path: Path) -> None:
-        """World-writable file is still loaded (warn only, not reject)."""
-        config = tmp_path / "config.yaml"
-        config.write_text("key: value\n")
-        config.chmod(0o666)
-
-        result = ConfigurationLoader.load_yaml(config)
-
-        assert result == {"key": "value"}
+        assert ConfigurationLoader.load_yaml(config) == {"key": "value"}

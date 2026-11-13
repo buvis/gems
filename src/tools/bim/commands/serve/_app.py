@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from buvis.pybase.adapters import console
 from fastapi import FastAPI, HTTPException
@@ -25,6 +26,7 @@ def create_app(
     path_projects: str | None = None,
     path_daily: str | None = None,
     path_articles: str | None = None,
+    jira_config: dict[str, Any] | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -42,6 +44,7 @@ def create_app(
     app.state.path_projects = path_projects
     app.state.path_daily = path_daily
     app.state.path_articles = path_articles
+    app.state.jira_config = jira_config
 
     install_security(app, host)
 

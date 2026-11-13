@@ -46,6 +46,8 @@ class AppState:
     # Daily notes folder (create logs new notes there) and the articles archive.
     path_daily: str | None = None
     path_articles: str | None = None
+    # The configured Jira adapter (``adapters.jira``); sync_note never takes one from a request.
+    jira_config: dict[str, Any] | None = None
 
 
 def confine_path(file_path: str, app_state: AppState) -> Path:

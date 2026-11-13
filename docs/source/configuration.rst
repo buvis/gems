@@ -577,8 +577,9 @@ or move the configuration into a private directory. The loader never changes
 permissions itself.
 
 Ordinary private directories keep their existing behavior. A world-writable
-**file** in an accepted directory still produces the existing warning and is
-loaded. Non-POSIX platforms, including Windows, skip the directory check because
+**file** is rejected the same way, even in an accepted directory: any local user
+could rewrite it. Fix it with ``chmod o-w <file>``. Non-POSIX platforms,
+including Windows, skip these checks because
 Unix permission bits and ownership do not describe their access controls.
 This check does not assess other ancestors, group permissions, ACLs, or
 protect against concurrent filesystem changes between inspection and reading.

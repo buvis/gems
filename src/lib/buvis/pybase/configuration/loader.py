@@ -377,14 +377,18 @@ class ConfigurationLoader:
             Parsed YAML content as dict. Empty files return {}.
 
         Raises:
-            ConfigurationError: If the resolved parent permits untrusted replacement.
+            ConfigurationError: If the file or a directory holding it or a link to it
+                permits untrusted replacement.
             MissingEnvVarError: If required environment variables are missing.
             FileNotFoundError: If file doesn't exist.
             yaml.YAMLError: If YAML syntax is invalid. Check problem_mark for line/col.
         """
         resolved = ConfigurationLoader._validate_parent_directory(file_path)
         if ConfigurationLoader._is_world_writable(resolved):
-            logger.warning("Config file %s is world-writable", file_path)
+            raise ConfigurationError(
+                f"{file_path}: unsafe world-writable config file; any local user can change it. "
+                "Remove other-user write permission (chmod o-w)."
+            )
 
         content = resolved.read_text(encoding="utf-8")
 

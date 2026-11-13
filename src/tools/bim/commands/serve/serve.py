@@ -39,6 +39,7 @@ class CommandServe:
             path_projects=self.params.path_projects,
             path_daily=self.params.path_daily,
             path_articles=self.params.path_articles,
+            jira_config=self.params.jira_config,
         )
 
         import uvicorn
