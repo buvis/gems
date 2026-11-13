@@ -28,7 +28,7 @@ Generated: 2026-11-13 (catchup: feature/config-local-layer-braid, batch 20261113
 ## Active Work
 
 ### Batch 202611131903 (feature/config-local-layer-braid worktree, PR #275 open)
-- [ ] 00136-sysup-plan-config-errors-raw-v1.md (lane full, design skip): sysup `load_config` validates the raw merged layers, so shared keys (`debug`, other tools' sections) fail `extra="forbid"`, list directives on unknown-to-merge keys traceback, and `ValidationError` renders raw. `backup/config.py` already projects onto `_BACKUP_TOP_LEVEL_KEYS`, rejects unknown keys only in `buvis-backup*.yaml`, and wraps merge errors in `FatalError` — it is the template. backup still interpolates raw `ValidationError` text (pydantic URL) into its FatalError.
+- [x] 00136-sysup-plan-config-errors-raw-v1.md (1 cycle, lane full): sysup `load_config` now projects the merged layers onto its own plan keys before validation (shared keys like `debug` no longer trip `extra="forbid"`), rejects unknown keys only in `buvis-sysup*.yaml`, and renders validation/merge errors as one `FatalError` line naming the file and field, never a raw traceback or pydantic URL. backup confirmed on the same shared-key cases. Review cycle 1 converged (no CRITICAL/HIGH); tail sweep (tasks 4-5) caught `ConfigurationError` escaping `_merge_layer`'s load handler in both sysup and backup, and fixed sysup's error attribution to track by nested field path instead of last-writer-wins per entry.
 - Remaining backlog: 00137-00140 (agoge deferred findings from batch 202611101200).
 
 ### Batch 202611101200 (feat/config-local-layer-braid worktree, `~/git/src/worktrees/gems/feat-config-local-layer-braid`)
