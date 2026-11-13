@@ -203,19 +203,16 @@ def load_config(config_dir: str | None = None, config_path: str | None = None) -
     Layers, lowest priority first: the bundled ``default.yaml``, then the user
     files returned by :meth:`ConfigurationLoader.find_config_files_ranked`
     (already low-to-high — never reverse it). An explicit ``config_path`` (from
-    ``--config FILE``) is the single highest-priority layer, above every
-    discovered file. Merged via :meth:`ConfigurationLoader.merge_configs` (later
-    wins, ``excludes+`` / ``excludes-`` directives applied), validated against
-    :class:`BackupConfig`, and finally checked for unknown capability names /
-    inputs.
+    ``--config FILE``) is the single highest-priority layer. Merged via
+    :meth:`ConfigurationLoader.merge_configs` (later wins, ``excludes+`` /
+    ``excludes-`` directives applied), validated against :class:`BackupConfig`,
+    and finally checked for unknown capability names / inputs.
 
     Args:
-        config_dir: Explicit config directory (from ``--config-dir``), threaded
-            from the CLI so the tool plan is discovered under the SAME directory
-            the settings were resolved from.
-        config_path: Explicit config file (from ``--config``), threaded from the
-            CLI so ``backup --config FILE`` runs the plan from FILE rather than
-            the default locations.
+        config_dir: Explicit config directory (from ``--config-dir``), so the
+            plan is discovered under the SAME directory as the settings.
+        config_path: Explicit config file (from ``--config``), so
+            ``backup --config FILE`` runs the plan from FILE.
 
     Raises:
         FatalError: on malformed YAML in a config file, a merge/directive error,
