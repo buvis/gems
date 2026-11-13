@@ -44,6 +44,7 @@ def doc_rules_list(ctx: click.Context) -> None:
         result,
         on_success=lambda r: console.info(r.output or ""),
         failure_msg="list failed",
+        exit_on_failure=True,
     )
 
 
@@ -152,4 +153,5 @@ def doc_rules_backtest(ctx: click.Context, rule_id: str | None, issuer_slug: str
         result,
         on_success=lambda r: console.info(r.output or ""),
         failure_msg="backtest failed",
+        exit_on_failure=True,
     )

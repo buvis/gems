@@ -124,7 +124,7 @@ def init(
         confirm=console.confirm,
     )
     result = CommandInit(target, force=force, offer=offer, schedule_offer=schedule_offer).execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -145,7 +145,7 @@ def new(ctx: click.Context, title: str, zettel_type: str, concept_type: str | No
 
     root = _resolve_root_or_panic()
     result = CommandNew(root, zettel_type=zettel_type, title=title, concept_type=concept_type).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -162,7 +162,7 @@ def validate(ctx: click.Context, *, as_json: bool) -> None:
     if as_json:
         console.print(result.output or "", mode="raw")
     else:
-        console.report_result(result)
+        console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -185,7 +185,7 @@ def export_claims(ctx: click.Context, out: Path | None) -> None:
         for w in result.warnings:
             console.warning(w)
     else:
-        console.report_result(result)
+        console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -220,7 +220,7 @@ def ingest(
         max_body_lines=settings.max_zettel_body_lines,
         dry_run=dry_run,
     ).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -239,7 +239,7 @@ def status(ctx: click.Context) -> None:
         pruning_enabled=settings.pruning_enabled,
         check_assets=True,
     ).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -263,7 +263,7 @@ def maintain(ctx: click.Context, *, dry_run: bool) -> None:
         dry_run=dry_run,
         identity=GitIdentity(name=settings.git_identity_name, email=settings.git_identity_email),
     ).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -280,7 +280,7 @@ def schedule_install(ctx: click.Context, at: str) -> None:
     from klyreon.commands.schedule import CommandScheduleInstall
 
     result = CommandScheduleInstall(at=at).execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -291,7 +291,7 @@ def schedule_status(ctx: click.Context) -> None:
     from klyreon.commands.schedule import CommandScheduleStatus
 
     result = CommandScheduleStatus().execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -302,7 +302,7 @@ def schedule_uninstall(ctx: click.Context) -> None:
     from klyreon.commands.schedule import CommandScheduleUninstall
 
     result = CommandScheduleUninstall().execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -324,7 +324,7 @@ def assets_install(ctx: click.Context, operators: tuple[str, ...]) -> None:
     from klyreon.commands.assets import CommandAssetsInstall
 
     result = CommandAssetsInstall(list(operators)).execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -335,7 +335,7 @@ def assets_status(ctx: click.Context) -> None:
     from klyreon.commands.assets import CommandAssetsStatus
 
     result = CommandAssetsStatus().execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -346,7 +346,7 @@ def assets_refresh(ctx: click.Context) -> None:
     from klyreon.commands.assets import CommandAssetsRefresh
 
     result = CommandAssetsRefresh().execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -363,7 +363,7 @@ def assets_uninstall(ctx: click.Context, operators: tuple[str, ...]) -> None:
     from klyreon.commands.assets import CommandAssetsUninstall
 
     result = CommandAssetsUninstall(list(operators)).execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 

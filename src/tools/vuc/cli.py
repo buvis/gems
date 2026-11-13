@@ -32,7 +32,10 @@ def multilang(directory: str, output_csv: str) -> None:
 
     from vuc.commands.multilang import CommandMultilang
 
-    console.report_result(CommandMultilang(directory=path_directory, output_csv=Path(output_csv).resolve()).execute())
+    console.report_result(
+        CommandMultilang(directory=path_directory, output_csv=Path(output_csv).resolve()).execute(),
+        exit_on_failure=True,
+    )
 
 
 if __name__ == "__main__":

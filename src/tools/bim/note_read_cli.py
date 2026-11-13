@@ -80,7 +80,7 @@ def format_note(
             console.success(f"Formatted {result.metadata['formatted_count']} files")
 
     result = cmd.execute()
-    console.report_result(result, on_success=_report_format_success, failure_msg="Format failed")
+    console.report_result(result, on_success=_report_format_success, failure_msg="Format failed", exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -130,7 +130,7 @@ def sync_note(
     except NotImplementedError:
         console.panic(f"Sync target '{target_system}' not supported")
         return
-    console.report_result(result, failure_msg="Sync failed")
+    console.report_result(result, failure_msg="Sync failed", exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -248,6 +248,7 @@ def show_note(
         result,
         on_success=lambda r: console.print(r.output, mode="raw") if r.output else None,
         failure_msg="Show failed",
+        exit_on_failure=True,
     )
     if not result.success:
         ctx.exit(1)

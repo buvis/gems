@@ -189,7 +189,7 @@ def doc_audit(ctx: click.Context) -> None:
         render_stdout(report, console)
         console.success(f"Report: {r.metadata['report_path']}")
 
-    console.report_result(result, on_success=_report_audit_success, failure_msg="audit failed")
+    console.report_result(result, on_success=_report_audit_success, failure_msg="audit failed", exit_on_failure=True)
 
 
 register_rules_subcommands(doc)

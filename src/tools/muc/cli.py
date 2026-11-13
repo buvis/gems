@@ -51,7 +51,7 @@ def limit(ctx: click.Context, source_directory: str, output: str | None = None) 
         bit_depth=settings.limit_flac_bit_depth,
         sampling_rate=settings.limit_flac_sampling_rate,
     )
-    console.report_result(cmd.execute())
+    console.report_result(cmd.execute(), exit_on_failure=True)
 
 
 @cli.command("tidy", help="Tidy directory")
@@ -87,7 +87,11 @@ def tidy(ctx: click.Context, directory: str, yes: bool) -> None:
     result = cmd.execute()
     for step in result.metadata["steps"]:  # each step's actions and warnings in the order they ran
         console.report_result(step, literal=True)
-    console.report_result(CommandResult(success=result.success, output=result.output), literal=True)
+    console.report_result(
+        CommandResult(success=result.success, output=result.output, error=result.error),
+        literal=True,
+        exit_on_failure=True,
+    )
 
 
 @cli.command("cover", help="Keep only the newest cover image per directory")
@@ -98,7 +102,7 @@ def cover(directory: str) -> None:
 
     from muc.commands.cover.cover import CommandCover
 
-    console.report_result(CommandCover(directory=path_directory).execute())
+    console.report_result(CommandCover(directory=path_directory).execute(), exit_on_failure=True)
 
 
 if __name__ == "__main__":
