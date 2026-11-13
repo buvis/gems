@@ -33,7 +33,7 @@ def cli(ctx: click.Context) -> None:
         result = CommandBrief(settings).execute()
         if result.success and result.metadata.get("text"):
             console.print(str(result.metadata["text"]), mode="raw")
-        console.report_result(result)
+        console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("collect", help="Collect portfolio state into the versioned file contracts.")

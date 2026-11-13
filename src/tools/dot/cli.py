@@ -51,6 +51,7 @@ def status() -> None:
     console.report_result(
         result,
         on_failure=lambda r: console.failure(r.error or "Failed", details=r.metadata.get("details")),
+        exit_on_failure=True,
     )
 
 
