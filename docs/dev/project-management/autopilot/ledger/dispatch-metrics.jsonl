@@ -982,3 +982,30 @@
 {"kind":"handoff","site":"review","edge":"leave","at":1794315517,"phase":"done","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1794315546,"phase":"done","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1794315648,"phase":"done","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794593010,"phase":"build","prd":"00136-sysup-plan-config-errors-raw-v1.md"}
+{"id":"7db84537","kind":"tess","task":"1","queued_at":1794593198,"prompt_bytes":27805}
+{"id":"7db84537","ended_at":1794593256,"elapsed_s":58,"outcome":"ok","detail":null}
+{"id":"d3c86d3a","kind":"ivan","task":"1","queued_at":1794593318,"prompt_bytes":11494}
+{"id":"d3c86d3a","ended_at":1794594617,"elapsed_s":1299,"outcome":"ok","detail":null}
+{"id":"d947872b","kind":"deslop","task":"1","queued_at":1794594669,"prompt_bytes":3882}
+{"id":"d947872b","ended_at":1794594705,"elapsed_s":36,"outcome":"ok","detail":null}
+{"id":"6d5843c4","kind":"ivan","task":"1","queued_at":1794594730,"prompt_bytes":7005}
+{"id":"6d5843c4","ended_at":1794594775,"elapsed_s":45,"outcome":"ok","detail":null}
+{"id":"748aa347","kind":"pat","task":"1","queued_at":1794594801,"prompt_bytes":23582}
+{"id":"748aa347","ended_at":1794594856,"elapsed_s":55,"outcome":"ok","detail":"native Agent fallback; sonnet-run.sh auth failed"}
+{"id":"ad67f2de","kind":"ivan","task":"1","queued_at":1794594874,"prompt_bytes":7718}
+{"id":"ad67f2de","ended_at":1794594913,"elapsed_s":39,"outcome":"ok","detail":null}
+{"id":"5be729e8","kind":"pat","task":"1","queued_at":1794594934,"prompt_bytes":6263}
+{"id":"5be729e8","ended_at":1794594951,"elapsed_s":17,"outcome":"ok","detail":null}
+{"id":"0a6a3f57","kind":"tess","task":"2","queued_at":1794594982,"prompt_bytes":19637}
+{"id":"0a6a3f57","ended_at":1794595034,"elapsed_s":52,"outcome":"ok","detail":null}
+{"id":"fc52e83a","kind":"ivan","task":"2","queued_at":1794595060,"prompt_bytes":9463}
+{"id":"fc52e83a","ended_at":1794596588,"elapsed_s":1528,"outcome":"timeout","detail":"qwen hung: no edits or output in 25 min"}
+{"id":"fc52e83a","ended_at":1794596685,"elapsed_s":1625,"outcome":"ok","detail":"claude sonnet re-dispatch after qwen hang"}
+{"id":"2cde99ce","kind":"deslop","task":"2","queued_at":1794596721,"prompt_bytes":2760}
+{"id":"2cde99ce","ended_at":1794596758,"elapsed_s":37,"outcome":"ok","detail":null}
+{"id":"0bd5984a","kind":"ivan","task":"2","queued_at":1794596784,"prompt_bytes":6568}
+{"id":"0bd5984a","ended_at":1794596808,"elapsed_s":24,"outcome":"ok","detail":null}
+{"id":"869be0b0","kind":"pat","task":"2","queued_at":1794596821,"prompt_bytes":19931}
+{"id":"869be0b0","ended_at":1794596848,"elapsed_s":27,"outcome":"ok","detail":"native Agent fallback; sonnet-run.sh auth unavailable"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794597079,"phase":"review","prd":"00136-sysup-plan-config-errors-raw-v1.md"}
