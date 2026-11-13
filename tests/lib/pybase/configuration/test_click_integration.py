@@ -1152,3 +1152,102 @@ class TestBuvisOptionsConfigSelectionPublished:
 
         assert result.exit_code == 0
         assert isinstance(captured[0]["settings"], GlobalSettings)
+
+
+class TestAutoUpdateHonoursResolvedSettings:
+    """The auto-update check must honour the resolved settings' auto_update field,
+    including a value that only comes from a YAML config file (not the environment)."""
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_yaml_auto_update_false_skips_check(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """auto_update: false in a YAML config file suppresses the check, with no env var set."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+        config = tmp_path / "config.yaml"
+        config.write_text("auto_update: false\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 0
+        mock_update.assert_not_called()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_yaml_auto_update_true_runs_check(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """auto_update: true in a YAML config file still lets the check run."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+        config = tmp_path / "config.yaml"
+        config.write_text("auto_update: true\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 0
+        mock_update.assert_called_once()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_env_auto_update_false_skips_check_without_yaml(
+        self, mock_update: MagicMock, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Baseline regression: BUVIS_AUTO_UPDATE=false alone (no YAML file) still suppresses the check."""
+        monkeypatch.setenv("BUVIS_AUTO_UPDATE", "false")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, [])
+
+        assert result.exit_code == 0
+        mock_update.assert_not_called()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_env_false_overrides_yaml_true(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """BUVIS_AUTO_UPDATE=false still wins over a YAML file setting auto_update: true."""
+        monkeypatch.setenv("BUVIS_AUTO_UPDATE", "false")
+        config = tmp_path / "config.yaml"
+        config.write_text("auto_update: true\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 0
+        mock_update.assert_not_called()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_config_resolution_failure_skips_check(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When ConfigResolver.resolve raises ConfigurationError, the config error is reported
+        (non-zero exit) and the update check never runs."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+        config = tmp_path / "config.yaml"
+        config.write_text("log_level: BOGUS\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 1
+        mock_update.assert_not_called()
