@@ -315,23 +315,59 @@ def _load_default() -> dict[str, object]:
     return data if isinstance(data, dict) else {}
 
 
+def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[str, Path]) -> dict[str, object]:
+    """Load one user config file, check its keys and merge it over ``merged``.
+
+    Records in ``key_sources`` which file last set each top-level plan key.
+
+    Raises:
+        FatalError: on a load or merge failure, or an unknown top-level key in a
+            sysup-specific file.
+    """
+    try:
+        data = ConfigurationLoader.load_yaml(path)
+    except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
+        msg = f"{path}: {exc}"
+        raise FatalError(msg) from exc
+    # A sysup-SPECIFIC file (buvis-sysup*.yaml) should carry only sysup's
+    # keys, so an unknown top-level key there is a typo (comands:, primey:)
+    # to reject — the projection would otherwise silently drop it and run the
+    # bundled plan. A SHARED file (config.yaml / buvis.yaml) legitimately
+    # carries other tools' + global keys, so its extras are tolerated.
+    if _is_sysup_specific(path):
+        unknown = _unknown_top_level_keys(data)
+        if unknown:
+            allowed = ", ".join(sorted(_SYSUP_TOP_LEVEL_KEYS | _SYSUP_SETTINGS_KEYS))
+            msg = (
+                f"unknown key(s) in {path}: {', '.join(sorted(unknown))}; "
+                f"sysup config accepts only: {allowed} (with +/- directive suffixes on list keys)"
+            )
+            raise FatalError(msg)
+    try:
+        result = ConfigurationLoader.merge_configs(merged, data)
+    except (ConfigurationError, yaml.YAMLError, MissingEnvVarError) as exc:
+        msg = f"{path}: {exc}"
+        raise FatalError(msg) from exc
+    for key in data:
+        base = key[:-1] if key.endswith(("+", "-")) else key
+        if base in _SYSUP_TOP_LEVEL_KEYS:
+            key_sources[base] = path
+    return result
+
+
 def load_config(config_dir: str | None = None, config_path: str | None = None) -> SysupConfig:
     """Merge the bundled default with user config files and validate.
 
     Layers, lowest priority first: the bundled ``default.yaml``, then the user
     files returned by :meth:`ConfigurationLoader.find_config_files_ranked`
     (already low-to-high — never reverse it). An explicit ``config_path`` (from
-    ``--config FILE``) is the single highest-priority layer. Each user file is
-    loaded with :meth:`ConfigurationLoader.load_yaml` and merged into the
-    running result with :meth:`ConfigurationLoader.merge_configs` (later
-    wins), so a load or merge failure names the offending file. A sysup-specific
-    file (``buvis-sysup*.yaml``) may carry only sysup's plan keys plus the
-    global settings keys; a shared file (``config.yaml`` / ``buvis.yaml``) may
-    carry any key, and its extras are dropped by the projection. The merged
-    document is projected onto sysup's plan keys, validated against
-    :class:`SysupConfig` (each error attributed to the file that set the key),
-    and finally checked for unknown capability names / inputs against the
-    registry.
+    ``--config FILE``) is the single highest-priority layer. Each file is
+    merged by :func:`_merge_layer` (later wins). A sysup-specific file
+    (``buvis-sysup*.yaml``) may carry only plan keys plus global settings keys;
+    a shared file may carry any key, and its extras are dropped by the
+    projection. The merged document is projected onto sysup's plan keys,
+    validated against :class:`SysupConfig` (each error attributed to the file
+    that set the key), then checked against the capability registry.
 
     Args:
         config_dir: Explicit config directory (from ``--config-dir``), threaded
@@ -353,35 +389,7 @@ def load_config(config_dir: str | None = None, config_path: str | None = None) -
         "sysup", config_dir=config_dir, config_path=config_path
     )
     for path in ranked_files:
-        try:
-            data = ConfigurationLoader.load_yaml(path)
-        except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
-            msg = f"{path}: {exc}"
-            raise FatalError(msg) from exc
-        # A sysup-SPECIFIC file (buvis-sysup*.yaml) should carry only sysup's
-        # keys, so an unknown top-level key there is a typo (comands:, primey:)
-        # to reject — the projection below would otherwise silently drop it and
-        # run the bundled plan. A SHARED file (config.yaml / buvis.yaml)
-        # legitimately carries other tools' + global keys, so its extras are
-        # tolerated.
-        if _is_sysup_specific(path):
-            unknown = _unknown_top_level_keys(data)
-            if unknown:
-                allowed = ", ".join(sorted(_SYSUP_TOP_LEVEL_KEYS | _SYSUP_SETTINGS_KEYS))
-                msg = (
-                    f"unknown key(s) in {path}: {', '.join(sorted(unknown))}; "
-                    f"sysup config accepts only: {allowed} (with +/- directive suffixes on list keys)"
-                )
-                raise FatalError(msg)
-        try:
-            merged = ConfigurationLoader.merge_configs(merged, data)
-        except (ConfigurationError, yaml.YAMLError, MissingEnvVarError) as exc:
-            msg = f"{path}: {exc}"
-            raise FatalError(msg) from exc
-        for key in data:
-            base = key[:-1] if key.endswith(("+", "-")) else key
-            if base in _SYSUP_TOP_LEVEL_KEYS:
-                key_sources[base] = path
+        merged = _merge_layer(merged, path, key_sources)
 
     projected = {key: value for key, value in merged.items() if key in _SYSUP_TOP_LEVEL_KEYS}
 
