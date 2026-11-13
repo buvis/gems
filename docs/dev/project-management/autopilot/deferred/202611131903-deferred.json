@@ -14,6 +14,53 @@
       "cycle": 1,
       "reason": "Critical severity always records a batch-end deferral; it is also fixed in the cycle-1 rework batch",
       "prd": "00137-yaml-auto-update-ignored-v1.md"
+    },
+    {
+      "type": "stall",
+      "site": "cap_regression",
+      "detail": "R1 a55906ab",
+      "op_id": "56960689a254",
+      "prd": "00137-yaml-auto-update-ignored-v1.md"
+    },
+    {
+      "type": "cap-overflow",
+      "issue": "R1: the global BUVIS_AUTO_UPDATE fallback changes the `enabled` decision without changing the settings object passed to the updater, so with a tool-prefixed settings class, BUVIS_AUTO_UPDATE=true and YAML auto_update: false the updater receives settings.auto_update=False and returns immediately. test_global_env_true_runs_tool_check_despite_yaml_false only counts mocked calls, so it pins behaviour production never has. Introduced by the cycle-1 rework (commit a55906ab, src/lib/buvis/pybase/configuration/click_integration.py:210).",
+      "severity": "high",
+      "consensus": "1/4",
+      "reason": "rework cap reached with this finding unresolved",
+      "cycle": 2,
+      "prd": "00137-yaml-auto-update-ignored-v1.md",
+      "op_id": "56960689a254-dd0"
+    },
+    {
+      "type": "cap-overflow",
+      "issue": "R2: the global-env-true branch of _update_enabled is unreachable in production because check_and_update re-reads settings.auto_update (src/lib/buvis/pybase/updater/__init__.py:47); the pinning test passes only under the mock (tests/lib/pybase/configuration/test_click_integration_auto_update.py:99).",
+      "severity": "medium",
+      "consensus": "1/4",
+      "reason": "rework cap reached with this finding unresolved",
+      "cycle": 2,
+      "prd": "00137-yaml-auto-update-ignored-v1.md",
+      "op_id": "56960689a254-dd1"
+    },
+    {
+      "type": "cap-overflow",
+      "issue": "R3: docs/source/configuration.rst:830 claims a tool-prefixed BUVIS_<TOOL>_AUTO_UPDATE overrides YAML, which is wrong for the `true` direction: ConfigResolver._merge_overrides treats an env value equal to the field default as unset, so YAML false wins. Narrow the sentence to the false direction or make the prefixed branch env-only.",
+      "severity": "medium",
+      "consensus": "1/4",
+      "reason": "rework cap reached with this finding unresolved",
+      "cycle": 2,
+      "prd": "00137-yaml-auto-update-ignored-v1.md",
+      "op_id": "56960689a254-dd2"
+    },
+    {
+      "type": "cap-overflow",
+      "issue": "R4: PRD Success Metric 2's literal 'env still wins over YAML' does not hold for BUVIS_AUTO_UPDATE=true against YAML false on a prefixless GlobalSettings class, because of the same ConfigResolver._merge_overrides default/unset ambiguity (src/lib/buvis/pybase/configuration/resolver.py:231). The resolver fix was placed out of scope by the cycle-1 rework design.",
+      "severity": "medium",
+      "consensus": "1/4",
+      "reason": "rework cap reached with this finding unresolved",
+      "cycle": 2,
+      "prd": "00137-yaml-auto-update-ignored-v1.md",
+      "op_id": "56960689a254-dd3"
     }
   ]
 }

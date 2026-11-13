@@ -1,15 +1,138 @@
 [
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "Settings are now resolved twice per invocation (the early check, then `wrapper`). Any resolver side effects, such as the `logger.info` lines for sensitive fields in `_log_sources`, fire twice.", "file": "src/lib/buvis/pybase/configuration/click_integration.py:167", "reason": "single-voice; the full PRD-literal move into `wrapper` was weighed and rejected in the cycle-1 rework design (alternative 3) because `--help`/`--version` exit before the wrapper runs"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "The spec says to run the check after `ConfigResolver.resolve` in the `buvis_options` wrapper, using the resolved settings. The code instead keeps the check in the `parse_args` hooks, before eager `--help`/`--version`.", "file": "src/lib/buvis/pybase/configuration/click_integration.py:147", "reason": "single-voice; same settled decision as the double-resolution row (rework design alternative 3), and the design documents the deviation in the docs line"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "On a config error the check is skipped via `contextlib.suppress(Exception)`, which swallows every exception.", "file": "src/lib/buvis/pybase/configuration/click_integration.py:162", "reason": "single-voice as a standalone row; the narrowing itself is being implemented as part of the R5 fix task, so it is not re-raised"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "Test coverage is thinner than the PRD's critical scenarios: no `--config-dir` test, no default-discovery test, no test that `updater.json` stays untouched.", "file": "tests/lib/pybase/configuration/test_click_integration.py:1157", "reason": "single-voice duplicate of R3, which is a task this cycle"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "`_extract_config_path` returns the first repeated `--config`, whereas Click uses the last value.", "file": "src/lib/buvis/pybase/configuration/click_integration.py:140", "reason": "single-voice as a standalone row; the extractor's last-valued-wins semantics are pinned in the R5 fix task's contract"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "The enabled-path test also passes against the original implementation because it only counts updater calls.", "file": "tests/lib/pybase/configuration/test_click_integration.py:1181", "reason": "single-voice; the R3 test task adds assertions that bind to the resolved value"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "Mechanical analysis flags the existing malformed-settings test’s either-or assertion as unable to pin the intended outcome. This unchanged force-update test is outside the YAML passive-check change.", "file": "tests/lib/pybase/configuration/test_click_integration.py:1066", "reason": "single-voice; pre-existing test this diff did not touch"},
-  {"cycle": 1, "disposition": "discarded", "severity": "medium", "issue": "test_update_with_malformed_settings_exits_cleanly hedges with `or`: either outcome satisfies it", "file": "tests/lib/pybase/configuration/test_click_integration.py:1066", "reason": "single-voice; pre-existing test this diff did not touch (mech-check on untouched code)"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "Of the five new tests, `test_yaml_auto_update_true_runs_check`, `test_env_auto_update_false_skips_check_without_yaml` and `test_env_false_overrides_yaml_true` should pass against the pre-change code. The replay was skipped, so this is not confirmed. They are regression guards the PRD asks for, not defects.", "file": "tests/lib/pybase/configuration/test_click_integration.py:1195", "reason": "single-voice; reviewer states these are intended regression guards, not defects"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "`tests/lib/pybase/configuration/test_click_integration.py` grows from 1153 to about 1250 lines, past the 800-line limit. The file was already over, but the diff adds 99 more.", "file": "tests/lib/pybase/configuration/test_click_integration.py:1156", "reason": "single-voice; pre-existing file-size breach, and the cycle-1 rework design puts the NEW tests in their own module instead of growing it further"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "The context's [MECH] note about `test_update_with_malformed_settings_exits_cleanly` is on a test this diff did not touch. It is pre-existing and out of scope.", "file": "tests/lib/pybase/configuration/test_click_integration.py:1066", "reason": "single-voice; the reviewer's own verdict is out of scope"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "Existing functions exceed 50 lines: `_create_buvis_options` has 113, its decorator 108, and its wrapper 52. These unchanged functions predate this focused fix.", "file": "src/lib/buvis/pybase/configuration/click_integration.py:245", "reason": "single-voice; pre-existing, unchanged by this diff"},
-  {"cycle": 1, "disposition": "discarded", "severity": "low", "issue": "The test module already exceeded 800 lines before this addition. Splitting the existing suite is outside this focused fix.", "file": "tests/lib/pybase/configuration/test_click_integration.py:1162", "reason": "single-voice; duplicate of the pre-existing file-size discard"}
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Settings are now resolved twice per invocation (the early check, then `wrapper`). Any resolver side effects, such as the `logger.info` lines for sensitive fields in `_log_sources`, fire twice.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:167",
+    "reason": "single-voice; the full PRD-literal move into `wrapper` was weighed and rejected in the cycle-1 rework design (alternative 3) because `--help`/`--version` exit before the wrapper runs"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "The spec says to run the check after `ConfigResolver.resolve` in the `buvis_options` wrapper, using the resolved settings. The code instead keeps the check in the `parse_args` hooks, before eager `--help`/`--version`.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:147",
+    "reason": "single-voice; same settled decision as the double-resolution row (rework design alternative 3), and the design documents the deviation in the docs line"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "On a config error the check is skipped via `contextlib.suppress(Exception)`, which swallows every exception.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:162",
+    "reason": "single-voice as a standalone row; the narrowing itself is being implemented as part of the R5 fix task, so it is not re-raised"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Test coverage is thinner than the PRD's critical scenarios: no `--config-dir` test, no default-discovery test, no test that `updater.json` stays untouched.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1157",
+    "reason": "single-voice duplicate of R3, which is a task this cycle"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "`_extract_config_path` returns the first repeated `--config`, whereas Click uses the last value.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:140",
+    "reason": "single-voice as a standalone row; the extractor's last-valued-wins semantics are pinned in the R5 fix task's contract"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "The enabled-path test also passes against the original implementation because it only counts updater calls.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1181",
+    "reason": "single-voice; the R3 test task adds assertions that bind to the resolved value"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Mechanical analysis flags the existing malformed-settings test\u2019s either-or assertion as unable to pin the intended outcome. This unchanged force-update test is outside the YAML passive-check change.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1066",
+    "reason": "single-voice; pre-existing test this diff did not touch"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "test_update_with_malformed_settings_exits_cleanly hedges with `or`: either outcome satisfies it",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1066",
+    "reason": "single-voice; pre-existing test this diff did not touch (mech-check on untouched code)"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Of the five new tests, `test_yaml_auto_update_true_runs_check`, `test_env_auto_update_false_skips_check_without_yaml` and `test_env_false_overrides_yaml_true` should pass against the pre-change code. The replay was skipped, so this is not confirmed. They are regression guards the PRD asks for, not defects.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1195",
+    "reason": "single-voice; reviewer states these are intended regression guards, not defects"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`tests/lib/pybase/configuration/test_click_integration.py` grows from 1153 to about 1250 lines, past the 800-line limit. The file was already over, but the diff adds 99 more.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1156",
+    "reason": "single-voice; pre-existing file-size breach, and the cycle-1 rework design puts the NEW tests in their own module instead of growing it further"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The context's [MECH] note about `test_update_with_malformed_settings_exits_cleanly` is on a test this diff did not touch. It is pre-existing and out of scope.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1066",
+    "reason": "single-voice; the reviewer's own verdict is out of scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Existing functions exceed 50 lines: `_create_buvis_options` has 113, its decorator 108, and its wrapper 52. These unchanged functions predate this focused fix.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:245",
+    "reason": "single-voice; pre-existing, unchanged by this diff"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The test module already exceeded 800 lines before this addition. Splitting the existing suite is outside this focused fix.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1162",
+    "reason": "single-voice; duplicate of the pre-existing file-size discard"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The `_run_update_check_once` docstring still says it honours only `--config` and that any resolution failure is suppressed. It now also reads `--config-dir`, applies the global env fallback, and suppresses only a narrow exception tuple. Update the text.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:176",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The narrowed `except (ConfigurationError, MissingEnvVarError, ValidationError, OSError)` does not cover `RuntimeError`. `Path.home()` raises it when the home directory cannot be determined, which `loader.py:314` already handles elsewhere. `--help` on such a host would now crash where the old broad suppress degraded quietly. Very unlikely edge case.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:200",
+    "reason": "single-voice; reviewer states the edge case is very unlikely"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The `_update_enabled` fallback to the global `BUVIS_AUTO_UPDATE` for tool-prefixed settings classes is not in the spec. It is justified: the old code read it through `GlobalSettings()`, so dropping it would break the \"keeps working\" requirement. Listed for scope-creep awareness only.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:158",
+    "reason": "single-voice; the reviewer's own verdict is that it is justified, not a defect"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The resolution failure handler catches only `ConfigurationError`, `MissingEnvVarError`, `ValidationError` and `OSError`. Any other exception from the resolver, such as a `TypeError` on a malformed merge, would escape `parse_args` as a raw traceback. The wrapper's own resolve has the same exposure, so this is no worse than before.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:200",
+    "reason": "single-voice; reviewer states it is no worse than the pre-change behaviour"
+  }
 ]
