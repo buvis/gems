@@ -316,7 +316,18 @@ class TestReportResultExitOnFailure:
             console_adapter.report_result(result, on_failure=callback, exit_on_failure=True)
         assert exc_info.value.code == 1
         callback.assert_called_once_with(result)
-        assert "callback-only error" not in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert "callback-only error" not in out
+        assert out.strip() == ""
+
+    def test_failed_result_propagates_on_failure_callback_exception_instead_of_exiting(
+        self, console_adapter: ConsoleAdapter
+    ) -> None:
+        result = CommandResult(success=False, error="err")
+        callback = Mock(side_effect=ValueError("callback broke"))
+        with pytest.raises(ValueError, match="callback broke"):
+            console_adapter.report_result(result, on_failure=callback, exit_on_failure=True)
+        callback.assert_called_once_with(result)
 
     def test_failed_result_prints_every_info_and_warning_before_exiting(
         self, capsys: Any, console_adapter: ConsoleAdapter
@@ -336,9 +347,9 @@ class TestReportResultExitOnFailure:
         assert exc_info.value.code == 1
         assert capsys.readouterr().out.count(message) == 1
 
-    @pytest.mark.parametrize("kwargs", [{}, {"exit_on_failure": False}])
+    @pytest.mark.parametrize("kwargs", [{}, {"exit_on_failure": False}, {"exit_on_failure": 0}])
     def test_failed_result_does_not_exit_unless_opted_in(
-        self, capsys: Any, console_adapter: ConsoleAdapter, kwargs: dict[str, bool]
+        self, capsys: Any, console_adapter: ConsoleAdapter, kwargs: dict[str, Any]
     ) -> None:
         result = CommandResult(success=False, error="Disk full")
         console_adapter.report_result(result, **kwargs)
