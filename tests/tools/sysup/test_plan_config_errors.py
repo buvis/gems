@@ -127,6 +127,14 @@ class TestTypeErrors:
         for noise in _PYDANTIC_NOISE:
             assert noise not in result.output
 
+    def test_bad_mapping_entry_is_blamed_on_the_file_that_supplied_it(self, tmp_path: Path) -> None:
+        bad = _write(tmp_path / "config.yaml", "commands:\n  bad:\n    order: notanint\n    steps: [[x]]\n")
+        good = _write(tmp_path / "buvis-sysup.yaml", "commands:\n  good:\n    steps: [[y]]\n")
+        with pytest.raises(FatalError) as excinfo:
+            load_config(config_dir=str(tmp_path))
+        assert str(bad) in str(excinfo.value)
+        assert str(good) not in str(excinfo.value)
+
     def test_field_name_in_message_follows_the_offending_field(self, tmp_path: Path) -> None:
         _write(tmp_path / "buvis-sysup.yaml", "ntfy: 5\n")
         with pytest.raises(FatalError) as excinfo:
