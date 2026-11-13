@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **braid**: exclude the current directory from config discovery so cloned repositories cannot inject skill sources or redirect the Claude root; other tools retain their cwd layer.
 - **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
 - **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
+- **console**: CLI commands now exit non-zero when their command fails, instead of always exiting 0 after printing a ` ✘ ` failure line. Scripts, hooks, or cron jobs that relied on the old exit-0-after-failure behavior will now see non-zero exits.
 
 ## [0.20.0] - 2026-11-10
 
