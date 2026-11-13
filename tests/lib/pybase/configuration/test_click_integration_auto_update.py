@@ -166,12 +166,18 @@ class TestOptionExtraction:
         assert mock_update.called is last
 
     def test_trailing_valueless_config_keeps_earlier_value(self, tmp_path: Path) -> None:
-        """A bare trailing --config does not clear the last valued occurrence."""
+        """A bare trailing --config does not clear the last valued occurrence.
+
+        The update check runs inside the ``parse_args`` patch, before Click
+        validates the options, so it sees the earlier value even though Click
+        then rejects the valueless trailing flag with exit code 2.
+        """
         config = _config(tmp_path / "a", auto_update=False)
 
-        _, mock_update = _invoke(["--config", str(config), "--config"])
+        result, mock_update = _invoke(["--config", str(config), "--config"])
 
         mock_update.assert_not_called()
+        assert result.exit_code == 2
 
     def test_empty_config_dir_value_is_absent_not_cwd(
         self, isolated_env: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -239,8 +245,11 @@ class TestDefaultDiscovery:
         before = (state.read_bytes(), state.stat().st_mtime_ns)
         absent = tmp_path / "home" / ".local" / ".config" / "buvis" / "updater.json"
 
-        _invoke([])
+        _, mock_update = _invoke([])
 
+        # The call count is the real suppression signal; the file assertions
+        # below only add that nothing else on the path writes updater state.
+        mock_update.assert_not_called()
         assert (state.read_bytes(), state.stat().st_mtime_ns) == before
         assert not absent.exists()
 
