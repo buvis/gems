@@ -166,9 +166,7 @@ def _run_update_check_once(ctx: click.Context, args: list[str]) -> None:
         config_path = _extract_config_path(args)
         settings = ConfigResolver().resolve(
             settings_class,
-            config_dir=None,
             config_path=Path(config_path) if config_path else None,
-            cli_overrides={},
         )
         if settings.auto_update:
             check_and_update(settings)
