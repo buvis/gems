@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import logging
+import os
 import platform
 import types
 import weakref
@@ -15,12 +17,14 @@ from typing import Any, Literal, TypeVar, Union, cast, get_args, get_origin, ove
 from urllib.parse import urlencode
 
 import click
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 
-from .exceptions import ConfigurationError
+from .exceptions import ConfigurationError, MissingEnvVarError
 from .resolver import ConfigResolver
 from .settings import GlobalSettings
+
+logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 T = TypeVar("T", bound="BaseModel")
@@ -129,19 +133,41 @@ def _run_force_update_and_exit(ctx: click.Context) -> None:
     ctx.exit(force_update(settings))
 
 
-def _extract_config_path(args: list[str]) -> str | None:
-    """Return the ``--config`` option's value from raw argv, if present.
+def _extract_option_value(args: list[str], option: str) -> str | None:
+    """Return the LAST value of ``option`` in raw argv, or None.
 
-    Honors the ``--`` end-of-options sentinel, same as ``_contains_update_option``.
+    Honors both ``--opt VALUE`` and ``--opt=VALUE``, and the ``--``
+    end-of-options sentinel (arguments after it are positional).
+    Last-wins, matching Click's own handling of a repeated option.
     """
+    value: str | None = None
+    prefix = f"{option}="
     for i, arg in enumerate(args):
         if arg == "--":
-            return None
-        if arg == "--config" and i + 1 < len(args):
-            return args[i + 1]
-        if arg.startswith("--config="):
-            return arg[len("--config=") :]
-    return None
+            break
+        if arg == option and i + 1 < len(args):
+            value = args[i + 1]
+        elif arg.startswith(prefix):
+            value = arg[len(prefix) :]
+    return value
+
+
+_GLOBAL_AUTO_UPDATE_ENV = "BUVIS_AUTO_UPDATE"
+
+
+def _update_enabled(settings_class: type[GlobalSettings], settings: GlobalSettings) -> bool:
+    """Whether the passive update check may run.
+
+    The tool's own ``<PREFIX>AUTO_UPDATE`` / YAML value decides. The global
+    ``BUVIS_AUTO_UPDATE`` applies only when the tool-prefixed variable is
+    absent, so the more specific knob always wins.
+    """
+    env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
+    if f"{env_prefix}AUTO_UPDATE" in os.environ:
+        return settings.auto_update
+    if _GLOBAL_AUTO_UPDATE_ENV in os.environ:
+        return GlobalSettings().auto_update
+    return settings.auto_update
 
 
 def _run_update_check_once(ctx: click.Context, args: list[str]) -> None:
@@ -159,17 +185,27 @@ def _run_update_check_once(ctx: click.Context, args: list[str]) -> None:
         return
     root.meta[_BUVIS_META_CHECKED_KEY] = True
 
+    try:
+        settings_class = _resolve_settings_class(ctx)
+        config_path = _extract_option_value(args, "--config")
+        config_dir = _extract_option_value(args, "--config-dir")
+        settings = ConfigResolver().resolve(
+            settings_class,
+            config_dir=config_dir,
+            config_path=Path(config_path) if config_path else None,
+        )
+        enabled = _update_enabled(settings_class, settings)
+    except (ConfigurationError, MissingEnvVarError, ValidationError, OSError):
+        logger.debug("skipping update check: unresolved configuration", exc_info=True)
+        return
+
+    if not enabled:
+        return
+
     with contextlib.suppress(Exception):
         from buvis.pybase.updater import check_and_update
 
-        settings_class = _resolve_settings_class(ctx)
-        config_path = _extract_config_path(args)
-        settings = ConfigResolver().resolve(
-            settings_class,
-            config_path=Path(config_path) if config_path else None,
-        )
-        if settings.auto_update:
-            check_and_update(settings)
+        check_and_update(settings)
 
 
 def _install_parse_args_patch() -> None:
