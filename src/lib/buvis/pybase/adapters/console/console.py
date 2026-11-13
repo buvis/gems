@@ -268,6 +268,7 @@ class ConsoleAdapter:
         on_success: Callable[[CommandResult], None] | None = None,
         on_failure: Callable[[CommandResult], None] | None = None,
         literal: bool = False,
+        exit_on_failure: bool = False,
     ) -> None:
         """Print warnings then success/failure from a CommandResult.
 
@@ -279,6 +280,7 @@ class ConsoleAdapter:
             on_failure: Custom handler called instead of default failure output.
             literal: Preserve markup and emoji codes in standard messages.
                 Custom callbacks still receive the original result.
+            exit_on_failure: Exit with code 1 after reporting a failed result.
         """
 
         def emit(message: str, reporter: Callable[[str], None], marker: str, style: str) -> None:
@@ -296,10 +298,13 @@ class ConsoleAdapter:
                 on_success(result)
             elif success_msg or result.output:
                 emit(success_msg or result.output or "", self.success, CHECKMARK, STYLE_SUCCESS_MSG)
-        elif on_failure is not None:
+            return
+        if on_failure is not None:
             on_failure(result)
         else:
             emit(result.error or failure_msg, self.failure, CROSSMARK, STYLE_FAILURE_MSG)
+        if exit_on_failure:
+            sys.exit(1)
 
     def require_import(self: ConsoleAdapter, extra: str, tool_name: str | None = None) -> None:
         """Panic with a standardized install hint for a missing optional extra.
