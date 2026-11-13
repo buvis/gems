@@ -18,13 +18,13 @@ class TestMucLimitCli:
     def test_limit_failure(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="ffmpeg missing")
         result = runner.invoke(cli, ["limit", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("muc.commands.limit.limit.CommandLimit")
     def test_limit_failure_no_error(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["limit", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("muc.commands.limit.limit.CommandLimit")
     def test_limit_success_no_output(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -74,7 +74,7 @@ class TestMucCoverCliExtra:
     def test_cover_failure_no_error(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["cover", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("muc.commands.cover.cover.CommandCover")
     def test_cover_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:

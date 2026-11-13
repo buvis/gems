@@ -65,7 +65,7 @@ class TestDotCommands:
             success=False, error="Git error", metadata={"details": "some details"}
         )
         result = runner.invoke(cli, ["status"])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     def test_add_success(self, mocker, runner) -> None:
         mocker.patch("dot.cli.ShellAdapter")

@@ -17,7 +17,7 @@ class TestMucCommands:
     def test_cover_failure(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="no covers found")
         result = runner.invoke(cli, ["cover", str(tmp_path)])
-        assert result.exit_code == 0  # CLI prints failure but doesn't sys.exit
+        assert result.exit_code == 1
 
     def test_cover_not_a_dir(self, runner, tmp_path) -> None:
         result = runner.invoke(cli, ["cover", str(tmp_path / "nope")])
