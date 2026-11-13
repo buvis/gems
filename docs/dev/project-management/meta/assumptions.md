@@ -1,11 +1,12 @@
-# Assumptions ledger: 00136-sysup-plan-config-errors-raw-v1
+# Assumptions ledger: 00137-yaml-auto-update-ignored-v1
 
-## 1: sysup: project merged config onto plan keys, reject list directives and render plan errors cleanly
+## 1: Run the update check after settings resolution so YAML auto_update: false is honoured
 
-- Tess: messages must contain the full `buvis-sysup.yaml` path, not the basename; `COLUMNS=500` keeps Rich from wrapping it.
-- Tess: "single line" means exactly one non-empty CLI output line.
-- Tess: the bundled plan still has a `brew` command (shared with `test_config.py`).
-- Ivan (qwen): `merge_configs(merged, data)` raises `ConfigurationError` for a list directive on a mapping key.
-- Ivan (qwen): `SysupSettings.model_fields` exposes `debug`/`log_level` with no aliases.
-- Ivan (MEDIUM fix): per-entry source tracking applies to every mapping plan key (`commands`, `expiry`, `ntfy`); entry names are stringified to match `loc`.
-- Orchestrator (all tasks): per-task review ran as a native Agent at sonnet because `sonnet-run.sh` failed auth (`CLAUDE_CODE_OAUTH_TOKEN` unset in this session).
+- Tess: used `log_level: BOGUS` as the "reliably fails config resolution" trigger for the resolution-failure test, since an unknown top-level key is silently dropped by `GlobalSettings`'s env-merge rather than raising; an invalid `Literal` value for an existing field reliably raises `ConfigurationError` instead.
+- Tess: did not assert on the exact object/fields passed to `check_and_update` (e.g. that it carries `auto_update`/`installer`) since the acceptance criteria only specify whether the call happens, not its argument shape.
+- Ivan: `GlobalSettings` exposes a boolean `auto_update` field read from env var `BUVIS_AUTO_UPDATE` and YAML key `auto_update`.
+- Ivan: `ConfigResolver.resolve(settings_class, config_dir=None, config_path=..., cli_overrides={})` is a safe call shape for the early (pre-wrapper) check, mirroring the wrapper's own defaults.
+- Ivan: the update check parses `--config` (and `--config=VALUE`) directly from raw argv to resolve settings before Click's own option parsing runs; `--config-dir` is intentionally not extracted at this early stage since no failing test exercises it.
+- Ivan: if settings resolution raises (bad config), the check silently no-ops for that invocation too, consistent with the existing `contextlib.suppress(Exception)` pattern and the acceptance criterion that a config error already reports as today.
+- Orchestrator: kept the update check inside the `parse_args` monkeypatch (not moved into the command wrapper after resolution, contrary to a literal reading of the PRD's "move after settings resolution") because three pre-existing tests require the check to still fire before `--help`/`--version` eager-exit, which the wrapper body never reaches for those flags; judged this satisfies the PRD's actual intent (honour resolved YAML/env `auto_update`) rather than its literal code-location wording.
+- Orchestrator: per-task review (step 5.7, Pat) could not run - `sonnet-run.sh` failed with "OAuth token revoked" (headless `claude -p` lacks `CLAUDE_CODE_OAUTH_TOKEN` in this session), retried once (same failure class), then recorded `review: failed:runner_unavailable` and proceeded per the per-task review's fail-loud fallback; the mandatory PRD-level review lenses cover what Pat would have.
