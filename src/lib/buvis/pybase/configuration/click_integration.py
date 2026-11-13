@@ -191,7 +191,9 @@ def _run_update_check_once(ctx: click.Context, args: list[str]) -> None:
         config_dir = _extract_option_value(args, "--config-dir")
         settings = ConfigResolver().resolve(
             settings_class,
-            config_dir=config_dir,
+            # An empty value is absent: Path("") expands to the cwd, which
+            # would silently read a config file from the working directory.
+            config_dir=config_dir or None,
             config_path=Path(config_path) if config_path else None,
         )
         enabled = _update_enabled(settings_class, settings)
