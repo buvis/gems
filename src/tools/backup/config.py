@@ -174,10 +174,6 @@ def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[tuple[
     except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
         msg = f"failed to load config file {path}: {exc}"
         raise FatalError(msg) from exc
-    # A backup-SPECIFIC file (buvis-backup*.yaml) should carry only backup's
-    # keys plus global settings keys, so an unknown top-level key there is a
-    # typo (instnaces:, exclude:) to reject. A SHARED file (config.yaml /
-    # buvis.yaml) legitimately carries other tools' + global keys.
     if _is_backup_specific(path):
         unknown = _unknown_top_level_keys(data)
         if unknown:
