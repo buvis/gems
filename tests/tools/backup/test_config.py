@@ -159,6 +159,16 @@ class TestLoadConfigValidation:
         assert not isinstance(exc_info.value, yaml.YAMLError)
         assert str(cfg_dir / "buvis-backup.yaml") in str(exc_info.value)
 
+    def test_non_mapping_yaml_root_raises_fatal_not_configuration_error(self, mocker, tmp_path: Path) -> None:
+        """`load_yaml` raises `ConfigurationError` for a non-mapping YAML root;
+        `_merge_layer`'s load handler must catch it and re-raise as a
+        file-qualified `FatalError`, never let it escape as a raw traceback."""
+        user = tmp_path / "buvis-backup.yaml"
+        _write(user, "- just\n- a\n- list\n")
+        mocker.patch("backup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        with pytest.raises(FatalError, match=rf"{user}.*mapping"):
+            load_config()
+
     def test_non_utf8_config_raises_fatal_not_unicode_error(self, tmp_path: Path) -> None:
         """A non-UTF-8 user config surfaces as FatalError, not a raw UnicodeError."""
         cfg_dir = tmp_path / "cfg"

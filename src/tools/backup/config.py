@@ -171,7 +171,7 @@ def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[tuple[
     """
     try:
         data = ConfigurationLoader.load_yaml(path)
-    except (yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
+    except (ConfigurationError, yaml.YAMLError, MissingEnvVarError, OSError, UnicodeError) as exc:
         msg = f"failed to load config file {path}: {exc}"
         raise FatalError(msg) from exc
     if _is_backup_specific(path):
