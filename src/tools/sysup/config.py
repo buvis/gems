@@ -176,8 +176,6 @@ class SysupConfig(BaseModel):
 # buvis.yaml) carries other tools' and global fields; only these plan keys are
 # projected into SysupConfig, whose extra="forbid" would otherwise reject them.
 _SYSUP_TOP_LEVEL_KEYS = frozenset(SysupConfig.model_fields)
-# Global settings keys (debug, log_level, ...) a sysup-specific file may also
-# carry beside the plan keys.
 _SYSUP_SETTINGS_KEYS = frozenset(SysupSettings.model_fields)
 
 
@@ -196,7 +194,7 @@ def _unknown_top_level_keys(data: dict[str, object]) -> set[str]:
     """Return top-level keys in ``data`` that are not sysup's.
 
     A key may carry a ``+`` / ``-`` directive suffix, so the suffix is stripped
-    before the membership check. Non-mapping documents contribute nothing.
+    before the membership check.
     """
     allowed = _SYSUP_TOP_LEVEL_KEYS | _SYSUP_SETTINGS_KEYS
     unknown: set[str] = set()
@@ -385,10 +383,6 @@ def load_config(config_dir: str | None = None, config_path: str | None = None) -
             if base in _SYSUP_TOP_LEVEL_KEYS:
                 key_sources[base] = path
 
-    # The shared config.yaml / buvis.yaml layers carry global fields (debug,
-    # log_level, ...) and other tools' sections that are not sysup's. Project
-    # the merged document onto sysup's own top-level keys before validation, so
-    # a standard global config no longer trips SysupConfig's extra="forbid".
     projected = {key: value for key, value in merged.items() if key in _SYSUP_TOP_LEVEL_KEYS}
 
     try:
