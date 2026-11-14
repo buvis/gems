@@ -1128,3 +1128,17 @@
 {"kind":"handoff","site":"review","edge":"leave","at":1794623221,"phase":"done","prd":"00139-shared-config-typos-invisible-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1794623255,"phase":"done","prd":"00139-shared-config-typos-invisible-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1794623370,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794623376,"phase":"build","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"id":"82911780","kind":"tess","task":"1","queued_at":1794624622,"prompt_bytes":111641}
+{"id":"1f357945","kind":"tess","task":"1","queued_at":1794624751,"prompt_bytes":16986}
+{"id":"4dd1d9e1","kind":"ivan","task":"1","queued_at":1794625009,"prompt_bytes":69808}
+{"id":"648b9f40","kind":"ivan","task":"1","queued_at":1794625043,"prompt_bytes":13859}
+{"id":"ca2a34d6","kind":"deslop","task":"1","queued_at":1794626632,"prompt_bytes":15709}
+{"id":"ca2a34d6","ended_at":1794626759,"elapsed_s":127,"outcome":"ok","detail":null}
+{"id":"8c2a04b5","kind":"pat","task":"1","queued_at":1794626831,"prompt_bytes":21262}
+{"id":"4dd1d9e1","ended_at":1794626954,"elapsed_s":1563,"outcome":"ok","detail":"closed-by: commit 808fd592cb324c42d2a5942f614e27599954036e"}
+{"id":"648b9f40","ended_at":1794626954,"elapsed_s":1529,"outcome":"ok","detail":"closed-by: commit 808fd592cb324c42d2a5942f614e27599954036e"}
+{"id":"82911780","ended_at":1794626954,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"1f357945","ended_at":1794626954,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"8c2a04b5","ended_at":1794626954,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794626954,"phase":"build","prd":"00140-library-warnings-lack-marker-v1.md"}
