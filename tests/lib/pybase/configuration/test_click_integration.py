@@ -1297,7 +1297,29 @@ class TestConsoleWarningBridge:
         second = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
 
         combined_output = first.output + second.output
-        assert combined_output.count("Retired config file") == 1
+        marked = re.findall(r"⚠.*?Retired config file.*?is ignored; move its values to", combined_output, re.DOTALL)
+        assert len(marked) == 1
+
+    def test_console_warning_handler_dedupes_repeated_real_logger_warning(self) -> None:
+        """A message logged twice through the real configuration logger (not through
+        a @cache-memoized warn function) is still deduped to one console line by the
+        handler's own `_seen` tracking."""
+        from buvis.pybase.adapters import console as console_module
+
+        logger = logging.getLogger("buvis.pybase.configuration")
+        for preexisting in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
+            logger.removeHandler(preexisting)
+
+        try:
+            _install_console_warning_bridge()
+            with patch.object(console_module.console, "print") as mock_print:
+                logger.warning("Skipping unsafe config path: %s", "/tmp/sentinel-path")
+                logger.warning("Skipping unsafe config path: %s", "/tmp/sentinel-path")
+
+            assert mock_print.call_count == 1
+        finally:
+            for installed in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
+                logger.removeHandler(installed)
 
     def test_retired_twin_warning_marked_with_debug_flag(self, runner: CliRunner, tmp_path: Path) -> None:
         """--debug does not bypass the console marker: still exactly one ⚠ line, no duplicate."""
@@ -1346,6 +1368,7 @@ class TestConsoleWarningBridge:
     def test_install_console_warning_bridge_is_idempotent(self) -> None:
         """Calling the installer twice attaches exactly one handler and leaves propagate True."""
         logger = logging.getLogger("buvis.pybase.configuration")
+        original_handlers = list(logger.handlers)
         for preexisting in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
             logger.removeHandler(preexisting)
 
@@ -1357,5 +1380,4 @@ class TestConsoleWarningBridge:
             assert len(handlers) == 1
             assert logger.propagate is True
         finally:
-            for installed in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
-                logger.removeHandler(installed)
+            logger.handlers = original_handlers
