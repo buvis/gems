@@ -133,6 +133,14 @@
       "action": "deferred",
       "reason": "deferred by review-close",
       "prd": "00138-failed-commands-exit-zero-v1.md"
+    },
+    {
+      "type": "requirements-ambiguity",
+      "issue": "R11: the shared-file unknown-key check does not know other tools settings fields, so a top-level sources: (braid field) warns when sysup resolves config.yaml. PRD Success Metric 1 says any tools settings field; the approved design says shared files carry <tool>: namespace sections instead, and per-tool field sets would make the library import tool code against the AGENTS.md invariant.",
+      "severity": "high",
+      "consensus": "1/4",
+      "reason": "requirements ambiguity between PRD Success Metric 1 and the approved design doc; needs a human call on which reading governs",
+      "prd": "00139-shared-config-typos-invisible-v1.md"
     }
   ]
 }

@@ -1109,3 +1109,11 @@
 {"kind":"handoff","site":"done","edge":"leave","at":1794618379,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1794618389,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1794620452,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794620480,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"id":"b2936113","kind":"bob","task":"review-r00139-c1","queued_at":1794620669,"prompt_bytes":9592}
+{"id":"479f4ca5","kind":"carl","task":"review-r00139-c1","queued_at":1794620669,"prompt_bytes":6577}
+{"id":"b2936113","ended_at":1794621103,"elapsed_s":434,"outcome":"ok","detail":null}
+{"id":"479f4ca5","ended_at":1794621106,"elapsed_s":437,"outcome":"ok","detail":null}
+{"id":"b2936113","ended_at":1794621426,"elapsed_s":757,"outcome":"ok","detail":null}
+{"id":"479f4ca5","ended_at":1794621426,"elapsed_s":757,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794621458,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
