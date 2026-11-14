@@ -126,6 +126,16 @@ The tool name is derived from ``env_prefix``:
 - ``BUVIS_PHOTO_`` → searches for ``buvis-photo.yaml``
 - ``BUVIS_`` (default) → only the shared files
 
+A top-level key in ``config.yaml``/``buvis.yaml`` now **warns** (never fails)
+when it matches neither the resolving tool's own settings field or declared
+deferred key, nor any registered tool's name (i.e. it is not a legitimate
+``<tool>:`` namespace section either). This catches a typo in the resolving
+tool's own field (``srouces:`` instead of ``sources:``) without flagging a
+different tool's namespace section. An explicit or custom-named file (e.g.
+``--config custom.yaml``) still fails hard on an unknown key, unchanged. A
+new tool is recognized as a namespace owner only once it is registered
+under the ``buvis.config_settings`` entry-point group in ``pyproject.toml``.
+
 **Complete example:**
 
 .. code-block:: python
