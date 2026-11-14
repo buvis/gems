@@ -1,12 +1,24 @@
 from __future__ import annotations
 
 from importlib.metadata import EntryPoint
+from pathlib import Path
 
-from buvis.pybase.configuration.registry import known_tool_names
+import pytest
+import tomllib
+from buvis.pybase.configuration.registry import CONFIG_SETTINGS_ENTRY_POINT_GROUP, known_tool_names
+
+_PYPROJECT = Path(__file__).resolve().parents[4] / "pyproject.toml"
 
 
 def _fake_entry_point(name: str) -> EntryPoint:
     return EntryPoint(name=name, value="unused.module:Unused", group="buvis.config_settings")
+
+
+@pytest.fixture(autouse=True)
+def _clear_known_tool_names_cache():
+    known_tool_names.cache_clear()
+    yield
+    known_tool_names.cache_clear()
 
 
 class TestKnownToolNames:
@@ -50,3 +62,13 @@ class TestKnownToolNames:
 
         known_tool_names.cache_clear()
         assert known_tool_names() == frozenset({"delta"})
+
+
+class TestRealEntryPointWiring:
+    """No monkeypatching: every declared tool must actually be discoverable."""
+
+    def test_matches_declared_config_settings_entry_points(self):
+        declared = set(
+            tomllib.loads(_PYPROJECT.read_text())["project"]["entry-points"][CONFIG_SETTINGS_ENTRY_POINT_GROUP]
+        )
+        assert known_tool_names() == frozenset(declared)
