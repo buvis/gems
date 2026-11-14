@@ -1107,3 +1107,5 @@
 {"kind":"handoff","site":"review","edge":"leave","at":1794618199,"phase":"done","prd":"00138-failed-commands-exit-zero-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1794618277,"phase":"done","prd":"00138-failed-commands-exit-zero-v1.md"}
 {"kind":"handoff","site":"done","edge":"leave","at":1794618379,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794618389,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794620452,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
