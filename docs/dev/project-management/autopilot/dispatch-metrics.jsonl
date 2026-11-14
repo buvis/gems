@@ -1155,3 +1155,4 @@
 {"id":"5f014882","kind":"pat","task":"3","queued_at":1794628613,"prompt_bytes":7993}
 {"id":"5f014882","ended_at":1794628873,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
 {"kind":"handoff","site":"review","edge":"leave","at":1794628873,"phase":"done","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794628993,"phase":"done","prd":"00140-library-warnings-lack-marker-v1.md"}
