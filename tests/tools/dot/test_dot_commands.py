@@ -87,15 +87,14 @@ class TestDotCommands:
         assert result.exit_code == 0
 
     def test_pull_failure_from_rescue_plan_bypass_exits_nonzero(self, mocker, runner) -> None:
-        # plan() is a bare MagicMock here, so plan.error is a truthy MagicMock
-        # attribute and the handler takes the rescue-plan error branch
-        # (cli.py:141-143) without ever reaching execute(). That branch now
-        # routes through report_result(exit_on_failure=True) too.
+        from dot.hostlinks.rescue import RescuePlan
+
         mocker.patch("dot.cli.ShellAdapter")
         mock_cmd_cls = mocker.patch("dot.commands.pull.pull.CommandPull")
-        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Pull failed")
+        mock_cmd_cls.return_value.plan.return_value = RescuePlan(error="planning failed")
         result = runner.invoke(cli, ["pull"])
         assert result.exit_code != 0
+        assert "planning failed" in result.output
         mock_cmd_cls.return_value.execute.assert_not_called()
 
     def test_pull_failure_reaching_execute_exits_nonzero(self, mocker, runner) -> None:
@@ -107,6 +106,7 @@ class TestDotCommands:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Pull failed")
         result = runner.invoke(cli, ["pull"])
         assert result.exit_code != 0
+        mock_cmd_cls.return_value.execute.assert_called_once()
 
     def test_pull_failure_prints_divergence_patch_and_error(self, mocker, runner) -> None:
         from dot.hostlinks.rescue import RescuePlan
