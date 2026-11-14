@@ -102,5 +102,77 @@
     "issue": "Positives, verified. `report_result` gained `exit_on_failure` (default False, `sys.exit(1)`) after the error output. `dot status` and bare `postup` are converted.",
     "file": "src/lib/buvis/pybase/adapters/console/console.py:306",
     "reason": "not a defect; this row records verified positives"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "The `dot setup` conversion has no exit-code test. `src/tools/dot/cli.py:84` gained `exit_on_failure=True`, but `TestDotSetupCli` has no failing-result case (it only covers URL resolution and the panic path). This is the one converted dot command without a failing-result test.",
+    "file": "tests/tools/dot/test_dot_commands.py:244",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "`muc tidy` still exits 0 on partial failure. `CommandTidy` hard-codes `success=True` and only emits warnings, so `exit_on_failure` on the aggregate call never fires. The CHANGELOG records this as a deliberate exit-0 case.",
+    "file": "src/tools/muc/commands/tidy/tidy.py:23",
+    "reason": "single-voice, and the same call was already settled in cycle 1 (R7): every DirTree step helper hardcodes success=True and reports problems as warnings, so no step prints a failure and the PRD metric is met; the deliberate exit-0 case is documented in the CHANGELOG"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The new dot and postup tests are mostly failure-only. `postup tui` and `postup serve` and the new dot failure tests have no success counterpart. A regression that made these commands always exit non-zero would not be caught.",
+    "file": "tests/tools/postup/adapters/test_cli_exit_codes.py:63",
+    "reason": "single-voice; the per-tool success case is already covered by the exit-0 tests the earlier tasks added for each tool"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Survey is complete. Every `report_result` call under `src/tools/` passes `exit_on_failure=True`.",
+    "file": "src/tools/muc/cli.py:89",
+    "reason": "not a defect; this row records verified positives"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Dead branches remain in klyreon `validate` and `export_claims`. In the non-JSON branch the new `exit_on_failure=True` makes the trailing `if not result.success: ctx.exit(1)` unreachable. That code is still live for the `--json` branch, so this is not a bug.",
+    "file": "src/tools/klyreon/cli.py:158",
+    "reason": "not a defect; the reviewer states the branch is live for the --json path"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The `dot status` secret-hiding decision is documented in `dot.rst`: secrets are still hidden on every run, by design, and the exit-code change is noted.",
+    "file": "docs/source/tools/dot.rst:129",
+    "reason": "not a defect; this row records verified positives"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The CHANGELOG entry is present, names the exit-status change, warns that scripts relying on exit 0 will now see non-zero, and lists the exit-0 exceptions.",
+    "file": "CHANGELOG.md:52",
+    "reason": "not a defect; this row records verified positives"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Tests exist per tool for exit-code behaviour. They cover non-zero on failure and zero on success, including a falsy error message.",
+    "file": "tests/tools/dot/test_status_exit_code.py:11",
+    "reason": "not a defect; this row records verified positives"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "No scope creep found. The diff to `src/` is `exit_on_failure` call sites plus removal of the now-redundant `ctx.exit(1)` and `@click.pass_context` lines.",
+    "file": "N/A",
+    "reason": "not a defect; this row records verified positives"
   }
 ]
