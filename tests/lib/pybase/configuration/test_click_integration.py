@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
@@ -9,9 +11,14 @@ from urllib.parse import parse_qs, urlparse
 import click
 import pytest
 from buvis.pybase.configuration import buvis_options, get_settings
+from buvis.pybase.configuration.click_integration import (
+    _ConsoleWarningHandler,
+    _install_console_warning_bridge,
+)
 from buvis.pybase.configuration.settings import GlobalSettings
 from click.testing import CliRunner
 from pydantic import BaseModel
+from rich.markup import escape
 
 
 @pytest.fixture
@@ -1251,3 +1258,95 @@ class TestAutoUpdateHonoursResolvedSettings:
 
         assert result.exit_code == 1
         mock_update.assert_not_called()
+
+
+class TestConsoleWarningBridge:
+    """Tests for the console-warning bridge on the configuration logger."""
+
+    def test_retired_twin_warning_renders_with_console_marker(self, runner: CliRunner, tmp_path: Path) -> None:
+        """A retired *.local.yaml twin produces exactly one console-styled ⚠ warning line,
+        not a bare logging-style line."""
+        (tmp_path / "config.yaml").write_text("debug: true\n")
+        (tmp_path / "config.local.yaml").write_text("debug: false\n")
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
+
+        marked = re.findall(r"⚠.*?Retired config file.*?is ignored; move its values to", result.output, re.DOTALL)
+        assert len(marked) == 1
+        assert result.output.count("Retired config file") == 1
+
+    def test_retired_twin_warning_deduped_across_two_invocations(self, runner: CliRunner, tmp_path: Path) -> None:
+        """Invoking the same command twice with the same twin fixture still only warns once
+        in total across both invocations (per-process dedupe)."""
+        (tmp_path / "config.yaml").write_text("debug: true\n")
+        (tmp_path / "config.local.yaml").write_text("debug: false\n")
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        first = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
+        second = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
+
+        combined_output = first.output + second.output
+        assert combined_output.count("Retired config file") == 1
+
+    def test_retired_twin_warning_marked_with_debug_flag(self, runner: CliRunner, tmp_path: Path) -> None:
+        """--debug does not bypass the console marker: still exactly one ⚠ line, no duplicate."""
+        (tmp_path / "config.yaml").write_text("debug: true\n")
+        (tmp_path / "config.local.yaml").write_text("debug: false\n")
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config-dir", str(tmp_path), "--debug"])
+
+        marked = re.findall(r"⚠.*?Retired config file.*?is ignored; move its values to", result.output, re.DOTALL)
+        assert len(marked) == 1
+        assert result.output.count("Retired config file") == 1
+
+    def test_handler_emit_dedupes_identical_message_but_not_distinct_ones(self) -> None:
+        """_ConsoleWarningHandler.emit renders a new message once via console.warning, escaped
+        through rich.markup.escape, and does not suppress a distinct message text."""
+        handler = _ConsoleWarningHandler()
+        duplicate_a = logging.LogRecord("test.logger", logging.WARNING, __file__, 1, "dup [msg]", None, None)
+        duplicate_b = logging.LogRecord("test.logger", logging.WARNING, __file__, 2, "dup [msg]", None, None)
+        distinct = logging.LogRecord("test.logger", logging.WARNING, __file__, 3, "other [msg]", None, None)
+
+        with patch("buvis.pybase.adapters.console.console.warning") as mock_warning:
+            handler.emit(duplicate_a)
+            handler.emit(duplicate_b)
+            handler.emit(distinct)
+
+        assert mock_warning.call_count == 2
+        rendered = [call.args[0] for call in mock_warning.call_args_list]
+        assert rendered[0] == escape("dup [msg]")
+        assert rendered[1] == escape("other [msg]")
+
+    def test_install_console_warning_bridge_is_idempotent(self) -> None:
+        """Calling the installer twice attaches exactly one handler and leaves propagate True."""
+        logger = logging.getLogger("buvis.pybase.configuration")
+        for preexisting in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
+            logger.removeHandler(preexisting)
+
+        try:
+            _install_console_warning_bridge()
+            _install_console_warning_bridge()
+
+            handlers = [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]
+            assert len(handlers) == 1
+            assert logger.propagate is True
+        finally:
+            for installed in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
+                logger.removeHandler(installed)
