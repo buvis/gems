@@ -9,6 +9,7 @@ from braid.cli import cli
 from braid.settings import BraidSettings
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import ConfigResolver, ConfigurationError, GlobalSettings
+from buvis.pybase.configuration.registry import known_tool_names
 from click.testing import CliRunner
 from pydantic_settings import SettingsConfigDict
 from rich.console import Console
@@ -25,6 +26,7 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setenv("BUVIS_DEV_MODE", "1")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(console, "console", Console(width=240, color_system=None))
+    known_tool_names.cache_clear()
 
 
 class TestToolConfigKeys:
@@ -47,7 +49,7 @@ class TestToolConfigKeys:
 
     @pytest.mark.parametrize("filename", ["config.yaml", "buvis.yaml"])
     @pytest.mark.parametrize("explicit", [False, True])
-    def test_shared_config_keeps_other_tool_namespaces(self, tmp_path, filename, explicit):
+    def test_shared_config_keeps_other_tool_namespaces(self, tmp_path, filename, explicit, caplog):
         path = tmp_path / "home/.config/buvis" / filename
         path.parent.mkdir(parents=True)
         path.write_text(
@@ -60,6 +62,27 @@ class TestToolConfigKeys:
         assert settings.adapters == {"jira": {"server": "https://example.test"}}
         assert settings.sources == (Path("/shared-skills"),)
         assert not hasattr(settings, "sysup")
+        assert "unknown configuration key" not in caplog.text
+
+    @pytest.mark.parametrize("filename", ["config.yaml", "buvis.yaml"])
+    def test_shared_config_warns_on_resolving_tools_own_typo(self, tmp_path, filename, caplog):
+        path = tmp_path / "home/.config/buvis" / filename
+        path.parent.mkdir(parents=True)
+        path.write_text("srouces: [/unused]\n")
+        settings = ConfigResolver().resolve(BraidSettings)
+        assert settings.sources == ()  # the typo'd key is never applied, same as before
+        assert "unknown configuration key 'srouces'" in caplog.text
+        assert str(path) in caplog.text
+
+    def test_shared_config_own_valid_fields_produce_no_warning(self, tmp_path, caplog):
+        path = tmp_path / "home/.config/buvis/config.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("debug: true\nsources+: [/skills]\npolicies: [/drop]\npolicies+: [/keep]")
+        settings = ConfigResolver().resolve(BraidSettings)
+        assert settings.debug is True
+        assert settings.sources == (Path("/skills"),)
+        assert settings.policies == (Path("/drop"), Path("/keep"))
+        assert "unknown configuration key" not in caplog.text
 
     def test_other_tool_files_are_not_validated(self, tmp_path):
         path = tmp_path / "home/.config/buvis/buvis-sysup.yaml"

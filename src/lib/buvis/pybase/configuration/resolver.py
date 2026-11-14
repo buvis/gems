@@ -40,6 +40,7 @@ from pydantic_settings import BaseSettings, SettingsError
 
 from .exceptions import ConfigurationError, MissingEnvVarError
 from .loader import ConfigurationLoader, _split_directive
+from .registry import known_tool_names
 from .validators import is_sensitive_field
 
 __all__ = ["ConfigResolver", "ConfigSource"]
@@ -193,10 +194,27 @@ class ConfigResolver:
         for path in discovered_files:
             try:
                 layer = self.loader.load_yaml(path)
-                # Shared files carry global keys and other tools' namespaces.
-                # Tool-specific (including explicit custom) files must respect
-                # extra="forbid" before projection discards their unknown keys.
-                if known_keys is not None and path.name not in {"config.yaml", "buvis.yaml"}:
+                # Shared files carry global keys and other tools' <tool>:
+                # namespace sections. A key is valid there if it is this
+                # tool's own field/deferred key, or a registered tool's
+                # name (a namespace section for some other tool, never
+                # projected onto this one - unchanged below). Anything
+                # else warns, catching a typo in this tool's own field
+                # without flagging a sibling tool's section.
+                if path.name in {"config.yaml", "buvis.yaml"}:
+                    for key in layer:
+                        base = _split_directive(key)[0]
+                        is_own_field = known_keys is not None and base in known_keys
+                        is_tool_namespace = base in known_tool_names()
+                        if not is_own_field and not is_tool_namespace:
+                            logger.warning(
+                                "%s: unknown configuration key '%s' - matches neither this "
+                                "tool's own settings field (or declared deferred key) nor "
+                                "any registered tool's namespace section",
+                                path,
+                                base,
+                            )
+                elif known_keys is not None:
                     unknown = [key for key in layer if _split_directive(key)[0] not in known_keys]
                     if unknown:
                         raise ConfigurationError(f"unknown configuration key(s): {', '.join(sorted(unknown))}")
