@@ -69,3 +69,37 @@ class TestBarePostupExitCode:
         result = CliRunner().invoke(cli, [])
 
         assert result.exit_code == 0
+
+
+class TestBriefSubcommandExitCode:
+    def test_exits_nonzero_when_brief_result_fails(self, mocker, tmp_path, monkeypatch):
+        monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
+        fake_result = CommandResult(
+            success=False,
+            error="no data.json found; run postup collect first",
+        )
+        mocker.patch(
+            "postup.commands.brief.brief.CommandBrief",
+            return_value=SimpleNamespace(execute=lambda: fake_result),
+        )
+
+        result = CliRunner().invoke(cli, ["brief"])
+
+        assert result.exit_code != 0
+        assert "no data.json found; run postup collect first" in result.output
+
+    def test_exits_zero_when_brief_result_succeeds(self, mocker, tmp_path, monkeypatch):
+        monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
+        fake_result = CommandResult(
+            success=True,
+            metadata={"text": "standup: all quiet"},
+        )
+        mocker.patch(
+            "postup.commands.brief.brief.CommandBrief",
+            return_value=SimpleNamespace(execute=lambda: fake_result),
+        )
+
+        result = CliRunner().invoke(cli, ["brief"])
+
+        assert result.exit_code == 0
+        assert "standup: all quiet" in result.output
