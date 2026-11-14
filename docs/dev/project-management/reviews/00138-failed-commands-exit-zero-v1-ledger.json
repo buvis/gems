@@ -1,0 +1,106 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "`muc tidy` aggregate: `CommandTidy.execute` always returns `success=True`, so the aggregate `exit_on_failure=True` can never fire in production. `test_exits_nonzero_when_aggregate_result_fails` only passes by mocking `CommandTidy` to return a failure it cannot produce. Either note this in the completion report as an unreachable guard, or derive aggregate success from the steps, which would change the \"continue after step failures, exit 0\" design",
+    "file": "tests/tools/muc/test_cli_exit_code.py:48",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Test coverage misses the spec's per-tool CliRunner requirement for the `postup brief` subcommand and for every unconverted dot and postup command. The postup test only exercises bare `postup`.",
+    "file": "tests/tools/postup/adapters/test_cli_brief_exit_code.py:10",
+    "reason": "single-voice; the coverage gap it names is fixed anyway as part of R2's rework"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "F2: The tidy continuation test supplies only one failed step and asserts only exit status. Add a subsequent successful step and assert its output plus the aggregate output.",
+    "file": "tests/tools/muc/test_cli_exit_code.py:64",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "test_valid_dir_passes has no assertion: it only proves the code does not raise",
+    "file": "tests/lib/pybase/adapters/test_console_adapter.py:420",
+    "reason": "pre-existing test, untouched by this diff; fixing it is out of this PRD's exit-status scope (rules/operating-principles.md Surgical Changes). Mechanical check states a computed fact about shape, not a defect this change introduced."
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "test_limit_not_a_dir hedges with `or`: either outcome satisfies it",
+    "file": "tests/tools/muc/test_muc_cli_extra.py:52",
+    "reason": "pre-existing test, untouched by this diff; out of this PRD's exit-status scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "test_cover_not_a_dir hedges with `or`: either outcome satisfies it",
+    "file": "tests/tools/muc/test_muc_commands.py:24",
+    "reason": "pre-existing test, untouched by this diff; out of this PRD's exit-status scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "test_multilang_not_a_dir hedges with `or`: either outcome satisfies it",
+    "file": "tests/tools/vuc/test_vuc_commands.py:21",
+    "reason": "pre-existing test, untouched by this diff; out of this PRD's exit-status scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Redundant ctx.exit(1) after report_result(..., exit_on_failure=True): report_result terminates on failure, leaving 'if not result.success: ctx.exit(1)' as unreachable dead code; remove the redundant check",
+    "file": "src/tools/bim/note_read_cli.py:84",
+    "reason": "single-voice; the same defect class is being fixed under R1, whose site list already covers this line"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Redundant ctx.exit(1) after report_result(..., exit_on_failure=True): report_result terminates on failure, leaving 'if not result.success: ctx.exit(1)' as unreachable dead code; remove the redundant check",
+    "file": "src/tools/bim/note_write_cli.py:82",
+    "reason": "single-voice; the same defect class is being fixed under R1, whose site list already covers this line"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "In `docs/source/tools/dot.rst` the new paragraph says \"this PRD found no reason to drop that protection\". User-facing docs should not refer to a PRD. It also uses an em dash, which the writing rules ban. Reword it as a plain statement of the decision",
+    "file": "docs/source/tools/dot.rst:129",
+    "reason": "single-voice. Noted: the gate's single-voice rule discards it, but the wording is a real house-style breach; it is folded into R4's documentation rework instead of being dropped."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The completion report did not list the deliberate exit-0 case in `_report_doc_result` (soft-fail unless `strict`, documented in its docstring). It does not go through `report_result`, but the task asked to list other exit-0 cases found in the survey",
+    "file": "src/tools/bim/doc_cli.py:315",
+    "reason": "single-voice; the deliberate-exit-0 list it asks for is produced by R5's rework"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "K7: Existing functions exceed the rubric limit: `print_side_by_side` has 52 lines and `query` has 79 lines.",
+    "file": "src/lib/buvis/pybase/adapters/console/console.py:209",
+    "reason": "single-voice; neither function changed in this diff, so splitting them is out of scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Positives, verified. `report_result` gained `exit_on_failure` (default False, `sys.exit(1)`) after the error output. `dot status` and bare `postup` are converted.",
+    "file": "src/lib/buvis/pybase/adapters/console/console.py:306",
+    "reason": "not a defect; this row records verified positives"
+  }
+]

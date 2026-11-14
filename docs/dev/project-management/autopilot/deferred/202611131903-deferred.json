@@ -61,6 +61,28 @@
       "cycle": 2,
       "prd": "00137-yaml-auto-update-ignored-v1.md",
       "op_id": "56960689a254-dd3"
+    },
+    {
+      "type": "review-critical",
+      "cycle": 1,
+      "ref": "R2",
+      "issue": "postup brief, the PRD evidence command, still exits 0 on failure: exit_on_failure landed on the bare postup path, not the brief subcommand",
+      "severity": "critical",
+      "consensus": "2/4",
+      "file": "src/tools/postup/adapters/cli.py:73",
+      "reason": "critical severity always defers for audit; the fix itself is dispatched as cycle-1 rework",
+      "prd": "00138-failed-commands-exit-zero-v1.md"
+    },
+    {
+      "type": "review-critical",
+      "cycle": 1,
+      "ref": "R3",
+      "issue": "PRD metric \"no tool CLI exits 0 after printing a report_result failure\" unmet: 16 dot and postup report_result callers still lack exit_on_failure",
+      "severity": "critical",
+      "consensus": "2/4",
+      "file": "src/tools/dot/cli.py:64",
+      "reason": "critical severity always defers for audit; the fix itself is dispatched as cycle-1 rework",
+      "prd": "00138-failed-commands-exit-zero-v1.md"
     }
   ]
 }

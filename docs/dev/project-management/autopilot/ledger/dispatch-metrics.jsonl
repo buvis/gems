@@ -1084,3 +1084,11 @@
 {"kind":"handoff","site":"build","edge":"leave","at":1794611080,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1794611092,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1794612997,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794613036,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"id":"926253e2","kind":"bob","task":"review-20261114-00138-c1","queued_at":1794613222,"prompt_bytes":9624}
+{"id":"766e8317","kind":"carl","task":"review-20261114-00138-c1","queued_at":1794613223,"prompt_bytes":6593}
+{"id":"926253e2","ended_at":1794613892,"elapsed_s":670,"outcome":"ok","detail":null}
+{"id":"766e8317","ended_at":1794613895,"elapsed_s":672,"outcome":"ok","detail":null}
+{"id":"926253e2","ended_at":1794615314,"elapsed_s":2092,"outcome":"ok","detail":null}
+{"id":"766e8317","ended_at":1794615314,"elapsed_s":2091,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794615381,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
