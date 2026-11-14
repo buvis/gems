@@ -46,7 +46,7 @@ def collect(ctx: click.Context, *, no_fetch: bool, days: int) -> None:
 
     settings = get_settings(ctx, PostupSettings)
     result = CommandCollect(settings, fetch=not no_fetch, days=days).execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("enrich", help="Enrich the collected data into epics.json via the claude CLI (optional).")
@@ -57,7 +57,7 @@ def enrich(ctx: click.Context) -> None:
 
     settings = get_settings(ctx, PostupSettings)
     result = CommandEnrich(settings).execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("brief", help="Print the deterministic text standup from the latest data.json.")
@@ -84,7 +84,7 @@ def tui(ctx: click.Context) -> None:
         console.require_import("postup")
         return
     result = CommandTui(settings).execute()
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("serve", help="Start the web dashboard (requires the 'postup-web' extra).")
@@ -103,7 +103,7 @@ def serve(ctx: click.Context, port: int, host: str, *, no_browser: bool) -> None
     if not result.success and result.error == MISSING_EXTRA_ERROR:
         console.require_import("postup-web", tool_name="postup serve")
         return
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 if __name__ == "__main__":

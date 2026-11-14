@@ -83,12 +83,27 @@ class TestDotCommands:
         result = runner.invoke(cli, ["pull"])
         assert result.exit_code == 0
 
-    def test_pull_failure(self, mocker, runner) -> None:
+    def test_pull_failure_from_rescue_plan_bypass_exits_zero(self, mocker, runner) -> None:
+        # plan() is a bare MagicMock here, so plan.error is a truthy MagicMock
+        # attribute and the handler takes the console.failure(plan.error)
+        # bypass branch (cli.py:141-143) without ever reaching execute() or
+        # report_result. That bypass is task 9's concern, not this one.
         mocker.patch("dot.cli.ShellAdapter")
         mock_cmd_cls = mocker.patch("dot.commands.pull.pull.CommandPull")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Pull failed")
         result = runner.invoke(cli, ["pull"])
         assert result.exit_code == 0
+        mock_cmd_cls.return_value.execute.assert_not_called()
+
+    def test_pull_failure_reaching_execute_exits_nonzero(self, mocker, runner) -> None:
+        from dot.hostlinks.rescue import RescuePlan
+
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.pull.pull.CommandPull")
+        mock_cmd_cls.return_value.plan.return_value = RescuePlan()
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Pull failed")
+        result = runner.invoke(cli, ["pull"])
+        assert result.exit_code != 0
 
     def test_pull_failure_prints_divergence_patch_and_error(self, mocker, runner) -> None:
         from dot.hostlinks.rescue import RescuePlan
@@ -122,7 +137,7 @@ class TestDotCommands:
             success=False, error="Commit failed", warnings=["unstaged"]
         )
         result = runner.invoke(cli, ["commit", "test msg"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
 
     def test_unstage_success(self, mocker, runner) -> None:
         mocker.patch("dot.cli.ShellAdapter")
@@ -136,7 +151,7 @@ class TestDotCommands:
         mock_cmd_cls = mocker.patch("dot.commands.unstage.unstage.CommandUnstage")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Unstage failed")
         result = runner.invoke(cli, ["unstage"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
 
     def test_push_success(self, mocker, runner) -> None:
         mocker.patch("dot.cli.ShellAdapter")
@@ -150,7 +165,7 @@ class TestDotCommands:
         mock_cmd_cls = mocker.patch("dot.commands.push.push.CommandPush")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Push failed")
         result = runner.invoke(cli, ["push"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
 
     def test_rm_help(self, runner) -> None:
         result = runner.invoke(cli, ["rm", "--help"])
@@ -169,7 +184,56 @@ class TestDotCommands:
         mock_cmd_cls = mocker.patch("dot.commands.rm.rm.CommandRm")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Remove failed")
         result = runner.invoke(cli, ["rm", ".bashrc"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
+
+    def test_add_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.add.add.CommandAdd")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Add failed")
+        result = runner.invoke(cli, ["add", "/tmp/test.txt"])
+        assert result.exit_code != 0
+
+    def test_materialize_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.materialize.materialize.CommandMaterialize")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Materialize failed")
+        result = runner.invoke(cli, ["materialize"])
+        assert result.exit_code != 0
+
+    def test_encrypt_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.encrypt.encrypt.CommandEncrypt")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Encrypt failed")
+        result = runner.invoke(cli, ["encrypt", ".secret"])
+        assert result.exit_code != 0
+
+    def test_delete_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.delete.delete.CommandDelete")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Delete failed")
+        result = runner.invoke(cli, ["delete", ".bashrc"])
+        assert result.exit_code != 0
+
+    def test_run_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.run.run.CommandRun")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Run failed")
+        result = runner.invoke(cli, ["run", "status"])
+        assert result.exit_code != 0
+
+    def test_localize_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.localize.localize.CommandLocalize")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Localize failed")
+        result = runner.invoke(cli, ["localize", ".config/thing"])
+        assert result.exit_code != 0
+
+    def test_localize_shared_failure(self, mocker, runner) -> None:
+        mocker.patch("dot.cli.ShellAdapter")
+        mock_cmd_cls = mocker.patch("dot.commands.localize.share.CommandShare")
+        mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="Share failed")
+        result = runner.invoke(cli, ["localize", ".config/thing", "--shared"])
+        assert result.exit_code != 0
 
 
 class TestDotSetupCli:
