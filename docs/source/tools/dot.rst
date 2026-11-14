@@ -127,9 +127,9 @@ See `Host-specific config`_. Status also warns ``hooks dir missing`` or
 missing directory or at one without a ``pre-commit`` hook.
 
 ``dot status`` keeps hiding (re-encrypting) secrets on every run, with no flag
-to disable it — this PRD found no reason to drop that protection. ``dot
-status`` now exits non-zero if hiding secrets, or any other part of the
-status report, fails, instead of always exiting 0 after printing a failure.
+to disable it. That protection stays on by design. ``dot status`` now exits
+non-zero if hiding secrets, or any other part of the status report, fails,
+instead of always exiting 0 after printing a failure.
 
 dot materialize
 ~~~~~~~~~~~~~~~
