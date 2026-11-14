@@ -81,8 +81,6 @@ def format_note(
 
     result = cmd.execute()
     console.report_result(result, on_success=_report_format_success, failure_msg="Format failed", exit_on_failure=True)
-    if not result.success:
-        ctx.exit(1)
 
 
 @click.command("sync", help="Synchronize note(s) with external system")
@@ -131,8 +129,6 @@ def sync_note(
         console.panic(f"Sync target '{target_system}' not supported")
         return
     console.report_result(result, failure_msg="Sync failed", exit_on_failure=True)
-    if not result.success:
-        ctx.exit(1)
 
 
 @click.command("query", help="Query zettels with YAML filter/sort/output spec")
@@ -250,5 +246,3 @@ def show_note(
         failure_msg="Show failed",
         exit_on_failure=True,
     )
-    if not result.success:
-        ctx.exit(1)
