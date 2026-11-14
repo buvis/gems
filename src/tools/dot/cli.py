@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 from buvis.pybase.adapters import ShellAdapter, console
 from buvis.pybase.configuration import buvis_options, get_settings
+from buvis.pybase.result import CommandResult
 
 from dot.settings import DotSettings
 
@@ -152,7 +153,7 @@ def pull() -> None:
     plan = cmd.plan()
 
     if plan.error:
-        console.failure(plan.error)
+        console.report_result(CommandResult(success=False, error=plan.error), exit_on_failure=True)
         return
 
     # Handle collisions
