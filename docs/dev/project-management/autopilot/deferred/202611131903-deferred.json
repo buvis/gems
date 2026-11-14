@@ -83,6 +83,56 @@
       "file": "src/tools/dot/cli.py:64",
       "reason": "critical severity always defers for audit; the fix itself is dispatched as cycle-1 rework",
       "prd": "00138-failed-commands-exit-zero-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "issue": "`muc tidy` aggregate: `CommandTidy.execute` always returns `success=True`, so the aggregate `exit_on_failure=True` can never fire in production. `test_exits_nonzero_when_aggregate_result_fails` only passes by mocking `CommandTidy` to return a failure it cannot produce.",
+      "severity": "\ud83d\udfe1",
+      "file": "tests/tools/muc/test_cli_exit_code.py:48",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "prd": "00138-failed-commands-exit-zero-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "issue": "`test_valid_dir_passes` and `test_valid_file_passes` have no assertion: they only prove the code does not raise. Pre-existing tests, untouched by this diff.",
+      "severity": "\ud83d\udfe1",
+      "file": "tests/lib/pybase/adapters/test_console_adapter.py:420",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "prd": "00138-failed-commands-exit-zero-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "issue": "`test_limit_not_a_dir` hedges with `or`: either outcome satisfies it. Pre-existing test, untouched by this diff.",
+      "severity": "\ud83d\udfe1",
+      "file": "tests/tools/muc/test_muc_cli_extra.py:52",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "prd": "00138-failed-commands-exit-zero-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "issue": "`test_cover_not_a_dir` and `test_tidy_not_a_dir` hedge with `or`: either outcome satisfies them. Pre-existing tests, untouched by this diff.",
+      "severity": "\ud83d\udfe1",
+      "file": "tests/tools/muc/test_muc_commands.py:24",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "prd": "00138-failed-commands-exit-zero-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "issue": "`test_multilang_not_a_dir` hedges with `or`: either outcome satisfies it. Pre-existing test, untouched by this diff.",
+      "severity": "\ud83d\udfe1",
+      "file": "tests/tools/vuc/test_vuc_commands.py:21",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "prd": "00138-failed-commands-exit-zero-v1.md"
     }
   ]
 }
