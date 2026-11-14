@@ -1117,3 +1117,6 @@
 {"id":"b2936113","ended_at":1794621426,"elapsed_s":757,"outcome":"ok","detail":null}
 {"id":"479f4ca5","ended_at":1794621426,"elapsed_s":757,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1794621458,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"id":"78cd5d59","kind":"pat","task":"5","queued_at":1794621744,"prompt_bytes":11282}
+{"id":"78cd5d59","ended_at":1794622443,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"kind":"handoff","site":"review","edge":"leave","at":1794622443,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
