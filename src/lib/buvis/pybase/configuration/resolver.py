@@ -97,6 +97,34 @@ def _format_validation_errors(error: ValidationError, sources: dict[tuple[str, .
     return "Configuration validation failed:\n" + "\n".join(lines)
 
 
+def _warn_unknown_shared_keys(
+    layer: dict[str, Any],
+    path: Path,
+    own_fields: set[str],
+    tool_names: frozenset[str],
+) -> None:
+    """Warn on a shared config.yaml/buvis.yaml key that is neither an own field nor a tool namespace.
+
+    Shared files carry global keys and other tools' <tool>: namespace
+    sections. A key is valid there if it is this tool's own field/deferred
+    key, or a registered tool's name (a namespace section for some other
+    tool, never projected onto this one). Anything else warns, catching a
+    typo in this tool's own field without flagging a sibling tool's section.
+    """
+    for key in layer:
+        base = _split_directive(key)[0]
+        is_own_field = base in own_fields
+        is_tool_namespace = base in tool_names
+        if not is_own_field and not is_tool_namespace:
+            logger.warning(
+                "%s: unknown configuration key '%s' - matches neither this "
+                "tool's own settings field (or declared deferred key) nor "
+                "any registered tool's namespace section",
+                path,
+                base,
+            )
+
+
 def _record_yaml_sources(
     layer: dict[str, Any],
     path: Path,
@@ -170,6 +198,7 @@ class ConfigResolver:
         self.loader = ConfigurationLoader()
         self._sources: dict[str, ConfigSource] = {}
         self._yaml_sources: dict[tuple[str, ...], list[Path]] = {}
+        self._own_fields: set[str] = set()
         logger.debug("ConfigResolver initialized")
 
     def _load_yaml(
@@ -191,29 +220,12 @@ class ConfigResolver:
             else self.loader.find_config_files_ranked(tool_name, config_dir=config_dir, include_cwd=include_cwd)
         )
         merged: dict[str, Any] = {}
+        tool_names = known_tool_names()
         for path in discovered_files:
             try:
                 layer = self.loader.load_yaml(path)
-                # Shared files carry global keys and other tools' <tool>:
-                # namespace sections. A key is valid there if it is this
-                # tool's own field/deferred key, or a registered tool's
-                # name (a namespace section for some other tool, never
-                # projected onto this one - unchanged below). Anything
-                # else warns, catching a typo in this tool's own field
-                # without flagging a sibling tool's section.
                 if path.name in {"config.yaml", "buvis.yaml"}:
-                    for key in layer:
-                        base = _split_directive(key)[0]
-                        is_own_field = known_keys is not None and base in known_keys
-                        is_tool_namespace = base in known_tool_names()
-                        if not is_own_field and not is_tool_namespace:
-                            logger.warning(
-                                "%s: unknown configuration key '%s' - matches neither this "
-                                "tool's own settings field (or declared deferred key) nor "
-                                "any registered tool's namespace section",
-                                path,
-                                base,
-                            )
+                    _warn_unknown_shared_keys(layer, path, self._own_fields, tool_names)
                 elif known_keys is not None:
                     unknown = [key for key in layer if _split_directive(key)[0] not in known_keys]
                     if unknown:
@@ -287,11 +299,12 @@ class ConfigResolver:
         env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
         tool_name = _extract_tool_name(env_prefix)
 
+        self._own_fields = set(settings_class.model_fields) | set(getattr(settings_class, "config_deferred_keys", ()))
         known_keys = None
         if tool_name is not None and settings_class.model_config.get("extra") == "forbid":
             # Some tools validate their plan separately from runtime settings.
             # The tool owns that key set; the library must not import its schema.
-            known_keys = set(settings_class.model_fields) | set(getattr(settings_class, "config_deferred_keys", ()))
+            known_keys = self._own_fields
         yaml_config = self._load_yaml(
             tool_name,
             config_dir,
