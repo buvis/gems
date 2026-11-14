@@ -81,13 +81,6 @@ _parse_args_patch_installed = False
 
 
 class _ConsoleWarningHandler(logging.Handler):
-    """Renders WARNING+ records from the configuration loggers via console.warning.
-
-    One instance lives for the process once installed; `_seen` dedupes
-    identical messages across repeated resolve() calls in the same process
-    (e.g. a tool that resolves config in a loop).
-    """
-
     def __init__(self) -> None:
         super().__init__(level=logging.WARNING)
         self._seen: set[str] = set()
@@ -104,7 +97,6 @@ class _ConsoleWarningHandler(logging.Handler):
 
 
 def _install_console_warning_bridge() -> None:
-    """Idempotently attach `_ConsoleWarningHandler` to the configuration logger tree."""
     config_logger = logging.getLogger("buvis.pybase.configuration")
     if any(isinstance(h, _ConsoleWarningHandler) for h in config_logger.handlers):
         return
