@@ -1317,22 +1317,31 @@ class TestConsoleWarningBridge:
         assert result.output.count("Retired config file") == 1
 
     def test_handler_emit_dedupes_identical_message_but_not_distinct_ones(self) -> None:
-        """_ConsoleWarningHandler.emit renders a new message once via console.warning, escaped
-        through rich.markup.escape, and does not suppress a distinct message text."""
+        """_ConsoleWarningHandler.emit renders a new message once through the console
+        adapter's Rich console, escaped via rich.markup.escape and printed with
+        soft_wrap=True (so a long single-line message is never wrapped), and does not
+        suppress a distinct message text."""
+        from buvis.pybase.adapters import console as console_module
+
         handler = _ConsoleWarningHandler()
         duplicate_a = logging.LogRecord("test.logger", logging.WARNING, __file__, 1, "dup [msg]", None, None)
         duplicate_b = logging.LogRecord("test.logger", logging.WARNING, __file__, 2, "dup [msg]", None, None)
         distinct = logging.LogRecord("test.logger", logging.WARNING, __file__, 3, "other [msg]", None, None)
 
-        with patch("buvis.pybase.adapters.console.console.warning") as mock_warning:
+        # patch.object on the live Console instance avoids unittest.mock.patch()'s dotted-string
+        # resolution: "buvis.pybase.adapters.console.console" is importable both as the
+        # ConsoleAdapter singleton attribute and as the console.py submodule itself, and
+        # mock.patch()'s resolve_name prefers the (attribute-less) submodule.
+        with patch.object(console_module.console, "print") as mock_print:
             handler.emit(duplicate_a)
             handler.emit(duplicate_b)
             handler.emit(distinct)
 
-        assert mock_warning.call_count == 2
-        rendered = [call.args[0] for call in mock_warning.call_args_list]
-        assert rendered[0] == escape("dup [msg]")
-        assert rendered[1] == escape("other [msg]")
+        assert mock_print.call_count == 2
+        rendered = [call.args[0] for call in mock_print.call_args_list]
+        assert rendered[0] == console_module.format_warning(escape("dup [msg]"))
+        assert rendered[1] == console_module.format_warning(escape("other [msg]"))
+        assert all(call.kwargs.get("soft_wrap") is True for call in mock_print.call_args_list)
 
     def test_install_console_warning_bridge_is_idempotent(self) -> None:
         """Calling the installer twice attaches exactly one handler and leaves propagate True."""

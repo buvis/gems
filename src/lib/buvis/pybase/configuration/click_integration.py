@@ -79,6 +79,38 @@ _buvis_callback_settings: weakref.WeakKeyDictionary[Callable[..., Any], type[Glo
 )
 _parse_args_patch_installed = False
 
+
+class _ConsoleWarningHandler(logging.Handler):
+    """Renders WARNING+ records from the configuration loggers via console.warning.
+
+    One instance lives for the process once installed; `_seen` dedupes
+    identical messages across repeated resolve() calls in the same process
+    (e.g. a tool that resolves config in a loop).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self._seen: set[str] = set()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        message = record.getMessage()
+        if message in self._seen:
+            return
+        self._seen.add(message)
+        from buvis.pybase.adapters import console
+        from rich.markup import escape
+
+        console.console.print(console.format_warning(escape(message)), soft_wrap=True)
+
+
+def _install_console_warning_bridge() -> None:
+    """Idempotently attach `_ConsoleWarningHandler` to the configuration logger tree."""
+    config_logger = logging.getLogger("buvis.pybase.configuration")
+    if any(isinstance(h, _ConsoleWarningHandler) for h in config_logger.handlers):
+        return
+    config_logger.addHandler(_ConsoleWarningHandler())
+
+
 _UPDATE_PRECEDING_FLAGS = frozenset({"--help", "--version", "-h"})
 
 
@@ -436,6 +468,7 @@ def buvis_options(  # type: ignore[misc]
                 click.echo("Debug mode enabled")
     """
     _install_parse_args_patch()
+    _install_console_warning_bridge()
 
     if callable(settings_class_or_func) and not isinstance(settings_class_or_func, type):
         return _create_buvis_options(GlobalSettings, config_error_exit_code)(settings_class_or_func)
