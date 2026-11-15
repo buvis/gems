@@ -340,12 +340,46 @@ klyreon side.
 - **Article migration rewrites many vault notes**: dry run first, one commit,
   and the command touches only `article::` lines.
 
+## Config shape (decided)
+
+Maps keyed by name, so the machine-local layer (00122, per-key override) adds
+or overrides one root or backend at a time. Key names below are the agreed
+shape; `design-solution` may refine field names inside an entry.
+
+```yaml
+# ~/.config/buvis/buvis-bim.yaml (shared)
+mirror_articles_root: git
+llm:
+  claude: {kind: claude, model: sonnet}
+  qwen:   {kind: openai, endpoint: http://localhost:8080, model: qwen3-30b}
+  pi:     {kind: command, argv: [pi, -p], unattended: false}
+tx:
+  backend: claude
+  max_sources_per_run: 5
+doc:
+  classifier: {backend: qwen, fallback: qwen-small}
+
+# ~/.local/.config/buvis/buvis-bim.yaml (this machine)
+mirrors:
+  git:   ~/git/src/gitlab.com/buvis/mirror
+  scans: ~/Scans          # local-only root
+```
+
+- `kind` is one of `claude` (and other named CLI adapters), `openai`,
+  `ollama`, `llamacpp`, `command`. A `command` backend runs unattended
+  (schedule) only with `unattended: true` (Risks: the generic driver cannot
+  prove tools are off).
+
+## PRD numbering (checked 2026-11-15)
+
+Highest number on any local or remote branch: 00148
+(`feature/config-local-layer-braid`, local). This branch holds 00149. The six
+phases take 00150 to 00155 in phase order; `create-prd` re-checks just before
+writing in case another branch claimed a number since.
+
 ## Open Questions
 
-- Config shape for mirror roots and backends (list vs map) and the setting
-  names. For `design-solution`, following `buvis-bim.yaml` style.
-- The 00149 number was picked from one unmerged branch; `create-prd` must
-  re-check used numbers across all branches before cutting PRDs.
+None. Config field details inside an entry are left to `design-solution`.
 
 ## Discovery Log
 
@@ -414,8 +448,9 @@ named in the ingest PRD (Success Criteria).
 **Answer**: article originals go to `articles/<YYYY>/<YYYYMM>00/<title>.md`
 in the git mirror (M16); ingest skips files inside a settle window (M23);
 phase 3 waits for the braid branch merge (Constraints); reference docs move
-to `docs/reference/bim/tiromex/` (M31). Config shape is left to design and
-number checks to create-prd.
+to `docs/reference/bim/tiromex/` (M31). Follow-up: config uses maps keyed
+by name (Config shape section); PRD numbers 00150 to 00155 (checked across
+all branches).
 
 ### Inferred (not asked)
 - Since tx owns the whole tiromex root, notes other agents write there follow
