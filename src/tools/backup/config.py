@@ -184,7 +184,7 @@ def _merge_layer(merged: dict[str, object], path: Path, key_sources: dict[tuple[
             )
             raise FatalError(msg)
     try:
-        result = ConfigurationLoader.merge_configs(merged, data, known_keys={"excludes"})
+        result = ConfigurationLoader.merge_configs(merged, data, known_keys=set(_BACKUP_TOP_LEVEL_KEYS))
     except (ConfigurationError, yaml.YAMLError, MissingEnvVarError) as exc:
         msg = f"{path}: {exc}"
         raise FatalError(msg) from exc

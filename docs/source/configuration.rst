@@ -131,8 +131,10 @@ when it matches neither the resolving tool's own settings field or declared
 deferred key, nor any registered tool's name (i.e. it is not a legitimate
 ``<tool>:`` namespace section either). This catches a typo in the resolving
 tool's own field (``srouces:`` instead of ``sources:``) without flagging a
-different tool's namespace section. An explicit or custom-named file (e.g.
-``--config custom.yaml``) still fails hard on an unknown key, unchanged. A
+different tool's namespace section. The rule goes by file name, so
+``--config path/to/config.yaml`` (or ``buvis.yaml``) is warn-only too. Any
+other explicit or custom-named file (e.g. ``--config custom.yaml``) still
+fails hard on an unknown key, unchanged. A
 new tool is recognized as a namespace owner only once it is registered
 under the ``buvis.config_settings`` entry-point group in ``pyproject.toml``.
 
@@ -598,6 +600,12 @@ A configuration path that exists but cannot be read stops the tool with
 ``<path>: cannot read config: ...`` instead of being skipped: an unreadable
 file, an entry in a directory the user cannot search, a dangling symlink, a
 directory in place of a file, or a missing ``--config FILE``.
+
+A discovered config file that is a symlink to a target outside every search
+directory is **skipped**, with the warning ``Skipping unsafe config path:
+<path>``, and the tool runs without it. This affects per-file links into a
+dotfiles repository. Link the whole directory instead
+(``~/.config/buvis -> ~/dotfiles/buvis``); that layout loads.
 
 Sensitive Fields
 ~~~~~~~~~~~~~~~~

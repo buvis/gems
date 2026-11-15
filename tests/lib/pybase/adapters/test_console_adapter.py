@@ -117,9 +117,12 @@ class TestConsoleAdapterMisc:
                 self.buffer = io.BytesIO()
 
         class DummyConsole:
-            def __init__(self, file: io.TextIOWrapper | None = None, log_path: bool = True) -> None:
+            def __init__(
+                self, file: io.TextIOWrapper | None = None, log_path: bool = True, stderr: bool = False
+            ) -> None:
                 self.file = file
                 self.log_path = log_path
+                self.stderr = stderr
 
         mocker.patch.object(sys, "platform", "win32")
         mocker.patch.object(sys, "stdout", DummyStdout())
@@ -130,6 +133,8 @@ class TestConsoleAdapterMisc:
         assert isinstance(adapter.console, DummyConsole)
         assert isinstance(adapter.console.file, io.TextIOWrapper)
         assert adapter.console.log_path is False
+        assert adapter.err_console.stderr is True
+        assert adapter.err_console.file is None
 
     def test_capture_returns_context_manager(self, console_adapter: ConsoleAdapter) -> None:
         with console_adapter.capture() as capture:

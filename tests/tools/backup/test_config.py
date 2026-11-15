@@ -252,3 +252,13 @@ class TestBackupSpecificTypoGuard:
         _write(cfg_dir / "buvis-backup.yaml", "excludes+: [scratch]\n")
         cfg = load_config(config_dir=str(cfg_dir))
         assert "scratch" in cfg.excludes
+
+    def test_list_directive_on_instances_is_not_called_a_typo(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        _write(cfg_dir / "buvis-backup.yaml", "instances-: [git-src]\n")
+        with pytest.raises(FatalError, match="requires a list value"):
+            load_config(config_dir=str(cfg_dir))
+        assert "possible typo" not in caplog.text

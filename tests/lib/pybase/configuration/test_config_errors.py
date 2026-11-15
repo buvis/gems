@@ -93,18 +93,36 @@ class TestConfigurationErrors:
         assert "cannot read config" in result.output
 
     @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
-    @pytest.mark.parametrize("defect", ["missing", "directory", "dangling-link"])
+    @pytest.mark.parametrize("defect", ["missing", "directory", "dangling-link", "unreadable"])
     def test_bad_explicit_config_path_is_rendered_by_the_console(self, tmp_path, command, args, exit_code, defect):
         path = tmp_path / "custom.yaml"
         if defect == "directory":
             path.mkdir()
         elif defect == "dangling-link":
             path.symlink_to("nowhere.yaml")
+        elif defect == "unreadable":
+            if os.geteuid() == 0:
+                pytest.skip("root reads mode-000 files")
+            path.write_text("debug: true\n")
+            path.chmod(0o000)
         result = CliRunner().invoke(command, ["--config", str(path), *args])
         assert result.exit_code == exit_code
         assert "Usage:" not in result.output
         assert str(path) in result.output
         assert "cannot read config" in result.output
+
+    @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
+    @pytest.mark.parametrize(
+        "value", ["", "missing-dir", "a-file", "n" * 300], ids=["empty", "missing", "file", "long"]
+    )
+    def test_bad_config_dir_is_rendered_by_the_console(self, tmp_path, command, args, exit_code, value):
+        (tmp_path / "a-file").write_text("debug: true\n")
+        # The cwd holds a valid config: an empty value must not fall back to it.
+        (tmp_path / "config.yaml").write_text("debug: true\n")
+        result = CliRunner().invoke(command, ["--config-dir", value, *args])
+        assert result.exit_code == exit_code
+        assert "Usage:" not in result.output
+        assert f"--config-dir {value!r}: not a directory" in result.output
 
     @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
     def test_dangling_discovered_config_link_is_rendered(self, tmp_path, command, args, exit_code):

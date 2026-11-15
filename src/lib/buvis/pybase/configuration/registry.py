@@ -11,10 +11,13 @@ about any tool's own fields.
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from importlib.metadata import entry_points
 
 __all__ = ["CONFIG_SETTINGS_ENTRY_POINT_GROUP", "known_tool_names"]
+
+logger = logging.getLogger(__name__)
 
 CONFIG_SETTINGS_ENTRY_POINT_GROUP = "buvis.config_settings"
 
@@ -39,5 +42,13 @@ def known_tool_names() -> frozenset[str]:
     that touches ``config.yaml``/``buvis.yaml``. Tests that need a fresh
     set after monkeypatching ``entry_points`` call
     ``known_tool_names.cache_clear()`` first.
+
+    Never raises: the scan parses every installed distribution's metadata,
+    and another package's malformed ``entry_points.txt`` must not stop a
+    tool. On failure the set is empty, so the typo check gets noisier.
     """
-    return frozenset(ep.name for ep in entry_points(group=CONFIG_SETTINGS_ENTRY_POINT_GROUP))
+    try:
+        return frozenset(ep.name for ep in entry_points(group=CONFIG_SETTINGS_ENTRY_POINT_GROUP))
+    except Exception:
+        logger.debug("entry-point scan failed; no tool names known", exc_info=True)
+        return frozenset()

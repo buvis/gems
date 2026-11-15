@@ -353,7 +353,8 @@ class TestRemoteTokenHandoff:
         assert signal.getsignal(signum) == previous
 
     @pytest.mark.skipif(not hasattr(signal, "SIGHUP"), reason="POSIX signals")
-    def test_sighup_stops_a_real_server_gracefully_without_traceback(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1"])
+    def test_sighup_stops_a_real_server_gracefully_without_traceback(self, tmp_path: Path, host: str) -> None:
         import socket
         import subprocess
         import sys
@@ -367,7 +368,7 @@ class TestRemoteTokenHandoff:
             f"tempfile.tempdir = {str(tmp_path)!r}\n"
             "from bim.commands.serve.serve import CommandServe\n"
             "from bim.params.serve import ServeParams\n"
-            f"CommandServe(ServeParams(default_directory={str(tmp_path)!r}, host='0.0.0.0', port={port},"
+            f"CommandServe(ServeParams(default_directory={str(tmp_path)!r}, host={host!r}, port={port},"
             " no_browser=True)).execute()\n"
         )
         server = subprocess.Popen(
@@ -392,6 +393,24 @@ class TestRemoteTokenHandoff:
         assert "Traceback" not in output
         assert "Shutting down" in output
         assert not list(tmp_path.glob("bim-serve-*"))
+
+    @pytest.mark.skipif(not hasattr(signal, "SIGHUP"), reason="POSIX signals")
+    @pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1"])
+    def test_sighup_ignored_by_nohup_stays_ignored(self, tmp_path: Path, host: str) -> None:
+        from bim.params.serve import ServeParams
+
+        seen = []
+        previous = signal.signal(signal.SIGHUP, signal.SIG_IGN)
+        try:
+            with (
+                patch.object(tempfile, "tempdir", str(tmp_path)),
+                patch("uvicorn.run", side_effect=lambda app, **kwargs: seen.append(signal.getsignal(signal.SIGHUP))),
+            ):
+                CommandServe(ServeParams(default_directory=str(tmp_path), host=host, no_browser=True)).execute()
+        finally:
+            signal.signal(signal.SIGHUP, previous)
+
+        assert seen == [signal.SIG_IGN]
 
 
 class TestServeBrowserStartup:

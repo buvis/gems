@@ -56,6 +56,9 @@ class ConsoleAdapter:
             self.console = Console(file=utf8_stdout, log_path=False)
         else:
             self.console = Console(log_path=False)
+        # For diagnostics that must stay out of machine-read stdout (git filter
+        # payloads, --json). sys.stderr escapes unencodable glyphs by default.
+        self.err_console = Console(stderr=True, log_path=False)
 
     def format_success(self: ConsoleAdapter, message: str) -> str:
         """Return a green checkmark Rich markup string.
@@ -112,26 +115,28 @@ class ConsoleAdapter:
 
         return formatted_message
 
-    def failure(self: ConsoleAdapter, message: str, details: str | None = None) -> None:
+    def failure(self: ConsoleAdapter, message: str, details: str | None = None, *, soft_wrap: bool = False) -> None:
         """Print a red failure message, optionally including details.
 
         Args:
             message (str): Text to display.
             details (str | None): Additional information to display after the failure message.
+            soft_wrap (bool): Leave line wrapping to the terminal, so a long path is never split.
         """
-        self.console.print(self.format_failure(message, details))
+        self.console.print(self.format_failure(message, details), soft_wrap=soft_wrap)
 
-    def panic(self: ConsoleAdapter, message: str, details: str | None = None) -> None:
+    def panic(self: ConsoleAdapter, message: str, details: str | None = None, *, soft_wrap: bool = False) -> None:
         """Print a failure message and exit the program.
 
         Args:
             message (str): Text to display.
             details (str | None): Additional information to display after the failure message.
+            soft_wrap (bool): Leave line wrapping to the terminal, so a long path is never split.
 
         Note:
             Terminates the program by calling `sys.exit(1)`.
         """
-        self.failure(message, details)
+        self.failure(message, details, soft_wrap=soft_wrap)
         sys.exit(1)
 
     def status(self: ConsoleAdapter, message: str) -> Status:

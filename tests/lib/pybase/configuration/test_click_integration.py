@@ -683,6 +683,14 @@ class TestFeedbackOption:
 class TestAutoUpdateHook:
     """Tests for the parse_args-level auto-update hook installed by buvis_options."""
 
+    @pytest.fixture(autouse=True)
+    def no_ambient_auto_update(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A shell that exports BUVIS_AUTO_UPDATE=false must not decide these tests.
+
+        Every test in this class patches the updater, so nothing real runs.
+        """
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+
     @patch("buvis.pybase.updater.check_and_update", side_effect=RuntimeError("update failed"))
     def test_update_error_does_not_crash_cli(self, mock_update: MagicMock, runner: CliRunner) -> None:
         """CLI command executes normally even when check_and_update raises."""
@@ -1076,9 +1084,10 @@ class TestUpdateFlag:
     @patch("buvis.pybase.updater.force_update")
     @patch("buvis.pybase.updater.check_and_update")
     def test_no_update_flag_still_runs_passive_check(
-        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Baseline: without --update, the passive check still fires and force_update does not."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
 
         @click.command()
         @buvis_options
@@ -1312,7 +1321,7 @@ class TestConsoleWarningBridge:
 
         try:
             _install_console_warning_bridge()
-            with patch.object(console_module.console, "print") as mock_print:
+            with patch.object(console_module.err_console, "print") as mock_print:
                 logger.warning("Skipping unsafe config path: %s", "/tmp/sentinel-path")
                 logger.warning("Skipping unsafe config path: %s", "/tmp/sentinel-path")
 
@@ -1340,7 +1349,7 @@ class TestConsoleWarningBridge:
 
     def test_handler_emit_dedupes_identical_message_but_not_distinct_ones(self) -> None:
         """_ConsoleWarningHandler.emit renders a new message once through the console
-        adapter's Rich console, escaped via rich.markup.escape and printed with
+        adapter's stderr Rich console, escaped via rich.markup.escape and printed with
         soft_wrap=True (so a long single-line message is never wrapped), and does not
         suppress a distinct message text."""
         from buvis.pybase.adapters import console as console_module
@@ -1354,7 +1363,7 @@ class TestConsoleWarningBridge:
         # resolution: "buvis.pybase.adapters.console.console" is importable both as the
         # ConsoleAdapter singleton attribute and as the console.py submodule itself, and
         # mock.patch()'s resolve_name prefers the (attribute-less) submodule.
-        with patch.object(console_module.console, "print") as mock_print:
+        with patch.object(console_module.err_console, "print") as mock_print:
             handler.emit(duplicate_a)
             handler.emit(duplicate_b)
             handler.emit(distinct)

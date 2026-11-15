@@ -45,6 +45,10 @@ class CommandServe:
         import uvicorn
 
         with ExitStack() as stack:
+            sighup = getattr(signal, "SIGHUP", None)
+            # An ignored SIGHUP is nohup's doing: leave it ignored.
+            if sighup is not None and signal.getsignal(sighup) is not signal.SIG_IGN:
+                stack.callback(signal.signal, sighup, signal.signal(sighup, _stop_like_sigterm))
             if not app.state.token_in_page:
                 directory = stack.enter_context(TemporaryDirectory(prefix="bim-serve-"))
                 token_path = Path(directory) / "token"
@@ -52,10 +56,7 @@ class CommandServe:
                 console.info(f"Private token file: {token_path} (removed when the server stops)")
                 # uvicorn re-raises SIGTERM after shutdown; with the default handler
                 # that kills the process before the token directory unwinds.
-                for name, handler in (("SIGTERM", _exit_on_signal), ("SIGHUP", _stop_like_sigterm)):
-                    signum = getattr(signal, name, None)
-                    if signum is not None:
-                        stack.callback(signal.signal, signum, signal.signal(signum, handler))
+                stack.callback(signal.signal, signal.SIGTERM, signal.signal(signal.SIGTERM, _exit_on_signal))
 
             if not self.params.no_browser and app.state.token_in_page:
                 browser_host = f"[{self.params.host}]" if ":" in self.params.host else self.params.host

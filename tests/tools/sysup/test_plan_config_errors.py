@@ -127,6 +127,18 @@ class TestTypeErrors:
         for noise in _PYDANTIC_NOISE:
             assert noise not in result.output
 
+    def test_plan_error_keeps_the_file_path_whole_on_a_narrow_terminal(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("COLUMNS", "80")
+        # Rich folds only a word wider than the console, so make the path wider.
+        config_dir = tmp_path / ("d" * 100)
+        config_dir.mkdir()
+        path = _write(config_dir / "buvis-sysup.yaml", "prime: 5\n")
+        result = _run_list(config_dir)
+        assert result.exit_code == 1
+        assert str(path) in result.output
+
     def test_bad_mapping_entry_is_blamed_on_the_file_that_supplied_it(self, tmp_path: Path) -> None:
         bad = _write(tmp_path / "config.yaml", "commands:\n  bad:\n    order: notanint\n    steps: [[x]]\n")
         good = _write(tmp_path / "buvis-sysup.yaml", "commands:\n  good:\n    steps: [[y]]\n")

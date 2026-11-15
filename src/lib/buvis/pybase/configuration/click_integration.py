@@ -93,7 +93,8 @@ class _ConsoleWarningHandler(logging.Handler):
         from buvis.pybase.adapters import console
         from rich.markup import escape
 
-        console.console.print(console.format_warning(escape(message)), soft_wrap=True)
+        # stderr: stdout may be a machine-read payload (dot filter, bim create --json).
+        console.err_console.print(console.format_warning(escape(message)), soft_wrap=True)
 
 
 def _install_console_warning_bridge() -> None:
@@ -332,7 +333,7 @@ def _create_buvis_options(settings_class: type[T], config_error_exit_code: int =
             "--config",
             # No parse-time checks: the resolver reports bad paths through the console,
             # and resolving here would hide a symlink from the directory check.
-            type=click.Path(),
+            type=click.Path(readable=False),
             help="YAML config file path.",
         )
         @click.option(
@@ -342,7 +343,8 @@ def _create_buvis_options(settings_class: type[T], config_error_exit_code: int =
         )
         @click.option(
             "--config-dir",
-            type=click.Path(exists=True, file_okay=False),
+            # Checked in the callback, so a bad value is a console error, not Click's Usage: form.
+            type=click.Path(readable=False),
             help="Configuration directory.",
         )
         @click.option(
@@ -384,6 +386,10 @@ def _create_buvis_options(settings_class: type[T], config_error_exit_code: int =
 
             resolver = ConfigResolver()
             try:
+                # os.path.isdir is False for "" and for any OSError (Path.is_dir re-raises
+                # EACCES and ENAMETOOLONG before Python 3.14).
+                if config_dir is not None and not os.path.isdir(config_dir):
+                    raise ConfigurationError(f"--config-dir {config_dir!r}: not a directory")
                 settings = resolver.resolve(
                     settings_class,  # type: ignore[type-var]
                     config_dir=config_dir,

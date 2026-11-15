@@ -63,6 +63,13 @@ class TestKnownToolNames:
         known_tool_names.cache_clear()
         assert known_tool_names() == frozenset({"delta"})
 
+    def test_broken_distribution_metadata_yields_no_names_instead_of_raising(self, monkeypatch):
+        def scan(group):
+            raise TypeError("Pair.__new__() missing 1 required positional argument: 'value'")
+
+        monkeypatch.setattr("buvis.pybase.configuration.registry.entry_points", scan)
+        assert known_tool_names() == frozenset()
+
 
 class TestRealEntryPointWiring:
     """No monkeypatching: every declared tool must actually be discoverable."""

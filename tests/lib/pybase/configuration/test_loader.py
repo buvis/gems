@@ -766,6 +766,11 @@ class TestFindConfigFilesLogging:
 
         monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
         monkeypatch.setenv("HOME", str(tmp_path))
+        # The cwd is a search path: started from an ancestor of tmp_path, the
+        # "outside" target would sit inside it and count as safe.
+        work = tmp_path / "work"
+        work.mkdir()
+        monkeypatch.chdir(work)
         local_dir = tmp_path / ".local" / ".config" / "buvis"
         local_dir.mkdir(parents=True)
         outside = tmp_path / "outside"

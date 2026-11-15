@@ -173,7 +173,7 @@ def cli(
     try:
         cfg = load_config(config_dir=obj.get("config_dir"), config_path=obj.get("config_path"))
     except FatalError as exc:
-        console.panic(str(exc))
+        console.panic(str(exc), soft_wrap=True)
         return
 
     plan = _filter_plan(cfg, applicable_commands(cfg), only, tags)
@@ -241,7 +241,7 @@ def refresh(ctx: click.Context, item: str) -> None:
     try:
         cfg = load_config(config_dir=obj.get("config_dir"), config_path=obj.get("config_path"))
     except FatalError as exc:
-        console.panic(str(exc))
+        console.panic(str(exc), soft_wrap=True)
         return
 
     expiry_item = cfg.expiry.get(item)
