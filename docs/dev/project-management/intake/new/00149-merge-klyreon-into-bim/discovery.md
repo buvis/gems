@@ -42,6 +42,12 @@ klyreon side.
 - **M3 tx scope = tiromex**: every `bim tx` rule (validate, claim index,
   promotion, MOC sync, pruning) reads and writes only inside tiromex. Notes
   outside it never carry claims and never reach an LLM through tx.
+- **M3a Rules by note kind**: any tiromex note needs only bim's base fields
+  (`id`, `title`, `date`, `type`). The tx rules (claims, relations,
+  promotion, pruning, MOC sync) apply only to notes that carry
+  `concept-type`, or are `type: index` or `type: tx-run`. Other agents'
+  notes are left alone and never fail `validate` or `maintain` beyond the
+  base fields.
 - **M4 Visible to bim**: tiromex notes appear in `bim query`, `show`, `format`
   and the other note commands like any note.
 
@@ -63,8 +69,10 @@ klyreon side.
   inside tiromex.
 - **M9 Source citation**: `- source:: mirror:<root>/<path>`. bim resolves it
   through the configured mirror roots.
-- **M10 Run journal**: each ingest and maintain run writes one note in
-  `tiromex/runs/` of a new bim type `tx-run`, committed with the run.
+- **M10 Run journal**: an ingest or maintain run that committed, failed or
+  changed something writes one note in `tiromex/runs/` of a new bim type
+  `tx-run`, committed with the run. A run that did nothing writes no note;
+  maintain still stamps `last_maintain` in state.
 - **M11 Never emit** `person` or `book` tags, `publish: true`, or colon
   namespace tags.
 - **M12 Spec doc**: the klyreon format spec is revised into bim's docs as the
@@ -82,7 +90,8 @@ klyreon side.
   `readwise-unofficial/` today).
 - **M15 Not on this host**: a `mirror:` value whose root is not configured or
   not present on this machine is reported as "not on this host", never as a
-  dangling link; rules that need the source text skip that note.
+  dangling link; rules that need the source text skip that note. A missing
+  file on a root that is present is a `validate` warning.
 - **M16 Articles into the mirror**: `bim create -t article` writes the
   original into a folder of the git mirror, commits only that path under the
   bim identity (no push), and writes `- article:: mirror:<root>/<path>` on the
@@ -118,11 +127,22 @@ klyreon side.
   (root, path, content hash) in bim state under `$XDG_STATE_HOME/bim/tx/`. A
   changed hash makes the file pending again. Files with or without
   frontmatter are accepted.
+- **M23a Incremental re-ingest**: when a changed source is ingested again,
+  the backend is told which tiromex notes already came from it and may only
+  add notes for new material or edit those notes. A match between two notes
+  from the same source never counts as corroboration or as a conflict.
+- **M23b Moves by hash**: a pending file whose hash equals a known record
+  whose path is gone counts as a move: the record and the tiromex `source::`
+  values follow it, with no backend call.
 - **M24 Ingest safety**: per-source staging with byte-for-byte rollback, one
   scoped commit per source under the tx identity, a per-vault lock shared with
   maintain, the git gate (refuse outside a work tree), every backend-returned
   path confined to tiromex, and a bad conflict target failing only its
   source. `--dry-run` writes nothing anywhere.
+- **M24a Dirty files untouched**: tx never stages, edits or rolls back a file
+  with uncommitted changes. An edit to such a file (an aporia doubt on an
+  existing note) is skipped and recorded in the run journal; the new note
+  still lands. Committing other agents' writes is not tx's job.
 - **M25 Maintain**: lint, lifecycle promotion, assent transitions, MOC sync,
   prune detection, in that order, each transition its own scoped commit;
   idempotent; `--dry-run` writes nothing.
@@ -183,6 +203,8 @@ klyreon side.
   paths; never `git add -A`; never touch global git config.
 - The library stays interface-agnostic: the tx engine and the LLM layer live
   under `src/tools/bim/`, not `src/lib/`, unless they have a second consumer.
+- Mirror root names are stable ids; a root is never renamed, because every
+  `mirror:` citation carries its name.
 - No new runtime dependency for the HTTP backends (stdlib `urllib` or the
   existing client in `bim doc`).
 - Never read the private vault in tests; use a scratch dir through
@@ -255,8 +277,16 @@ klyreon side.
 - A scratch vault with a mirror root of fixture files: `bim tx ingest` with
   the claude backend and with one local model (Ollama or llama.cpp) each turn
   the fixture sources into tiromex notes that `bim tx validate` accepts, and
-  each crafted conflict lands in exactly one of aporia, refine or supersede.
-  Other adapters pass a smoke test.
+  each crafted conflict lands in exactly one of aporia, refine or supersede,
+  on three consecutive runs of the whole fixture set. The ingest PRD names
+  the local model, and the result records it. Other adapters pass a smoke
+  test.
+- Changing a fixture source and re-running ingest adds or edits notes from
+  that source only; no duplicate note and no same-source corroboration
+  appear. Renaming a fixture file moves its record and citations with no
+  backend call.
+- A tiromex note with uncommitted changes is byte-identical after any tx run.
+- A plain agent note in tiromex (base fields only) passes `bim tx validate`.
 - A killed backend call mid-ingest leaves no note, no commit, no hash record;
   the next run ingests the source cleanly.
 - Editing a mirror fixture file makes it pending again; the mirror file bytes
@@ -285,13 +315,15 @@ klyreon side.
 - **Generic command driver cannot prove tools are off**: only named adapters
   that pass a no-tools flag may run unattended by default; the generic driver
   needs an explicit config flag that names the risk.
-- **Other agents' notes in tiromex fall under tx rules**: a fleeting,
-  unlinked concept note an agent left there can be pruned once pruning is on.
-  Pruning stays off by default; the skill says tiromex notes follow the tx
-  format.
-- **Human commits mixed with machine commits in `~/bim`**: scoped paths and
-  the tx identity keep them apart; ingest refuses to stage a path the human
-  has uncommitted edits on (design to confirm).
+- **Other agents' concept notes fall under tx rules**: a fleeting, unlinked
+  note with `concept-type` that an agent left in tiromex can be pruned once
+  pruning is on (M3a). Plain agent notes are untouched. Pruning stays off by
+  default.
+- **Human commits mixed with machine commits in `~/bim`**: scoped paths, the
+  tx identity and M24a keep them apart.
+- **Run journals still accumulate**: even with no-op runs skipped (M10), busy
+  days add notes to `tiromex/runs/`; git keeps history, and a retention rule
+  can follow if the folder gets noisy.
 - **Obsidian plugins rewrite tx files** (Linter on open): tx writes
   Linter-clean output; validate tolerates Linter's spacing.
 - **`mirror:` values are not clickable in Obsidian**: accepted by the owner;
@@ -372,6 +404,13 @@ subfolder.
 **Answer**: six drops approved one by one (init and root config, assets
 group, clock offset, `oversized-body` on sources, `is_human_authored`,
 klyreon `manifest.toml`); port and redesign rows approved as one table.
+
+### Review (review-discovery-doc, 2026-11-15)
+**Answer**: six findings, all resolved by edit: incremental re-ingest
+(M23a), tx rules by note kind (M3a), dirty files untouched (M24a), stable
+root names and moves by hash (M23b, M15, Constraints), journal only when a
+run did something (M10), three consecutive fixture runs with the local model
+named in the ingest PRD (Success Criteria).
 
 ### Inferred (not asked)
 - Since tx owns the whole tiromex root, notes other agents write there follow
