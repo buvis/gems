@@ -199,7 +199,9 @@ Estimate, not measured: six PRDs.
    bim: local HTTP (Ollama, llama.cpp, OpenAI-compatible) and agent CLIs
    (claude adapter ported, a generic command driver); text in, schema-checked
    JSON out, no file access. `bim doc` classifier and extractor move onto it.
-3. **Mirror roots** - no dependencies. Named mirror roots in bim settings
+3. **Mirror roots** - no phase dependencies; precondition: branch
+   `feature/config-local-layer-braid` (PRD 00122) merged to master. Named
+   mirror roots in bim settings
    (machine-local values on the local config layer); `bim create -t article`
    writes into the git mirror; migrate existing `path_articles` originals and
    repoint `article::` links, with `--dry-run`.

@@ -93,7 +93,9 @@ klyreon side.
   dangling link; rules that need the source text skip that note. A missing
   file on a root that is present is a `validate` warning.
 - **M16 Articles into the mirror**: `bim create -t article` writes the
-  original into a folder of the git mirror, commits only that path under the
+  original to `articles/<YYYY>/<YYYYMM>00/<title>.md` in the git mirror
+  (today's `path_articles` naming; `articles/` is bim-owned, not an
+  exporter folder), commits only that path under the
   bim identity (no push), and writes `- article:: mirror:<root>/<path>` on the
   summary note. `path_articles` retires.
 - **M17 Article migration**: a command moves every original under the old
@@ -123,7 +125,10 @@ klyreon side.
   [--dry-run]`, `maintain [--dry-run]`, `schedule install [--at] | status |
   uninstall`. Behaviour per `port-plan.md`.
 - **M23 Ingest from mirrors**: ingest walks the mirror roots, sorted by root
-  then path, takes up to `max_sources_per_run`, and records each ingested file
+  then path, skips any file modified within a settle window (setting
+  `mirror_settle_minutes`, default 10; picked up next run, so a half-written
+  export is never read), takes up to `max_sources_per_run`, and records each
+  ingested file
   (root, path, content hash) in bim state under `$XDG_STATE_HOME/bim/tx/`. A
   changed hash makes the file pending again. Files with or without
   frontmatter are accepted.
@@ -165,8 +170,8 @@ klyreon side.
 **Retirement**
 
 - **M31 Remove klyreon**: entry point, wheel package, pytest marker, docs page,
-  `docs/reference/klyreon/` (format spec revised under bim, philosophy docs
-  moved), tests, and the local leftovers (`~/.config/klyreon/`,
+  `docs/reference/klyreon/` (the revised format spec and the four background
+  docs move to `docs/reference/bim/tiromex/`), tests, and the local leftovers (`~/.config/klyreon/`,
   `~/.local/state/klyreon/` with its ~270 stale lock files, the dotfiles
   ledger entry). The checklist is the Retirement block in `port-plan.md`.
 
@@ -196,9 +201,10 @@ klyreon side.
 - One binary, one vault: no `klyreon` command, no second root config, no
   `~/.config/klyreon/`. Config lives in `~/.config/buvis/buvis-bim.yaml`, and
   machine values in `~/.local/.config/buvis/buvis-bim.yaml`.
-- The machine-local layer (PRD 00122) is on branch
-  `feature/config-local-layer-braid`, not master. The mirror phase waits for
-  it to land, or carries the layer itself (create-prd decides).
+- The machine-local layer (PRD 00122) is built and reviewed on branch
+  `feature/config-local-layer-braid`, not on master (checked 2026-11-15).
+  Phase 3 (mirror roots) has the precondition "braid branch merged to
+  master". Phases 1 and 2 do not need it. No second loader is built.
 - Every write uses `pybase.filesystem.atomic_write`; every commit names exact
   paths; never `git add -A`; never touch global git config.
 - The library stays interface-agnostic: the tx engine and the LLM layer live
@@ -336,18 +342,10 @@ klyreon side.
 
 ## Open Questions
 
-- Folder inside the git mirror for bim-written articles (`articles/`?) and its
-  file naming (keep `<YYYY>/<YYYYMM>00/<title>.md`?).
 - Config shape for mirror roots and backends (list vs map) and the setting
-  names; design decides, following `buvis-bim.yaml` style.
-- Does ingest skip a mirror file that an exporter is mid-way through writing
-  (size or mtime settle check)?
-- Should phase 3 wait for PRD 00122 on master, or carry the machine-local
-  loader itself?
-- Where do the klyreon philosophy docs go (`docs/reference/bim/` or stay
-  under a renamed folder)?
-- The 00149 number was picked from one unmerged branch; create-prd should
-  re-check numbers across all branches before cutting PRDs.
+  names. For `design-solution`, following `buvis-bim.yaml` style.
+- The 00149 number was picked from one unmerged branch; `create-prd` must
+  re-check used numbers across all branches before cutting PRDs.
 
 ## Discovery Log
 
@@ -411,6 +409,13 @@ klyreon `manifest.toml`); port and redesign rows approved as one table.
 root names and moves by hash (M23b, M15, Constraints), journal only when a
 run did something (M10), three consecutive fixture runs with the local model
 named in the ingest PRD (Success Criteria).
+
+### Open questions pass (2026-11-15)
+**Answer**: article originals go to `articles/<YYYY>/<YYYYMM>00/<title>.md`
+in the git mirror (M16); ingest skips files inside a settle window (M23);
+phase 3 waits for the braid branch merge (Constraints); reference docs move
+to `docs/reference/bim/tiromex/` (M31). Config shape is left to design and
+number checks to create-prd.
 
 ### Inferred (not asked)
 - Since tx owns the whole tiromex root, notes other agents write there follow
