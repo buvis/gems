@@ -16,6 +16,7 @@ from bim.commands.tx.shared.paths import (
     to_vault_rel,
     tx_state_dir,
 )
+from bim.commands.tx.shared.validator import validate_tiromex
 from bim.dependencies import get_tiromex_paths
 from bim.settings import BimSettings
 
@@ -419,3 +420,19 @@ class TestGetTiromexPaths:
 
         with pytest.raises(ValueError):
             get_tiromex_paths(BimSettings())
+
+
+class TestPlainNoteValidation:
+    def test_plain_note_validates_with_base_fields_only(self, paths: TiromexPaths, tx_notes: TxNoteBuilder) -> None:
+        loose = (
+            "---\nid: 20260411160000\ntitle: Errands\ndate: 2026-01-01T00:00:00+00:00\ntype: note\n"
+            'publish: true\ntags: [person, "topic:x"]\n---\n\nNo heading.\n# One\n# Two\n'
+        )
+        tx_notes.write(loose, "groceries")
+        tx_notes.write(tx_notes.plain("20260411170000", "Todo").replace('title: "Todo"', 'title: ""'), "20260411170000")
+        tx_notes.write(tx_notes.plain().replace("type: note\n", ""), "20260411180000", paths.folder / "sub")
+
+        assert [(d.path, d.rule) for d in validate_tiromex(paths)] == [
+            ("notes/tiromex/20260411170000.md", "required-field"),
+            ("notes/tiromex/sub/20260411180000.md", "required-field"),
+        ]
