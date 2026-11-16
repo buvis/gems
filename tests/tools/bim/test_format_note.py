@@ -269,3 +269,71 @@ class TestCommandFormatNote:
         assert result.success is True
         assert result.output == "formatted content"
         assert "written_to" not in result.metadata
+
+
+def _tiromex_concept(concept_type: str, unknown: str, relation: str) -> str:
+    return (
+        "---\n"
+        "id: 20260411145300\n"
+        "title: Knowledge is justified belief\n"
+        "date: 2026-04-11T14:53:00+02:00\n"
+        "tags: []\n"
+        "type: note\n"
+        "publish: false\n"
+        "processed: false\n"
+        f"concept-type: {concept_type}\n"
+        "assent: tentative\n"
+        "lifecycle: fleeting\n"
+        "claims:\n"
+        "  - id: c1\n"
+        "    statement: Knowledge is justified belief\n"
+        f"{unknown}\n"
+        "---\n"
+        "\n"
+        "# Knowledge is justified belief\n"
+        "\n"
+        "The claim holds for ordinary cases.\n"
+        "\n"
+        "---\n"
+        "\n"
+        "- parent:: [[notes/tiromex/20260411140000|§ Epistemology]]\n"
+        f"{relation}\n"
+    )
+
+
+class TestFormatTiromexConceptNote:
+    @pytest.mark.parametrize(
+        ("concept_type", "unknown", "relation"),
+        [
+            ("thesis", "x-reviewer: alice", "- supports:: [[notes/tiromex/20260412090000|Belief needs grounds]]"),
+            ("observation", "source-note: kept", "- contradicts:: [[notes/tiromex/20260413100000|Luck defeats it]]"),
+        ],
+    )
+    def test_keeps_concept_fields_and_relations_and_is_idempotent(
+        self, tmp_path: Path, concept_type: str, unknown: str, relation: str
+    ) -> None:
+        from bim.dependencies import get_formatter, get_repo
+
+        note = tmp_path / "20260411145300.md"
+        note.write_text(_tiromex_concept(concept_type, unknown, relation), encoding="utf-8")
+        first, second = tmp_path / "first.md", tmp_path / "second.md"
+
+        for source, target in ((note, first), (first, second)):
+            params = FormatNoteParams(paths=[source], path_output=target)
+            result = CommandFormatNote(params=params, repo=get_repo(), formatter=get_formatter()).execute()
+            assert result.success is True
+
+        lines = first.read_text(encoding="utf-8").splitlines()
+        for expected in (
+            f"concept-type: {concept_type}",
+            "assent: tentative",
+            "lifecycle: fleeting",
+            unknown,
+            "The claim holds for ordinary cases.",
+            "- parent:: [[notes/tiromex/20260411140000|§ Epistemology]]",
+            relation,
+        ):
+            assert expected in lines
+        assert any("Knowledge is justified belief" in line and "statement" in line for line in lines)
+        assert [line for line in lines if line.startswith("# ")] == ["# Knowledge is justified belief"]
+        assert second.read_bytes() == first.read_bytes()

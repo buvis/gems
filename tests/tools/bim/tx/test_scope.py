@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import builtins
+import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
+from bim.commands.tx.export_claims import CommandTxExportClaims
+from bim.commands.tx.shared.claims import collect_claims
+from bim.commands.tx.shared.format import read_note
 from bim.commands.tx.shared.paths import (
     TiromexPaths,
     confine,
@@ -16,6 +21,8 @@ from bim.commands.tx.shared.paths import (
     to_vault_rel,
     tx_state_dir,
 )
+from bim.commands.tx.status import CommandTxStatus
+from bim.commands.tx.validate import CommandTxValidate
 from bim.dependencies import get_tiromex_paths
 from bim.settings import BimSettings
 
@@ -437,3 +444,79 @@ class TestPlainNoteValidation:
             ("notes/tiromex/20260411170000.md", "required-field"),
             ("notes/tiromex/sub/20260411180000.md", "required-field"),
         ]
+
+
+_OUTSIDE_STATEMENT = "Outside claim must stay private"
+
+
+def _write_outside_notes(vault: TxVault, tx_notes: TxNoteBuilder) -> list[Path]:
+    """Write claim-bearing notes under the vault root but outside the tiromex folder."""
+    private = tx_notes.concept("20260101000000", "Private", claims=[("c1", _OUTSIDE_STATEMENT)])
+    outside = [
+        tx_notes.write(private, "private", vault.zettelkasten),
+        tx_notes.write(private, "20260101000001", vault.zettelkasten / "tiromex-old"),
+        tx_notes.write(private, "20260101000002", vault.root),
+    ]
+    (vault.folder / "leak.md").symlink_to(outside[0])
+    return outside
+
+
+def _spy_on_reads(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+    """Record the resolved path of every file opened through Path or builtins.open."""
+    opened: list[Path] = []
+    real = {name: getattr(Path, name) for name in ("read_text", "read_bytes", "open")}
+    real_open = builtins.open
+
+    def record(file: object) -> None:
+        if isinstance(file, (str, bytes, os.PathLike)):
+            opened.append(Path(os.fsdecode(file)).resolve())
+
+    def wrap(name: str) -> Any:
+        def spy(self: Path, *args: Any, **kwargs: Any) -> Any:
+            record(self)
+            return real[name](self, *args, **kwargs)
+
+        return spy
+
+    def spy_open(file: Any, *args: Any, **kwargs: Any) -> Any:
+        record(file)
+        return real_open(file, *args, **kwargs)
+
+    for name in real:
+        monkeypatch.setattr(Path, name, wrap(name))
+    monkeypatch.setattr(builtins, "open", spy_open)
+    return opened
+
+
+class TestOutsideNotesAreNeverRead:
+    def test_validate_export_and_status_never_open_a_vault_note_outside_the_folder(
+        self, paths: TiromexPaths, tx_vault: TxVault, tx_notes: TxNoteBuilder
+    ) -> None:
+        inside = tx_notes.write(
+            tx_notes.concept(
+                claims=[("c1", "Inside claim holds")], backmatter=["- supports:: [[notes/private|Private]]"]
+            ),
+            "20260411145300",
+        )
+        tx_notes.write(tx_notes.index(), "20260411140000")
+        outside = _write_outside_notes(tx_vault, tx_notes)
+        before = {file: file.read_bytes() for file in outside}
+
+        with pytest.MonkeyPatch.context() as patcher:
+            opened = _spy_on_reads(patcher)
+            CommandTxValidate(paths).execute()
+            exported = CommandTxExportClaims(paths).execute()
+            CommandTxStatus(paths).execute()
+
+        leaked = [
+            file for file in opened if file.is_relative_to(tx_vault.root) and not file.is_relative_to(paths.folder)
+        ]
+        assert leaked == []
+        assert inside in opened
+        assert exported.success is True
+        assert "Inside claim holds" in exported.output
+        assert _OUTSIDE_STATEMENT not in exported.output
+        claims = json.dumps(collect_claims([read_note(paths, file) for file in iter_note_files(paths)]))
+        assert "Inside claim holds" in claims
+        assert _OUTSIDE_STATEMENT not in claims
+        assert {file: file.read_bytes() for file in outside} == before
