@@ -970,3 +970,191 @@ A PDF whose zettel is at the legacy flat path is reported in
 ``legacy_layout_zettels`` rather than as ``missing_zettel`` and counts
 toward ``non_clean_pdf_count``.
 
+bim tx
+------
+
+Tiromex: concept notes kept in one folder of the zettelkasten. Each note holds
+one idea, with structured claims, doubts and relations. The four ``bim tx``
+commands create, check, export and summarize these notes. The note format is
+defined in ``docs/reference/bim/tiromex/zettel-format-specification.md``.
+
+The tiromex folder is ``<path_zettelkasten>/<tiromex_folder>/``, by default
+``~/bim/notes/tiromex/``. ``tiromex_folder`` must be one plain folder name. A
+folder that is a symlink, or that resolves anywhere else, is refused and the
+command exits 1. tx reads every ``*.md`` file under the folder and nothing
+outside it.
+
+Settings live in the bim config: ``tiromex_folder`` at the top level and the
+``tx`` block below it.
+
+.. code-block:: yaml
+
+    tiromex_folder: tiromex
+    tx:
+      max_zettel_body_lines: 60
+      maintenance_window_days: 7
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 20 50
+
+   * - Setting
+     - Default
+     - Description
+   * - ``tiromex_folder``
+     - ``tiromex``
+     - Folder under ``path_zettelkasten`` that holds the tiromex notes
+   * - ``tx.backend``
+     - ``claude``
+     - Reserved for tx runs; none of the four commands reads it
+   * - ``tx.max_sources_per_run``
+     - ``5``
+     - Reserved for tx runs; none of the four commands reads it
+   * - ``tx.source_timeout_seconds``
+     - ``900``
+     - Reserved for tx runs; none of the four commands reads it
+   * - ``tx.max_zettel_body_lines``
+     - ``60``
+     - Most non-blank body lines (H1 included) a concept or index note may
+       hold; read by ``bim tx validate``
+   * - ``tx.maintenance_window_days``
+     - ``7``
+     - Days since the last maintenance run before tx calls maintenance stale
+   * - ``tx.pruning_enabled``
+     - ``false``
+     - When ``false``, prune candidates are only reported, never deleted
+   * - ``tx.prune_window_days``
+     - ``365``
+     - Age (``updated``, else ``date``) after which an unlinked fleeting
+       concept note is a prune candidate
+   * - ``tx.git_identity_name``
+     - ``bim-tx``
+     - Reserved for tx runs; none of the four commands reads it
+   * - ``tx.git_identity_email``
+     - ``bim-tx@localhost``
+     - Reserved for tx runs; none of the four commands reads it
+
+Env vars: ``BUVIS_BIM_TIROMEX_FOLDER``, and one ``BUVIS_BIM_TX__<KEY>`` per
+``tx`` key, with a double underscore between ``TX`` and the key, for example
+``BUVIS_BIM_TX__MAX_SOURCES_PER_RUN=3`` or
+``BUVIS_BIM_TX__PRUNING_ENABLED=true``. An unknown key under ``tx`` is an
+error.
+
+Maintenance warning: every ``bim tx`` command except ``status`` prints one
+warning on stderr when maintenance has never run, when the maintenance state
+is unreadable, or when the last run is older than
+``tx.maintenance_window_days``. ``status`` shows the same fact in its own
+output. The state is the ``last_maintain`` value in
+``$XDG_STATE_HOME/bim/tx/state.json`` (else
+``~/.local/state/bim/tx/state.json``). None of the four commands writes it.
+
+Machine output (``validate --json``, ``export-claims`` without ``--out``) goes
+to stdout with no console markers and no wrapping. Warnings and errors of
+those commands go to stderr, so stdout holds the payload and nothing else.
+Every ``bim tx`` command exits 1 when it fails.
+
+bim tx new
+~~~~~~~~~~
+
+Create one note in the tiromex folder and print its absolute path.
+
+.. code-block:: bash
+
+    bim tx new --title "Circuit breakers trade tail latency for recovery"
+    bim tx new --title "Circuit breakers trade tail latency for recovery" --concept-type thesis
+    bim tx new --title "Retry cheatsheet" --type cheatsheet
+
+Options:
+
+- ``--title TEXT`` - note title, also the H1 (required)
+- ``--type [note|definition|procedure|cheatsheet|snippet|course|ai-prompt]`` -
+  the note's ``type`` (default: ``note``)
+- ``--concept-type [thesis|argument|aporia|question|example|observation]`` -
+  make it a concept note: adds ``concept-type``, ``assent: tentative`` and
+  ``lifecycle: fleeting``. A ``thesis``, ``argument`` or ``observation`` note
+  also gets one claim, ``c1``, whose statement is the title.
+
+``id`` and ``date`` come from the local clock. When the id is taken, the
+command waits one second and tries again, up to five times. The note is
+checked against the format rules before it is written; an invalid note is
+refused and no file is written. The new note holds only its H1, so add a body
+line and a ``parent`` link before ``bim tx validate`` passes it.
+
+bim tx validate
+~~~~~~~~~~~~~~~
+
+Check every note in the tiromex folder against the format rules.
+
+.. code-block:: bash
+
+    bim tx validate
+    bim tx validate --json
+
+Options:
+
+- ``--json`` - print a JSON report on stdout
+
+Without ``--json`` the command prints ``tiromex is clean: <folder>``, or
+``<n> validation error(s):`` followed by one ``<path>: [<rule>] <message>``
+line per error. With ``--json`` it prints, also when errors exist::
+
+    {"clean": false, "error_count": 1,
+     "errors": [{"line": null, "message": "...", "path": "notes/tiromex/...md",
+                 "rule": "orphan-concept"}]}
+
+The keys are sorted and the JSON is indented. The rule ids and the note kinds
+they apply to are listed in the format specification. The body-size limit is
+``tx.max_zettel_body_lines``.
+
+bim tx export-claims
+~~~~~~~~~~~~~~~~~~~~
+
+Print the claim index as JSON, or write it to a file.
+
+.. code-block:: bash
+
+    bim tx export-claims
+    bim tx export-claims --out ~/tmp/claims.json
+
+Options:
+
+- ``--out PATH`` - write the JSON to this file instead of stdout. Missing
+  parent folders are created and the file is written atomically. The command
+  prints ``wrote <n> claim(s) to <path>``. A path that resolves anywhere under
+  the vault root (the parent of ``path_zettelkasten``) is refused.
+
+The payload holds ``schema_version`` (``1``), ``generated`` (ISO 8601 with
+the local offset) and ``claims``: one row per well-formed claim of every
+concept note, in note-path order, then claim order. Each row holds
+``zettel`` (the vault-relative path), ``assent`` (default ``unknown``),
+``lifecycle`` (default ``fleeting``), ``claim_id`` and ``statement``, all as
+strings. Rejected notes are included. Each note that cannot be parsed is
+skipped with one warning on stderr.
+
+bim tx status
+~~~~~~~~~~~~~
+
+Print the tiromex dashboard.
+
+.. code-block:: bash
+
+    bim tx status
+
+No options. The output lines, in order:
+
+1. ``tiromex: <folder>``
+2. ``notes: <total> (concept: <a>, index: <b>, runs: <c>, plain: <d>)``
+3. ``lifecycle: <value=count, ...>`` or ``lifecycle: (none)``
+4. ``assent: <value=count, ...>`` or ``assent: (none)``
+5. ``mean links/note: <x>``: relation links per concept note
+6. ``aporia notes: <n>  open disagreement doubts: <m>``
+7. ``prune candidates: <k> (deletion report-only)``, or
+   ``(deletion enabled)`` when ``tx.pruning_enabled`` is ``true``
+8. ``git: tracked`` or ``git: NOT a git work tree`` (the vault root)
+9. the maintenance line: ``maintenance: never run (stale)``,
+   ``maintenance: last_maintain unparseable (stale)``,
+   ``maintenance: last run <d>d ago (stale, window <w>d)`` or
+   ``maintenance: last run <d>d ago (fresh)``
+
+Each note that cannot be parsed is skipped with one warning on stderr.
+
