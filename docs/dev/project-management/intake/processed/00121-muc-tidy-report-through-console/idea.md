@@ -1,6 +1,21 @@
 # muc: report tidy actions through CommandResult, not the logging module
 
-Status: implemented on `feature/muc-tidy-reporting`, 2026-11-10. Recorded 2026-11-08.
+Status: processed, implemented and merged to master as `d02978ca` (PR #274), 2026-11-10. Recorded 2026-11-08.
+
+## Verification (2026-11-15)
+
+- The implementation is present on master and this worktree, not only the
+  retired feature branch. All five helpers return actions and recoverable
+  warnings; `CommandTidy` aggregates them and the CLI renders literally.
+- No Python logging remains in `src/tools/muc/`.
+- Existing independent review: `docs/dev/project-management/reviews/muc-tidy-reporting-independent-review.md`.
+  Its deferred pre-existing behavior remains outside this intake's scope.
+- Fresh verification: the tidy reporting, tidy command, metadata merge,
+  console adapter and sysup default-config suites passed together: 93 tests.
+  Used the main checkout's existing Python environment with this worktree's
+  `src/tools` and `src/lib` on PYTHONPATH; the new worktree environment had
+  no pytest installation. No application code changed during this check.
+- Moved to processed after verifying completion; no new PRD is needed.
 
 ## Problem
 
