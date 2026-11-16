@@ -58,9 +58,26 @@ class TestPdf2PngExecute:
             mock_run.return_value = subprocess.CompletedProcess(args=["pdftoppm"], returncode=1)
             result = CommandPdf2Png(files=(str(pdf),)).execute()
 
-        assert result.success
-        assert result.output == "Processed 0 file(s)"
+        assert not result.success
+        assert result.error == "No file could be converted"
         assert any("Failed to render" in warning for warning in result.warnings)
+
+    def test_a_failure_beside_a_skipped_output_is_still_a_failure(self, tmp_path) -> None:
+        done = tmp_path / "done.pdf"
+        done.write_bytes(b"%PDF-1.4")
+        (tmp_path / "done.png").write_bytes(b"existing")
+        broken = tmp_path / "broken.pdf"
+        broken.write_bytes(b"%PDF-1.4")
+
+        with (
+            patch("morph.commands.pdf2png.pdf2png.shutil.which", return_value="/usr/bin/pdftoppm"),
+            patch("morph.commands.pdf2png.pdf2png.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = subprocess.CompletedProcess(args=["pdftoppm"], returncode=1)
+            result = CommandPdf2Png(files=(str(done), str(broken))).execute()
+
+        assert not result.success
+        assert result.error == "No file could be converted"
 
     def test_no_pages_rendered(self, tmp_path) -> None:
         pdf = tmp_path / "sample.pdf"
@@ -73,8 +90,8 @@ class TestPdf2PngExecute:
             mock_run.return_value = subprocess.CompletedProcess(args=["pdftoppm"], returncode=0)
             result = CommandPdf2Png(files=(str(pdf),)).execute()
 
-        assert result.success
-        assert result.output == "Processed 0 file(s)"
+        assert not result.success
+        assert result.error == "No file could be converted"
         assert any("No pages rendered" in warning for warning in result.warnings)
 
 

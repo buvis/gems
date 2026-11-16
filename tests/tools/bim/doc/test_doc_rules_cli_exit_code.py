@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
 from bim.cli import cli
 from bim.commands.doc.shared.settings_models import DocPaths, DocSettings
 from bim.settings import BimSettings
@@ -105,3 +106,46 @@ class TestDocRulesBacktestExitCode:
             result = runner.invoke(cli, ["doc", "rules", "backtest"], catch_exceptions=False)
 
         assert result.exit_code == 0
+
+
+class TestUnusableIssuersFile:
+    """A missing, malformed or empty issuers.yml is a console error, never a traceback."""
+
+    @pytest.mark.parametrize("command", [["list"], ["backtest"]])
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            (None, "issuers file not found"),
+            ("issuers: [unclosed", "cannot load issuers file"),
+            ("", "cannot load issuers file"),
+            ("version: 1\nissuers: {acme: 5}\n", "cannot load issuers file"),
+            ("issuers: {}\n", "cannot load issuers file"),
+        ],
+        ids=["missing", "malformed", "empty", "wrong-shape", "no-version"],
+    )
+    def test_rules_command_reports_it_through_the_console(
+        self, runner: CliRunner, tmp_path: Path, command: list[str], content: str | None, expected: str
+    ) -> None:
+        settings = _bim_settings_with_doc(tmp_path)
+        if content is not None:
+            (tmp_path / "issuers.yml").write_text(content)
+
+        with (
+            patch("bim.doc_rules_cli.get_settings", return_value=settings),
+            patch("bim.dependencies.get_ocr_runner", return_value=MagicMock()),
+        ):
+            result = runner.invoke(cli, ["doc", "rules", *command])
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit)
+        assert expected in result.output
+        assert "issuers.yml" in result.output.replace("\n", "")
+
+    def test_missing_doc_section_message_names_the_section(self, runner: CliRunner, tmp_path: Path) -> None:
+        settings = BimSettings(path_zettelkasten=str(tmp_path / "zk"), path_archive=str(tmp_path / "archive"))
+
+        with patch("bim.doc_rules_cli.get_settings", return_value=settings):
+            result = runner.invoke(cli, ["doc", "rules", "list"])
+
+        assert result.exit_code == 1
+        assert "`doc` section missing in bim config" in result.output

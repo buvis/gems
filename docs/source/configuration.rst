@@ -36,29 +36,29 @@ Each Python field maps to CLI, ENV, and YAML sources with consistent naming:
    * - Python Field
      - CLI Argument
      - Environment Variable
-     - YAML Path
+     - YAML Path (in ``buvis-photo.yaml``)
    * - ``debug``
      - ``--debug``
      - ``BUVIS_PHOTO_DEBUG``
-     - ``photo.debug``
+     - ``debug``
    * - ``log_level``
      - ``--log-level``
      - ``BUVIS_PHOTO_LOG_LEVEL``
-     - ``photo.log_level``
+     - ``log_level``
    * - ``library_path``
      - (custom option)
      - ``BUVIS_PHOTO_LIBRARY_PATH``
-     - ``photo.library_path``
+     - ``library_path``
    * - ``db.host`` (nested)
      - (custom option)
      - ``BUVIS_PHOTO__DB__HOST``
-     - ``photo.db.host``
+     - ``db.host``
 
 **Naming rules:**
 
 - **CLI**: Built-in options (``--debug``, ``--log-level``) are added automatically. Custom fields require explicit Click options - see `Adding Custom CLI Options`_ below.
 - **ENV**: Prefix from ``env_prefix`` + field name in SCREAMING_SNAKE_CASE. Nested fields use ``__`` delimiter.
-- **YAML**: Tool name (derived from prefix) as root key, then field names with ``.`` for nesting.
+- **YAML**: Field names as top-level keys of the tool's own ``buvis-<tool>.yaml`` (tool name derived from the prefix), with ``.`` for nesting. A ``<tool>:`` root key is not read.
 
 Adding Custom CLI Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,17 +126,24 @@ The tool name is derived from ``env_prefix``:
 - ``BUVIS_PHOTO_`` → searches for ``buvis-photo.yaml``
 - ``BUVIS_`` (default) → only the shared files
 
-A top-level key in ``config.yaml``/``buvis.yaml`` now **warns** (never fails)
-when it matches neither the resolving tool's own settings field or declared
-deferred key, nor any registered tool's name (i.e. it is not a legitimate
-``<tool>:`` namespace section either). This catches a typo in the resolving
-tool's own field (``srouces:`` instead of ``sources:``) without flagging a
-different tool's namespace section. The rule goes by file name, so
-``--config path/to/config.yaml`` (or ``buvis.yaml``) is warn-only too. Any
-other explicit or custom-named file (e.g. ``--config custom.yaml``) still
-fails hard on an unknown key, unchanged. A
-new tool is recognized as a namespace owner only once it is registered
-under the ``buvis.config_settings`` entry-point group in ``pyproject.toml``.
+A top-level key in ``config.yaml``/``buvis.yaml`` **warns** (never fails) when
+the resolving tool does not read it, that is, when it is not one of that tool's
+own settings fields or declared deferred keys. Two warnings exist:
+
+- ``'<tool>:' section is ignored`` for a key that is a registered tool's name.
+  Move the section's keys to ``buvis-<tool>.yaml``.
+- ``unknown configuration key '<key>'`` for anything else. This catches a typo
+  (``srouces:`` instead of ``sources:``). It also fires for another tool's key
+  written flat in a shared file: the owning tool reads it, every other tool
+  warns. Keep a tool's values in its own ``buvis-<tool>.yaml`` and shared
+  files for settings every tool reads (``debug``, ``log_level``,
+  ``auto_update``, ``adapters``).
+
+The rule goes by file name, so ``--config path/to/config.yaml`` (or
+``buvis.yaml``) is warn-only too. Any other explicit or custom-named file
+(e.g. ``--config custom.yaml``) still fails hard on an unknown key, unchanged.
+A tool's name is known once it is registered under the
+``buvis.config_settings`` entry-point group in ``pyproject.toml``.
 
 **Complete example:**
 
@@ -264,13 +271,13 @@ Environment:
     export MYPROJECT_DATA_DIR=/var/data
     export MYPROJECT_VERBOSE=true
 
-YAML (``~/.config/buvis/buvis.yaml``):
+YAML (``~/.config/buvis/buvis.yaml``; top-level keys, a ``myproject:`` section
+would be ignored):
 
 .. code-block:: yaml
 
-    myproject:
-      data_dir: /var/data
-      verbose: true
+    data_dir: /var/data
+    verbose: true
 
 Example: Abbreviations from Config
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -298,15 +305,14 @@ Load abbreviation definitions from YAML and pass to ``StringOperator``:
         level=1,
     )  # -> "Use the Application Programming Interface"
 
-YAML:
+YAML (top-level keys):
 
 .. code-block:: yaml
 
-    doc:
-      formatting:
-        abbreviations:
-          - API: Application Programming Interface
-          - CLI: Command Line Interface
+    formatting:
+      abbreviations:
+        - API: Application Programming Interface
+        - CLI: Command Line Interface
 
 YAML Configuration
 ------------------
@@ -850,6 +856,12 @@ The update check honours ``auto_update`` from the configuration file selected by
 ``BUVIS_<TOOL>_AUTO_UPDATE`` overrides it; the global ``BUVIS_AUTO_UPDATE``
 applies only when no tool-prefixed variable is set. Command-line overrides are
 not applied to this check.
+
+``--debug`` and ``log_level`` (flag, environment or config file, any letter
+case) set what the ``logging`` module prints for the command. ``--debug`` shows
+everything from ``DEBUG`` up; an explicit ``log_level`` sets that threshold.
+Log records print on stderr. With neither set, nothing changes. Records logged
+while the configuration itself loads are not shown.
 
 Exceptions
 ----------

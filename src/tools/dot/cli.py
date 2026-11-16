@@ -172,7 +172,7 @@ def pull() -> None:
 
     # Passphrase prompt
     passphrase = None
-    if shell.is_command_available("git-secret"):
+    if cmd.dot_git_service.uses_git_secret():
         console.info("GPG passphrase required to decrypt secret files")
 
     result = cmd.execute(plan=plan, resolutions=resolutions, passphrase=passphrase)

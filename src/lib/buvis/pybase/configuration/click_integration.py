@@ -21,7 +21,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 
 from .exceptions import ConfigurationError, MissingEnvVarError
-from .resolver import ConfigResolver
+from .resolver import ConfigResolver, ConfigSource, _env_set_fields
 from .settings import GlobalSettings
 
 logger = logging.getLogger(__name__)
@@ -102,6 +102,47 @@ def _install_console_warning_bridge() -> None:
     if any(isinstance(h, _ConsoleWarningHandler) for h in config_logger.handlers):
         return
     config_logger.addHandler(_ConsoleWarningHandler())
+
+
+def _not_already_bridged(record: logging.LogRecord) -> bool:
+    """Drop config warnings from the log output: the console warning bridge prints them."""
+    return not (record.levelno >= logging.WARNING and record.name.startswith("buvis.pybase.configuration"))
+
+
+def _apply_log_settings(ctx: click.Context, settings: BaseModel, *, level_is_explicit: bool) -> None:
+    """Make ``--debug`` / ``log_level`` take effect for this command.
+
+    Nothing changes unless the user asked: ``debug`` is on, or ``log_level``
+    came from a flag, the environment or a config file. Log records then print
+    on stderr. The root logger is restored when the command ends, so a test
+    runner or an embedding process is left as it was.
+
+    ponytail: applied after settings resolve, so records logged while the
+    config itself loads are not shown; pre-scan argv for --debug if that
+    matters.
+    """
+    if getattr(settings, "debug", False):
+        level = logging.DEBUG
+    elif level_is_explicit:
+        level = getattr(logging, getattr(settings, "log_level", "WARNING"))
+    else:
+        return
+    from buvis.pybase.adapters import console
+    from buvis.pybase.adapters.console.capturing_rich_handler import CapturingRichHandler
+
+    handler = CapturingRichHandler(console=console.err_console, show_time=False, show_path=False)
+    handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+    handler.addFilter(_not_already_bridged)
+    root = logging.getLogger()
+    previous = root.level
+    root.addHandler(handler)
+    root.setLevel(level)
+
+    def restore() -> None:
+        root.removeHandler(handler)
+        root.setLevel(previous)
+
+    ctx.call_on_close(restore)
 
 
 _UPDATE_PRECEDING_FLAGS = frozenset({"--help", "--version", "-h"})
@@ -188,7 +229,8 @@ def _update_enabled(settings_class: type[GlobalSettings], settings: GlobalSettin
     absent, so the more specific knob always wins.
     """
     env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
-    if f"{env_prefix}AUTO_UPDATE" in os.environ:
+    # Same case-insensitive reading as the settings themselves.
+    if "auto_update" in _env_set_fields(env_prefix):
         return settings.auto_update
     if _GLOBAL_AUTO_UPDATE_ENV in os.environ:
         return GlobalSettings().auto_update
@@ -228,6 +270,10 @@ def _run_update_check_once(ctx: click.Context, args: list[str]) -> None:
 
     if not enabled:
         return
+    if not settings.auto_update:
+        # The global env decided over the tool's YAML; the updater re-tests the
+        # setting, so hand it the decision.
+        settings = settings.model_copy(update={"auto_update": True})
 
     with contextlib.suppress(Exception):
         from buvis.pybase.updater import check_and_update
@@ -402,6 +448,12 @@ def _create_buvis_options(settings_class: type[T], config_error_exit_code: int =
 
                 console.console.print(console.format_failure(escape(str(exc))), soft_wrap=True)
                 ctx.exit(config_error_exit_code)
+
+            _apply_log_settings(
+                ctx,
+                settings,
+                level_is_explicit=resolver.sources.get("log_level", ConfigSource.DEFAULT) is not ConfigSource.DEFAULT,
+            )
 
             ctx.ensure_object(dict)
             ctx.obj[settings_class] = settings

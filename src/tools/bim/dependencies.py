@@ -142,6 +142,10 @@ def get_state_db(settings: DocSettings) -> StateDB:
     return _StateDB.open(state_dir / "state.db")
 
 
+class IssuersFileError(Exception):
+    """``issuers.yml`` is missing, unreadable or invalid."""
+
+
 def _load_issuer_registry(issuers_file: Path) -> IssuerRegistry:
     """Load the issuer registry from the resolved ``issuers_file``.
 
@@ -150,9 +154,16 @@ def _load_issuer_registry(issuers_file: Path) -> IssuerRegistry:
     and validated ``settings.paths.issuers_file`` don't have to repeat the
     ``None`` guard.
     """
+    import yaml
+
     from bim.commands.doc.shared.issuers import load_registry
 
-    return load_registry(issuers_file)
+    try:
+        return load_registry(issuers_file)
+    except FileNotFoundError as exc:
+        raise IssuersFileError(f"issuers file not found: {issuers_file}") from exc
+    except (OSError, ValueError, TypeError, RuntimeError, yaml.YAMLError) as exc:
+        raise IssuersFileError(f"cannot load issuers file {issuers_file}: {exc}") from exc
 
 
 @dataclass(frozen=True)

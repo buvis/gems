@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from bim.cli import cli
 from buvis.pybase.result import CommandResult
 from click.testing import CliRunner
@@ -104,3 +105,45 @@ class TestShowExitCode:
             result = runner.invoke(cli, ["show", str(note)], catch_exceptions=False)
 
         assert result.exit_code == 0
+
+    def test_missing_note_is_reported_once(self, runner: CliRunner, tmp_path: Path) -> None:
+        missing = tmp_path / "missing.md"
+
+        result = runner.invoke(cli, ["show", str(missing)])
+
+        assert result.exit_code == 1
+        assert result.output.count("missing.md doesn't exist") == 1
+        assert "✘" in result.output
+        assert "⚠" not in result.output
+
+
+class TestInlineQueryErrors:
+    def test_malformed_inline_query_is_a_console_error(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["query", "-q", "not: [valid"])
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit)
+        assert "invalid query" in result.output
+        assert "Traceback" not in result.output
+
+    def test_inline_query_that_is_not_a_mapping_is_a_console_error(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["query", "-q", "just a string"])
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit)
+        assert "invalid query: Query string must be a YAML mapping" in result.output
+
+    @pytest.mark.parametrize("query", ["output: json", "filter: {and: 1}", 'sort: ["[/x]"]'])
+    def test_inline_query_of_the_wrong_shape_is_a_console_error(self, runner: CliRunner, query: str) -> None:
+        result = runner.invoke(cli, ["query", "-q", query])
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit)
+        assert "invalid query" in result.output
+
+    def test_malformed_inline_query_on_a_note_command_is_a_console_error(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["show", "-q", "not: [valid"])
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit)
+        assert "invalid query" in result.output

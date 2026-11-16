@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any, Literal, cast
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .validators import _SENSITIVE_PATTERNS, _ModelFieldsOwner, validate_json_env_size
@@ -49,6 +49,12 @@ class GlobalSettings(BaseSettings):
     ollama_model: str | None = None
     ollama_url: str = "http://localhost:11434"
     adapters: dict[str, dict[str, Any]] = {}
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _accept_any_case_log_level(cls, value: object) -> object:
+        """Accept ``info`` from YAML and env, as ``--log-level info`` already does."""
+        return value.upper() if isinstance(value, str) else value
 
 
 class SecureSettingsMixin:

@@ -294,9 +294,15 @@ class ConsoleAdapter:
             else:
                 reporter(message)
 
+        warnings = result.warnings
+        failures = [result.error or failure_msg]
+        if not result.success and on_failure is None and warnings and result.error == "\n".join(warnings):
+            # The error only repeats the warnings (every input failed): say each once, as a failure.
+            warnings, failures = [], result.warnings
+
         for i in result.info:
             emit(i, self.success, CHECKMARK, STYLE_SUCCESS_MSG)
-        for w in result.warnings:
+        for w in warnings:
             emit(w, self.warning, WARNING, STYLE_WARNING_MSG)
         if result.success:
             if on_success is not None:
@@ -307,7 +313,8 @@ class ConsoleAdapter:
         if on_failure is not None:
             on_failure(result)
         else:
-            emit(result.error or failure_msg, self.failure, CROSSMARK, STYLE_FAILURE_MSG)
+            for message in failures:
+                emit(message, self.failure, CROSSMARK, STYLE_FAILURE_MSG)
         if exit_on_failure:
             sys.exit(1)
 

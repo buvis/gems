@@ -16,7 +16,7 @@ from buvis.pybase.configuration.click_integration import (
     _install_console_warning_bridge,
 )
 from buvis.pybase.configuration.settings import GlobalSettings
-from click.testing import CliRunner
+from click.testing import CliRunner, Result
 from pydantic import BaseModel
 from rich.markup import escape
 
@@ -183,6 +183,61 @@ class TestBuvisOptionsCLIOverrides:
 
         assert result.exit_code == 0
         assert captured_settings[0].log_level == "CRITICAL"
+
+
+class TestLogSettingsTakeEffect:
+    """--debug and log_level change what the logging module prints, for one command."""
+
+    @staticmethod
+    def _invoke(runner: CliRunner, args: list[str]) -> Result:
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            probe = logging.getLogger("probe.tool")
+            probe.debug("debug-probe-7c1e")
+            probe.info("info-probe-7c1e")
+
+        return runner.invoke(cmd, args)
+
+    def test_no_log_output_unless_asked(self, runner: CliRunner) -> None:
+        result = self._invoke(runner, [])
+
+        assert result.exit_code == 0
+        assert "probe-7c1e" not in result.output
+
+    @pytest.mark.parametrize("args", [["--debug"], ["--log-level", "debug"]])
+    def test_debug_records_print_on_stderr_not_stdout(self, runner: CliRunner, args: list[str]) -> None:
+        result = self._invoke(runner, args)
+
+        assert result.exit_code == 0
+        assert "probe.tool: debug-probe-7c1e" in result.stderr
+        assert "probe-7c1e" not in result.stdout
+
+    def test_log_level_from_a_config_file_sets_the_threshold(self, runner: CliRunner, tmp_path: Path) -> None:
+        (tmp_path / "config.yaml").write_text("log_level: info\n")
+
+        result = self._invoke(runner, ["--config-dir", str(tmp_path)])
+
+        assert "info-probe-7c1e" in result.stderr
+        assert "debug-probe-7c1e" not in result.stderr
+
+    def test_root_logger_is_restored_after_the_command(self, runner: CliRunner) -> None:
+        root = logging.getLogger()
+        before = (root.level, list(root.handlers))
+
+        self._invoke(runner, ["--debug"])
+
+        assert (root.level, list(root.handlers)) == before
+
+    def test_config_warning_is_not_printed_twice_under_debug(self, runner: CliRunner) -> None:
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            logging.getLogger("buvis.pybase.configuration.loader").warning("twice-probe-4d2a")
+
+        result = runner.invoke(cmd, ["--debug"])
+
+        assert result.stderr.count("twice-probe-4d2a") == 1
 
 
 class TestBuvisOptionsParameterized:

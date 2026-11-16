@@ -49,7 +49,7 @@ class TestToolConfigKeys:
 
     @pytest.mark.parametrize("filename", ["config.yaml", "buvis.yaml"])
     @pytest.mark.parametrize("explicit", [False, True])
-    def test_shared_config_keeps_other_tool_namespaces(self, tmp_path, filename, explicit, caplog):
+    def test_shared_config_loads_but_reports_ignored_tool_sections(self, tmp_path, filename, explicit, caplog):
         path = tmp_path / "home/.config/buvis" / filename
         path.parent.mkdir(parents=True)
         path.write_text(
@@ -62,7 +62,28 @@ class TestToolConfigKeys:
         assert settings.adapters == {"jira": {"server": "https://example.test"}}
         assert settings.sources == (Path("/shared-skills"),)
         assert not hasattr(settings, "sysup")
+        # Shared files are read flat: a <tool>: section loads nothing, and says so.
+        for tool in ("sysup", "bim"):
+            assert f"{path}: '{tool}:' section is ignored" in caplog.text
+            assert f"buvis-{tool}.yaml" in caplog.text
         assert "unknown configuration key" not in caplog.text
+
+    def test_shared_config_own_tool_section_is_reported_as_ignored(self, tmp_path, caplog):
+        path = tmp_path / "home/.config/buvis/config.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("braid: {sources: [/skills]}\n")
+        settings = ConfigResolver().resolve(BraidSettings)
+        assert settings.sources == ()
+        assert f"{path}: 'braid:' section is ignored" in caplog.text
+        assert "buvis-braid.yaml" in caplog.text
+
+    def test_shared_config_other_tools_flat_key_points_at_its_own_file(self, tmp_path, caplog):
+        path = tmp_path / "home/.config/buvis/config.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text("path_zettelkasten: /notes\n")
+        ConfigResolver().resolve(BraidSettings)
+        assert f"{path}: unknown configuration key 'path_zettelkasten'" in caplog.text
+        assert "buvis-<tool>.yaml" in caplog.text
 
     @pytest.mark.parametrize("filename", ["config.yaml", "buvis.yaml"])
     def test_shared_config_warns_on_resolving_tools_own_typo(self, tmp_path, filename, caplog):

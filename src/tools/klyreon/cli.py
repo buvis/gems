@@ -57,7 +57,7 @@ def _warn_if_maintenance_stale(ctx: click.Context) -> None:
     now = dt.datetime.now().astimezone()
     window = dt.timedelta(days=settings.maintenance_window_days)
     if not last:
-        _warn_stale("maintenance has never run (run the maintain command once it ships)")
+        _warn_stale("maintenance has never run (run `klyreon maintain`)")
         return
     try:
         parsed = dt.datetime.fromisoformat(last)

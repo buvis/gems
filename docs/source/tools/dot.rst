@@ -131,6 +131,11 @@ to disable it. That protection stays on by design. ``dot status`` now exits
 non-zero if hiding secrets, or any other part of the status report, fails,
 instead of always exiting 0 after printing a failure.
 
+A dotfiles repository without a ``.gitsecret`` directory has no secrets under
+git-secret, so ``dot status``, ``dot pull`` and ``dot commit`` skip the
+git-secret steps there. ``dot status`` fails when the dotfiles root holds no
+repository at all (no ``.buvis`` directory).
+
 dot materialize
 ~~~~~~~~~~~~~~~
 

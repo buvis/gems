@@ -220,7 +220,9 @@ class TestReportResult:
     @pytest.mark.parametrize("success", [True, False])
     @pytest.mark.parametrize("message", [r"C:\music\[bold]\:heart:.mp3", "path\\", "path\\\\"])
     def test_literal_messages_preserve_markup_and_emoji_codes(self, capsys, console_adapter, success, message):
-        result = CommandResult(success=success, info=[message], warnings=[message], output=message, error=message)
+        # The error differs from the warning: an error that only repeats the
+        # warnings is printed once (see the dedupe test below).
+        result = CommandResult(success=success, info=[message], warnings=[message], output=message, error=f"{message}!")
 
         console_adapter.report_result(result, literal=True)
 
@@ -267,6 +269,30 @@ class TestReportResult:
         captured = capsys.readouterr()
         assert "w1" in captured.out
         assert "w2" in captured.out
+
+    def test_failure_that_only_repeats_its_warnings_prints_each_line_once(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        lines = ["a.md doesn't exist", "b.md doesn't exist"]
+        result = CommandResult(success=False, error="\n".join(lines), warnings=lines)
+
+        console_adapter.report_result(result)
+
+        out = capsys.readouterr().out
+        assert out.count("a.md doesn't exist") == 1
+        assert out.count("b.md doesn't exist") == 1
+        assert out.count("✘") == 2
+        assert "⚠" not in out
+
+    def test_failure_with_its_own_error_keeps_the_warnings(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=False, error="No file could be renamed", warnings=["Path not found: a"])
+
+        console_adapter.report_result(result)
+
+        out = capsys.readouterr().out
+        assert "⚠" in out
+        assert "Path not found: a" in out
+        assert "No file could be renamed" in out
 
     def test_on_success_callback(self, console_adapter: ConsoleAdapter) -> None:
         result = CommandResult(success=True, metadata={"count": 3})

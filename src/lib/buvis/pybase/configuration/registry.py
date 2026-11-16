@@ -3,8 +3,8 @@
 Discovers every installed tool's *name* through the
 ``buvis.config_settings`` entry-point group, never by importing a tool
 package - see AGENTS.md "the library stays interface-agnostic". A tool's
-name is the ``<tool>:`` namespace key a shared config file may legitimately
-carry for it (``docs/source/configuration.rst`` "Tool-Specific Configuration
+name lets the shared-file check tell an ignored ``<tool>:`` section from a
+typo (``docs/source/configuration.rst`` "Tool-Specific Configuration
 Files"); this module answers only "is this a registered tool name", nothing
 about any tool's own fields.
 """
@@ -30,9 +30,9 @@ def known_tool_names() -> frozenset[str]:
     function imports no tool code at all, not even optionally; it is pure
     distribution metadata lookup. A shared config file's ``<tool>:``
     section for a tool missing from this set (uninstalled extra, not yet
-    registered) is indistinguishable from a genuine typo and surfaces as a
-    noisy warning rather than silence - accepted, not solved, by this
-    design.
+    registered) is indistinguishable from a genuine typo and is reported
+    as an unknown key instead of an ignored section - accepted, not
+    solved, by this design.
 
     Cached for the lifetime of the process: ``entry_points(group=...)``
     re-parses every installed distribution's metadata on each call, and

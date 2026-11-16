@@ -81,4 +81,7 @@ class CommandStrip:
 
             processed += 1
 
+        if self.files and processed == 0:
+            return CommandResult(success=False, error="No file could be processed", warnings=warnings)
+
         return CommandResult(success=True, output=f"Processed {processed} file(s)", warnings=warnings)

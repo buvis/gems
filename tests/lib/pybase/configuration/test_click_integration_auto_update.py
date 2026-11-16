@@ -74,19 +74,14 @@ def _config(directory: Path, auto_update: bool, name: str = "config.yaml") -> Pa
 class TestEnvPrecedence:
     """The global env fallback never outranks a more specific knob."""
 
-    def test_prefixless_settings_class_lets_yaml_decide_over_global_env(
+    def test_env_true_beats_yaml_false_for_a_prefixless_settings_class(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """For a class with no tool prefix, BUVIS_AUTO_UPDATE *is* the tool variable.
+        """A set env var beats YAML even when its value equals the field default.
 
-        ``_update_enabled`` consults the global fallback only when the
-        tool-prefixed variable is absent. ``GlobalSettings`` has the default
-        ``BUVIS_`` prefix, so the two names coincide and the first branch
-        returns the resolved value, which the YAML supplies. An env value equal
-        to the field default is indistinguishable from unset inside
-        ``ConfigResolver._merge_overrides``, so the YAML ``false`` wins here --
-        a documented resolver limitation, not the fallback misfiring. The
-        tool-prefixed case is pinned by the next test.
+        For a class with no tool prefix, BUVIS_AUTO_UPDATE *is* the tool
+        variable, so the resolved value decides, and the environment outranks
+        the config file.
         """
         monkeypatch.setenv("BUVIS_AUTO_UPDATE", "true")
         config = _config(tmp_path / "c", auto_update=False)
@@ -94,12 +89,28 @@ class TestEnvPrecedence:
         result, mock_update = _invoke(["--config", str(config)])
 
         assert result.exit_code == 0
-        mock_update.assert_not_called()
+        mock_update.assert_called_once()
+        assert mock_update.call_args.args[0].auto_update is True
+
+    def test_tool_env_true_beats_yaml_false(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """BUVIS_<TOOL>_AUTO_UPDATE=true switches the check back on over YAML false."""
+        monkeypatch.setenv("BUVIS_FOO_AUTO_UPDATE", "true")
+        config = _config(tmp_path / "c", auto_update=False)
+
+        result, mock_update = _invoke(["--config", str(config)], FooSettings)
+
+        assert result.exit_code == 0
+        mock_update.assert_called_once()
+        assert mock_update.call_args.args[0].auto_update is True
 
     def test_global_env_true_runs_tool_check_despite_yaml_false(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Same rule for a tool class: no BUVIS_FOO_AUTO_UPDATE, so the global env applies."""
+        """Same rule for a tool class: no BUVIS_FOO_AUTO_UPDATE, so the global env applies.
+
+        The updater re-tests ``settings.auto_update``, so the settings it is
+        handed must carry the decision, not the YAML value.
+        """
         monkeypatch.setenv("BUVIS_AUTO_UPDATE", "true")
         config = _config(tmp_path / "c", auto_update=False)
 
@@ -107,11 +118,22 @@ class TestEnvPrecedence:
 
         assert result.exit_code == 0
         mock_update.assert_called_once()
+        assert mock_update.call_args.args[0].auto_update is True
 
     def test_tool_env_false_beats_global_env_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """BUVIS_<TOOL>_AUTO_UPDATE wins over BUVIS_AUTO_UPDATE."""
         monkeypatch.setenv("BUVIS_AUTO_UPDATE", "true")
         monkeypatch.setenv("BUVIS_FOO_AUTO_UPDATE", "false")
+
+        result, mock_update = _invoke([], FooSettings)
+
+        assert result.exit_code == 0
+        mock_update.assert_not_called()
+
+    def test_lowercase_tool_env_false_still_beats_global_env_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The tool variable is read case-insensitively, as the settings read it."""
+        monkeypatch.setenv("BUVIS_AUTO_UPDATE", "true")
+        monkeypatch.setenv("buvis_foo_auto_update", "false")
 
         result, mock_update = _invoke([], FooSettings)
 

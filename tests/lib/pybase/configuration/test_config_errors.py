@@ -155,6 +155,37 @@ class TestConfigurationErrors:
         assert str(path) in result.output
         assert "BUVIS_MISSING_FOR_TEST" in result.output
 
+    def test_log_level_from_yaml_and_env_is_case_insensitive(self, tmp_path, monkeypatch):
+        shared = tmp_path / "home/.config/buvis/config.yaml"
+        shared.parent.mkdir(parents=True)
+        shared.write_text("log_level: warning\n")
+        assert ConfigResolver().resolve(GlobalSettings).log_level == "WARNING"
+        monkeypatch.setenv("BUVIS_LOG_LEVEL", "debug")
+        assert ConfigResolver().resolve(GlobalSettings).log_level == "DEBUG"
+
+    def test_set_env_var_beats_yaml_even_at_the_default_value(self, tmp_path, monkeypatch):
+        shared = tmp_path / "home/.config/buvis/config.yaml"
+        shared.parent.mkdir(parents=True)
+        shared.write_text("debug: true\nauto_update: false\n")
+        monkeypatch.setenv("BUVIS_DEBUG", "false")
+        monkeypatch.setenv("buvis_auto_update", "true")
+        resolver = ConfigResolver()
+        settings = resolver.resolve(GlobalSettings)
+        assert settings.debug is False
+        assert settings.auto_update is True
+        assert resolver.sources["debug"].value == "env"
+        assert resolver.sources["auto_update"].value == "env"
+
+    def test_yaml_still_applies_when_only_another_field_is_set_in_env(self, tmp_path, monkeypatch):
+        shared = tmp_path / "home/.config/buvis/config.yaml"
+        shared.parent.mkdir(parents=True)
+        shared.write_text("debug: true\nadapters: {jira: {server: https://example.test}}\n")
+        monkeypatch.setenv("BUVIS_LOG_LEVEL", "ERROR")
+        settings = ConfigResolver().resolve(GlobalSettings)
+        assert settings.debug is True
+        assert settings.adapters == {"jira": {"server": "https://example.test"}}
+        assert settings.log_level == "ERROR"
+
     def test_validation_names_offending_layer(self, tmp_path):
         shared = tmp_path / "home/.config/buvis/buvis.yaml"
         shared.parent.mkdir(parents=True)

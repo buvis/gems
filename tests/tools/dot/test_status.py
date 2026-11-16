@@ -36,6 +36,26 @@ class TestCommandStatusInit:
 
 
 class TestCommandStatusExecute:
+    def test_root_without_a_repository_is_a_failure_not_a_clean_status(self, tmp_path) -> None:
+        shell = MagicMock()
+        shell.exe.return_value = ("fatal: not a git repository", "")
+
+        result = CommandStatus(shell=shell, dotfiles_root=str(tmp_path)).execute()
+
+        assert not result.success
+        assert result.error == f"{tmp_path} is not a dotfiles repository (no .buvis directory)"
+
+    def test_root_with_a_repository_reaches_the_status_step(self, tmp_path) -> None:
+        (tmp_path / ".buvis").mkdir()
+        shell = MagicMock()
+        shell.is_command_available.return_value = False
+        shell.exe.return_value = ("", "")
+
+        result = CommandStatus(shell=shell, dotfiles_root=str(tmp_path)).execute()
+
+        assert result.success
+        assert "cfg status --porcelain" in [c.args[0] for c in shell.exe.call_args_list]
+
     @patch("dot.commands.status.status.DotGitService")
     def test_returns_failure_when_secret_hide_errors(self, mock_service_cls, dotfiles_root) -> None:
         mock_service = mock_service_cls.return_value

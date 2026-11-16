@@ -88,3 +88,22 @@ class TestPlanErrorsNameTheFile:
         message = str(exc_info.value)
         assert str(backup_file) in message
         assert str(shared) not in message
+
+    def test_plan_error_keeps_the_file_path_whole_on_a_narrow_terminal(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from click.testing import CliRunner
+
+        from backup.cli import cli
+
+        monkeypatch.setenv("COLUMNS", "80")
+        # Rich folds only a word wider than the console, so make the path wider.
+        config_dir = tmp_path / ("d" * 100)
+        config_dir.mkdir()
+        backup_file = config_dir / "buvis-backup.yaml"
+        _write(backup_file, "excludes: 5\n")
+
+        result = CliRunner().invoke(cli, ["--config-dir", str(config_dir), "--list"])
+
+        assert result.exit_code == 1
+        assert str(backup_file) in result.output

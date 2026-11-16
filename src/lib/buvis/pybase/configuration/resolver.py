@@ -68,6 +68,17 @@ def _extract_tool_name(env_prefix: str) -> str | None:
     return match.group(1).lower()
 
 
+def _env_set_fields(env_prefix: str) -> set[str]:
+    """Top-level field names the environment sets for ``env_prefix``.
+
+    Names match case-insensitively, as pydantic-settings reads them, and a
+    nested variable (``BUVIS_ADAPTERS__JIRA__SERVER``) counts for its
+    top-level field (``adapters``).
+    """
+    prefix = env_prefix.lower()
+    return {name.lower()[len(prefix) :].split("__", 1)[0] for name in os.environ if name.lower().startswith(prefix)}
+
+
 def _format_validation_errors(error: ValidationError, sources: dict[tuple[str, ...], list[Path]] | None = None) -> str:
     """Format Pydantic validation errors into user-friendly message.
 
@@ -103,23 +114,29 @@ def _warn_unknown_shared_keys(
     own_fields: set[str],
     tool_names: frozenset[str],
 ) -> None:
-    """Warn on a shared config.yaml/buvis.yaml key that is neither an own field nor a tool namespace.
+    """Warn on a shared config.yaml/buvis.yaml key this tool does not read.
 
-    Shared files carry global keys and other tools' <tool>: namespace
-    sections. A key is valid there if it is this tool's own field/deferred
-    key, or a registered tool's name (a namespace section for some other
-    tool, never projected onto this one). Anything else warns, catching a
-    typo in this tool's own field without flagging a sibling tool's section.
+    Shared files are merged flat, so a tool reads only top-level keys that are
+    its own fields or deferred keys. A ``<tool>:`` section is never projected
+    onto that tool: it warns as ignored. Any other key warns as unknown, which
+    catches a typo and also another tool's key written flat (a tool's values
+    belong in its own ``buvis-<tool>.yaml``).
     """
     for key in layer:
         base = _split_directive(key)[0]
-        is_own_field = base in own_fields
-        is_tool_namespace = base in tool_names
-        if not is_own_field and not is_tool_namespace:
+        if base in own_fields:
+            continue
+        if base in tool_names:
             logger.warning(
-                "%s: unknown configuration key '%s' - matches neither this "
-                "tool's own settings field (or declared deferred key) nor "
-                "any registered tool's namespace section",
+                "%s: '%s:' section is ignored - shared files are read flat; move its keys to buvis-%s.yaml",
+                path,
+                base,
+                base,
+            )
+        else:
+            logger.warning(
+                "%s: unknown configuration key '%s' - not a setting of this tool; "
+                "if another tool owns it, move it to that tool's buvis-<tool>.yaml",
                 path,
                 base,
             )
@@ -252,14 +269,18 @@ class ConfigResolver:
         yaml_config: dict[str, Any],
         cli_overrides: dict[str, Any] | None,
     ) -> T:
-        """Merge YAML and CLI overrides onto base settings."""
-        merged: dict[str, Any] = {}
-        for key, value in yaml_config.items():
-            if hasattr(base_settings, key):
-                field_value = getattr(base_settings, key)
-                default = settings_class.model_fields.get(key)
-                if default and field_value == default.default:
-                    merged[key] = value
+        """Merge YAML and CLI overrides onto base settings.
+
+        A YAML value applies unless the environment sets that field. The test is
+        whether the variable is set, not whether its value differs from the
+        default, so ``<PREFIX>AUTO_UPDATE=true`` beats YAML ``auto_update: false``.
+        """
+        env_fields = _env_set_fields(settings_class.model_config.get("env_prefix", "BUVIS_"))
+        merged: dict[str, Any] = {
+            key: value
+            for key, value in yaml_config.items()
+            if key in settings_class.model_fields and key not in env_fields
+        }
         if cli_overrides:
             for key, value in cli_overrides.items():
                 if value is not None:
@@ -276,7 +297,7 @@ class ConfigResolver:
         cli_overrides: dict[str, Any] | None,
     ) -> None:
         """Record which source provided each field value."""
-        env_keys = {k.removeprefix(env_prefix).lower() for k in os.environ if k.startswith(env_prefix)}
+        env_keys = _env_set_fields(env_prefix)
         self._sources.clear()
         for field in settings_class.model_fields:
             if cli_overrides and cli_overrides.get(field) is not None:
@@ -312,7 +333,8 @@ class ConfigResolver:
             include_cwd=getattr(settings_class, "config_include_cwd", True),
             known_keys=known_keys,
         )
-        logger.debug("Loaded YAML config: %s", yaml_config)
+        # Keys only: --debug now prints debug records, and values may hold secrets.
+        logger.debug("Loaded YAML config keys: %s", sorted(yaml_config))
 
         try:
             base_settings = settings_class()

@@ -172,7 +172,15 @@ def query(
             return
         spec = parse_query_file(str(resolved))
     elif query_string:
-        spec = parse_query_string(query_string)
+        import yaml
+        from rich.markup import escape
+
+        try:
+            spec = parse_query_string(query_string)
+        except (yaml.YAMLError, ValueError, TypeError, AttributeError) as exc:
+            # TypeError/AttributeError: valid YAML of the wrong shape, e.g. `output: json`.
+            console.panic(escape(f"invalid query: {getattr(exc, 'problem', None) or exc}"))
+            return
     else:
         console.failure("Provide -Q/--query-file or -q/--query")
         ctx.exit(1)

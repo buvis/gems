@@ -107,7 +107,7 @@ class TestFlattenMetadata:
 
 
 class TestFlattenErrors:
-    def test_copy_failure_produces_warning(self, tmp_path: Path) -> None:
+    def test_run_fails_when_every_copy_failed(self, tmp_path: Path) -> None:
         from unittest.mock import patch
 
         source = tmp_path / "src"
@@ -118,10 +118,34 @@ class TestFlattenErrors:
         with patch("fren.commands.flatten.flatten.shutil.copy2", side_effect=OSError("disk full")):
             result = CommandFlatten(source=str(source), destination=str(destination)).execute()
 
-        assert result.success
-        assert result.output == f"Copied 0 file(s) to {destination}"
+        # `fren flatten a b && rm -r a` must not delete the source after copying nothing.
+        assert not result.success
+        assert result.error == f"No file could be copied to {destination}"
         assert len(result.warnings) == 1
         assert "disk full" in result.warnings[0]
+
+    def test_partial_copy_failure_stays_a_warning(self, tmp_path: Path) -> None:
+        import shutil
+        from unittest.mock import patch
+
+        source = tmp_path / "src"
+        destination = tmp_path / "dest"
+        source.mkdir()
+        (source / "good.txt").write_text("content")
+        (source / "bad.txt").write_text("content")
+        real_copy = shutil.copy2
+
+        def copy(src: Path, dst: Path) -> None:
+            if src.name == "bad.txt":
+                raise OSError("disk full")
+            real_copy(src, dst)
+
+        with patch("fren.commands.flatten.flatten.shutil.copy2", side_effect=copy):
+            result = CommandFlatten(source=str(source), destination=str(destination)).execute()
+
+        assert result.success
+        assert result.output == f"Copied 1 file(s) to {destination}"
+        assert len(result.warnings) == 1
 
     def test_empty_source(self, tmp_path: Path) -> None:
         source = tmp_path / "src"

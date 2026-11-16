@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 from buvis.pybase.adapters import console
@@ -18,7 +19,22 @@ def register_doc_group(cli: click.Group) -> None:
     cli.add_command(doc)
 
 
-@click.group("doc", help="Document ingestion + triage workflow")
+class _DocGroup(click.Group):
+    """Report an unusable ``issuers.yml`` as one console error for every ``bim doc`` command."""
+
+    def invoke(self, ctx: click.Context) -> Any:
+        from rich.markup import escape
+
+        from bim.dependencies import IssuersFileError
+
+        try:
+            return super().invoke(ctx)
+        except IssuersFileError as exc:
+            # Escaped: a pydantic message ends in "[type=..., input_value=...]".
+            console.panic(escape(str(exc)))
+
+
+@click.group("doc", cls=_DocGroup, help="Document ingestion + triage workflow")
 @click.pass_context
 def doc(ctx: click.Context) -> None:
     """Document subsystem - ingest, triage, and promote PDFs."""
@@ -59,7 +75,7 @@ def doc_ingest(
 
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
 
     try:
@@ -114,7 +130,7 @@ def doc_promote(ctx: click.Context, yml_path: Path, strict: bool) -> None:
 
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
 
     try:
@@ -162,7 +178,7 @@ def doc_promote(ctx: click.Context, yml_path: Path, strict: bool) -> None:
 def doc_audit(ctx: click.Context) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
 
     try:
@@ -207,7 +223,7 @@ register_rules_subcommands(doc)
 def doc_migrate_layout(ctx: click.Context, *, apply_changes: bool) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
 
     try:
@@ -254,7 +270,7 @@ def doc_migrate_layout(ctx: click.Context, *, apply_changes: bool) -> None:
 def doc_triage(ctx: click.Context, approve_target: str | None) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
 
     try:
