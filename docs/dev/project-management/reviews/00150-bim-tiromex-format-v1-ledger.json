@@ -1,0 +1,130 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "`export-claims` no longer emits the source values untouched: it coerces `claim_id`, `statement`, `assent` and `lifecycle` with `str()` and drops claims whose id or statement is blank, where the source exported any claim that had both keys. A YAML integer id `1` now exports as \"1\". The PRD says to preserve the export contract, so this is a small drift in the data shape.",
+    "file": "src/tools/bim/commands/tx/shared/claims.py:40",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Null values bypass required validation: `assent: null`, `lifecycle: null`, `doubts: null`, and a doubt with `mode: null` evade their enum/list rules. Distinguish absent keys from present null values and test both cases.",
+    "file": "src/tools/bim/commands/tx/shared/validator.py:197",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Non-string source values disappear through `sources()` before validation, so malformed values can pass without `source-shape`. Validate the raw source value and each list entry before extracting strings.",
+    "file": "src/tools/bim/commands/tx/shared/validator.py:252",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "`iter_note_files` checks resolved paths but returns unresolved aliases, contrary to the graph contract. An internal symlink duplicates exported claims and counts and can produce a false filename mismatch; graph keys also differ from resolved edges. Return sorted, deduplicated resolved paths and test internal aliases.",
+    "file": "src/tools/bim/commands/tx/shared/paths.py:83",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Prune and corroboration checks compare literal link paths. A valid inbound link containing `./` or an internal symlink is missed, incorrectly reporting a linked note as a prune candidate. Resolve targets consistently with the validator before comparing note identities.",
+    "file": "src/tools/bim/commands/tx/status.py:81",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Export destination expansion, resolution and `samefile` checks execute outside error handling. A symlink loop or inaccessible ancestor can raise instead of returning a failed `CommandResult`. Include destination preparation in the guarded operation and test failures before writing.",
+    "file": "src/tools/bim/commands/tx/export_claims.py:39",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The staleness test changed: the source used `age > timedelta(days=window)`, the port uses `(now - last).days > window_days`, so a run 7d 5h ago counts as fresh now and stale in the source.",
+    "file": "src/tools/bim/commands/tx/status.py:47",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The status metadata drops the source `sources` and `pending_sources` keys, and the first output lines changed from vault/zettels/sources to tiromex/notes; the PRD defers mirror pending counts to 00153 but also says to port the output keys.",
+    "file": "src/tools/bim/commands/tx/status.py:160",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "A new note ends at the H1 with no final `---` backmatter separator; the bim formatter omits it when there is no backmatter and the format spec documents this. PRD wording \"final backmatter separator\" is ambiguous; judged acceptable.",
+    "file": "src/tools/bim/commands/tx/new.py:59",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`CommandTxNew` validates a draft from `prepare()`, then `execute()` builds the note again; id and date can differ by a second or after a collision bump. Risk judged negligible.",
+    "file": "src/tools/bim/commands/tx/new.py:94",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Prune-candidate detection in `status` is O(n²) over notes because each concept note re-parses every other note's relations; no PRD performance requirement, but a large tiromex folder makes `status` slow.",
+    "file": "src/tools/bim/commands/tx/status.py:74",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`claims: []` on a non-claim-bearing, non-aporia concept note now fails with `claims-count`; the source allowed it. Deliberate drift per \"1-3 claims when present\".",
+    "file": "src/tools/bim/commands/tx/shared/validator.py:216",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Recursive cycle traversal can raise `RecursionError` on a sufficiently deep relation chain. This is explicitly recorded and the design mandates porting the source DFS unchanged; changing its traversal strategy exceeds that parity requirement.",
+    "file": "src/tools/bim/commands/tx/shared/validator.py:319",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "[MECH] `test_valid_dir_passes` has no assertion beyond successful return. It predates this change and tests directory validation, outside the additive stderr API scope.",
+    "file": "tests/lib/pybase/adapters/test_console_adapter.py:448",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "[MECH] 3 touched test(s) pass against the pre-change code: test_warning_without_stderr_stays_on_stdout, test_failure_without_stderr_stays_on_stdout, test_stderr_is_keyword_only",
+    "file": "tests/lib/pybase/adapters/test_console_adapter.py",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "[MECH] 2 touched test(s) pass against the pre-change code: test_keeps_concept_fields_and_relations_and_is_idempotent",
+    "file": "tests/tools/bim/test_format_note.py",
+    "reason": "single-voice"
+  }
+]
