@@ -1,6 +1,6 @@
 # bim: absorb klyreon, with a recognised agent folder in the vault
 
-Status: recorded 2026-11-15. Pre-discovery. Nothing is designed or built.
+Status: processed, specced as PRDs 00150, 00151, 00152, 00153, 00154, 00155. Recorded 2026-11-15.
 
 Number 00149 is the next free one after 00148 on branch
 `feature/config-local-layer-braid` (not merged to master on 2026-11-15). Other
