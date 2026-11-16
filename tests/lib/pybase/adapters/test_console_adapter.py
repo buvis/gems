@@ -103,14 +103,33 @@ class TestConsoleAdapterOutput:
         mock_print.assert_called_once_with(renderable)
 
 
+LONG_TEXT = " ".join(["word"] * 30)
+VERY_LONG_TEXT = " ".join(["stale"] * 40)
+
+
+def _read_fd_capture(capfd: Any) -> Any:
+    if sys.__stdout__ is not None:
+        sys.__stdout__.flush()
+    if sys.__stderr__ is not None:
+        sys.__stderr__.flush()
+    return capfd.readouterr()
+
+
 class TestConsoleAdapterStderr:
-    @pytest.mark.parametrize("message", ["Vault is stale", "Source skipped twice"])
+    @pytest.mark.parametrize(
+        ("message", "expected"),
+        [
+            ("Vault is stale", "⚠ Vault is stale"),
+            ("Source skipped twice", "⚠ Source skipped twice"),
+            ("a [bold]b[/bold]", "⚠ a b"),
+        ],
+    )
     def test_warning_with_stderr_writes_only_to_stderr(
-        self, capsys: Any, console_adapter: ConsoleAdapter, message: str
+        self, capsys: Any, console_adapter: ConsoleAdapter, message: str, expected: str
     ) -> None:
         console_adapter.warning(message, stderr=True)
         captured = capsys.readouterr()
-        assert captured.err.strip() == f"⚠ {message}"
+        assert captured.err.strip() == expected
         assert captured.out == ""
 
     @pytest.mark.parametrize(
@@ -118,6 +137,7 @@ class TestConsoleAdapterStderr:
         [
             ("Claim rejected", None, "✘ Claim rejected"),
             ("Export refused", "outside root", "✘ Export refused \n\n Details:\n\n outside root"),
+            ("a [bold]b[/bold]", None, "✘ a b"),
         ],
     )
     def test_failure_with_stderr_writes_only_to_stderr(
@@ -152,20 +172,48 @@ class TestConsoleAdapterStderr:
         assert captured.out.strip() == "✘ Plain failure \n\n Details:\n\n why"
         assert captured.err == ""
 
-    @pytest.mark.parametrize("message", ["", "Two words"])
+    @pytest.mark.parametrize(
+        ("message", "details"),
+        [
+            ("", "detail"),
+            ("Two words", "detail"),
+            ("[bold]x[/bold] \\[y]", "detail"),
+            (LONG_TEXT, "detail"),
+            ("Short", LONG_TEXT),
+        ],
+    )
     def test_stderr_text_matches_default_stdout_text(
-        self, capsys: Any, console_adapter: ConsoleAdapter, message: str
+        self, capsys: Any, console_adapter: ConsoleAdapter, message: str, details: str
     ) -> None:
         console_adapter.warning(message)
-        console_adapter.failure(message, "detail")
+        console_adapter.failure(message, details)
         on_stdout = capsys.readouterr().out
 
         console_adapter.warning(message, stderr=True)
-        console_adapter.failure(message, "detail", stderr=True)
+        console_adapter.failure(message, details, stderr=True)
         captured = capsys.readouterr()
 
         assert captured.err == on_stdout
         assert captured.out == ""
+
+    def test_long_messages_with_stderr_leave_stdout_and_fd1_clean(
+        self, capfd: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        console_adapter.warning(VERY_LONG_TEXT, stderr=True)
+        console_adapter.failure(VERY_LONG_TEXT, VERY_LONG_TEXT, stderr=True)
+        captured = _read_fd_capture(capfd)
+
+        assert captured.out == ""
+        expected = f"⚠ {VERY_LONG_TEXT} ✘ {VERY_LONG_TEXT} Details: {VERY_LONG_TEXT}"
+        assert " ".join(captured.err.split()) == expected
+
+    def test_short_messages_with_stderr_leave_fd1_clean(self, capfd: Any, console_adapter: ConsoleAdapter) -> None:
+        console_adapter.warning("short", stderr=True)
+        console_adapter.failure("brief", stderr=True)
+        captured = _read_fd_capture(capfd)
+
+        assert captured.out == ""
+        assert captured.err.split() == ["⚠", "short", "✘", "brief"]
 
     def test_mixed_calls_split_between_streams_in_order(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
         console_adapter.warning("first", stderr=True)
@@ -177,7 +225,7 @@ class TestConsoleAdapterStderr:
         assert captured.err.split() == ["⚠", "first", "✘", "third"]
         assert captured.out.split() == ["⚠", "second", "✘", "fourth"]
 
-    def test_stderr_output_follows_sys_stderr_at_call_time(self, monkeypatch, capsys: Any) -> None:
+    def test_stderr_output_follows_sys_stderr_at_call_time(self, monkeypatch, capfd: Any) -> None:
         adapter = ConsoleAdapter()
         replacement = io.StringIO()
         monkeypatch.setattr(sys, "stderr", replacement)
@@ -186,7 +234,9 @@ class TestConsoleAdapterStderr:
         adapter.failure("late failure", stderr=True)
 
         assert replacement.getvalue().split() == ["⚠", "late", "stream", "✘", "late", "failure"]
-        assert capsys.readouterr().out == ""
+        captured = _read_fd_capture(capfd)
+        assert captured.out == ""
+        assert captured.err == ""
 
     def test_stderr_is_keyword_only(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
         with pytest.raises(TypeError):
