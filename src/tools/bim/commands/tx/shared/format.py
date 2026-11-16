@@ -8,13 +8,6 @@ from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
-    MarkdownZettelFormatter,
-)
-from buvis.pybase.zettel.infrastructure.persistence.file_parsers.parsers.markdown.markdown import (
-    MarkdownZettelFileParser,
-)
-
 from .paths import to_vault_rel
 
 if TYPE_CHECKING:
@@ -153,6 +146,10 @@ def parse_note(text: str, path: str) -> TxNote:
         ValueError: When the text does not start with a front matter block, or
             the front matter or backmatter cannot be parsed.
     """
+    from buvis.pybase.zettel.infrastructure.persistence.file_parsers.parsers.markdown.markdown import (
+        MarkdownZettelFileParser,
+    )
+
     front = _FRONT_MATTER.match(text)
     if front is None:
         raise ValueError(f"{path}: no front matter block at the start of the note")
@@ -249,4 +246,8 @@ def as_datetime(value: object) -> datetime | None:
 
 def serialize(data: ZettelData) -> str:
     """Return the note text as ``bim format`` writes it."""
+    from buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter.markdown_zettel_formatter import (
+        MarkdownZettelFormatter,
+    )
+
     return MarkdownZettelFormatter.format(data)

@@ -47,11 +47,15 @@ def _out(text: str) -> None:
 
 
 @click.group("tx", help="Tiromex: the concept notes in the tiromex folder")
-@click.pass_context
-def tx(ctx: click.Context) -> None:
-    """Warn once on stderr when maintenance is overdue (``status`` shows it itself)."""
-    if ctx.invoked_subcommand == "status":
-        return
+def tx() -> None:
+    """Group of tiromex commands."""
+
+
+def _warn_if_overdue(ctx: click.Context) -> None:
+    """Warn once on stderr when maintenance is overdue (``status`` shows it itself).
+
+    Runs inside each command callback, so an eager ``--help`` exits before it.
+    """
     from bim.commands.tx.status import staleness
 
     settings = get_settings(ctx, BimSettings)
@@ -74,6 +78,7 @@ def tx_new(ctx: click.Context, title: str, zettel_type: str, concept_type: str |
     from bim.commands.tx.new import CommandTxNew
     from bim.dependencies import get_repo
 
+    _warn_if_overdue(ctx)
     paths = _resolve_paths(get_settings(ctx, BimSettings))
     if paths is None:
         return
@@ -90,6 +95,7 @@ def tx_new(ctx: click.Context, title: str, zettel_type: str, concept_type: str |
 def tx_validate(ctx: click.Context, *, as_json: bool) -> None:
     from bim.commands.tx.validate import CommandTxValidate
 
+    _warn_if_overdue(ctx)
     settings = get_settings(ctx, BimSettings)
     paths = _resolve_paths(settings)
     if paths is None:
@@ -110,6 +116,7 @@ def tx_validate(ctx: click.Context, *, as_json: bool) -> None:
 def tx_export_claims(ctx: click.Context, out: Path | None) -> None:
     from bim.commands.tx.export_claims import CommandTxExportClaims
 
+    _warn_if_overdue(ctx)
     paths = _resolve_paths(get_settings(ctx, BimSettings))
     if paths is None:
         return
