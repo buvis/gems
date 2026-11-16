@@ -240,6 +240,17 @@ class TestParseNote:
         with pytest.raises(ValueError):
             parse_note(text, CONCEPT_PATH)
 
+    @pytest.mark.parametrize(
+        "after_rule",
+        ["prose\n- parent:: [[notes/tiromex/1|A]]\n", "- parent:: [[notes/tiromex/1|A]]\nprose\n"],
+        ids=["prose-then-key", "key-then-prose"],
+    )
+    def test_prose_mixed_with_key_lines_after_a_rule_raises(self, tx_notes: TxNoteBuilder, after_rule: str) -> None:
+        text = tx_notes.run().replace("Processed one source.\n", f"Above the rule.\n\n---\n\n{after_rule}")
+
+        with pytest.raises(ValueError):
+            parse_note(text, CONCEPT_PATH)
+
 
 class TestReadNote:
     @pytest.mark.parametrize(
@@ -263,6 +274,17 @@ class TestReadNote:
         assert note.kind is kind
         assert str(note.data.metadata["id"]) == stem
         assert note.body == parse_note(text, note.path).body
+
+    def test_records_the_vault_relative_path_of_a_file_in_a_subfolder(
+        self, tx_vault: TxVault, tx_notes: TxNoteBuilder
+    ) -> None:
+        stem = "20260411145300"
+        file = tx_notes.write(tx_notes.concept(stem), stem, tx_vault.folder / "sub")
+
+        note = read_note(resolve_tiromex(tx_vault.zettelkasten, "tiromex"), file)
+
+        assert note.path == f"notes/tiromex/sub/{stem}.md"
+        assert note.kind is NoteKind.CONCEPT
 
     def test_surfaces_a_parse_failure(self, tx_vault: TxVault, tx_notes: TxNoteBuilder) -> None:
         file = tx_notes.write("# Title\n\nNo front matter.\n", "20260411145300")
@@ -290,6 +312,11 @@ class TestParseLinks:
             ),
             ("[[notes/tiromex/9]]", [_link("9", "")]),
             ("see [[notes/tiromex/10|Ten]] here", [_link("10", "Ten")]),
+            ("[[zk/tiromex/1|A]]", [WikiLink("zk/tiromex/1", "A")]),
+            (
+                "[[notes/tiromex/2|B]], [[atlas/20260411140000|§ Atlas]]",
+                [_link("2", "B"), WikiLink("atlas/20260411140000", "§ Atlas")],
+            ),
             ("notes/tiromex/11", []),
             ("[notes/tiromex/12|Twelve]", []),
             ("", []),
@@ -420,6 +447,7 @@ class TestSources:
             ("  mirror:a/x.md ,   mirror:b/y.md  ", ["mirror:a/x.md", "mirror:b/y.md"]),
             ("mirror:a/x.md, mirror:b/y.md, mirror:c/z.md", ["mirror:a/x.md", "mirror:b/y.md", "mirror:c/z.md"]),
             ("Smith, J. 2020", ["Smith, J. 2020"]),
+            ("Smith, J. 2020, mirror:a/x.md", ["Smith, J. 2020", "mirror:a/x.md"]),
             ("mirror:a/x.md, mirrors:b/y.md", ["mirror:a/x.md, mirrors:b/y.md"]),
             ("https://example.org/a", ["https://example.org/a"]),
             (["mirror:a/x.md, mirror:b/y.md", "mirror:c/z.md"], ["mirror:a/x.md", "mirror:b/y.md", "mirror:c/z.md"]),
@@ -452,9 +480,9 @@ class TestBodyHelpers:
         assert h1_titles("") == []
 
     def test_body_lines_keeps_non_blank_lines_with_the_h1(self) -> None:
-        body = "\n# T\n\nI write C# and F# code.\n   \n\t\nsecond line\n"
+        body = "\n# T\n\nI write C# and F# code.\n   \n\t\nsecond line\n  - nested item\n    code\n"
 
-        assert body_lines(body) == ["# T", "I write C# and F# code.", "second line"]
+        assert body_lines(body) == ["# T", "I write C# and F# code.", "second line", "  - nested item", "    code"]
         assert body_lines("\n\n  \n") == []
         assert body_lines("") == []
 
@@ -509,6 +537,23 @@ class TestAsDatetime:
             assert result.utcoffset() == offset, value
             assert result.replace(tzinfo=None) == wall_clock, value
 
+    def test_naive_values_get_the_offset_in_force_on_their_own_date(self, local_tz: Callable[[str], None]) -> None:
+        local_tz("CET-1CEST,M3.5.0,M10.5.0/3")
+        winter, summer = timedelta(hours=1), timedelta(hours=2)
+        cases = [
+            (date(2026, 1, 15), winter),
+            (date(2026, 7, 15), summer),
+            (datetime(2026, 1, 15, 12, 0), winter),
+            (datetime(2026, 7, 15, 12, 0), summer),
+            ("2026-01-15", winter),
+            ("2026-07-15T12:00:00", summer),
+        ]
+
+        for value, offset in cases:
+            result = as_datetime(value)
+            assert result is not None, value
+            assert result.utcoffset() == offset, value
+
     @pytest.mark.parametrize(
         ("value", "expected"),
         [
@@ -547,7 +592,12 @@ def _concept_with_relations(tx_notes: TxNoteBuilder) -> str:
         backmatter=[
             "- supports:: [[notes/tiromex/20260411145400|Belief, justified]], [[notes/tiromex/20260411145500|Truth]]",
             "- requires:: [[notes/tiromex/20260411145600|Evidence]]",
+            "- see-also:: [[notes/tiromex/20260411145700|Related]]",
         ]
+    )
+    text = text.replace(
+        "The claim holds for ordinary cases.\n",
+        "The claim holds for ordinary cases.\n\n  - nested item\n    code\n",
     )
     return text.replace("lifecycle: fleeting\n", "lifecycle: fleeting\nlens: epistemic\nx-weight: 3\n")
 
@@ -577,6 +627,7 @@ class TestSerialize:
         assert len(h1_titles(note.body)) == 1
         assert body_lines(again.body) == body_lines(note.body)
         assert len(body_lines(note.body)) >= 2
+        assert again.body == note.body
 
     def test_concept_round_trip_keeps_unknown_keys_and_relations(self, tx_notes: TxNoteBuilder) -> None:
         note = parse_note(_concept_with_relations(tx_notes), CONCEPT_PATH)
@@ -585,6 +636,9 @@ class TestSerialize:
 
         assert again.data.metadata["lens"] == "epistemic"
         assert again.data.metadata["x-weight"] == 3
+        assert again.data.reference["see-also"] == "[[notes/tiromex/20260411145700|Related]]"
+        assert "  - nested item" in body_lines(again.body)
+        assert "    code" in body_lines(again.body)
         assert relations(again.data) == [
             ("supports", _link("20260411145400", "Belief, justified")),
             ("supports", _link("20260411145500", "Truth")),
@@ -627,3 +681,14 @@ class TestSerialize:
             "x-extra",
         ]
         assert "\n- supports:: [[notes/tiromex/1|A]], [[notes/tiromex/2|B]]\n" in text
+
+    def test_writes_every_section_in_order(self) -> None:
+        data = ZettelData(
+            metadata={"id": 20260411150000, "title": "T", "type": "tx-run"},
+            sections=[("# T", "\nFirst body.\n"), ("## Second", "\nSecond body.\n")],
+        )
+
+        text = serialize(data)
+
+        assert text.index("# T\n") < text.index("First body.") < text.index("## Second\n") < text.index("Second body.")
+        assert body_lines(parse_note(text, CONCEPT_PATH).body) == ["# T", "First body.", "## Second", "Second body."]
