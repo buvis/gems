@@ -9,9 +9,12 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import click
 import pytest
 import tomllib
 from bim.cli import SKILL_PATH, cli
@@ -484,6 +487,57 @@ class TestStalenessIntegration:
         assert result.exit_code == 0
         assert "Knowledge is justified belief" in result.output
         assert "maintenance" not in result.output
+
+    @pytest.mark.parametrize("state", ["never", "unparseable", "stale"])
+    @pytest.mark.parametrize(
+        ("command", "option"), [("new", "--title"), ("validate", "--json"), ("export-claims", "--out")]
+    )
+    def test_integration_help_prints_usage_and_no_staleness_warning(
+        self, tx_vault: TxVault, state: str, command: str, option: str
+    ) -> None:
+        _set_state(tx_vault, state)
+
+        result = _invoke("tx", command, "--help")
+
+        assert result.exit_code == 0
+        assert "Usage:" in result.stdout
+        assert option in result.stdout
+        assert "maintenance" not in result.stdout
+        assert "maintenance" not in result.stderr
+
+
+class TestTxImportWeightIntegration:
+    def test_integration_importing_tx_cli_loads_no_zettel_infrastructure_module(self) -> None:
+        code = (
+            "import sys, bim.tx_cli; print('\\n'.join(sorted(n for n in sys.modules if 'zettel.infrastructure' in n)))"
+        )
+
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == ""
+
+    def test_integration_the_zettel_infrastructure_probe_detects_a_heavy_import(self) -> None:
+        code = (
+            "import sys, buvis.pybase.zettel.infrastructure.formatting.markdown_zettel_formatter; "
+            "print(any('zettel.infrastructure' in n for n in sys.modules))"
+        )
+
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+
+        assert result.stdout.strip() == "True"
+
+
+class TestTxNewTypeChoicesIntegration:
+    def test_integration_new_type_option_offers_exactly_the_note_types_and_never_wiki_article(self) -> None:
+        tx_group = cli.commands["tx"]
+        assert isinstance(tx_group, click.Group)
+        new = tx_group.commands["new"]
+        type_option = next(param for param in new.params if "--type" in param.opts)
+
+        assert isinstance(type_option.type, click.Choice)
+        assert list(type_option.type.choices) == ZETTEL_TYPES
+        assert "wiki-article" not in type_option.type.choices
 
 
 class TestTiromexPathsErrorIntegration:
