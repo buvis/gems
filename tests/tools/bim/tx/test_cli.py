@@ -208,14 +208,23 @@ class TestTxNewIntegration:
         assert _md_files(tx_vault.folder) == []
 
     @pytest.mark.parametrize(
-        "args", [["--type", "bogus"], ["--type", "wiki-article"], ["--concept-type", "theses"], []]
+        ("args", "diagnostic"),
+        [
+            (["--type", "bogus"], "Invalid value for '--type'"),
+            (["--type", "wiki-article"], "Invalid value for '--type'"),
+            (["--concept-type", "theses"], "Invalid value for '--concept-type'"),
+            ([], "Missing option '--title'"),
+        ],
     )
-    def test_integration_new_rejects_bad_choices_and_missing_title(self, tx_vault: TxVault, args: list[str]) -> None:
+    def test_integration_new_rejects_bad_choices_and_missing_title(
+        self, tx_vault: TxVault, args: list[str], diagnostic: str
+    ) -> None:
         title = [] if not args else ["--title", "Never written"]
 
         result = _invoke("tx", "new", *title, *args)
 
         assert result.exit_code == 2
+        assert _flat(diagnostic) in _flat(result.output)
         assert _md_files(tx_vault.folder) == []
 
 
