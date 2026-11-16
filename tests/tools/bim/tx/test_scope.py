@@ -16,7 +16,6 @@ from bim.commands.tx.shared.paths import (
     to_vault_rel,
     tx_state_dir,
 )
-from bim.commands.tx.shared.validator import validate_tiromex
 from bim.dependencies import get_tiromex_paths
 from bim.settings import BimSettings
 
@@ -424,6 +423,8 @@ class TestGetTiromexPaths:
 
 class TestPlainNoteValidation:
     def test_plain_note_validates_with_base_fields_only(self, paths: TiromexPaths, tx_notes: TxNoteBuilder) -> None:
+        from bim.commands.tx.shared.validator import validate_tiromex
+
         loose = (
             "---\nid: 20260411160000\ntitle: Errands\ndate: 2026-01-01T00:00:00+00:00\ntype: note\n"
             'publish: true\ntags: [person, "topic:x"]\n---\n\nNo heading.\n# One\n# Two\n'

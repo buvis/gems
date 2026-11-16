@@ -39,6 +39,7 @@ def _link(stem: str, title: str = "Linked") -> str:
 def _found(paths: TiromexPaths, **kwargs: int) -> list[tuple[str, str]]:
     diagnostics = validate_tiromex(paths, **kwargs)
     assert all(isinstance(d, Diagnostic) for d in diagnostics)
+    assert all(isinstance(d.message, str) and d.message.strip() for d in diagnostics)
     return [(d.path, d.rule) for d in diagnostics]
 
 
@@ -205,6 +206,16 @@ class TestDangling:
     @pytest.mark.parametrize("relation", ["supports", "requires", "analogous-to", "narrower-than"])
     def test_dangling_link(self, paths: TiromexPaths, tx_notes: TxNoteBuilder, relation: str) -> None:
         _concept(tx_notes, A_ID, f"- {relation}:: {_link(B_ID)}")
+
+        assert _found(paths) == [(_rel(A_ID), "dangling-link")]
+
+    @pytest.mark.usefixtures("index")
+    @pytest.mark.parametrize("relation", ["supports", "requires"])
+    def test_missing_link_after_an_existing_one_dangles(
+        self, paths: TiromexPaths, tx_notes: TxNoteBuilder, relation: str
+    ) -> None:
+        _concept(tx_notes, B_ID)
+        _concept(tx_notes, A_ID, f"- {relation}:: {_link(B_ID, 'x')}, {_link(C_ID, 'y')}")
 
         assert _found(paths) == [(_rel(A_ID), "dangling-link")]
 

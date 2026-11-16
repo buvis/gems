@@ -56,6 +56,7 @@ def _note(tx_notes: TxNoteBuilder, kind: str) -> str:
 def _rules(text: str, stem: str = CONCEPT_ID, **kwargs: int) -> list[str]:
     diagnostics = validate_note(parse_note(text, _path(stem)), **kwargs)
     assert all(isinstance(d, Diagnostic) for d in diagnostics)
+    assert all(isinstance(d.message, str) and d.message.strip() for d in diagnostics)
     assert {d.path for d in diagnostics} <= {_path(stem)}
     return [d.rule for d in diagnostics]
 
@@ -127,6 +128,19 @@ class TestRequiredField:
 
         assert _rules(text, PLAIN_ID) == ["required-field"]
 
+    def test_message_names_the_missing_field(self, tx_notes: TxNoteBuilder) -> None:
+        messages: dict[str, str] = {}
+        for field in ("id", "title", "date", "type"):
+            text, count = re.subn(rf"^{field}: .*\n", "", tx_notes.plain(), count=1, flags=re.MULTILINE)
+            assert count == 1
+            diagnostics = validate_note(parse_note(text, _path(PLAIN_ID)))
+            assert [d.rule for d in diagnostics] == ["required-field"]
+            messages[field] = diagnostics[0].message
+
+        for field, message in messages.items():
+            assert re.search(rf"\b{field}\b", message), (field, message)
+        assert len(set(messages.values())) == len(messages)
+
     @pytest.mark.parametrize("kind", TIROMEX_KINDS)
     def test_missing_date_on_every_kind(self, tx_notes: TxNoteBuilder, kind: str) -> None:
         text, count = re.subn(r"^date: .*\n", "", _note(tx_notes, kind), count=1, flags=re.MULTILINE)
@@ -143,7 +157,9 @@ class TestPublishAndTags:
         assert _rules(text, STEMS[kind]) == expected
 
     @pytest.mark.parametrize("kind", TIROMEX_KINDS)
-    @pytest.mark.parametrize("tags", ['["topic:knowledge"]', '[knowledge, "area:epistemology"]'])
+    @pytest.mark.parametrize(
+        "tags", ['["topic:knowledge"]', '[knowledge, "area:epistemology"]', '["status:draft"]', '["x:y", knowledge]']
+    )
     def test_legacy_colon_tag(self, tx_notes: TxNoteBuilder, kind: str, tags: str) -> None:
         text = _swap(_note(tx_notes, kind), "tags: []", f"tags: {tags}")
 
@@ -240,7 +256,7 @@ class TestEmptyBody:
 
 class TestIdFormat:
     @pytest.mark.parametrize("kind", TIROMEX_KINDS)
-    @pytest.mark.parametrize("bad_id", ["2026041114530", "202604111453000", "2026041114530a"])
+    @pytest.mark.parametrize("bad_id", ["2026041114530", "202604111453000", "2026041114530a", "2026a411145300"])
     def test_zettel_id_format_without_created_mismatch(self, tx_notes: TxNoteBuilder, kind: str, bad_id: str) -> None:
         stem = STEMS[kind]
         text = _swap(_note(tx_notes, kind), f"id: {stem}", f"id: {bad_id}")
@@ -271,7 +287,10 @@ def _with_date(text: str, value: str) -> str:
 
 class TestIdCreated:
     @pytest.mark.parametrize("kind", TIROMEX_KINDS)
-    @pytest.mark.parametrize("new_date", ["2026-04-11T14:54:00+02:00", "2026-04-12T14:53:00+02:00", "2026-04-11"])
+    @pytest.mark.parametrize(
+        "new_date",
+        ["2026-04-11T14:54:00+02:00", "2026-04-12T14:53:00+02:00", "2026-04-11", "2026-04-11T14:53:07+02:00"],
+    )
     def test_id_created_mismatch(self, tx_notes: TxNoteBuilder, kind: str, new_date: str) -> None:
         text = _with_date(_note(tx_notes, kind), new_date)
 
@@ -390,8 +409,9 @@ class TestClaims:
         assert _rules(text) == []
 
     @pytest.mark.parametrize("concept_type", ["thesis", "question"])
-    def test_claims_count_more_than_three(self, tx_notes: TxNoteBuilder, concept_type: str) -> None:
-        rows = [(f"c{n}", f"Claim {n}") for n in range(1, 5)]
+    @pytest.mark.parametrize("count", [4, 5, 7])
+    def test_claims_count_more_than_three(self, tx_notes: TxNoteBuilder, concept_type: str, count: int) -> None:
+        rows = [(f"c{n}", f"Claim {n}") for n in range(1, count + 1)]
 
         assert _rules(tx_notes.concept(concept_type=concept_type, claims=rows)) == ["claims-count"]
 
@@ -575,7 +595,12 @@ class TestStructure:
     @pytest.mark.parametrize("kind", ["concept", "index"])
     @pytest.mark.parametrize(
         ("reviewed", "updated"),
-        [("2026-04-01T10:00:00+02:00", "2026-04-02T10:00:00+02:00"), ("2026-04-01", "2026-04-01T10:00:00+02:00")],
+        [
+            ("2026-04-01T10:00:00+02:00", "2026-04-02T10:00:00+02:00"),
+            ("2026-04-01", "2026-04-01T10:00:00+02:00"),
+            # reviewed is 2026-04-01T23:00Z, updated is 2026-04-02T01:00Z: older instant, later string
+            ("2026-04-02T01:00:00+02:00", "2026-04-01T20:00:00-05:00"),
+        ],
     )
     def test_stale_review(self, tx_notes: TxNoteBuilder, kind: str, reviewed: str, updated: str) -> None:
         text = _with_front(_note(tx_notes, kind), f"reviewed: {reviewed}\nupdated: {updated}\n")
@@ -589,6 +614,8 @@ class TestStructure:
             "reviewed: 2026-04-01T10:00:00+02:00\nupdated: 2026-04-01T10:00:00+02:00\n",
             "reviewed: 2026-04-01T10:00:00+02:00\n",
             "reviewed: soon\nupdated: 2026-04-02T10:00:00+02:00\n",
+            # reviewed is 2026-04-02T01:00Z, updated is 2026-04-01T23:00Z: later instant, earlier string
+            "reviewed: 2026-04-01T20:00:00-05:00\nupdated: 2026-04-02T01:00:00+02:00\n",
         ],
     )
     def test_fresh_or_unreadable_review_passes(self, tx_notes: TxNoteBuilder, extra: str) -> None:
