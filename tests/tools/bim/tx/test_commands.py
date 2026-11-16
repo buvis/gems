@@ -24,6 +24,11 @@ INDEX_ID = "20260411140000"
 A_ID = "20260411145300"
 B_ID = "20260412090000"
 C_ID = "20260413100000"
+D_ID = "20260414110000"
+LONG_STATEMENT = (
+    "Poznání vyžaduje důvody: knowledge needs reasons that the knower can state, "
+    "check against the world and defend when another person asks for them"
+)
 TITLES = {
     A_ID: "Knowledge is justified belief",
     B_ID: "Belief needs grounds",
@@ -96,8 +101,8 @@ def paths(tx_vault: TxVault) -> TiromexPaths:
 
 
 @pytest.fixture
-def two_concepts(tx_notes: TxNoteBuilder) -> list[dict[str, str]]:
-    """Write an index and two concept notes (one rejected); return their claim rows."""
+def concept_rows(tx_notes: TxNoteBuilder) -> list[dict[str, str]]:
+    """Write an index and four concept notes (one rejected, one in a subfolder); return their claim rows."""
     tx_notes.write(tx_notes.index(), INDEX_ID)
     _concept(tx_notes, A_ID, _claims(("c1", "Belief is not enough")))
     _concept(
@@ -107,10 +112,14 @@ def two_concepts(tx_notes: TxNoteBuilder) -> list[dict[str, str]]:
         assent="rejected",
         lifecycle="evergreen",
     )
+    _concept(tx_notes, C_ID, _claims(("c1", LONG_STATEMENT)))
+    _concept(tx_notes, D_ID, _claims(("s1", "Nested notes count")), folder=tx_notes.vault.folder / "sub")
     return [
         _row(A_ID, "c1", "Belief is not enough"),
         _row(B_ID, "c2", "Grounds come first", "rejected", "evergreen"),
         _row(B_ID, "c1", "Grounds are reasons", "rejected", "evergreen"),
+        _row(C_ID, "c1", LONG_STATEMENT),
+        _row(f"sub/{D_ID}", "s1", "Nested notes count"),
     ]
 
 
@@ -119,12 +128,12 @@ class TestCollectClaims:
         assert collect_claims([]) == []
 
     def test_rows_in_note_path_order_then_claim_order(
-        self, paths: TiromexPaths, two_concepts: list[dict[str, str]]
+        self, paths: TiromexPaths, concept_rows: list[dict[str, str]]
     ) -> None:
         rows = collect_claims(list(reversed(_notes(paths))))
 
-        assert rows == two_concepts
-        assert [list(row) for row in rows] == [ROW_KEYS] * 3
+        assert rows == concept_rows
+        assert [list(row) for row in rows] == [ROW_KEYS] * 5
 
     def test_missing_assent_and_lifecycle_take_defaults(self, paths: TiromexPaths, tx_notes: TxNoteBuilder) -> None:
         _concept(tx_notes, A_ID, _claims(("c1", "No fields")), assent=None, lifecycle=None)
@@ -143,6 +152,12 @@ class TestCollectClaims:
             + '  - "a loose string"\n'
             + "  - id: c3\n"
             + '  - statement: "No id"\n'
+            + "  - id: c6\n    statement:\n"
+            + "  - id: c7\n    statement: null\n"
+            + '  - id: c8\n    statement: ""\n'
+            + '  - id:\n    statement: "Empty id"\n'
+            + '  - id: null\n    statement: "Null id"\n'
+            + '  - id: ""\n    statement: "Blank id"\n'
             + '  - id: c5\n    statement: "Kept last"\n'
         )
         _concept(tx_notes, A_ID, mixed)
@@ -181,20 +196,39 @@ class TestValidateJson:
         self, paths: TiromexPaths, tx_notes: TxNoteBuilder
     ) -> None:
         tx_notes.write(tx_notes.concept(), A_ID)
-        tx_notes.write(NO_FRONT_MATTER, "broken")
+        for n in range(11):
+            tx_notes.write(NO_FRONT_MATTER, f"broken-{n:02d}")
         found = validate_tiromex(paths)
         errors = [{"path": d.path, "rule": d.rule, "message": d.message, "line": d.line} for d in found]
 
         result = CommandTxValidate(paths, as_json=True).execute()
 
+        assert len(found) > 11
         assert {d.rule for d in found} >= {"dangling-moc", "parse-error"}
         assert result.success is False
         assert result.output == json.dumps(
             {"clean": False, "error_count": len(found), "errors": errors}, indent=2, sort_keys=True
         )
         payload = json.loads(result.output)
+        assert len(payload["errors"]) == payload["error_count"] == len(found)
         assert all(set(error) == {"path", "rule", "message", "line"} for error in payload["errors"])
         assert result.metadata == {"error_count": len(found)}
+
+    @pytest.mark.parametrize(("body_lines", "expected"), [(60, 0), (61, 1)])
+    def test_default_body_limit_is_sixty_lines(
+        self, paths: TiromexPaths, tx_notes: TxNoteBuilder, body_lines: int, expected: int
+    ) -> None:
+        filler = "".join(f"Line {n} of the body.\n" for n in range(1, body_lines))
+        tx_notes.write(tx_notes.index(), INDEX_ID)
+        tx_notes.write(tx_notes.concept().replace("The claim holds for ordinary cases.\n", filler, 1), A_ID)
+
+        def rules(**limit: int) -> list[str]:
+            output = CommandTxValidate(paths, as_json=True, **limit).execute().output
+            return [error["rule"] for error in json.loads(output)["errors"]]
+
+        assert rules(max_body_lines=body_lines) == []
+        assert rules(max_body_lines=body_lines - 1) == ["oversized-body"]
+        assert rules() == ["oversized-body"] * expected
 
     @pytest.mark.parametrize(("max_body_lines", "expected"), [(1, 2), (2, 1), (60, 0)])
     def test_max_body_lines_reaches_the_validator(
@@ -248,7 +282,7 @@ class TestValidateText:
 class TestExportClaimsPayload:
     @pytest.mark.parametrize("now", [NOW_A, NOW_B])
     def test_exact_payload_and_row_keys(
-        self, paths: TiromexPaths, two_concepts: list[dict[str, str]], now: datetime
+        self, paths: TiromexPaths, concept_rows: list[dict[str, str]], now: datetime
     ) -> None:
         result = CommandTxExportClaims(paths, now=now).execute()
 
@@ -257,10 +291,10 @@ class TestExportClaimsPayload:
         assert list(payload) == PAYLOAD_KEYS
         assert payload["schema_version"] == 1
         assert payload["generated"] == now.isoformat()
-        assert payload["claims"] == two_concepts
-        assert [list(row) for row in payload["claims"]] == [ROW_KEYS] * 3
+        assert payload["claims"] == concept_rows
+        assert [list(row) for row in payload["claims"]] == [ROW_KEYS] * 5
         assert result.output == json.dumps(payload, indent=2)
-        assert result.metadata == {"claim_count": 3}
+        assert result.metadata == {"claim_count": 5}
         assert result.warnings == []
 
     def test_generated_defaults_to_local_now(self, paths: TiromexPaths) -> None:
@@ -296,7 +330,7 @@ class TestExportClaimsPayload:
             assert absent not in result.output
 
     def test_unparseable_notes_become_warnings_not_payload_keys(
-        self, paths: TiromexPaths, two_concepts: list[dict[str, str]], tx_notes: TxNoteBuilder
+        self, paths: TiromexPaths, concept_rows: list[dict[str, str]], tx_notes: TxNoteBuilder
     ) -> None:
         tx_notes.write(NO_FRONT_MATTER, "broken")
         tx_notes.write(NO_FRONT_MATTER, "zz-broken")
@@ -306,12 +340,14 @@ class TestExportClaimsPayload:
         payload = json.loads(result.output)
         assert result.success is True
         assert list(payload) == PAYLOAD_KEYS
-        assert payload["claims"] == two_concepts
-        assert result.metadata == {"claim_count": 3}
+        assert payload["claims"] == concept_rows
+        assert result.metadata == {"claim_count": 5}
         assert len(result.warnings) == 2
         assert all(warning.startswith("skipped unparseable note ") for warning in result.warnings)
         for stem in ("broken", "zz-broken"):
-            assert sum(f"notes/tiromex/{stem}.md: " in warning for warning in result.warnings) == 1
+            marker = f"notes/tiromex/{stem}.md: "
+            [warning] = [warning for warning in result.warnings if marker in warning]
+            assert warning.split(marker, 1)[1].strip()
         assert "skipped" not in result.output
 
 
@@ -329,18 +365,19 @@ REFUSED_IDS = ["root", "under-root", "in-folder", "new-dirs", "dotdot", "alias-r
 
 class TestExportClaimsOut:
     def test_writes_the_payload_outside_the_vault(
-        self, paths: TiromexPaths, two_concepts: list[dict[str, str]], tx_vault: TxVault
+        self, paths: TiromexPaths, concept_rows: list[dict[str, str]], tx_vault: TxVault
     ) -> None:
         out = tx_vault.root.parent / "exports" / "2026" / "claims.json"
+        out.parent.mkdir(parents=True)
+        out.write_text('{"stale": "junk"}\n', encoding="utf-8")
+        expected = {"schema_version": 1, "generated": NOW_A.isoformat(), "claims": concept_rows}
 
         result = CommandTxExportClaims(paths, out=out, now=NOW_A).execute()
 
         assert result.success is True
-        assert result.output == f"wrote 3 claim(s) to {out}"
-        assert result.metadata == {"claim_count": 3}
-        text = out.read_text(encoding="utf-8")
-        assert text == CommandTxExportClaims(paths, now=NOW_A).execute().output + "\n"
-        assert json.loads(text)["claims"] == two_concepts
+        assert result.output == f"wrote 5 claim(s) to {out}"
+        assert result.metadata == {"claim_count": 5}
+        assert out.read_text(encoding="utf-8") == json.dumps(expected, indent=2) + "\n"
 
     @pytest.mark.parametrize("make_out", REFUSED_OUTS, ids=REFUSED_IDS)
     def test_refuses_a_destination_under_the_vault_root(
