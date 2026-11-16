@@ -19,7 +19,7 @@ Fold the approved claim model into ordinary bim notes without giving tx access t
 The vault owner and unattended agents using bim; tests use scratch vaults, isolated HOME and XDG_STATE_HOME, never the private vault.
 
 ### Success Metrics
-`uv run pytest tests/tools/bim/tx/test_format.py tests/tools/bim/tx/test_scope.py tests/tools/bim/tx/test_commands.py tests/tools/bim/tx/test_settings.py tests/tools/bim/test_format_note.py` passes, including a full format round trip and unchanged outside-vault sentinels.
+`uv run pytest tests/tools/bim/tx/test_format.py tests/tools/bim/tx/test_validator.py tests/tools/bim/tx/test_validator_graph.py tests/tools/bim/tx/test_scope.py tests/tools/bim/tx/test_commands.py tests/tools/bim/tx/test_new_status.py tests/tools/bim/tx/test_cli.py tests/tools/bim/tx/test_settings.py tests/tools/bim/test_format_note.py` passes, including a full format round trip and unchanged outside-vault sentinels.
 
 ## Functional Decomposition
 
@@ -99,7 +99,7 @@ New symbols: `tests/tools/bim/tx/conftest.py`, `tests/tools/bim/tx/test_format.p
 
 **Tasks**:
 - [ ] Add settings, confined path resolution and note-kind dispatch (no deps). Acceptance: `uv run pytest tests/tools/bim/tx/test_settings.py tests/tools/bim/tx/test_scope.py` rejects escapes and proves plain/outside notes excluded.
-- [ ] Port folded format and mechanical validator using bim APIs (depends on: settings and paths). Acceptance: `uv run pytest tests/tools/bim/tx/test_format.py tests/tools/bim/test_format_note.py` covers converted valid/invalid rule fixtures, unknown keys, relations and tx-run round trip.
+- [ ] Port folded format and mechanical validator using bim APIs (depends on: settings and paths). Acceptance: `uv run pytest tests/tools/bim/tx/test_format.py tests/tools/bim/tx/test_validator.py tests/tools/bim/tx/test_validator_graph.py tests/tools/bim/test_format_note.py` covers converted valid/invalid rule fixtures, unknown keys, relations and tx-run round trip.
 
 **Exit Criteria**: Format/scope tests pass; no source package imports in the new implementation.
 
@@ -107,7 +107,7 @@ New symbols: `tests/tools/bim/tx/conftest.py`, `tests/tools/bim/tx/test_format.p
 **Goal**: Deliver usable commands.
 
 **Tasks**:
-- [ ] Add new, validate, export-claims and status command classes (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/tx/test_commands.py` checks creation, collisions, JSON decoding, exact export keys, rejected claims, outside-root --out refusal and one staleness line.
+- [ ] Add new, validate, export-claims and status command classes (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/tx/test_commands.py tests/tools/bim/tx/test_new_status.py` checks creation, collisions, JSON decoding, exact export keys, rejected claims, outside-root --out refusal and one staleness line.
 
 **Exit Criteria**: All four commands return CommandResult and confine their note reads/writes.
 
@@ -115,7 +115,7 @@ New symbols: `tests/tools/bim/tx/conftest.py`, `tests/tools/bim/tx/test_format.p
 **Goal**: Integrate and document the contract.
 
 **Tasks**:
-- [ ] Wire lazy CLI and composition, update manifest, skill, format spec, bim docs and changelog (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/bim/tx/test_commands.py -k integration` asserts CLI help, fixture query/show visibility, shipped skill exception and unchanged approval rule outside tiromex.
+- [ ] Wire lazy CLI and composition, update manifest, skill, format spec, bim docs and changelog (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/bim/tx/test_cli.py -k integration` asserts CLI help, fixture query/show visibility, shipped skill exception and unchanged approval rule outside tiromex.
 
 **Exit Criteria**: `uv run pytest` and `uv run mypy src/lib/ src/tools/` pass once at closeout.
 

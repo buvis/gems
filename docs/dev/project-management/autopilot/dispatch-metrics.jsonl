@@ -937,3 +937,86 @@
 {"id":"653411a0","ended_at":1794229942,"elapsed_s":342,"outcome":"ok","detail":null}
 {"id":"6b831412","ended_at":1794230169,"elapsed_s":577,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"resume","at":1794815444,"phase":"build","prd":"00150-bim-tiromex-format-v1.md"}
+{"id":"631b1722","kind":"tess","task":"1","queued_at":1794829996,"prompt_bytes":16423}
+{"id":"631b1722","ended_at":1794830374,"elapsed_s":378,"outcome":"ok","detail":null}
+{"id":"b0ef6b7c","kind":"devon","task":"1","queued_at":1794830418,"prompt_bytes":30521}
+{"id":"b0ef6b7c","ended_at":1794830574,"elapsed_s":156,"outcome":"ok","detail":null}
+{"id":"dedf8099","kind":"tess","task":"1","queued_at":1794830592,"prompt_bytes":15227}
+{"id":"dedf8099","ended_at":1794830691,"elapsed_s":99,"outcome":"ok","detail":null}
+{"id":"4514b4a7","kind":"ivan","task":"1","queued_at":1794830699,"prompt_bytes":39108}
+{"id":"4514b4a7","ended_at":1794830795,"elapsed_s":96,"outcome":"ok","detail":null}
+{"id":"a4717487","kind":"deslop","task":"1","queued_at":1794830827,"prompt_bytes":14737}
+{"id":"a4717487","ended_at":1794830868,"elapsed_s":41,"outcome":"ok","detail":null}
+{"id":"230a4196","kind":"pat","task":"1","queued_at":1794830890,"prompt_bytes":48502}
+{"id":"230a4196","ended_at":1794830929,"elapsed_s":39,"outcome":"ok","detail":"sonnet-run.sh auth failed; ran as native autopilot:pat subagent"}
+{"id":"300be1d4","kind":"tess","task":"2","queued_at":1794830955,"prompt_bytes":29091}
+{"id":"300be1d4","ended_at":1794831356,"elapsed_s":401,"outcome":"ok","detail":null}
+{"id":"fdbff234","kind":"devon","task":"2","queued_at":1794831369,"prompt_bytes":37661}
+{"id":"fdbff234","ended_at":1794831556,"elapsed_s":187,"outcome":"ok","detail":null}
+{"id":"c79503f9","kind":"tess","task":"2","queued_at":1794831559,"prompt_bytes":17396}
+{"id":"c79503f9","ended_at":1794831662,"elapsed_s":103,"outcome":"ok","detail":null}
+{"id":"ba612ea1","kind":"ivan","task":"2","queued_at":1794831675,"prompt_bytes":40531}
+{"id":"ba612ea1","ended_at":1794831831,"elapsed_s":156,"outcome":"ok","detail":null}
+{"id":"beb83e70","kind":"pat","task":"2","queued_at":1794831849,"prompt_bytes":50573}
+{"id":"beb83e70","ended_at":1794831876,"elapsed_s":27,"outcome":"ok","detail":"native autopilot:pat subagent (sonnet-run.sh auth unavailable)"}
+{"id":"a52af4b0","kind":"tess","task":"3","queued_at":1794831938,"prompt_bytes":37087}
+{"id":"a52af4b0","ended_at":1794832635,"elapsed_s":697,"outcome":"ok","detail":null}
+{"id":"f089cb9f","kind":"devon","task":"3","queued_at":1794832652,"prompt_bytes":47168}
+{"id":"f089cb9f","ended_at":1794832907,"elapsed_s":255,"outcome":"ok","detail":null}
+{"id":"6e9e11c4","kind":"tess","task":"3","queued_at":1794832909,"prompt_bytes":16944}
+{"id":"6e9e11c4","ended_at":1794833003,"elapsed_s":94,"outcome":"ok","detail":null}
+{"id":"dc170032","kind":"ivan","task":"3","queued_at":1794833022,"prompt_bytes":14834}
+{"id":"dc170032","ended_at":1794833292,"elapsed_s":270,"outcome":"ok","detail":null}
+{"id":"fe638130","kind":"pat","task":"3","queued_at":1794833309,"prompt_bytes":31127}
+{"id":"fe638130","ended_at":1794833335,"elapsed_s":26,"outcome":"ok","detail":"native autopilot:pat subagent; diff limited to src/"}
+{"id":"dd5bdb78","kind":"tess","task":"4","queued_at":1794833362,"prompt_bytes":28430}
+{"id":"dd5bdb78","ended_at":1794833441,"elapsed_s":79,"outcome":"ok","detail":null}
+{"id":"a0e1bd46","kind":"devon","task":"4","queued_at":1794833462,"prompt_bytes":37967}
+{"id":"a0e1bd46","ended_at":1794833584,"elapsed_s":122,"outcome":"ok","detail":null}
+{"id":"65d913ad","kind":"tess","task":"4","queued_at":1794833587,"prompt_bytes":9552}
+{"id":"65d913ad","ended_at":1794833705,"elapsed_s":118,"outcome":"ok","detail":null}
+{"id":"56781703","kind":"ivan","task":"4","queued_at":1794833718,"prompt_bytes":27538}
+{"id":"56781703","ended_at":1794833746,"elapsed_s":28,"outcome":"ok","detail":null}
+{"id":"e23d60e2","kind":"pat","task":"4","queued_at":1794833763,"prompt_bytes":16069}
+{"id":"e23d60e2","ended_at":1794833781,"elapsed_s":18,"outcome":"ok","detail":"native autopilot:pat subagent"}
+{"id":"789eb583","kind":"tess","task":"5","queued_at":1794833804,"prompt_bytes":25181}
+{"id":"789eb583","ended_at":1794834118,"elapsed_s":314,"outcome":"ok","detail":null}
+{"id":"48988af2","kind":"devon","task":"5","queued_at":1794834133,"prompt_bytes":31441}
+{"id":"48988af2","ended_at":1794834268,"elapsed_s":135,"outcome":"ok","detail":null}
+{"id":"5eab5e96","kind":"tess","task":"5","queued_at":1794834271,"prompt_bytes":12683}
+{"id":"5eab5e96","ended_at":1794834424,"elapsed_s":153,"outcome":"ok","detail":null}
+{"id":"91047d3e","kind":"ivan","task":"5","queued_at":1794834431,"prompt_bytes":29240}
+{"id":"91047d3e","ended_at":1794834517,"elapsed_s":86,"outcome":"ok","detail":null}
+{"id":"e308a6d2","kind":"deslop","task":"5","queued_at":1794834531,"prompt_bytes":13223}
+{"id":"e308a6d2","ended_at":1794834556,"elapsed_s":25,"outcome":"ok","detail":null}
+{"id":"17e12460","kind":"pat","task":"5","queued_at":1794834565,"prompt_bytes":38053}
+{"id":"17e12460","ended_at":1794834579,"elapsed_s":14,"outcome":"ok","detail":"native autopilot:pat subagent"}
+{"id":"1f3e8857","kind":"tess","task":"6","queued_at":1794834602,"prompt_bytes":28281}
+{"id":"1f3e8857","ended_at":1794835004,"elapsed_s":402,"outcome":"ok","detail":null}
+{"id":"34cbd807","kind":"devon","task":"6","queued_at":1794835020,"prompt_bytes":36627}
+{"id":"34cbd807","ended_at":1794835193,"elapsed_s":173,"outcome":"ok","detail":null}
+{"id":"6a6bd94d","kind":"tess","task":"6","queued_at":1794835195,"prompt_bytes":16617}
+{"id":"6a6bd94d","ended_at":1794835336,"elapsed_s":141,"outcome":"ok","detail":null}
+{"id":"014e5ebc","kind":"ivan","task":"6","queued_at":1794835343,"prompt_bytes":39172}
+{"id":"014e5ebc","ended_at":1794835532,"elapsed_s":189,"outcome":"ok","detail":null}
+{"id":"06d671a4","kind":"deslop","task":"6","queued_at":1794835543,"prompt_bytes":16356}
+{"id":"06d671a4","ended_at":1794835565,"elapsed_s":22,"outcome":"ok","detail":null}
+{"id":"65b84098","kind":"pat","task":"6","queued_at":1794835574,"prompt_bytes":24783}
+{"id":"65b84098","ended_at":1794835597,"elapsed_s":23,"outcome":"ok","detail":"native autopilot:pat subagent; diff limited to src/"}
+{"id":"61a20189","kind":"tess","task":"7","queued_at":1794835623,"prompt_bytes":30051}
+{"id":"61a20189","ended_at":1794836117,"elapsed_s":494,"outcome":"ok","detail":null}
+{"id":"6df2d3c5","kind":"devon","task":"7","queued_at":1794836131,"prompt_bytes":28228}
+{"id":"6df2d3c5","ended_at":1794836318,"elapsed_s":187,"outcome":"ok","detail":null}
+{"id":"9839b5e0","kind":"tess","task":"7","queued_at":1794836321,"prompt_bytes":18820}
+{"id":"9839b5e0","ended_at":1794837548,"elapsed_s":1227,"outcome":"timeout","detail":"no progress on two probes, 20 min"}
+{"id":"9839b5e0","ended_at":1794837755,"elapsed_s":1434,"outcome":"ok","detail":"second attempt after a hung first dispatch"}
+{"id":"ffdf726d","kind":"ivan","task":"7","queued_at":1794837775,"prompt_bytes":14685}
+{"id":"ffdf726d","ended_at":1794837974,"elapsed_s":199,"outcome":"ok","detail":null}
+{"id":"643a0bb5","kind":"deslop","task":"7","queued_at":1794837989,"prompt_bytes":17449}
+{"id":"643a0bb5","ended_at":1794838029,"elapsed_s":40,"outcome":"ok","detail":null}
+{"id":"93a9d586","kind":"pat","task":"7","queued_at":1794838066,"prompt_bytes":28095}
+{"id":"93a9d586","ended_at":1794838114,"elapsed_s":48,"outcome":"ok","detail":"native autopilot:pat subagent; diff without test files"}
+{"id":"78d16771","kind":"ivan","task":"8","queued_at":1794838216,"prompt_bytes":9498}
+{"id":"78d16771","ended_at":1794838497,"elapsed_s":281,"outcome":"ok","detail":null}
+{"id":"a159a634","kind":"deslop","task":"8","queued_at":1794838505,"prompt_bytes":11822}
+{"id":"a159a634","ended_at":1794838552,"elapsed_s":47,"outcome":"ok","detail":null}
