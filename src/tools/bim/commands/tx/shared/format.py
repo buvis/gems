@@ -98,6 +98,7 @@ CONCEPT_NOTE_TYPES = (
     "course",
     "ai-prompt",
 )
+NEW_NOTE_TYPES = tuple(value for value in CONCEPT_NOTE_TYPES if value != "wiki-article")
 INDEX_TYPE = "index"
 TX_RUN_TYPE = "tx-run"
 FORBIDDEN_TAGS = frozenset({"person", "book"})

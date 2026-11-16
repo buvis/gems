@@ -9,7 +9,7 @@ from buvis.pybase.adapters import console
 from buvis.pybase.configuration import get_settings
 from rich.markup import escape
 
-from bim.commands.tx.shared.format import CONCEPT_NOTE_TYPES, ConceptType
+from bim.commands.tx.shared.format import NEW_NOTE_TYPES, ConceptType
 from bim.settings import BimSettings
 
 if TYPE_CHECKING:
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 __all__ = ["register_tx_group"]
 
-_ZETTEL_TYPES = [value for value in CONCEPT_NOTE_TYPES if value != "wiki-article"]
 _CONCEPT_TYPES = [member.value for member in ConceptType]
 
 
@@ -71,7 +70,7 @@ def _warn_if_overdue(ctx: click.Context) -> None:
 
 @tx.command("new", help="Create one note in the tiromex folder and print its path")
 @click.option("--title", "title", required=True, help="Note title (also the H1)")
-@click.option("--type", "zettel_type", type=click.Choice(_ZETTEL_TYPES), default="note", show_default=True)
+@click.option("--type", "zettel_type", type=click.Choice(NEW_NOTE_TYPES), default="note", show_default=True)
 @click.option("--concept-type", "concept_type", type=click.Choice(_CONCEPT_TYPES), default=None)
 @click.pass_context
 def tx_new(ctx: click.Context, title: str, zettel_type: str, concept_type: str | None) -> None:

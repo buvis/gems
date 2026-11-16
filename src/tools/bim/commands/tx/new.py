@@ -10,8 +10,8 @@ from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
 
 from bim.commands.tx.shared.format import (
     CLAIM_BEARING_CONCEPT_TYPES,
-    CONCEPT_NOTE_TYPES,
     CONCEPT_TYPE_VALUES,
+    NEW_NOTE_TYPES,
     Assent,
     Lifecycle,
     parse_note,
@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
     from bim.commands.tx.shared.paths import TiromexPaths
 
-_ZETTEL_TYPES = tuple(value for value in CONCEPT_NOTE_TYPES if value != "wiki-article")
 _IGNORED_RULES = frozenset({"orphan-concept", "empty-body"})
 
 
@@ -80,9 +79,9 @@ class CommandTxNew:
 
     def execute(self) -> CommandResult:
         """Validate the types, check the built note, then create it."""
-        if self.zettel_type not in _ZETTEL_TYPES:
+        if self.zettel_type not in NEW_NOTE_TYPES:
             return CommandResult(
-                success=False, error=f"type {self.zettel_type!r} is not one of {', '.join(_ZETTEL_TYPES)}"
+                success=False, error=f"type {self.zettel_type!r} is not one of {', '.join(NEW_NOTE_TYPES)}"
             )
         if self.concept_type is not None and self.concept_type not in CONCEPT_TYPE_VALUES:
             allowed = ", ".join(sorted(CONCEPT_TYPE_VALUES))
