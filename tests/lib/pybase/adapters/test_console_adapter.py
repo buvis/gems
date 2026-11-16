@@ -103,6 +103,101 @@ class TestConsoleAdapterOutput:
         mock_print.assert_called_once_with(renderable)
 
 
+class TestConsoleAdapterStderr:
+    @pytest.mark.parametrize("message", ["Vault is stale", "Source skipped twice"])
+    def test_warning_with_stderr_writes_only_to_stderr(
+        self, capsys: Any, console_adapter: ConsoleAdapter, message: str
+    ) -> None:
+        console_adapter.warning(message, stderr=True)
+        captured = capsys.readouterr()
+        assert captured.err.strip() == f"⚠ {message}"
+        assert captured.out == ""
+
+    @pytest.mark.parametrize(
+        ("message", "details", "expected"),
+        [
+            ("Claim rejected", None, "✘ Claim rejected"),
+            ("Export refused", "outside root", "✘ Export refused \n\n Details:\n\n outside root"),
+        ],
+    )
+    def test_failure_with_stderr_writes_only_to_stderr(
+        self, capsys: Any, console_adapter: ConsoleAdapter, message: str, details: str | None, expected: str
+    ) -> None:
+        console_adapter.failure(message, details, stderr=True)
+        captured = capsys.readouterr()
+        assert captured.err.strip() == expected
+        assert captured.out == ""
+
+    def test_failure_with_stderr_accepts_details_by_keyword(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        console_adapter.failure("Bad JSON", details="line 3", stderr=True)
+        captured = capsys.readouterr()
+        assert captured.err.strip() == "✘ Bad JSON \n\n Details:\n\n line 3"
+        assert captured.out == ""
+
+    @pytest.mark.parametrize("stderr_kwargs", [{}, {"stderr": False}])
+    def test_warning_without_stderr_stays_on_stdout(
+        self, capsys: Any, console_adapter: ConsoleAdapter, stderr_kwargs: dict[str, bool]
+    ) -> None:
+        console_adapter.warning("Plain warning", **stderr_kwargs)
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "⚠ Plain warning"
+        assert captured.err == ""
+
+    @pytest.mark.parametrize("stderr_kwargs", [{}, {"stderr": False}])
+    def test_failure_without_stderr_stays_on_stdout(
+        self, capsys: Any, console_adapter: ConsoleAdapter, stderr_kwargs: dict[str, bool]
+    ) -> None:
+        console_adapter.failure("Plain failure", "why", **stderr_kwargs)
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "✘ Plain failure \n\n Details:\n\n why"
+        assert captured.err == ""
+
+    @pytest.mark.parametrize("message", ["", "Two words"])
+    def test_stderr_text_matches_default_stdout_text(
+        self, capsys: Any, console_adapter: ConsoleAdapter, message: str
+    ) -> None:
+        console_adapter.warning(message)
+        console_adapter.failure(message, "detail")
+        on_stdout = capsys.readouterr().out
+
+        console_adapter.warning(message, stderr=True)
+        console_adapter.failure(message, "detail", stderr=True)
+        captured = capsys.readouterr()
+
+        assert captured.err == on_stdout
+        assert captured.out == ""
+
+    def test_mixed_calls_split_between_streams_in_order(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        console_adapter.warning("first", stderr=True)
+        console_adapter.warning("second")
+        console_adapter.failure("third", stderr=True)
+        console_adapter.failure("fourth")
+        captured = capsys.readouterr()
+
+        assert captured.err.split() == ["⚠", "first", "✘", "third"]
+        assert captured.out.split() == ["⚠", "second", "✘", "fourth"]
+
+    def test_stderr_output_follows_sys_stderr_at_call_time(self, monkeypatch, capsys: Any) -> None:
+        adapter = ConsoleAdapter()
+        replacement = io.StringIO()
+        monkeypatch.setattr(sys, "stderr", replacement)
+
+        adapter.warning("late stream", stderr=True)
+        adapter.failure("late failure", stderr=True)
+
+        assert replacement.getvalue().split() == ["⚠", "late", "stream", "✘", "late", "failure"]
+        assert capsys.readouterr().out == ""
+
+    def test_stderr_is_keyword_only(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        with pytest.raises(TypeError):
+            console_adapter.warning("positional", True)
+        with pytest.raises(TypeError):
+            console_adapter.failure("positional", "details", True)
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == ""
+
+
 class TestConsoleAdapterMisc:
     def test_console_instance(self) -> None:
         assert isinstance(console, ConsoleAdapter)
