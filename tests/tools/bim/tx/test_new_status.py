@@ -49,6 +49,22 @@ D_ID = "20260414110000"
 E_ID = "20260415120000"
 F_ID = "20260416130000"
 G_ID = "20260417140000"
+H_ID = "20260418150000"
+I_ID = "20260419160000"
+ZETTEL_TYPES = ("note", "definition", "procedure", "cheatsheet", "snippet", "course", "ai-prompt")
+RELATIONS = (
+    "supports",
+    "contradicts",
+    "exemplifies",
+    "supersedes",
+    "defines",
+    "analogous-to",
+    "causes",
+    "requires",
+    "broader-than",
+    "narrower-than",
+)
+PUNCTUATED_TITLES = ("Knowledge: a view", 'Say "no"')
 SRC_OWN = "https://a.example/own"
 SRC_OTHER = "https://b.example/other"
 SRC_MIRROR = "mirror:https://c.example/copy"
@@ -102,6 +118,21 @@ def paths(tx_vault: TxVault) -> TiromexPaths:
     return resolve_tiromex(tx_vault.zettelkasten, "tiromex")
 
 
+class SpyRepo:
+    """Wrap the real bim repository and record the path of every saved note."""
+
+    def __init__(self) -> None:
+        self.real = get_repo()
+        self.saved: list[str] = []
+
+    def save(self, zettel: Any) -> None:
+        self.saved.append(str(zettel.get_data().file_path))
+        self.real.save(zettel)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.real, name)
+
+
 class FakeGit:
     """Stand-in for ``subprocess.run`` that answers the work-tree probe."""
 
@@ -130,15 +161,17 @@ def git(monkeypatch: pytest.MonkeyPatch) -> FakeGit:
 
 
 class TestNewDefaults:
-    @pytest.mark.parametrize("title", ["Knowledge needs reasons", "Belief is not enough"])
+    @pytest.mark.parametrize("title", ["Knowledge needs reasons", "Belief is not enough", *PUNCTUATED_TITLES])
     def test_default_note_is_a_plain_note_with_bim_fields(
         self, paths: TiromexPaths, tx_vault: TxVault, title: str
     ) -> None:
+        repo = SpyRepo()
         before = datetime.now().astimezone().strftime(TIMESTAMP)
-        result = CommandTxNew(paths, get_repo(), title=title).execute()
+        result = CommandTxNew(paths, repo, title=title).execute()
         after = datetime.now().astimezone().strftime(TIMESTAMP)
 
         assert result.success is True
+        assert repo.saved == [result.output]
         assert set(result.metadata) == {"id", "path"}
         note_id, rel = result.metadata["id"], result.metadata["path"]
         assert re.fullmatch(r"[0-9]{14}", note_id)
@@ -159,11 +192,13 @@ class TestNewDefaults:
         assert note.kind == NoteKind.PLAIN
         assert [file.name for file in iter_note_files(paths)] == [rel.rsplit("/", 1)[1]]
 
-    @pytest.mark.parametrize("zettel_type", ["definition", "procedure"])
+    @pytest.mark.parametrize("zettel_type", ZETTEL_TYPES)
     def test_zettel_type_reaches_the_note(self, paths: TiromexPaths, tx_vault: TxVault, zettel_type: str) -> None:
-        result = CommandTxNew(paths, get_repo(), title="Typed note", zettel_type=zettel_type).execute()
+        repo = SpyRepo()
+        result = CommandTxNew(paths, repo, title="Typed note", zettel_type=zettel_type).execute()
 
         assert result.success is True
+        assert repo.saved == [result.output]
         _, note = _created(tx_vault, result.metadata["path"])
         assert note.data.metadata["type"] == zettel_type
 
@@ -235,6 +270,21 @@ class TestNewConcept:
         assert note.data.metadata["concept-type"] == "argument"
         assert note.data.metadata["claims"] == [{"id": "c1", "statement": "Knowledge defined"}]
 
+    @pytest.mark.parametrize("title", PUNCTUATED_TITLES)
+    def test_punctuated_title_survives_as_title_and_starter_claim(
+        self, paths: TiromexPaths, tx_vault: TxVault, title: str
+    ) -> None:
+        repo = SpyRepo()
+
+        result = CommandTxNew(paths, repo, title=title, concept_type="thesis").execute()
+
+        assert result.success is True
+        assert repo.saved == [result.output]
+        _, note = _created(tx_vault, result.metadata["path"])
+        assert note.data.metadata["title"] == title
+        assert note.data.metadata["claims"][0]["statement"] == title
+        assert h1_titles(note.body) == [title]
+
 
 class TestNewRefusals:
     @pytest.mark.parametrize(
@@ -289,12 +339,14 @@ class TestNewCollision:
         while datetime.now().microsecond > 600_000:
             real_sleep(0.005)
         monkeypatch.setattr(create_zettel_use_case.time, "sleep", wait_for_next_second)
+        repo = SpyRepo()
 
-        first = CommandTxNew(paths, get_repo(), title="First in the second").execute()
-        second = CommandTxNew(paths, get_repo(), title="Second in the second").execute()
+        first = CommandTxNew(paths, repo, title="First in the second").execute()
+        second = CommandTxNew(paths, repo, title="Second in the second").execute()
 
         assert first.success is True
         assert second.success is True
+        assert repo.saved == [first.output, second.output]
         assert first.metadata["id"] < second.metadata["id"]
         assert first.metadata["path"] != second.metadata["path"]
         assert waits
@@ -344,6 +396,23 @@ class TestStaleness:
 
         assert staleness(NOW + timedelta(days=2), 7) == ("fresh", 2)
         assert staleness(NOW + timedelta(days=9), 7) == ("stale", 9)
+
+    @pytest.mark.parametrize(
+        ("elapsed", "expected"),
+        [
+            (timedelta(days=7, hours=12), ("fresh", 7)),
+            (timedelta(days=7, hours=23, minutes=59), ("fresh", 7)),
+            (timedelta(days=8, hours=1), ("stale", 8)),
+            (timedelta(hours=20), ("fresh", 0)),
+        ],
+        ids=["seven-and-a-half", "almost-eight", "just-past-eight", "under-a-day"],
+    )
+    def test_partial_days_count_as_whole_elapsed_days(
+        self, tx_vault: TxVault, elapsed: timedelta, expected: tuple[str, int]
+    ) -> None:
+        _write_state(tx_vault, {"last_maintain": (NOW - elapsed).isoformat()})
+
+        assert staleness(NOW, 7) == expected
 
     @pytest.mark.parametrize(
         ("payload", "window", "expected"),
@@ -409,7 +478,8 @@ def status_vault(tx_vault: TxVault, tx_notes: TxNoteBuilder) -> TxVault:
     tx_notes.write(tx_notes.run(), RUN_ID)
     plain = tx_notes.plain().replace("processed: false\n", "processed: false\nlifecycle: evergreen\nassent: accepted\n")
     tx_notes.write(plain, PLAIN_ID)
-    _concept(tx_notes, A_ID, backmatter=[_link("supports", B_ID)])
+    disagree = "  - mode: disagreement\n    claim: c1\n    rationale: the grounds differ\n"
+    _concept(tx_notes, A_ID, extra="doubts:\n" + disagree, backmatter=[_link("supports", B_ID)])
     _concept(
         tx_notes,
         B_ID,
@@ -426,7 +496,8 @@ def status_vault(tx_vault: TxVault, tx_notes: TxNoteBuilder) -> TxVault:
         lifecycle=None,
         backmatter=[_link("contradicts", A_ID), _link("causes", B_ID)],
     )
-    _concept(tx_notes, D_ID)
+    assume = "  - mode: assumption\n    claim: c1\n    rationale: it takes belief for granted\n"
+    _concept(tx_notes, D_ID, extra="doubts:\n" + disagree + assume + disagree)
     tx_notes.write(NO_FRONT_MATTER, "broken")
     tx_notes.write(NO_FRONT_MATTER, "zz-broken")
     _concept(tx_notes, E_ID, concept_type="aporia", folder=tx_vault.zettelkasten / "other")
@@ -449,7 +520,7 @@ class TestStatusOutput:
         assert _pairs(lines[2], "lifecycle: ") == {"fleeting": 2, "literature": 1}
         assert _pairs(lines[3], "assent: ") == {"tentative": 2, "accepted": 1, "rejected": 1}
         assert lines[4] == "mean links/note: 0.75"
-        assert lines[5] == "aporia notes: 1  open disagreement doubts: 0"
+        assert lines[5] == "aporia notes: 1  open disagreement doubts: 3"
         assert lines[6] == "prune candidates: 1 (deletion enabled)"
         assert lines[7] == "git: tracked"
         assert lines[8] == "maintenance: last run 10d ago (fresh)"
@@ -466,7 +537,7 @@ class TestStatusOutput:
         assert dict(meta["assent"]) == {"tentative": 2, "accepted": 1, "rejected": 1}
         assert meta["mean_links"] == 0.75
         assert meta["aporia"] == 1
-        assert meta["open_disagreements"] == 0
+        assert meta["open_disagreements"] == 3
         assert meta["prune_candidates"] == 1
         assert meta["pruning_enabled"] is False
         assert result.output.splitlines()[6] == "prune candidates: 1 (deletion report-only)"
@@ -506,6 +577,33 @@ class TestStatusOutput:
         assert result.metadata["mean_links"] == 0.0
         assert result.warnings == []
 
+    @pytest.mark.parametrize(
+        ("links", "note_count", "expected"),
+        [
+            ([_link(relation, B_ID) for relation in RELATIONS], 2, 5.0),
+            ([_link("exemplifies", B_ID), _link("narrower-than", C_ID)], 3, 0.67),
+        ],
+        ids=["one-link-per-relation", "two-links-over-three-notes"],
+    )
+    def test_mean_links_counts_every_relation_and_rounds(
+        self,
+        paths: TiromexPaths,
+        tx_notes: TxNoteBuilder,
+        git: FakeGit,
+        links: list[str],
+        note_count: int,
+        expected: float,
+    ) -> None:
+        _concept(tx_notes, A_ID, backmatter=links)
+        for note_id in (B_ID, C_ID)[: note_count - 1]:
+            _concept(tx_notes, note_id)
+
+        result = CommandTxStatus(paths, now=NOW).execute()
+
+        assert result.metadata["zettels"] == note_count
+        assert result.metadata["mean_links"] == expected
+        assert result.output.splitlines()[4] == f"mean links/note: {expected}"
+
 
 class TestStatusGit:
     @pytest.mark.parametrize(
@@ -531,12 +629,12 @@ class TestStatusGit:
         assert argv[0].rsplit("/", 1)[-1] == "git"
         assert argv[1:] == ["-C", str(paths.vault_root), "rev-parse", "--is-inside-work-tree"]
         assert kwargs.get("timeout") == 10
-        assert kwargs.get("capture_output") is True or kwargs.get("stdout") == subprocess.PIPE
+        assert kwargs.get("capture_output") is True
 
 
 @pytest.fixture
 def prune_vault(tx_vault: TxVault, tx_notes: TxNoteBuilder) -> TxVault:
-    """Write seven concept notes; only A (by date) and G (by updated) can age into candidates."""
+    """Write nine concept notes; only A (by date) and G (by updated) can age into candidates."""
     _concept(tx_notes, A_ID)
     _concept(tx_notes, B_ID, concept_type="aporia", assent="rejected")
     _concept(tx_notes, C_ID, concept_type="aporia", lifecycle="evergreen")
@@ -544,6 +642,8 @@ def prune_vault(tx_vault: TxVault, tx_notes: TxNoteBuilder) -> TxVault:
     _concept(tx_notes, E_ID)
     _concept(tx_notes, F_ID, extra="delivered-as: essay-2026\n")
     _concept(tx_notes, G_ID, extra="updated: 2027-05-01T10:00:00+02:00\n")
+    _concept(tx_notes, H_ID, lifecycle="evergreen")
+    _concept(tx_notes, I_ID, assent="rejected")
     return tx_vault
 
 
@@ -556,7 +656,7 @@ class TestStatusPrune:
 
         assert result.metadata["prune_candidates"] == expected
         assert result.output.splitlines()[6] == f"prune candidates: {expected} (deletion report-only)"
-        assert result.metadata["zettels"] == 7
-        assert result.metadata["mean_links"] == 0.14
+        assert result.metadata["zettels"] == 9
+        assert result.metadata["mean_links"] == 0.11
         assert result.metadata["aporia"] == 2
-        assert result.output.splitlines()[4] == "mean links/note: 0.14"
+        assert result.output.splitlines()[4] == "mean links/note: 0.11"
