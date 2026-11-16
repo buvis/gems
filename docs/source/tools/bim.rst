@@ -1103,8 +1103,7 @@ line per error. With ``--json`` it prints, also when errors exist::
                  "rule": "orphan-concept"}]}
 
 The keys are sorted and the JSON is indented. The rule ids and the note kinds
-they apply to are listed in the format specification. The body-size limit is
-``tx.max_zettel_body_lines``.
+they apply to are listed in the format specification.
 
 bim tx export-claims
 ~~~~~~~~~~~~~~~~~~~~

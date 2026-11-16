@@ -179,7 +179,7 @@ Every `date`, `updated` and `reviewed` value is read as a YAML datetime, a YAML 
 | `claims` | list of objects | Structured assertions. Section 7.4. |
 | `doubts` | list of objects | Pyrrhonian doubt annotations. Section 7.5. |
 
-Index, run and plain notes carry none of these fields. A note that carries `concept-type` is a concept note by definition (section 2).
+Index, run and plain notes carry none of these fields.
 
 ## 6. The `type` vocabulary of concept notes
 
@@ -198,7 +198,7 @@ Index, run and plain notes carry none of these fields. A note that carries `conc
 
 A concept note with any other `type` fails `type-species`. Source-document types (`article`, `book`, `quote`, `transcript`) are gone: sources live outside the vault (section 9).
 
-`type` and `concept-type` are orthogonal. `type: note` with `concept-type: thesis` is a knowledge note that states a thesis. A note without `concept-type` is not a concept note, whatever its `type`.
+`type` and `concept-type` are orthogonal. `type: note` with `concept-type: thesis` is a knowledge note that states a thesis.
 
 ## 7. Concept fields
 
