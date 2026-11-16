@@ -228,3 +228,27 @@ class TestConfigurationErrors:
         with pytest.raises(ConfigurationError) as error:
             ConfigResolver().resolve(BraidSettings)
         assert str(shared) in str(error.value)
+
+
+class TestDocumentedNestedEnvironment:
+    def test_photo_prefix_joins_field_before_nested_delimiter(self, monkeypatch):
+        from buvis.pybase.configuration import ToolSettings
+        from pydantic_settings import SettingsConfigDict
+
+        class DatabaseSettings(ToolSettings):
+            host: str = "localhost"
+
+        class PhotoSettings(GlobalSettings):
+            model_config = SettingsConfigDict(env_prefix="BUVIS_PHOTO_", env_nested_delimiter="__")
+            db: DatabaseSettings = DatabaseSettings()
+
+        monkeypatch.setenv("BUVIS_PHOTO__DB__HOST", "wrong.example")
+        assert ConfigResolver().resolve(PhotoSettings).db.host == "localhost"
+        monkeypatch.setenv("BUVIS_PHOTO_DB__HOST", "prod.db.local")
+        assert ConfigResolver().resolve(PhotoSettings).db.host == "prod.db.local"
+
+    def test_documentation_uses_the_verified_nested_prefix(self):
+        from pathlib import Path
+
+        doc = Path(__file__).resolve().parents[4] / "docs/source/configuration.rst"
+        assert "BUVIS_PHOTO__" not in doc.read_text()

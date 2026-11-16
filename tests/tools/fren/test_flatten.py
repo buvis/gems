@@ -146,6 +146,9 @@ class TestFlattenErrors:
         assert result.success
         assert result.output == f"Copied 1 file(s) to {destination}"
         assert len(result.warnings) == 1
+        (source / "good.txt").unlink()
+        with patch("fren.commands.flatten.flatten.shutil.copy2", side_effect=copy):
+            assert not CommandFlatten(source=str(source), destination=str(destination)).execute().success
 
     def test_empty_source(self, tmp_path: Path) -> None:
         source = tmp_path / "src"

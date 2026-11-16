@@ -200,6 +200,7 @@ class TestLogSettingsTakeEffect:
         return runner.invoke(cmd, args)
 
     def test_no_log_output_unless_asked(self, runner: CliRunner) -> None:
+        assert "debug-probe-7c1e" in self._invoke(runner, ["--debug"]).stderr
         result = self._invoke(runner, [])
 
         assert result.exit_code == 0
@@ -225,7 +226,8 @@ class TestLogSettingsTakeEffect:
         root = logging.getLogger()
         before = (root.level, list(root.handlers))
 
-        self._invoke(runner, ["--debug"])
+        result = self._invoke(runner, ["--debug"])
+        assert "debug-probe-7c1e" in result.stderr
 
         assert (root.level, list(root.handlers)) == before
 
@@ -233,10 +235,12 @@ class TestLogSettingsTakeEffect:
         @click.command()
         @buvis_options
         def cmd() -> None:
+            logging.getLogger("probe.tool").debug("debug-probe-7c1e")
             logging.getLogger("buvis.pybase.configuration.loader").warning("twice-probe-4d2a")
 
         result = runner.invoke(cmd, ["--debug"])
 
+        assert "debug-probe-7c1e" in result.stderr
         assert result.stderr.count("twice-probe-4d2a") == 1
 
 

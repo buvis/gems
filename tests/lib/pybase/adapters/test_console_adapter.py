@@ -293,6 +293,10 @@ class TestReportResult:
         assert "⚠" in out
         assert "Path not found: a" in out
         assert "No file could be renamed" in out
+        console_adapter.report_result(
+            CommandResult(success=False, error="Path not found: a", warnings=["Path not found: a"])
+        )
+        assert capsys.readouterr().out.count("Path not found: a") == 1
 
     def test_on_success_callback(self, console_adapter: ConsoleAdapter) -> None:
         result = CommandResult(success=True, metadata={"count": 3})

@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **docs**: correct nested photo environment examples to join the prefix directly to the field (`BUVIS_PHOTO_DB__HOST`).
+
 - **config**: the automatic update check now honours `auto_update: false`/`true` from a YAML config file, not only the `BUVIS_AUTO_UPDATE` environment variable. It also honours `--config-dir` (for the check, an empty `--config-dir=` counts as absent instead of reading a config file from the working directory; the command itself then rejects it), and the global `BUVIS_AUTO_UPDATE` keeps working for tools with their own env prefix (the tool's own `<PREFIX>_AUTO_UPDATE` still wins).
 - **config**: an environment variable now beats a YAML value even when it sets the field's default, so `BUVIS_<TOOL>_AUTO_UPDATE=true` switches the update check back on over `auto_update: false`, and `BUVIS_<TOOL>_DEBUG=false` beats `debug: true`. Before, the YAML value won in exactly that case. A YAML value for a setting with a computed default (fctracker's `foreign_currencies`) now applies too; it used to be ignored without a word.
 - **config**: `--debug` and `log_level` now take effect: log records print on stderr from `DEBUG` up with `--debug`, or from an explicitly set `log_level`. Before, both were accepted and ignored. `log_level` accepts any letter case in a config file or environment variable, as `--log-level` already did; a lowercase value used to stop the tool.

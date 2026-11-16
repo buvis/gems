@@ -111,7 +111,17 @@ class TestDocRulesBacktestExitCode:
 class TestUnusableIssuersFile:
     """A missing, malformed or empty issuers.yml is a console error, never a traceback."""
 
-    @pytest.mark.parametrize("command", [["list"], ["backtest"]])
+    @pytest.mark.parametrize(
+        "command",
+        [
+            ["rules", "list"],
+            ["rules", "backtest"],
+            ["ingest", "input.pdf"],
+            ["promote", "input.pdf"],
+            ["triage", "--approve", "input.pdf"],
+            ["rules", "test", "probe", "--pdf", "input.pdf"],
+        ],
+    )
     @pytest.mark.parametrize(
         ("content", "expected"),
         [
@@ -124,21 +134,37 @@ class TestUnusableIssuersFile:
         ids=["missing", "malformed", "empty", "wrong-shape", "no-version"],
     )
     def test_rules_command_reports_it_through_the_console(
-        self, runner: CliRunner, tmp_path: Path, command: list[str], content: str | None, expected: str
+        self,
+        runner: CliRunner,
+        tmp_path: Path,
+        command: list[str],
+        content: str | None,
+        expected: str,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         settings = _bim_settings_with_doc(tmp_path)
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "input.pdf").write_bytes(b"%PDF-1.4")
         if content is not None:
             (tmp_path / "issuers.yml").write_text(content)
 
         with (
             patch("bim.doc_rules_cli.get_settings", return_value=settings),
+            patch("bim.doc_cli.get_settings", return_value=settings),
+            patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
+            patch("bim.dependencies.get_repo", return_value=MagicMock()),
+            patch("bim.dependencies.get_state_db", return_value=MagicMock()),
+            patch("bim.dependencies.get_classifier", return_value=MagicMock()),
+            patch("bim.dependencies.get_extractor", return_value=MagicMock()),
             patch("bim.dependencies.get_ocr_runner", return_value=MagicMock()),
         ):
-            result = runner.invoke(cli, ["doc", "rules", *command])
+            result = runner.invoke(cli, ["doc", *command], catch_exceptions=False)
 
         assert result.exit_code == 1
         assert isinstance(result.exception, SystemExit)
-        assert expected in result.output
+        assert result.output.count(expected) == 1
+        assert result.output.count("✘") == 1
+        assert "Traceback" not in result.output
         assert "issuers.yml" in result.output.replace("\n", "")
 
     def test_missing_doc_section_message_names_the_section(self, runner: CliRunner, tmp_path: Path) -> None:

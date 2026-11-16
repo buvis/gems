@@ -55,6 +55,8 @@ class TestCommandStatusExecute:
 
         assert result.success
         assert "cfg status --porcelain" in [c.args[0] for c in shell.exe.call_args_list]
+        (tmp_path / ".buvis").rmdir()
+        assert not CommandStatus(shell=shell, dotfiles_root=str(tmp_path)).execute().success
 
     @patch("dot.commands.status.status.DotGitService")
     def test_returns_failure_when_secret_hide_errors(self, mock_service_cls, dotfiles_root) -> None:

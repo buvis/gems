@@ -40,7 +40,7 @@ Attended triage. A human promotes this finding into a backlog PRD through normal
 ## Tasks
 
 ### Phase 0: Foundation
-- [ ] triage: promote to backlog or close - Acceptance: this file is no longer under docs/dev/project-management/prds/hold/
+- [x] triage: promote to backlog or close - Acceptance: this file is no longer under docs/dev/project-management/prds/hold/
 
 ### Phase 1: Core
 No implementation tasks until attended triage.
@@ -48,3 +48,7 @@ No implementation tasks until attended triage.
 ## Success Criteria
 
 - This file is no longer under `docs/dev/project-management/prds/hold/`.
+
+## Triage
+
+Closed 2026-11-16 under the user’s accepted fourth agoge walk, finding 2. Shared tool sections are ignored with a warning directing values to buvis-<tool>.yaml. Implemented in `0d679585`; configuration regression tests verify the decision. No backlog work remains for this ledger key.

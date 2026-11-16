@@ -69,8 +69,11 @@ class TestRepoWithoutGitSecret:
     def test_secret_steps_run_once_gitsecret_exists(
         self, service: DotGitService, shell: MagicMock, tmp_path: Path
     ) -> None:
-        (tmp_path / ".gitsecret").mkdir()
         shell.exe.return_value = ("", "")
+        service.status()
+        assert not any("secret" in cmd for cmd in self._commands(shell))
+        shell.exe.reset_mock()
+        (tmp_path / ".gitsecret").mkdir()
 
         service.status()
 
@@ -1495,6 +1498,8 @@ class TestDotGitServiceUnstage:
 
         assert result.success is True
         assert [c.args[0] for c in shell.exe.call_args_list] == ["cfg reset HEAD -- .bashrc"]
+        (tmp_path / ".bashrc").unlink()
+        assert not service.unstage(".bashrc").success
 
     def test_path_with_embedded_quote_is_shell_escaped(self, git_service: DotGitService, shell: MagicMock) -> None:
         shell.exe.return_value = ("", "D  it's.txt")

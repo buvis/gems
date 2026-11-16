@@ -51,7 +51,7 @@ Each Python field maps to CLI, ENV, and YAML sources with consistent naming:
      - ``library_path``
    * - ``db.host`` (nested)
      - (custom option)
-     - ``BUVIS_PHOTO__DB__HOST``
+     - ``BUVIS_PHOTO_DB__HOST``
      - ``db.host``
 
 **Naming rules:**
@@ -170,7 +170,7 @@ All equivalent ways to set ``db.host`` to ``"prod.db.local"``:
 .. code-block:: bash
 
     # Environment variable (note double underscore for nesting)
-    export BUVIS_PHOTO__DB__HOST=prod.db.local
+    export BUVIS_PHOTO_DB__HOST=prod.db.local
 
 .. code-block:: yaml
 
@@ -447,8 +447,8 @@ For nested fields, use double underscores:
 
 .. code-block:: bash
 
-    export BUVIS_PHOTO__MUSIC__NORMALIZE=true
-    export BUVIS_PHOTO__MUSIC__BITRATE=256
+    export BUVIS_PHOTO_MUSIC__NORMALIZE=true
+    export BUVIS_PHOTO_MUSIC__BITRATE=256
 
 Ollama Integration
 ------------------
@@ -550,7 +550,7 @@ Model tool namespaces with ``ToolSettings`` and compose them into your root
         music: MusicSettings = MusicSettings()
 
 Nested environment variables map to these namespaces (for example,
-``BUVIS_PHOTO__RESOLUTION=medium`` or ``BUVIS_PHOTO__MUSIC__BITRATE=256``).
+``BUVIS_PHOTO_RESOLUTION=medium`` or ``BUVIS_PHOTO_MUSIC__BITRATE=256``).
 
 Using ConfigResolver Directly
 -----------------------------
