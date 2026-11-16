@@ -2,7 +2,7 @@
 design: run
 default_model: opus
 model_tier_rationale: invented provenance algorithm plus concurrency, rollback and backend cancellation
-eligibility: test -f docs/dev/project-management/prds/done/00152-bim-tiromex-mirrors-v1.md
+eligibility: test -f docs/dev/project-management/prds/done/00152-bim-tiromex-mirrors-v1.md && curl -sf -m 5 http://127.0.0.1:8080/v1/models
 ---
 
 # bim tx mirror ingestion and conflict handling
@@ -20,7 +20,7 @@ Port source-to-claim ingestion into tiromex with immutable mirrors, incremental 
 The vault owner and unattended agents using bim. Tests use scratch vaults and isolated HOME/XDG_STATE_HOME; never the private vault.
 
 ### Success Metrics
-`uv run pytest tests/tools/bim/tx/test_sources.py tests/tools/bim/tx/test_ingest.py tests/tools/bim/tx/test_conflicts.py tests/tools/bim/tx/test_run_safety.py` passes. Live qualification runs Claude and Ollama qwen3:30b-a3b (guess) through three fresh complete fixture runs each; write actual versions/model IDs/results to the qualification report. Missing providers fail qualification explicitly, never count skipped tests as success.
+`uv run pytest tests/tools/bim/tx/test_sources.py tests/tools/bim/tx/test_ingest.py tests/tools/bim/tx/test_conflicts.py tests/tools/bim/tx/test_run_safety.py` passes. Live qualification runs Claude and the host's llama.cpp server (OpenAI-compatible endpoint http://127.0.0.1:8080, model unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_XL; Ollama is not installed on this host, checked 2026-11-16) through three fresh complete fixture runs each; write actual versions/model IDs/results to the qualification report. Missing providers fail qualification explicitly, never count skipped tests as success.
 
 ## Functional Decomposition
 
@@ -57,6 +57,13 @@ src/tools/bim/commands/tx/prompts/ingest.md
 tests/tools/bim/tx/                    # fixtures and regression checks
 tools/lib/qualify_bim_tx.py
 docs/dev/project-management/reviews/00153-bim-tx-backends.md
+CHANGELOG.md
+docs/source/tools/bim.rst
+src/tools/bim/SKILL.md
+src/tools/bim/commands/tx/cli.py
+src/tools/bim/commands/tx/prompts/__init__.py
+src/tools/bim/commands/tx/status.py
+src/tools/bim/dependencies.py
 ```
 
 ### Module: Source tracking
@@ -113,7 +120,7 @@ New symbols: `src/tools/bim/commands/tx/ingest.py`, `src/tools/bim/commands/tx/s
 
 **Tasks**:
 - [ ] Wire CLI flags and shared composition; update skill/docs/changelog (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/bim/tx/test_ingest.py -k cli` checks backend/max-sources/timeout/dry-run and missing PATH errors.
-- [ ] Build and run live qualification with the converted source/conflict fixtures (depends on: CLI integration). Acceptance: `uv run python tools/lib/qualify_bim_tx.py` fails unless Claude and Ollama qwen3:30b-a3b each pass three consecutive fresh-fixture runs, validating notes and exactly one expected conflict shape; record actual CLI/model versions, configuration and outcomes. Other adapters run deterministic smoke tests. If local payload size fails, split drafting/conflict calls before retries and repeat the full qualification.
+- [ ] Build and run live qualification with the converted source/conflict fixtures (depends on: CLI integration). Acceptance: `uv run python tools/lib/qualify_bim_tx.py` fails unless Claude and the llama.cpp model served at http://127.0.0.1:8080 each pass three consecutive fresh-fixture runs, validating notes and exactly one expected conflict shape; record actual CLI/model versions, the model id that endpoint's /v1/models reports, configuration and outcomes. Other adapters run deterministic smoke tests. If local payload size fails, split drafting/conflict calls before retries and repeat the full qualification.
 
 **Exit Criteria**: `uv run pytest` and `uv run mypy src/lib/ src/tools/` pass once; live qualification report contains passing evidence, not a manual sign-off.
 
@@ -124,7 +131,7 @@ New symbols: `src/tools/bim/commands/tx/ingest.py`, `src/tools/bim/commands/tx/s
 - **Edge case**: rename source → citations/state follow with no backend; two files with the same hash but both present remain separate sources.
 - **Error case**: malformed target fails one source; backend killed mid-call leaves no persisted output; dirty target is byte-identical.
 - **Integration**: track all filesystem effects, git HEAD/index and sentinels; fixture builder ports every existing conflict case without depending on klyreon.
-- **Live suite**: use the existing doc default local model qwen3:30b-a3b (authoring selection); no private files, no substitution on provider unavailability.
+- **Live suite**: use the host's llama.cpp model at http://127.0.0.1:8080 (the eligibility check requires that server to answer before this PRD is picked); no private files, no substitution on provider unavailability.
 
 ## Risks
 

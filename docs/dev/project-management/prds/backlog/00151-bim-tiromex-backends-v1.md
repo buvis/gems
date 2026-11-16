@@ -51,6 +51,8 @@ src/tools/bim/commands/doc/shared/    # existing consumers
 src/tools/bim/settings.py
 src/tools/bim/dependencies.py
 tests/tools/bim/                      # exact test paths below
+CHANGELOG.md
+docs/source/tools/bim.rst
 ```
 
 ### Module: Backend registry
@@ -90,7 +92,9 @@ New symbols: `src/tools/bim/shared/llm/__init__.py`, `src/tools/bim/shared/llm/b
 **Goal**: Port transports and isolation.
 
 **Tasks**:
-- [ ] Implement HTTP, Claude and generic command adapters (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/test_llm_backends.py` verifies request bodies, envelope parsing, no-tools argv, stdin/cwd, timeouts, missing executable, invalid JSON/schema and unattended generic refusal.
+- [ ] Implement the Ollama, llama.cpp and OpenAI-compatible HTTP adapters (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/test_llm_backends.py -k http` verifies request bodies, timeouts, invalid JSON/schema and that no vault path appears in a payload.
+- [ ] Implement the Claude adapter (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/test_llm_backends.py -k claude` verifies envelope parsing, no-tools argv, stdin/cwd, the 30-second timeout cushion, missing executable and invalid JSON/schema.
+- [ ] Implement the generic command adapter (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/test_llm_backends.py -k command` verifies literal argv without a shell, stdin prompt, stdout JSON, timeouts, missing executable and unattended refusal unless unattended:true.
 
 **Exit Criteria**: All adapter failures use the closed categories; test stub is unavailable from user configuration.
 
@@ -98,7 +102,8 @@ New symbols: `src/tools/bim/shared/llm/__init__.py`, `src/tools/bim/shared/llm/b
 **Goal**: Preserve doc behavior through shared execution.
 
 **Tasks**:
-- [ ] Rewire doc classifier/extractor/settings/health/composition and docs (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/bim/doc/test_classifier.py tests/tools/bim/doc/test_extractor.py tests/tools/bim/doc/test_llm.py tests/tools/bim/doc/test_settings_models.py tests/tools/bim/doc/test_dependencies.py tests/tools/bim/doc/test_classifier_pinned.py tests/tools/bim/doc/test_extractor_pinned.py` retains behavioral assertions and legacy defaults.
+- [ ] Rewire doc settings, health and composition onto the registry, and update docs and changelog (depends on: Phase 1). Acceptance: `uv run pytest tests/tools/bim/doc/test_llm.py tests/tools/bim/doc/test_settings_models.py tests/tools/bim/doc/test_dependencies.py` retains behavioral assertions and legacy defaults, and proves an old config without an llm map resolves to its original endpoint and models.
+- [ ] Rewire the doc classifier and extractor onto the registry (depends on: doc settings rewire). Acceptance: `uv run pytest tests/tools/bim/doc/test_classifier.py tests/tools/bim/doc/test_extractor.py tests/tools/bim/doc/test_classifier_pinned.py tests/tools/bim/doc/test_extractor_pinned.py` retains behavioral assertions, fallback, retries, triage and partial extraction results.
 
 **Exit Criteria**: `uv run pytest` and `uv run mypy src/lib/ src/tools/` pass once at closeout.
 

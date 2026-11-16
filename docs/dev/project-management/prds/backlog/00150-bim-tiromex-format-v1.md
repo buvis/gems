@@ -54,6 +54,14 @@ src/tools/bim/commands/tx/  # note contract and foundation commands
 src/tools/bim/             # integration files enumerated below
 tests/tools/bim/tx/        # focused tests enumerated below
 docs/reference/bim/tiromex/zettel-format-specification.md
+CHANGELOG.md
+docs/source/tools/bim.rst
+src/tools/bim/SKILL.md
+src/tools/bim/cli.py
+src/tools/bim/dependencies.py
+src/tools/bim/manifest.toml
+src/tools/bim/settings.py
+tests/tools/bim/test_format_note.py
 ```
 
 ### Module: Note contract

@@ -51,6 +51,23 @@ src/tools/bim/shared/article_archive.py      # original storage
 src/tools/bim/commands/migrate_articles/     # migration command
 src/tools/bim/                              # caller cutover, exact paths below
 tests/tools/bim/                            # fixture and adapter tests
+CHANGELOG.md
+docs/source/tools/bim.rst
+src/tools/bim/SKILL.md
+src/tools/bim/cli.py
+src/tools/bim/commands/create_note/create_note.py
+src/tools/bim/commands/serve/_actions.py
+src/tools/bim/commands/serve/_app.py
+src/tools/bim/commands/serve/_security.py
+src/tools/bim/commands/serve/serve.py
+src/tools/bim/commands/tx/validate.py
+src/tools/bim/dependencies.py
+src/tools/bim/manifest.toml
+src/tools/bim/note_write_cli.py
+src/tools/bim/params/serve.py
+src/tools/bim/serve_cli.py
+src/tools/bim/settings.py
+src/tools/bim/tui/create_note.py
 ```
 
 ### Module: Mirror resolver

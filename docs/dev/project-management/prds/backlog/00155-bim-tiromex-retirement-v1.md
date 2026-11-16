@@ -59,6 +59,12 @@ tools/lib/check_bim_tx_port.py
 tests/tools/bim/tx/test_port_completion.py
 docs/dev/project-management/reviews/00155-bim-tx-port-coverage.md
 docs/dev/procedures/retire-klyreon-host.md
+docs/reference/klyreon/ancient-philosophy-applied-to-zettelkasten.md
+docs/reference/klyreon/anti-example-prior-build-output.md
+docs/reference/klyreon/lessons-from-prior-iterations.md
+docs/reference/klyreon/original-karpathy-idea-proposal.md
+docs/reference/klyreon/zettel-format-specification.md
+docs/source/tools/bim.rst
 ```
 
 ### Module: Port evidence
@@ -127,7 +133,7 @@ New symbols: `docs/dev/procedures/retire-klyreon-host.md`
 - [ ] Write the host cleanup handoff and pending closure record (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/tx/test_port_completion.py -k host_handoff` checks preconditions precede actions, both scheduler platforms are checked, recoverable quarantine and warrant handling are explicit; no host writes occur.
 - [ ] Run final inventory/consumer check (depends on: Phase 1 and host handoff). Acceptance: `uv run python tools/lib/check_bim_tx_port.py` rejects incomplete coverage, leftover imports/wiring or missing host status; retired-name scan returns exactly 1.
 
-**Exit Criteria**: `uv run pytest`, `uv run mypy src/lib/ src/tools/`, `uv run sphinx-build -b html docs/source docs/build/html` and `uv build` pass once at closeout. CI must also pass for the exact removal commit after the authorized normal push; pending or failed CI leaves retirement incomplete. Report repository retirement separately from pending host cleanup.
+**Exit Criteria**: `uv run pytest`, `uv run mypy src/lib/ src/tools/`, `uv run sphinx-build -b html docs/source docs/build/html` and `uv build` pass once at closeout. CI is not a completion gate for this PRD: `.github/workflows/test.yml` runs only on pushes and pull requests to master, so no run exists for the removal commit on this branch. Record CI for the removal commit as pending in `docs/dev/project-management/reviews/00155-bim-tx-port-coverage.md`, next to the pending host cleanup; the owner closes both after the merge to master. Report repository retirement separately from pending host cleanup and pending CI.
 
 ## Test Strategy
 

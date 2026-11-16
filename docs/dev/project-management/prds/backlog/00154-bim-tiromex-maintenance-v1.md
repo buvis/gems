@@ -57,6 +57,16 @@ src/tools/bim/commands/tx/shared/          # rules, graph, pruning, schedule
 src/tools/bim/commands/serve/_actions.py
 src/tools/bim/tui/tx.py
 tests/tools/bim/tx/                       # focused suites below
+CHANGELOG.md
+docs/source/tools/bim.rst
+src/tools/bim/SKILL.md
+src/tools/bim/commands/tx/cli.py
+src/tools/bim/commands/tx/status.py
+src/tools/bim/dependencies.py
+src/tools/bim/manifest.toml
+src/tools/bim/tui/query.py
+tests/tools/bim/test_serve_actions.py
+tests/tools/bim/test_serve_security.py
 ```
 
 ### Module: Maintenance
