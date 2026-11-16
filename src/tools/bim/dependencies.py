@@ -26,6 +26,19 @@ if TYPE_CHECKING:
     from bim.commands.doc.shared.state_db import StateDB
     from bim.commands.doc.shared.zettel_writer import ZettelWriter
     from bim.commands.doc.triage.triage import TriageApproveServices, TriageListServices
+    from bim.commands.tx.shared.paths import TiromexPaths
+    from bim.settings import BimSettings
+
+
+def get_tiromex_paths(settings: BimSettings) -> TiromexPaths:
+    """Resolve the tiromex paths from ``path_zettelkasten`` and ``tiromex_folder``.
+
+    Raises:
+        ValueError: When the folder name is bad or the zettelkasten is missing.
+    """
+    from bim.commands.tx.shared.paths import resolve_tiromex
+
+    return resolve_tiromex(Path(settings.path_zettelkasten).expanduser(), settings.tiromex_folder)
 
 
 def get_repo(*, extensions: list[str] | None = None) -> ZettelRepository:
