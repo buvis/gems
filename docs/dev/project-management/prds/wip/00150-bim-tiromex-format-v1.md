@@ -64,6 +64,8 @@ src/tools/bim/settings.py
 tests/tools/bim/test_format_note.py
 src/tools/bim/tx_cli.py
 AGENTS.md
+src/lib/buvis/pybase/adapters/console/console.py
+tests/lib/pybase/adapters/test_console_adapter.py
 ```
 
 ### Module: Note contract
