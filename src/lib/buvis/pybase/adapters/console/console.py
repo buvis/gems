@@ -87,13 +87,15 @@ class ConsoleAdapter:
         """
         return f" {WARNING} [{STYLE_WARNING_MSG}]{message}[/{STYLE_WARNING_MSG}]"
 
-    def warning(self: ConsoleAdapter, message: str) -> None:
+    def warning(self: ConsoleAdapter, message: str, *, stderr: bool = False) -> None:
         """Print an orange warning status message.
 
         Args:
             message (str): Text to display.
+            stderr (bool): Print on a stderr console built at call time instead of stdout.
         """
-        self.console.print(self.format_warning(message))
+        target = Console(stderr=True, log_path=False) if stderr else self.console
+        target.print(self.format_warning(message))
 
     def format_failure(self: ConsoleAdapter, message: str, details: str | None = None) -> str:
         """Return a red crossmark Rich markup string with optional details.
@@ -112,14 +114,16 @@ class ConsoleAdapter:
 
         return formatted_message
 
-    def failure(self: ConsoleAdapter, message: str, details: str | None = None) -> None:
+    def failure(self: ConsoleAdapter, message: str, details: str | None = None, *, stderr: bool = False) -> None:
         """Print a red failure message, optionally including details.
 
         Args:
             message (str): Text to display.
             details (str | None): Additional information to display after the failure message.
+            stderr (bool): Print on a stderr console built at call time instead of stdout.
         """
-        self.console.print(self.format_failure(message, details))
+        target = Console(stderr=True, log_path=False) if stderr else self.console
+        target.print(self.format_failure(message, details))
 
     def panic(self: ConsoleAdapter, message: str, details: str | None = None) -> None:
         """Print a failure message and exit the program.
