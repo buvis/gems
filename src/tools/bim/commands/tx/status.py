@@ -141,7 +141,8 @@ class CommandTxStatus:
         disagreements = sum(
             1
             for n in concepts
-            for doubt in (n.data.metadata.get("doubts") or [])
+            if isinstance(doubts := n.data.metadata.get("doubts"), list)
+            for doubt in doubts
             if isinstance(doubt, dict) and doubt.get("mode") == DoubtMode.DISAGREEMENT.value
         )
         prune = sum(1 for n in concepts if _is_prune_candidate(n, notes, now, self.prune_window_days))

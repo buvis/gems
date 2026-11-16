@@ -577,6 +577,20 @@ class TestStatusOutput:
         assert result.metadata["mean_links"] == 0.0
         assert result.warnings == []
 
+    @pytest.mark.parametrize("doubts", ["42", "true", "just text", "{mode: disagreement}"])
+    def test_malformed_doubts_value_counts_no_disagreement_and_does_not_crash(
+        self, paths: TiromexPaths, tx_notes: TxNoteBuilder, git: FakeGit, doubts: str
+    ) -> None:
+        _concept(tx_notes, A_ID, extra=f"doubts: {doubts}\n")
+        disagree = "  - mode: disagreement\n    claim: c1\n    rationale: the grounds differ\n"
+        _concept(tx_notes, B_ID, extra="doubts:\n" + disagree)
+
+        result = CommandTxStatus(paths, now=NOW).execute()
+
+        assert result.success is True
+        assert result.metadata["open_disagreements"] == 1
+        assert result.output.splitlines()[5] == "aporia notes: 0  open disagreement doubts: 1"
+
     @pytest.mark.parametrize(
         ("links", "note_count", "expected"),
         [
