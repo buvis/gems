@@ -54,6 +54,16 @@ class TestDefaults:
         assert isinstance(settings.tx, TxSettings)
         assert settings.tx.model_dump() == DEFAULTS
 
+    @pytest.mark.parametrize(("field", "value"), [("backend", "x"), ("max_sources_per_run", 9)])
+    def test_tx_settings_are_frozen(self, field: str, value: object) -> None:
+        settings = BimSettings.model_validate({"tx": {"maintenance_window_days": 2}})
+
+        with pytest.raises(ValidationError, match=field):
+            setattr(settings.tx, field, value)
+        with pytest.raises(ValidationError, match=field):
+            setattr(TxSettings(), field, value)
+        assert settings.tx.model_dump() == {**DEFAULTS, "maintenance_window_days": 2}
+
     def test_path_articles_is_kept(self) -> None:
         assert BimSettings().path_articles == "~/Documents/reference/40-archives/articles/"
 

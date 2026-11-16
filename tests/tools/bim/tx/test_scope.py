@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -223,6 +224,7 @@ class TestIterNoteFiles:
         tx_notes.write(tx_notes.run(), "20260411150000")
         tx_notes.write(tx_notes.index(), "20260411140000")
         tx_notes.write(tx_notes.plain("20260413000000", "Draft"), "20260413000000", folder / "drafts.md")
+        tx_notes.write(tx_notes.plain("20260414000000", "Deep"), "20260414000000", folder / "a" / "b" / "c")
         (folder / "notes.txt").write_text("x", encoding="utf-8")
         (folder / "20260411145300.md.bak").write_text("x", encoding="utf-8")
         (folder / "readme.markdown").write_text("x", encoding="utf-8")
@@ -233,6 +235,7 @@ class TestIterNoteFiles:
             folder / "20260411145300.md",
             folder / "20260411150000.md",
             folder / "20260411160000.md",
+            folder / "a" / "b" / "c" / "20260414000000.md",
             folder / "drafts.md" / "20260413000000.md",
             folder / "sub" / "20260412090000.md",
         ]
@@ -282,6 +285,15 @@ class TestTxStateDir:
         monkeypatch.setenv("HOME", str(other_home))
 
         assert tx_state_dir() == other_home / ".local" / "state" / "bim" / "tx"
+
+    @pytest.mark.parametrize("value", ["", "rel/state"])
+    def test_empty_or_relative_xdg_state_home_falls_back_to_home(
+        self, tx_vault: TxVault, monkeypatch: pytest.MonkeyPatch, value: str
+    ) -> None:
+        monkeypatch.chdir(tx_vault.root)
+        monkeypatch.setenv("XDG_STATE_HOME", value)
+
+        assert tx_state_dir() == tx_vault.home / ".local" / "state" / "bim" / "tx"
 
 
 def _write_state(state_home: Path, content: str | bytes) -> Path:
@@ -335,6 +347,15 @@ class TestReadLastMaintain:
 
         assert read_last_maintain() is None
 
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root reads mode-000 files")
+    def test_permission_denied_state_file_gives_none(self, tx_vault: TxVault) -> None:
+        state_file = _write_state(tx_vault.state_home, '{"last_maintain": "2026-11-01T10:00:00+00:00"}')
+        state_file.chmod(0o000)
+        try:
+            assert read_last_maintain() is None
+        finally:
+            state_file.chmod(0o600)
+
     def test_reads_from_current_xdg_state_home(self, tx_vault: TxVault, monkeypatch: pytest.MonkeyPatch) -> None:
         other = tx_vault.root.parent / "other-state"
         _write_state(tx_vault.state_home, '{"last_maintain": "2026-11-01T10:00:00+00:00"}')
@@ -351,6 +372,25 @@ class TestGetTiromexPaths:
             vault_root=tx_vault.root,
             zettelkasten=tx_vault.zettelkasten,
             folder=tx_vault.folder,
+        )
+
+    def test_follows_the_settings_argument_not_the_environment(
+        self, tx_vault: TxVault, other_vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BUVIS_BIM_TIROMEX_FOLDER", "atlas")
+        (tx_vault.home / "kb" / "notes").mkdir(parents=True)
+        settings = BimSettings.model_validate({"path_zettelkasten": str(other_vault), "tiromex_folder": "tx"})
+        home_settings = BimSettings.model_validate({"path_zettelkasten": "~/kb/notes", "tiromex_folder": "inbox"})
+
+        assert get_tiromex_paths(settings) == TiromexPaths(
+            vault_root=other_vault.parent,
+            zettelkasten=other_vault,
+            folder=other_vault / "tx",
+        )
+        assert get_tiromex_paths(home_settings) == TiromexPaths(
+            vault_root=tx_vault.home / "kb",
+            zettelkasten=tx_vault.home / "kb" / "notes",
+            folder=tx_vault.home / "kb" / "notes" / "inbox",
         )
 
     def test_honours_tiromex_folder_setting(self, tx_vault: TxVault, monkeypatch: pytest.MonkeyPatch) -> None:
