@@ -21,6 +21,11 @@ only that. Ask before any other read: tag lookups, duplicate checks, parent
 notes, the vault's own docs, or background context. Creating a note needs no
 approval; the `--json` report holds only paths and metadata.
 
+One exception: inside `<path_zettelkasten>/<tiromex_folder>/` (default
+`notes/tiromex/`) an agent may read and write without asking. That folder holds
+the agent-maintained concept notes described in "Tiromex" below. The rule above
+still holds for every note outside it.
+
 ## Learn the installed CLI
 
 The installed binary is the authority for syntax:
@@ -180,6 +185,52 @@ a bare `bim import FILE` prompts.
 
 `bim serve` starts the web dashboard and `bim doc` is the document ingestion
 pipeline; both have their own `--help`.
+
+## Tiromex
+
+Tiromex is the concept-note folder `<path_zettelkasten>/<tiromex_folder>/`
+(default `notes/tiromex/`; setting `tiromex_folder`). Its notes are bim notes
+with extra frontmatter, so `bim show`, `bim query` and `bim format` read them.
+
+```bash
+bim tx new --title "Knowledge is justified belief" --concept-type thesis   # prints the new path only
+bim tx validate            # exit 1 with "<path>: [rule] message" lines; --json for a report
+bim tx export-claims       # claim index as JSON on stdout; --out FILE writes it outside the vault
+bim tx status              # counts, links, prune candidates, git, maintenance
+```
+
+- `bim tx new` takes `--type` (`note`, `definition`, `procedure`, `cheatsheet`,
+  `snippet`, `course`, `ai-prompt`; default `note`) and `--concept-type`. It
+  refuses an invalid note with `[rule]` ids and writes nothing.
+- A concept note carries `concept-type` (`thesis`, `argument`, `aporia`,
+  `question`, `example`, `observation`), `assent` (`accepted`, `tentative`,
+  `rejected`, `unknown`) and `lifecycle` (`fleeting`, `literature`,
+  `evergreen`). A new concept note starts `tentative` and `fleeting`.
+- `claims` is a list of 1 to 3 mappings with `id` and `statement`. `thesis`,
+  `argument` and `observation` need claims; `aporia` holds none.
+- `doubts` is a list of mappings with `mode`, `claim` and `rationale`. `mode` is
+  `disagreement`, `regress`, `context-relative`, `assumption` or `circular`. A
+  `disagreement` doubt may carry `target: {to: notes/tiromex/<id>.md, claim: c1}`.
+- The body has exactly one H1 equal to `title`, at least one line under it, and
+  at most 60 non-blank lines (`tx.max_zettel_body_lines`).
+- Relations are backmatter lines, one line per key; several targets share the
+  line, joined with `, `:
+  `- supports:: [[notes/tiromex/<id>|Title]], [[notes/tiromex/<id>|Other]]`.
+  Keys: `supports`, `contradicts`, `exemplifies`, `supersedes`, `defines`,
+  `analogous-to`, `causes`, `requires`, `broader-than`, `narrower-than`. Every
+  link has a title and no `.md`. `requires`, `broader-than` and
+  `narrower-than` may not form a cycle.
+- Each concept note links its index note with `- parent:: [[notes/tiromex/<id>|§ Title]]`.
+  An index note has `type: index`, a title that starts with `§ `, and at most
+  one members block between `<!-- tx:members -->` and `<!-- /tx:members -->`.
+- `source` values start with `mirror:<root>/` and a relative path.
+- A conflict between claims resolves into one of three shapes: aporia (neither
+  side wins: `disagreement` doubts on both notes, optionally an `aporia` note),
+  refine (the new claim qualifies the old one: `narrower-than`), or supersede
+  (the new claim replaces the old one: `supersedes`, and the old note moves to
+  `assent: rejected`).
+- Run `bim tx validate` after each change and fix every reported rule. The
+  `bim tx` commands warn on stderr when maintenance is overdue.
 
 ## Rules
 

@@ -23,6 +23,10 @@ archive_note = "Archive zettel(s)"
 delete_note = "Permanently delete zettel(s)"
 parse_tags = "Parse Obsidian tags.json"
 serve = "Start web dashboard"
+tx_new = "Create a tiromex note"
+tx_validate = "Validate the tiromex folder"
+tx_export_claims = "Export tiromex claims as JSON"
+tx_status = "Show the tiromex dashboard"
 
 [tool.requirements]
 python = ">=3.11"

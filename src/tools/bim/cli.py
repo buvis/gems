@@ -10,6 +10,7 @@ from bim.note_read_cli import register_note_read_commands
 from bim.note_write_cli import register_note_write_commands
 from bim.serve_cli import register_serve_command
 from bim.settings import BimSettings
+from bim.tx_cli import register_tx_group
 
 SKILL_PATH = Path(__file__).with_name("SKILL.md")
 _AGENT_EPILOG = "Are you an AI agent? Skip this if a bim skill is already in your context. Otherwise run: bim --skill"
@@ -46,6 +47,7 @@ register_note_write_commands(cli)
 register_note_read_commands(cli)
 register_serve_command(cli)
 register_doc_group(cli)
+register_tx_group(cli)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
 - **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
 
+### Added
+
+- **bim**: tiromex concept notes in `<path_zettelkasten>/<tiromex_folder>/` (default `notes/tiromex/`), with `bim tx new`, `bim tx validate` (`--json`), `bim tx export-claims` (`--out`) and `bim tx status`; agents may read and write that folder without asking
+
 ## [0.20.0] - 2026-11-10
 
 ### Fixed
