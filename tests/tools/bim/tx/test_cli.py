@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -32,7 +33,24 @@ APPROVAL_RULE = (
 
 NEVER = "maintenance has never run"
 UNREADABLE = "maintenance state is unreadable"
-STALE_400 = "maintenance is stale: last run 400d ago"
+STALE_DAYS = 12
+FRESH_DAYS = 3
+STALE = f"maintenance is stale: last run {STALE_DAYS}d ago"
+
+ZETTEL_TYPES = ["note", "definition", "procedure", "cheatsheet", "snippet", "course", "ai-prompt"]
+CONCEPT_TYPES = ["thesis", "argument", "aporia", "question", "example", "observation"]
+STATUS_PREFIXES = [
+    "tiromex:",
+    "notes:",
+    "lifecycle:",
+    "assent:",
+    "mean links/note:",
+    "aporia notes:",
+    "prune candidates:",
+    "git:",
+    "maintenance:",
+]
+CLAIM_KEYS = ["zettel", "assent", "lifecycle", "claim_id", "statement"]
 
 
 def _invoke(*args: str) -> Result:
@@ -59,9 +77,9 @@ def _set_state(vault: TxVault, state: str) -> None:
     if state == "unparseable":
         _write_state(vault, '{"last_maintain": "not a date"}')
     elif state == "stale":
-        _write_state(vault, _stamp(400))
+        _write_state(vault, _stamp(STALE_DAYS))
     elif state == "fresh":
-        _write_state(vault, _stamp(0))
+        _write_state(vault, _stamp(FRESH_DAYS))
 
 
 def _long_statement(word: str) -> str:
@@ -78,6 +96,19 @@ def _write_unparseable(vault: TxVault, stem: str = "bad") -> Path:
 
 def _md_files(folder: Path) -> list[Path]:
     return sorted(folder.rglob("*.md"))
+
+
+def _assert_payload_header(payload: dict[str, object]) -> None:
+    assert list(payload) == ["schema_version", "generated", "claims"]
+    assert payload["schema_version"] == 1
+    generated = dt.datetime.fromisoformat(str(payload["generated"]))
+    assert generated.tzinfo is not None
+    assert abs(dt.datetime.now().astimezone() - generated) < dt.timedelta(minutes=5)
+
+
+def _without_generated(text: str) -> str:
+    stamp = json.loads(text)["generated"]
+    return text.replace(stamp, "<generated>")
 
 
 class TestTxHelpIntegration:
@@ -117,18 +148,16 @@ class TestTxNewIntegration:
     @pytest.mark.parametrize(
         ("args", "zettel_type", "concept_type"),
         [
-            (["--title", "Belief needs grounds"], "note", None),
-            (
-                ["--title", "Knowledge defined", "--type", "definition", "--concept-type", "argument"],
-                "definition",
-                "argument",
-            ),
+            ([], "note", None),
+            (["--type", "definition", "--concept-type", "argument"], "definition", "argument"),
+            *[(["--type", value], value, None) for value in ZETTEL_TYPES],
+            *[(["--concept-type", value], "note", value) for value in CONCEPT_TYPES],
         ],
     )
     def test_integration_new_prints_only_the_created_path(
         self, tx_vault: TxVault, args: list[str], zettel_type: str, concept_type: str | None
     ) -> None:
-        result = _invoke("tx", "new", *args)
+        result = _invoke("tx", "new", "--title", "Belief needs grounds", *args)
 
         assert result.exit_code == 0
         assert len(result.stdout.splitlines()) == 1
@@ -175,7 +204,9 @@ class TestTxNewIntegration:
             assert rule not in output
         assert _md_files(tx_vault.folder) == []
 
-    @pytest.mark.parametrize("args", [["--type", "bogus"], ["--concept-type", "theses"], []])
+    @pytest.mark.parametrize(
+        "args", [["--type", "bogus"], ["--type", "wiki-article"], ["--concept-type", "theses"], []]
+    )
     def test_integration_new_rejects_bad_choices_and_missing_title(self, tx_vault: TxVault, args: list[str]) -> None:
         title = [] if not args else ["--title", "Never written"]
 
@@ -195,7 +226,13 @@ class TestTxValidateIntegration:
 
         assert result.exit_code == 1
         output = _flat(result.output)
-        assert _flat("notes/tiromex/20260411170000.md: [required-field]") in output
+        header = re.search(r"(\d+)validationerror\(s\):", output)
+        assert header is not None
+        assert int(header.group(1)) == output.count(".md:[") >= 1
+        located = _flat("notes/tiromex/20260411170000.md: [required-field]")
+        assert located in output
+        message = output.split(located, 1)[1].split("notes/tiromex/", 1)[0]
+        assert re.search(r"[A-Za-z]{3}", message)
         assert "notes/tiromex/20260411160000.md" not in output
 
     @pytest.mark.parametrize("stems", [[], ["20260411160000", "20260411170000"]])
@@ -236,9 +273,14 @@ class TestTxValidateIntegration:
         assert result.exit_code == 1
         payload = json.loads(result.stdout)
         assert payload["clean"] is False
+        for error in payload["errors"]:
+            assert set(error) == {"path", "rule", "message", "line"}
+            assert isinstance(error["message"], str)
+            assert error["message"].strip()
         paths = {error["path"] for error in payload["errors"]}
         assert f"notes/tiromex/[draft]/{long_stem}.md" in paths
-        assert "notes/tiromex/20260411170000.md" in paths
+        rules = {error["rule"] for error in payload["errors"] if error["path"] == "notes/tiromex/20260411170000.md"}
+        assert "required-field" in rules
         assert payload["error_count"] == len(payload["errors"]) >= 2
         assert NEVER in " ".join(result.stderr.split())
         assert "maintenance" not in result.stdout
@@ -259,9 +301,12 @@ class TestTxExportClaimsIntegration:
 
         assert result.exit_code == 0
         payload = json.loads(result.stdout)
-        values = [value for claim in payload["claims"] for value in claim.values()]
-        assert first in values
-        assert second in values
+        _assert_payload_header(payload)
+        assert [list(claim) for claim in payload["claims"]] == [CLAIM_KEYS, CLAIM_KEYS]
+        assert [(c["zettel"], c["claim_id"], c["statement"]) for c in payload["claims"]] == [
+            ("notes/tiromex/20260411145300.md", "c1", first),
+            ("notes/tiromex/20260412090000.md", "c1", second),
+        ]
         assert _flat("skipped unparseable note notes/tiromex/[draft]/bad.md") in _flat(result.stderr)
         assert "unparseable" not in result.stdout
 
@@ -269,7 +314,9 @@ class TestTxExportClaimsIntegration:
         result = _invoke("tx", "export-claims")
 
         assert result.exit_code == 0
-        assert json.loads(result.stdout)["claims"] == []
+        payload = json.loads(result.stdout)
+        _assert_payload_header(payload)
+        assert payload["claims"] == []
 
     @pytest.mark.parametrize("stems", [["20260411145300"], ["20260411145300", "20260412090000"]])
     def test_integration_export_claims_out_writes_file_and_reports_count(
@@ -299,6 +346,40 @@ class TestTxExportClaimsIntegration:
         assert "refused" in _flat(result.stderr)
         assert not dest.exists()
 
+    @pytest.mark.parametrize(
+        "rel", ["shelf/claims.json", "shelf/notes/tiromex/../../claims.json", "library/notes/../claims.json"]
+    )
+    def test_integration_export_claims_out_refuses_vault_reached_by_alias_or_dotdot(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rel: str
+    ) -> None:
+        library = tmp_path.resolve() / "library"
+        (library / "notes" / "tiromex").mkdir(parents=True)
+        (tmp_path / "shelf").symlink_to(library, target_is_directory=True)
+        monkeypatch.setenv("BUVIS_BIM_PATH_ZETTELKASTEN", str(library / "notes"))
+
+        result = _invoke("tx", "export-claims", "--out", str(tmp_path / rel))
+
+        assert result.exit_code == 1
+        assert result.stdout == ""
+        assert _flat("resolves under the vault root") in _flat(result.stderr)
+        assert not (library / "claims.json").exists()
+
+    def test_integration_export_claims_out_outside_vault_in_a_folder_named_vault_is_written(
+        self, tx_notes: TxNoteBuilder, tmp_path: Path
+    ) -> None:
+        tx_notes.write(tx_notes.concept(claims=[("c1", _long_statement("grounds"))]), "20260411145300")
+        dest = tmp_path.resolve() / "outside" / "vault" / "claims.json"
+
+        written = _invoke("tx", "export-claims", "--out", str(dest))
+        printed = _invoke("tx", "export-claims")
+
+        assert written.exit_code == 0
+        assert written.stdout.strip() == f"wrote 1 claim(s) to {dest}"
+        text = dest.read_text(encoding="utf-8")
+        assert text.endswith("}\n")
+        assert _without_generated(text) == _without_generated(printed.stdout)
+        _assert_payload_header(json.loads(text))
+
 
 class TestTxStatusIntegration:
     def test_integration_status_prints_dashboard_on_stdout_and_warnings_on_stderr(
@@ -311,16 +392,20 @@ class TestTxStatusIntegration:
 
         assert result.exit_code == 0
         lines = result.stdout.splitlines()
-        assert f"tiromex: {tx_vault.folder}" in lines
-        assert any(line.startswith("notes: 1 (concept: 1") for line in lines)
+        assert len(lines) == len(STATUS_PREFIXES)
+        for line, prefix in zip(lines, STATUS_PREFIXES, strict=True):
+            assert line.startswith(prefix)
+        assert lines[0] == f"tiromex: {tx_vault.folder}"
+        assert lines[1].startswith("notes: 1 (concept: 1")
+        assert lines[2] == "lifecycle: fleeting=1"
+        assert lines[3] == "assent: tentative=1"
+        assert lines[8] == "maintenance: never run (stale)"
         assert _flat("skipped unparseable note notes/tiromex/[draft]/bad.md") in _flat(result.stderr)
         assert "unparseable" not in result.stdout
 
 
 class TestStalenessIntegration:
-    @pytest.mark.parametrize(
-        ("state", "wording"), [("never", NEVER), ("unparseable", UNREADABLE), ("stale", STALE_400)]
-    )
+    @pytest.mark.parametrize(("state", "wording"), [("never", NEVER), ("unparseable", UNREADABLE), ("stale", STALE)])
     @pytest.mark.parametrize(
         "args", [["new", "--title", "Fresh thought"], ["validate"], ["validate", "--json"], ["export-claims"]]
     )
@@ -345,13 +430,37 @@ class TestStalenessIntegration:
         assert result.exit_code == 0
         assert "maintenance" not in result.output
 
+    @pytest.mark.parametrize("days", [8, 30])
+    def test_integration_stale_warning_names_the_real_day_count(self, tx_vault: TxVault, days: int) -> None:
+        _write_state(tx_vault, _stamp(days))
+
+        result = _invoke("tx", "validate")
+
+        stderr = " ".join(result.stderr.split())
+        assert f"maintenance is stale: last run {days}d ago" in stderr
+        assert stderr.count("maintenance") == 1
+
+    @pytest.mark.parametrize(("window", "days", "warns"), [("20", 12, False), ("5", 6, True)])
+    def test_integration_staleness_window_follows_the_setting(
+        self, tx_vault: TxVault, monkeypatch: pytest.MonkeyPatch, window: str, days: int, warns: bool
+    ) -> None:
+        monkeypatch.setenv("BUVIS_BIM_TX__MAINTENANCE_WINDOW_DAYS", window)
+        _write_state(tx_vault, _stamp(days))
+
+        result = _invoke("tx", "validate")
+
+        assert result.exit_code == 0
+        stale = f"maintenance is stale: last run {days}d ago"
+        assert (stale in " ".join(result.stderr.split())) is warns
+        assert ("maintenance" in result.output) is warns
+
     @pytest.mark.parametrize(
         ("state", "line_start"),
         [
             ("never", "maintenance: never run (stale)"),
             ("unparseable", "maintenance: last_maintain unparseable (stale)"),
-            ("stale", "maintenance: last run 400d ago (stale"),
-            ("fresh", "maintenance: last run 0d ago (fresh)"),
+            ("stale", f"maintenance: last run {STALE_DAYS}d ago (stale, window 7d)"),
+            ("fresh", f"maintenance: last run {FRESH_DAYS}d ago (fresh)"),
         ],
     )
     def test_integration_status_carries_one_staleness_line_in_stdout(
@@ -444,15 +553,19 @@ class TestShippedDocsIntegration:
         assert not exception.startswith("#")
         assert "<path_zettelkasten>/<tiromex_folder>/" in exception
         assert "notes/tiromex/" in exception
-        assert "without asking" in " ".join(exception.split())
+        assert "may read and write without asking" in " ".join(exception.split())
+        assert "never" not in exception.lower()
 
     def test_integration_skill_has_tiromex_section_with_the_four_commands(self) -> None:
         text = SKILL_PATH.read_text(encoding="utf-8")
 
         assert text.count("\n## Tiromex\n") == 1
         section = text.split("\n## Tiromex\n", 1)[1].split("\n## ", 1)[0]
-        for needle in ("bim tx new", "bim tx validate", "bim tx export-claims", "bim tx status"):
-            assert needle in section
+        assert len(section.strip().splitlines()) >= 20
+        for usage in ("bim tx new --title", "bim tx validate", "bim tx export-claims", "bim tx status"):
+            assert usage in section
+        for term in ("concept-type", "assent", "lifecycle", "claims", "doubts", "supports"):
+            assert term in section
         for shape in ("aporia", "refine", "supersede"):
             assert shape in section
 
@@ -466,7 +579,9 @@ class TestShippedDocsIntegration:
     def test_integration_manifest_lists_the_tx_commands(self) -> None:
         commands = tomllib.loads(MANIFEST_PATH.read_text(encoding="utf-8"))["tool"]["commands"]
 
-        for key in ("tx_new", "tx_validate", "tx_export_claims", "tx_status"):
+        keys = ("tx_new", "tx_validate", "tx_export_claims", "tx_status")
+        for key in keys:
             assert isinstance(commands.get(key), str)
-            assert commands[key].strip()
+            assert len(commands[key].split()) >= 3
+        assert len({commands[key].strip().lower() for key in keys}) == len(keys)
         assert "create_note" in commands
