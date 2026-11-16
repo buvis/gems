@@ -41,6 +41,13 @@ text but wait on external preconditions their `eligibility` lines enforce.
   Fix: CI is recorded as pending in the coverage report, closed by the owner
   after the merge to master, like the host cleanup.
 
+- [00150, 00153, 00154] D grounding (found during the 00150 design step, same
+  day): the PRDs placed the Click group at `src/tools/bim/commands/tx/cli.py`.
+  The `no-framework-in-commands` pre-commit hook rejects `import click` under
+  `src/tools/*/commands/` -> fails as: stall (no task that writes that file
+  can commit). Fix: path changed to `src/tools/bim/tx_cli.py` (the `doc_cli.py`
+  pattern) in all three PRDs and their trees.
+
 ### Non-blocking
 
 - [00151] F sizing: 3 task lines for 16 source files; the expansion rule

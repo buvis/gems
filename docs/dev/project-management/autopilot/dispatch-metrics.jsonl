@@ -936,3 +936,4 @@
 {"id":"ee96ccf0","ended_at":1794229941,"elapsed_s":345,"outcome":"ok","detail":null}
 {"id":"653411a0","ended_at":1794229942,"elapsed_s":342,"outcome":"ok","detail":null}
 {"id":"6b831412","ended_at":1794230169,"elapsed_s":577,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"resume","at":1794815444,"phase":"build","prd":"00150-bim-tiromex-format-v1.md"}

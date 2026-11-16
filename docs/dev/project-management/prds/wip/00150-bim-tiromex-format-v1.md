@@ -62,14 +62,16 @@ src/tools/bim/dependencies.py
 src/tools/bim/manifest.toml
 src/tools/bim/settings.py
 tests/tools/bim/test_format_note.py
+src/tools/bim/tx_cli.py
+AGENTS.md
 ```
 
 ### Module: Note contract
 - **Maps to capability**: Tiromex note contract
-- **Location**: `src/tools/bim/commands/tx/__init__.py`, `src/tools/bim/commands/tx/cli.py`, `src/tools/bim/commands/tx/new.py`, `src/tools/bim/commands/tx/validate.py`, `src/tools/bim/commands/tx/export_claims.py`, `src/tools/bim/commands/tx/status.py`, `src/tools/bim/commands/tx/shared/__init__.py`, `src/tools/bim/commands/tx/shared/settings.py`, `src/tools/bim/commands/tx/shared/paths.py`, `src/tools/bim/commands/tx/shared/format.py`, `src/tools/bim/commands/tx/shared/validator.py`, `src/tools/bim/commands/tx/shared/claims.py`
+- **Location**: `src/tools/bim/commands/tx/__init__.py`, `src/tools/bim/tx_cli.py`, `src/tools/bim/commands/tx/new.py`, `src/tools/bim/commands/tx/validate.py`, `src/tools/bim/commands/tx/export_claims.py`, `src/tools/bim/commands/tx/status.py`, `src/tools/bim/commands/tx/shared/__init__.py`, `src/tools/bim/commands/tx/shared/settings.py`, `src/tools/bim/commands/tx/shared/paths.py`, `src/tools/bim/commands/tx/shared/format.py`, `src/tools/bim/commands/tx/shared/validator.py`, `src/tools/bim/commands/tx/shared/claims.py`
 - **Responsibility**: Confined bim note parsing, validation, claim export and CommandResult command classes.
 - **Exports**: Confined bim note parsing, validation, claim export and CommandResult command classes.
-New symbols: `src/tools/bim/commands/tx/__init__.py`, `src/tools/bim/commands/tx/cli.py`, `src/tools/bim/commands/tx/new.py`, `src/tools/bim/commands/tx/validate.py`, `src/tools/bim/commands/tx/export_claims.py`, `src/tools/bim/commands/tx/status.py`, `src/tools/bim/commands/tx/shared/__init__.py`, `src/tools/bim/commands/tx/shared/settings.py`, `src/tools/bim/commands/tx/shared/paths.py`, `src/tools/bim/commands/tx/shared/format.py`, `src/tools/bim/commands/tx/shared/validator.py`, `src/tools/bim/commands/tx/shared/claims.py`
+New symbols: `src/tools/bim/commands/tx/__init__.py`, `src/tools/bim/tx_cli.py`, `src/tools/bim/commands/tx/new.py`, `src/tools/bim/commands/tx/validate.py`, `src/tools/bim/commands/tx/export_claims.py`, `src/tools/bim/commands/tx/status.py`, `src/tools/bim/commands/tx/shared/__init__.py`, `src/tools/bim/commands/tx/shared/settings.py`, `src/tools/bim/commands/tx/shared/paths.py`, `src/tools/bim/commands/tx/shared/format.py`, `src/tools/bim/commands/tx/shared/validator.py`, `src/tools/bim/commands/tx/shared/claims.py`
 ### Module: Integration
 - **Maps to capability**: Foundation commands
 - **Location**: `src/tools/bim/cli.py`, `src/tools/bim/settings.py`, `src/tools/bim/dependencies.py`, `src/tools/bim/manifest.toml`, `src/tools/bim/SKILL.md`, `docs/source/tools/bim.rst`, `CHANGELOG.md`, `tests/tools/bim/tx/conftest.py`, `tests/tools/bim/tx/test_format.py`, `tests/tools/bim/tx/test_scope.py`, `tests/tools/bim/tx/test_commands.py`, `tests/tools/bim/tx/test_settings.py`, `tests/tools/bim/test_format_note.py`, `docs/reference/bim/tiromex/zettel-format-specification.md`

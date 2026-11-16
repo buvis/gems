@@ -60,7 +60,7 @@ tests/tools/bim/tx/                       # focused suites below
 CHANGELOG.md
 docs/source/tools/bim.rst
 src/tools/bim/SKILL.md
-src/tools/bim/commands/tx/cli.py
+src/tools/bim/tx_cli.py
 src/tools/bim/commands/tx/status.py
 src/tools/bim/dependencies.py
 src/tools/bim/manifest.toml
@@ -83,7 +83,7 @@ New symbols: `src/tools/bim/commands/tx/maintain.py`, `src/tools/bim/commands/tx
 New symbols: `src/tools/bim/commands/tx/schedule.py`, `src/tools/bim/commands/tx/shared/schedule/__init__.py`, `src/tools/bim/commands/tx/shared/schedule/launchd.py`, `src/tools/bim/commands/tx/shared/schedule/cron.py`, `src/tools/bim/commands/tx/shared/schedule/installer.py`, `tests/tools/bim/tx/test_schedule.py`
 ### Module: Interfaces
 - **Maps to capability**: Scheduled and shared execution
-- **Location**: `src/tools/bim/tui/tx.py`, `tests/tools/bim/tx/test_interfaces.py`, `src/tools/bim/commands/tx/cli.py`, `src/tools/bim/dependencies.py`, `src/tools/bim/commands/serve/_actions.py`, `src/tools/bim/tui/query.py`, `src/tools/bim/manifest.toml`, `src/tools/bim/SKILL.md`, `docs/source/tools/bim.rst`, `tests/tools/bim/test_serve_actions.py`, `tests/tools/bim/test_serve_security.py`, `CHANGELOG.md`
+- **Location**: `src/tools/bim/tui/tx.py`, `tests/tools/bim/tx/test_interfaces.py`, `src/tools/bim/tx_cli.py`, `src/tools/bim/dependencies.py`, `src/tools/bim/commands/serve/_actions.py`, `src/tools/bim/tui/query.py`, `src/tools/bim/manifest.toml`, `src/tools/bim/SKILL.md`, `docs/source/tools/bim.rst`, `tests/tools/bim/test_serve_actions.py`, `tests/tools/bim/test_serve_security.py`, `CHANGELOG.md`
 - **Responsibility**: Shared command composition, CLI/action/TUI adapters and operational documentation.
 - **Exports**: Shared command composition, CLI/action/TUI adapters and operational documentation.
 New symbols: `src/tools/bim/tui/tx.py`, `tests/tools/bim/tx/test_interfaces.py`
