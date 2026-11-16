@@ -177,6 +177,32 @@ class TestConfine:
         with pytest.raises(ValueError):
             confine(paths, "notes/tiromex/outdir/x.md")
 
+    @pytest.mark.parametrize("error", [RuntimeError("Symlink loop from 'loop.md'"), OSError(40, "Too many levels")])
+    def test_resolution_failure_becomes_value_error(
+        self, paths: TiromexPaths, monkeypatch: pytest.MonkeyPatch, error: Exception
+    ) -> None:
+        real_resolve = Path.resolve
+
+        def resolve(self: Path, strict: bool = False) -> Path:
+            if self.name == "loop.md":
+                raise error
+            return real_resolve(self, strict)
+
+        monkeypatch.setattr(Path, "resolve", resolve)
+
+        with pytest.raises(ValueError, match="loop.md") as caught:
+            confine(paths, "notes/tiromex/loop.md")
+        assert caught.value.__cause__ is error
+
+    def test_real_symlink_loop_never_escapes_as_another_error(self, paths: TiromexPaths) -> None:
+        (paths.folder / "loop.md").symlink_to(paths.folder / "loop2.md")
+        (paths.folder / "loop2.md").symlink_to(paths.folder / "loop.md")
+
+        try:
+            confine(paths, "notes/tiromex/loop.md")
+        except ValueError:
+            pass
+
     def test_follows_symlink_that_stays_inside_folder(self, paths: TiromexPaths, tx_notes: TxNoteBuilder) -> None:
         real = tx_notes.write(tx_notes.concept(), "20260411145300")
         (paths.folder / "alias.md").symlink_to(real)

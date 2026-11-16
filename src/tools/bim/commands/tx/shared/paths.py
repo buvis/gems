@@ -60,7 +60,10 @@ def confine(paths: TiromexPaths, vault_rel: str) -> Path:
     rel = PurePosixPath(vault_rel)
     if rel.is_absolute() or ".." in rel.parts:
         raise ValueError(f"path must be vault-relative without '..': {vault_rel!r}")
-    resolved = (paths.vault_root / rel).resolve()
+    try:
+        resolved = (paths.vault_root / rel).resolve()
+    except (OSError, RuntimeError) as exc:  # a symlink loop raises RuntimeError on Python 3.11/3.12
+        raise ValueError(f"path cannot be resolved: {vault_rel!r}: {exc}") from exc
     if not resolved.is_relative_to(paths.folder):
         raise ValueError(f"path is outside the tiromex folder: {vault_rel!r}")
     return resolved

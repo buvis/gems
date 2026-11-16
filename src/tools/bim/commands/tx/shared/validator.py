@@ -252,9 +252,9 @@ def _check_doubts(note: TxNote) -> list[Diagnostic]:
 def _check_sources(note: TxNote) -> list[Diagnostic]:
     found: list[Diagnostic] = []
     for value in sources(note.data):
-        _, separator, rest = value.removeprefix(MIRROR_PREFIX).partition("/")
+        root, _, rest = value.removeprefix(MIRROR_PREFIX).partition("/")
         rel = PurePosixPath(rest)
-        if not value.startswith(MIRROR_PREFIX) or not separator or rel.is_absolute() or ".." in rel.parts:
+        if not value.startswith(MIRROR_PREFIX) or not root or not rest or rel.is_absolute() or ".." in rel.parts:
             message = f"source {value!r} must be mirror:<root>/<relative path> without '..'"
             found.append(Diagnostic(note.path, "source-shape", message))
     return found

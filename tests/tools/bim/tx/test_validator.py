@@ -541,6 +541,8 @@ class TestSourceShape:
             "mirror:books/../secret.pdf",
             "mirror:books/plato/../../secret.pdf",
             "mirror:books/republic.pdf, mirror:papers",
+            "mirror:/republic.pdf",
+            "mirror:books/",
         ],
     )
     def test_bad_source(self, tx_notes: TxNoteBuilder, value: str) -> None:
