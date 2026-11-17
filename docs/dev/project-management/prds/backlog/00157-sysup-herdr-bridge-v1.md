@@ -8,6 +8,7 @@ model_tier_rationale: Async command delivery, freshness deadlines and shared sta
 Source: `docs/dev/project-management/intake/processed/00157-sysup-herdr-update-orchestration/discovery.md` and sibling decisions.md.
 Reference only: `docs/dev/project-management/spikes/herdr-update-bridge/RESULTS.md`.
 Rebuild production code; the disposable spike must not become an installed asset.
+Keep the spike directory in this PRD: PRD 00159 cites its RESULTS.md.
 
 ## Overview
 
@@ -35,7 +36,7 @@ Expose the documented mod API through Herdr's supported command delivery.
 - **Inputs**: Custom command probe- followed by 32 lowercase hexadecimal digits.
 - **Outputs**: One mod-owned shared value keyed sysup.update-probe:
   schema integer 1, nonce string, state object containing app, core, checked,
-  checks and checking from updates(); omit release notes.
+  checks and checking from updates(); omit release notes (its notes member).
 - **Behavior**: Use init(props, cx), the spawned task's context, nextCommand,
   setShared and updates. Check mode does nothing. Validate the complete command
   before sampling. Notify the task context after awaiting to stop obsolete
@@ -47,8 +48,9 @@ Expose the documented mod API through Herdr's supported command delivery.
   checking() returning true is check mode. cx.spawn(async (taskCx) => ...) starts
   the loop; await nextCommand() yields the command text after the mod prefix;
   call taskCx.notify() after each await; setShared(key, value) stores the reply.
-  mod.json is exactly `{"place": "none"}`. The mod directory name is the command
-  prefix, so the directory must be sysup-probe.
+  mod.json holds the JSON object `{"place": "none"}`; the packaged bytes are the
+  reference for the identical-reinstall check. The mod directory name is the
+  command prefix, so the directory must be sysup-probe.
 
 #### Feature: Bounded client
 - **Description**: Return a fresh typed state sample or an unavailable reason.
@@ -64,8 +66,16 @@ Expose the documented mod API through Herdr's supported command delivery.
   boolean; core version/managed/ready/error nullable strings and updating boolean;
   checked null or finite nonnegative number; checks/checking booleans. Reject
   booleans as numbers. Ignore extra fields; missing required fields fail.
+  The Herdr 0.1.16 type of updates() (herdr.d.ts, read 2026-11-17) is
+  `{app: {version: string; ready: string | null; updates: boolean}; notes: [...];
+  core: {version: string | null; managed: string | null; ready: string | null;
+  updating: boolean; error: string | null}; checked: number | null;
+  checks: boolean; checking: boolean}`.
   Reject unsupported schema, malformed matching payload or escaping paths.
-  Retry transient missing/partially-written state only until deadline. Unknown
+  Retry transient missing/partially-written state only until deadline. While the
+  CLI answers unknown command (the mod is not loaded yet, for example just after
+  a start), send the same nonce again every 50 ms until the deadline, as the
+  spike's native_probe.py does. At the deadline, unknown
   command, closed app, timeout and launch errors mean unavailable, never cached
   success. Do not write shared.json. Limit reads to 1 MiB; oversized files fail
   with a diagnostic. This is same-user observation, not an authentication channel.
@@ -78,7 +88,9 @@ Install owned assets and expose the shared command service.
 - **Inputs**: Existing sysup configuration context and selected Herdr home.
 - **Outputs**: CommandResult values; CLI renders through console.
 - **Behavior**: Installation creates only mods/sysup-probe with private staging
-  and atomic publication; identical packaged content is a no-op. Refuse any
+  and atomic publication; identical packaged content is a no-op. The library
+  has no directory helper: stage a sibling directory under mods/ and rename it
+  onto the absent target. Refuse any
   existing different content, symlink or collision; provide manual resolution.
   Do not edit a layout, launch the app or run mod checks. Give exact instructions
   to load one block in a personal layout using Herdr's supported layout editor.
@@ -103,6 +115,7 @@ src/tools/sysup/cli.py                         # lazy CLI adapters
 tests/tools/sysup/test_herdr_bridge.py          # client and install cases
 tests/tools/sysup/test_herdr_bridge_mod.mjs     # exact packaged source harness
 tests/tools/sysup/test_herdr_commands.py        # adapter and wheel assertions
+tests/tools/sysup/test_sysup_cli.py             # pinned subcommand set gains herdr
 docs/source/tools/sysup.rst                    # setup and limitations
 CHANGELOG.md                                  # unreleased entry
 ```
@@ -137,8 +150,8 @@ CHANGELOG.md                                  # unreleased entry
 **Goal**: Implement the observed protocol independently of the disposable spike.
 
 **Tasks**:
-- [ ] Implement packaged bridge and exact-source harness (no deps). Read `docs/dev/project-management/spikes/herdr-update-bridge/main.js` and `docs/dev/project-management/spikes/herdr-update-bridge/probe.mjs` for the verified API shapes; the harness mocks exactly the Loaded bridge API listed above and calls init(undefined, cx), so a mod that reads its context from the first argument fails. Acceptance: `node --test tests/tools/sysup/test_herdr_bridge_mod.mjs` proves real init argument order, check-mode silence, full nonce matching and obsolete-instance cancellation.
-- [ ] Implement bounded typed client (depends on: previous task). Add one pytest case in `tests/tools/sysup/test_herdr_bridge.py` that runs the Node harness as a subprocess and skips only when node is not on PATH, so `uv run pytest` and CI cover the mod. Acceptance: `uv run pytest tests/tools/sysup/test_herdr_bridge.py` covers stale/unloaded/restarted/malformed/oversized states with fake clocks and no live home access, and runs the Node harness case.
+- [ ] Implement packaged bridge and exact-source harness (no deps). Read `docs/dev/project-management/spikes/herdr-update-bridge/main.js` and `docs/dev/project-management/spikes/herdr-update-bridge/probe.mjs` for the verified API shapes; the harness mocks exactly the Loaded bridge API listed above and calls init(undefined, cx), so a mod that reads its context from the first argument fails. Acceptance: `node --test tests/tools/sysup/test_herdr_bridge_mod.mjs` proves real init argument order, check-mode silence, full nonce matching, one taskCx.notify() call after each awaited command, and simulated instance replacement (a reply from an old instance never satisfies a new nonce). The harness does not model how Herdr stops an obsolete instance; the spike did not record that.
+- [ ] Implement bounded typed client (depends on: previous task). Add one pytest case in `tests/tools/sysup/test_herdr_bridge.py` that runs the Node harness as a subprocess and skips only when node is not on PATH, so `uv run pytest` covers the mod wherever node is installed (the CI tools job installs no node; report a skip as a skip). Acceptance: `uv run pytest tests/tools/sysup/test_herdr_bridge.py` covers stale/unloaded/restarted/malformed/oversized states with fake clocks and no live home access, and runs the Node harness case.
 
 **Exit Criteria**: Only a matching fresh validated reply is available.
 
@@ -146,7 +159,7 @@ CHANGELOG.md                                  # unreleased entry
 **Goal**: Provide explicit installation and shared commands.
 
 **Tasks**:
-- [ ] Implement CommandHerdr install/probe operations and lazy CLI adapters (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/sysup/test_herdr_commands.py` verifies CommandResult parity, unchanged layouts, collision refusal, identical reinstall, confinement and console rendering.
+- [ ] Implement CommandHerdr install/probe operations and lazy CLI adapters (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/sysup/test_herdr_commands.py` verifies CommandResult parity, unchanged layouts, collision refusal, identical reinstall, confinement and console rendering. Update `test_cli_is_a_group_with_status_and_refresh` in `tests/tools/sysup/test_sysup_cli.py` to expect the set `{"herdr", "refresh", "status"}`.
 
 **Exit Criteria**: Installing files does not claim the bridge is loaded.
 

@@ -35,6 +35,8 @@ Inspect local provenance without loading or modifying Herdr extensions.
   nonhidden immediate mod directories' mod.json and immediate layouts/*.json.
   These are runtime inventory patterns, not repository edit paths.
 - **Outputs**: Existing StepResult values identifying the relative item path.
+  Put the path in each result's message: the label is not shown or stored
+  when a message is set.
 - **Behavior**: Resolve the home as the allowed root. Require installed.json to
   be a JSON object whose values are objects; its plain keys identify shipped
   mods and layout:-prefixed keys identify shipped layouts. Skip those shipped
@@ -45,6 +47,8 @@ Inspect local provenance without loading or modifying Herdr extensions.
   and require it under the resolved home before reading; an escaping or broken
   symlink fails that item, including symlinked inventory roots. Continue through
   independent item errors. Never follow a path built from cloned_from.name.
+  Every nonshipped mod is audited the same way, including community mods that
+  hmod manages; do not read hmod records.
 
 #### Feature: Version and ancestry signals
 - **Description**: Report provenance requiring review without claiming compatibility.
@@ -59,7 +63,8 @@ Inspect local provenance without loading or modifying Herdr extensions.
   Omitted cloned_from means no clone. A present value must be an object with
   nonempty string name and version; name must be a basename other than . or ..,
   with neither slash nor backslash. Invalid metadata fails that item.
-  Compare version strings exactly, without ordering or normalization. A mismatch
+  Compare version strings exactly, without ordering or normalization; a recorded
+  version that is not an app version (a commit hash) is a mismatch. A mismatch
   yields success=True/status=warned and identifies clone, source, recorded version,
   and CLI binary version. Source membership uses the same asset kind in
   installed.json; a source absent from that set is unresolved/personal ancestry
@@ -142,7 +147,7 @@ CHANGELOG.md                                  # unreleased feature entry
 **Goal**: Deliver a read-only provenance audit with isolated tests.
 
 **Tasks**:
-- [ ] Implement HerdrCloneAudit and temporary-home tests for safe inventory, exact comparison, ancestry and failures (no deps). Acceptance: `uv run pytest tests/tools/sysup/test_herdr.py` covers every Critical Scenario below; all external calls are mocked and Herdr fixture bytes remain unchanged.
+- [ ] Implement HerdrCloneAudit and temporary-home tests for safe inventory, exact comparison, ancestry and failures (no deps). Acceptance: `uv run pytest tests/tools/sysup/test_herdr.py` covers every Critical Scenario below; all external calls are mocked and Herdr fixture bytes remain unchanged. Each test sets or deletes HERDR_APP_HOME itself, so a value from the environment cannot leak in.
 
 **Exit Criteria**: Audit emits accurate results without executing extension code.
 
@@ -150,7 +155,7 @@ CHANGELOG.md                                  # unreleased feature entry
 **Goal**: Wire the audit into normal sysup runs and attention.
 
 **Tasks**:
-- [ ] Register the capability and add the default entry; update plan assertions additively (depends on: Phase 0). Premise: herdr-mods still runs hmod at order 78; re-check before editing, skip and report if ownership/order changed. Acceptance: `uv run pytest tests/tools/sysup/test_default_config.py` proves macOS order, Linux exclusion and existing hmod guards; preserve its named herdr-mods test.
+- [ ] Register the capability and add the default entry; update plan assertions additively (depends on: Phase 0). Premise: herdr-mods still runs hmod at order 78; re-check before editing, skip and report if ownership/order changed. Acceptance: `uv run pytest tests/tools/sysup/test_default_config.py` proves macOS order, Linux exclusion and existing hmod guards; preserve its named herdr-mods test. The darwin plan assertion is an exact list that ends in herdr-mods: append herdr-clones to it.
 - [ ] Add isolated CLI/runner integration tests using temporary attention storage (depends on: previous task). Acceptance: `uv run pytest tests/tools/sysup/test_herdr_integration.py` proves warned attention/status with exit 0, failed audit with exit 1, clean clearing, mixed-result failure retention, unselected retention, and dry-run with no capability invocation.
 
 **Exit Criteria**: Existing rendering and persistence handle all audit outcomes.

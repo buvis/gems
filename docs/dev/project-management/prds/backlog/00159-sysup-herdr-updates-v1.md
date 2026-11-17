@@ -36,6 +36,8 @@ Drive supported actions using one shared service with explicit outcomes.
 - **Description**: Check for updates and optionally update a Herdr-owned core.
 - **Inputs**: Selected home, fresh observation client, snapshot store/home lock;
   update_core=true, restart=false, timeout_seconds=120 defaults on the opt-in entry.
+  These are `with:` inputs of the capability; the entry-level `timeout` field
+  is not used by `use:` entries.
 - **Outputs**: Operation report distinguishing unchanged, requested, running,
   completed, deferred, failed and unavailable; adapters return existing results.
 - **Behavior**: Acquire the PRD 00158 home lock before observing or mutating;
@@ -105,15 +107,23 @@ Preserve the runner and attention lifecycle.
 - **Outputs**: StepResult values; shared CommandHerdr update returns CommandResult.
 - **Behavior**: Register a macOS-only default entry at order 77, enabled=false;
   preserve hmod at 78 and clone audit at 79. Validate boolean policies strictly
-  and finite positive timeout. Report completed/unchanged as ok; deferred as
-  success=True/status=warned; unavailable as success=False/status=unknown;
+  and finite positive timeout; an invalid input gives one failed StepResult
+  before any observation, with no fallback to a default. Report
+  completed/unchanged and "no ready update" as ok; deferred and unsupported
+  (checks=false) as success=True/status=warned; unavailable, requested or
+  running at the deadline, and an unexpected version after restart as
+  success=False/status=unknown;
   failed as success=False/status=failed. Mixed results retain failures.
-  Dry-run performs no observation/capture/dispatch. Normal runs launch no agents
+  Dry-run performs no observation/capture/dispatch. The group option --dry-run
+  does not reach subcommands today: pass it to `sysup herdr update`, which then
+  only reports what it would do. Normal runs launch no agents
   or clone checks and install no bridge. Expose sysup herdr update through the
   same service with restart default off, never reimplement logic per interface.
   Both adapters receive the resolved herdr.budget_bytes from PRD 00158 through
   the selected configuration context. Wire the runner to supply that context;
   do not reload default config inside the capability or lose --config overrides.
+  Existing capabilities keep receiving only their `with:` inputs
+  (`test_use_passes_with_inputs` in `tests/tools/sysup/test_runner.py` stays green).
 
 ## Structural Decomposition
 

@@ -41,13 +41,24 @@ Separate historical evidence, comparison inputs and editable output.
   transformed comparison inputs, editable candidate, conflict report and agent-neutral task naming
   the exact editable directory.
 - **Behavior**: Under the home lock, validate all identities/digests and pin inputs before
-  publication. Refuse shipped/community-owned destinations, unknown ancestry, changed source
+  publication. A destination is eligible only when it is absent from installed.json for its kind,
+  has a valid cloned_from and has an accepted baseline; this refuses shipped and community mods
+  without reading hmod records. Refuse shipped/community-owned destinations, unknown ancestry, changed source
   identity, absent required source snapshots and invalid metadata; explain how baseline adoption
   enables future ports even when the original parent is gone. Never infer a base from a tag.
   Preserve raw bytes.
   Reproduce documented clone transformations on comparison copies: mod asset prefixes/self-overlay
-  names map source name to clone name; layout JSON is compared structurally with cloned_from treated
-  as provenance, not user content. Preserve the local cloned_from field; acceptance lives in the
+  names map source name to clone name; layout JSON and a mod's mod.json are compared structurally
+  with cloned_from treated as provenance, not user content.
+  Exact Herdr 0.1.16 clone rules (upstream file src/mods.rs, function clone_mod_at, commit 034f8b85, read
+  2026-11-17), with FROM the source name and TO the clone name: every file whose whole content is
+  valid UTF-8 gets these plain substring replacements, in this order, with no regex, no word
+  boundary and no extension filter: `mods/FROM/` to `mods/TO/`; `"mods/FROM"` to `"mods/TO"`;
+  `'mods/FROM'` to `'mods/TO'`; then, for each key `mod`, `"mod"`, `'mod'`, each of no space or one
+  space after the colon, and each quote `"` or `'`: `KEY:` + space + quoted FROM to the same text
+  with TO (for example `mod: "tabs"` to `mod: "my-tabs"`). Other files are copied unchanged, hidden
+  files included; file names do not change. mod.json is then written again as pretty JSON with
+  `cloned_from: {name: FROM, version: APP_VERSION}`. Preserve the local cloned_from field; acceptance lives in the
   ledger. Layout click-state files remain outside the port. For each path: identical sides win;
   local==old selects new; new==old selects local; two different text edits use three-way merge;
   differing binary changes, delete/edit and type conflicts require explicit resolution. Treat
@@ -64,7 +75,8 @@ Separate historical evidence, comparison inputs and editable output.
 - **Behavior**: Recheck immutable inputs and paths; reject symlinks, special files, traversal,
   altered raw inputs and unregistered files outside the candidate. Hash all candidate content/modes;
   enforce PRD 00158 accounting on import. Static validation checks JSON object/manifest shape,
-  required main.js for mods, layout structure and unresolved conflict records/markers. Every
+  required main.js for mods, layout structure (one JSON object; cloned_from, when present, has the
+  PRD 00156 shape; no deeper layout schema in v1) and unresolved conflict records/markers. Every
   recorded conflict requires an explicit resolution; a marker scan alone is insufficient. No agent
   or arbitrary validation command is launched. The operator uses their existing authorized isolated
   runtime to check a mod and test visual/async behavior; layouts require isolated visual validation.
@@ -89,8 +101,13 @@ Apply explicit reviewed content without silently overwriting subsequent edits.
   stop concurrent editing. Stage the complete output on the destination filesystem, durably journal
   paths/digests and old provenance, then rename old asset to a confined unique backup and staged
   asset into place. For a layout replace only its JSON file; for a mod replace its directory. Never
-  write live files one by one or overwrite an existing backup. Fsync appropriate files/directories
-  at durability boundaries. Publish new accepted provenance only after installed bytes verify
+  write live files one by one or overwrite an existing backup. Staging and backup are dot-prefixed
+  siblings in the same parent directory as the asset, so each rename stays on one filesystem and
+  the PRD 00156 inventory ignores them; count their bytes against the PRD 00158 budget. Fsync
+  appropriate files/directories at durability boundaries. The library `atomic_write_*` helpers do
+  not fsync the parent directory: journal and ledger publication use a helper local to
+  `sysup/herdr/` (temporary file, fsync file, `os.replace`, fsync directory) with injectable rename
+  and fsync, so tests can interrupt each boundary. Publish new accepted provenance only after installed bytes verify
   against reviewed digest. Journal recovery chooses forward completion only when installed/new and
   required inputs match; otherwise restore verified old bytes/provenance. Unexpected edits or
   ambiguous filesystem state stop for manual recovery. Recovery is idempotent; no deletion of the
@@ -109,7 +126,9 @@ Keep unresolved work visible without using metadata edits to silence it.
 - **Inputs**: Explicit operation IDs/digests; existing attention/audit lifecycle.
 - **Outputs**: CommandResult and updated read-only audit findings.
 - **Behavior**: All interfaces call the same services. No automatic agent launch or application from
-  normal sysup. Extend PRD 00156 audit to consult accepted baseline records without executing code:
+  normal sysup. Extend PRD 00156 audit to consult accepted baseline records without executing code.
+  The audit finds the store from the resolved Herdr home and XDG_STATE_HOME only; it needs no budget
+  or config context and works whether or not PRD 00159 is done. Rule:
   suppress a raw version-only mismatch only when current source content matches accepted source and
   live clone content matches its last reviewed/applied digest. Otherwise retain the warning and
   describe accepted baseline separately. Missing/corrupt ledger inputs must not produce all-clear.
@@ -205,5 +224,6 @@ CHANGELOG.md                                   # unreleased entry
 
 - **External validation trust**: Operator attestations are explicit trust inputs; sysup cannot prove another process was isolated or visually correct.
 - **Renaming behavior**: Pin transformation fixtures to inspected Herdr behavior; changed upstream semantics require review rather than guessed rewrites.
-- **Hand-written merge**: A custom diff3 is a defect source. Reuse `git merge-file` without a shell, or an installed dependency; add no new dependency. Missing git fails preparation with a diagnostic.
+- **Hand-written merge**: A custom diff3 is a defect source. Reuse `git merge-file -p --diff3 LOCAL OLD NEW` without a shell; add no new dependency (no merge library is installed). Missing git fails preparation with a diagnostic.
+- **Shared test files**: `test_herdr_commands.py` and `test_herdr.py` already hold the tests of PRDs 00156 to 00158. A file that nears 800 lines may be split into siblings (for example `test_herdr_port_commands.py`); the acceptance command then names each file.
 - **Concurrent/live reload**: The home lock coordinates sysup only; stop editors during apply and document the brief rename gap.

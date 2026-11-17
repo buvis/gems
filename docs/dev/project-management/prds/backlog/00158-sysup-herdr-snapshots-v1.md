@@ -35,6 +35,10 @@ Store only selected assets and enough evidence to distinguish observation from a
 - **Description**: Capture current source mods/layouts into a private store.
 - **Inputs**: Canonical home; explicit asset kind/name or all shipped assets
   named in validated installed.json; observed app version with its basis.
+  Home layout: mods/NAME/ directories, layouts/NAME.json files, and an
+  installed.json object whose plain keys are shipped mods and whose
+  layout:NAME keys are shipped layouts. The CLI version is the token in the
+  output `herdr-app VERSION` of `herdr-app --version`.
 - **Outputs**: Version-one manifests containing canonical home, kind/name,
   capture time, version/basis, sorted relative file paths, byte lengths,
   executable bits and SHA-256 content hashes; snapshot ID hashes the canonical
@@ -48,6 +52,11 @@ Store only selected assets and enough evidence to distinguish observation from a
   Validate source before/after capture and abort on a changing tree. Stream
   hashing; do not buffer arbitrary files into memory. Atomic publication must
   never expose partial manifests/blobs. Verify digest integrity on reuse.
+  Write manifests and ledger records with `atomic_write_text(path, text,
+  mode=0o600)`. Blobs need a streaming publish local to the store (0600
+  temporary file in the store, chunked hash, fsync, `os.replace`), because
+  `atomic_write_bytes` makes 0644 files and holds the payload in memory.
+  Do not edit `src/lib`.
   Label captured bytes observed, never authenticated shipped release content.
   If no running app is observed, record CLI-version basis explicitly.
 
@@ -57,7 +66,8 @@ Store only selected assets and enough evidence to distinguish observation from a
   read from herdr.budget_bytes in the existing buvis-sysup.yaml configuration.
 - **Outputs**: Admission result, store usage and explicit collection report.
 - **Behavior**: Use one OS-held exclusive home lock, released on interruption
-  and process death. Ten-second bounded lock acquisition; busy is a diagnostic.
+  and process death. Use `fcntl.flock` as `src/tools/klyreon/run/lock.py` does,
+  without importing that module; import fcntl inside the lock code. Ten-second bounded lock acquisition; busy is a diagnostic.
   Expose a lock context so future update/port workflows can hold it across
   multiple store calls without recursive locking. Count all owned persistent
   source, candidate, journal and rollback bytes. Reserve expected incremental
@@ -125,7 +135,7 @@ CHANGELOG.md                                  # unreleased entry
 ### Module: Store and lock
 - **Maps to capability**: Immutable source storage; Explicit baseline acceptance
 - **Responsibility**: Confine, admit, publish and retain content with honest provenance.
-- **Exports**: HerdrStore, HerdrHomeLock.
+- **Exports**: HerdrStore, HerdrHomeLock. A test file that nears 800 lines may be split into `test_herdr_store_*.py` siblings; the acceptance commands then name each file.
 - New symbols: `HerdrStore`, `HerdrHomeLock`, `src/tools/sysup/herdr/store.py`, `src/tools/sysup/herdr/locking.py`, `tests/tools/sysup/test_herdr_store.py`, `tests/tools/sysup/test_herdr_locking.py`.
 
 ### Module: Configuration and commands
@@ -152,7 +162,7 @@ CHANGELOG.md                                  # unreleased entry
 
 **Tasks**:
 - [ ] Implement per-home lock and content capture (no deps). Acceptance: `uv run pytest tests/tools/sysup/test_herdr_locking.py tests/tools/sysup/test_herdr_store.py` proves cross-process exclusion, KeyboardInterrupt release, content identity, atomic failures and confinement.
-- [ ] Add admission accounting, protected-reference collection and budget validation (depends on: previous task). Acceptance: `uv run pytest tests/tools/sysup/test_herdr_store.py tests/tools/sysup/test_config.py` covers capacity at/below/above limit, stream growth, staging remnants, invalid limits and corrupt-reference refusal.
+- [ ] Add admission accounting, protected-reference collection and budget validation (depends on: previous task). This task adds the typed herdr section (field budget_bytes) to SysupConfig in `src/tools/sysup/config.py` and the key in `src/tools/sysup/default.yaml` in one commit, because SysupConfig refuses unknown keys; Phase 2 only passes the resolved value to the facade and CLI. Acceptance: `uv run pytest tests/tools/sysup/test_herdr_store.py tests/tools/sysup/test_config.py` covers capacity at/below/above limit, stream growth, staging remnants, invalid limits and corrupt-reference refusal.
 
 **Exit Criteria**: Failures cannot publish incomplete content or evict referenced history.
 
@@ -169,7 +179,7 @@ CHANGELOG.md                                  # unreleased entry
 
 **Tasks**:
 - [ ] Extend facade, CLI and config, preserving current defaults (depends on: Phase 1, PRD 00157). Acceptance: `uv run pytest tests/tools/sysup/test_herdr_commands.py tests/tools/sysup/test_config.py` verifies identical command outcomes across facade and CLI, gc preview/apply separation and no hidden live mutation.
-- [ ] Document baseline adoption, storage cap, explicit collection and missing history; add changelog (depends on: previous task). Acceptance: `uv run sphinx-build -b html docs/source docs/build/html` succeeds.
+- [ ] Document baseline adoption, storage cap, explicit collection and missing history; add changelog (depends on: previous task). Do not name a machine-local config file; refer to the "Sharing across machines" section. Rename the example entry `herdr:` in the YAML quoting example of `docs/source/tools/sysup.rst`, so that it cannot be read as the new top-level herdr section. Acceptance: `uv run sphinx-build -b html docs/source docs/build/html` succeeds.
 
 **Exit Criteria**: `uv run pytest` and `uv run mypy src/lib/ src/tools/` pass with normal platform snapshot skips.
 
