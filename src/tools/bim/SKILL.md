@@ -187,6 +187,10 @@ pipeline; both have their own `--help`.
   automation: they open a TUI or a prompt and hang.
 - Do not invent ids and do not edit `id` or `date` by hand.
 - Delete only when the user asked for deletion; archive otherwise.
+- Write procedures, how-tos, and any other instructions in Simplified Technical
+  English (ASD-STE100): one instruction per sentence, imperative mood, present
+  tense, at most 20 words per sentence, one word for one meaning, no idioms.
+  State the expected result of a step when the reader needs it to continue.
 - Every note command exits 1 on failure. Human-facing lines are prefixed with
   status markers such as `✓` and `✘`; with `--json` read the `error` key.
 
@@ -287,7 +291,7 @@ Body shapes:
 |------|------|
 | `note` | A short essay or structured explainer. |
 | `definition` | One term in one or two paragraphs, then an optional `## Example`. Longer explanations are a `note`. |
-| `procedure` | One numbered list; sub-steps are nested numbered lists; prose between steps stays short. |
+| `procedure` | One numbered list; sub-steps are nested numbered lists; prose between steps stays short. Written in Simplified Technical English (see "Rules"). |
 | `wiki-article` | One setting, tweak or trick in two to ten lines, plus at most one code block. Grown past that, it becomes a `note` or a `procedure`. |
 | `cheatsheet` | Bullets or a table, no long paragraphs. |
 | `list` | A short lead-in, then bullets; sub-headings group the items. |
