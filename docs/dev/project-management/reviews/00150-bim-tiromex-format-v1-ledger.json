@@ -126,5 +126,69 @@
     "issue": "[MECH] 2 touched test(s) pass against the pre-change code: test_keeps_concept_fields_and_relations_and_is_idempotent",
     "file": "tests/tools/bim/test_format_note.py",
     "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "🟡",
+    "issue": "`bim tx new` with a non-concept note (no --concept-type) skips all validation because the note classifies as plain. A multi-line title such as \"a\\n---\\n# b\" is written as a malformed note: the title is a quoted multi-line scalar, and the body is \"# A\", \"---\", \"# b\", so the `---` line later parses as the backmatter separator. The draft-validate guard only protects concept, index and run notes.",
+    "file": "src/tools/bim/commands/tx/new.py:95",
+    "reason": "single-voice, so no rework task; the coordinator reproduced it in a scratch vault, so it is deferred to batch end for the owner and not discarded"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The import-weight regression passes against the eager-import baseline, according to replay. Check `bim.tx_cli.__file__` and the format module’s `__file__` in the subprocess against the reviewed checkout. Then rerun this test with both original module-level imports restored; it must fail. If it loads another checkout, explicitly set the subprocess import paths.",
+    "file": "tests/tools/bim/tx/test_cli.py:519",
+    "reason": "refuted by check: the probe run against the pre-rework bim source loads zettel.infrastructure modules, so the test fails on the old code; the replay line is an artifact of the subprocess import path"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`test_real_symlink_loop_never_escapes_as_another_error` is an either-or hedge: it returns on `ValueError`, otherwise asserts a lexical result. The venv runs Python 3.15, where `resolve()` does not raise on a loop, so the test passes against the pre-change code here (the replay flagged it too). The mocked-resolve test above it does pin the fix, so this is a weak extra guard rather than a gap.",
+    "file": "tests/tools/bim/tx/test_scope.py:197",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The format spec says `source-shape` fails when there is \"no `/` after the root name\". The rework also rejects an empty root (`mirror:/x`) and an empty path part (`mirror:root/`), so the spec wording no longer describes the rule fully. Add \"an empty root name or empty path\" to the prose at line 376 or 378 and to the table row at line 458.",
+    "file": "docs/reference/bim/tiromex/zettel-format-specification.md:378",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`parse_note` cuts the body at the first line that is exactly `---`. A body that holds a horizontal rule or a fenced YAML sample ends there. The H1-count, empty-body and oversized-body checks then see only the text before the rule, so an oversized body can pass.",
+    "file": "src/tools/bim/commands/tx/shared/format.py:159",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`_edges` compares the confined, symlink-resolved path with each note's unresolved vault-relative path. A note reached through an in-folder symlink alias can therefore miss a transitive-cycle edge. This is an edge case only, because `iter_note_files` keeps symlinked files whose targets stay inside the folder.",
+    "file": "src/tools/bim/commands/tx/shared/validator.py:353",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "[MECH] 2 touched test(s) pass against the pre-change code: test_malformed_doubts_value_counts_no_disagreement_and_does_not_crash",
+    "file": "tests/tools/bim/tx/test_new_status.py",
+    "reason": "single-voice; the passing tests are sibling values of a parametrized test whose scalar values fail against base"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "[MECH] 7 touched test(s) pass against the pre-change code: test_bad_source +1 more",
+    "file": "tests/tools/bim/tx/test_validator.py",
+    "reason": "single-voice; the passing tests are sibling values of a parametrized test whose two new values fail against base"
   }
 ]
