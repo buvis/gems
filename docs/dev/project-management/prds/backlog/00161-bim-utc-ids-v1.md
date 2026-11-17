@@ -27,7 +27,7 @@ The vault owner, who travels between time zones, and agents that call `bim creat
 - **Description**: The default id is the UTC digits of the note date.
 - **Inputs**: `metadata["date"]`, a timezone-aware `datetime`.
 - **Outputs**: `metadata["id"]` as an `int` of 14 digits.
-- **Behavior**: `int(date.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"))`. A naive `date` is treated as `Europe/Prague` local time (the vault owner's zone), DST-aware (guess).
+- **Behavior**: `int(date.astimezone(timezone.utc).strftime("%Y%m%d%H%M%S"))`. A naive `date` is treated as local time of the zone in the bim setting `id_naive_timezone` (default `Europe/Prague`, DST-aware via `zoneinfo`). The setting lives in `BimSettings`; the lib function takes the zone as an argument with the same default, so the lib does not import bim settings.
 
 #### Feature: Date from id
 - **Description**: A note file without frontmatter date takes its date from the id in the file name.
@@ -35,13 +35,25 @@ The vault owner, who travels between time zones, and agents that call `bim creat
 - **Outputs**: A timezone-aware `datetime` in UTC.
 - **Behavior**: Parse as UTC, not local. Seconds `60` to `99` fall back to second `59` of the same minute (guess), because the suffix is a collision counter and not a time.
 
+#### Feature: Rust mirror
+- **Description**: The Rust core duplicates both rules above and must give identical results (`tests/lib/zettel/parity/test_rust_python_parity.py`).
+- **Inputs**: `src/rust/src/consistency/defaults.rs` (`set_default_id`, today the date's own wall clock) and `src/rust/src/parser/enrichment.rs` (`date_from_filename`, today `Local`).
+- **Outputs**: UTC id; UTC date from a file name; seconds `60` to `99` map to `59`.
+- **Behavior**: Same rules as the Python feature. Naive dates do not occur on the Rust side (`date` is already a `DateTime<FixedOffset>`).
+
 ### Capability: Collision suffix
 
 #### Feature: Seconds-slot suffix
 - **Description**: When the id file exists, the seconds field takes `60`, `61`, up to `99`.
 - **Inputs**: The UTC base id and the target path.
 - **Outputs**: A free id, or an error.
-- **Behavior**: Try the base id. On collision try `base[:12] + "60"`, then `"61"`, up to `"99"`. After `"99"` raise `FileExistsError` naming the path. Do not sleep. Keep the `O_EXCL` reservation. The `slug`-stem templates (contact, book) keep their fail-fast behavior.
+- **Behavior**: Try the base id. On collision try `base[:12] + "60"`, then `"61"`, up to `"99"`. After `"99"` raise `FileExistsError` naming the path. Do not sleep. Keep the `O_EXCL` reservation. The `slug`-stem templates (contact, book) keep their fail-fast behavior. The note's `date` is not changed: a suffixed note has an id that differs from the digits of its `date`, by design.
+
+#### Feature: Doc ingest timestamps tolerate suffixes
+- **Description**: `bim doc` derives file names from a 14-digit timestamp and bumps it by one second on collision (`_increment_zk_seconds` in `commands/doc/shared/naming.py`, via `strptime`). `strptime` rejects seconds `60` to `99`.
+- **Inputs**: A 14-digit timestamp, possibly with seconds `60` to `99`.
+- **Outputs**: The next free timestamp.
+- **Behavior**: Treat seconds `60` to `99` as a counter: increment the counter (after `99`, raise the existing collision error). Seconds `00` to `59` keep the one-second bump. `pipeline.py` already writes UTC; no change there.
 
 ### Capability: Skill text
 
@@ -60,10 +72,16 @@ src/lib/buvis/pybase/zettel/
 ├── domain/entities/zettel/fixers/set_default_id.py        # Maps to: UTC id from date
 ├── application/use_cases/create_zettel_use_case.py        # Maps to: Seconds-slot suffix
 └── infrastructure/persistence/file_parsers/zettel_file_parser.py  # Maps to: Date from id
+src/rust/src/consistency/defaults.rs                        # Maps to: Rust mirror (id)
+src/rust/src/parser/enrichment.rs                           # Maps to: Rust mirror (date from file name)
+src/tools/bim/settings.py                                   # Maps to: id_naive_timezone setting
+src/tools/bim/commands/doc/shared/naming.py                 # Maps to: Doc ingest timestamps tolerate suffixes
 src/tools/bim/SKILL.md                                      # Maps to: Skill describes UTC ids
 tests/lib/zettel/entities/zettel/fixers/test_set_default_id.py
 tests/lib/zettel/application/test_create_zettel_use_case.py
 tests/lib/zettel/infrastructure/test_zettel_file_parser.py
+tests/lib/zettel/parity/test_rust_python_parity.py
+tests/tools/bim/commands/doc/shared/test_naming.py
 ```
 
 ### Module: set_default_id
@@ -80,18 +98,30 @@ tests/lib/zettel/infrastructure/test_zettel_file_parser.py
 ### Module: tests
 - **Maps to capability**: all
 - **Responsibility**: One test per rule, in the three test files listed above.
-- New symbols: `utc_id_ignores_local_offset`, `naive_date_treated_as_prague`, `file_name_date_is_utc`, `suffix_seconds_map_to_59`, `same_second_gets_suffix_60`, `suffix_runs_to_99`, `collision_after_99_raises`, `create_never_sleeps`
+- New symbols: `utc_id_ignores_local_offset`, `naive_date_treated_as_prague`, `file_name_date_is_utc`, `suffix_seconds_map_to_59`, `same_second_gets_suffix_60`, `suffix_runs_to_99`, `collision_after_99_raises`, `create_never_sleeps`, `rust_python_id_parity_utc`, `rust_filename_date_utc`, `doc_increment_handles_suffix`
 
 ### Module: zettel_file_parser
 - **Maps to capability**: UTC id derivation
 - **Responsibility**: Read the date from a file name as UTC.
 - **Exports**: `_get_date_from_file()`.
 
+### Module: rust core
+- **Maps to capability**: UTC id derivation (Rust mirror)
+- **Responsibility**: Same UTC id and file-name date rules as Python.
+- **Exports**: `set_default_id` (defaults.rs), `date_from_filename` (enrichment.rs).
+
+### Module: doc naming
+- **Maps to capability**: Collision suffix (doc ingest)
+- **Responsibility**: Bump timestamps that carry a `60`-`99` counter.
+- **Exports**: `_increment_zk_seconds()`.
+
 ## Dependency Graph
 
 ### Foundation Layer (Phase 0)
 - **set_default_id**: no dependencies; built first.
 - **zettel_file_parser**: no dependencies.
+- **rust core**: no dependencies; must match set_default_id and zettel_file_parser.
+- **doc naming**: no dependencies.
 
 ### Core Layer (Phase 1)
 - **CreateZettelUseCase**: Depends on [set_default_id]
@@ -108,7 +138,10 @@ tests/lib/zettel/infrastructure/test_zettel_file_parser.py
 - [ ] Change `set_default_id` to use UTC (no deps) - Acceptance: new tests `utc_id_ignores_local_offset` and `naive_date_treated_as_prague` in `tests/lib/zettel/entities/zettel/fixers/test_set_default_id.py` pass.
 - [ ] Change `_get_date_from_file` to parse the digits as UTC and to map seconds 60-99 to 59 (no deps) - Acceptance: new tests `file_name_date_is_utc` and `suffix_seconds_map_to_59` in `tests/lib/zettel/infrastructure/test_zettel_file_parser.py` pass.
 
-**Exit Criteria**: Both test files pass.
+- [ ] Mirror both rules in Rust (`defaults.rs` `set_default_id`, `enrichment.rs` `date_from_filename`), add `id_naive_timezone` to `BimSettings`, rebuild the extension (no deps) - Acceptance: new tests `rust_python_id_parity_utc` and `rust_filename_date_utc` in `tests/lib/zettel/parity/test_rust_python_parity.py` pass, and `cargo test` in `src/rust` passes.
+- [ ] Grep other id consumers: `rg -n "strptime|%Y%m%d%H%M%S" src` (premise: the hits in `bim/commands/doc/shared/naming.py`, `klyreon/vault/ids.py`, `zseq` and `bim import` are the full set that parse or build note ids). Fix `_increment_zk_seconds` (no deps) - Acceptance: new test `doc_increment_handles_suffix` in `tests/tools/bim/commands/doc/shared/test_naming.py` passes. A hit in another tool is reported in the PRD closeout, not fixed in this PRD.
+
+**Exit Criteria**: The test files above pass, and `cargo test` passes.
 
 ### Phase 1: Core
 **Goal**: Same-second creates get suffixed ids and never sleep.
@@ -136,6 +169,7 @@ tests/lib/zettel/infrastructure/test_zettel_file_parser.py
 
 ## Risks
 
-- **Seconds 60-99 break strict parsers**: `strptime` rejects them. Mitigation: the file-name parser maps them to 59; the Rust `_core` parser must be checked at execution (premise: `rg -n "strptime|chrono" src/lib` for the Rust side); a failed premise is reported, not forced.
+- **Seconds 60-99 break strict parsers**: `strptime` and chrono reject them. Mitigation: the Python and Rust file-name parsers map them to 59; `_increment_zk_seconds` handles them; the consumer grep in Phase 0 finds the rest. A consumer outside bim is reported, not forced.
+- **Legacy notes without `date` change meaning at once**: after this PRD, `_get_date_from_file` reads their file-name digits as UTC, but until PRD 00162 runs those digits are local time. Mitigation: the window is short and affects only notes with no `date`; PRD 00162 resolves such notes (it reads their old id as local time) before the parser matters.
 - **Mixed local and UTC ids until the migration (PRD 00162) runs**: an old local id can equal a new UTC id. Mitigation: the suffix check covers it; no overwrite is possible because of `O_EXCL`.
-- **Obsidian Templater still writes local ids**: out of scope here; PRD 00162 covers the vault templates.
+- **Obsidian Templater**: already solved. The vault templates in `notes/system/templates/` write UTC ids since 2026-11-17 (`moment.utc().format("YYYYMMDDHHmmss")`, verified by a note made from a template). Out of scope here; no task touches them.
