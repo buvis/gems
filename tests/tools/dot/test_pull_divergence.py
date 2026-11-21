@@ -62,6 +62,11 @@ class Harness:
         monkeypatch.setattr("dot.divergence.atomic_write_bytes", self._write)
         monkeypatch.setattr("dot.divergence.datetime", _FixedDatetime)
 
+    def use_git_secret(self) -> None:
+        """git-secret is installed and set up in this root (a ``.gitsecret`` directory)."""
+        self.shell.is_command_available.return_value = True
+        (self.root / ".gitsecret").mkdir(exist_ok=True)
+
     def _exe(self, cmd: str, _wd: Path) -> tuple[str, str]:
         self.events.append(("exe", cmd))
         return self.responses.get(cmd, ("", ""))
@@ -388,7 +393,7 @@ class TestFailuresAfterSaveKeepWarnings:
         responses = _responses(incoming="x\0y\0", unstaged="x\0y\0")
         responses[failing] = ("boom", "")
         h = Harness(root, monkeypatch, responses)
-        h.shell.is_command_available.return_value = True
+        h.use_git_secret()
 
         result = h.service.pull(fetched=True)
 
@@ -413,7 +418,7 @@ class TestSecretHide:
         self, root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         h = Harness(root, monkeypatch, _responses())
-        h.shell.is_command_available.return_value = True
+        h.use_git_secret()
 
         result = h.service.pull(fetched=True)
 
@@ -438,7 +443,7 @@ class TestSecretHide:
         responses = _responses(incoming="x.secret\0", unstaged="x.secret\0")
         responses[HIDE] = ("gpg: no public key", "")
         h = Harness(root, monkeypatch, responses)
-        h.shell.is_command_available.return_value = True
+        h.use_git_secret()
 
         result = h.service.pull(fetched=True)
 
@@ -450,7 +455,7 @@ class TestSecretHide:
 
     def test_no_upstream_skips_hide(self, root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         h = Harness(root, monkeypatch, {UPSTREAM: ("no upstream", "")})
-        h.shell.is_command_available.return_value = True
+        h.use_git_secret()
 
         result = h.service.pull(fetched=True)
 
@@ -461,7 +466,7 @@ class TestSecretHide:
         self, root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         h = Harness(root, monkeypatch, _responses(incoming=SECRET_DIRTY, unstaged=SECRET_DIRTY))
-        h.shell.is_command_available.return_value = True
+        h.use_git_secret()
 
         result = h.service.pull(fetched=True)
 
@@ -477,7 +482,7 @@ class TestSecretHide:
         responses = _responses(incoming=SECRET_DIRTY, unstaged=SECRET_DIRTY)
         responses[_restore("x.secret")] = ("denied", "")
         h = Harness(root, monkeypatch, responses)
-        h.shell.is_command_available.return_value = True
+        h.use_git_secret()
 
         result = h.service.pull(fetched=True)
 

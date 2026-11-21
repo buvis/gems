@@ -19,9 +19,15 @@ def remove_empty_directories(directory: Path) -> CommandResult:
     result = CommandResult(success=True)
     for dir_path in sorted(safe_rglob(directory), reverse=True):
         try:
-            if dir_path.is_dir() and not any(dir_path.iterdir()):
-                dir_path.rmdir()
-                result.info.append(f"Removed empty directory {dir_path}")
+            empty = dir_path.is_dir() and not any(dir_path.iterdir())
+        except OSError as exc:
+            result.warnings.append(f"Could not read directory {dir_path}: {exc}")
+            continue
+        if not empty:
+            continue
+        try:
+            dir_path.rmdir()
+            result.info.append(f"Removed empty directory {dir_path}")
         except OSError as exc:
             result.warnings.append(f"Could not remove empty directory {dir_path}: {exc}")
     return result

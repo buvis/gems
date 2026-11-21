@@ -56,6 +56,9 @@ class ConsoleAdapter:
             self.console = Console(file=utf8_stdout, log_path=False)
         else:
             self.console = Console(log_path=False)
+        # For diagnostics that must stay out of machine-read stdout (git filter
+        # payloads, --json). sys.stderr escapes unencodable glyphs by default.
+        self.err_console = Console(stderr=True, log_path=False)
 
     def format_success(self: ConsoleAdapter, message: str) -> str:
         """Return a green checkmark Rich markup string.
@@ -112,26 +115,28 @@ class ConsoleAdapter:
 
         return formatted_message
 
-    def failure(self: ConsoleAdapter, message: str, details: str | None = None) -> None:
+    def failure(self: ConsoleAdapter, message: str, details: str | None = None, *, soft_wrap: bool = False) -> None:
         """Print a red failure message, optionally including details.
 
         Args:
             message (str): Text to display.
             details (str | None): Additional information to display after the failure message.
+            soft_wrap (bool): Leave line wrapping to the terminal, so a long path is never split.
         """
-        self.console.print(self.format_failure(message, details))
+        self.console.print(self.format_failure(message, details), soft_wrap=soft_wrap)
 
-    def panic(self: ConsoleAdapter, message: str, details: str | None = None) -> None:
+    def panic(self: ConsoleAdapter, message: str, details: str | None = None, *, soft_wrap: bool = False) -> None:
         """Print a failure message and exit the program.
 
         Args:
             message (str): Text to display.
             details (str | None): Additional information to display after the failure message.
+            soft_wrap (bool): Leave line wrapping to the terminal, so a long path is never split.
 
         Note:
             Terminates the program by calling `sys.exit(1)`.
         """
-        self.failure(message, details)
+        self.failure(message, details, soft_wrap=soft_wrap)
         sys.exit(1)
 
     def status(self: ConsoleAdapter, message: str) -> Status:
@@ -268,6 +273,7 @@ class ConsoleAdapter:
         on_success: Callable[[CommandResult], None] | None = None,
         on_failure: Callable[[CommandResult], None] | None = None,
         literal: bool = False,
+        exit_on_failure: bool = False,
     ) -> None:
         """Print warnings then success/failure from a CommandResult.
 
@@ -279,6 +285,7 @@ class ConsoleAdapter:
             on_failure: Custom handler called instead of default failure output.
             literal: Preserve markup and emoji codes in standard messages.
                 Custom callbacks still receive the original result.
+            exit_on_failure: Exit with code 1 after reporting a failed result.
         """
 
         def emit(message: str, reporter: Callable[[str], None], marker: str, style: str) -> None:
@@ -287,19 +294,29 @@ class ConsoleAdapter:
             else:
                 reporter(message)
 
+        warnings = result.warnings
+        failures = [result.error or failure_msg]
+        if not result.success and on_failure is None and warnings and result.error == "\n".join(warnings):
+            # The error only repeats the warnings (every input failed): say each once, as a failure.
+            warnings, failures = [], result.warnings
+
         for i in result.info:
             emit(i, self.success, CHECKMARK, STYLE_SUCCESS_MSG)
-        for w in result.warnings:
+        for w in warnings:
             emit(w, self.warning, WARNING, STYLE_WARNING_MSG)
         if result.success:
             if on_success is not None:
                 on_success(result)
             elif success_msg or result.output:
                 emit(success_msg or result.output or "", self.success, CHECKMARK, STYLE_SUCCESS_MSG)
-        elif on_failure is not None:
+            return
+        if on_failure is not None:
             on_failure(result)
         else:
-            emit(result.error or failure_msg, self.failure, CROSSMARK, STYLE_FAILURE_MSG)
+            for message in failures:
+                emit(message, self.failure, CROSSMARK, STYLE_FAILURE_MSG)
+        if exit_on_failure:
+            sys.exit(1)
 
     def require_import(self: ConsoleAdapter, extra: str, tool_name: str | None = None) -> None:
         """Panic with a standardized install hint for a missing optional extra.

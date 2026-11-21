@@ -23,7 +23,7 @@ def slug(paths: tuple[str, ...]) -> None:
         console.require_import("fren")
         return
 
-    console.report_result(CommandSlug(paths=paths).execute())
+    console.report_result(CommandSlug(paths=paths).execute(), exit_on_failure=True)
 
 
 @cli.command("directorize", help="Wrap files in directories named after file stem")
@@ -31,7 +31,7 @@ def slug(paths: tuple[str, ...]) -> None:
 def directorize(directory: str) -> None:
     from fren.commands.directorize.directorize import CommandDirectorize
 
-    console.report_result(CommandDirectorize(directory=directory).execute())
+    console.report_result(CommandDirectorize(directory=directory).execute(), exit_on_failure=True)
 
 
 @cli.command("flatten", help="Copy nested files into flat destination")
@@ -40,7 +40,7 @@ def directorize(directory: str) -> None:
 def flatten(source: str, destination: str) -> None:
     from fren.commands.flatten.flatten import CommandFlatten
 
-    console.report_result(CommandFlatten(source=source, destination=destination).execute())
+    console.report_result(CommandFlatten(source=source, destination=destination).execute(), exit_on_failure=True)
 
 
 @cli.command("normalize", help="NFC-normalize directory names")
@@ -48,7 +48,7 @@ def flatten(source: str, destination: str) -> None:
 def normalize(directory: str) -> None:
     from fren.commands.normalize.normalize import CommandNormalize
 
-    console.report_result(CommandNormalize(directory=directory).execute())
+    console.report_result(CommandNormalize(directory=directory).execute(), exit_on_failure=True)
 
 
 if __name__ == "__main__":

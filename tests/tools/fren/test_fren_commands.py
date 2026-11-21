@@ -42,7 +42,7 @@ class TestFrenCommands:
         target.write_text("x")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="permission denied")
         result = runner.invoke(cli, ["slug", str(target)])
-        assert result.exit_code == 0  # CLI prints failure but doesn't sys.exit
+        assert result.exit_code == 1
 
     @patch("fren.commands.slug.slug.CommandSlug")
     def test_slug_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -68,13 +68,13 @@ class TestFrenCommands:
         target.write_text("x")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["slug", str(target)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("fren.commands.directorize.directorize.CommandDirectorize")
     def test_directorize_failure(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="bad")
         result = runner.invoke(cli, ["directorize", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("fren.commands.directorize.directorize.CommandDirectorize")
     def test_directorize_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -97,7 +97,7 @@ class TestFrenCommands:
         dst = tmp_path / "dst"
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="bad")
         result = runner.invoke(cli, ["flatten", str(src), str(dst)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("fren.commands.flatten.flatten.CommandFlatten")
     def test_flatten_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -123,7 +123,7 @@ class TestFrenCommands:
     def test_normalize_failure(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="bad")
         result = runner.invoke(cli, ["normalize", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("fren.commands.normalize.normalize.CommandNormalize")
     def test_normalize_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:

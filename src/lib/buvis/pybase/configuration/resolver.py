@@ -36,10 +36,11 @@ from typing import Any, TypeVar
 
 import yaml
 from pydantic import ValidationError
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsError
 
-from .exceptions import ConfigurationError
-from .loader import ConfigurationLoader
+from .exceptions import ConfigurationError, MissingEnvVarError
+from .loader import ConfigurationLoader, _split_directive
+from .registry import known_tool_names
 from .validators import is_sensitive_field
 
 __all__ = ["ConfigResolver", "ConfigSource"]
@@ -59,38 +60,6 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseSettings)
 
 
-def _load_yaml_config(file_path: Path | None = None) -> dict[str, Any]:
-    """Load YAML config, return empty dict if not found.
-
-    Args:
-        file_path: Path to YAML file. If None, uses BUVIS_CONFIG_FILE env var
-            or defaults to ~/.config/buvis/config.yaml.
-
-    Returns:
-        Parsed YAML as dict, or empty dict if file doesn't exist.
-
-    Raises:
-        ConfigurationError: If YAML syntax is invalid.
-    """
-    if file_path is None:
-        default = Path.home() / ".config" / "buvis" / "config.yaml"
-        file_path = Path(os.getenv("BUVIS_CONFIG_FILE", str(default)))
-
-    if not file_path.exists():
-        return {}
-
-    try:
-        with file_path.open() as f:
-            return yaml.safe_load(f) or {}
-    except yaml.YAMLError as e:
-        mark = getattr(e, "problem_mark", None)
-        line_num = mark.line + 1 if mark else "unknown"
-        raise ConfigurationError(f"YAML syntax error in {file_path}:{line_num}: {e}") from e
-    except PermissionError:
-        logger.warning("Permission denied reading %s, skipping", file_path)
-        return {}
-
-
 def _extract_tool_name(env_prefix: str) -> str | None:
     """Extract tool name from env prefix like BUVIS_FOO_ -> foo."""
     match = re.match(r"^BUVIS_([A-Z][A-Z0-9_]*)_$", env_prefix)
@@ -99,7 +68,18 @@ def _extract_tool_name(env_prefix: str) -> str | None:
     return match.group(1).lower()
 
 
-def _format_validation_errors(error: ValidationError) -> str:
+def _env_set_fields(env_prefix: str) -> set[str]:
+    """Top-level field names the environment sets for ``env_prefix``.
+
+    Names match case-insensitively, as pydantic-settings reads them, and a
+    nested variable (``BUVIS_ADAPTERS__JIRA__SERVER``) counts for its
+    top-level field (``adapters``).
+    """
+    prefix = env_prefix.lower()
+    return {name.lower()[len(prefix) :].split("__", 1)[0] for name in os.environ if name.lower().startswith(prefix)}
+
+
+def _format_validation_errors(error: ValidationError, sources: dict[tuple[str, ...], list[Path]] | None = None) -> str:
     """Format Pydantic validation errors into user-friendly message.
 
     Masks error details for sensitive fields (password, token, etc.)
@@ -118,8 +98,72 @@ def _format_validation_errors(error: ValidationError) -> str:
             msg = "invalid value (hidden)"
         else:
             msg = err["msg"]
-        lines.append(f"  {field_path}: {msg}")
+        field = tuple(str(loc) for loc in err["loc"])
+        source = None
+        while field and source is None:
+            source = (sources or {}).get(field)
+            field = field[:-1]
+        location = f" ({', '.join(map(str, source))})" if source else ""
+        lines.append(f"  {field_path}{location}: {msg}")
     return "Configuration validation failed:\n" + "\n".join(lines)
+
+
+def _warn_unknown_shared_keys(
+    layer: dict[str, Any],
+    path: Path,
+    own_fields: set[str],
+    tool_names: frozenset[str],
+) -> None:
+    """Warn on a shared config.yaml/buvis.yaml key this tool does not read.
+
+    Shared files are merged flat, so a tool reads only top-level keys that are
+    its own fields or deferred keys. A ``<tool>:`` section is never projected
+    onto that tool: it warns as ignored. Any other key warns as unknown, which
+    catches a typo and also another tool's key written flat (a tool's values
+    belong in its own ``buvis-<tool>.yaml``).
+    """
+    for key in layer:
+        base = _split_directive(key)[0]
+        if base in own_fields:
+            continue
+        if base in tool_names:
+            logger.warning(
+                "%s: '%s:' section is ignored - shared files are read flat; move its keys to buvis-%s.yaml",
+                path,
+                base,
+                base,
+            )
+        else:
+            logger.warning(
+                "%s: unknown configuration key '%s' - not a setting of this tool; "
+                "if another tool owns it, move it to that tool's buvis-<tool>.yaml",
+                path,
+                base,
+            )
+
+
+def _record_yaml_sources(
+    layer: dict[str, Any],
+    path: Path,
+    sources: dict[tuple[str, ...], list[Path]],
+    prefix: tuple[str, ...] = (),
+) -> None:
+    """Retain the source of nested values when a later layer merges siblings."""
+    for key, value in layer.items():
+        base, directive = _split_directive(key)
+        field = (*prefix, base)
+        if directive:
+            # A list error may originate in any contributing layer.
+            sources[field] = list(dict.fromkeys([*sources.get(field, []), path]))
+            continue
+        if isinstance(value, dict):
+            _record_yaml_sources(value, path, sources, field)
+        else:
+            # A replacement also discards provenance of any former children.
+            for previous in list(sources):
+                if previous[: len(field)] == field:
+                    del sources[previous]
+        sources[field] = [path]
 
 
 class ConfigResolver:
@@ -170,6 +214,8 @@ class ConfigResolver:
         """Create a resolver."""
         self.loader = ConfigurationLoader()
         self._sources: dict[str, ConfigSource] = {}
+        self._yaml_sources: dict[tuple[str, ...], list[Path]] = {}
+        self._own_fields: set[str] = set()
         logger.debug("ConfigResolver initialized")
 
     def _load_yaml(
@@ -177,15 +223,44 @@ class ConfigResolver:
         tool_name: str | None,
         config_dir: str | None,
         config_path: Path | None,
+        *,
+        include_cwd: bool = True,
+        known_keys: set[str] | None = None,
     ) -> dict[str, Any]:
         """Load YAML config from explicit path or discovered files."""
         if config_dir is not None:
             logger.debug("Using config_dir override: %s", config_dir)
-        if config_path is not None:
-            return _load_yaml_config(config_path)
-        discovered_files = self.loader.find_config_files_ranked(tool_name, config_dir=config_dir)
-        loaded_configs = [self.loader.load_yaml(path) for path in discovered_files]
-        return self.loader.merge_configs(*loaded_configs) if loaded_configs else {}
+        self._yaml_sources.clear()
+        discovered_files = (
+            [config_path]
+            if config_path is not None
+            else self.loader.find_config_files_ranked(tool_name, config_dir=config_dir, include_cwd=include_cwd)
+        )
+        merged: dict[str, Any] = {}
+        tool_names = known_tool_names()
+        for path in discovered_files:
+            try:
+                layer = self.loader.load_yaml(path)
+                if path.name in {"config.yaml", "buvis.yaml"}:
+                    _warn_unknown_shared_keys(layer, path, self._own_fields, tool_names)
+                elif known_keys is not None:
+                    unknown = [key for key in layer if _split_directive(key)[0] not in known_keys]
+                    if unknown:
+                        raise ConfigurationError(f"unknown configuration key(s): {', '.join(sorted(unknown))}")
+                merged = self.loader.merge_configs(merged, layer)
+            except yaml.YAMLError as exc:
+                mark = getattr(exc, "problem_mark", None)
+                location = f"{path}:{mark.line + 1}" if mark else str(path)
+                problem = getattr(exc, "problem", None) or str(exc)
+                raise ConfigurationError(f"YAML syntax error in {location}: {problem}") from exc
+            except (MissingEnvVarError, ConfigurationError) as exc:
+                if str(exc).startswith(f"{path}:"):
+                    raise
+                raise ConfigurationError(f"{path}: {exc}") from exc
+            except (OSError, UnicodeError) as exc:
+                raise ConfigurationError(f"{path}: cannot read config: {exc}") from exc
+            _record_yaml_sources(layer, path, self._yaml_sources)
+        return merged
 
     @staticmethod
     def _merge_overrides(
@@ -194,14 +269,18 @@ class ConfigResolver:
         yaml_config: dict[str, Any],
         cli_overrides: dict[str, Any] | None,
     ) -> T:
-        """Merge YAML and CLI overrides onto base settings."""
-        merged: dict[str, Any] = {}
-        for key, value in yaml_config.items():
-            if hasattr(base_settings, key):
-                field_value = getattr(base_settings, key)
-                default = settings_class.model_fields.get(key)
-                if default and field_value == default.default:
-                    merged[key] = value
+        """Merge YAML and CLI overrides onto base settings.
+
+        A YAML value applies unless the environment sets that field. The test is
+        whether the variable is set, not whether its value differs from the
+        default, so ``<PREFIX>AUTO_UPDATE=true`` beats YAML ``auto_update: false``.
+        """
+        env_fields = _env_set_fields(settings_class.model_config.get("env_prefix", "BUVIS_"))
+        merged: dict[str, Any] = {
+            key: value
+            for key, value in yaml_config.items()
+            if key in settings_class.model_fields and key not in env_fields
+        }
         if cli_overrides:
             for key, value in cli_overrides.items():
                 if value is not None:
@@ -218,7 +297,7 @@ class ConfigResolver:
         cli_overrides: dict[str, Any] | None,
     ) -> None:
         """Record which source provided each field value."""
-        env_keys = {k.removeprefix(env_prefix).lower() for k in os.environ if k.startswith(env_prefix)}
+        env_keys = _env_set_fields(env_prefix)
         self._sources.clear()
         for field in settings_class.model_fields:
             if cli_overrides and cli_overrides.get(field) is not None:
@@ -241,17 +320,36 @@ class ConfigResolver:
         env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
         tool_name = _extract_tool_name(env_prefix)
 
-        yaml_config = self._load_yaml(tool_name, config_dir, config_path)
-        logger.debug("Loaded YAML config: %s", yaml_config)
+        self._own_fields = set(settings_class.model_fields) | set(getattr(settings_class, "config_deferred_keys", ()))
+        known_keys = None
+        if tool_name is not None and settings_class.model_config.get("extra") == "forbid":
+            # Some tools validate their plan separately from runtime settings.
+            # The tool owns that key set; the library must not import its schema.
+            known_keys = self._own_fields
+        yaml_config = self._load_yaml(
+            tool_name,
+            config_dir,
+            config_path,
+            include_cwd=getattr(settings_class, "config_include_cwd", True),
+            known_keys=known_keys,
+        )
+        # Keys only: --debug now prints debug records, and values may hold secrets.
+        logger.debug("Loaded YAML config keys: %s", sorted(yaml_config))
 
         try:
             base_settings = settings_class()
+        except ValidationError as exc:
+            raise ConfigurationError(_format_validation_errors(exc)) from exc
+        except SettingsError as exc:
+            raise ConfigurationError(str(exc)) from exc
+
+        try:
             final_settings = self._merge_overrides(settings_class, base_settings, yaml_config, cli_overrides)
             self._track_sources(settings_class, env_prefix, yaml_config, cli_overrides)
             self._log_sources()
             return final_settings
         except ValidationError as e:
-            raise ConfigurationError(_format_validation_errors(e)) from e
+            raise ConfigurationError(_format_validation_errors(e, self._yaml_sources)) from e
 
     def _log_sources(self) -> None:
         """Log config field sources. Sensitive fields use INFO, others DEBUG.

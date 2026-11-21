@@ -24,8 +24,6 @@ def roots(tmp_path: Path, source: Path) -> list[str]:
         str(tmp_path / "home" / ".agents"),
         "--claude-root",
         str(tmp_path / "home" / ".claude"),
-        "--config-root",
-        str(tmp_path / "empty-config"),
         "--source",
         str(source),
     ]
@@ -78,10 +76,121 @@ def test_cli_dry_run_reports_changes_without_writing(tmp_path: Path) -> None:
     assert not os.path.lexists(agents_root / ".braid-state.json")
 
 
-def write_sources(config_root: Path, *sources: Path) -> None:
-    sources_d = config_root / "sources.d"
-    sources_d.mkdir(parents=True)
-    (sources_d / "list").write_text("".join(f"{source}\n" for source in sources))
+def buvis_config_dir() -> Path:
+    """The BUVIS_CONFIG_DIR the autouse conftest fixture points at a scratch directory."""
+    return Path(os.environ["BUVIS_CONFIG_DIR"])
+
+
+def write_sources(config_dir: Path, *sources: Path) -> None:
+    config_dir.mkdir(parents=True, exist_ok=True)
+    lines = "\n".join(f"  - {source}" for source in sources)
+    (config_dir / "buvis-braid.yaml").write_text(f"sources:\n{lines}\n")
+
+
+@pytest.mark.skipif(os.name != "posix", reason="Requires Unix directory permissions")
+@pytest.mark.parametrize("symlink", [False, True])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_unsafe_config_directory_cannot_inject_skills(tmp_path: Path, symlink: bool, explicit: bool) -> None:
+    foreign = tmp_path / "foreign"
+    make_skill(foreign, "attacker-marker-skill")
+    config_dir = Path.home() / ".local" / ".config" / "buvis"
+    config_dir.parent.mkdir(parents=True)
+    if symlink:
+        target = tmp_path / "drop"
+        target.mkdir()
+        config_dir.symlink_to(target, target_is_directory=True)
+    else:
+        config_dir.mkdir()
+    write_sources(config_dir, foreign)
+    config = config_dir / "buvis-braid.yaml"
+    config.chmod(0o644)
+    config_dir.chmod(0o777)
+
+    result = CliRunner().invoke(cli, ["--config", str(config)] if explicit else [])
+
+    assert result.exit_code == 2, result.output
+    assert "world-writable" in result.output
+    assert str(config_dir.resolve()) in result.output.replace("\n", "")
+    assert "chmod o-w" in result.output
+    assert "Traceback" not in result.output
+    assert not (Path.home() / ".agents").exists()
+    assert not (Path.home() / ".claude").exists()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="Requires Unix directory permissions")
+@pytest.mark.parametrize("explicit", [False, True])
+def test_config_link_in_world_writable_directory_cannot_inject_skills(tmp_path: Path, explicit: bool) -> None:
+    foreign = tmp_path / "foreign"
+    make_skill(foreign, "attacker-marker-skill")
+    config_dir = Path.home() / ".local" / ".config" / "buvis"
+    private = config_dir / "sub"
+    private.mkdir(parents=True)
+    write_sources(private, foreign)
+    link = config_dir / "buvis-braid.yaml"
+    link.symlink_to("sub/buvis-braid.yaml")
+    private.chmod(0o755)
+    config_dir.chmod(0o777)
+
+    result = CliRunner().invoke(cli, ["--config", str(link)] if explicit else [])
+
+    assert result.exit_code == 2, result.output
+    assert "world-writable" in result.output
+    assert not (Path.home() / ".agents").exists()
+    assert not (Path.home() / ".claude").exists()
+
+
+@pytest.mark.parametrize("home_config", [True, False])
+def test_cwd_config_cannot_inject_sources_or_redirect_claude(tmp_path: Path, home_config: bool) -> None:
+    legitimate = tmp_path / "legitimate"
+    foreign = tmp_path / "foreign"
+    make_skill(legitimate, "legitimate-skill")
+    make_skill(foreign, "attacker-marker-skill")
+    redirect = tmp_path / "redirect"
+    (tmp_path / "buvis-braid.yaml").write_text(f"sources: [{foreign}]\nclaude_root: {redirect}\n")
+    args = []
+    if home_config:
+        config = Path.home() / ".config" / "buvis"
+        config.mkdir(parents=True)
+        (config / "buvis-braid.yaml").write_text(f"sources+: [{legitimate}]\n")
+    else:
+        args = ["--source", str(legitimate)]
+
+    result = CliRunner().invoke(cli, args)
+
+    assert result.exit_code == 0, result.output
+    assert not (Path.home() / ".agents" / "skills" / "attacker-marker-skill").exists()
+    assert not redirect.exists()
+    assert (Path.home() / ".claude" / "skills" / "legitimate-skill").is_symlink()
+
+
+@pytest.mark.parametrize("trigger", ["directory", "env", "empty-env"])
+def test_legacy_config_warns_without_changing_links(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    trigger: str,
+) -> None:
+    source = tmp_path / "source"
+    make_skill(source, "a")
+    make_skill(source, "secret")
+    foreign = tmp_path / "foreign"
+    make_skill(foreign, "legacy-only")
+    legacy = Path.home() / ".config" / "braid" if trigger == "directory" else tmp_path / "legacy"
+    (legacy / "sources.d").mkdir(parents=True)
+    (legacy / "sources.d" / "extra").write_text(f"{foreign}\n")
+    (legacy / ".braidignore").write_text("secret\n")
+    if trigger != "directory":
+        monkeypatch.setenv("BUVIS_BRAID_CONFIG_ROOT", "" if trigger == "empty-env" else str(legacy))
+
+    result = CliRunner().invoke(cli, ["--source", str(source)])
+
+    assert result.exit_code == 0, result.output
+    assert (Path.home() / ".claude" / "skills" / "secret").is_symlink()
+    assert (Path.home() / ".claude" / "skills" / "a").is_symlink()
+    assert not (Path.home() / ".agents" / "skills" / "legacy-only").exists()
+    assert ("~/.config/braid" if trigger == "directory" else "BUVIS_BRAID_CONFIG_ROOT") in result.output
+    assert "sources" in result.output
+    assert "policies" in result.output
+    assert "buvis-braid.yaml" in result.output
 
 
 def root_flags(base: Path) -> list[str]:
@@ -90,8 +199,6 @@ def root_flags(base: Path) -> list[str]:
         str(base / ".agents"),
         "--claude-root",
         str(base / ".claude"),
-        "--config-root",
-        str(base / "config"),
     ]
 
 
@@ -99,7 +206,7 @@ def test_cli_projects_into_root_flags_outside_home(tmp_path: Path) -> None:
     source = tmp_path / "personal"
     make_skill(source, "portable")
     other = tmp_path / "other"
-    write_sources(other / "config", source)
+    write_sources(buvis_config_dir(), source)
 
     result = CliRunner().invoke(cli, root_flags(other))
 
@@ -111,26 +218,45 @@ def test_cli_projects_into_root_flags_outside_home(tmp_path: Path) -> None:
     assert not os.path.lexists(tmp_path / "home" / ".claude")
 
 
-def test_cli_root_flags_win_over_the_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    source = tmp_path / "personal"
-    make_skill(source, "portable")
-    decoy = tmp_path / "decoy"
-    make_skill(decoy, "decoy")
+def test_cli_root_flags_win_over_the_environment_and_keep_yaml_and_flag_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configured = tmp_path / "personal"
+    make_skill(configured, "portable")
+    extra = tmp_path / "extra"
+    make_skill(extra, "extra-skill")
     env_root, flag_root = tmp_path / "env", tmp_path / "flag"
-    write_sources(env_root / "config", decoy)
-    write_sources(flag_root / "config", source)
+    write_sources(buvis_config_dir(), configured)
     monkeypatch.setenv("BUVIS_BRAID_AGENTS_ROOT", str(env_root / ".agents"))
     monkeypatch.setenv("BUVIS_BRAID_CLAUDE_ROOT", str(env_root / ".claude"))
-    monkeypatch.setenv("BUVIS_BRAID_CONFIG_ROOT", str(env_root / "config"))
 
-    result = CliRunner().invoke(cli, root_flags(flag_root))
+    result = CliRunner().invoke(cli, [*root_flags(flag_root), "--source", str(extra)])
 
     assert result.exit_code == 0
-    assert (flag_root / ".agents" / "skills" / "portable").is_symlink()
-    assert (flag_root / ".claude" / "skills" / "portable").is_symlink()
-    assert not os.path.lexists(flag_root / ".agents" / "skills" / "decoy")
+    for name in ("portable", "extra-skill"):
+        assert (flag_root / ".agents" / "skills" / name).is_symlink()
+        assert (flag_root / ".claude" / "skills" / name).is_symlink()
     assert not os.path.lexists(env_root / ".agents")
     assert not os.path.lexists(env_root / ".claude")
+
+
+def test_cli_policies_from_buvis_braid_yaml_keep_the_skill_out_of_claude(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    make_skill(source, "kept")
+    policy = tmp_path / "yaml-policy"
+    policy.write_text("portable\n")
+    config_dir = buvis_config_dir()
+    (config_dir / "buvis-braid.yaml").write_text(f"sources:\n  - {source}\npolicies:\n  - {policy}\n")
+    home = tmp_path / "home"
+
+    result = CliRunner().invoke(cli, root_flags(home))
+
+    assert result.exit_code == 0
+    assert ", 1 ignored, " in result.output.splitlines()[-1]
+    assert (home / ".agents" / "skills" / "portable").is_symlink()
+    assert not os.path.lexists(home / ".claude" / "skills" / "portable")
+    assert (home / ".claude" / "skills" / "kept").is_symlink()
 
 
 def test_cli_policy_flag_keeps_the_skill_out_of_claude(tmp_path: Path) -> None:
@@ -151,7 +277,7 @@ def test_cli_policy_flag_keeps_the_skill_out_of_claude(tmp_path: Path) -> None:
 
 
 def test_parser_documents_previously_bare_options_with_help_text() -> None:
-    named_options = ("--policy", "--agents-root", "--claude-root", "--config-root", "--no-claude")
+    named_options = ("--policy", "--agents-root", "--claude-root", "--no-claude")
 
     help_by_option = {option: param.help for param in cli.params for option in param.opts if option in named_options}
 
@@ -318,8 +444,8 @@ def test_cli_reports_an_unreadable_state_file_on_one_line_and_exits_2(tmp_path: 
 
 @pytest.mark.parametrize(
     "relative",
-    ["personal/skills/portable/SKILL.md", "empty-config/sources.d/bad", "empty-config/.braidignore"],
-    ids=["skill", "sources-d", "braidignore"],
+    ["personal/skills/portable/SKILL.md", "home/.agents/.braidignore"],
+    ids=["skill", "braidignore"],
 )
 def test_cli_reports_a_non_utf8_input_file_on_one_line_and_exits_2(tmp_path: Path, relative: str) -> None:
     source = tmp_path / "personal"
@@ -372,13 +498,76 @@ def test_cli_never_reads_the_old_agent_skills_config(tmp_path: Path, monkeypatch
     assert not (tmp_path / "home" / ".agents" / "skills").exists()
 
 
-def test_cli_without_sources_names_the_braid_config_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_without_sources_names_buvis_braid_yaml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
 
     result = CliRunner().invoke(cli, [])
 
     assert result.exit_code == 2
-    assert str(tmp_path / "home" / ".config" / "braid" / "sources.d") in result.output
+    assert (
+        "no skill sources configured; add a path to sources in ~/.config/buvis/buvis-braid.yaml or pass --source"
+    ) in result.output
+    assert not os.path.lexists(tmp_path / "home" / ".agents" / "skills")
+
+
+def test_cli_help_does_not_offer_config_root() -> None:
+    result = CliRunner().invoke(cli, ["--help"])
+
+    assert result.exit_code == 0
+    assert "--source" in result.output
+    assert "--config-root" not in result.output
+
+
+def test_cli_check_passes_with_only_buvis_braid_yaml(tmp_path: Path) -> None:
+    source = tmp_path / "personal"
+    make_skill(source, "portable")
+    write_sources(buvis_config_dir(), source)
+    runner = CliRunner()
+
+    sync = runner.invoke(cli, [])
+    check = runner.invoke(cli, ["--check"])
+
+    assert sync.exit_code == 0
+    assert (tmp_path / "home" / ".agents" / "skills" / "portable").is_symlink()
+    assert (tmp_path / "home" / ".claude" / "skills" / "portable").is_symlink()
+    assert check.exit_code == 0
+
+
+def test_machine_local_sources_append_to_shared_buvis_braid_yaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+    home = tmp_path / "isolated-home"
+    monkeypatch.setenv("HOME", str(home))
+    shared, local = tmp_path / "shared", tmp_path / "local"
+    make_skill(shared, "shared-skill")
+    make_skill(local, "local-skill")
+    shared_config = home / ".config" / "buvis"
+    shared_config.mkdir(parents=True)
+    (shared_config / "buvis-braid.yaml").write_text(f"sources:\n  - {shared}\n")
+    local_config = home / ".local" / ".config" / "buvis"
+    local_config.mkdir(parents=True)
+    (local_config / "buvis-braid.yaml").write_text(f"sources+:\n  - {local}\n")
+
+    result = CliRunner().invoke(cli, [])
+
+    assert result.exit_code == 0
+    assert (home / ".agents" / "skills" / "shared-skill").is_symlink()
+    assert (home / ".agents" / "skills" / "local-skill").is_symlink()
+
+
+def test_cli_expands_home_in_a_buvis_braid_yaml_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    make_skill(home / "personal", "home-skill")
+    config_dir = buvis_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "buvis-braid.yaml").write_text("sources:\n  - ~/personal\n")
+
+    result = CliRunner().invoke(cli, root_flags(home))
+
+    assert result.exit_code == 0
+    assert (home / ".agents" / "skills" / "home-skill").is_symlink()
 
 
 def test_cli_reports_an_os_error_after_a_backup_and_exits_2(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

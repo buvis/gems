@@ -43,7 +43,7 @@ class TestCli:
         # friendly "run collect first" failure without crashing.
         monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
         result = CliRunner().invoke(cli, [])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
         assert "postup collect" in _flat(result.output)
 
     def test_collect_runs_and_reports(self, tmp_path, mocker, monkeypatch):
@@ -55,5 +55,5 @@ class TestCli:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("BUVIS_POSTUP_OUT_DIR", str(tmp_path / "out"))
         result = CliRunner().invoke(cli, ["collect", "--no-fetch"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "no repositories" in _flat(result.output)

@@ -34,6 +34,10 @@ class CommandSlug:
             except (OSError, ValueError) as exc:
                 warnings.append(f"Failed to rename {p.name}: {exc}")
 
+        # Every warning here is one failed input.
+        if self.paths and len(warnings) == len(self.paths):
+            return CommandResult(success=False, error="No file could be renamed", warnings=warnings)
+
         return CommandResult(
             success=True,
             output=f"Renamed {renamed} file(s)",

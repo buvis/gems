@@ -30,7 +30,7 @@ def html2md(directory: str) -> None:
         console.require_import("morph")
         return
 
-    console.report_result(CommandHtml2Md(directory=directory).execute())
+    console.report_result(CommandHtml2Md(directory=directory).execute(), exit_on_failure=True)
 
 
 @cli.command("deblank", help="Remove blank pages from PDFs")
@@ -50,7 +50,7 @@ def deblank(files: tuple[str, ...]) -> None:
         console.panic(str(error))
         return
 
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("pdf2png", help="Convert PDF pages into one stacked PNG")
@@ -75,7 +75,7 @@ def pdf2png(files: tuple[str, ...], dpi: int) -> None:
         console.panic(str(error))
         return
 
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 if __name__ == "__main__":

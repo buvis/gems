@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
@@ -198,3 +200,39 @@ class TestCreateNoteCli:
             )
         assert result.exit_code == 1
         assert result.output.strip() == '{"error": "--body-file and --source are mutually exclusive"}'
+
+
+class TestCreateJsonStdoutContract:
+    def test_config_warnings_keep_json_stdout_parseable(self, tmp_path: Path) -> None:
+        """A config warning must not share stdout with the one-line JSON object."""
+        home = tmp_path / "home"
+        config_dir = home / ".config" / "buvis"
+        config_dir.mkdir(parents=True)
+        (config_dir / "config.yaml").write_text("debgu: true\n")
+        (config_dir / "config.local.yaml").write_text("debug: false\n")
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (config_dir / "buvis-bim.yaml").write_text(f"path_zettelkasten: {vault}\n")
+        work = tmp_path / "work"
+        work.mkdir()
+
+        argv = [sys.executable, "-m", "bim", "create", "-t", "note", "--title", "Probe"]
+        argv += ["--no-daily-log", "--dry-run", "--json"]
+        proc = subprocess.run(  # fixed argv, no shell, test-only
+            argv,
+            env={
+                "PATH": str(Path(sys.executable).parent),
+                "HOME": str(home),
+                "BUVIS_AUTO_UPDATE": "false",
+                "LC_ALL": "C.UTF-8",
+            },
+            cwd=str(work),
+            capture_output=True,
+            check=False,
+            timeout=120,
+        )
+
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert isinstance(json.loads(proc.stdout), dict)
+        assert b"unknown configuration key 'debgu'" in proc.stderr
+        assert b"Retired config file" in proc.stderr

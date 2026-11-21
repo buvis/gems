@@ -30,6 +30,8 @@ class TestMaintainCLI:
         res = runner.invoke(cli, ["maintain"])
         assert res.exit_code == 1
         assert "not inside a git work tree" in _norm(res.output)
+        # The never-ran warning names the command that exists, not one "to ship".
+        assert "maintenance has never run (run `klyreon maintain`)" in _norm(res.output)
 
     def test_maintain_dry_run_reports_without_writing(
         self, git_vault: Path, runner: CliRunner, monkeypatch: pytest.MonkeyPatch

@@ -2,7 +2,7 @@
 name = "braid"
 display_name = "Braid"
 module_name = "braid"
-description = "Compose agent skills from sources.d and project them to Claude Code and Kiro"
+description = "Compose agent skills from sources in buvis-braid.yaml and project them to Claude Code and Kiro"
 category = "system"
 
 [tool.interfaces]

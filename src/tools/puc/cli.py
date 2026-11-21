@@ -38,7 +38,7 @@ def strip(ctx: click.Context, files: tuple[str, ...]) -> None:
         console.panic(str(e))
         return
 
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 if __name__ == "__main__":

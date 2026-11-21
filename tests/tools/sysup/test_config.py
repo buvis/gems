@@ -144,7 +144,9 @@ def _write(path: Path, text: str) -> None:
 class TestLoadConfig:
     def test_ntfy_local_layer_merges_over_shared_config(self, mocker, tmp_path: Path) -> None:
         shared = tmp_path / "buvis-sysup.yaml"
-        local = tmp_path / "buvis-sysup.local.yaml"
+        local_dir = tmp_path / "local"
+        local_dir.mkdir()
+        local = local_dir / "buvis-sysup.yaml"
         _write(shared, "ntfy:\n  url: https://ntfy.example\n  topic: shared\n")
         _write(local, "ntfy:\n  topic: local\n  credentials_file: ~/.ntfy\n")
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[shared, local])
@@ -295,6 +297,68 @@ class TestLoadConfigPriorityOrdering:
         )
         cfg = load_config()
         assert cfg.commands["brew"].order == 3
+
+
+class TestLoadFailureAttribution:
+    """Regression guard for the tail-sweep findings on `_merge_layer` /
+    `_format_validation_errors`: a `ConfigurationError` from `load_yaml` must
+    become a file-qualified `FatalError`, never escape as a raw traceback,
+    and a validation error on a nested field must name the file that set
+    THAT field, not whichever file last touched the parent entry."""
+
+    def test_non_mapping_yaml_root_becomes_fatal_error_naming_the_file(self, mocker, tmp_path: Path) -> None:
+        """`load_yaml` raises `ConfigurationError` for a non-mapping root; it
+        must be caught by `_merge_layer`'s load handler and turned into a
+        `FatalError` naming the file, not escape as a raw traceback."""
+        user = tmp_path / "buvis-sysup.yaml"
+        _write(user, "- just\n- a\n- list\n")
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        with pytest.raises(FatalError, match=rf"{user}.*mapping"):
+            load_config()
+
+    def test_world_writable_file_becomes_fatal_error_naming_the_file(self, mocker, tmp_path: Path) -> None:
+        """`load_yaml` also raises `ConfigurationError` for a world-writable
+        file; same load handler, same expectation."""
+        user = tmp_path / "buvis-sysup.yaml"
+        _write(user, "prime: []\n")
+        user.chmod(0o666)
+        mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        try:
+            with pytest.raises(FatalError, match=rf"{user}.*world-writable"):
+                load_config()
+        finally:
+            user.chmod(0o644)
+
+    def test_type_error_names_the_file_that_set_the_sibling_field(self, mocker, tmp_path: Path) -> None:
+        """One file sets `commands.custom.order`, another sets
+        `commands.custom.steps` with a bad type. The error must name the
+        SECOND file (the one that actually set `steps`), not the first."""
+        order_file = tmp_path / "order.yaml"
+        steps_file = tmp_path / "steps.yaml"
+        _write(order_file, "commands:\n  custom:\n    order: 5\n")
+        _write(steps_file, "commands:\n  custom:\n    steps: not-a-list\n")
+        mocker.patch(
+            "sysup.config.ConfigurationLoader.find_config_files_ranked",
+            return_value=[order_file, steps_file],
+        )
+        with pytest.raises(FatalError, match=rf"invalid sysup configuration: {steps_file}:") as excinfo:
+            load_config()
+        assert str(order_file) not in str(excinfo.value)
+
+    def test_type_error_in_file_that_only_set_order_names_that_file(self, mocker, tmp_path: Path) -> None:
+        """Mirror of the previous case: when the SECOND file's error is on
+        the field the FIRST file set, the first file must be named."""
+        order_file = tmp_path / "order.yaml"
+        steps_file = tmp_path / "steps.yaml"
+        _write(order_file, "commands:\n  custom:\n    order: not-an-int\n")
+        _write(steps_file, "commands:\n  custom:\n    steps: [[tool]]\n")
+        mocker.patch(
+            "sysup.config.ConfigurationLoader.find_config_files_ranked",
+            return_value=[order_file, steps_file],
+        )
+        with pytest.raises(FatalError, match=rf"invalid sysup configuration: {order_file}:") as excinfo:
+            load_config()
+        assert str(steps_file) not in str(excinfo.value)
 
 
 class TestExpiryRegistry:

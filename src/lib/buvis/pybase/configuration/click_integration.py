@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import logging
+import os
 import platform
 import types
 import weakref
@@ -15,11 +17,14 @@ from typing import Any, Literal, TypeVar, Union, cast, get_args, get_origin, ove
 from urllib.parse import urlencode
 
 import click
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 
-from .resolver import ConfigResolver
+from .exceptions import ConfigurationError, MissingEnvVarError
+from .resolver import ConfigResolver, ConfigSource, _env_set_fields
 from .settings import GlobalSettings
+
+logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 T = TypeVar("T", bound="BaseModel")
@@ -73,6 +78,72 @@ _buvis_callback_settings: weakref.WeakKeyDictionary[Callable[..., Any], type[Glo
     weakref.WeakKeyDictionary()
 )
 _parse_args_patch_installed = False
+
+
+class _ConsoleWarningHandler(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self._seen: set[str] = set()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        message = record.getMessage()
+        if message in self._seen:
+            return
+        self._seen.add(message)
+        from buvis.pybase.adapters import console
+        from rich.markup import escape
+
+        # stderr: stdout may be a machine-read payload (dot filter, bim create --json).
+        console.err_console.print(console.format_warning(escape(message)), soft_wrap=True)
+
+
+def _install_console_warning_bridge() -> None:
+    config_logger = logging.getLogger("buvis.pybase.configuration")
+    if any(isinstance(h, _ConsoleWarningHandler) for h in config_logger.handlers):
+        return
+    config_logger.addHandler(_ConsoleWarningHandler())
+
+
+def _not_already_bridged(record: logging.LogRecord) -> bool:
+    """Drop config warnings from the log output: the console warning bridge prints them."""
+    return not (record.levelno >= logging.WARNING and record.name.startswith("buvis.pybase.configuration"))
+
+
+def _apply_log_settings(ctx: click.Context, settings: BaseModel, *, level_is_explicit: bool) -> None:
+    """Make ``--debug`` / ``log_level`` take effect for this command.
+
+    Nothing changes unless the user asked: ``debug`` is on, or ``log_level``
+    came from a flag, the environment or a config file. Log records then print
+    on stderr. The root logger is restored when the command ends, so a test
+    runner or an embedding process is left as it was.
+
+    ponytail: applied after settings resolve, so records logged while the
+    config itself loads are not shown; pre-scan argv for --debug if that
+    matters.
+    """
+    if getattr(settings, "debug", False):
+        level = logging.DEBUG
+    elif level_is_explicit:
+        level = getattr(logging, getattr(settings, "log_level", "WARNING"))
+    else:
+        return
+    from buvis.pybase.adapters import console
+    from buvis.pybase.adapters.console.capturing_rich_handler import CapturingRichHandler
+
+    handler = CapturingRichHandler(console=console.err_console, show_time=False, show_path=False)
+    handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+    handler.addFilter(_not_already_bridged)
+    root = logging.getLogger()
+    previous = root.level
+    root.addHandler(handler)
+    root.setLevel(level)
+
+    def restore() -> None:
+        root.removeHandler(handler)
+        root.setLevel(previous)
+
+    ctx.call_on_close(restore)
+
 
 _UPDATE_PRECEDING_FLAGS = frozenset({"--help", "--version", "-h"})
 
@@ -128,17 +199,86 @@ def _run_force_update_and_exit(ctx: click.Context) -> None:
     ctx.exit(force_update(settings))
 
 
-def _run_update_check_once(ctx: click.Context) -> None:
-    """Run the auto-update check at most once per root invocation."""
+def _extract_option_value(args: list[str], option: str) -> str | None:
+    """Return the LAST value of ``option`` in raw argv, or None.
+
+    Honors both ``--opt VALUE`` and ``--opt=VALUE``, and the ``--``
+    end-of-options sentinel (arguments after it are positional).
+    Last-wins, matching Click's own handling of a repeated option.
+    """
+    value: str | None = None
+    prefix = f"{option}="
+    for i, arg in enumerate(args):
+        if arg == "--":
+            break
+        if arg == option and i + 1 < len(args):
+            value = args[i + 1]
+        elif arg.startswith(prefix):
+            value = arg[len(prefix) :]
+    return value
+
+
+_GLOBAL_AUTO_UPDATE_ENV = "BUVIS_AUTO_UPDATE"
+
+
+def _update_enabled(settings_class: type[GlobalSettings], settings: GlobalSettings) -> bool:
+    """Whether the passive update check may run.
+
+    The tool's own ``<PREFIX>AUTO_UPDATE`` / YAML value decides. The global
+    ``BUVIS_AUTO_UPDATE`` applies only when the tool-prefixed variable is
+    absent, so the more specific knob always wins.
+    """
+    env_prefix = settings_class.model_config.get("env_prefix", "BUVIS_")
+    # Same case-insensitive reading as the settings themselves.
+    if "auto_update" in _env_set_fields(env_prefix):
+        return settings.auto_update
+    if _GLOBAL_AUTO_UPDATE_ENV in os.environ:
+        return GlobalSettings().auto_update
+    return settings.auto_update
+
+
+def _run_update_check_once(ctx: click.Context, args: list[str]) -> None:
+    """Run the auto-update check at most once per root invocation.
+
+    Resolves settings from the same argv the command was invoked with (honoring
+    a ``--config`` YAML file, same as the command's own resolution) so a value
+    that only comes from a config file still suppresses or permits the check,
+    even though this runs before the command's own settings resolution. Any
+    resolution failure is suppressed so a bad config degrades the check
+    cleanly rather than blocking ``--help``/``--version``.
+    """
     root = ctx.find_root()
     if root.meta.get(_BUVIS_META_CHECKED_KEY):
         return
     root.meta[_BUVIS_META_CHECKED_KEY] = True
 
+    try:
+        settings_class = _resolve_settings_class(ctx)
+        config_path = _extract_option_value(args, "--config")
+        config_dir = _extract_option_value(args, "--config-dir")
+        settings = ConfigResolver().resolve(
+            settings_class,
+            # An empty value is absent: Path("") expands to the cwd, which
+            # would silently read a config file from the working directory.
+            config_dir=config_dir or None,
+            config_path=Path(config_path) if config_path else None,
+        )
+        enabled = _update_enabled(settings_class, settings)
+    except (ConfigurationError, MissingEnvVarError, ValidationError, OSError):
+        logger.debug("skipping update check: unresolved configuration", exc_info=True)
+        return
+
+    if not enabled:
+        return
+    if not settings.auto_update:
+        # The global env decided over the tool's YAML; the updater re-tests the
+        # setting, so hand it the decision.
+        settings = settings.model_copy(update={"auto_update": True})
+
     with contextlib.suppress(Exception):
         from buvis.pybase.updater import check_and_update
 
-        check_and_update(GlobalSettings())
+        check_and_update(settings)
 
 
 def _install_parse_args_patch() -> None:
@@ -159,7 +299,7 @@ def _install_parse_args_patch() -> None:
 
     def patched_command_parse_args(self: click.Command, ctx: click.Context, args: list[str]) -> list[str]:
         if self.callback in _buvis_callbacks and not ctx.resilient_parsing and not _contains_update_option(args):
-            _run_update_check_once(ctx)
+            _run_update_check_once(ctx, args)
         return original_command_parse_args(self, ctx, args)
 
     def patched_group_parse_args(self: click.Group, ctx: click.Context, args: list[str]) -> list[str]:
@@ -169,7 +309,7 @@ def _install_parse_args_patch() -> None:
                 # even though --update is only declared on the root group.
                 _run_force_update_and_exit(ctx)
             else:
-                _run_update_check_once(ctx)
+                _run_update_check_once(ctx, args)
         return original_group_parse_args(self, ctx, args)
 
     click.Command.parse_args = patched_command_parse_args  # type: ignore[method-assign]
@@ -211,7 +351,7 @@ def _feedback_callback(ctx: click.Context, _param: click.Parameter, value: bool)
     ctx.exit(0)
 
 
-def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
+def _create_buvis_options(settings_class: type[T], config_error_exit_code: int = 1) -> Callable[[F], F]:
     """Build a decorator that injects settings into the Click context."""
 
     def decorator(f: F) -> F:
@@ -237,7 +377,9 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
         )
         @click.option(
             "--config",
-            type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+            # No parse-time checks: the resolver reports bad paths through the console,
+            # and resolving here would hide a symlink from the directory check.
+            type=click.Path(readable=False),
             help="YAML config file path.",
         )
         @click.option(
@@ -247,7 +389,8 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
         )
         @click.option(
             "--config-dir",
-            type=click.Path(exists=True, file_okay=False, resolve_path=True),
+            # Checked in the callback, so a bad value is a console error, not Click's Usage: form.
+            type=click.Path(readable=False),
             help="Configuration directory.",
         )
         @click.option(
@@ -288,11 +431,28 @@ def _create_buvis_options(settings_class: type[T]) -> Callable[[F], F]:
             cli_overrides = {k: v for k, v in {"debug": debug, "log_level": log_level}.items() if v is not None}
 
             resolver = ConfigResolver()
-            settings = resolver.resolve(
-                settings_class,  # type: ignore[type-var]
-                config_dir=config_dir,
-                config_path=Path(config) if config else None,
-                cli_overrides=cli_overrides,
+            try:
+                # os.path.isdir is False for "" and for any OSError (Path.is_dir re-raises
+                # EACCES and ENAMETOOLONG before Python 3.14).
+                if config_dir is not None and not os.path.isdir(config_dir):
+                    raise ConfigurationError(f"--config-dir {config_dir!r}: not a directory")
+                settings = resolver.resolve(
+                    settings_class,  # type: ignore[type-var]
+                    config_dir=config_dir,
+                    config_path=Path(config) if config else None,
+                    cli_overrides=cli_overrides,
+                )
+            except ConfigurationError as exc:
+                from buvis.pybase.adapters import console
+                from rich.markup import escape
+
+                console.console.print(console.format_failure(escape(str(exc))), soft_wrap=True)
+                ctx.exit(config_error_exit_code)
+
+            _apply_log_settings(
+                ctx,
+                settings,
+                level_is_explicit=resolver.sources.get("log_level", ConfigSource.DEFAULT) is not ConfigSource.DEFAULT,
             )
 
             ctx.ensure_object(dict)
@@ -326,6 +486,7 @@ def buvis_options(
     settings_class_or_func: type[T] | None = ...,
     *,
     settings_class: type[T] | None = ...,
+    config_error_exit_code: int = ...,
 ) -> Callable[[F], F]: ...
 
 
@@ -333,6 +494,7 @@ def buvis_options(  # type: ignore[misc]
     settings_class_or_func: type[T] | F | None = None,
     *,
     settings_class: type[T] | None = None,
+    config_error_exit_code: int = 1,
 ) -> Callable[[F], F] | F:
     """Add standard BUVIS options to a Click command.
 
@@ -340,6 +502,8 @@ def buvis_options(  # type: ignore[misc]
     ``--log-level``, ``--config-dir``, ``--config``, and
     ``--config-create`` options. Resolves settings using ConfigResolver
     and injects into Click context.
+    ``config_error_exit_code`` selects the CLI status for configuration errors
+    (default 1; tools reserving 1 for another outcome can select 2).
     Can be applied as ``@buvis_options``, ``@buvis_options()``, or
     ``@buvis_options(settings_class=CustomSettings)``.
 
@@ -354,9 +518,10 @@ def buvis_options(  # type: ignore[misc]
                 click.echo("Debug mode enabled")
     """
     _install_parse_args_patch()
+    _install_console_warning_bridge()
 
     if callable(settings_class_or_func) and not isinstance(settings_class_or_func, type):
-        return _create_buvis_options(GlobalSettings)(settings_class_or_func)
+        return _create_buvis_options(GlobalSettings, config_error_exit_code)(settings_class_or_func)
 
     if settings_class is not None:
         chosen_settings_class: type[T] = settings_class
@@ -365,7 +530,7 @@ def buvis_options(  # type: ignore[misc]
     else:
         chosen_settings_class = GlobalSettings  # type: ignore[assignment]
 
-    return _create_buvis_options(chosen_settings_class)
+    return _create_buvis_options(chosen_settings_class, config_error_exit_code)
 
 
 # --- Click option generation from Pydantic models ---

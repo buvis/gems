@@ -51,7 +51,6 @@ __all__ = [
     "create_file_link",
     "discover_inventory",
     "prepare_kiro_agents",
-    "read_configured_sources",
     "read_ignored",
     "resolve_settings",
     "run",
@@ -88,7 +87,8 @@ class State:
 class ComposeRequest:
     agents_root: Path
     claude_root: Path
-    config_root: Path
+    configured_sources: tuple[Path, ...] = ()
+    configured_policies: tuple[Path, ...] = ()
     sources: tuple[Path, ...] = ()
     policies: tuple[Path, ...] = ()
     mode: Mode = Mode.SYNC
@@ -199,26 +199,6 @@ def discover_inventory(sources: Iterable[Path]) -> dict[str, Path]:
             inventory[name] = resolved_candidate
             owners[name] = _resolved(configured_source)
     return inventory
-
-
-def read_configured_sources(config_root: Path) -> tuple[Path, ...]:
-    sources_directory = _expand_user(config_root) / "sources.d"
-    if not sources_directory.is_dir():
-        return ()
-
-    sources: list[Path] = []
-    for source_file in sorted(sources_directory.iterdir(), key=lambda path: path.name):
-        if not source_file.is_file() or source_file.name.startswith("."):
-            continue
-        for raw_line in _read_lines(source_file):
-            value = raw_line.split("#", 1)[0].strip()
-            if not value:
-                continue
-            expanded = _expand_user(value)
-            if not expanded.is_absolute():
-                expanded = source_file.parent / expanded
-            sources.append(expanded.resolve(strict=False))
-    return tuple(sources)
 
 
 def read_ignored(policy_files: Iterable[Path]) -> set[str]:
@@ -577,25 +557,48 @@ def _deduplicate(paths: Iterable[Path]) -> tuple[Path, ...]:
     return tuple(result)
 
 
-def resolve_settings(request: ComposeRequest) -> Settings:
+def _expand_configured(key: str, entries: Iterable[Path]) -> tuple[Path, ...]:
+    expanded: list[Path] = []
+    for entry in entries:
+        try:
+            path = _expand_user(entry)
+            resolved = path.resolve()
+        except (RuntimeError, ValueError) as error:
+            raise BraidError(f"invalid {key} entry {str(entry)!r}: {error}") from error
+        if not path.is_absolute():
+            raise BraidError(f"{key} entry must be absolute or start with ~: {entry}")
+        expanded.append(resolved)
+    return tuple(expanded)
+
+
+def resolve_settings(request: ComposeRequest, *, warn: Callable[[str], None] | None = None) -> Settings:
     agents_root = _expand_user(request.agents_root)
     claude_root = _expand_user(request.claude_root)
-    config_root = _expand_user(request.config_root)
-    sources = _deduplicate([*read_configured_sources(config_root), *request.sources])
+    configured_sources = _expand_configured("sources", request.configured_sources)
+    configured_policies = _expand_configured("policies", request.configured_policies)
+    sources = _deduplicate([*configured_sources, *request.sources])
     if not sources:
-        raise BraidError(f"no skill sources configured; add a path under {config_root / 'sources.d'} or pass --source")
-    candidates = [agents_root / ".braidignore", config_root / ".braidignore"]
+        raise BraidError(
+            "no skill sources configured; add a path to sources in ~/.config/buvis/buvis-braid.yaml or pass --source"
+        )
+    candidates = [agents_root / ".braidignore"]
     for source in sources:
         policy_root = source.parent if is_legacy_skills_source(source) else source
         candidates.append(policy_root / ".braidignore")
-    candidates.extend(request.policies)
-    policy_files = tuple(path for path in _deduplicate(candidates) if path.is_file())
+    explicit_policies = _deduplicate([*configured_policies, *request.policies])
+    candidates.extend(explicit_policies)
+    policy_files: list[Path] = []
+    for path in _deduplicate(candidates):
+        if path.is_file():
+            policy_files.append(path)
+        elif path in explicit_policies and warn is not None:
+            warn(f"braid: policy is missing or not a regular file; skipping: {path}")
     return Settings(
         sources=sources,
         agents_root=_resolved(agents_root),
         claude_root=_resolved(claude_root),
         mode=request.mode,
-        policy_files=policy_files,
+        policy_files=tuple(policy_files),
         project_claude=request.project_claude,
         enable_kiro=request.enable_kiro,
         kiro_root=request.kiro_root,

@@ -1,0 +1,2 @@
+Language server "plugin:pyright-lsp:pyright" couldn't start: its program "pyright-langserver" wasn't found. Check that it's installed and on your PATH. If you don't need it, disable the plugin that provides it.
+You've hit your weekly limit · resets Nov 15 at 10am (Europe/Prague)

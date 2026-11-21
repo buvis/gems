@@ -13,7 +13,7 @@ class TestPucStripCli:
         photo.write_bytes(b"\xff\xd8\xff")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="exiftool missing")
         result = runner.invoke(cli, ["strip", str(photo)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("puc.commands.strip.strip.CommandStrip")
     def test_strip_failure_no_error(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -21,7 +21,7 @@ class TestPucStripCli:
         photo.write_bytes(b"\xff\xd8\xff")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["strip", str(photo)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("puc.commands.strip.strip.CommandStrip")
     def test_strip_success_no_output(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:

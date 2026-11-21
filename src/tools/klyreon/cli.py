@@ -57,7 +57,7 @@ def _warn_if_maintenance_stale(ctx: click.Context) -> None:
     now = dt.datetime.now().astimezone()
     window = dt.timedelta(days=settings.maintenance_window_days)
     if not last:
-        _warn_stale("maintenance has never run (run the maintain command once it ships)")
+        _warn_stale("maintenance has never run (run `klyreon maintain`)")
         return
     try:
         parsed = dt.datetime.fromisoformat(last)
@@ -93,9 +93,7 @@ def _resolve_root_or_panic() -> Path:
     "--schedule", "schedule", is_flag=True, default=False, help="Install the maintenance schedule without prompting."
 )
 @click.option("--at", "schedule_at", default="03:00", help="Scheduled daily time HH:MM (default 03:00).")
-@click.pass_context
 def init(
-    ctx: click.Context,
     path: Path | None,
     *,
     force: bool,
@@ -124,9 +122,7 @@ def init(
         confirm=console.confirm,
     )
     result = CommandInit(target, force=force, offer=offer, schedule_offer=schedule_offer).execute()
-    console.report_result(result)
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("new", help="Create one spec-valid zettel with a unique ID")
@@ -139,15 +135,12 @@ def init(
     type=click.Choice(_CONCEPT_TYPES),
     help="Make it a concept zettel of this epistemic shape.",
 )
-@click.pass_context
-def new(ctx: click.Context, title: str, zettel_type: str, concept_type: str | None) -> None:
+def new(title: str, zettel_type: str, concept_type: str | None) -> None:
     from klyreon.commands.new import CommandNew
 
     root = _resolve_root_or_panic()
     result = CommandNew(root, zettel_type=zettel_type, title=title, concept_type=concept_type).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
 
 
 @cli.command("validate", help="Run every mechanical check over the whole vault")
@@ -162,7 +155,7 @@ def validate(ctx: click.Context, *, as_json: bool) -> None:
     if as_json:
         console.print(result.output or "", mode="raw")
     else:
-        console.report_result(result)
+        console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -185,7 +178,7 @@ def export_claims(ctx: click.Context, out: Path | None) -> None:
         for w in result.warnings:
             console.warning(w)
     else:
-        console.report_result(result)
+        console.report_result(result, exit_on_failure=True)
     if not result.success:
         ctx.exit(1)
 
@@ -220,9 +213,7 @@ def ingest(
         max_body_lines=settings.max_zettel_body_lines,
         dry_run=dry_run,
     ).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
 
 
 @cli.command("status", help="Print the vault dashboard")
@@ -239,9 +230,7 @@ def status(ctx: click.Context) -> None:
         pruning_enabled=settings.pruning_enabled,
         check_assets=True,
     ).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
 
 
 @cli.command("maintain", help="Run the autonomous maintenance sweep (deterministic, no LLM call)")
@@ -263,9 +252,7 @@ def maintain(ctx: click.Context, *, dry_run: bool) -> None:
         dry_run=dry_run,
         identity=GitIdentity(name=settings.git_identity_name, email=settings.git_identity_email),
     ).execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
 
 
 @cli.group("schedule", help="Install, inspect, and remove the daily maintenance schedule")
@@ -275,36 +262,27 @@ def schedule() -> None:
 
 @schedule.command("install", help="Write the platform scheduler artifact (re-runnable)")
 @click.option("--at", "at", default="03:00", help="Daily time HH:MM (default 03:00).")
-@click.pass_context
-def schedule_install(ctx: click.Context, at: str) -> None:
+def schedule_install(at: str) -> None:
     from klyreon.commands.schedule import CommandScheduleInstall
 
     result = CommandScheduleInstall(at=at).execute()
-    console.report_result(result)
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, exit_on_failure=True)
 
 
 @schedule.command("status", help="Show whether the schedule is present, loaded, and unmodified")
-@click.pass_context
-def schedule_status(ctx: click.Context) -> None:
+def schedule_status() -> None:
     from klyreon.commands.schedule import CommandScheduleStatus
 
     result = CommandScheduleStatus().execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
 
 
 @schedule.command("uninstall", help="Remove the scheduler artifact and the manifest entry")
-@click.pass_context
-def schedule_uninstall(ctx: click.Context) -> None:
+def schedule_uninstall() -> None:
     from klyreon.commands.schedule import CommandScheduleUninstall
 
     result = CommandScheduleUninstall().execute()
-    console.report_result(result)
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.group("assets", help="Install, refresh, inspect, and remove operator asset packs")
@@ -319,36 +297,27 @@ def assets() -> None:
     multiple=True,
     help="Operator to install (repeatable). Default: every operator already installed.",
 )
-@click.pass_context
-def assets_install(ctx: click.Context, operators: tuple[str, ...]) -> None:
+def assets_install(operators: tuple[str, ...]) -> None:
     from klyreon.commands.assets import CommandAssetsInstall
 
     result = CommandAssetsInstall(list(operators)).execute()
-    console.report_result(result)
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, exit_on_failure=True)
 
 
 @assets.command("status", help="Show what is installed and whether it is current")
-@click.pass_context
-def assets_status(ctx: click.Context) -> None:
+def assets_status() -> None:
     from klyreon.commands.assets import CommandAssetsStatus
 
     result = CommandAssetsStatus().execute()
-    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"))
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=lambda r: console.print(r.output or "", mode="raw"), exit_on_failure=True)
 
 
 @assets.command("refresh", help="Re-install every operator recorded in the manifest")
-@click.pass_context
-def assets_refresh(ctx: click.Context) -> None:
+def assets_refresh() -> None:
     from klyreon.commands.assets import CommandAssetsRefresh
 
     result = CommandAssetsRefresh().execute()
-    console.report_result(result)
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, exit_on_failure=True)
 
 
 @assets.command("uninstall", help="Remove klyreon's files; keep edited ones")
@@ -358,14 +327,11 @@ def assets_refresh(ctx: click.Context) -> None:
     multiple=True,
     help="Operator to uninstall (repeatable). Default: every operator installed.",
 )
-@click.pass_context
-def assets_uninstall(ctx: click.Context, operators: tuple[str, ...]) -> None:
+def assets_uninstall(operators: tuple[str, ...]) -> None:
     from klyreon.commands.assets import CommandAssetsUninstall
 
     result = CommandAssetsUninstall(list(operators)).execute()
-    console.report_result(result)
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, exit_on_failure=True)
 
 
 if __name__ == "__main__":

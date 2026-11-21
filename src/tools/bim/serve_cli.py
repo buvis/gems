@@ -45,6 +45,7 @@ def serve(
         path_projects=str(Path(settings.path_projects).expanduser()),
         path_daily=str(Path(settings.path_daily).expanduser()),
         path_articles=str(Path(settings.path_articles).expanduser()),
+        jira_config=settings.adapters.get("jira", {}),
     )
     cmd = CommandServe(params=params)
     cmd.execute()

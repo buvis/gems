@@ -56,15 +56,22 @@ remove junk files, delete empty directories.
 Reports every completed rename, metadata merge, file deletion and empty-directory
 removal through the standard console. Filesystem failures and metadata files that
 could not be merged produce warnings; tidy continues with the remaining items.
-Warnings alone do not change the exit status (0). Actions and warnings are also
-available to programmatic callers in ``CommandResult.info`` and
-``CommandResult.warnings``.
+Warnings alone do not change the exit status (0). Each step's actions and
+warnings print in the order the step ran. Programmatic callers get them in
+``CommandResult.info`` and ``CommandResult.warnings``, and per step in
+``CommandResult.metadata["steps"]``.
+
+Tidy deletes files with the junk extensions (``tidy_junk_extensions``, which
+include ``.txt``, ``.md``, ``.jpg`` and ``.png`` by default) without asking. It
+asks for confirmation only when the tree holds more than 100 files or is deeper
+than 3 levels. A metadata file (``._name``) whose data file is a symlink is
+kept with a warning; tidy never writes metadata through a link.
 
 .. code-block:: bash
 
     muc tidy ~/music/album/
-    muc tidy ~/music/album/ -y     # skip confirmation
+    muc tidy ~/music/album/ -y     # skip the large-tree confirmation
 
 Options:
 
-- ``-y, --yes`` — skip confirmation prompt
+- ``-y, --yes`` — skip the confirmation prompt for trees over 100 files or 3 levels deep

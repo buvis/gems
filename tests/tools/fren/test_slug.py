@@ -208,14 +208,14 @@ class TestSlugErrors:
         assert result.success
         assert any("Path not found" in warning for warning in result.warnings)
 
-    def test_rename_exception_warns(self, tmp_path: Path) -> None:
-        """Covers lines 33-34: exception during rename produces warning."""
+    def test_run_fails_when_every_input_failed(self, tmp_path: Path) -> None:
         source = tmp_path / "Hello World.txt"
         source.write_text("x")
 
         with patch.object(Path, "rename", side_effect=OSError("disk full")):
-            result = CommandSlug(paths=(str(source),)).execute()
+            result = CommandSlug(paths=(str(source), str(tmp_path / "missing.txt"))).execute()
 
-        assert result.success
+        assert not result.success
+        assert result.error == "No file could be renamed"
         assert any("Failed to rename" in w for w in result.warnings)
-        assert result.output == "Renamed 0 file(s)"
+        assert any("Path not found" in w for w in result.warnings)
