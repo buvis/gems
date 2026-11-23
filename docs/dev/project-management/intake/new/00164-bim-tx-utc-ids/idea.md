@@ -34,8 +34,10 @@ and 00161 are in one tree, these parts break:
 4. The old tool, `src/tools/klyreon/spec/validator.py:137`, has the same
    id-equals-created rule. PRD 00155 retires klyreon; if it is still alive
    when 00161 lands, it rejects notes with UTC ids too.
-5. The tiromex format specification and `docs/source/tools/bim.rst:249` say
-   that ids follow local time.
+5. `docs/source/tools/bim.rst:249` and `src/tools/bim/SKILL.md:107` say that
+   ids follow local time. PRD 00161 rewrites both lines on its branch; keep
+   its text at the merge. A search on 2026-11-23 found no id-date rule in the
+   tiromex format specification.
 
 Not affected: `zettel-id-format` (a suffixed id still has 14 digits) and
 `id-filename-mismatch`.
@@ -48,7 +50,8 @@ Not affected: `zettel-id-format` (a suffixed id still has 14 digits) and
 - Decide whether the old local-time forms stay accepted for notes made before
   the id migration (PRD 00162), or only until that migration runs.
 - Rewrite the tests in items 2 and 3 to the new rules.
-- Update the format specification and the docs line.
+- If the format specification gains an id rule before the merge, state the
+  UTC rule there.
 
 ## When
 
