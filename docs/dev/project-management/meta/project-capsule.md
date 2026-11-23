@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-11-10 (catchup: feature/muc-tidy-reporting)
+Generated: 2026-11-23 (catchup: feature/bim-utc-ids)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -26,6 +26,11 @@ Generated: 2026-11-10 (catchup: feature/muc-tidy-reporting)
 - sysup step shape normalization (string/list/object -> argv + `label`) is a config-layer concern (`StepSpec`); `runner.py` only sees resolved argv, the child env and the label used for dry-run and the run log. The timeout ceiling above lives in the runner because that is where the spawn seam is.
 
 ## Active Work
+
+### feature/bim-utc-ids (batch 202611231043)
+- [ ] 00161-bim-utc-ids-v1.md (wip): ids become UTC digits of `date`; same-second collisions take seconds `60`-`99`, no sleep. Reverses PRD 00118's local-time rule. Python (`set_default_id`, `_get_date_from_file`, `CreateZettelUseCase`) and Rust (`defaults.rs`, `enrichment.rs`, `CACHE_VERSION` in `scanner.rs`) must change together; parity tests pin them.
+- 00162 (one-off migration of old local ids to UTC) waits in backlog; it depends on 00161.
+- Branch forked at `2a4fa1cc`; only PRD/backlog-review docs on it so far. master has moved on with dep bumps only.
 
 ### feature/muc-tidy-reporting
 - Implemented intake `00121-muc-tidy-report-through-console/idea.md`: all five helpers return actions and recoverable warnings through `CommandResult`, aggregated by `DirTree` and `CommandTidy`. No logging remains in muc.
@@ -55,6 +60,8 @@ Observations: Batch drained; all four tasks completed, including the cycle-2 Tai
 
 ## Related context
 
+2026-11-23: topic `bim utc ids note id collision suffix`. Portfolio hits are the PRD itself (`prds/backlog/00161-bim-utc-ids-v1.md:6`, `:38`, ~0.016) and transcripts of the feature/improve-bim-from-skill-experience sessions (PRD 00118, the local-time rule this PRD reverses). Repo-scope index and status were not run (worktree unregistered, as before).
+
 2026-11-10: topic `muc tidy reporting`. Repo indexing/query and review harvest could not resolve this unregistered worktree. Portfolio hit: `gems/src/tools/muc/cli.py:60-86` — 0.0164, the existing tidy renderer. Other returned hits were unrelated. Portfolio status reported stale/dead rows (exit 1), including code stale=34/dead=133; results are not a fresh repo index. Task restore returned `no_project_data`.
 
 2026-11-09: engram review harvest, indexing and related queries skipped per catchup probe; engram unavailable/unregistered. Topic: "improve bim from skill experience — bim create: scripting contract for agents". No query or portfolio staleness stamp was obtained. Source rationale is the 2026-11-08 create-note comparison recorded in PRD 00118; no discovery document was created.
@@ -66,6 +73,7 @@ Observations: Batch drained; all four tasks completed, including the cycle-2 Tai
 Previous (2026-10-29): No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
 
 ## GitHub State
+- 2026-11-23: 2 open issues (#272 braid config in buvis yaml, #273 config reads `~/.local/.config/buvis`), both covered by open PR #275 (`feature/config-local-layer-braid`, PRDs 00122-00135). Latest release `gems-v0.20.0` (2026-11-10), 26 unreleased master commits. Latest master Test run green; no failures on this branch. PR #275 brings parity test `test_id_cut_from_the_file_creation_time_is_local_wall_clock`, which 00161 must flip to UTC if it lands first.
 - 2026-11-09: 0 open issues; 1 open PR, #267 (`renovate/jsdom-31.x`, jsdom 30.1.3 -> 31.0.0). All listed checks pass. It touches only postup frontend package manifests/lock, with no bim overlap.
 - Latest GitHub release: `gems-v0.19.2` (2026-11-08); two master commits follow it.
 - Current master `a087e05e`: latest Test and documentation deployment completed successfully (2026-11-09 catchup). Latest completed Test, 42519713815 at `4876cad1`, succeeded, as did `f64f21a4`.
