@@ -1,3 +1,4 @@
+import time
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -11,15 +12,25 @@ class TestSetDefaultId:
     @pytest.mark.parametrize(
         ("date", "expected_id"),
         [
-            (datetime(2024, 9, 13, 12, tzinfo=timezone(timedelta(hours=2))), 20240913120000),
+            (datetime(2024, 9, 13, 12, tzinfo=timezone(timedelta(hours=2))), 20240913100000),
+            (datetime(2024, 9, 13, 4, tzinfo=timezone(timedelta(hours=-6))), 20240913100000),
+            (datetime(2024, 9, 13, 11, tzinfo=timezone(timedelta(hours=1))), 20240913100000),
             (datetime(2024, 9, 13, 10, tzinfo=timezone.utc), 20240913100000),
-            (datetime(2025, 1, 1, 0, 15, 9, tzinfo=timezone(timedelta(hours=5, minutes=30))), 20250101001509),
-            (datetime(2023, 12, 31, 23, 45, 7, tzinfo=timezone(timedelta(hours=-5))), 20231231234507),
-            (datetime(2022, 3, 4, 5, 6, 7, 987654), 20220304050607),
+            (datetime(2024, 9, 13, 12, tzinfo=timezone(timedelta(hours=1))), 20240913110000),
+            (datetime(2025, 1, 1, 0, 15, 9, tzinfo=timezone(timedelta(hours=5, minutes=30))), 20241231184509),
+            (datetime(2023, 12, 31, 23, 45, 7, tzinfo=timezone(timedelta(hours=-5))), 20240101044507),
         ],
-        ids=["local-offset", "same-instant-utc", "positive-offset-midnight", "negative-offset-midnight", "naive"],
+        ids=[
+            "plus-two",
+            "minus-six-same-instant",
+            "plus-one-same-instant",
+            "utc-same-instant",
+            "plus-one-same-wall-clock-other-instant",
+            "positive-offset-crosses-back-a-year",
+            "negative-offset-crosses-into-next-year",
+        ],
     )
-    def test_sets_id_from_dates_own_wall_clock(self, date: datetime, expected_id: int) -> None:
+    def test_utc_id_ignores_local_offset(self, date: datetime, expected_id: int) -> None:
         zettel_data = ZettelData()
         zettel_data.metadata = {"date": date, "title": "Keep title"}
 
@@ -27,6 +38,34 @@ class TestSetDefaultId:
 
         assert zettel_data.metadata == {"date": date, "id": expected_id, "title": "Keep title"}
         assert zettel_data.metadata["date"] is date
+
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="time.tzset is not available on this platform")
+    @pytest.mark.parametrize(
+        ("date", "expected_id"),
+        [
+            (datetime(2026, 11, 17, 8, 37, 39), 20261117083739),
+            (datetime(2022, 3, 4, 23, 6, 7, 987654), 20220304230607),
+        ],
+        ids=["morning", "late-evening-with-microseconds"],
+    )
+    def test_naive_date_keeps_its_digits(
+        self, monkeypatch: pytest.MonkeyPatch, date: datetime, expected_id: int
+    ) -> None:
+        monkeypatch.setenv("TZ", "America/Chicago")
+        time.tzset()
+        try:
+            assert date.astimezone().utcoffset() != timedelta(0)
+            zettel_data = ZettelData()
+            zettel_data.metadata = {"date": date, "title": "Keep title"}
+
+            set_default_id(zettel_data)
+
+            assert zettel_data.metadata == {"date": date, "id": expected_id, "title": "Keep title"}
+            assert zettel_data.metadata["date"] is date
+            assert zettel_data.metadata["date"].tzinfo is None
+        finally:
+            monkeypatch.undo()
+            time.tzset()
 
     @pytest.mark.parametrize(
         "date",

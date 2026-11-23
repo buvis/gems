@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import quote
@@ -32,7 +32,7 @@ class TestVaultLinks:
         assert result.success is True
         saved = repo.find_by_location(result.metadata["path"])
         local = saved.date.astimezone()
-        assert f"{local:%Y%m%d%H%M%S}" == str(saved.id)
+        assert f"{saved.date.astimezone(timezone.utc):%Y%m%d%H%M%S}" == str(saved.id)
         entry = f"- [ ] _{local:%d.%m.%Y %H:%M:%S}_ - {result.metadata['wikilink']}"
         assert result.metadata["daily_log"] == {"status": "added", "path": str(daily), "entry": entry}
         assert daily.read_text() == f"# Today\n\n## Log\n\n- [ ] _old_ - existing\n{entry}\n\n## Notes\n"
