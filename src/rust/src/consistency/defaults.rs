@@ -124,26 +124,38 @@ mod tests {
 
     #[test]
     fn test_id_is_the_utc_digits_of_the_date() {
-        let id_for = |offset_secs: i32, h: u32, m: u32| {
+        let date = |offset_secs: i32, ymd: (i32, u32, u32), hms: (u32, u32, u32)| {
+            FixedOffset::east_opt(offset_secs)
+                .unwrap()
+                .with_ymd_and_hms(ymd.0, ymd.1, ymd.2, hms.0, hms.1, hms.2)
+                .unwrap()
+        };
+        let id_for = |dt: DateTime<FixedOffset>, null_id: bool| {
             let mut data = ZettelData::new();
-            data.metadata.insert(
-                "date".to_string(),
-                YamlValue::DateTime(
-                    FixedOffset::east_opt(offset_secs)
-                        .unwrap()
-                        .with_ymd_and_hms(2024, 9, 13, h, m, 0)
-                        .unwrap(),
-                ),
-            );
+            data.metadata
+                .insert("date".to_string(), YamlValue::DateTime(dt));
+            if null_id {
+                data.metadata.insert("id".to_string(), YamlValue::Null);
+            }
             set_missing_defaults(&mut data);
             data.metadata.get("id").and_then(|v| v.as_int())
         };
+        let sept13 = (2024, 9, 13);
 
         // +02:00 12:00 and UTC 10:00 are the same instant: same UTC id.
-        assert_eq!(id_for(2 * 3600, 12, 0), Some(20240913100000));
-        assert_eq!(id_for(0, 10, 0), Some(20240913100000));
+        assert_eq!(id_for(date(2 * 3600, sept13, (12, 0, 0)), false), Some(20240913100000));
+        assert_eq!(id_for(date(0, sept13, (10, 0, 0)), false), Some(20240913100000));
         // A negative offset moves the UTC digits forward, across midnight.
-        assert_eq!(id_for(-5 * 3600 - 30 * 60, 22, 15), Some(20240914034500));
+        let west = date(-5 * 3600 - 30 * 60, sept13, (22, 15, 0));
+        assert_eq!(id_for(west, false), Some(20240914034500));
+        // A 45-minute offset is converted exactly, not rounded.
+        assert_eq!(id_for(date(20700, sept13, (12, 0, 0)), false), Some(20240913061500));
+        // Another year, non-zero seconds, back across a year boundary.
+        let nye = date(2 * 3600, (1999, 12, 31), (23, 59, 58));
+        assert_eq!(id_for(nye, false), Some(19991231215958));
+        // An explicit `id: null` counts as missing and gets the UTC digits.
+        assert_eq!(id_for(date(2 * 3600, sept13, (12, 0, 0)), true), Some(20240913100000));
+        assert_eq!(id_for(nye, true), Some(19991231215958));
     }
 
     #[test]
@@ -163,6 +175,11 @@ mod tests {
         set_missing_defaults(&mut data);
 
         assert_eq!(data.metadata.get("id").and_then(|v| v.as_int()), Some(42));
+
+        data.metadata
+            .insert("id".to_string(), YamlValue::String("abc".to_string()));
+        set_missing_defaults(&mut data);
+        assert_eq!(data.metadata.get("id").and_then(|v| v.as_str()), Some("abc"));
     }
 
     #[test]

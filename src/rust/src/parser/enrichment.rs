@@ -73,6 +73,13 @@ mod tests {
         let dt = date_from_filename("202407311759").unwrap();
         assert_eq!(dt.offset().local_minus_utc(), 0);
         assert_eq!(dt.naive_utc().format("%Y%m%d%H%M%S").to_string(), "20240731175900");
+
+        // Another year, and a day of 12 or less (March 5, not May 3).
+        for stem in ["19991231235958", "20240305101112"] {
+            let dt = date_from_filename(stem).unwrap();
+            assert_eq!(dt.offset().local_minus_utc(), 0, "stem {stem}");
+            assert_eq!(dt.naive_utc().format("%Y%m%d%H%M%S").to_string(), stem);
+        }
     }
 
     #[test]
@@ -87,7 +94,10 @@ mod tests {
         assert_eq!(utc_digits("20240115143075 Note"), "20240115143059");
         assert_eq!(utc_digits("20240115143099"), "20240115143059");
         assert_eq!(utc_digits("20240115143059"), "20240115143059");
-        assert_eq!(utc_digits("20240115143058"), "20240115143058");
+        for second in 0..=59 {
+            let stem = format!("202401151430{second:02}");
+            assert_eq!(utc_digits(&stem), stem);
+        }
     }
 
     #[test]
@@ -106,6 +116,10 @@ mod tests {
     #[test]
     fn test_no_date_in_filename() {
         assert!(date_from_filename("my-note").is_none());
+        // Impossible calendar values give no date; they do not roll over.
+        assert!(date_from_filename("20240230120000").is_none());
+        assert!(date_from_filename("20241301120000").is_none());
+        assert!(date_from_filename("20240115250000").is_none());
     }
 
     #[test]
