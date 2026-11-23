@@ -160,5 +160,4 @@ class TestGetDateFromFile:
             assert result.utcoffset() == expected.utcoffset()
             assert f"{result:%Y%m%d%H%M%S}" == f"{expected:%Y%m%d%H%M%S}"
         mock_reader.get_creation_datetime.assert_called_once_with(f)
-        mock_reader.get_creation_datetime.assert_called_once_with(f)
         mock_reader.get_first_commit_datetime.assert_called_once_with(f)
