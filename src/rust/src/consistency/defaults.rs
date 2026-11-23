@@ -90,7 +90,7 @@ fn set_default_processed(data: &mut ZettelData) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use chrono::{TimeZone, Utc};
 
     #[test]
     fn test_sets_all_defaults() {
@@ -123,35 +123,46 @@ mod tests {
     }
 
     #[test]
-    fn test_id_keeps_the_dates_own_offset() {
-        let plus_two = FixedOffset::east_opt(2 * 3600).unwrap();
-        let mut local = ZettelData::new();
-        local.metadata.insert(
-            "date".to_string(),
-            YamlValue::DateTime(plus_two.with_ymd_and_hms(2024, 9, 13, 12, 0, 0).unwrap()),
-        );
-        let mut utc = ZettelData::new();
-        utc.metadata.insert(
+    fn test_id_is_the_utc_digits_of_the_date() {
+        let id_for = |offset_secs: i32, h: u32, m: u32| {
+            let mut data = ZettelData::new();
+            data.metadata.insert(
+                "date".to_string(),
+                YamlValue::DateTime(
+                    FixedOffset::east_opt(offset_secs)
+                        .unwrap()
+                        .with_ymd_and_hms(2024, 9, 13, h, m, 0)
+                        .unwrap(),
+                ),
+            );
+            set_missing_defaults(&mut data);
+            data.metadata.get("id").and_then(|v| v.as_int())
+        };
+
+        // +02:00 12:00 and UTC 10:00 are the same instant: same UTC id.
+        assert_eq!(id_for(2 * 3600, 12, 0), Some(20240913100000));
+        assert_eq!(id_for(0, 10, 0), Some(20240913100000));
+        // A negative offset moves the UTC digits forward, across midnight.
+        assert_eq!(id_for(-5 * 3600 - 30 * 60, 22, 15), Some(20240914034500));
+    }
+
+    #[test]
+    fn test_existing_id_is_kept_over_the_utc_date_digits() {
+        let mut data = ZettelData::new();
+        data.metadata.insert(
             "date".to_string(),
             YamlValue::DateTime(
-                FixedOffset::east_opt(0)
+                FixedOffset::east_opt(2 * 3600)
                     .unwrap()
-                    .with_ymd_and_hms(2024, 9, 13, 10, 0, 0)
+                    .with_ymd_and_hms(2024, 9, 13, 12, 0, 0)
                     .unwrap(),
             ),
         );
+        data.metadata.insert("id".to_string(), YamlValue::Int(42));
 
-        set_missing_defaults(&mut local);
-        set_missing_defaults(&mut utc);
+        set_missing_defaults(&mut data);
 
-        assert!(matches!(
-            local.metadata.get("id"),
-            Some(YamlValue::Int(20240913120000))
-        ));
-        assert!(matches!(
-            utc.metadata.get("id"),
-            Some(YamlValue::Int(20240913100000))
-        ));
+        assert_eq!(data.metadata.get("id").and_then(|v| v.as_int()), Some(42));
     }
 
     #[test]
@@ -167,7 +178,7 @@ mod tests {
             dt.offset(),
             &Local.offset_from_utc_datetime(&dt.naive_utc())
         );
-        let expected_id = dt.format("%Y%m%d%H%M%S").to_string();
+        let expected_id = dt.with_timezone(&Utc).format("%Y%m%d%H%M%S").to_string();
         assert!(matches!(
             data.metadata.get("id"),
             Some(YamlValue::Int(id)) if id.to_string() == expected_id

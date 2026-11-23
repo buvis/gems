@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,18 @@ except ImportError:
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 pytestmark = pytest.mark.skipif(not HAS_RUST, reason="Rust _core not available")
+
+
+@pytest.fixture
+def chicago_local_zone(monkeypatch: pytest.MonkeyPatch):
+    """Force a non-UTC local zone for Python and Rust, then restore the old one."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset is not available on this platform")
+    monkeypatch.setenv("TZ", "America/Chicago")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
 
 
 def _rust_dict_to_zettel_data(raw: dict[str, Any]) -> ZettelData:
@@ -107,19 +120,52 @@ class TestParseFileParity:
         py_data, rust_data = self._parse_both("202401151030 Note from filename.md")
         _compare_metadata(py_data.metadata, rust_data.metadata)
         _compare_sections(py_data.sections, rust_data.sections)
-        # Both read the filename digits as local time and derive the id from them.
+        # Both read the filename digits as UTC and derive the id from them.
         assert py_data.metadata["id"] == rust_data.metadata["id"] == 202401151030_00
 
-    def test_default_id_follows_the_dates_own_offset_in_both_paths(self, tmp_path: Path):
+    @pytest.mark.parametrize(
+        ("date_text", "expected_id"),
+        [
+            ("2024-09-13T12:00:00+02:00", 20240913100000),
+            ("2024-09-13T22:15:00-05:30", 20240914034500),
+        ],
+    )
+    def test_rust_python_id_parity_utc(self, tmp_path: Path, date_text: str, expected_id: int):
         note = tmp_path / "offset-note.md"
-        note.write_text("---\ntitle: Offset\ndate: 2024-09-13T12:00:00+02:00\n---\n\n# Offset\n", encoding="utf-8")
+        note.write_text(f"---\ntitle: Offset\ndate: {date_text}\n---\n\n# Offset\n", encoding="utf-8")
 
         py_zettel = Zettel(ZettelFileParser.from_file(note))
         py_zettel.ensure_consistency()
         rust_data = _rust_dict_to_zettel_data(parse_file(str(note)))
 
-        assert py_zettel.get_data().metadata["id"] == 20240913120000
-        assert rust_data.metadata["id"] == 20240913120000
+        assert py_zettel.get_data().metadata["id"] == expected_id
+        assert rust_data.metadata["id"] == expected_id
+
+    @pytest.mark.parametrize(
+        ("file_name", "expected_date"),
+        [
+            ("20240115143022 Note.md", datetime(2024, 1, 15, 14, 30, 22, tzinfo=timezone.utc)),
+            ("20240115143060 Note.md", datetime(2024, 1, 15, 14, 30, 59, tzinfo=timezone.utc)),
+        ],
+    )
+    def test_rust_filename_date_utc(
+        self, tmp_path: Path, chicago_local_zone: None, file_name: str, expected_date: datetime
+    ):
+        # The forced local zone is in effect, so a local-time reading would shift the date.
+        assert datetime(2024, 1, 15, 14, 30).astimezone().utcoffset() == timedelta(hours=-6)
+        note = tmp_path / file_name
+        note.write_text("---\ntitle: Note\n---\n\n# Note\n", encoding="utf-8")
+
+        py_zettel = Zettel(ZettelFileParser.from_file(note))
+        py_zettel.ensure_consistency()
+        py_meta = py_zettel.get_data().metadata
+        rust_meta = _rust_dict_to_zettel_data(parse_file(str(note))).metadata
+
+        assert py_meta["date"].utcoffset() == timedelta(0)
+        assert rust_meta["date"].utcoffset() == timedelta(0)
+        assert py_meta["date"] == rust_meta["date"] == expected_date
+        expected_id = int(expected_date.strftime("%Y%m%d%H%M%S"))
+        assert py_meta["id"] == rust_meta["id"] == expected_id
 
     def test_migration(self):
         py_data, rust_data = self._parse_both("needs_migration.md")

@@ -65,13 +65,36 @@ mod tests {
     }
 
     #[test]
-    fn test_filename_digits_are_local_wall_clock() {
+    fn test_filename_digits_are_utc() {
         let dt = date_from_filename("20240115143022").unwrap();
-        assert_eq!(
-            dt.offset(),
-            &Local.offset_from_utc_datetime(&dt.naive_utc())
-        );
-        assert_eq!(dt.naive_local().format("%H%M%S").to_string(), "143022");
+        assert_eq!(dt.offset().local_minus_utc(), 0);
+        assert_eq!(dt.naive_utc().format("%Y%m%d%H%M%S").to_string(), "20240115143022");
+
+        let dt = date_from_filename("202407311759").unwrap();
+        assert_eq!(dt.offset().local_minus_utc(), 0);
+        assert_eq!(dt.naive_utc().format("%Y%m%d%H%M%S").to_string(), "20240731175900");
+    }
+
+    #[test]
+    fn test_suffix_seconds_read_as_59() {
+        let utc_digits = |stem: &str| {
+            let dt = date_from_filename(stem).unwrap();
+            assert_eq!(dt.offset().local_minus_utc(), 0, "stem {stem}");
+            dt.naive_utc().format("%Y%m%d%H%M%S").to_string()
+        };
+
+        assert_eq!(utc_digits("20240115143060"), "20240115143059");
+        assert_eq!(utc_digits("20240115143075 Note"), "20240115143059");
+        assert_eq!(utc_digits("20240115143099"), "20240115143059");
+        assert_eq!(utc_digits("20240115143059"), "20240115143059");
+        assert_eq!(utc_digits("20240115143058"), "20240115143058");
+    }
+
+    #[test]
+    fn test_non_ascii_digit_stem_returns_none() {
+        assert!(date_from_filename("20240115143\u{FF11}").is_none());
+        assert!(date_from_filename("2024011514\u{FF13}0").is_none());
+        assert!(date_from_filename("\u{FF12}0240115143022").is_none());
     }
 
     #[test]
