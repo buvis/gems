@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
-import time
+from collections.abc import Iterator
 from contextlib import suppress
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -12,8 +13,6 @@ from buvis.pybase.zettel.domain.interfaces.zettel_repository import ZettelWriter
 from buvis.pybase.zettel.domain.services.zettel_factory import ZettelFactory
 from buvis.pybase.zettel.domain.templates import HookRunner, ZettelTemplate
 from buvis.pybase.zettel.domain.value_objects.zettel_data import ZettelData
-
-MAX_ID_ATTEMPTS = 5
 
 
 class CreateZettelUseCase:
@@ -33,24 +32,24 @@ class CreateZettelUseCase:
         self, template: ZettelTemplate, answers: dict[str, Any], *, body: str | None = None
     ) -> tuple[Path, Zettel]:
         """Build a note and choose its path without saving or running hooks."""
-        path, zettel, _ = self._prepare(template, answers, body, MAX_ID_ATTEMPTS)
-        return path, zettel
-
-    def _prepare(
-        self, template: ZettelTemplate, answers: dict[str, Any], body: str | None, remaining_attempts: int
-    ) -> tuple[Path, Zettel, int]:
-        while True:
-            remaining_attempts -= 1
-            data = template.build_data(answers)
-            _append_body(data, template, answers, body)
-            zettel = ZettelFactory.create(Zettel(data))
-            path = self._path_for(template, zettel)
+        zettel = _build(template, answers, body)
+        candidates = self._candidate_paths(template, zettel)
+        base_path = next(candidates)
+        for path in chain([base_path], candidates):
             if not path.exists():
                 zettel.get_data().file_path = str(path)
-                return path, zettel, remaining_attempts
-            if not _retries_on_collision(template) or not remaining_attempts:
-                raise FileExistsError(f"Zettel already exists: {path}")
-            time.sleep(1)
+                return path, zettel
+        raise FileExistsError(f"Zettel already exists: {base_path}")
+
+    def _candidate_paths(self, template: ZettelTemplate, zettel: Zettel) -> Iterator[Path]:
+        """Yield the base path, then the 60-99 suffixed id paths, computing each one lazily."""
+        base = zettel.id
+        yield self._path_for(template, zettel)
+        if not _retries_on_collision(template) or base is None or len(str(base)) != 14:
+            return
+        for seconds in range(60, 100):
+            zettel.id = _suffixed_id(base, seconds)
+            yield self._path_for(template, zettel)
 
     def _path_for(self, template: ZettelTemplate, zettel: Zettel) -> Path:
         if getattr(template, "file_stem", "id") == "slug":
@@ -68,18 +67,21 @@ class CreateZettelUseCase:
 
     def execute(self, template: ZettelTemplate, answers: dict[str, Any], *, body: str | None = None) -> Path:
         self.warnings = []
-        remaining_attempts = MAX_ID_ATTEMPTS
-        while True:
-            path, zettel, remaining_attempts = self._prepare(template, answers, body, remaining_attempts)
+        zettel = _build(template, answers, body)
+        candidates = self._candidate_paths(template, zettel)
+        base_path = next(candidates)
+        for path in chain([base_path], candidates):
+            if path.exists():
+                continue
+            zettel.get_data().file_path = str(path)
             path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o666)
             except FileExistsError:
-                if not _retries_on_collision(template) or not remaining_attempts:
-                    raise FileExistsError(f"Zettel already exists: {path}") from None
-                time.sleep(1)
                 continue
             break
+        else:
+            raise FileExistsError(f"Zettel already exists: {base_path}") from None
         reservation = None
         saved = False
         try:
@@ -102,6 +104,17 @@ class CreateZettelUseCase:
                     if (current.st_dev, current.st_ino) == (reservation.st_dev, reservation.st_ino):
                         path.unlink()
         return path
+
+
+def _suffixed_id(base_id: int, seconds: int) -> int:
+    """Return base_id with its last two digits replaced by ``seconds`` (60-99)."""
+    return int(f"{str(base_id)[:12]}{seconds:02d}")
+
+
+def _build(template: ZettelTemplate, answers: dict[str, Any], body: str | None) -> Zettel:
+    data = template.build_data(answers)
+    _append_body(data, template, answers, body)
+    return ZettelFactory.create(Zettel(data))
 
 
 def _retries_on_collision(template: ZettelTemplate) -> bool:
