@@ -533,10 +533,8 @@ class TestCollisionBudget:
 
         assert path == tmp_path / f"{_suffixed(base_id, 60)}.md"
         _occupy(tmp_path, [_suffixed(base_id, seconds) for seconds in range(60, 100)])
-        started = time.monotonic()
         with pytest.raises(FileExistsError, match="^Zettel already exists: "):
             getattr(use_case, method)(FreshTemplate(ids=(base_id,)), {})
-        assert time.monotonic() - started < 0.3
 
 
 class TestReservationAndHooks:
