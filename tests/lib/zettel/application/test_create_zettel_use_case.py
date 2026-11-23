@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -64,16 +65,6 @@ class TestCreateZettelUseCase:
 
         mock_zettel_writer.save.assert_called_once_with(mock_zettel)
         assert mock_data.file_path == str(create_zettel_use_case.zettelkasten_path / "20231026120000.md")
-
-    def test_raises_file_exists(self, mocker, create_zettel_use_case, tmp_path):
-        mocker.patch("time.sleep", autospec=True)
-        mock_factory = _setup_factory_mock(mocker)
-        mock_template, mock_data, mock_zettel = _make_template_and_zettel(mock_factory)
-
-        (tmp_path / "20231026120000.md").touch()
-
-        with pytest.raises(FileExistsError):
-            create_zettel_use_case.execute(mock_template, {"title": "Test Zettel"})
 
     def test_runs_hooks(self, mocker, create_zettel_use_case, mock_zettel_writer):
         hook_runner = MagicMock()
@@ -369,121 +360,162 @@ class TestReservationInspectionFailures:
                     pass
 
 
+BASE_IDS = [20231026120000, 20240229235959]
+
+
+def _suffixed(base_id: int, seconds: int | None) -> int:
+    return base_id if seconds is None else int(f"{str(base_id)[:12]}{seconds:02d}")
+
+
+def _occupy(root: Path, ids: list[int]) -> dict[Path, str]:
+    for zettel_id in ids:
+        (root / f"{zettel_id}.md").write_text(f"existing {zettel_id}")
+    return {root / f"{zettel_id}.md": f"existing {zettel_id}" for zettel_id in ids}
+
+
+def _record_saved_ids(writer: MagicMock) -> list[Any]:
+    saved: list[Any] = []
+    writer.save.side_effect = lambda zettel: saved.append(zettel.get_data().metadata["id"])
+    return saved
+
+
+def _create(use_case: CreateZettelUseCase, writer: MagicMock, template: FreshTemplate, method: str) -> tuple[Path, Any]:
+    result = getattr(use_case, method)(template, {"title": "Example Title"})
+    if method == "prepare":
+        return result[0], result[1]
+    return result, writer.save.call_args.args[0]
+
+
 class TestCollisionBudget:
+    @pytest.mark.parametrize("base_id", BASE_IDS)
     @pytest.mark.parametrize("method", ["prepare", "execute"])
-    def test_waits_for_next_second_on_collision(
-        self,
-        mocker: Any,
-        create_zettel_use_case: CreateZettelUseCase,
-        mock_zettel_writer: MagicMock,
-        tmp_path: Path,
-        method: str,
+    def test_same_second_gets_suffix_60(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock, method: str, base_id: int
     ) -> None:
-        sleep = mocker.patch("time.sleep", autospec=True)
-        occupied = tmp_path / "20231026120000.md"
-        occupied.write_text("existing note")
-        template = FreshTemplate(ids=(20231026120000, 20231026120001))
+        prefix = str(base_id)[:12]
+        occupied = _occupy(tmp_path, [base_id])
+        for near_miss in (f"{prefix}6.md", f"{prefix}600.md", f"{prefix}60.txt"):
+            (tmp_path / near_miss).write_text("near miss")
+        hook_ids: list[Any] = []
+        saved = _record_saved_ids(mock_zettel_writer)
+        use_case = CreateZettelUseCase(
+            tmp_path, mock_zettel_writer, hook_runner=lambda hooks, data, root: hook_ids.append(data.metadata["id"])
+        )
+        template = FreshTemplate(ids=(base_id,))
 
-        path, data = _run_with_body(create_zettel_use_case, mock_zettel_writer, template, method, "added")
+        path, zettel = _create(use_case, mock_zettel_writer, template, method)
 
-        assert path == tmp_path / "20231026120001.md"
-        assert data.file_path == str(path)
-        assert data.sections == [("# Example Title", "existing\n\nadded")]
-        assert len(template.built) == 2
-        assert template.built[0] is not template.built[1]
-        assert occupied.read_text() == "existing note"
-        sleep.assert_called_once_with(1)
-
-    @pytest.mark.parametrize("method", ["prepare", "execute"])
-    def test_gives_up_after_five_attempts(
-        self,
-        mocker: Any,
-        create_zettel_use_case: CreateZettelUseCase,
-        mock_zettel_writer: MagicMock,
-        tmp_path: Path,
-        method: str,
-    ) -> None:
-        sleep = mocker.patch("time.sleep", autospec=True)
-        occupied = tmp_path / "20231026120000.md"
-        occupied.write_text("existing note")
-        template = FreshTemplate()
-
-        with pytest.raises(FileExistsError, match=f"^Zettel already exists: {occupied}$"):
-            getattr(create_zettel_use_case, method)(template, {"title": "Example Title"})
-
-        assert len(template.built) == 5
-        assert sleep.call_args_list == [((1,), {})] * 4
-        assert occupied.read_text() == "existing note"
-        mock_zettel_writer.save.assert_not_called()
-
-    @pytest.mark.parametrize("method", ["prepare", "execute"])
-    def test_attempt_budget_resets_for_each_invocation(
-        self,
-        mocker: Any,
-        create_zettel_use_case: CreateZettelUseCase,
-        mock_zettel_writer: MagicMock,
-        tmp_path: Path,
-        method: str,
-    ) -> None:
-        mocker.patch("time.sleep", autospec=True)
-        (tmp_path / "20231026120000.md").touch()
-        with pytest.raises(FileExistsError):
-            getattr(create_zettel_use_case, method)(FreshTemplate(), {})
-        template = FreshTemplate(ids=(20231026120001,))
-
-        path, data = _run_with_body(create_zettel_use_case, mock_zettel_writer, template, method, "again")
-
-        assert path == tmp_path / "20231026120001.md"
-        assert data.sections[0][1] == "existing\n\nagain"
+        expected = _suffixed(base_id, 60)
+        assert path == tmp_path / f"{expected}.md"
+        assert zettel.id == expected
+        assert zettel.get_data().metadata["id"] == expected
+        assert zettel.get_data().file_path == str(path)
+        assert zettel.get_data().metadata["date"] == datetime(2023, 10, 26, 12, tzinfo=timezone.utc)
         assert len(template.built) == 1
+        assert {occupied_path: occupied_path.read_text() for occupied_path in occupied} == occupied
+        if method == "execute":
+            assert saved == [expected]
+            assert hook_ids == [expected]
+        else:
+            assert saved == []
+            assert not path.exists()
 
-    def test_second_writer_loses_reservation_and_retries(
-        self, mocker: Any, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, tmp_path: Path
+    @pytest.mark.parametrize(
+        ("base_id", "free_seconds"),
+        [(BASE_IDS[0], 99), (BASE_IDS[1], 99), (BASE_IDS[0], 75)],
+        ids=["only-99-free", "only-99-free-other-base", "first-free-wins-over-later-free"],
+    )
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_suffix_runs_to_99(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock, method: str, base_id: int, free_seconds: int
     ) -> None:
-        sleep = mocker.patch("time.sleep", autospec=True)
-        original_open = os.open
-        occupied = tmp_path / "20231026120000.md"
-        template = FreshTemplate(ids=(20231026120000, 20231026120001))
+        occupied = _occupy(tmp_path, [base_id, *(_suffixed(base_id, seconds) for seconds in range(60, free_seconds))])
+        saved = _record_saved_ids(mock_zettel_writer)
+        template = FreshTemplate(ids=(base_id,))
 
-        def race(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
-            if Path(path) == occupied:
-                occupied.write_text("concurrent note")
-            return original_open(path, flags, mode, **kwargs)
+        path, zettel = _create(CreateZettelUseCase(tmp_path, mock_zettel_writer), mock_zettel_writer, template, method)
 
-        mocker.patch("os.open", side_effect=race)
+        expected = _suffixed(base_id, free_seconds)
+        assert path == tmp_path / f"{expected}.md"
+        assert zettel.get_data().metadata["id"] == expected
+        assert zettel.get_data().file_path == str(path)
+        assert len(template.built) == 1
+        assert {occupied_path: occupied_path.read_text() for occupied_path in occupied} == occupied
+        assert saved == ([expected] if method == "execute" else [])
 
-        path = create_zettel_use_case.execute(template, {"title": "Example Title"})
-
-        assert path == tmp_path / "20231026120001.md"
-        assert occupied.read_text() == "concurrent note"
-        assert len(template.built) == 2
-        mock_zettel_writer.save.assert_called_once()
-        sleep.assert_called_once_with(1)
-
-    def test_existence_and_reservation_collisions_share_five_attempts(
-        self, mocker: Any, create_zettel_use_case: CreateZettelUseCase, mock_zettel_writer: MagicMock, tmp_path: Path
+    @pytest.mark.parametrize(
+        ("base_id", "suffixes"),
+        [(BASE_IDS[0], range(60, 100)), (BASE_IDS[1], range(60, 100)), (12345, range(0))],
+        ids=["all-suffixes-taken", "all-suffixes-taken-other-base", "short-id-has-no-suffixes"],
+    )
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_collision_after_99_raises(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock, method: str, base_id: int, suffixes: range
     ) -> None:
-        sleep = mocker.patch("time.sleep", autospec=True)
-        original_open = os.open
-        ids = tuple(20231026120000 + index for index in range(6))
-        for zettel_id in (ids[0], ids[2]):
-            (tmp_path / f"{zettel_id}.md").write_text("existing")
+        occupied = _occupy(tmp_path, [base_id, *(_suffixed(base_id, seconds) for seconds in suffixes)])
+        base_path = tmp_path / f"{base_id}.md"
+        template = FreshTemplate(ids=(base_id,))
 
-        def lose_reservation(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
-            Path(path).write_text("concurrent")
-            return original_open(path, flags, mode, **kwargs)
+        with pytest.raises(FileExistsError, match=f"^Zettel already exists: {re.escape(str(base_path))}$"):
+            getattr(CreateZettelUseCase(tmp_path, mock_zettel_writer), method)(template, {})
 
-        mocker.patch("os.open", side_effect=lose_reservation)
-        template = FreshTemplate(ids=ids)
-
-        with pytest.raises(FileExistsError, match=f"Zettel already exists: {tmp_path / f'{ids[4]}.md'}"):
-            create_zettel_use_case.execute(template, {})
-
-        assert len(template.built) == 5
-        assert sleep.call_args_list == [((1,), {})] * 4
-        assert not (tmp_path / f"{ids[5]}.md").exists()
-        assert (tmp_path / f"{ids[4]}.md").read_text() == "concurrent"
+        assert {existing: existing.read_text() for existing in tmp_path.iterdir()} == occupied
+        assert len(template.built) == 1
         mock_zettel_writer.save.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("existing", "raced", "expected_seconds"),
+        [((), (None,), 60), ((), (None, 60), 61), ((None,), (60,), 61)],
+        ids=["race-on-base", "races-on-base-and-60", "base-exists-race-on-60"],
+    )
+    def test_lost_reservation_takes_next_suffix(
+        self,
+        mocker: Any,
+        tmp_path: Path,
+        mock_zettel_writer: MagicMock,
+        existing: tuple[int | None, ...],
+        raced: tuple[int | None, ...],
+        expected_seconds: int,
+    ) -> None:
+        base_id = BASE_IDS[0]
+        occupied = _occupy(tmp_path, [_suffixed(base_id, seconds) for seconds in existing])
+        raced_paths = {tmp_path / f"{_suffixed(base_id, seconds)}.md" for seconds in raced}
+        original_open = os.open
+
+        def write_concurrent_note(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
+            if Path(path) in raced_paths and not Path(path).exists():
+                Path(path).write_text("concurrent note")
+            return original_open(path, flags, mode, **kwargs)
+
+        mocker.patch("os.open", side_effect=write_concurrent_note)
+        saved = _record_saved_ids(mock_zettel_writer)
+        template = FreshTemplate(ids=(base_id,))
+
+        path = CreateZettelUseCase(tmp_path, mock_zettel_writer).execute(template, {"title": "Example Title"})
+
+        expected = _suffixed(base_id, expected_seconds)
+        assert path == tmp_path / f"{expected}.md"
+        assert {raced_path: raced_path.read_text() for raced_path in raced_paths} == dict.fromkeys(
+            raced_paths, "concurrent note"
+        )
+        assert {occupied_path: occupied_path.read_text() for occupied_path in occupied} == occupied
+        assert len(template.built) == 1
+        assert saved == [expected]
+        assert mock_zettel_writer.save.call_args.args[0].get_data().file_path == str(path)
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_create_never_sleeps(self, mocker: Any, tmp_path: Path, mock_zettel_writer: MagicMock, method: str) -> None:
+        mocker.patch("time.sleep", side_effect=AssertionError("create slept"))
+        base_id = BASE_IDS[1]
+        _occupy(tmp_path, [base_id])
+        use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer)
+
+        path, _ = _create(use_case, mock_zettel_writer, FreshTemplate(ids=(base_id,)), method)
+
+        assert path == tmp_path / f"{_suffixed(base_id, 60)}.md"
+        _occupy(tmp_path, [_suffixed(base_id, seconds) for seconds in range(60, 100)])
+        with pytest.raises(FileExistsError, match="^Zettel already exists: "):
+            getattr(use_case, method)(FreshTemplate(ids=(base_id,)), {})
 
 
 class TestReservationAndHooks:
