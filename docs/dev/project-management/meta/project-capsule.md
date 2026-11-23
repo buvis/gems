@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-11-16 (catchup: feature/merge-klyreon-to-bim)
+Generated: 2026-11-23 (catchup: feature/merge-klyreon-to-bim, PRD 00151)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -29,7 +29,8 @@ Generated: 2026-11-16 (catchup: feature/merge-klyreon-to-bim)
 
 ### Batch 202611160850 (feature/merge-klyreon-to-bim, Tiromex: klyreon into bim as `bim tx`)
 - [x] 00150-bim-tiromex-format-v1.md (2 cycles): tiromex folder, folded note format, `bim tx new/validate/export-claims/status`, skill exception.
-- Backlog, each gated by `eligibility`: 00151 (shared LLM backends), 00152 (mirrors; also needs `86b758d9` from `feature/config-local-layer-braid`, PR #275, in master and HEAD), 00153 (ingest; also needs the llama.cpp server on 127.0.0.1:8080), 00154, 00155.
+- [ ] 00151-bim-tiromex-backends-v1.md (wip since 2026-11-23): shared schema-checked LLM registry in `src/tools/bim/shared/llm/` (HTTP, Claude, generic command adapters); doc classifier/extractor rewired onto it with legacy config and defaults preserved.
+- Backlog, each gated by `eligibility`: 00152 (mirrors; also needs `86b758d9` from `feature/config-local-layer-braid`, PR #275, in master and HEAD), 00153 (ingest; also needs the llama.cpp server on 127.0.0.1:8080), 00154, 00155.
 - 00122 and 00123 sit in this branch's backlog but belong to PR #275. Never build them here; always pass the PRD filename to autopilot.
 - Requirements: `intake/processed/00149-merge-klyreon-into-bim/discovery.md` wins over idea, qa-log and port-plan examples. Readiness: `audit-results/backlog-review-2026-11-16.md`.
 - tx code lives in `src/tools/bim/commands/tx/` (group with `shared/`, like `commands/doc/`); klyreon source is a read-only port reference until 00155, never an import.
@@ -66,6 +67,8 @@ Observations: Batch drained; all four tasks completed, including the cycle-2 Tai
 
 ## Related context
 
+2026-11-23 (topic "merge klyreon to bim" / "bim shared schema-checked LLM backends"): engram skipped by `autopilot catchup-probe`; no harvest, no query, no hits, no staleness stamp.
+
 2026-11-16 (topic "merge klyreon to bim" / "bim tiromex: format and foundation commands"): engram skipped by `autopilot catchup-probe`; no harvest, no query, no hits, no staleness stamp.
 
 2026-11-10: topic `muc tidy reporting`. Repo indexing/query and review harvest could not resolve this unregistered worktree. Portfolio hit: `gems/src/tools/muc/cli.py:60-86` — 0.0164, the existing tidy renderer. Other returned hits were unrelated. Portfolio status reported stale/dead rows (exit 1), including code stale=34/dead=133; results are not a fresh repo index. Task restore returned `no_project_data`.
@@ -79,6 +82,7 @@ Observations: Batch drained; all four tasks completed, including the cycle-2 Tai
 Previous (2026-10-29): No topic this session: catchup ran on master with no `prds/wip/` directory, so no engram query was made. Review harvest ran: 13 review files upserted, the rest (audits, task logs, backlog reviews, `docs/dev/tmp` scratch) rejected for missing or incomplete frontmatter, which is expected for those formats. `engram status --scope portfolio` (exit 1, 2026-10-29): memory 192/stale 24/dead 1; prd 11485/dead 3063; discovery 554/dead 50; transcripts 17713/dead 17604; code 62674/stale 69/dead 1466, skipped 5840; findings 49747; decision 29. The dead rows are the staleness stamp any later portfolio hit should be read against.
 
 ## GitHub State
+- 2026-11-23: issues #272/#273 still open, PR #275 still unreviewed. New Renovate PRs #292/#293 (svelte 5.58.1/5.59.0) both have a failing Test run; not on this branch's path. 26 unreleased master commits since `gems-v0.20.0`. This branch has no CI runs (pushes to non-master branches do not trigger test.yml).
 - 2026-11-16: 2 open issues (#272 braid config, #273 machine-local config layer), both closed by open PR #275 (`feature/config-local-layer-braid`, no reviews yet). Latest release `gems-v0.20.0`, 13 unreleased master commits. Latest master Test run green; no runs for this branch (test.yml runs only on master pushes and PRs to master).
 - 2026-11-09: 0 open issues; 1 open PR, #267 (`renovate/jsdom-31.x`, jsdom 30.1.3 -> 31.0.0). All listed checks pass. It touches only postup frontend package manifests/lock, with no bim overlap.
 - Latest GitHub release: `gems-v0.19.2` (2026-11-08); two master commits follow it.
