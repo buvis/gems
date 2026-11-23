@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, Local, Timelike};
+use chrono::{DateTime, FixedOffset, Local, Timelike, Utc};
 
 use crate::types::{YamlValue, ZettelData};
 
@@ -30,11 +30,11 @@ fn set_default_date(data: &mut ZettelData) {
     }
 }
 
-/// The id is the date's own wall clock (no conversion), like the Python `set_default_id` fixer.
+/// The id is the UTC digits of the date, like the Python `set_default_id` fixer.
 fn set_default_id(data: &mut ZettelData) {
     if is_missing(data, "id") {
         if let Some(YamlValue::DateTime(dt)) = data.metadata.get("date") {
-            let id_str = dt.format("%Y%m%d%H%M%S").to_string();
+            let id_str = dt.with_timezone(&Utc).format("%Y%m%d%H%M%S").to_string();
             if let Ok(id) = id_str.parse::<i64>() {
                 data.metadata.insert("id".to_string(), YamlValue::Int(id));
             }

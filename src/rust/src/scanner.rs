@@ -109,7 +109,7 @@ pub fn load_filtered(
 
 // ── Metadata cache ──────────────────────────────────────────────────────
 
-const CACHE_VERSION: u8 = 4;
+const CACHE_VERSION: u8 = 5;
 
 #[derive(Serialize, Deserialize)]
 struct CacheEntry {

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 use regex::Regex;
 use std::sync::LazyLock;
 
@@ -8,17 +8,25 @@ static DATETIME_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d{14}|\d{
 
 /// Extract date from filename stem (YYYYMMDDHHMMSS or YYYYMMDDHHMM).
 ///
-/// The digits are the note's id, which bim and the vault's Templater derive from
-/// local time, so they are read back as local time (same as the Python parser).
+/// The digits are read as UTC (same as the Python parser). Seconds 60-99 read as 59.
 pub fn date_from_filename(stem: &str) -> Option<DateTime<FixedOffset>> {
     let caps = DATETIME_RE.captures(stem)?;
     let matched = caps.get(1)?.as_str();
+    if !matched.is_ascii() {
+        return None;
+    }
+
+    let clamped;
+    let input = if matched.len() == 14 && matched[12..].parse::<u32>().is_ok_and(|s| s >= 60) {
+        clamped = format!("{}59", &matched[..12]);
+        clamped.as_str()
+    } else {
+        matched
+    };
 
     for fmt in &["%Y%m%d%H%M%S", "%Y%m%d%H%M"] {
-        if let Ok(naive) = NaiveDateTime::parse_from_str(matched, fmt) {
-            if let Some(local) = Local.from_local_datetime(&naive).earliest() {
-                return Some(local.fixed_offset());
-            }
+        if let Ok(naive) = NaiveDateTime::parse_from_str(input, fmt) {
+            return Some(Utc.from_utc_datetime(&naive).fixed_offset());
         }
     }
 
