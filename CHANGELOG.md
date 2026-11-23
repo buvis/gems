@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **bim**: note ids are the UTC digits of the note `date`, so they no longer depend on the time zone (this reverses the local-time ids of 0.20.0); notes created in the same UTC second get seconds `60` to `99`, and `bim create` never waits for a free id
+
 ### Fixed
 
 - **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
