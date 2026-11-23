@@ -1,0 +1,138 @@
+[
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "`prepare` and `execute` repeat the same `next(candidates)` plus `chain([base_path], candidates)` preamble. Both only need the first path for the error message. A small helper, or a `for` loop that remembers the first path, would drop the `chain` import and the duplication.",
+  "file": "src/lib/buvis/pybase/zettel/application/use_cases/create_zettel_use_case.py:36",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "Four new use-case tests pass against the pre-change code: `test_prepare_refuses_existing_slug_path`, `test_warnings_hold_only_the_latest_execute`, `test_destination_outside_vault_is_refused`, and the reworded assertion in `test_body_survives_preparation_when_template_omits_title_metadata`. The PRD does not name them. They guard unchanged behavior and do not pin the UTC or suffix change. Drop them or note them as intentional out-of-scope guards.",
+  "file": "tests/lib/zettel/application/test_create_zettel_use_case.py:740",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "The test file is 798 lines against an 800-line limit, and the added out-of-scope tests used up the headroom. The next change will break the limit. Remove the extra guard tests or split the collision tests into their own file.",
+  "file": "tests/lib/zettel/application/test_create_zettel_use_case.py:798",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "The spec's edge case \"naive date `2026-11-17 08:37:39` gives id `20261117083739` in Python and in Rust\" has no Rust-side or parity test. The parity test only covers offset-aware dates. The Rust naive-as-UTC path in `types.rs` is unchanged and correct, and the Python test `test_naive_date_keeps_its_digits` exists, but the Rust/Python identity for naive dates is not pinned",
+  "file": "tests/lib/zettel/parity/test_rust_python_parity.py:126",
+  "reason": "single-voice; carried into PRD 00165 (Prague rule) scope, which edits the same files"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "The suffix comparison is lexical, so `202401151430００.md` becomes second 59 although its numeric seconds are zero. Use `int(digits[12:]) >= 60`, as specified, and add a regression test for Unicode digits below 60.",
+  "file": "src/lib/buvis/pybase/zettel/infrastructure/persistence/file_parsers/zettel_file_parser.py:67",
+  "reason": "single-voice; carried into PRD 00165 (Prague rule) scope, which edits the same files"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "The new collision tests do not pin two explicitly required safeguards: a `None` base must avoid the id setter, and an unused escaping suffix symlink must not reject a free base. Add prepare/execute regression cases for both.",
+  "file": "tests/lib/zettel/application/test_create_zettel_use_case.py:405",
+  "reason": "single-voice; carried into PRD 00165 (Prague rule) scope, which edits the same files"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "`raise FileExistsError(...) from None` sits in the `for ... else` branch, where no exception is active. The `from None` does nothing and suggests a handler that is not there. Remove it.",
+  "file": "src/lib/buvis/pybase/zettel/application/use_cases/create_zettel_use_case.py:84",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "The design fixed `_build(...) -> tuple[Zettel, list[Path]]`. The code has `_build(...) -> Zettel` plus a lazy `_candidate_paths` generator. Behavior matches the contract, and the assumptions file records the change. A caller or test that relies on the contracted name and signature would break.",
+  "file": "src/lib/buvis/pybase/zettel/application/use_cases/create_zettel_use_case.py:114",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "`set_default_id` uses `date.tzinfo is not None`. A `tzinfo` whose `utcoffset()` returns `None` goes through `astimezone()` and is read as local time. The design allows the stricter `date.utcoffset() is not None`, and the assumptions file records that no test covers this case.",
+  "file": "src/lib/buvis/pybase/zettel/domain/entities/zettel/fixers/set_default_id.py:22",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "The doc comment on Rust `set_default_date` says \"Local time, like the vault's Templater notes\". The vault Templater notes now write UTC ids, so a reader may take the comment as a statement about ids. Say that only the date stays local and the id is UTC.",
+  "file": "src/rust/src/consistency/defaults.rs:21",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "The `docs/dev/project-management/meta/assumptions.md` diff replaces the PRD 00118 assumptions with the PRD 00161 ones. This is pipeline bookkeeping. Check that the 00118 content survives elsewhere.",
+  "file": "docs/dev/project-management/meta/assumptions.md:1",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "`TestCollisionBudget` keeps its old class name although it now holds the new suffix tests. The old five test names are gone, so this is cosmetic only",
+  "file": "tests/lib/zettel/application/test_create_zettel_use_case.py:402",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "I could not run `cargo test`, so the Rust acceptance criterion is unverified by me. `cargo test --offline` fails with \"no matching package named chrono\" (no cached crates in the scratch CARGO_HOME). I read the Rust unit tests (`defaults.rs`, `enrichment.rs`) and they match the spec rules. The Python parity tests pass against the built extension, which exercises the same Rust code",
+  "file": "src/rust/src/consistency/defaults.rs",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "The supplied test gate carries no counts (exit 1, no summary line), so I cannot confirm the full-suite state. The five spec-named Python test files pass when run narrowly: 338 passed. I did not run the full `tests/lib/zettel tests/tools/bim` set or `sphinx-build`",
+  "file": "N/A",
+  "reason": "single-voice"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "⚪",
+  "issue": "The full suite has 10 fixture-setup errors from missing git identity; it is not green. These errors concern unchanged dot tests and are tracked in `docs/dev/project-management/autopilot/deferred/202611231043-deferred.json`, so their repair is outside this PRD.",
+  "file": "tests/tools/dot/test_pull_divergence_two_hosts.py",
+  "reason": "single-voice; env-only gate errors (git identity unset), outside this PRD"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "11 touched test(s) pass against the pre-change code: test_utc_id_ignores_local_offset, test_naive_date_keeps_its_digits +5 more",
+  "file": "tests/lib/zettel/entities/zettel/fixers/test_set_default_id.py",
+  "reason": "replay artifact: the replay ran with the worktree venv whose editable install resolves to HEAD; base set_default_id keeps offset digits, so test_utc_id_ignores_local_offset cannot pass at base"
+ },
+ {
+  "cycle": 1,
+  "disposition": "discarded",
+  "severity": "🟡",
+  "issue": "54 touched test(s) pass against the pre-change code: test_invalid_file_name_date_falls_back_to_earliest_file_date +48 more",
+  "file": "tests/lib/zettel/infrastructure/test_zettel_file_parser.py",
+  "reason": "replay artifact: same cause as R19 (editable install resolves to HEAD code)"
+ }
+]

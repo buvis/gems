@@ -1,0 +1,10 @@
+[
+  {
+    "cycle": 1,
+    "finding": "The required documentation-build result is absent from the supplied verification evidence. Check `uv run sphinx-build -b html docs/source docs/build/html` exits successfully for the reviewed revision.",
+    "file": "docs/source/tools/bim.rst:249",
+    "command": "uv run sphinx-build -b html docs/source docs/build/html",
+    "source": "bob",
+    "result": {"exit": 0}
+  }
+]

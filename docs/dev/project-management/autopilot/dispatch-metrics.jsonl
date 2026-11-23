@@ -983,3 +983,15 @@
 {"id":"84f3370d","kind":"ivan","task":"5","queued_at":1795431028,"prompt_bytes":6078}
 {"id":"84f3370d","ended_at":1795431065,"elapsed_s":37,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"build","edge":"leave","at":1795432982,"phase":"review","prd":"00161-bim-utc-ids-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1795471123,"phase":"review","prd":"00161-bim-utc-ids-v1.md"}
+{"id":"3c10cb9c","kind":"bob","task":"review-00161c1-2611231200","queued_at":1795472295,"prompt_bytes":13670}
+{"id":"8f41be8b","kind":"carl","task":"review-00161c1-2611231200","queued_at":1795472295,"prompt_bytes":6645}
+{"id":"3c10cb9c","ended_at":1795472914,"elapsed_s":619,"outcome":"ok","detail":null}
+{"id":"8f41be8b","ended_at":1795472915,"elapsed_s":620,"outcome":"ok","detail":null}
+{"id":"3c10cb9c","ended_at":1795473008,"elapsed_s":713,"outcome":"ok","detail":null}
+{"id":"8f41be8b","ended_at":1795473008,"elapsed_s":713,"outcome":"ok","detail":null}
+{"id":"e79f2774","kind":"pat","task":"7","queued_at":1795473075,"prompt_bytes":5197}
+{"id":"e79f2774","ended_at":1795473096,"elapsed_s":21,"outcome":"ok","detail":null}
+{"id":"af8a9278","kind":"pat","task":"8","queued_at":1795473123,"prompt_bytes":4868}
+{"id":"af8a9278","ended_at":1795473140,"elapsed_s":17,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1795473895,"phase":"done","prd":"00161-bim-utc-ids-v1.md"}
