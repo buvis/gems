@@ -28,13 +28,15 @@ Generated: 2026-11-16 (catchup: feature/merge-klyreon-to-bim)
 ## Active Work
 
 ### Batch 202611160850 (feature/merge-klyreon-to-bim, Tiromex: klyreon into bim as `bim tx`)
-- [ ] 00150-bim-tiromex-format-v1.md (wip): tiromex folder, folded note format, `bim tx new/validate/export-claims/status`, skill exception.
+- [x] 00150-bim-tiromex-format-v1.md (2 cycles): tiromex folder, folded note format, `bim tx new/validate/export-claims/status`, skill exception.
 - Backlog, each gated by `eligibility`: 00151 (shared LLM backends), 00152 (mirrors; also needs `86b758d9` from `feature/config-local-layer-braid`, PR #275, in master and HEAD), 00153 (ingest; also needs the llama.cpp server on 127.0.0.1:8080), 00154, 00155.
 - 00122 and 00123 sit in this branch's backlog but belong to PR #275. Never build them here; always pass the PRD filename to autopilot.
 - Requirements: `intake/processed/00149-merge-klyreon-into-bim/discovery.md` wins over idea, qa-log and port-plan examples. Readiness: `audit-results/backlog-review-2026-11-16.md`.
 - tx code lives in `src/tools/bim/commands/tx/` (group with `shared/`, like `commands/doc/`); klyreon source is a read-only port reference until 00155, never an import.
 - Tests use scratch vaults via `BUVIS_BIM_PATH_ZETTELKASTEN` and an isolated `XDG_STATE_HOME`; never the private vault.
-- Branch base `18429bfe`; the diff against master is docs only so far.
+- Branch base `18429bfe`; 00150 is the first code on the branch (work range `dcae39be..d6d788f2`).
+
+Observations: 00150 converged at cycle 2; suite 8006 passed, 17 skipped at `d6d788f`. One deferred medium item (a plain `bim tx new` note with a multi-line title is written malformed) is in `autopilot/deferred/202611160850-deferred.json`; intake 00164 (UTC ids and the collision suffix in `bim tx`) is a separate open item. Sonnet reviewer lanes fail in sessions without `CLAUDE_CODE_OAUTH_TOKEN`.
 
 ### feature/muc-tidy-reporting
 - Implemented intake `00121-muc-tidy-report-through-console/idea.md`: all five helpers return actions and recoverable warnings through `CommandResult`, aggregated by `DirTree` and `CommandTidy`. No logging remains in muc.

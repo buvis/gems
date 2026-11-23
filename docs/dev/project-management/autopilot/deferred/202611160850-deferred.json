@@ -1,0 +1,16 @@
+{
+  "batch_id": "202611160850",
+  "items": [
+    {
+      "type": "deferred_decision",
+      "cycle": 2,
+      "issue": "`bim tx new` with a non-concept note (no --concept-type) skips all validation because the note classifies as plain. A multi-line title such as \"a\\n---\\n# b\" is written as a malformed note: the title is a quoted multi-line scalar, and the body is \"# A\", \"---\", \"# b\", so the `---` line later parses as the backmatter separator. The draft-validate guard only protects concept, index and run notes.",
+      "severity": "\ud83d\udfe1",
+      "file": "src/tools/bim/commands/tx/new.py:95",
+      "action": "deferred",
+      "reason": "deferred by review-close",
+      "status": "pending",
+      "prd": "00150-bim-tiromex-format-v1.md"
+    }
+  ]
+}
