@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from buvis.pybase.zettel.application.use_cases import create_zettel_use_case as create_module
 from buvis.pybase.zettel.application.use_cases.create_zettel_use_case import (
     CreateZettelUseCase,
 )
@@ -306,8 +308,7 @@ class TestPreparationWithoutTitleMetadata:
 
         assert path == create_zettel_use_case.zettelkasten_path / "20231026120000.md"
         assert data.file_path == str(path)
-        assert len(data.sections) == 1
-        assert data.sections[0][1] == "  supplied"
+        assert data.sections == [("# Answer Title", "  supplied")]
 
 
 class TestReservationInspectionFailures:
@@ -379,6 +380,18 @@ def _record_saved_ids(writer: MagicMock) -> list[Any]:
     return saved
 
 
+def _race_on(mocker: Any, raced_paths: set[Path]) -> set[Path]:
+    original_open = os.open
+
+    def write_concurrent_note(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
+        if Path(path) in raced_paths and not Path(path).exists():
+            Path(path).write_text("concurrent note")
+        return original_open(path, flags, mode, **kwargs)
+
+    mocker.patch("os.open", side_effect=write_concurrent_note)
+    return raced_paths
+
+
 def _create(use_case: CreateZettelUseCase, writer: MagicMock, template: FreshTemplate, method: str) -> tuple[Path, Any]:
     result = getattr(use_case, method)(template, {"title": "Example Title"})
     if method == "prepare":
@@ -420,11 +433,7 @@ class TestCollisionBudget:
             assert saved == []
             assert not path.exists()
 
-    @pytest.mark.parametrize(
-        ("base_id", "free_seconds"),
-        [(BASE_IDS[0], 99), (BASE_IDS[1], 99), (BASE_IDS[0], 75)],
-        ids=["only-99-free", "only-99-free-other-base", "first-free-wins-over-later-free"],
-    )
+    @pytest.mark.parametrize(("base_id", "free_seconds"), [*zip([BASE_IDS[0]] * 40, range(60, 100)), (BASE_IDS[1], 99)])
     @pytest.mark.parametrize("method", ["prepare", "execute"])
     def test_suffix_runs_to_99(
         self, tmp_path: Path, mock_zettel_writer: MagicMock, method: str, base_id: int, free_seconds: int
@@ -445,8 +454,11 @@ class TestCollisionBudget:
 
     @pytest.mark.parametrize(
         ("base_id", "suffixes"),
-        [(BASE_IDS[0], range(60, 100)), (BASE_IDS[1], range(60, 100)), (12345, range(0))],
-        ids=["all-suffixes-taken", "all-suffixes-taken-other-base", "short-id-has-no-suffixes"],
+        [
+            *((base_id, range(60, 100)) for base_id in BASE_IDS),
+            *((int("2023102612000000"[:digits]), range(0)) for digits in (5, 12, 13, 15, 16)),
+        ],
+        ids=["all-suffixes-taken", "all-suffixes-taken-other-base", *(f"{n}-digit-id" for n in (5, 12, 13, 15, 16))],
     )
     @pytest.mark.parametrize("method", ["prepare", "execute"])
     def test_collision_after_99_raises(
@@ -465,8 +477,8 @@ class TestCollisionBudget:
 
     @pytest.mark.parametrize(
         ("existing", "raced", "expected_seconds"),
-        [((), (None,), 60), ((), (None, 60), 61), ((None,), (60,), 61)],
-        ids=["race-on-base", "races-on-base-and-60", "base-exists-race-on-60"],
+        [((), (None,), 60), ((), (None, 60), 61), ((None,), (60,), 61), ((), (None, 60, 61, 62, 63), 64)],
+        ids=["race-on-base", "races-on-base-and-60", "base-exists-race-on-60", "races-on-base-and-60-to-63"],
     )
     def test_lost_reservation_takes_next_suffix(
         self,
@@ -479,15 +491,7 @@ class TestCollisionBudget:
     ) -> None:
         base_id = BASE_IDS[0]
         occupied = _occupy(tmp_path, [_suffixed(base_id, seconds) for seconds in existing])
-        raced_paths = {tmp_path / f"{_suffixed(base_id, seconds)}.md" for seconds in raced}
-        original_open = os.open
-
-        def write_concurrent_note(path: Any, flags: int, mode: int = 511, **kwargs: Any) -> int:
-            if Path(path) in raced_paths and not Path(path).exists():
-                Path(path).write_text("concurrent note")
-            return original_open(path, flags, mode, **kwargs)
-
-        mocker.patch("os.open", side_effect=write_concurrent_note)
+        raced_paths = _race_on(mocker, {tmp_path / f"{_suffixed(base_id, seconds)}.md" for seconds in raced})
         saved = _record_saved_ids(mock_zettel_writer)
         template = FreshTemplate(ids=(base_id,))
 
@@ -503,8 +507,23 @@ class TestCollisionBudget:
         assert saved == [expected]
         assert mock_zettel_writer.save.call_args.args[0].get_data().file_path == str(path)
 
+    def test_losing_every_reservation_raises(self, mocker: Any, tmp_path: Path, mock_zettel_writer: MagicMock) -> None:
+        base_id = BASE_IDS[0]
+        raced_paths = _race_on(mocker, {tmp_path / f"{_suffixed(base_id, s)}.md" for s in [None, *range(60, 100)]})
+        template = FreshTemplate(ids=(base_id,))
+        base_path = re.escape(str(tmp_path / f"{base_id}.md"))
+
+        with pytest.raises(FileExistsError, match=f"^Zettel already exists: {base_path}$"):
+            CreateZettelUseCase(tmp_path, mock_zettel_writer).execute(template, {})
+
+        assert {path: path.read_text() for path in tmp_path.iterdir()} == dict.fromkeys(raced_paths, "concurrent note")
+        assert len(template.built) == 1
+        mock_zettel_writer.save.assert_not_called()
+
     @pytest.mark.parametrize("method", ["prepare", "execute"])
     def test_create_never_sleeps(self, mocker: Any, tmp_path: Path, mock_zettel_writer: MagicMock, method: str) -> None:
+        for name in [name for name, value in vars(create_module).items() if value is time.sleep]:
+            mocker.patch.object(create_module, name, side_effect=AssertionError("create slept"))
         mocker.patch("time.sleep", side_effect=AssertionError("create slept"))
         base_id = BASE_IDS[1]
         _occupy(tmp_path, [base_id])
@@ -514,8 +533,10 @@ class TestCollisionBudget:
 
         assert path == tmp_path / f"{_suffixed(base_id, 60)}.md"
         _occupy(tmp_path, [_suffixed(base_id, seconds) for seconds in range(60, 100)])
+        started = time.monotonic()
         with pytest.raises(FileExistsError, match="^Zettel already exists: "):
             getattr(use_case, method)(FreshTemplate(ids=(base_id,)), {})
+        assert time.monotonic() - started < 0.3
 
 
 class TestReservationAndHooks:
@@ -716,6 +737,19 @@ class TestTemplatePlacement:
         assert occupied.read_text() == "existing"
         mock_zettel_writer.save.assert_not_called()
 
+    def test_prepare_refuses_existing_slug_path(self, tmp_path: Path, mock_zettel_writer: MagicMock) -> None:
+        occupied = tmp_path / "contact" / "ada-lovelace.md"
+        occupied.parent.mkdir()
+        occupied.write_text("existing")
+        template = SlugTemplate()
+
+        with pytest.raises(FileExistsError, match=f"^Zettel already exists: {re.escape(str(occupied))}$"):
+            CreateZettelUseCase(tmp_path, mock_zettel_writer).prepare(template, {"title": "Ada Lovelace"})
+
+        assert len(template.built) == 1
+        assert {path: path.read_text() for path in tmp_path.rglob("*.md")} == {occupied: "existing"}
+        mock_zettel_writer.save.assert_not_called()
+
     def test_empty_slug_fails_before_any_write(self, tmp_path: Path, mock_zettel_writer: MagicMock) -> None:
         with pytest.raises(
             ValueError, match="title '日本語' gives an empty slug; use a title with Latin letters or digits"
@@ -740,3 +774,25 @@ class TestTemplatePlacement:
 
         assert seen["resources"] == "[project resources](file:///tmp/p)"
         assert use_case.warnings == ["root missing"]
+
+    def test_warnings_hold_only_the_latest_execute(self, tmp_path: Path, mock_zettel_writer: MagicMock) -> None:
+        reports = iter([["root missing"], ["other root missing"], []])
+        use_case = CreateZettelUseCase(tmp_path, mock_zettel_writer, hook_runner=lambda *_: next(reports))
+
+        for offset, expected in [(1, ["root missing"]), (2, ["other root missing"]), (3, [])]:
+            use_case.execute(FreshTemplate(ids=(20231026120000 + offset,)), {})
+            assert use_case.warnings == expected
+
+    @pytest.mark.parametrize("method", ["prepare", "execute"])
+    def test_destination_outside_vault_is_refused(
+        self, tmp_path: Path, mock_zettel_writer: MagicMock, method: str
+    ) -> None:
+        escaping = type("EscapingTemplate", (SlugTemplate,), {"folder": "../outside"})()
+        vault = tmp_path / "vault"
+        vault.mkdir()
+
+        with pytest.raises(ValueError, match=f"^Note destination must be inside {re.escape(str(vault))}$"):
+            getattr(CreateZettelUseCase(vault, mock_zettel_writer), method)(escaping, {"title": "Ada"})
+
+        assert list(tmp_path.rglob("*")) == [vault]
+        mock_zettel_writer.save.assert_not_called()
