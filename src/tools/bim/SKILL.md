@@ -99,7 +99,8 @@ JSON has `errors`, the note exists but a follow-up step (moving the source to
   digits, `-` and `_`, and `/` to nest; a tag with spaces or only digits fails.
   `person` and `book` belong to contacts and books, are added automatically
   and are rejected on any other template.
-- Ids equal the local-time digits of `date`, like the vault's own notes.
+- The id is the UTC digits of `date`. Seconds `60` to `99` mark notes created
+  in the same second. A create never waits.
 - Every create logs the note under `## Log` in today's daily note
   (`path_daily`, default `~/bim/notes/calendar/daily/`; never created, a
   missing note is reported as `skipped`) and wikilinks the first mention of

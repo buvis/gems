@@ -246,9 +246,10 @@ that move or the daily log failed. On failure the output is
 are stable: later versions only add keys, so consumers must ignore unknown
 ones.
 
-Ids follow local time: ``id`` equals the digits of the note's ``date`` in the
-machine's timezone, the same as the vault's Templater notes. Two creates in
-the same second do not collide; the second waits for the next free id.
+``id`` equals the UTC digits of the note's ``date``, so it does not depend on
+the machine's time zone. A second create in the same UTC second gets seconds
+``60``, then ``61``, up to ``99``. A create never waits; when all of them are
+taken it fails with ``Zettel already exists``.
 
 Exit codes
 ^^^^^^^^^^

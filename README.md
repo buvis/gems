@@ -178,8 +178,8 @@ change the exit status (0).
 
 `bim create` is built for agents and scripts: `--json` prints one object with
 `id`, `path`, `relative_path` and `wikilink`; a failure prints
-`{"error": "..."}` and exits 1. Ids follow local time like the vault's own
-notes.
+`{"error": "..."}` and exits 1. The id is the UTC digits of `date`. Notes
+created in the same second get seconds 60 to 99. A create never waits.
 
 ```bash
 bim create -t note --title "Why caches lie" --tags "cache,debugging" --body-file notes.md --json
