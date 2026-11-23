@@ -6,6 +6,21 @@ Source: `~/git/src/github.com/buvis/engram` (`src/engram/`, `eval/`, `tests/`, `
 Target: `~/git/src/github.com/buvis/gems`, tool `src/tools/engram`, extra `engram`, script `engram`.
 Decision: user, 2026-11-16 (ship engram inside buvis-gems instead of a local `uv tool install .`).
 
+## QA handoff and source readiness (2026-11-23)
+
+Standalone PRDs 00014-00016 are now in their source repository's
+`docs/dev/project-management/prds/done/`. The source prerequisite is met;
+the inventory still needs its required refresh against the selected port commit.
+The subsequent Agoge findings belong to this Gems port, not another standalone
+Engram batch. See [the QA handoff](00161-engram-qa-handoff.md) for all 11 held
+source specifications, phase ownership, and compatibility conflicts.
+
+Do not add standalone PRDs 00017-00027 as port prerequisites or copy them
+unchanged into the Gems backlog. Their paths, configuration, CLI and test gates
+describe the source. Adapt the accepted findings when creating target PRDs.
+The parity contract below remains the baseline; record each deliberate bug-fix
+exception and its consumer regression test before changing that contract.
+
 ## Contract that must not change
 
 No consumer imports engram or reads its DB or config. Every consumer uses the
