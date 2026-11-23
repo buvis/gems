@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **bim**: note ids are the UTC digits of the note `date`, so they no longer depend on the time zone (this reverses the local-time ids of 0.20.0); notes created in the same UTC second get seconds `60` to `99`, and `bim create` never waits for a free id
+- **bim**: note ids are the UTC digits of the note `date`, so they no longer depend on the time zone (this reverses the local-time ids of 0.20.0), and a note without a frontmatter `date` reads its file-name digits as UTC; notes created in the same UTC second get seconds `60` to `99`, and `bim create` never waits for a free id
 
 ### Fixed
 

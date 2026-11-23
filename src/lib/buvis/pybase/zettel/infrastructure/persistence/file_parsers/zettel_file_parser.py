@@ -8,7 +8,7 @@ patterns and external utilities.
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -64,9 +64,12 @@ def _get_date_from_file(file_path: Path) -> datetime | None:
     if m:
         digits = m.group()
         fmt = "%Y%m%d%H%M%S" if len(digits) == 14 else "%Y%m%d%H%M"
+        if len(digits) == 14 and digits[12:] >= "60":
+            digits = digits[:12] + "59"
         try:
-            # The digits are the note's id, derived from local time like the vault's Templater notes.
-            return datetime.strptime(digits, fmt).astimezone()
+            # The digits are the note's id, the UTC digits of its date;
+            # seconds 60-99 are a collision suffix and read as 59.
+            return datetime.strptime(digits, fmt).replace(tzinfo=timezone.utc)
         except ValueError:
             pass
 
