@@ -424,9 +424,12 @@ stem mapping); `old_date_line` is `null` when the note had no date line.
    - for each restore from `new_path` or `undo_temp`, `before = reverse(after)`
      with that inverse map; `sha256(before) != sha256_before` -> skipped (its
      references are not rewritten);
-   - a skipped or unchanged file that links (`stem_pattern` over the new
-     stems, unprotected spans) to the new stem of a renamed entry forces that
-     entry into skipped, so no kept link loses its target;
+   - a skipped file that links (`stem_pattern` over the new stems,
+     unprotected spans) to the new stem of a renamed entry forces that entry
+     into skipped, so no kept link loses its target. Unchanged files are not
+     checked: they hold their before bytes, so their links name old stems
+     (checking them stranded a chain note in its temp file after a stop in
+     apply phase A);
    - a restore whose `old_path` exists and is not a source this undo stages
      away -> skipped (blocked chain).
    Each round only adds skips, so the loop ends.

@@ -12,10 +12,10 @@ import os
 import re
 import sys
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from zoneinfo import ZoneInfo
 
 from buvis.pybase.filesystem import atomic_write_bytes
@@ -399,3 +399,398 @@ def plan_migration(vault: Path, naive_timezone: str = DEFAULT_ZONE) -> Plan:
         reference_count=_reference_count(files, changes),
         hashes={path: hashlib.sha256(data).hexdigest() for path, data in files.items()},
     )
+
+
+# --- shared by apply and undo ----------------------------------------------------
+
+
+def leftover_pattern(stems: Iterable[str]) -> re.Pattern[bytes]:
+    """Looser than stem_pattern: an old stem as a token in a link target, not an attachment."""
+    alts = b"|".join(re.escape(stem.encode()) for stem in sorted(stems, key=len, reverse=True))
+    return re.compile(
+        rb"\[\[[^\]|#\n\\]*?(?<![0-9A-Za-z_-])(" + alts + rb")"
+        rb"(?![0-9A-Za-z_-])(?!\.(?!md(?![0-9A-Za-z]))[0-9A-Za-z])[^\]|#\n\\]*(?:\\?\||#|\]\])"
+    )
+
+
+def _sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _hits(files: Mapping[Path, bytes], pattern: re.Pattern[bytes]) -> list[Path]:
+    """Files with a pattern match in an unprotected span."""
+    return [p for p, data in files.items() if any(pattern.search(data, a, b) for a, b in _unprotected(data))]
+
+
+def _rewriter(stem_map: Mapping[str, str]) -> Callable[[bytes], bytes]:
+    if not stem_map:
+        return lambda data: data
+    pattern = stem_pattern(stem_map)
+    return lambda data: rewrite_references(data, pattern, stem_map)[0]
+
+
+def _edit_note(data: bytes, to_id: str, from_line: str | None, to_line: str | None) -> bytes:
+    """Set the frontmatter id to to_id and turn date line from_line into to_line (None: no date line)."""
+    span = FRONTMATTER.match(data).span()
+    if from_line is None and to_line is not None:  # insert after the id line, with its line ending
+        id_m = ID_LINE.search(data, *span)
+        at = id_m.end() + 1
+        eol = b"\r\n" if id_m.group(0).endswith(b"\r") else b"\n"
+        data = data[:at] + to_line.encode() + eol + data[at:]
+    elif from_line is not None and from_line != to_line:
+        start = DATE_LINE.search(data, *span).start()
+        end = start + len(from_line.encode())
+        if to_line is None:  # drop the line with its line ending
+            end = data.index(b"\n", end) + 1
+        data = data[:start] + (to_line or "").encode() + data[end:]
+    id_m = ID_LINE.search(data, *FRONTMATTER.match(data).span())
+    return data[: id_m.start(2)] + to_id.encode() + data[id_m.end(2) :]
+
+
+def _reverse(data: bytes, inverse: Callable[[bytes], bytes], note: tuple[str, str | None, str] | None) -> bytes:
+    """Inverse reference rewrite, then the inverse note edits; note = (old_id, old_date_line, new_date_line)."""
+    data = inverse(data)
+    return _edit_note(data, note[0], note[2], note[1]) if note else data
+
+
+@dataclass(frozen=True)
+class _Op:
+    """Phase A moves stage[0] to stage[1]; phase B writes data to dest, then removes the paths in remove."""
+
+    dest: Path
+    data: bytes
+    renamed: bool  # dest is not the path the file had when the run started
+    stage: tuple[Path, Path] | None = None
+    remove: tuple[Path, ...] = ()
+
+
+def _execute(ops: list[_Op], map_file: Path | None, remove: Iterable[Path] = ()) -> None:
+    """Stage every moved source to its temp, then write every dest; an OSError becomes MigrationError."""
+    vacated: set[Path] = set()
+    current: Path | None = None
+    try:
+        for op in ops:
+            if op.stage:
+                source, current = op.stage
+                if current.exists():
+                    raise MigrationError(f"{current}: temp file exists", map_file)
+                os.rename(source, current)
+                vacated.add(source)
+        for op in ops:
+            current = op.dest
+            if op.renamed and op.dest.exists() and op.dest not in vacated:
+                raise MigrationError(f"{op.dest}: target exists", map_file)
+            atomic_write_bytes(op.dest, op.data)
+            for current in op.remove:
+                current.unlink()
+        for current in remove:
+            current.unlink()
+    except OSError as exc:
+        raise MigrationError(f"{current}: {exc}", map_file) from exc
+
+
+# --- apply -------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Kept:
+    """A file the apply rewrites or renames."""
+
+    path: Path
+    new_path: Path
+    change: NoteChange | None
+    before: bytes
+    after: bytes
+
+
+def _prepare(plan: Plan, stem_map: Mapping[str, str]) -> list[_Kept]:
+    """After bytes of every changed file; refuses drift since the plan."""
+    files, _ = _read_notes(plan.vault / "notes")
+    hashes = {path: _sha(data) for path, data in files.items()}
+    drift = sorted(p for p in hashes.keys() | plan.hashes.keys() if hashes.get(p) != plan.hashes.get(p))
+    if drift:
+        raise MigrationError("changed since the plan: " + ", ".join(str(p) for p in drift))
+    changes = {c.path: c for c in plan.changes}
+    rewrite = _rewriter(stem_map)
+    kept = []
+    for path, before in files.items():
+        c = changes.get(path)
+        after = rewrite(_edit_note(before, c.new_id, c.old_date_line, c.new_date_line) if c else before)
+        new_path = c.new_path if c else path
+        if after != before or new_path != path:
+            kept.append(_Kept(path, new_path, c, before, after))
+    return kept
+
+
+def _refuse_leftovers(files: Mapping[Path, bytes], stems: set[str], map_file: Path | None) -> None:
+    hits = _hits(files, leftover_pattern(stems)) if stems else []
+    if hits:
+        raise MigrationError("links to an old id left in: " + ", ".join(str(p) for p in hits), map_file)
+
+
+def _check_reversible(kept: list[_Kept], stem_map: Mapping[str, str]) -> None:
+    inverse = _rewriter({new: old for old, new in stem_map.items()})
+    for k in kept:
+        c = k.change
+        if _reverse(k.after, inverse, (c.old_id, c.old_date_line, c.new_date_line) if c else None) != k.before:
+            raise MigrationError(f"{k.path}: the rewrite cannot be undone (does it link a new id already?)")
+
+
+def _outside_references(vault: Path, stems: list[str]) -> list[Path]:
+    """.md files outside notes/ that link an old stem; read only."""
+    if not stems:
+        return []
+    notes = vault / "notes"
+    md = [p for p in sorted(_vault_entries(vault)) if p.suffix == ".md" and p.is_file() and not p.is_relative_to(notes)]
+    return _hits({p: p.read_bytes() for p in md}, stem_pattern(stems))
+
+
+def _apply_temp(path: Path, run_id: str) -> Path:
+    return path.with_name(f"{path.name}.{run_id}{TEMP_SUFFIX}")
+
+
+def _write_map(plan: Plan, map_file: Path, kept: list[_Kept]) -> Path:
+    def rel(path: Path) -> str:
+        return path.relative_to(plan.vault).as_posix()
+
+    files = []
+    for k in kept:
+        c = k.change
+        note = (c.old_id, c.new_id, c.old_date_line, c.new_date_line) if c else (None,) * 4
+        entry = {"old_path": rel(k.path), "new_path": rel(k.new_path), "sha256_before": _sha(k.before)}
+        entry |= {"sha256_after": _sha(k.after), "temp_path": None}
+        if k.path != k.new_path:
+            entry["temp_path"] = rel(_apply_temp(k.path, map_file.stem))
+        files.append(entry | dict(zip(("old_id", "new_id", "old_date_line", "new_date_line"), note, strict=True)))
+    data = {"version": MAP_VERSION, "vault": str(plan.vault), "run_id": map_file.stem}
+    data |= {"naive_timezone": plan.naive_timezone, "files": files}
+    map_file.parent.mkdir(parents=True, exist_ok=True)
+    if map_file.exists():
+        raise MigrationError(f"{map_file}: map file exists")
+    atomic_write_bytes(map_file, (json.dumps(data, indent=2, sort_keys=True) + "\n").encode())
+    return map_file
+
+
+def apply_migration(plan: Plan, map_dir: Path, *, now: datetime | None = None) -> ApplyResult:
+    map_dir = map_dir.resolve()
+    if map_dir.is_relative_to(plan.vault):
+        raise MigrationError(f"map dir {map_dir} is inside the vault {plan.vault}")
+    stem_map = {c.path.stem: c.new_path.stem for c in plan.changes if c.new_path != c.path}
+    leftover = set(stem_map) - set(stem_map.values())
+    map_file = None
+    try:
+        kept = _prepare(plan, stem_map)
+        _refuse_leftovers({k.path: k.after for k in kept}, leftover, None)
+        _check_reversible(kept, stem_map)
+        outside = _outside_references(plan.vault, list(stem_map))
+        for path in outside:
+            print(f"warning: {path} links an old id; it is not rewritten", file=sys.stderr)
+        run_id = (now or datetime.now(UTC)).strftime("%Y%m%dT%H%M%SZ")
+        map_file = _write_map(plan, map_dir / f"{run_id}.json", kept)
+        ops = []
+        for k in kept:
+            temp = _apply_temp(k.path, run_id) if k.path != k.new_path else None
+            ops.append(_Op(k.new_path, k.after, temp is not None, temp and (k.path, temp), (temp,) if temp else ()))
+        _execute(ops, map_file)
+        _refuse_leftovers(_read_notes(plan.vault / "notes")[0], leftover, map_file)
+    except OSError as exc:
+        raise MigrationError(f"{exc.filename}: {exc}", map_file) from exc
+    return ApplyResult(map_file, tuple(outside))
+
+
+# --- undo --------------------------------------------------------------------------
+
+_HEX = re.compile(r"[0-9a-f]{64}")
+_RUN_ID = re.compile(r"\d{8}T\d{6}Z")
+_MAP_SCHEMA = {"version": (int,), "vault": (str,), "run_id": (str,), "naive_timezone": (str,), "files": (list,)}
+_RECORD_SCHEMA = dict.fromkeys(("old_path", "new_path", "sha256_before", "sha256_after"), (str,)) | dict.fromkeys(
+    ("temp_path", "old_id", "new_id", "old_date_line", "new_date_line"), (str, type(None))
+)
+
+
+def _typed(obj: object, schema: Mapping[str, tuple[type, ...]]) -> bool:
+    return isinstance(obj, dict) and all(k in obj and isinstance(obj[k], t) for k, t in schema.items())
+
+
+def _check_record(rec: object, notes: Path, map_file: Path) -> None:
+    ok = _typed(rec, _RECORD_SCHEMA) and all(_HEX.fullmatch(rec[k]) for k in ("sha256_before", "sha256_after"))
+    for key in ("old_path", "new_path", "temp_path"):
+        value = rec[key] if ok else None
+        if value is not None:
+            pure = PurePosixPath(value)
+            inside = (notes.parent / value).resolve().is_relative_to(notes)
+            ok = not pure.is_absolute() and ".." not in pure.parts and inside
+    if not ok:
+        raise MigrationError(f"{map_file}: bad record {rec!r}")
+
+
+def _load_map(vault: Path, map_file: Path) -> dict:
+    try:
+        data = json.loads(map_file.read_text("utf-8"))
+    except (OSError, ValueError) as exc:
+        raise MigrationError(f"{map_file}: cannot read the map: {exc}") from exc
+    if not _typed(data, _MAP_SCHEMA) or data["version"] != MAP_VERSION or not _RUN_ID.fullmatch(data["run_id"]):
+        raise MigrationError(f"{map_file}: not a version {MAP_VERSION} migration map")
+    if data["vault"] != str(vault):
+        raise MigrationError(f"{map_file}: the map is for vault {data['vault']}, not {vault}")
+    notes = vault / "notes"
+    if notes.is_symlink():
+        raise MigrationError(f"{notes} is a symlink")
+    for rec in data["files"]:
+        _check_record(rec, notes, map_file)
+    for key in ("old_path", "new_path"):
+        if len({rec[key] for rec in data["files"]}) != len(data["files"]):
+            raise MigrationError(f"{map_file}: two records share a {key}")
+    return data
+
+
+@dataclass(frozen=True)
+class _Entry:
+    """One map record with absolute paths."""
+
+    old: Path
+    new: Path
+    temp: Path | None
+    undo_temp: Path
+    before: str
+    after: str
+    note: tuple[str, str | None, str] | None  # old_id, old_date_line, new_date_line
+
+
+def _entry(vault: Path, run_id: str, rec: Mapping) -> _Entry:
+    new = vault / rec["new_path"]
+    return _Entry(
+        old=vault / rec["old_path"],
+        new=new,
+        temp=vault / rec["temp_path"] if rec["temp_path"] else None,
+        undo_temp=new.with_name(f"{new.name}.undo-{run_id}{TEMP_SUFFIX}"),
+        before=rec["sha256_before"],
+        after=rec["sha256_after"],
+        note=(rec["old_id"], rec["old_date_line"], rec["new_date_line"]) if rec["old_id"] is not None else None,
+    )
+
+
+@dataclass(frozen=True)
+class _State:
+    kind: str  # "unchanged", "restore" (reverse the source), "temp" (source holds the old bytes), "skip"
+    source: Path | None
+    data: bytes | None  # bytes of the file where the entry sits now
+    cleanup: tuple[Path, ...]  # tool temps to remove
+
+
+def _read(path: Path | None) -> bytes | None:
+    return path.read_bytes() if path is not None and path.is_file() else None
+
+
+def _classify(e: _Entry, owner_before: str | None) -> _State:
+    """The first rule that holds, from the bytes on disk."""
+    old, new, undo, temp = _read(e.old), _read(e.new), _read(e.undo_temp), _read(e.temp)
+    temp_done = (e.temp,) if temp is not None and _sha(temp) == e.before else ()
+    if old is not None and _sha(old) == e.before:
+        undo_done = (e.undo_temp,) if undo is not None and _sha(undo) == e.after else ()
+        return _State("unchanged", None, old, temp_done + undo_done)
+    if new is not None and _sha(new) == e.after:
+        return _State("restore", e.new, new, temp_done)
+    if undo is not None and _sha(undo) == e.after:
+        return _State("restore", e.undo_temp, undo, temp_done)
+    if new is not None and _sha(new) != owner_before:
+        return _State("skip", None, new, ())
+    if temp_done:
+        return _State("temp", e.temp, temp, temp_done)
+    return _State("skip", None, None, ())
+
+
+def _linked(targets: Mapping[str, int], blobs: Iterable[bytes | None]) -> set[int]:
+    """Indices of the targets whose stem a blob links, in unprotected spans."""
+    if not targets:
+        return set()
+    pattern = stem_pattern(targets)
+    return {
+        targets[m.group(2).decode()]
+        for data in blobs
+        if data
+        for a, b in _unprotected(data)
+        for m in pattern.finditer(data, a, b)
+    }
+
+
+def _settle(entries: list[_Entry], states: list[_State]) -> tuple[list[int], dict[int, bytes]]:
+    """Skip fixpoint; returns the entries to restore and their old bytes."""
+    skipped = {i for i, s in enumerate(states) if s.kind == "skip"}
+    while True:
+        live = [i for i, e in enumerate(entries) if i not in skipped and e.old != e.new]
+        inverse = _rewriter({entries[i].new.stem: entries[i].old.stem for i in live})
+        restoring = [i for i, s in enumerate(states) if s.kind in ("restore", "temp") and i not in skipped]
+        out = {
+            i: states[i].data if states[i].kind == "temp" else _reverse(states[i].data, inverse, entries[i].note)
+            for i in restoring
+        }
+        add = {i for i in restoring if _sha(out[i]) != entries[i].before}
+        targets = {entries[i].new.stem: i for i in restoring if i in live}
+        # only skipped files keep their after-state links; unchanged files still link old stems
+        blobs = [s.data for i, s in enumerate(states) if i in skipped]
+        add |= _linked(targets, blobs)
+        staged = {entries[i].new for i in targets.values() if states[i].source == entries[i].new}
+        add |= {i for i in targets.values() if entries[i].old.exists() and entries[i].old not in staged}
+        if not add:
+            return restoring, out
+        skipped |= add
+
+
+def _undo_op(e: _Entry, s: _State, data: bytes) -> _Op:
+    stage = (e.new, e.undo_temp) if s.source == e.new and e.old != e.new else None
+    via_undo_temp = stage is not None or s.source == e.undo_temp
+    return _Op(e.old, data, e.old != e.new, stage, ((e.undo_temp,) if via_undo_temp else ()) + s.cleanup)
+
+
+def undo_migration(vault: Path, map_file: Path) -> UndoReport:
+    vault = vault.resolve()
+    data = _load_map(vault, map_file)
+    entries = [_entry(vault, data["run_id"], rec) for rec in data["files"]]
+    owners = {e.old: e.before for e in entries}
+    try:
+        states = [_classify(e, owners.get(e.new)) for e in entries]
+    except OSError as exc:
+        raise MigrationError(f"{exc.filename}: {exc}") from exc
+    restoring, out = _settle(entries, states)
+    unchanged = [i for i, s in enumerate(states) if s.kind == "unchanged"]
+    _execute(
+        [_undo_op(entries[i], states[i], out[i]) for i in restoring],
+        map_file,
+        [p for i in unchanged for p in states[i].cleanup],
+    )
+    return UndoReport(
+        restored=tuple(entries[i].old for i in restoring),
+        unchanged=tuple(entries[i].old for i in unchanged),
+        skipped=tuple(e.new for i, e in enumerate(entries) if i not in restoring and i not in unchanged),
+    )
+
+
+# --- command line ------------------------------------------------------------------
+
+
+def default_map_dir() -> Path:
+    """$XDG_STATE_HOME/bim/migrate-ids, or ~/.local/state/bim/migrate-ids when it is unset or empty."""
+    state = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    return Path(state) / "bim" / "migrate-ids"
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Dry run: print the plan of the vault given with --vault."""
+    parser = argparse.ArgumentParser(description="Migrate bim zettel ids from local time to UTC.")
+    parser.add_argument("--vault", required=True, type=Path)
+    parser.add_argument("--naive-timezone", default=DEFAULT_ZONE)
+    args = parser.parse_args(argv)
+    plan = plan_migration(args.vault, args.naive_timezone)
+    for c in plan.changes:
+        old, new = c.path.relative_to(plan.vault), c.new_path.relative_to(plan.vault)
+        print(f"{old} -> {new}  {c.old_id} -> {c.new_id}")
+    print(
+        f"{len(plan.changes)} changes, {len(plan.skips)} skips, {len(plan.already_utc)} already on UTC, "
+        f"{plan.reference_count} references"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
