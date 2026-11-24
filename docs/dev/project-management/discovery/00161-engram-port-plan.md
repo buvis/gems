@@ -21,6 +21,33 @@ releasing them from hold. PRD 00164 waits for the initial cutover DB checks.
 The parity contract below remains the baseline; record each deliberate bug-fix
 exception and its consumer regression test before changing that contract.
 
+### Required QA release checkpoints
+
+The agent executing the port owns these checkpoints. The user does not need to
+remember which held PRDs became ready. Carry these requirements into the Phase 3
+and Phase 4 PRDs when creating them; a discovery note alone is not a running job.
+
+- At Phase 3 closeout, check every held QA PRD except 00164 against its actual
+  prerequisites. Verify landed files, test evidence, compatibility exceptions,
+  and completed QA dependencies. Move each ready PRD from
+  `docs/dev/project-management/prds/hold/` to
+  `docs/dev/project-management/prds/backlog/`, update its status, and repair links.
+- At Phase 4 closeout, repeat the check and include 00164 only after the original
+  cutover database checks pass. Do not start its schema change beforehand.
+- When a QA prerequisite PRD completes, recheck the QA PRDs that depend on it.
+  Add this release check to each relevant implementation handoff. Merely creating
+  the port directory or moving another PRD does not establish readiness.
+- Record each check in the QA handoff with the checked commit, evidence paths,
+  promoted IDs, and each remaining held ID's exact missing prerequisite.
+  Include the same promoted/held summary in the user-facing completion report.
+- If a fix already landed during the port, verify its full acceptance criteria
+  and record that outcome instead of queueing duplicate work. Retain all required
+  review gates. Never mark an untested fix complete.
+
+The Phase 3 and Phase 4 exit criteria include completing and reporting their
+checkpoint, not promoting every PRD regardless of readiness. Until a port job
+actually runs, there is no background watcher or automatic notification.
+
 ## Contract that must not change
 
 No consumer imports engram or reads its DB or config. Every consumer uses the

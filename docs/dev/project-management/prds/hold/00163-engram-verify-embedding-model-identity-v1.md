@@ -72,6 +72,7 @@ tests/tools/engram/test_query.py
 tests/tools/engram/test_mcp_server_search.py
 docs/source/tools/engram.rst
 CHANGELOG.md
+docs/dev/project-management/discovery/00161-engram-qa-handoff.md
 ```
 
 ### Module: Product correction
@@ -124,6 +125,8 @@ CHANGELOG.md
 - [ ] Update the Engram tool documentation and add scoped CHANGELOG entries for the implemented behavior; run the selected tests. (depends on: Phase 1) - Acceptance: review the diff against each Feature, confirm all listed scenarios, and run git diff --check.
 
 **Exit Criteria**: Run the full Engram gate once: uv run --no-sync pytest tests/tools/engram --cov=src/tools/engram --cov-report=term-missing --cov-fail-under=50. Run ruff check and ruff format --check on src/tools/engram and tests/tools/engram, then uv run --no-sync mypy src/lib/ src/tools/. Require the Engram cells of the repository CI matrix (Ubuntu/macOS, Python 3.11-3.15); report unavailable cells and snapshot skips explicitly. Keep existing Windows lock branch tests. No archived eval suite or live-store mutation.
+
+At closeout, recheck dependent QA PRDs 00171 using the required QA release checkpoints in docs/dev/project-management/discovery/00161-engram-port-plan.md. Move only verified-ready dependents to the executable backlog, repair their links, and report promoted IDs or exact remaining blockers in docs/dev/project-management/discovery/00161-engram-qa-handoff.md and the user-facing completion report.
 
 ## Test Strategy
 

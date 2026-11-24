@@ -2,6 +2,39 @@
 
 Status: Gems owns PRDs 00163-00173 in hold. No port or product fix has been implemented by this handoff.
 
+## How readiness becomes visible
+
+The port agent must perform the
+[required QA release checkpoints](00161-engram-port-plan.md#required-qa-release-checkpoints)
+at Phase 3 and Phase 4 closeout, then after each relevant QA dependency completes.
+It moves verified-ready PRDs into the executable backlog and reports the promoted
+IDs. It records an exact blocker for each PRD still held. The user does not need
+to inspect the directories or remember to release them. These are workflow
+requirements for the future port job; no watcher has been started.
+
+## Original continuation status, checked 2026-11-24
+
+Source: `docs/dev/tmp/00161-handoff-20261116-1427.md` in Gems. This tracked
+summary preserves the remaining work so it does not depend on keeping that
+temporary file. Observed source HEAD: engram e413696; target HEAD: Gems 61707c50.
+
+| Original step | Status and next action |
+|---|---|
+| 1. Verify standalone 00014-00016 and completion reviews | Completed check: all three are in the completed PRD directory and have cycle-2 completion-review records. This is not a claim that every historical check passed. |
+| 2. Run main and evaluation suites | Not rerun for this handoff in this session. From the Engram checkout, run `.venv/bin/python -m pytest -q --ignore=eval` and `PYTHONPATH=src:. .venv/bin/python -m pytest -q eval` at the chosen source commit; record pass/fail/skip counts. Historical QA counts do not replace that checkpoint. |
+| 3. Pin source and refresh inventory | Not completed. The plan freshness line still describes a0892e6 while 00014 was building. Refresh all rows against the selected post-batch commit after verification. |
+| 4. Reinstall standalone; optional backfill | Current installation not verified. Preserve the documented external-install handoff if needed; no production backfill, rebuild or model repin was performed. Backfill is optional and still requires the stated backup and explicit authorization. |
+| 5. Create port Phase 1 PRD | Not completed. Gems has QA follow-up PRDs 00163-00173, but no Phase 1 core-port PRD or src/tools/engram tree. Create only Phase 1 after the source checks; it is distinct from the QA fixes. |
+| Later phases | Not started by this session. Create each phase after the preceding phase lands, as the original handoff requires. Phase 5 also waits for 00122, still in the executable backlog at this check. |
+
+The older instruction to ask approval for every phase PRD is superseded by the
+user's current standing authorization for routine work. Explicit production
+data, install-tool permissions, release and retirement restrictions still apply.
+
+No port job was launched by this status check. The next port session starts at
+the fresh-suite and inventory checkpoints, then creates the Phase 1 PRD; it does
+not drain the QA follow-ups before the port exists.
+
 Authority: user decision of 2026-11-16 in
 [the port plan](00161-engram-port-plan.md), reaffirmed on 2026-11-23.
 Ship Engram inside buvis-gems after standalone PRDs 00014-00016 finish.
