@@ -140,6 +140,17 @@ class TestEnvPrecedence:
         assert result.exit_code == 0
         mock_update.assert_not_called()
 
+    @pytest.mark.parametrize("name", ["buvis_auto_update", "Buvis_Auto_Update"])
+    def test_global_auto_update_variable_is_read_in_any_letter_case(
+        self, name: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The global switch is read case-insensitively, like every other setting."""
+        from buvis.pybase.configuration.click_integration import _update_enabled
+
+        monkeypatch.setenv(name, "false")
+
+        assert _update_enabled(FooSettings, FooSettings()) is False
+
     def test_malformed_global_env_skips_check_without_raising(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A bad BUVIS_AUTO_UPDATE degrades the check, --help still works."""
         monkeypatch.setenv("BUVIS_AUTO_UPDATE", "maybe")

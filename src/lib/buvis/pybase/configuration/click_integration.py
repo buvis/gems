@@ -218,9 +218,6 @@ def _extract_option_value(args: list[str], option: str) -> str | None:
     return value
 
 
-_GLOBAL_AUTO_UPDATE_ENV = "BUVIS_AUTO_UPDATE"
-
-
 def _update_enabled(settings_class: type[GlobalSettings], settings: GlobalSettings) -> bool:
     """Whether the passive update check may run.
 
@@ -232,7 +229,7 @@ def _update_enabled(settings_class: type[GlobalSettings], settings: GlobalSettin
     # Same case-insensitive reading as the settings themselves.
     if "auto_update" in _env_set_fields(env_prefix):
         return settings.auto_update
-    if _GLOBAL_AUTO_UPDATE_ENV in os.environ:
+    if "auto_update" in _env_set_fields("BUVIS_"):
         return GlobalSettings().auto_update
     return settings.auto_update
 
