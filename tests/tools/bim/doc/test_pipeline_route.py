@@ -5,6 +5,8 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from bim.commands.doc.shared.classifier import ClassifierError
@@ -35,6 +37,26 @@ def _named_route(primary: str, fallback: str) -> DocLLMRoute:
     return resolve_doc_route(ClassifierSettings(backend=primary, fallback=fallback), llm)
 
 
+def _classify_effects() -> list[object]:
+    return [ClassifierError(f"t{n}") for n in range(3)] + [_make_classify_result()]
+
+
+def _extract_effects() -> list[object]:
+    return [IncompleteExtraction([f"HTTP error: t{n}"], transient=True) for n in range(3)] + [_make_extract_result()]
+
+
+def _pin_rules(pipeline: Pipeline, mocker: MockerFixture) -> dict[str, Any]:
+    """Make the rule engine yield a partial match so both LLM stages take the pinned path."""
+    partial = SimpleNamespace(kind="partial", rule_id="r-pinned", rule_version=1, pinned={}, conflicting_rules=[])
+    engine = mocker.patch("bim.commands.doc.shared.pipeline.RuleEngine")
+    engine.return_value.evaluate.return_value = partial
+    services = getattr(pipeline, "_services")
+    return {
+        "classify": mocker.patch.object(services.classifier, "classify_with_pinned", side_effect=_classify_effects()),
+        "extract": mocker.patch.object(services.extractor, "extract_with_pinned", side_effect=_extract_effects()),
+    }
+
+
 def _run_with_fallback(
     settings: DocSettings,
     registry: IssuerRegistry,
@@ -42,6 +64,8 @@ def _run_with_fallback(
     staging_pdf: Path,
     mocker: MockerFixture,
     route: DocLLMRoute | None,
+    *,
+    pinned: bool = False,
 ) -> tuple[list[str], list[str], str]:
     """Fail each LLM stage 1 + max_retries (2) times so it falls back once.
 
@@ -53,13 +77,14 @@ def _run_with_fallback(
         state_db,
         mocker,
         ocr_result=_make_ocr_result(pdf_path=staging_pdf),
-        classify_side_effect=[ClassifierError(f"t{n}") for n in range(3)] + [_make_classify_result()],
-        extract_side_effect=[IncompleteExtraction([f"HTTP error: t{n}"], transient=True) for n in range(3)]
-        + [_make_extract_result()],
+        classify_side_effect=_classify_effects(),
+        extract_side_effect=_extract_effects(),
     )
     if route is not None:
         services = dataclasses.replace(getattr(pipeline, "_services"), llm_route=route)
         pipeline = Pipeline(settings, services)
+    if pinned:
+        mocks = _pin_rules(pipeline, mocker)
     sha = hashlib.sha256(staging_pdf.read_bytes()).hexdigest()
 
     result = pipeline.run(IngestParams(source="download", staging_path=staging_pdf))
@@ -96,6 +121,22 @@ class TestNamedRoute:
         assert classify_keys == [primary, primary, primary, fallback]
         assert extract_keys == [primary, primary, primary, fallback]
         assert method == f"llm:{primary}"
+
+    def test_pinned_rule_retry_keys_come_from_the_route(
+        self,
+        settings: DocSettings,
+        registry: IssuerRegistry,
+        state_db: StateDB,
+        staging_pdf: Path,
+        mocker: MockerFixture,
+    ) -> None:
+        classify_keys, extract_keys, method = _run_with_fallback(
+            settings, registry, state_db, staging_pdf, mocker, _named_route("fast", "slow"), pinned=True
+        )
+
+        assert classify_keys == ["fast", "fast", "fast", "slow"]
+        assert extract_keys == ["fast", "fast", "fast", "slow"]
+        assert method == "rule+llm:r-pinned:v1"
 
 
 class TestLegacyRoute:

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from bim.commands.doc.shared.health import MissingDependency, check_health
 from bim.commands.doc.shared.settings_models import ClassifierSettings, DocPaths, DocSettings
-from bim.shared.llm import ClaudeBackendSettings, CommandBackendSettings, HttpBackendSettings
+from bim.shared.llm import ClaudeBackendSettings, CommandBackendSettings, HttpBackendSettings, LLMConfigError
 from pytest_mock import MockerFixture
 
 
@@ -273,6 +273,49 @@ class TestNamedHttpBackends:
         with pytest.raises(MissingDependency, match="OpenAI-compatible server") as excinfo:
             check_health(_named(settings, "oa"), {"oa": oa})
         assert "llama.cpp" not in str(excinfo.value)
+
+    def test_named_mode_still_checks_tesseract_before_any_probe(
+        self, settings: DocSettings, mocker: MockerFixture
+    ) -> None:
+        mocker.patch(
+            "bim.commands.doc.shared.health.subprocess.run",
+            side_effect=FileNotFoundError("tesseract not found"),
+        )
+        tags = _MockResponse({"models": [{"name": "m-fast"}]})
+        fake_requests = _patch_requests(mocker, {"http://fast:11434/api/tags": tags})
+
+        with pytest.raises(MissingDependency, match="tesseract"):
+            check_health(_named(settings, "fast"), {"fast": FAST})
+        assert _urls(fake_requests) == []
+
+    def test_unknown_backend_name_raises_config_error(self, settings: DocSettings, mocker: MockerFixture) -> None:
+        mocker.patch("bim.commands.doc.shared.health.subprocess.run", return_value=_ok_proc())
+        fake_requests = _patch_requests(mocker, {})
+
+        with pytest.raises(LLMConfigError):
+            check_health(_named(settings, "fas"), {"fast": FAST, "slow": SLOW})
+        assert _urls(fake_requests) == []
+
+    def test_ollama_fallback_model_must_be_pulled(self, settings: DocSettings, mocker: MockerFixture) -> None:
+        mocker.patch("bim.commands.doc.shared.health.subprocess.run", return_value=_ok_proc())
+        fb = HttpBackendSettings(kind="ollama", endpoint="http://fb:11434", model="m-fb")
+        _patch_requests(
+            mocker,
+            {
+                "http://slow:8002/v1/models": _MockResponse({"data": []}),
+                "http://fb:11434/api/tags": _MockResponse({"models": [{"name": "m-fast"}]}),
+            },
+        )
+
+        with pytest.raises(MissingDependency, match="Ollama model 'm-fb' not pulled"):
+            check_health(_named(settings, "slow", "fb"), {"slow": SLOW, "fb": fb})
+
+    def test_named_ollama_unreachable_names_its_endpoint(self, settings: DocSettings, mocker: MockerFixture) -> None:
+        mocker.patch("bim.commands.doc.shared.health.subprocess.run", return_value=_ok_proc())
+        _patch_requests(mocker, {"http://fast:11434/api/tags": ConnectionError("refused")})
+
+        with pytest.raises(MissingDependency, match="Ollama daemon not reachable at http://fast:11434"):
+            check_health(_named(settings, "fast"), {"fast": FAST})
 
 
 class TestNamedLocalBackends:
