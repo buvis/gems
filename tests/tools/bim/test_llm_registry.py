@@ -57,6 +57,36 @@ class _InvoiceWithLooseUnion(BaseModel):
     line: _LooseLine | None = None
 
 
+class _InvoiceWithLooseMap(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    lines: dict[str, _LooseLine]
+
+
+class _InvoiceWithNestedLooseList(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pages: list[list[_LooseLine]]
+
+
+class _InvoiceWithLooseChild(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    line: _LooseLine
+
+
+class _StrictLineWithLooseNote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: _LooseLine
+
+
+class _InvoiceWithLooseGrandchild(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    line: _StrictLineWithLooseNote
+
+
 class _InvoiceWithStrictLines(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -82,6 +112,28 @@ class _FakeBackend:
         return validate_payload(schema, parse_json_text(self.reply, backend=self.name), backend=self.name)
 
 
+class _NoComplete:
+    def __init__(self) -> None:
+        self.name = "x"
+        self.unattended_safe = True
+
+
+class _NoName:
+    def __init__(self) -> None:
+        self.unattended_safe = True
+
+    def complete(self, request: LLMRequest, schema: Any, *, timeout: float, model: str | None = None) -> Any:
+        return None
+
+
+class _NoUnattendedSafe:
+    def __init__(self) -> None:
+        self.name = "x"
+
+    def complete(self, request: LLMRequest, schema: Any, *, timeout: float, model: str | None = None) -> Any:
+        return None
+
+
 def _two_backends() -> tuple[_FakeBackend, _FakeBackend, LLMRegistry]:
     local = _FakeBackend("local", '{"amount": "12.50", "currency": "CZK"}')
     remote = _FakeBackend("remote", '{"amount": "99.00", "currency": "EUR"}')
@@ -100,6 +152,10 @@ class TestRegistrySelection:
         local, _, _ = _two_backends()
 
         assert isinstance(local, Backend)
+
+    @pytest.mark.parametrize("candidate", [object(), _NoComplete(), _NoName(), _NoUnattendedSafe()])
+    def test_objects_missing_a_protocol_member_are_not_backends(self, candidate: object) -> None:
+        assert not isinstance(candidate, Backend)
 
     def test_invoke_calls_only_the_named_backend_with_its_arguments(self) -> None:
         local, remote, registry = _two_backends()
@@ -178,6 +234,16 @@ class TestUnattendedRefusal:
 
         assert registry.get("claude", unattended=True) is safe
 
+    @pytest.mark.parametrize("unsafe_name", ["claude", "local"])
+    def test_refusal_follows_unattended_safe_not_the_backend_name(self, unsafe_name: str) -> None:
+        unsafe = _FakeBackend(unsafe_name, "{}", unattended_safe=False)
+        safe = _FakeBackend("shell", "{}")
+        registry = LLMRegistry({unsafe_name: unsafe, "shell": safe})
+
+        with pytest.raises(LLMConfigError, match=f"backend '{unsafe_name}' cannot run unattended"):
+            registry.get(unsafe_name, unattended=True)
+        assert registry.get("shell", unattended=True) is safe
+
     def test_invoke_unattended_on_unsafe_backend_never_calls_it(self) -> None:
         unsafe = _FakeBackend("shell2", '{"amount": "1", "currency": "CZK"}', unattended_safe=False)
         registry = LLMRegistry({"shell2": unsafe})
@@ -208,7 +274,17 @@ class TestRequireStrictSchema:
         assert result == _Tx(amount="3.10", currency="USD")
         assert len(backend.calls) == 1
 
-    @pytest.mark.parametrize("schema", [_InvoiceWithLooseList, _InvoiceWithLooseUnion])
+    @pytest.mark.parametrize(
+        "schema",
+        [
+            _InvoiceWithLooseList,
+            _InvoiceWithLooseUnion,
+            _InvoiceWithLooseMap,
+            _InvoiceWithNestedLooseList,
+            _InvoiceWithLooseChild,
+            _InvoiceWithLooseGrandchild,
+        ],
+    )
     def test_rejects_a_strict_parent_with_a_default_extra_child(self, schema: type[BaseModel]) -> None:
         with pytest.raises(LLMConfigError) as exc:
             require_strict_schema(schema)
@@ -329,12 +405,24 @@ class TestBackendSettings:
         with pytest.raises(ValidationError):
             _SETTINGS.validate_python(entry)
 
+    @pytest.mark.parametrize(
+        "entry",
+        [
+            {"kind": "ollama", "endpoint": "http://h:1", "modle": "m"},
+            {"kind": "claude", "unattended": True},
+            {"kind": "command", "argv": ["x"], "foo": 1},
+        ],
+    )
+    def test_rejects_an_unknown_or_misspelled_key(self, entry: dict[str, object]) -> None:
+        with pytest.raises(ValidationError):
+            _SETTINGS.validate_python(entry)
+
     @pytest.mark.parametrize("entry", [{"kind": "openai"}, {"kind": "command"}, {"model": "m"}])
     def test_rejects_a_missing_required_key(self, entry: dict[str, object]) -> None:
         with pytest.raises(ValidationError):
             _SETTINGS.validate_python(entry)
 
-    @pytest.mark.parametrize("argv", [[], [""], ["llm", ""], ["", "llm"]])
+    @pytest.mark.parametrize("argv", [[], [""], ["llm", ""], ["", "llm"], ["llm", "", "x"]])
     def test_rejects_empty_argv_and_empty_argv_elements(self, argv: list[str]) -> None:
         with pytest.raises(ValidationError):
             _SETTINGS.validate_python({"kind": "command", "argv": argv})
@@ -345,14 +433,41 @@ class TestBackendSettings:
         assert isinstance(parsed, CommandBackendSettings)
         assert parsed.unattended is True
 
-    def test_settings_are_frozen(self) -> None:
-        parsed = _SETTINGS.validate_python({"kind": "claude"})
+    @pytest.mark.parametrize(
+        ("entry", "field", "value"),
+        [
+            ({"kind": "claude"}, "model", "opus"),
+            ({"kind": "ollama", "endpoint": "http://h:1"}, "endpoint", "http://other:2"),
+            ({"kind": "command", "argv": ["llm"]}, "unattended", True),
+        ],
+    )
+    def test_settings_are_frozen(self, entry: dict[str, object], field: str, value: object) -> None:
+        parsed = _SETTINGS.validate_python(entry)
 
         with pytest.raises(ValidationError):
-            setattr(parsed, "model", "opus")
+            setattr(parsed, field, value)
 
     def test_empty_config_builds_an_empty_registry(self) -> None:
         assert build_registry({}).names() == frozenset()
+
+    def test_build_registry_builds_one_backend_per_configured_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        built: list[tuple[str, object]] = []
+
+        def fake_build_backend(name: str, settings: object) -> _FakeBackend:
+            built.append((name, settings))
+            return _FakeBackend(name, "{}")
+
+        monkeypatch.setattr("bim.shared.llm.registry.build_backend", fake_build_backend)
+        claude = ClaudeBackendSettings(kind="claude", model="sonnet")
+        local = HttpBackendSettings(kind="ollama", endpoint="http://h:1")
+        shell = CommandBackendSettings(kind="command", argv=["llm"])
+
+        registry = build_registry({"claude": claude, "local": local, "shell": shell})
+
+        assert registry.names() == frozenset({"claude", "local", "shell"})
+        assert sorted(built, key=lambda item: item[0]) == [("claude", claude), ("local", local), ("shell", shell)]
+        assert registry.get("local").name == "local"
+        assert registry.get("shell").name == "shell"
 
 
 class TestBackendError:
@@ -391,7 +506,7 @@ class TestParseJsonText:
         assert exc.value.backend == "remote"
         assert exc.value.detail.startswith("reply is not valid JSON: ")
 
-    @pytest.mark.parametrize("text", ["", "not json", '{"a": 1', "```json\n{}\n```"])
+    @pytest.mark.parametrize("text", ["", "not json", '{"a": 1', "```json\n{}\n```", '{"a": 1} trailing', "[1] [2]"])
     def test_invalid_json_is_a_parse_error(self, text: str) -> None:
         with pytest.raises(BackendError) as exc:
             parse_json_text(text, backend="local")
