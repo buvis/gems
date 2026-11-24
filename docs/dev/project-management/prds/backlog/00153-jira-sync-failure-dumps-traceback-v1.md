@@ -35,7 +35,7 @@ Never put `str(exc)` or `repr(exc)` of any of the three into the message. `str(J
 
 Catch `pydantic.ValidationError` by its own name, not `ValueError`. `ZettelJiraAdapter._get_assembler` raises a plain `ValueError` for missing `defaults`; that stays uncaught here and the CLI's existing `except (ValueError, FileNotFoundError)` keeps handling it.
 
-Import `JIRAError` from `jira.exceptions`, `RequestException` from `requests.exceptions`, and `ValidationError` from `pydantic`. `sync_note.py` already imports `ZettelJiraAdapter`, which needs the `jira` package (and `requests` with it), so no new optional-dependency guard is needed.
+Import `JIRAError` from `jira.exceptions`, `requests.exceptions.RequestException`, and `ValidationError` from `pydantic`. `sync_note.py` already imports `ZettelJiraAdapter`, which needs the `jira` package (and `requests` with it), so no new optional-dependency guard is needed.
 
 Resulting behaviour:
 
@@ -93,7 +93,7 @@ marker appeared in none of it.
 ### Phase 0: Fix
 - [ ] Add `test_unreachable_jira_is_a_failed_result_naming_the_server`, `test_invalid_jira_config_is_a_failed_result_naming_the_fields`, `test_jira_http_error_is_a_failed_result_with_status_and_text` and `test_jira_error_message_never_contains_the_token` to `tests/tools/bim/test_sync_note.py`; watch them fail - Acceptance: `uv run pytest tests/tools/bim/test_sync_note.py -k "failed_result or never_contains_the_token"` fails on the unmodified code.
 - [ ] Add `test_sync_with_unreachable_jira_prints_one_error_line_and_exits_1` to `tests/tools/bim/test_note_read_cli_exit_code.py` and `test_sync_note_action_returns_failed_result_when_jira_is_unreachable` to `tests/tools/bim/test_serve_actions.py`; watch them fail - Acceptance: `uv run pytest tests/tools/bim/test_note_read_cli_exit_code.py tests/tools/bim/test_serve_actions.py -k "unreachable"` fails on the unmodified code.
-- [ ] Catch `ValidationError`, `RequestException` and `JIRAError` in `CommandSyncNote.execute` and return the failed result with the exact messages (depends on: previous two tasks) - Acceptance: `uv run pytest tests/tools/bim/test_sync_note.py tests/tools/bim/test_note_read_cli_exit_code.py tests/tools/bim/test_serve_actions.py tests/tools/bim/test_bim_cli_handlers.py` passes.
+- [ ] Catch `ValidationError`, `requests.exceptions.RequestException` and `JIRAError` in `CommandSyncNote.execute` and return the failed result with the exact messages (depends on: previous two tasks) - Acceptance: `uv run pytest tests/tools/bim/test_sync_note.py tests/tools/bim/test_note_read_cli_exit_code.py tests/tools/bim/test_serve_actions.py tests/tools/bim/test_bim_cli_handlers.py` passes.
 - [ ] Add the `### Fixed` line to `CHANGELOG.md` under `[Unreleased]` (depends on: previous task) - Acceptance: `rg -n "bim sync -t jira" CHANGELOG.md` prints one line.
 
 ## Success Criteria

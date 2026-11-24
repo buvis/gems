@@ -72,7 +72,7 @@ Evidence from the report, verbatim:
 ### Phase 0: Fix
 - [ ] Add class `TestDocRulesPanicTextIsLiteral` with `test_validate_shows_the_bracketed_part_of_a_yaml_error` and `test_rules_test_shows_square_brackets_in_the_failure_body` to `tests/tools/bim/doc/test_doc_rules_cli_exit_code.py`; watch them fail - Acceptance: `uv run pytest tests/tools/bim/doc/test_doc_rules_cli_exit_code.py -k TestDocRulesPanicTextIsLiteral` fails on the unmodified code.
 - [ ] Import `escape` from `rich.markup` in `src/tools/bim/doc_rules_cli.py` and wrap the two `console.panic(result.error or ...)` messages (depends on: previous task) - Acceptance: `uv run pytest tests/tools/bim/doc/test_doc_rules_cli_exit_code.py` passes and `rg -c "console\.panic\(escape\(" src/tools/bim/doc_rules_cli.py` prints `2`.
-- [ ] Add the `### Fixed` line to `CHANGELOG.md` under `[Unreleased]` (depends on: previous task) - Acceptance: `rg -n "bim doc rules validate" CHANGELOG.md` prints one line.
+- [ ] Add the `### Fixed` line to `CHANGELOG.md` under `[Unreleased]` (depends on: previous task) - Acceptance: `rg -n "contains square brackets in full" CHANGELOG.md` prints one line.
 
 ## Success Criteria
 

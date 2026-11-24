@@ -26,7 +26,21 @@ with this exact text:
 Without it, a pipeline failure exits 0. A failure before the pipeline starts exits 1 with or without this flag: a missing file, a missing ``doc`` config section, an unreachable model server, or a bad ``issuers.yml``.
 ```
 
-Keep the text before it (the bullet's first sentence, which ends `(for scripting).`) and the text after it (`Triaged and duplicate outcomes are not failures and remain exit 0 regardless of this flag.`). Re-wrap the bullet to the file's line width with the two-space continuation indent. Change nothing else in the file.
+Keep the text before it (the bullet's first sentence, which ends `(for scripting).`) and the text after it (`Triaged and duplicate outcomes are not failures and remain exit 0 regardless of this flag.`). Re-wrap the bullet to the file's line width with the two-space continuation indent.
+
+The `--strict` bullet under the `bim doc promote` options has the same stale rule (added by the backlog review of 2026-11-24, so that no copy of the old rule stays in the file). Replace this sentence (it wraps over two lines in the file):
+
+```
+Default exit code is 0 on failure to match the rest of the bim CLI.
+```
+
+with this exact text:
+
+```
+Without it, a promote failure exits 0. A failure before the promote starts exits 1 with or without this flag: a missing file, a missing ``doc`` config section, or a failed dependency check.
+```
+
+Keep the bullet's first sentence (`exit 1 on promote failure (for scripting).`) and re-wrap the bullet the same way. The three cases are the three `console.panic` calls at the start of `doc_promote` in `src/tools/bim/doc_cli.py` (read on 2026-11-24, not run). Change nothing else in the file.
 
 The wording agrees with the `console` entry in `CHANGELOG.md` `[Unreleased]`, which says: "`ingest` and `promote` exit non-zero only with `--strict`" for pipeline failures, and "A failure before the pipeline starts (a missing file, a missing `doc` config section, an unreachable model server) exits non-zero." The docs add the bad `issuers.yml` case by the operator's decision. Do not edit the CHANGELOG.
 
@@ -36,6 +50,8 @@ The wording agrees with the `console` entry in `CHANGELOG.md` `[Unreleased]`, wh
 - The phrase `matching the rest of the bim CLI` is absent from `docs/source/tools/bim.rst`.
 - The `bim doc ingest` `--strict` bullet says a pipeline failure exits 0 without `--strict`.
 - The same bullet says a failure before the pipeline starts exits 1 with or without the flag, and names the four cases: missing file, missing `doc` config section, unreachable model server, bad `issuers.yml`.
+- The phrase `match the rest of the bim CLI` is absent from `docs/source/tools/bim.rst`.
+- The `bim doc promote` `--strict` bullet says a promote failure exits 0 without `--strict`, and that a missing file, a missing `doc` config section or a failed dependency check exits 1 with or without the flag.
 - No CHANGELOG line. This is a docs-only change.
 
 ### Nice to have
@@ -45,9 +61,9 @@ The wording agrees with the `console` entry in `CHANGELOG.md` `[Unreleased]`, wh
 
 ### Module: bim docs
 - **Location**: `docs/source/tools/bim.rst`
-- **Responsibility**: state the current exit-code rule for `bim doc ingest`.
+- **Responsibility**: state the current exit-code rule for `bim doc ingest` and `bim doc promote`.
 - **Exports**: none
-- **Risk**: low. The `bim doc promote` `--strict` bullet in the same file has a sibling sentence ("Default exit code is 0 on failure to match the rest of the bim CLI."). The finding does not cover it, so this PRD leaves it. The bad `issuers.yml` case comes from the operator's decision. The report's evidence shows the missing-file and unreachable-server cases only. Moving all exit-code rules to one docs section was offered and not chosen.
+- **Risk**: low. The finding covers the `ingest` sentence only; the `promote` sentence was added by the backlog review. The bad `issuers.yml` case comes from the operator's decision. The report's evidence shows the missing-file and unreachable-server cases only. Moving all exit-code rules to one docs section was offered and not chosen.
 
 ### Dependencies
 - bim docs: No dependencies (foundation)
@@ -70,7 +86,8 @@ without `--strict`; unreachable model server rc 1.
 - [ ] Replace the stale sentence in the `bim doc ingest` `--strict` bullet of `docs/source/tools/bim.rst` with the exact text from Solution - Acceptance: `rg -U 'matching\s+the\s+rest\s+of\s+the\s+bim\s+CLI' docs/source/tools/bim.rst` prints nothing and exits 1.
 - [ ] Confirm the pipeline rule is present (depends on: previous task) - Acceptance: `rg -U -c 'Without\s+it,\s+a\s+pipeline\s+failure\s+exits\s+0\.\s+A\s+failure\s+before\s+the\s+pipeline\s+starts\s+exits\s+1\s+with\s+or\s+without\s+this\s+flag:' docs/source/tools/bim.rst` prints `1`.
 - [ ] Confirm the four pre-pipeline cases are named (depends on: previous task) - Acceptance: `rg -U -c 'a\s+missing\s+file,\s+a\s+missing\s+``doc``\s+config\s+section,\s+an\s+unreachable\s+model\s+server,\s+or\s+a\s+bad\s+``issuers\.yml``\.' docs/source/tools/bim.rst` prints `1`.
+- [ ] Replace the stale sentence in the `bim doc promote` `--strict` bullet of `docs/source/tools/bim.rst` with the exact text from Solution - Acceptance: `rg -U 'match\s+the\s+rest\s+of\s+the\s+bim\s+CLI' docs/source/tools/bim.rst` prints nothing and exits 1, and `rg -U -c 'a\s+promote\s+failure\s+exits\s+0\.\s+A\s+failure\s+before\s+the\s+promote\s+starts\s+exits\s+1' docs/source/tools/bim.rst` prints `1`.
 
 ## Success Criteria
 
-- `rg -U 'matching\s+the\s+rest\s+of\s+the\s+bim\s+CLI' docs/source/tools/bim.rst` prints nothing; the two `rg -U -c` checks above each print `1`; the project's full test gate passes.
+- `rg -U 'match(ing)?\s+the\s+rest\s+of\s+the\s+bim\s+CLI' docs/source/tools/bim.rst` prints nothing; the three `rg -U -c` checks above each print `1`; the project's full test gate passes.

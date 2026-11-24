@@ -46,14 +46,14 @@ Unchanged: the stream (stderr), the formatter (`%(name)s: %(message)s`), the fil
 - **Exports**: `CapturingRichHandler` gains the keyword-only argument `soft_wrap`.
 - New symbols: `test_soft_wrap_prints_a_long_path_on_one_line`, `test_soft_wrap_keeps_the_level_name`, `test_debug_record_with_a_long_path_is_not_hard_wrapped`
 - **Risk**: The change is not the literal accepted option: soft wrapping on the console has no effect on Rich's log table, so the handler prints a plain text line when `soft_wrap=True`. In that mode the time and path columns are dropped; `_apply_log_settings` already switches both off, so users see no difference there. A multi-line message (a record with newlines) loses the hanging indent that the table gave its later lines. A terminal wraps the long line at its own width, without the indent. No existing test pins the wrapped form: `test_emit_calls_format_render_and_print_in_order`, `test_emit_outputs_to_console` and `test_works_with_logging` use the default mode and must stay green unchanged; the `TestLogSettingsTakeEffect` tests assert on short probe texts and must stay green unchanged.
-- **Risk (ordering)**: Sibling PRDs from the same run touch `click_integration.py`: 00164 (finding 5, the warning bridge), 00166 (finding 13, the config error branch), 00167 (finding 18, a log call right after `_apply_log_settings`; its tests compare with whitespace removed until this PRD lands). 00165 (finding 6) touches `console.py` only. The handler does not filter terminal control characters; 00164 names that as still open.
+- **Risk (ordering)**: Sibling PRDs from the same run touch `click_integration.py`: 00164 (finding 5, the warning bridge), 00167 (finding 18, a log call right after `_apply_log_settings`; its tests compare with whitespace removed until this PRD lands). 00165 (finding 6) touches `console.py` only. The handler does not filter terminal control characters; 00164 names that as still open.
 
 ### Dependencies
 - log handler soft wrap: No dependencies (foundation)
 
 ## Test Strategy
 
-Regression check: the handler tests use the file's `rich_console` fixture (80 columns, a `StringIO` stream) and count lines in the stream. The wrapper test goes in `TestLogSettingsTakeEffect` and reads `result.stderr` from `CliRunner`; the adapter's `err_console` is not a terminal there and falls back to Rich's default of 80 columns (not measured in this repo's test run; unset `COLUMNS` in the test if the environment sets it), so a 300-character path is folded on the unmodified code.
+Regression check: the handler tests use the file's `rich_console` fixture (80 columns, a `StringIO` stream) and count lines in the stream. The wrapper test goes in `TestLogSettingsTakeEffect` and reads `result.stderr` from `CliRunner`; the adapter's `err_console` is not a terminal there and falls back to Rich's default of 80 columns, so a 300-character path is folded on the unmodified code. The test deletes `COLUMNS` with `monkeypatch.delenv("COLUMNS", raising=False)` before it builds the command, so a wide terminal setting cannot hide the fold.
 
 Reproduction of why the console-level option has no effect, as it ran on 2026-11-23 (Rich 15.0.0, 40-column console, message `template /tmp/` + 60 times `a` + `/bad.yaml`). All three outputs are the same:
 

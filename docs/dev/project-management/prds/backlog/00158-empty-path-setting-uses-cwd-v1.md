@@ -20,7 +20,7 @@ Reject an empty path setting with a config error that names the field and the va
 Add one validator to `BimSettings` in `src/tools/bim/settings.py`:
 
 - Name: `_reject_empty_path`. It is a `pydantic.field_validator` (default `after` mode) on `path_zettelkasten`, `path_archive`, `path_projects`, `path_daily` and `path_articles`.
-- Rule: when `value.strip() == ""`, raise `ValueError` with the message `must not be empty; give a directory, or unset BUVIS_BIM_<FIELD>`, where `<FIELD>` is the field name in upper case (from `ValidationInfo.field_name`). Otherwise return the value unchanged.
+- Rule: when `value.strip() == ""`, raise `ValueError` with the message `must not be empty; give a directory, or unset BUVIS_BIM_<FIELD>`, where `<FIELD>` is the field name in upper case (from the `field_name` of the validator's pydantic ValidationInfo argument). Otherwise return the value unchanged.
 - The rule holds for every source: environment, YAML, and a direct `BimSettings(...)` call. Field defaults are not empty and are not validated.
 
 Resulting behaviour, through the existing error path (`ConfigResolver.resolve` raises `ConfigurationError`, the `buvis_options` wrapper prints it with the failure marker):

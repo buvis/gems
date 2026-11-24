@@ -61,7 +61,7 @@ CHANGELOG, `[Unreleased]`, `### Fixed`: `- **config**: an environment variable f
 - **Location**: src/lib/buvis/pybase/configuration/resolver.py, tests/lib/pybase/configuration/test_resolver.py, tests/tools/fctracker/test_settings.py, docs/source/configuration.rst, CHANGELOG.md
 - **Responsibility**: Keep YAML siblings when the environment sets a field only through nested variables.
 - **Exports**: none (the two new functions are module-private; `ConfigResolver.resolve` returns different values for the mixed case)
-- New symbols: `_env_nested_paths`, `_overlay_env_leaves`, `test_nested_env_for_one_adapter_key_keeps_yaml_siblings`, `test_whole_field_env_still_replaces_the_yaml_value`, `test_nested_env_for_currency_code_keeps_yaml_symbol`, `test_nested_env_for_a_currency_keeps_the_yaml_key_spelling`
+- New symbols: `_env_nested_paths`, `_overlay_env_leaves`, `yaml_value`, `test_nested_env_for_one_adapter_key_keeps_yaml_siblings`, `test_whole_field_env_still_replaces_the_yaml_value`, `test_nested_env_for_currency_code_keeps_yaml_symbol`, `test_nested_env_for_a_currency_keeps_the_yaml_key_spelling`
 - **Risk**: Precedence gets one more case, after "a set variable always wins" was just simplified. A user who relied on a nested variable to blank the YAML siblings now keeps them. No existing test pins the old replace behaviour for nested variables. `tests/tools/fctracker/conftest.py` sets `BUVIS_FCTRACKER_LOCAL_CURRENCY__*` and `BUVIS_FCTRACKER_FOREIGN_CURRENCIES` for every fctracker test; the new fctracker tests must delete every `BUVIS_FCTRACKER_*` variable first. The key-lowercasing case rests on pydantic-settings lowercasing nested keys; the fail-first run of `test_nested_env_for_a_currency_keeps_the_yaml_key_spelling` confirms it.
 
 ### Dependencies

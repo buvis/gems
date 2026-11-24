@@ -8,7 +8,7 @@ Source: agoge run 2026-11-23, finding 16 of 21 (LOW, confirmed, lane wendy), `do
 
 ## Problem
 
-Two `MYAPP` examples in `docs/source/configuration.rst` keep the old nested env form `BUVIS_MYAPP__DB__HOST`. The same form was already fixed for the `PHOTO` examples. The variable has no effect: `db.host` stays `localhost`. One of the two examples is a documented test, and that test would fail as written.
+Two MYAPP examples in `docs/source/configuration.rst` keep the old nested env form `BUVIS_MYAPP__DB__HOST`. The same form was already fixed for the PHOTO examples. The variable has no effect: `db.host` stays `localhost`. One of the two examples is a documented test, and that test would fail as written.
 
 If unchanged, a reader copies a variable that does nothing. The problem is stable. It does not get worse.
 
@@ -39,7 +39,8 @@ Change nothing else in the file.
 - **Location**: `docs/source/configuration.rst`
 - **Responsibility**: show the nested env variable form that the resolver reads.
 - **Exports**: none
-- **Risk**: low. The text `(double underscore!)` in the comment still fits, because `DB__HOST` keeps its double underscore. A docs test that runs the examples was offered and not chosen, so the same drift can return.
+- New symbols: `BUVIS_MYAPP_DB__HOST`
+- **Risk**: low. The text `(double underscore!)` in the comment still fits, because the DB and HOST parts keep their double underscore. A docs test that runs the examples was offered and not chosen, so the same drift can return.
 
 ### Dependencies
 - config docs: No dependencies (foundation)

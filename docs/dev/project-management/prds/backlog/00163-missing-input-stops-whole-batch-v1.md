@@ -32,9 +32,9 @@ Resulting behaviour:
 |---|---|---|
 | `fren slug "sl/Hello World.txt" sl/nosuch.txt` | ` ⚠ Path not found: sl/nosuch.txt`, then ` ✔ Renamed 1 file(s)`; the file is renamed to `hello-world.txt` | 0 |
 | `fren slug sl/nosuch.txt` | ` ⚠ Path not found: sl/nosuch.txt`, then ` ✘ No file could be renamed`; no Click `Usage:` text | 1 |
-| `puc strip pic3.jpg nosuch.jpg` | ` ⚠ Skipping nosuch.jpg: not a file`, then ` ✔ Processed 1 file(s)`; `pic3.jpg` is stripped | 0 |
+| `puc strip pic3.jpg nosuch.jpg` | ` ⚠ Skipping nosuch.jpg: not a file`, then ` ✔ Processed 1 file(s)`; the good file is stripped | 0 |
 | `puc strip nosuch.jpg` | ` ⚠ Skipping nosuch.jpg: not a file`, then ` ✘ No file could be processed` | 1 |
-| `morph pdf2png fourth.pdf nosuch.pdf` | ` ⚠ File not found: nosuch.pdf`, then ` ✔ Processed 1 file(s)`; `fourth.png` is made | 0 |
+| `morph pdf2png fourth.pdf nosuch.pdf` | ` ⚠ File not found: nosuch.pdf`, then ` ✔ Processed 1 file(s)`; the PNG of the good file is made | 0 |
 | `morph pdf2png nosuch.pdf` | ` ⚠ File not found: nosuch.pdf`, then ` ✘ No file could be converted` | 1 |
 
 A missing external tool (`pdftoppm`, `exiftool`) still stops the command as today.
@@ -77,7 +77,7 @@ CLI tests use the shared `runner` fixture or `CliRunner`, as their neighbours do
 - `tests/tools/morph/test_cli_exit_code.py`, class `TestPdf2PngExitCode`: `test_pdf2png_missing_file_reaches_the_command` does the same for `CommandPdf2Png`.
 - `tests/tools/morph/test_pdf2png.py`, class `TestPdf2PngExecute`, with the patches `test_process_pdf` uses:
   - `test_missing_input_is_a_warning_and_the_rest_is_converted`: one good PDF and one missing path; `success`, `output == "Processed 1 file(s)"`, `warnings == [f"File not found: {missing}"]`, and the render subprocess ran once.
-  - `test_missing_input_fails_even_when_its_png_exists`: only a missing `nosuch.pdf`, with `nosuch.png` present; the result fails with `No file could be converted` and the warning is `File not found: <path>`, not the "output already exists" one.
+  - `test_missing_input_fails_even_when_its_png_exists`: only a missing PDF path, with a PNG of the same stem present; the result fails with `No file could be converted` and the warning is `File not found: <path>`, not the "output already exists" one.
 
 Evidence from the report, verbatim:
 
