@@ -352,6 +352,7 @@ def test_undo_restores_bytes(tmp_path: Path) -> None:
     with pytest.raises(fresh.MigrationError):
         fresh.undo_migration(copy, result.map_file)
     assert _snapshot(tmp_path) == around
+    _bad_paths_refused(fresh, vault, result.map_file, tmp_path)
     report = fresh.undo_migration(vault, result.map_file)
 
     assert _snapshot(vault) == original
@@ -368,6 +369,23 @@ def test_undo_restores_bytes(tmp_path: Path) -> None:
     assert (report.unchanged, report.skipped) == ((), ())
 
     _undo_after_edit(tmp_path / "edited")
+
+
+def _bad_paths_refused(fresh: object, vault: Path, map_file: Path, root: Path) -> None:
+    """A record whose old or new path escapes notes/ is refused, whichever key holds it."""
+    good = json.loads(map_file.read_text("utf-8"))
+    renamed = next(e for e in good["files"] if e["temp_path"])
+    for key in ("old_path", "new_path"):
+        for bad in ("notes/../../outside.md", str(root / "outside.md")):
+            doc = json.loads(map_file.read_text("utf-8"))
+            next(e for e in doc["files"] if e["old_path"] == renamed["old_path"])[key] = bad
+            forged = root / "forged" / f"{RUN}.json"
+            forged.parent.mkdir(exist_ok=True)
+            forged.write_text(json.dumps(doc, indent=2, sort_keys=True))
+            before = _snapshot(root)
+            with pytest.raises(fresh.MigrationError, match="bad record"):
+                fresh.undo_migration(vault, forged)
+            assert {p for p in _snapshot(root) if p.parent != forged.parent} == {p for p in before if p != forged}
 
 
 def _who(vault: Path, paths: tuple[Path, ...], notes: dict[str, tuple[Path, Path]]) -> list[str]:
