@@ -996,3 +996,41 @@
 {"id":"af8a9278","ended_at":1795473140,"elapsed_s":17,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1795473895,"phase":"done","prd":"00161-bim-utc-ids-v1.md"}
 {"kind":"handoff","site":"done","edge":"resume","at":1795555214,"phase":"done","prd":"00161-bim-utc-ids-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1795555822,"phase":"build","prd":"00162-bim-migrate-ids-to-utc-v1.md"}
+{"id":"63d8c87b","kind":"tess","task":"1","queued_at":1795557857,"prompt_bytes":31367}
+{"id":"63d8c87b","ended_at":1795558122,"elapsed_s":265,"outcome":"ok","detail":null}
+{"id":"5add86d5","kind":"devon","task":"1","queued_at":1795558156,"prompt_bytes":4221}
+{"id":"5add86d5","ended_at":1795558335,"elapsed_s":179,"outcome":"ok","detail":"8 weak points"}
+{"id":"9e87cde9","kind":"tess","task":"1","queued_at":1795558354,"prompt_bytes":26000}
+{"id":"9e87cde9","ended_at":1795558516,"elapsed_s":162,"outcome":"ok","detail":null}
+{"id":"d3ea9483","kind":"ivan","task":"1","queued_at":1795558535,"prompt_bytes":37701}
+{"id":"d3ea9483","ended_at":1795558860,"elapsed_s":325,"outcome":"ok","detail":null}
+{"id":"fe1597a2","kind":"pat","task":"1","queued_at":1795558886,"prompt_bytes":67732}
+{"id":"0ac14edd","kind":"pat","task":"1","queued_at":1795558898,"prompt_bytes":55246}
+{"id":"fe1597a2","ended_at":1795558903,"elapsed_s":17,"outcome":"killed","detail":"not dispatched: over 50K budget, re-rendered"}
+{"id":"0ac14edd","ended_at":1795558904,"elapsed_s":6,"outcome":"killed","detail":"not dispatched: over 50K budget, re-rendered with implementation-only diff"}
+{"id":"ada41189","kind":"pat","task":"1","queued_at":1795558908,"prompt_bytes":22502}
+{"id":"ada41189","ended_at":1795558948,"elapsed_s":40,"outcome":"ok","detail":"native autopilot:pat fallback: sonnet-run.sh OAuth expired"}
+{"id":"ba97a46f","kind":"tess","task":"2","queued_at":1795558990,"prompt_bytes":43335}
+{"id":"ba97a46f","ended_at":1795559475,"elapsed_s":485,"outcome":"ok","detail":null}
+{"id":"d8d068e5","kind":"devon","task":"2","queued_at":1795559499,"prompt_bytes":4225}
+{"id":"d8d068e5","ended_at":1795559791,"elapsed_s":292,"outcome":"ok","detail":"8 weak points"}
+{"id":"1caca981","kind":"tess","task":"2","queued_at":1795559819,"prompt_bytes":26730}
+{"id":"1caca981","ended_at":1795560046,"elapsed_s":227,"outcome":"ok","detail":null}
+{"id":"9e5cdba2","kind":"ivan","task":"2","queued_at":1795560067,"prompt_bytes":42811}
+{"id":"9e5cdba2","ended_at":1795560647,"elapsed_s":580,"outcome":"ok","detail":null}
+{"id":"1bf7860b","kind":"deslop","task":"2","queued_at":1795560712,"prompt_bytes":22218}
+{"id":"1bf7860b","ended_at":1795560746,"elapsed_s":34,"outcome":"ok","detail":"no slop found"}
+{"id":"2ef88e6b","kind":"pat","task":"2","queued_at":1795560761,"prompt_bytes":25758}
+{"id":"2ef88e6b","ended_at":1795560796,"elapsed_s":35,"outcome":"ok","detail":null}
+{"id":"6e0b1db8","kind":"tess","task":"3","queued_at":1795560872,"prompt_bytes":33116}
+{"id":"6e0b1db8","ended_at":1795560989,"elapsed_s":117,"outcome":"ok","detail":null}
+{"id":"08781116","kind":"devon","task":"3","queued_at":1795561008,"prompt_bytes":3896}
+{"id":"08781116","ended_at":1795561076,"elapsed_s":68,"outcome":"ok","detail":"6 weak points"}
+{"id":"da2d1cdb","kind":"tess","task":"3","queued_at":1795561090,"prompt_bytes":14361}
+{"id":"da2d1cdb","ended_at":1795561275,"elapsed_s":185,"outcome":"ok","detail":null}
+{"id":"28ede9d8","kind":"ivan","task":"3","queued_at":1795561290,"prompt_bytes":35908}
+{"id":"28ede9d8","ended_at":1795561565,"elapsed_s":275,"outcome":"ok","detail":null}
+{"id":"b937e2de","kind":"pat","task":"3","queued_at":1795561583,"prompt_bytes":18184}
+{"id":"b937e2de","ended_at":1795561607,"elapsed_s":24,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1795561961,"phase":"review","prd":"00162-bim-migrate-ids-to-utc-v1.md"}
