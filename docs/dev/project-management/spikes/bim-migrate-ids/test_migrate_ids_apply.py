@@ -467,6 +467,14 @@ def test_stopped_apply_then_undo_restores_bytes(tmp_path: Path, monkeypatch: pyt
     _put(chain, "notes/r.md", "".join(f"[[{s}]]\n" for s in CHAIN[:3]).encode())
     _stop_apply(chain, monkeypatch, _mod.os, "rename", 2)
 
+    # phase A stops after two renames: an unchanged referrer still links the old stems,
+    # one of which is also a new stem, and must not strand a note in its temp file
+    chain_two = _vault(tmp_path / "chain-two")
+    for stem in CHAIN[:3]:
+        _note(chain_two, stem)
+    _put(chain_two, "notes/r.md", "".join(f"[[{s}]]\n" for s in CHAIN[:3]).encode())
+    _stop_apply(chain_two, monkeypatch, _mod.os, "rename", 3)
+
     # an undo that stops after its first write is rerun
     undo_root = tmp_path / "undo"
     vault = _two_notes_and_referrer(undo_root)
