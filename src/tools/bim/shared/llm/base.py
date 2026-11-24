@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Protocol, TypeVar, cast, runtime_checkable
+from typing import Any, Protocol, TypeVar, runtime_checkable
 
 from pydantic import BaseModel, RootModel, ValidationError
 
@@ -146,11 +146,14 @@ def require_strict_schema(schema: type[BaseModel]) -> None:
 def parse_json_text(text: object, *, backend: str) -> Any:
     """Parse reply text as one JSON document, or raise a ``parse`` ``BackendError``.
 
-    A non-string ``text`` (e.g. a null ``content``) makes ``json.loads`` raise ``TypeError``.
+    A non-string ``text`` (a null ``content``, or bytes, which ``json.loads`` would accept) is a parse error.
     """
+    if not isinstance(text, str):
+        detail = f"reply is not valid JSON: expected text, got {type(text).__name__}"
+        raise BackendError(BackendReason.PARSE, detail, backend=backend)
     try:
-        return json.loads(cast(str, text))
-    except (json.JSONDecodeError, TypeError) as exc:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
         raise BackendError(BackendReason.PARSE, f"reply is not valid JSON: {exc}", backend=backend) from exc
 
 

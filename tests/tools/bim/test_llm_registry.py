@@ -497,7 +497,7 @@ class TestParseJsonText:
         assert parse_json_text("[1, 2]", backend="x") == [1, 2]
         assert parse_json_text("[]", backend="x") == []
 
-    @pytest.mark.parametrize("text", [None, 42, ["{}"], {"a": 1}])
+    @pytest.mark.parametrize("text", [None, 42, ["{}"], {"a": 1}, b'{"a": 1}', bytearray(b"[]")])
     def test_non_string_reply_is_a_parse_error(self, text: object) -> None:
         with pytest.raises(BackendError) as exc:
             parse_json_text(text, backend="remote")
