@@ -116,6 +116,14 @@ def _system_messages(call_kwargs: dict[str, object]) -> list[str]:
     return [m["content"] for m in messages if m.get("role") == "system"]
 
 
+def _user_messages(call_kwargs: dict[str, object]) -> list[str]:
+    body = call_kwargs["json"]
+    assert isinstance(body, dict)
+    messages = body["messages"]
+    assert isinstance(messages, list)
+    return [m["content"] for m in messages if m.get("role") == "user"]
+
+
 def _all_message_contents(call_kwargs: dict[str, object]) -> list[str]:
     body = call_kwargs["json"]
     assert isinstance(body, dict)
@@ -199,6 +207,8 @@ class TestClassifier:
             mocker,
             _content_response(
                 {
+                    # A known alias in the reply must still be ignored in doc-type-only mode.
+                    "issuer_slug": "cez",
                     "doc_type": "statement",
                     "language": "cs",
                     "confidence": 0.88,
@@ -220,6 +230,7 @@ class TestClassifier:
         assert result.doc_type == "statement"
         assert result.issuer_slug is None
         assert result.issuer_display is None
+        assert result.issuer_guess is None
         assert result.language == "cs"
 
     def test_two_shot_examples_present_in_system_prompt_for_full_classify(
@@ -435,6 +446,56 @@ class TestClassifier:
         system_joined = "\n".join(_system_messages(kwargs))
         assert "cez-as" in system_joined
         assert "o2-czech" in system_joined
+        for display_or_alias in ("ČEZ a.s.", "O2 Czech Republic a.s.", "ČEZ Prodej", "cez.cz", "o2.cz"):
+            assert display_or_alias in system_joined
+
+    def test_user_prompt_carries_source_metadata_except_in_doc_type_only_mode(
+        self,
+        settings: ClassifierSettings,
+        registry: IssuerRegistry,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import Classifier
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response({"issuer_slug": "cez", "doc_type": "invoice", "language": "cs", "confidence": 0.9}),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+        metadata = SourceMetadata(source_kind="email", original_filename="x.pdf", email_subject="Invoice April")
+
+        Classifier(settings).classify("text", metadata, registry)
+        Classifier(settings).classify("text", metadata, registry, doc_type_only=True)
+
+        full_call, doc_type_only_call = fake_requests.post.call_args_list
+        full_user = "\n".join(_user_messages(full_call.kwargs))
+        assert "x.pdf" in full_user
+        assert "Invoice April" in full_user
+        doc_type_only_user = "\n".join(_user_messages(doc_type_only_call.kwargs))
+        assert "x.pdf" not in doc_type_only_user
+        assert "Invoice April" not in doc_type_only_user
+
+    def test_classify_with_model_posts_the_supplied_fallback_model(
+        self,
+        settings: ClassifierSettings,
+        registry: IssuerRegistry,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import Classifier
+
+        fake_requests = _build_fake_requests(
+            mocker,
+            _content_response({"issuer_slug": "o2", "doc_type": "statement", "language": "cs", "confidence": 0.8}),
+        )
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        result = Classifier(settings).classify_with_model("text", _metadata(), registry, model=settings.fallback_model)
+
+        assert fake_requests.post.call_count == 1
+        body = fake_requests.post.call_args.kwargs["json"]
+        assert body["model"] == settings.fallback_model
+        assert body["model"] != settings.primary_model
+        assert result.issuer_slug == "o2-czech"
 
 
 class TestLazyImport:

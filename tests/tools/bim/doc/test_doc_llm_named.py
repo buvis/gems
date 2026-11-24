@@ -281,9 +281,43 @@ class TestNamedExtractorErrors:
         assert exc_info.value.transient is transient
 
     def test_timeout_is_reraised_unwrapped(self) -> None:
-        backends = _failing(BackendReason.TIMEOUT, "no reply within 60 seconds")
+        raised = BackendError(BackendReason.TIMEOUT, "no reply within 60 seconds", backend="slow")
+        backends = {"fast": _FakeBackend("fast", _invoice_reply("FAST-1")), "slow": _FakeBackend("slow", error=raised)}
 
         with pytest.raises(BackendError) as exc_info:
             _extractor(backends).extract_with_model(_OCR, "invoice", model="slow")
+        assert exc_info.value is raised
         assert exc_info.value.reason == BackendReason.TIMEOUT
         assert exc_info.value.backend == "slow"
+
+
+class TestNamedPinnedRouting:
+    def test_classify_with_pinned_calls_only_the_named_entry(self, issuers: IssuerRegistry) -> None:
+        fast = _FakeBackend("fast", _classify_reply("cez", "invoice"))
+        slow = _FakeBackend("slow", {"doc_type": "statement", "language": "cs", "confidence": 0.7})
+        spare = _FakeBackend("spare", _classify_reply("cez", "contract"))
+
+        result = _classifier({"fast": fast, "slow": slow, "spare": spare}).classify_with_pinned(
+            _OCR, _metadata(), issuers, {"issuer_slug": "o2-czech"}, model="slow"
+        )
+
+        _assert_one_doc_call(slow)
+        assert fast.calls == []
+        assert spare.calls == []
+        assert result.issuer_slug == "o2-czech"
+        assert result.doc_type == "statement"
+
+    def test_extract_with_pinned_calls_only_the_named_entry(self) -> None:
+        fast = _FakeBackend("fast", _invoice_reply("FAST-1"))
+        slow = _FakeBackend("slow", {"date": "2024-04-15", "amount": 100.0, "currency": "CZK"})
+        spare = _FakeBackend("spare", _invoice_reply("SPARE-3"))
+
+        result = _extractor({"fast": fast, "slow": slow, "spare": spare}).extract_with_pinned(
+            _OCR, "invoice", {"number": "PINNED-9"}, model="slow"
+        )
+
+        _assert_one_doc_call(slow)
+        assert fast.calls == []
+        assert spare.calls == []
+        assert result.number == "PINNED-9"
+        assert result.currency == "CZK"

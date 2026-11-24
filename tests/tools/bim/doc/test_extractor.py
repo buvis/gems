@@ -472,10 +472,10 @@ class TestExtractorErrors:
         fake_requests = _build_fake_requests(mocker)
         fake_requests.post.side_effect = fake_requests.exceptions.Timeout("read timeout")
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
-
         with pytest.raises(BackendError) as exc_info:
             Extractor(settings).extract("text", "invoice")
         assert exc_info.value.reason == BackendReason.TIMEOUT
+        assert exc_info.value.detail.startswith(("no reply from", "no complete reply from"))
 
 
 class TestExtractorPromptShape:
