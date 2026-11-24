@@ -50,7 +50,7 @@ class TestSharedFilesTolerateForeignKeys:
         _write(tmp_path / "config.yaml", "debug: true\nbim:\n  path_zettelkasten: /tmp/x\n")
         result = _run_list(tmp_path)
         assert result.exit_code == 0, result.output
-        assert "brew" in result.output
+        assert "[run]" in result.output  # a plan step listed; which ones depends on the OS
         assert "Extra inputs" not in result.output
 
     def test_list_exits_zero_with_global_keys_in_buvis_yaml(self, tmp_path: Path) -> None:

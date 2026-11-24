@@ -112,7 +112,8 @@ class TestShowExitCode:
         result = runner.invoke(cli, ["show", str(missing)])
 
         assert result.exit_code == 1
-        assert result.output.count("missing.md doesn't exist") == 1
+        # Rich wraps long tmp paths at 80 columns (PRD 00168); compare unwrapped text.
+        assert " ".join(result.output.split()).count("missing.md doesn't exist") == 1
         assert "✘" in result.output
         assert "⚠" not in result.output
 
