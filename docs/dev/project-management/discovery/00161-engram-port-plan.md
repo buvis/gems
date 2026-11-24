@@ -12,12 +12,12 @@ Standalone PRDs 00014-00016 are now in their source repository's
 `docs/dev/project-management/prds/done/`. The source prerequisite is met;
 the inventory still needs its required refresh against the selected port commit.
 The subsequent Agoge findings belong to this Gems port, not another standalone
-Engram batch. See [the QA handoff](00161-engram-qa-handoff.md) for all 11 held
-source specifications, phase ownership, and compatibility conflicts.
+Engram batch. See [the QA handoff](00161-engram-qa-handoff.md) for Gems PRDs 00163-00173, their phase ownership, and compatibility conflicts.
 
-Do not add standalone PRDs 00017-00027 as port prerequisites or copy them
-unchanged into the Gems backlog. Their paths, configuration, CLI and test gates
-describe the source. Adapt the accepted findings when creating target PRDs.
+The former standalone PRDs 00017-00027 now live in Gems as held PRDs
+00163-00173. Do not add a standalone build as a prerequisite. Their target
+paths, settings and test gates are adapted; verify the landed module map before
+releasing them from hold. PRD 00164 waits for the initial cutover DB checks.
 The parity contract below remains the baseline; record each deliberate bug-fix
 exception and its consumer regression test before changing that contract.
 
