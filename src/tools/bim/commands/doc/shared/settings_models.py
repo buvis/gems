@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -130,7 +129,8 @@ class OCRSettings(BaseModel):
 class ClassifierSettings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    backend: Literal["ollama", "llamacpp"] = "ollama"
+    backend: str = "ollama"
+    fallback: str | None = None
     endpoint: str = "http://localhost:11434"
     primary_model: str = "qwen3:30b-a3b"
     fallback_model: str = "qwen3:14b"
