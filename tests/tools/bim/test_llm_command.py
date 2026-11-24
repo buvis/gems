@@ -255,6 +255,19 @@ class TestCommandRunCli:
         assert exc.value.reason is BackendReason.EXIT
         assert exc.value.backend == "flaky-cli"
         assert "boom: unknown flag --x" in exc.value.detail
+        assert "{}" not in exc.value.detail
+
+    def test_command_run_cli_non_zero_exit_with_silent_stderr_reports_the_stdout_excerpt(self) -> None:
+        # The claude CLI exits 1 with an empty stderr and its error only in the stdout envelope.
+        envelope = '{"is_error": true, "result": "Failed to authenticate: OAuth session expired"}'
+        script = f"import sys; sys.stdout.write({envelope!r}); sys.exit(1)"
+
+        with pytest.raises(BackendError) as exc:
+            run_cli(_py(script), "", timeout=2.0, backend="claude")
+
+        assert exc.value.reason is BackendReason.EXIT
+        assert exc.value.detail.startswith("exited with code 1: ")
+        assert "Failed to authenticate: OAuth session expired" in exc.value.detail
 
     def test_command_run_cli_zero_exit_with_stderr_returns_stdout(self) -> None:
         script = "import sys; sys.stderr.write('warning: slow model'); sys.stdout.write('{\"ok\": true}')"

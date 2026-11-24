@@ -243,7 +243,8 @@ def _wait(proc: subprocess.Popen[bytes], timeout: float) -> bool:
 
 def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str) -> str:
     proc = _spawn(argv, cwd, backend)
-    out, err, errors, overflow = bytearray(), bytearray(), list[OSError](), threading.Event()
+    out, err, overflow = bytearray(), bytearray(), threading.Event()
+    errors: list[OSError] = []
 
     def stop_on_overflow() -> None:
         overflow.set()
@@ -265,7 +266,11 @@ def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str
     deadline = time.monotonic() + 5.0
     for reader in readers:
         reader.join(timeout=max(0.0, deadline - time.monotonic()))
-    excerpt = bytes(err).decode("utf-8", errors="replace").strip()[:300]
+    # Some CLIs (claude) exit non-zero with an empty stderr and their error only on stdout.
+    diagnostics = bytes(err).decode("utf-8", errors="replace").strip()
+    if not diagnostics:
+        diagnostics = bytes(out).decode("utf-8", errors="replace").strip()
+    excerpt = diagnostics[:300]
     if timed_out:
         raise BackendError(BackendReason.TIMEOUT, f"no reply within {timeout} seconds", backend=backend)
     if any(reader.is_alive() for reader in readers):
