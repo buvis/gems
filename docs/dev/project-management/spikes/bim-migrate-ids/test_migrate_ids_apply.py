@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import itertools
 import json
 import re
+import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -31,8 +33,20 @@ RUN2 = "20261125T060509Z"
 A, A2 = "20240715100000", "20240715080000"
 B, B2 = "20240716100000", "20240716080000"
 C, C2 = "20240717100000", "20240717080000"
+D, D2 = "20240718100000", "20240718080000"
 # July naive notes: each new id is the old id of the next note
 CHAIN = ("20240715120000", "20240715100000", "20240715080000", "20240715060000")
+_FRESH = itertools.count()
+
+
+def _fresh() -> object:
+    """A new copy of the script, as a new process loads it: no state left by apply."""
+    name = f"migrate_ids_fresh_{next(_FRESH)}"
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name("migrate_ids.py"))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def _vault(root: Path) -> Path:
@@ -113,10 +127,7 @@ def test_apply_rewrites_all_reference_forms(tmp_path: Path) -> None:
     forms = "[[{a}]] ![[{a}]] [[notes/{a}|a]] [[notes/f/{b}#h]] [[{b}.md]] [[{a}\\|t]]\nkey:: [[{b}]]\n"
     ref_before = _fm(f'up: "[[{A}]]"', body=forms.format(a=A, b="202401151000"))
     ref = _put(vault, "notes/daily/2024-07-15.md", ref_before)
-    tpl = _put(vault, "templates/t.md", f"[[{A}]]\n".encode())
-    near = _put(vault, "templates/near.md", f"[[{A[:-1]}1]] {A}\n".encode())
-    hidden = [_put(vault, ".obsidian/x.md", f"[[{A}]]\n".encode()), _put(vault, ".trash/y.md", b"[[202401151000]]\n")]
-    outside = {p: p.read_bytes() for p in (tpl, near, *hidden)}
+    linking, outside = _outside(vault)
     a_before, b_before = a.read_bytes(), b.read_bytes()
 
     result = _mod.apply_migration(plan_migration(vault), tmp_path / "state" / "maps", now=NOW)
@@ -126,9 +137,9 @@ def test_apply_rewrites_all_reference_forms(tmp_path: Path) -> None:
     assert new_a.read_bytes() == _migrated(A, A2)
     assert new_b.read_bytes() == _fm("id: 20240115090000", "date: 2024-01-15 10:00:00+01:00")
     assert not a.exists() and not b.exists() and _temps(vault) == []
-    # outside notes/ is scanned read-only; .obsidian and .trash are not scanned
+    # outside notes/ is scanned read-only, every link form, not code; .obsidian and .trash are not scanned
     assert {p: p.read_bytes() for p in outside} == outside
-    assert [_abs(vault, p) for p in result.outside_references] == [tpl]
+    assert sorted(_abs(vault, p) for p in result.outside_references) == sorted(linking)
     assert result.map_file.resolve() == (tmp_path / "state" / "maps" / f"{RUN}.json").resolve()
     data = _read_map(result.map_file)
     assert {k: v for k, v in data.items() if k != "files"} == {
@@ -144,14 +155,54 @@ def test_apply_rewrites_all_reference_forms(tmp_path: Path) -> None:
         _entry(vault, b, new_b, b_before, b_note),
     ]
 
+    _new_york(tmp_path / "ny")
+
+
+def _outside(vault: Path) -> tuple[list[Path], dict[Path, bytes]]:
+    """Files outside notes/: the ones that link an old stem, and the bytes of all of them."""
+    forms = {
+        "t": f"[[{A}]]\n",
+        "folder": f"[[folder/{A}|x]]\n",
+        "heading": f"[[{A}#h]]\n",
+        "embed": f"![[{A}.md]]\n",
+        "short": "see [[202401151000\\|s]]\n",
+    }
+    linking = [_put(vault, f"templates/{name}.md", text.encode()) for name, text in forms.items()]
+    misses = [
+        _put(vault, "templates/near.md", f"[[{A[:-1]}1]] {A}\n".encode()),
+        _put(vault, "templates/fenced.md", f"```\n[[{A}]]\n```\n`[[{A}]]`\n".encode()),
+        _put(vault, ".obsidian/x.md", f"[[{A}]]\n".encode()),
+        _put(vault, ".trash/y.md", b"[[202401151000]]\n"),
+    ]
+    return linking, {p: p.read_bytes() for p in (*linking, *misses)}
+
+
+def _new_york(root: Path) -> None:
+    """The plan's naive zone, not the default, sets the offsets and the map field."""
+    vault = _vault(root)
+    _note(vault, A)
+    _put(vault, "notes/20240115100000.md", _fm("id: 20240115100000", "date: 2024-01-15 10:00:00"))
+    _put(vault, "notes/r.md", f"[[{A}]] [[20240115100000]]\n".encode())
+
+    result = _mod.apply_migration(plan_migration(vault, "America/New_York"), root / "state", now=NOW)
+
+    summer, winter = f"date: {_date(A)}-04:00", "date: 2024-01-15 10:00:00-05:00"
+    assert {p.name: p.read_bytes() for p in (vault / "notes").iterdir()} == {
+        "20240715140000.md": _fm("id: 20240715140000", summer),
+        "20240115150000.md": _fm("id: 20240115150000", winter),
+        "r.md": b"[[20240715140000]] [[20240115150000]]\n",
+    }
+    data = _read_map(result.map_file)
+    assert data["naive_timezone"] == "America/New_York"
+    assert [e["new_date_line"] for e in data["files"]] == [winter, summer, None]
+
 
 def test_longer_digit_string_is_not_a_reference(tmp_path: Path) -> None:
     vault = _vault(tmp_path / "one")
     _note(vault, A)
     _put(vault, "notes/202401151000.md", _fm("id: 202401151000", "date: 2024-01-15 10:00:00"))
     misses = (
-        f"[[1{A}]] [[{A}1]] [[{A}_a]] [[{A}-other]] [[x{A}]] {A}\n"
-        "[[20240115100000]] [[2024011510000]] 202401151000\n"
+        f"[[1{A}]] [[{A}1]] [[{A}_a]] [[{A}-other]] [[x{A}]] {A}\n[[20240115100000]] [[2024011510000]] 202401151000\n"
     )
     ref = _put(vault, "notes/r.md", (f"[[{A}]] [[202401151000]]\n" + misses).encode())
 
@@ -183,13 +234,20 @@ def test_attachment_links_untouched(tmp_path: Path) -> None:
     ref = _put(vault, "notes/r.md", (keep + f"[[{j}]]\n").encode())
     plan = plan_migration(vault)
     assert plan.kept_attachments == (svg,)
+    start = datetime.now(UTC).replace(microsecond=0)
 
-    result = _mod.apply_migration(plan, tmp_path / "state", now=NOW)
+    result = _mod.apply_migration(plan, tmp_path / "state")
 
+    end = datetime.now(UTC)
     assert ref.read_bytes() == (keep + f"[[{j2}]]\n").encode()
     assert svg.read_bytes() == b"<svg/>"
     assert _files(vault) == {f"notes/{j}.svg", f"notes/{j2}.md", "notes/r.md"}
     assert result.map_file.is_file()
+    # without now the run id is the current UTC time
+    assert result.map_file.parent.resolve() == (tmp_path / "state").resolve()
+    run = datetime.strptime(result.map_file.stem, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+    assert start <= run <= end
+    assert _read_map(result.map_file)["run_id"] == result.map_file.stem
 
 
 def test_code_fences_untouched(tmp_path: Path) -> None:
@@ -233,8 +291,11 @@ def test_leftover_reference_fails_apply(tmp_path: Path) -> None:
     state = tmp_path / "state"
 
     _refuse(tmp_path, plan_migration(vault), state, match="bad.md")
+    for link in (f"[[ {A}]]", f"[[{A}.md ]]"):
+        bad.write_bytes(f"[[{A}]]\n{link}\n".encode())
+        _refuse(tmp_path, plan_migration(vault), state, match="bad.md")
 
-    # the same vault without the trailing-space link applies
+    # the same vault without the leftover link applies
     bad.write_bytes(f"[[{A}]]\n".encode())
     plan = plan_migration(vault)
     _refuse(tmp_path, plan, vault, match=None)
@@ -242,11 +303,6 @@ def test_leftover_reference_fails_apply(tmp_path: Path) -> None:
     _put(tmp_path, f"state/{RUN}.json", b"{}")
     _refuse(tmp_path, plan, state, match=RUN)
     (state / f"{RUN}.json").unlink()
-
-    # a link that already uses a new stem cannot be reversed
-    linked = _put(vault, "notes/new.md", f"[[{A}]] [[{A2}]]\n".encode())
-    _refuse(tmp_path, plan_migration(vault), state, match="new.md")
-    linked.unlink()
 
     # drift since the plan: an edit, an added file, a removed file
     plan = plan_migration(vault)
@@ -259,10 +315,18 @@ def test_leftover_reference_fails_apply(tmp_path: Path) -> None:
     added.unlink()
     _refuse(tmp_path, plan, state, match="added.md")
 
-    result = _mod.apply_migration(plan_migration(vault), state, now=NOW)
+    # a link that already uses A's UTC stem: A takes suffix 60 and that link stays
+    linked = _put(vault, "notes/new.md", f"[[{A}]] [[{A2}]]\n".encode())
+    plan = plan_migration(vault)
+    a60 = A2[:-2] + "60"
+    assert {c.old_id: c.new_id for c in plan.changes}[A] == a60
+
+    result = _mod.apply_migration(plan, state, now=NOW)
 
     assert result.map_file.is_file()
-    assert bad.read_bytes() == f"[[{A2}]] edited\n".encode()
+    assert linked.read_bytes() == f"[[{a60}]] [[{A2}]]\n".encode()
+    assert (vault / "notes" / f"{a60}.md").is_file() and not (vault / "notes" / f"{A2}.md").exists()
+    assert bad.read_bytes() == f"[[{a60}]] edited\n".encode()
     assert (vault / "notes" / "ok.md").read_bytes() == (
         f"[[x|{A}]] [[{A}-meeting]] [[{A}_a]] ![[{A}.svg]] [[{B2}]]\n".encode()
     )
@@ -281,7 +345,14 @@ def test_undo_restores_bytes(tmp_path: Path) -> None:
     result = _mod.apply_migration(plan_migration(vault), tmp_path / "state", now=NOW)
 
     assert _snapshot(vault) != original
-    report = _mod.undo_migration(vault, result.map_file)
+    # undo runs as a new process would: it rebuilds the old bytes from the map alone
+    fresh = _fresh()
+    copy = shutil.copytree(vault, tmp_path / "copy" / "vault")
+    around = _snapshot(tmp_path)
+    with pytest.raises(fresh.MigrationError):
+        fresh.undo_migration(copy, result.map_file)
+    assert _snapshot(tmp_path) == around
+    report = fresh.undo_migration(vault, result.map_file)
 
     assert _snapshot(vault) == original
     assert _temps(vault) == []
@@ -296,7 +367,6 @@ def test_undo_restores_bytes(tmp_path: Path) -> None:
     assert _who(vault, report.restored, pairs) == ["a", "crlf", "doc", "ref", "short"]
     assert (report.unchanged, report.skipped) == ((), ())
 
-
     _undo_after_edit(tmp_path / "edited")
 
 
@@ -309,35 +379,40 @@ def _who(vault: Path, paths: tuple[Path, ...], notes: dict[str, tuple[Path, Path
 def _undo_after_edit(root: Path) -> None:
     vault = _vault(root)
     notes = vault / "notes"
-    e, o, p = _note(vault, A), _note(vault, B), _note(vault, C)
+    e, o, p, d = (_note(vault, stem) for stem in (A, B, C, D))
     both = _put(vault, "notes/both.md", f"[[{A}]] [[{B}]]\n".encode())
-    only = _put(vault, "notes/only.md", f"[[{C}]]\n".encode())
+    third = _put(vault, "notes/third.md", f"[[{B}]] [[{C}]]\n".encode())
+    only = _put(vault, "notes/only.md", f"[[{D}]]\n".encode())
     original = _snapshot(vault)
     result = _mod.apply_migration(plan_migration(vault), root / "state", now=NOW)
     edited = _migrated(A, A2) + b"edited\n"
     (notes / f"{A2}.md").write_bytes(edited)
 
-    report = _mod.undo_migration(vault, result.map_file)
+    report = _fresh().undo_migration(vault, result.map_file)
 
     pairs = {
         "e": (e, notes / f"{A2}.md"),
         "o": (o, notes / f"{B2}.md"),
         "p": (p, notes / f"{C2}.md"),
+        "d": (d, notes / f"{D2}.md"),
         "both": (both, both),
+        "third": (third, third),
         "only": (only, only),
     }
-    # the referrer of the edited note cannot be reversed, so the other note it links stays too
-    assert _who(vault, report.skipped, pairs) == ["both", "e", "o"]
-    assert _who(vault, report.restored, pairs) == ["only", "p"]
+    # skips spread to a fixpoint: edited note -> its referrer -> the other note that referrer
+    # links -> the next referrer of that note -> the note it links in turn
+    assert _who(vault, report.skipped, pairs) == ["both", "e", "o", "p", "third"]
+    assert _who(vault, report.restored, pairs) == ["d", "only"]
     assert report.unchanged == ()
     assert (notes / f"{A2}.md").read_bytes() == edited
-    assert (notes / f"{B2}.md").read_bytes() == _migrated(B, B2)
-    assert both.read_bytes() == f"[[{A2}]] [[{B2}]]\n".encode()
-    for stem in re.findall(rb"\[\[(\d+)\]\]", both.read_bytes()):
-        assert (notes / f"{stem.decode()}.md").is_file()
-    assert (p.read_bytes(), only.read_bytes()) == (original[p], original[only])
-    assert not (notes / f"{C2}.md").exists()
-    assert not e.exists() and not o.exists()
+    assert {s: (notes / f"{s}.md").read_bytes() for s in (B2, C2)} == {B2: _migrated(B, B2), C2: _migrated(C, C2)}
+    assert (both.read_bytes(), third.read_bytes()) == (f"[[{A2}]] [[{B2}]]\n".encode(), f"[[{B2}]] [[{C2}]]\n".encode())
+    for path in notes.rglob("*.md"):
+        for stem in re.findall(rb"\[\[(\d+)\]\]", path.read_bytes()):
+            assert (notes / f"{stem.decode()}.md").is_file()
+    assert (d.read_bytes(), only.read_bytes()) == (original[d], original[only])
+    assert not (notes / f"{D2}.md").exists()
+    assert not any(x.exists() for x in (e, o, p))
     assert _temps(vault) == []
 
 
@@ -375,7 +450,7 @@ def _stop_apply(vault: Path, monkeypatch: pytest.MonkeyPatch, target: object, at
     assert err.value.map_file.resolve() == (root / "state" / f"{RUN2}.json").resolve()
     assert _snapshot(vault) != original
 
-    _mod.undo_migration(vault, err.value.map_file)
+    _fresh().undo_migration(vault, err.value.map_file)
 
     assert _snapshot(vault) == original
     assert _temps(vault) == []
@@ -397,14 +472,15 @@ def test_stopped_apply_then_undo_restores_bytes(tmp_path: Path, monkeypatch: pyt
     vault = _two_notes_and_referrer(undo_root)
     original = _snapshot(vault)
     result = _mod.apply_migration(plan_migration(vault), undo_root / "state", now=NOW)
+    stopped = _fresh()
     with monkeypatch.context() as m:
-        calls = _fail_on(m, _mod, "atomic_write_bytes", 2)
-        with pytest.raises(MigrationError):
-            _mod.undo_migration(vault, result.map_file)
+        calls = _fail_on(m, stopped, "atomic_write_bytes", 2)
+        with pytest.raises(stopped.MigrationError):
+            stopped.undo_migration(vault, result.map_file)
     assert len(calls) == 2
     assert _snapshot(vault) != original
 
-    report = _mod.undo_migration(vault, result.map_file)
+    report = _fresh().undo_migration(vault, result.map_file)
 
     assert (len(report.restored), len(report.unchanged), report.skipped) == (2, 1, ())
     assert _snapshot(vault) == original
@@ -442,7 +518,7 @@ def test_chain_and_swap_rename_safely(tmp_path: Path) -> None:
         "r.md": "".join(f"[[{s}]]\n" for s in (s1, s2, s3, B2, B)).encode(),
     }
 
-    report = _mod.undo_migration(vault, result.map_file)
+    report = _fresh().undo_migration(vault, result.map_file)
 
     assert len(report.restored) == 6
     assert _snapshot(vault) == original
@@ -522,3 +598,12 @@ def test_dry_run_writes_nothing(
     # the plan printed is the plan of the vault given with --vault
     assert A2 in out_one and B2 not in out_one
     assert B2 in out_two and A2 not in out_two
+
+    # the map dir --apply uses: XDG_STATE_HOME when set and not empty, else ~/.local/state
+    assert _mod.default_map_dir() == tmp_path / "state" / "bim" / "migrate-ids"
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    home_dir = tmp_path / "home" / ".local" / "state" / "bim" / "migrate-ids"
+    monkeypatch.setenv("XDG_STATE_HOME", "")
+    assert _mod.default_map_dir() == home_dir
+    monkeypatch.delenv("XDG_STATE_HOME")
+    assert _mod.default_map_dir() == home_dir

@@ -224,7 +224,11 @@ def test_date_only_is_skipped(tmp_path: Path) -> None:
     bad_month = _put(vault, "notes/20240303100000.md", _fm("id: 20240303100000", "date: 2024-13-03 10:00:00"))
     word = _put(vault, "notes/20240304100000.md", _fm("id: 20240304100000", "date: soon"))
     timed = _put(vault, "notes/20240305100000.md", _fm("id: 20240305100000", "date: 2024-03-05 10:00:00"))
-    latin = _put(vault, "notes/20240306100000.md", b"---\nid: 20240306100000\ndate: 2024-03-06 10:00:00\ntitle: caf\xe9\xff\n---\nBody.\n")
+    latin = _put(
+        vault,
+        "notes/20240306100000.md",
+        b"---\nid: 20240306100000\ndate: 2024-03-06 10:00:00\ntitle: caf\xe9\xff\n---\nBody.\n",
+    )
 
     plan = plan_migration(vault)
 
