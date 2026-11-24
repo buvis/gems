@@ -16,7 +16,7 @@ class TestFindConfigFiles:
     """Tests for find_config_files method."""
 
     @pytest.mark.parametrize("name", ["config.local.yaml", "buvis.local.yaml", "buvis-sysup.local.yaml"])
-    @pytest.mark.parametrize("layer", ["cwd", ".config/buvis", ".local/.config/buvis", "override"])
+    @pytest.mark.parametrize("layer", [".config/buvis", ".local/.config/buvis", "override"])
     def test_retired_twin_warns_once_without_loading(
         self,
         tmp_path: Path,
@@ -482,28 +482,34 @@ class TestGetSearchPaths:
 
         paths = ConfigurationLoader._get_search_paths()
 
-        assert len(paths) == 4
-        assert paths[0] == Path("/custom/config")
-        assert paths[1] == Path.home() / ".local" / ".config" / "buvis"
-        assert paths[2] == Path.home() / ".config" / "buvis"
-        assert paths[3] == Path.cwd()
+        assert paths == [
+            Path("/custom/config"),
+            Path.home() / ".local" / ".config" / "buvis",
+            Path.home() / ".config" / "buvis",
+        ]
 
     def test_without_buvis_config_dir(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
 
         paths = ConfigurationLoader._get_search_paths()
 
-        assert len(paths) == 3
-        assert paths[0] == Path.home() / ".local" / ".config" / "buvis"
-        assert paths[1] == Path.home() / ".config" / "buvis"
-        assert paths[2] == Path.cwd()
+        assert paths == [
+            Path.home() / ".local" / ".config" / "buvis",
+            Path.home() / ".config" / "buvis",
+        ]
 
-    def test_cwd_always_last(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_working_directory_is_not_a_search_path_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", "/override")
 
-        paths = ConfigurationLoader._get_search_paths()
+        assert Path.cwd() not in ConfigurationLoader._get_search_paths()
+
+    def test_working_directory_is_last_when_a_caller_opts_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("BUVIS_CONFIG_DIR", "/override")
+
+        paths = ConfigurationLoader._get_search_paths(include_cwd=True)
 
         assert paths[-1] == Path.cwd()
+        assert len(paths) == 4
 
     def test_explicit_config_dir_argument(self) -> None:
         paths = ConfigurationLoader._get_search_paths(config_dir="/x")
@@ -512,7 +518,6 @@ class TestGetSearchPaths:
             Path("/x"),
             Path.home() / ".local" / ".config" / "buvis",
             Path.home() / ".config" / "buvis",
-            Path.cwd(),
         ]
 
 
@@ -766,11 +771,6 @@ class TestFindConfigFilesLogging:
 
         monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
         monkeypatch.setenv("HOME", str(tmp_path))
-        # The cwd is a search path: started from an ancestor of tmp_path, the
-        # "outside" target would sit inside it and count as safe.
-        work = tmp_path / "work"
-        work.mkdir()
-        monkeypatch.chdir(work)
         local_dir = tmp_path / ".local" / ".config" / "buvis"
         local_dir.mkdir(parents=True)
         outside = tmp_path / "outside"

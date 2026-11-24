@@ -224,7 +224,7 @@ class ConfigResolver:
         config_dir: str | None,
         config_path: Path | None,
         *,
-        include_cwd: bool = True,
+        include_cwd: bool = False,
         known_keys: set[str] | None = None,
     ) -> dict[str, Any]:
         """Load YAML config from explicit path or discovered files."""
@@ -330,7 +330,7 @@ class ConfigResolver:
             tool_name,
             config_dir,
             config_path,
-            include_cwd=getattr(settings_class, "config_include_cwd", True),
+            include_cwd=getattr(settings_class, "config_include_cwd", False),
             known_keys=known_keys,
         )
         # Keys only: --debug now prints debug records, and values may hold secrets.

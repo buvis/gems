@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 from buvis.pybase.configuration import ConfigurationError
@@ -68,6 +69,34 @@ class TestConfigResolverResolve:
         resolver.resolve(GlobalSettings)
 
         assert os.environ["BUVIS_CONFIG_DIR"] == "/existing"
+
+
+class _CwdOptInSettings(GlobalSettings):
+    config_include_cwd: ClassVar[bool] = True
+
+
+class TestWorkingDirectoryLayer:
+    """The working directory is a config layer only for a settings class that opts in."""
+
+    @pytest.fixture
+    def cwd_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        home = tmp_path / "home"
+        work = tmp_path / "work"
+        home.mkdir()
+        work.mkdir()
+        for name in [name for name in os.environ if name.upper().startswith("BUVIS_")]:
+            monkeypatch.delenv(name)
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.chdir(work)
+        (work / "config.yaml").write_text("debug: true\n", encoding="utf-8")
+
+    @pytest.mark.usefixtures("cwd_config")
+    def test_resolver_ignores_a_config_file_in_the_working_directory(self) -> None:
+        assert ConfigResolver().resolve(GlobalSettings).debug is False
+
+    @pytest.mark.usefixtures("cwd_config")
+    def test_settings_class_opts_in_to_the_working_directory_layer(self) -> None:
+        assert ConfigResolver().resolve(_CwdOptInSettings).debug is True
 
 
 class TestConfigResolverPrecedence:

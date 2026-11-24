@@ -322,10 +322,14 @@ File Locations
 
 Discovered config files are merged in this order, from lowest to highest priority:
 
-1. Current directory (except braid, which excludes it)
-2. ``~/.config/buvis/`` (shared config)
-3. ``~/.local/.config/buvis/`` (machine-local overrides)
-4. ``$BUVIS_CONFIG_DIR/`` (if set; ``--config-dir`` overrides this directory)
+1. ``~/.config/buvis/`` (shared config)
+2. ``~/.local/.config/buvis/`` (machine-local overrides)
+3. ``$BUVIS_CONFIG_DIR/`` (if set; ``--config-dir`` overrides this directory)
+
+The working directory is not searched, so a file in a cloned repository cannot
+configure a tool. A settings class opts in with
+``config_include_cwd: ClassVar[bool] = True``; no bundled tool does. For a
+per-directory file, pass ``--config FILE`` or ``--config-dir DIR``.
 
 Within each directory, files merge in the order ``config.yaml``, ``buvis.yaml``,
 then ``buvis-{tool}.yaml``. Later values win per key; nested mappings merge

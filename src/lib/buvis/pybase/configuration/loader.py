@@ -189,19 +189,21 @@ class ConfigurationLoader:
                 logger.debug("Permission denied: %s", twin)
 
     @staticmethod
-    def _get_search_paths(config_dir: str | None = None, *, include_cwd: bool = True) -> list[Path]:
+    def _get_search_paths(config_dir: str | None = None, *, include_cwd: bool = False) -> list[Path]:
         """Build ordered list of config directories to search.
 
         Args:
             config_dir: Explicit config directory override (bypasses env lookup).
             include_cwd: Whether to discover config in the working directory.
+                Off by default: a file in a cloned repository must not
+                configure a tool.
 
         Returns:
             list[Path]: Search paths from highest to lowest priority:
                 1. config_dir / BUVIS_CONFIG_DIR (if set and non-empty)
                 2. ~/.local/.config/buvis (machine-local overrides)
                 3. ~/.config/buvis (default)
-                4. Current working directory
+                4. Current working directory (only with ``include_cwd=True``)
         """
         if config_dir is not None:
             paths = [
@@ -418,7 +420,8 @@ class ConfigurationLoader:
             list[Path]: Existing config files as candidates. NOTE: this list is
             NOT a single monotonic priority ranking. Directories are ordered
             highest-priority-first ($BUVIS_CONFIG_DIR, then ~/.local/.config/buvis,
-            then ~/.config/buvis, then cwd), but WITHIN each directory the stems are ordered lowest-first
+            then ~/.config/buvis; the working directory is never searched here),
+            but WITHIN each directory the stems are ordered lowest-first
             (config.yaml < buvis.yaml < buvis-{tool}.yaml, per
             _get_candidate_files). The result is therefore mixed-order. Callers
             that need a clean precedence order (e.g. to feed merge_configs, where
@@ -463,7 +466,7 @@ class ConfigurationLoader:
         *,
         config_dir: str | None = None,
         config_path: str | Path | None = None,
-        include_cwd: bool = True,
+        include_cwd: bool = False,
     ) -> list[Path]:
         """Find existing config files in LOW-to-HIGH priority order.
 
@@ -472,9 +475,10 @@ class ConfigurationLoader:
         entries have higher precedence. Feed the result directly to
         :meth:`merge_configs` (where later wins) without reversing.
 
-        Precedence, lowest first: cwd < ~/.config/buvis < ~/.local/.config/buvis
+        Precedence, lowest first: ~/.config/buvis < ~/.local/.config/buvis
         < $BUVIS_CONFIG_DIR across directories, and config.yaml < buvis.yaml <
-        buvis-{tool}.yaml within each directory. An explicit ``config_path``
+        buvis-{tool}.yaml within each directory. The working directory is
+        searched only with ``include_cwd=True``, as the lowest layer. An explicit ``config_path``
         (from ``--config FILE``) is EXCLUSIVE:
         when given and readable it is the sole layer, and discovery is skipped
         entirely — matching :meth:`ConfigResolver._load_yaml`, so a tool's plan
@@ -483,7 +487,8 @@ class ConfigurationLoader:
 
         Args:
             tool_name: Optional tool identifier for the ``buvis-{tool}.yaml`` slot.
-            include_cwd: Whether to discover config in the working directory.
+            include_cwd: Whether to discover config in the working directory
+                (default: no).
             config_dir: Explicit config directory override (bypasses env lookup).
             config_path: Explicit config FILE (from ``--config``). When given and
                 readable it is EXCLUSIVE — the returned list is exactly that one

@@ -29,7 +29,7 @@ Configuration
 -------------
 
 Updaters live in ``buvis-sysup.yaml`` in the buvis config stack
-(``$BUVIS_CONFIG_DIR`` → ``~/.local/.config/buvis`` → ``~/.config/buvis`` → cwd),
+(``$BUVIS_CONFIG_DIR`` → ``~/.local/.config/buvis`` → ``~/.config/buvis``),
 deep-merged over a bundled
 default. The updater collection is a **flat map keyed by name**, so a machine
 layer adds an entry with a new key and overrides a field of an existing entry

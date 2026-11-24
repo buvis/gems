@@ -153,6 +153,23 @@ class TestLoadConfig:
         cfg = load_config()
         assert cfg.ntfy == NtfySpec(url="https://ntfy.example", topic="local", credentials_file="~/.ntfy")
 
+    def test_ignores_a_plan_file_in_the_working_directory(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A cloned repository must not add steps to the update plan (agoge 2026-11-23, finding 2)."""
+        home = tmp_path / "home"
+        work = tmp_path / "work"
+        home.mkdir()
+        work.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.chdir(work)
+        _write(work / "buvis-sysup.yaml", "commands:\n  aaa-trudy:\n    order: 1\n    steps: [[touch, pwned_sysup]]\n")
+
+        cfg = load_config()
+
+        assert "aaa-trudy" not in cfg.commands
+
     def test_no_user_config_returns_bundled_default(self, mocker) -> None:
         mocker.patch("sysup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()

@@ -37,6 +37,23 @@ class TestBackupConfigModel:
 
 
 class TestLoadConfigDefault:
+    def test_ignores_an_instance_file_in_the_working_directory(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A cloned repository must not add a backup instance (agoge 2026-11-23, finding 2)."""
+        home = tmp_path / "home"
+        work = tmp_path / "work"
+        home.mkdir()
+        work.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.chdir(work)
+        _write(work / "buvis-backup.yaml", "instances:\n  cwd-leak:\n    use: tar-archive\n")
+
+        cfg = load_config()
+
+        assert "cwd-leak" not in cfg.instances
+
     def test_no_user_config_returns_bundled_default(self, mocker) -> None:
         mocker.patch("backup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
