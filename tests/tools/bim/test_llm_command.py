@@ -4,8 +4,10 @@ import _thread
 import os
 import signal
 import sys
+import tempfile
 import threading
 import time
+import tracemalloc
 from pathlib import Path
 
 import pytest
@@ -30,9 +32,15 @@ _SPAWN_CHILD_THEN_SLEEP = (
     "import os, subprocess, sys, time\n"
     "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
     "with open(sys.argv[1], 'w') as fh:\n"
-    "    fh.write(f'{os.getpid()} {child.pid}')\n"
+    "    fh.write(f'{os.getpid()} {child.pid}\\n{os.getcwd()}')\n"
     "time.sleep(60)\n"
 )
+_RECORD = "import os, sys\nwith open(sys.argv[1], 'w') as fh:\n    fh.write(f'{os.getpid()}\\n{os.getcwd()}')\n"
+_RECORD_THEN_FAIL = {
+    "exit": _RECORD + "sys.exit(1)\n",
+    "timeout": _RECORD + "import time\ntime.sleep(60)\n",
+    "overflow": _RECORD + "while True:\n    sys.stdout.buffer.write(b'x' * 65536)\n",
+}
 _ECHO_ARGS_AND_STDIN = (
     "import json, sys\n"
     "stdin = sys.stdin.buffer.read().decode('utf-8')\n"
@@ -69,13 +77,16 @@ def _is_gone(pid: int, limit: float = 2.0) -> bool:
     return False
 
 
-def _read_pids(pid_file: Path) -> tuple[int, int]:
-    parent, child = (int(part) for part in pid_file.read_text().split())
-    return parent, child
+def _read_pids(pid_file: Path) -> tuple[int, ...]:
+    return tuple(int(part) for part in pid_file.read_text().splitlines()[0].split())
+
+
+def _read_cwd(pid_file: Path) -> Path:
+    return Path(pid_file.read_text().splitlines()[1])
 
 
 def _kill_leftovers(pid_file: Path) -> None:
-    if not pid_file.exists() or not pid_file.read_text().strip():
+    if not pid_file.exists() or len(pid_file.read_text().splitlines()) < 2:
         return
     for pid in _read_pids(pid_file):
         try:
@@ -85,16 +96,42 @@ def _kill_leftovers(pid_file: Path) -> None:
 
 
 class TestCommandRunCli:
-    @pytest.mark.parametrize("prompt", ["", "cena 12,50 Kč\nřádek 2", "x" * 200_000])
+    @pytest.mark.parametrize(
+        "prompt",
+        ["", "cena 12,50 Kč\nřádek 2", "x" * 1_000_003, "ř" * 500_001 + "!"],
+        ids=["empty", "czech", "ascii-1000003", "multibyte-1000003-bytes"],
+    )
     def test_command_run_cli_sends_the_prompt_on_stdin_and_returns_stdout(self, prompt: str) -> None:
         assert run_cli(_py(_ECHO_STDIN), prompt, timeout=4.0, backend="shell") == "got:" + prompt
 
     def test_command_run_cli_runs_in_a_fresh_bim_llm_temp_dir_that_is_removed_after(self) -> None:
-        cwd = run_cli(_py(_PRINT_CWD), "", timeout=4.0, backend="shell")
+        first = Path(run_cli(_py(_PRINT_CWD), "", timeout=4.0, backend="shell"))
+        second = Path(run_cli(_py(_PRINT_CWD), "", timeout=4.0, backend="shell"))
 
-        assert Path(cwd).name.startswith("bim-llm-")
-        assert Path(cwd).resolve() != Path.cwd().resolve()
-        assert not Path(cwd).exists()
+        assert first != second
+        for cwd in (first, second):
+            assert cwd.name.startswith("bim-llm-")
+            assert cwd.parent.resolve() == Path(tempfile.gettempdir()).resolve()
+            assert not cwd.exists()
+
+    @pytest.mark.parametrize(
+        ("failure", "reason"),
+        [("exit", BackendReason.EXIT), ("timeout", BackendReason.TIMEOUT), ("overflow", BackendReason.EXIT)],
+    )
+    def test_command_run_cli_removes_its_temp_dir_when_the_command_fails(
+        self, tmp_path: Path, failure: str, reason: BackendReason
+    ) -> None:
+        record = tmp_path / "record"
+        try:
+            with pytest.raises(BackendError) as exc:
+                run_cli(_py(_RECORD_THEN_FAIL[failure], str(record)), "", timeout=1.0, backend="shell")
+
+            assert exc.value.reason is reason
+            cwd = _read_cwd(record)
+            assert cwd.name.startswith("bim-llm-")
+            assert not cwd.exists()
+        finally:
+            _kill_leftovers(record)
 
     @pytest.mark.parametrize("argv0", ["bim-llm-no-such-cli", sys.executable + "-missing"])
     def test_command_run_cli_rejects_a_missing_executable_before_spawning(self, argv0: str) -> None:
@@ -115,6 +152,7 @@ class TestCommandRunCli:
 
         assert exc.value.reason is BackendReason.EXIT
         assert exc.value.backend == "shell"
+        assert "No such file or directory" in exc.value.detail
 
     def test_command_run_cli_rejects_a_lone_surrogate_prompt_without_running(self, tmp_path: Path) -> None:
         marker = tmp_path / "ran"
@@ -133,12 +171,12 @@ class TestCommandRunCli:
         try:
             started = time.monotonic()
             with pytest.raises(BackendError) as exc:
-                run_cli(_py(_SPAWN_CHILD_THEN_SLEEP, str(pid_file)), "", timeout=1.5, backend="slow-cli")
+                run_cli(_py(_SPAWN_CHILD_THEN_SLEEP, str(pid_file)), "", timeout=2.0, backend="slow-cli")
             elapsed = time.monotonic() - started
 
             assert exc.value.reason is BackendReason.TIMEOUT
             assert exc.value.backend == "slow-cli"
-            assert elapsed < 4.0
+            assert elapsed < 2.0 + 1.5
             parent, child = _read_pids(pid_file)
             assert _is_gone(parent)
             assert _is_gone(child)
@@ -165,8 +203,10 @@ class TestCommandRunCli:
             with pytest.raises(KeyboardInterrupt):
                 run_cli(_py(_SPAWN_CHILD_THEN_SLEEP, str(pid_file)), "", timeout=4.0, backend="shell")
 
-            _, child = _read_pids(pid_file)
+            parent, child = _read_pids(pid_file)
+            assert _is_gone(parent)
             assert _is_gone(child)
+            assert not _read_cwd(pid_file).exists()
         finally:
             stop.set()
             interrupter.join(timeout=5.0)
@@ -192,8 +232,13 @@ class TestCommandRunCli:
         assert len(out) == MAX_REPLY_BYTES
         assert set(out) == {"y"}
 
-    def test_command_run_cli_rejects_stdout_one_byte_over_the_cap(self) -> None:
-        script = f"import sys; sys.stdout.buffer.write(b'y' * {MAX_REPLY_BYTES + 1})"
+    @pytest.mark.parametrize(
+        "payload",
+        [f"b'y' * {MAX_REPLY_BYTES + 1}", f"('\\u00e9' * {MAX_REPLY_BYTES // 2 + 1}).encode('utf-8')"],
+        ids=["ascii-one-byte-over", "two-byte-chars-over-in-bytes-under-in-chars"],
+    )
+    def test_command_run_cli_rejects_stdout_one_byte_over_the_cap(self, payload: str) -> None:
+        script = f"import sys; sys.stdout.buffer.write({payload})"
 
         with pytest.raises(BackendError) as exc:
             run_cli(_py(script), "", timeout=4.0, backend="shell")
@@ -228,6 +273,29 @@ class TestCommandRunCli:
         assert "flood-start" in exc.value.detail
         assert "Q" * 300 not in exc.value.detail
         assert len(exc.value.detail) < 600
+
+    def test_command_run_cli_endless_stderr_flood_times_out_with_bounded_detail_and_memory(self) -> None:
+        script = "import sys\nchunk = b'E' * 65536\nwhile True:\n    sys.stderr.buffer.write(chunk)\n"
+        started_tracing = not tracemalloc.is_tracing()
+        if started_tracing:
+            tracemalloc.start()
+        try:
+            tracemalloc.reset_peak()
+            baseline = tracemalloc.get_traced_memory()[0]
+            started = time.monotonic()
+            with pytest.raises(BackendError) as exc:
+                run_cli(_py(script), "", timeout=1.0, backend="noisy-cli")
+            elapsed = time.monotonic() - started
+            growth = tracemalloc.get_traced_memory()[1] - baseline
+        finally:
+            if started_tracing:
+                tracemalloc.stop()
+
+        assert elapsed < 1.0 + 1.5
+        assert exc.value.reason is BackendReason.TIMEOUT
+        assert exc.value.backend == "noisy-cli"
+        assert len(exc.value.detail) < 600
+        assert growth < 16 * 1024 * 1024
 
     def test_command_run_cli_non_utf8_stderr_on_failure_is_replaced_not_raised(self) -> None:
         script = "import sys; sys.stderr.buffer.write(b'bad byte \\xff here'); sys.exit(2)"
@@ -356,10 +424,12 @@ class TestCommandBackend:
 
     def test_command_backend_timeout_is_a_timeout_error(self) -> None:
         backend = CommandBackend("slow-cli", _settings(_py(_SLEEP)))
+        started = time.monotonic()
 
         with pytest.raises(BackendError) as exc:
-            backend.complete(LLMRequest(prompt="x"), _Tx, timeout=1.0)
+            backend.complete(LLMRequest(prompt="x"), _Tx, timeout=2.0)
 
+        assert time.monotonic() - started < 2.0 + 1.5
         assert exc.value.reason is BackendReason.TIMEOUT
         assert exc.value.backend == "slow-cli"
 
