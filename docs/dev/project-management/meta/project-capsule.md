@@ -28,9 +28,12 @@ Generated: 2026-11-23 (catchup: feature/bim-utc-ids)
 ## Active Work
 
 ### feature/bim-utc-ids (batch 202611231043)
-- [ ] 00161-bim-utc-ids-v1.md (wip): ids become UTC digits of `date`; same-second collisions take seconds `60`-`99`, no sleep. Reverses PRD 00118's local-time rule. Python (`set_default_id`, `_get_date_from_file`, `CreateZettelUseCase`) and Rust (`defaults.rs`, `enrichment.rs`, `CACHE_VERSION` in `scanner.rs`) must change together; parity tests pin them.
-- 00162 (one-off migration of old local ids to UTC) waits in backlog; it depends on 00161.
-- Branch forked at `2a4fa1cc`; only PRD/backlog-review docs on it so far. master has moved on with dep bumps only.
+- [x] 00161-bim-utc-ids-v1.md (1 cycle): ids are UTC digits of `date`; same-second collisions take seconds `60`-`99`, no sleep. Python and Rust changed together; parity tests pin them.
+- [ ] 00162 (migration of old local ids to UTC) in backlog; depends on 00161.
+- [ ] 00165 intake (Prague rule: naive dates read in a configured zone) carries verified findings R6/R7/R8 from the 00161 review ledger.
+- [ ] 00122, 00123, 00156-00160 in backlog (other features).
+
+Observations: the dot two-host pull tests error in the agent sandbox (fixture git commit exits 128); deferred in `deferred/202611231043-deferred.json`. Rebuild and sign the `_core` `.so` before parity tests.
 
 ### feature/muc-tidy-reporting
 - Implemented intake `00121-muc-tidy-report-through-console/idea.md`: all five helpers return actions and recoverable warnings through `CommandResult`, aggregated by `DirTree` and `CommandTidy`. No logging remains in muc.

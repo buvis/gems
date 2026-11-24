@@ -3,6 +3,9 @@
   "items": [
     {
       "type": "env-test-failure",
+      "issue": "dot two-host pull divergence tests error in the agent sandbox (fixture git commit exits 128)",
+      "status": "pending",
+      "cycle": 1,
       "detail": "tests/tools/dot/test_pull_divergence_two_hosts.py: 10 setup errors in this sandbox (fixture git commit exits 128; not commit signing, since GIT_CONFIG commit.gpgsign=false did not help; the same commit succeeds outside pytest). No dot file changed in PRD 00161. Full suite otherwise 7486 passed, 0 failed, 16 skipped, 1 xfailed at 5e782461.",
       "next": "capture the fixture's git stderr (CalledProcessError.stderr) and fix the dot conftest or the env",
       "prd": "00161-bim-utc-ids-v1.md"
