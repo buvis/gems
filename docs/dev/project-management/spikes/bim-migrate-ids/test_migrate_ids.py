@@ -101,6 +101,8 @@ def test_prague_dst_winter_offset(tmp_path: Path) -> None:
     winter = _put(vault, "notes/20240115100000.md", _fm("id: 20240115100000", "date: 2024-01-15 10:00:00"))
     drift = _put(vault, "notes/20240116100000.md", _fm("id: 20240116100000", "date: 2024-01-16 11:30:00"))
     short = _put(vault, "notes/202401171000.md", _fm("id: 202401171000", "date: 2024-01-17 10:00:00"))
+    secs = _put(vault, "notes/20240118100037.md", _fm("id: 20240118100037", "date: 2024-01-18 10:00:37"))
+    sec_drift = _put(vault, "notes/20240119100000.md", _fm("id: 20240119100000", "date: 2024-01-19 10:00:05"))
 
     plan = plan_migration(vault)
 
@@ -108,10 +110,14 @@ def test_prague_dst_winter_offset(tmp_path: Path) -> None:
         (winter, vault / "notes" / "20240115090000.md", "20240115090000"),
         (drift, vault / "notes" / "20240116103000.md", "20240116103000"),
         (short, vault / "notes" / "20240117090000.md", "20240117090000"),
+        (secs, vault / "notes" / "20240118090037.md", "20240118090037"),
+        (sec_drift, vault / "notes" / "20240119090005.md", "20240119090005"),
     ]
     assert plan.changes[0].new_date_line == "date: 2024-01-15 10:00:00+01:00"
     assert plan.changes[1].new_date_line == "date: 2024-01-16 11:30:00+01:00"
-    assert plan.local_digit_mismatch == (drift,)
+    assert plan.changes[3].new_date_line == "date: 2024-01-18 10:00:37+01:00"
+    # a drift of seconds only is still a mismatch; matching seconds are not
+    assert sorted(plan.local_digit_mismatch) == [drift, sec_drift]
 
     new_york = plan_migration(vault, "America/New_York")
 
@@ -125,6 +131,9 @@ def test_aware_date_keeps_offset(tmp_path: Path) -> None:
     plus5 = _put(vault, "notes/20240301100000.md", _fm("id: 20240301100000", "date: 2024-03-01T10:00:00+05:00"))
     utc = _put(vault, "notes/20240302100000.md", _fm("id: 20240302100000", "date: 2024-03-02T10:00:00Z"))
     naive = _put(vault, "notes/20240303100000.md", _fm("id: 20240303100000", "date: 2024-03-03T10:00:00"))
+    minus5 = _put(vault, "notes/20240304100000.md", _fm("id: 20240304100000", "date: 2024-03-04T10:00:00-05:00"))
+    # a Z date whose wall clock differs from the old id is not already on UTC
+    z_local = _put(vault, "notes/20240305100000.md", _fm("id: 20240305100000", "date: 2024-03-05T09:00:00Z"))
 
     for zone in ("Europe/Prague", "Asia/Tokyo"):
         plan = plan_migration(vault, zone)
@@ -137,8 +146,13 @@ def test_aware_date_keeps_offset(tmp_path: Path) -> None:
         assert aware.old_date_line == aware.new_date_line == "date: 2024-03-01T10:00:00+05:00"
         assert aware.date_changed is False
         assert plan.already_utc == (utc,)
-        assert [c.path for c in plan.changes] == [plus5, naive]
+        assert [c.path for c in plan.changes] == [plus5, naive, minus5, z_local]
         assert plan.changes[1].date_changed is True
+        assert _moves(plan)[2:] == [
+            (minus5, vault / "notes" / "20240304150000.md", "20240304150000"),
+            (z_local, vault / "notes" / "20240305090000.md", "20240305090000"),
+        ]
+        assert [c.date_changed for c in plan.changes[2:]] == [False, False]
 
     assert plan_migration(vault).changes[1].new_id == "20240303090000"
     assert plan_migration(vault, "Asia/Tokyo").changes[1].new_id == "20240303010000"
@@ -149,6 +163,7 @@ def test_ambiguous_dst_time_is_skipped(tmp_path: Path) -> None:
     fold = _put(vault, "notes/20241027023000.md", _fm("id: 20241027023000", "date: 2024-10-27 02:30:00"))
     summer = _put(vault, "notes/20241027013000.md", _fm("id: 20241027013000", "date: 2024-10-27 01:30:00"))
     winter = _put(vault, "notes/20241027033000.md", _fm("id: 20241027033000", "date: 2024-10-27 03:30:00"))
+    ny_fold = _put(vault, "notes/20241103013000.md", _fm("id: 20241103013000", "date: 2024-11-03 01:30:00"))
 
     plan = plan_migration(vault)
 
@@ -158,6 +173,17 @@ def test_ambiguous_dst_time_is_skipped(tmp_path: Path) -> None:
     assert _moves(plan) == [
         (summer, vault / "notes" / "20241026233000.md", "20241026233000"),
         (winter, vault / "notes" / "20241027023060.md", "20241027023060"),
+        (ny_fold, vault / "notes" / "20241103003000.md", "20241103003000"),
+    ]
+
+    # the fold follows the configured zone: New York falls back on 2024-11-03
+    new_york = plan_migration(vault, "America/New_York")
+
+    assert new_york.skips == (Skip(ny_fold, "ambiguous local time (DST fold)"),)
+    assert _moves(new_york) == [
+        (summer, vault / "notes" / "20241027053000.md", "20241027053000"),
+        (fold, vault / "notes" / "20241027063000.md", "20241027063000"),
+        (winter, vault / "notes" / "20241027073000.md", "20241027073000"),
     ]
 
 
@@ -166,17 +192,29 @@ def test_nonexistent_dst_time_is_skipped(tmp_path: Path) -> None:
     gap = _put(vault, "notes/20240331023000.md", _fm("id: 20240331023000", "date: 2024-03-31 02:30:00"))
     before = _put(vault, "notes/20240331011500.md", _fm("id: 20240331011500", "date: 2024-03-31 01:15:00"))
     after = _put(vault, "notes/20240331033000.md", _fm("id: 20240331033000", "date: 2024-03-31 03:30:00"))
+    ny_gap = _put(vault, "notes/20240310023000.md", _fm("id: 20240310023000", "date: 2024-03-10 02:30:00"))
 
     plan = plan_migration(vault)
 
     assert plan.skips == (Skip(gap, "nonexistent local time (DST gap)"),)
     assert _mod.REASON_NONEXISTENT == "nonexistent local time (DST gap)"
     assert _moves(plan) == [
+        (ny_gap, vault / "notes" / "20240310013000.md", "20240310013000"),
         (before, vault / "notes" / "20240331001500.md", "20240331001500"),
         (after, vault / "notes" / "20240331013000.md", "20240331013000"),
     ]
-    assert plan.changes[0].new_date_line == "date: 2024-03-31 01:15:00+01:00"
-    assert plan.changes[1].new_date_line == "date: 2024-03-31 03:30:00+02:00"
+    assert plan.changes[1].new_date_line == "date: 2024-03-31 01:15:00+01:00"
+    assert plan.changes[2].new_date_line == "date: 2024-03-31 03:30:00+02:00"
+
+    # the gap follows the configured zone: New York springs forward on 2024-03-10
+    new_york = plan_migration(vault, "America/New_York")
+
+    assert new_york.skips == (Skip(ny_gap, "nonexistent local time (DST gap)"),)
+    assert _moves(new_york) == [
+        (before, vault / "notes" / "20240331051500.md", "20240331051500"),
+        (gap, vault / "notes" / "20240331063000.md", "20240331063000"),
+        (after, vault / "notes" / "20240331073000.md", "20240331073000"),
+    ]
 
 
 def test_date_only_is_skipped(tmp_path: Path) -> None:
@@ -186,6 +224,7 @@ def test_date_only_is_skipped(tmp_path: Path) -> None:
     bad_month = _put(vault, "notes/20240303100000.md", _fm("id: 20240303100000", "date: 2024-13-03 10:00:00"))
     word = _put(vault, "notes/20240304100000.md", _fm("id: 20240304100000", "date: soon"))
     timed = _put(vault, "notes/20240305100000.md", _fm("id: 20240305100000", "date: 2024-03-05 10:00:00"))
+    latin = _put(vault, "notes/20240306100000.md", b"---\nid: 20240306100000\ndate: 2024-03-06 10:00:00\ntitle: caf\xe9\xff\n---\nBody.\n")
 
     plan = plan_migration(vault)
 
@@ -194,8 +233,10 @@ def test_date_only_is_skipped(tmp_path: Path) -> None:
         Skip(compact, "date has no time"),
         Skip(bad_month, "date cannot be parsed"),
         Skip(word, "date cannot be parsed"),
+        Skip(latin, "frontmatter is not UTF-8"),
     }
     assert (_mod.REASON_DATE_ONLY, _mod.REASON_UNPARSEABLE) == ("date has no time", "date cannot be parsed")
+    assert _mod.REASON_NOT_UTF8 == "frontmatter is not UTF-8"
     assert _moves(plan) == [(timed, vault / "notes" / "20240305090000.md", "20240305090000")]
 
 
@@ -205,6 +246,7 @@ def test_note_without_date_uses_old_id(tmp_path: Path) -> None:
     full = _put(vault, "notes/20240715100000.md", _fm("id: 20240715100000", "title: Full"))
     bad = _put(vault, "notes/20241345100000.md", _fm("id: 20241345100000", "title: Bad"))
     fold = _put(vault, "notes/202410270230.md", _fm("id: 202410270230", "title: Fold"))
+    secs = _put(vault, "notes/20240715100037.md", _fm("id: 20240715100037", "title: Seconds"))
 
     plan = plan_migration(vault)
 
@@ -225,6 +267,15 @@ def test_note_without_date_uses_old_id(tmp_path: Path) -> None:
             new_id="20240715080000",
             old_date_line=None,
             new_date_line="date: 2024-07-15T10:00:00+02:00",
+            date_changed=True,
+        ),
+        NoteChange(
+            path=secs,
+            new_path=vault / "notes" / "20240715080037.md",
+            old_id="20240715100037",
+            new_id="20240715080037",
+            old_date_line=None,
+            new_date_line="date: 2024-07-15T10:00:37+02:00",
             date_changed=True,
         ),
     )
@@ -263,15 +314,13 @@ def test_document_zettel_is_not_migrated(tmp_path: Path) -> None:
     }
     assert _mod.REASON_TYPE_UNKNOWN == "type is a block scalar or empty"
     assert plan.already_utc == ()
-    assert set(plan.hashes.values()) == {_sha(p) for p in [*docs, plural, in_body, block, empty]}
+    assert dict(plan.hashes) == {p: _sha(p) for p in [*docs, plural, in_body, block, empty]}
 
 
 def test_slug_named_note_keeps_file_name(tmp_path: Path) -> None:
     vault = _vault(tmp_path)
     slug = _put(vault, "notes/contact/jane-doe.md", _fm("id: 20240715100000", "date: 2024-07-15 10:00:00"))
-    titled = _put(
-        vault, "notes/20240716100000-meeting.md", _fm("id: 20240716100000", "date: 2024-07-16 10:00:00")
-    )
+    titled = _put(vault, "notes/20240716100000-meeting.md", _fm("id: 20240716100000", "date: 2024-07-16 10:00:00"))
     nested = _put(vault, "notes/projects/20240717100000.md", _fm("id: 20240717100000", "date: 2024-07-17 10:00:00"))
     # 12-digit id followed by a digit in the stem: the stem does not start with the id as a token
     longer = _put(vault, "notes/20240115100000.md", _fm("id: 202401151000", "date: 2024-01-15 10:00:00"))
@@ -297,6 +346,8 @@ def test_file_without_id_is_not_a_note(tmp_path: Path) -> None:
         "Not links: [[120240715100000]] [[20240715100000-other]] 20240715100000\n"
     )
     daily = _put(vault, "notes/daily/2024-07-15.md", _fm("title: Daily", "date: 2024-07-15 09:00:00", body=links))
+    three = "[[20240715100000#Top]] ![[20240715100000]] [[20240715100000.md|x]]\n"
+    daily2 = _put(vault, "notes/daily/2024-07-16.md", _fm("title: Daily 2", body=three))
     loose = _put(vault, "notes/loose.md", b"id: 20240716100000\ndate: 2024-07-16 10:00:00\n")
     alias = vault / "notes" / "alias.md"
     alias.symlink_to(note)
@@ -310,8 +361,10 @@ def test_file_without_id_is_not_a_note(tmp_path: Path) -> None:
     assert plan.skips == (Skip(alias, "file is a symlink"),)
     assert _mod.REASON_SYMLINK == "file is a symlink"
     assert plan.already_utc == ()
-    assert plan.reference_count == 2
-    assert set(plan.hashes.values()) == {_sha(note), _sha(daily), _sha(loose)}
+    # 2 links in the first daily note, 3 in the second
+    assert plan.reference_count == 5
+    # a symlink leaf is never read, so it has no hash
+    assert dict(plan.hashes) == {p: _sha(p) for p in [note, daily, daily2, loose]}
 
 
 def test_same_new_id_gets_suffix_60(tmp_path: Path) -> None:
@@ -319,6 +372,9 @@ def test_same_new_id_gets_suffix_60(tmp_path: Path) -> None:
     prague = _put(vault, "notes/20240715100000.md", _fm("id: 20240715100000", "date: 2024-07-15 10:00:00"))
     moscow = _put(vault, "notes/20240715110000.md", _fm("id: 20240715110000", "date: 2024-07-15T11:00:00+03:00"))
     dubai = _put(vault, "notes/20240715120000.md", _fm("id: 20240715120000", "date: 2024-07-15T12:00:00+04:00"))
+    slug = _put(vault, "notes/contact/jane-doe.md", _fm("id: 20240716100000", "date: 2024-07-16 10:00:00"))
+    for unrelated in ("contact/jane-doe.jpg", "photo.png", "a/20240901100000.png"):
+        _put(vault, f"notes/{unrelated}", b"\x89")
     _put(vault, "notes/scan.md", _fm("id: 20240801080000", "type: document"))
     after_doc = _put(vault, "notes/20240801100000.md", _fm("id: 20240801100000", "date: 2024-08-01 10:00:00"))
     shared_a = _put(vault, "notes/a/20240901100000.md", _fm("id: 20240901100000", "date: 2024-09-01 10:00:00"))
@@ -333,6 +389,7 @@ def test_same_new_id_gets_suffix_60(tmp_path: Path) -> None:
         (prague, notes / "20240715080000.md", "20240715080000"),
         (moscow, notes / "20240715080060.md", "20240715080060"),
         (dubai, notes / "20240715080061.md", "20240715080061"),
+        (slug, slug, "20240716080000"),
         (after_doc, notes / "20240801080060.md", "20240801080060"),
         (drawn, notes / "20240902080000.md", "20240902080000"),
     ]
@@ -342,3 +399,13 @@ def test_same_new_id_gets_suffix_60(tmp_path: Path) -> None:
     }
     assert _mod.REASON_STEM_SHARED == "old stem shared with another file"
     assert plan.kept_attachments == (svg,)
+
+    # base + suffixes 60-99 give 41 free ids for one UTC minute; the 42nd note gets none
+    crowd = tmp_path.resolve() / "crowd"
+    olds = [f"2024060100{m:02d}00" for m in range(42)]
+    for old in olds:
+        _put(crowd, f"notes/{old}.md", _fm(f"id: {old}", "date: 2024-07-15T08:00:00Z"))
+    crowded = plan_migration(crowd)
+    assert [c.new_id for c in crowded.changes] == ["20240715080000"] + [f"202407150800{s}" for s in range(60, 100)]
+    assert crowded.skips == (Skip(crowd / "notes" / f"{olds[-1]}.md", "no free collision suffix 60-99"),)
+    assert _mod.REASON_NO_SUFFIX == "no free collision suffix 60-99"
