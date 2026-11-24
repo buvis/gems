@@ -1,31 +1,33 @@
-"""LLM-backed structured field extractor (Ollama or llama.cpp, see ``llm.py``).
+"""LLM-backed structured field extractor (doc route, see ``llm.py``).
 
-Sends OCR text plus the already-determined ``doc_type`` to a local LLM
-server and parses the JSON response into an ``ExtractResult``. The
-``requests`` import is deferred until ``extract`` runs so the module is
-loadable without the optional ``[doc]`` extra installed.
+Sends OCR text plus the already-determined ``doc_type`` through the shared
+LLM registry (``bim.shared.llm``) and parses the JSON object reply into an
+``ExtractResult``. Backend adapters load lazily, so the module is loadable
+without the optional ``[doc]`` extra installed.
 """
 
 from __future__ import annotations
 
 import datetime
-import json
 import re
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict
 
-from bim.commands.doc.shared.llm import chat_content, chat_request
+from bim.commands.doc.shared.llm import DOC_REQUEST_TIMEOUT_SECONDS, resolve_doc_route
 from bim.commands.doc.shared.naming import DOC_TYPES
+from bim.shared.llm import BackendError, BackendReason, JsonObject, LLMRequest, build_registry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from bim.commands.doc.shared.llm import DocLLMRoute
     from bim.commands.doc.shared.settings_models import LLMSettings
+    from bim.shared.llm import ClaudeBackendSettings, CommandBackendSettings, HttpBackendSettings, LLMRegistry
 
 __all__ = ["ExtractResult", "Extractor", "IncompleteExtraction"]
 
-
-_REQUEST_TIMEOUT_SECONDS = 60
 
 _REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "invoice": ("number", "date", "amount", "currency"),
@@ -291,10 +293,19 @@ def _coerce_parsed(parsed: dict[str, object]) -> tuple[dict[str, object], list[s
 
 
 class Extractor:
-    """Extract structured fields from OCR text via the configured chat backend."""
+    """Extract structured fields from OCR text via the doc LLM route."""
 
-    def __init__(self, settings: LLMSettings) -> None:
+    def __init__(
+        self,
+        settings: LLMSettings,
+        *,
+        llm: Mapping[str, ClaudeBackendSettings | HttpBackendSettings | CommandBackendSettings] | None = None,
+        route: DocLLMRoute | None = None,
+        registry: LLMRegistry | None = None,
+    ) -> None:
         self._settings = settings
+        self._route = route or resolve_doc_route(settings, llm or {})
+        self._registry = registry or build_registry(self._route.backends)
 
     def extract(
         self,
@@ -306,7 +317,7 @@ class Extractor:
         """Extract structured fields for ``doc_type`` from OCR text via Ollama.
 
         Thin shim that forwards to :meth:`extract_with_model` using the
-        configured primary model. Kept for callers that don't need to
+        route's primary key. Kept for callers that don't need to
         substitute the model.
 
         Args:
@@ -323,13 +334,14 @@ class Extractor:
                 JSON object, a value could not be coerced (e.g. non-ISO date,
                 non-numeric amount), or one or more required fields were
                 missing (``transient=False`` for these semantic failures).
-            requests.exceptions.Timeout: Re-raised unwrapped so callers can
+            BackendError: A ``timeout`` is re-raised unwrapped so callers can
                 distinguish slow-LLM scenarios from other failures.
+            LLMConfigError: The model key is not a key of the route.
         """
         return self.extract_with_model(
             ocr_text,
             doc_type,
-            model=self._settings.primary_model,
+            model=self._route.primary.key,
             hints=hints,
         )
 
@@ -341,44 +353,15 @@ class Extractor:
         model: str,
         hints: dict[str, str] | None = None,
     ) -> ExtractResult:
-        """Like :meth:`extract` but the caller picks the Ollama model name.
+        """Like :meth:`extract` but the caller picks the route key.
 
-        Used by the pipeline's retry helper to substitute ``fallback_model``
-        for ``primary_model`` after exhausted retries.
+        Used by the pipeline's retry helper to substitute the fallback key
+        for the primary key after exhausted retries.
         """
         if doc_type not in DOC_TYPES:
             raise ValueError(f"doc_type must be one of {DOC_TYPES}, got {doc_type!r}")
 
-        # Lazy import keeps the module loadable without the [doc] extra installed.
-        import requests
-
-        url, body = chat_request(
-            self._settings,
-            model,
-            [
-                {"role": "system", "content": _system_prompt(doc_type)},
-                {"role": "user", "content": _user_prompt(ocr_text, hints)},
-            ],
-        )
-
-        try:
-            response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
-            response.raise_for_status()
-            payload = response.json()
-        except requests.exceptions.Timeout:
-            raise
-        except Exception as exc:
-            # Transport-layer failure - retry against primary or fall back.
-            raise IncompleteExtraction([f"HTTP error: {exc}"], transient=True) from exc
-
-        try:
-            raw_content = chat_content(self._settings, payload)
-            parsed = json.loads(raw_content)
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            raise IncompleteExtraction([f"could not parse model response as JSON: {exc}"]) from exc
-
-        if not isinstance(parsed, dict):
-            raise IncompleteExtraction(["could not parse model response as JSON: not an object"])
+        parsed = self._invoke(model, _system_prompt(doc_type), _user_prompt(ocr_text, hints))
 
         summary = _normalize_summary(parsed.get("summary"))
         # Drop ``summary`` from the dict before coercion so it doesn't trigger
@@ -399,6 +382,28 @@ class Extractor:
             raise IncompleteExtraction(coerce_errors + missing, partial=partial)
 
         return ExtractResult(doc_type=doc_type, summary=summary, **coerced)
+
+    def _invoke(self, model: str, system: str, user: str) -> dict[str, Any]:
+        """Run one request on the route target for ``model`` and map backend errors."""
+        target = self._route.target(model)
+        try:
+            reply = self._registry.invoke(
+                target.backend,
+                LLMRequest(prompt=user, system=system),
+                JsonObject,
+                timeout=DOC_REQUEST_TIMEOUT_SECONDS,
+                model=target.model,
+            )
+        except BackendError as exc:
+            if exc.reason is BackendReason.TIMEOUT:
+                raise
+            if exc.reason is BackendReason.EXIT:
+                # Transport-layer failure - retry against primary or fall back.
+                raise IncompleteExtraction([f"HTTP error: {exc.detail}"], transient=True) from exc
+            if exc.reason is BackendReason.PARSE:
+                raise IncompleteExtraction([f"could not parse model response as JSON: {exc.detail}"]) from exc
+            raise IncompleteExtraction(["could not parse model response as JSON: not an object"]) from exc
+        return reply.root
 
     def extract_with_pinned(
         self,
@@ -424,36 +429,11 @@ class Extractor:
         if not required:
             return ExtractResult(doc_type=doc_type, **normalized_coerced)
 
-        # Lazy import keeps the module loadable without the [doc] extra installed.
-        import requests
-
-        url, body = chat_request(
-            self._settings,
+        parsed = self._invoke(
             model,
-            [
-                {"role": "system", "content": _reduced_system_prompt(doc_type, omit_fields=set(normalized_coerced))},
-                {"role": "user", "content": _user_prompt(ocr_text, hints)},
-            ],
+            _reduced_system_prompt(doc_type, omit_fields=set(normalized_coerced)),
+            _user_prompt(ocr_text, hints),
         )
-
-        try:
-            response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
-            response.raise_for_status()
-            payload = response.json()
-        except requests.exceptions.Timeout:
-            raise
-        except Exception as exc:
-            # Transport-layer failure - retry against primary or fall back.
-            raise IncompleteExtraction([f"HTTP error: {exc}"], transient=True) from exc
-
-        try:
-            raw_content = chat_content(self._settings, payload)
-            parsed = json.loads(raw_content)
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            raise IncompleteExtraction([f"could not parse model response as JSON: {exc}"]) from exc
-
-        if not isinstance(parsed, dict):
-            raise IncompleteExtraction(["could not parse model response as JSON: not an object"])
 
         summary = _normalize_summary(parsed.get("summary"))
         parsed_unpinned = {

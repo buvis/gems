@@ -1,30 +1,32 @@
-"""LLM-backed document classifier (Ollama or llama.cpp, see ``llm.py``).
+"""LLM-backed document classifier (doc route, see ``llm.py``).
 
-Sends OCR text to a local LLM server and parses the JSON response into a
-``ClassifyResult``. The ``requests`` import is deferred until ``classify`` runs
+Sends OCR text through the shared LLM registry (``bim.shared.llm``) and parses
+the JSON object reply into a ``ClassifyResult``. Backend adapters load lazily,
 so the module is loadable without the optional ``[doc]`` extra installed.
 """
 
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict
 
 from bim.commands.doc.shared.issuers import resolve_alias
-from bim.commands.doc.shared.llm import chat_content, chat_request
+from bim.commands.doc.shared.llm import DOC_REQUEST_TIMEOUT_SECONDS, resolve_doc_route
 from bim.commands.doc.shared.naming import slugify
 from bim.commands.doc.shared.rules.models import SourceMetadata
+from bim.shared.llm import BackendError, BackendReason, JsonObject, LLMRequest, build_registry
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bim.commands.doc.shared.issuers import IssuerRegistry
+    from bim.commands.doc.shared.llm import DocLLMRoute
     from bim.commands.doc.shared.settings_models import ClassifierSettings
+    from bim.shared.llm import ClaudeBackendSettings, CommandBackendSettings, HttpBackendSettings, LLMRegistry
 
 __all__ = ["Classifier", "ClassifierError", "ClassifyResult"]
-
-
-_REQUEST_TIMEOUT_SECONDS = 60
 
 
 class ClassifierError(Exception):
@@ -277,10 +279,19 @@ def _resolve_classified_payload(
 
 
 class Classifier:
-    """Classify OCR text via the configured chat backend."""
+    """Classify OCR text via the doc LLM route."""
 
-    def __init__(self, settings: ClassifierSettings) -> None:
+    def __init__(
+        self,
+        settings: ClassifierSettings,
+        *,
+        llm: Mapping[str, ClaudeBackendSettings | HttpBackendSettings | CommandBackendSettings] | None = None,
+        route: DocLLMRoute | None = None,
+        registry: LLMRegistry | None = None,
+    ) -> None:
         self._settings = settings
+        self._route = route or resolve_doc_route(settings, llm or {})
+        self._registry = registry or build_registry(self._route.backends)
 
     def classify(
         self,
@@ -293,14 +304,14 @@ class Classifier:
         """Classify a document from OCR text via the configured Ollama endpoint.
 
         Thin shim that forwards to :meth:`classify_with_model` using the
-        configured primary model. Kept for callers that don't need to
+        route's primary key. Kept for callers that don't need to
         substitute the model (e.g. ad-hoc usage outside the retry pipeline).
         """
         return self.classify_with_model(
             ocr_text,
             source_metadata,
             registry,
-            model=self._settings.primary_model,
+            model=self._route.primary.key,
             doc_type_only=doc_type_only,
         )
 
@@ -313,47 +324,23 @@ class Classifier:
         model: str,
         doc_type_only: bool = False,
     ) -> ClassifyResult:
-        """Like :meth:`classify` but the caller picks the Ollama model name.
+        """Like :meth:`classify` but the caller picks the route key.
 
-        Used by the pipeline's retry helper to substitute ``fallback_model``
-        for ``primary_model`` after exhausted retries.
+        Used by the pipeline's retry helper to substitute the fallback key
+        for the primary key after exhausted retries.
 
         Raises:
-            ClassifierError: HTTP transport failed, response was not parseable
-                JSON, or required fields were missing/uncoercible.
-            requests.exceptions.Timeout: Re-raised unwrapped so callers can
+            ClassifierError: The backend call failed, the reply was not
+                parseable JSON or not an object, or required fields were
+                missing/uncoercible.
+            BackendError: A ``timeout`` is re-raised unwrapped so callers can
                 distinguish slow-LLM scenarios from other failures.
+            LLMConfigError: ``model`` is not a key of the route.
         """
-        # Lazy import keeps the module loadable without the [doc] extra installed.
-        import requests
-
         system_prompt = _doc_type_only_system_prompt() if doc_type_only else _full_system_prompt(registry)
-        url, body = chat_request(
-            self._settings,
-            model,
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": _user_prompt(ocr_text, source_metadata, doc_type_only=doc_type_only)},
-            ],
+        parsed = self._invoke(
+            model, system_prompt, _user_prompt(ocr_text, source_metadata, doc_type_only=doc_type_only)
         )
-
-        try:
-            response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
-            response.raise_for_status()
-            payload = response.json()
-        except requests.exceptions.Timeout:
-            raise
-        except Exception as exc:
-            # HTTP / network failure; retrying may succeed.
-            raise ClassifierError(f"HTTP error calling {url}: {exc}", transient=True) from exc
-
-        try:
-            raw_content = chat_content(self._settings, payload)
-            parsed = json.loads(raw_content)
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            # Model produced unparseable output; another attempt against the
-            # same model is unlikely to help.
-            raise ClassifierError(f"Could not parse classifier JSON response: {exc}", transient=False) from exc
 
         issuer_slug: str | None = None
         issuer_display: str | None = None
@@ -442,32 +429,34 @@ class Classifier:
         model: str,
         omit: set[str],
     ) -> dict[str, object]:
-        """Send the reduced-prompt request and parse the JSON content."""
-        # Lazy import keeps the module loadable without the [doc] extra installed.
-        import requests
-
-        url, body = chat_request(
-            self._settings,
+        """Send the reduced-prompt request and return the JSON object reply."""
+        return self._invoke(
             model,
-            [
-                {"role": "system", "content": _reduced_system_prompt(registry, omit=omit)},
-                {"role": "user", "content": _user_prompt(ocr_text, source_metadata, doc_type_only=False)},
-            ],
+            _reduced_system_prompt(registry, omit=omit),
+            _user_prompt(ocr_text, source_metadata, doc_type_only=False),
         )
-        try:
-            response = requests.post(url, json=body, timeout=_REQUEST_TIMEOUT_SECONDS)
-            response.raise_for_status()
-            payload = response.json()
-        except requests.exceptions.Timeout:
-            raise
-        except Exception as exc:
-            raise ClassifierError(f"HTTP error calling {url}: {exc}", transient=True) from exc
 
+    def _invoke(self, model: str, system: str, user: str) -> dict[str, Any]:
+        """Run one request on the route target for ``model`` and map backend errors."""
+        target = self._route.target(model)
         try:
-            raw_content = chat_content(self._settings, payload)
-            parsed = json.loads(raw_content)
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            raise ClassifierError(f"Could not parse classifier JSON response: {exc}", transient=False) from exc
-        if not isinstance(parsed, dict):
-            raise ClassifierError("classifier response is not a JSON object", transient=False)
-        return parsed
+            reply = self._registry.invoke(
+                target.backend,
+                LLMRequest(prompt=user, system=system),
+                JsonObject,
+                timeout=DOC_REQUEST_TIMEOUT_SECONDS,
+                model=target.model,
+            )
+        except BackendError as exc:
+            if exc.reason is BackendReason.TIMEOUT:
+                raise
+            if exc.reason is BackendReason.EXIT:
+                # Transport or process failure; retrying may succeed.
+                raise ClassifierError(f"HTTP error calling {exc.backend}: {exc.detail}", transient=True) from exc
+            if exc.reason is BackendReason.PARSE:
+                # Model produced unparseable output; another attempt against the
+                # same model is unlikely to help.
+                message = f"Could not parse classifier JSON response: {exc.detail}"
+                raise ClassifierError(message, transient=False) from exc
+            raise ClassifierError("classifier response is not a JSON object", transient=False) from exc
+        return reply.root

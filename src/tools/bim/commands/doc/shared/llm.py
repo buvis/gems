@@ -1,20 +1,18 @@
-"""Doc LLM route and chat wire format.
+"""Doc LLM route.
 
 ``resolve_doc_route`` maps ``doc.classifier`` onto the shared ``llm:`` map.
 A ``backend`` that names an ``llm:`` entry routes there (named mode). The
 legacy words ``ollama`` and ``llamacpp`` keep the old single-endpoint setup
 with ``primary_model`` and ``fallback_model`` (legacy mode).
 
-``chat_request`` and ``chat_content`` shape the legacy wire format: ``ollama``
-speaks Ollama's native ``/api/chat``, ``llamacpp`` speaks llama-server's
-OpenAI-compatible ``/v1/chat/completions``. Callers keep their own transport
-and error handling.
+The chat wire format and transport live in ``bim.shared.llm.http``; the
+classifier and extractor call the route's targets through the shared registry.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from bim.shared.llm import HttpBackendSettings, LLMConfigError
 
@@ -29,8 +27,6 @@ __all__ = [
     "LEGACY_DOC_BACKENDS",
     "DocLLMRoute",
     "DocLLMTarget",
-    "chat_content",
-    "chat_request",
     "resolve_doc_route",
 ]
 
@@ -113,43 +109,3 @@ def resolve_doc_route(
         legacy=True,
         backends={backend: synthetic},
     )
-
-
-def chat_request(
-    settings: ClassifierSettings,
-    model: str,
-    messages: list[dict[str, str]],
-) -> tuple[str, dict[str, object]]:
-    """Return ``(url, body)`` for a non-streaming JSON-mode chat call."""
-    base = settings.endpoint.rstrip("/")
-    if settings.backend == "llamacpp":
-        return f"{base}/v1/chat/completions", {
-            "model": model,
-            "messages": messages,
-            # llama-server ignores {"type": "json_object"} and lets the model
-            # wrap JSON in a ```json fence; a json_schema compiles a grammar.
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {"name": "reply", "schema": {"type": "object"}},
-            },
-            # Classification needs no reasoning trace; thinking only slows the
-            # reply and can break the JSON grammar on Qwen3-style templates.
-            "chat_template_kwargs": {"enable_thinking": False},
-            "stream": False,
-        }
-    return f"{base}/api/chat", {
-        "model": model,
-        "messages": messages,
-        "format": "json",
-        "stream": False,
-    }
-
-
-def chat_content(settings: ClassifierSettings, payload: Any) -> Any:
-    """Return the assistant text. Raises ``KeyError``/``TypeError`` on a malformed reply."""
-    if settings.backend == "llamacpp":
-        choices = payload["choices"]
-        if not choices:
-            raise KeyError("choices")
-        return choices[0]["message"]["content"]
-    return payload["message"]["content"]
