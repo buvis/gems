@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -442,6 +443,113 @@ def _main_stops_on_third_write(vault: Path, monkeypatch: pytest.MonkeyPatch) -> 
     return _mod.main(["--vault", str(vault), "--apply"])
 
 
+def _cli(capsys: pytest.CaptureFixture[str], *args: object) -> tuple[int, str, str]:
+    code = _mod.main([str(a) for a in args])
+    cap = capsys.readouterr()
+    return code, cap.out, cap.err
+
+
+def _files(root: Path) -> dict[Path, bytes]:
+    return {p: data for p, data in _snapshot(root).items() if data is not None}
+
+
+def _shows_count(out: str, word: str, n: int) -> bool:
+    # the label wording is free; the count must sit on the label's line with no other number between
+    gap = r"[^\d\n]{0,40}"
+    return re.search(rf"(?i){word}{gap}\b{n}\b|\b{n}\b{gap}{word}", out) is not None
+
+
+def _assert_dry_run_table(out: str) -> None:
+    """New York dry run of _cli_vault: one row per change, then the counts."""
+    lines = out.splitlines()
+    for old, new in (("20240715100000", "20240715140000"), ("20240115100000", "20240115150000")):
+        rows = [ln for ln in lines if f"{old}.md" in ln and f"{new}.md" in ln and f"{old} -> {new}" in ln]
+        assert len(rows) == 1, out
+        assert rows[0].index(f"{old}.md") < rows[0].index(f"{new}.md")
+    assert _shows_count(out, "migrat", 2), out
+    assert _shows_count(out, "reference", 3), out
+    assert _shows_count(out, "UTC", 0), out
+
+
+def _check_apply_follows_zone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> Path:
+    """--apply plans with --naive-timezone; returns the map file of that run."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-ny"))
+    vault = _cli_vault(tmp_path / "ny")
+    code, _, err = _cli(capsys, "--vault", vault, "--naive-timezone", "America/New_York", "--apply")
+    assert code == 0, err
+    notes = vault / "notes"
+    assert (notes / "20240715140000.md").is_file() and (notes / "20240115150000.md").is_file()
+    assert not (notes / "20240715080000.md").exists() and not (notes / "20240115090000.md").exists()
+    [map_file] = _maps(_mod.default_map_dir())
+    return map_file
+
+
+def _check_undo_rejects_bad_map(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], vault: Path, foreign_map: Path
+) -> None:
+    corrupt = tmp_path / "corrupt.json"
+    corrupt.write_text("{not json", encoding="utf-8")
+    before = _snapshot(vault)
+    for bad in (corrupt, foreign_map):
+        code, _, err = _cli(capsys, "--vault", vault, "--undo", bad)
+        assert code == 1 and err.strip(), bad
+        assert _snapshot(vault) == before
+
+
+def _check_map_dir_in_vault_fails_before_map(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    vault = _cli_vault(tmp_path / "inside")
+    monkeypatch.setenv("XDG_STATE_HOME", str(vault / "state"))
+    before = _files(vault)
+    code, out, err = _cli(capsys, "--vault", vault, "--apply")
+    assert code == 1 and err.strip()
+    assert "--undo" not in out + err
+    assert _files(vault) == before
+
+
+def _check_apply_warns_outside_link(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-outside"))
+    vault = _cli_vault(tmp_path / "outside")
+    template = _put(vault, "templates/t.md", b"See [[20240715100000]].\n")
+    code, out, err = _cli(capsys, "--vault", vault, "--apply")
+    assert code == 0, err
+    assert "templates/t.md" in out + err
+    assert template.read_bytes() == b"See [[20240715100000]].\n"
+    assert (vault / "notes" / "20240715080000.md").is_file()
+
+
+def _check_partial_undo_lists_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-edit"))
+    vault = _vault(tmp_path / "edit")
+    _put(vault, "notes/20240715100000.md", _fm("id: 20240715100000", "date: 2024-07-15 10:00:00"))
+    _put(vault, "notes/20240115100000.md", _fm("id: 20240115100000", "date: 2024-01-15 10:00:00"))
+    _put(vault, "notes/daily/a.md", _fm("title: A", body="[[20240715100000]]\n"))
+    _put(vault, "notes/daily/b.md", _fm("title: B", body="[[20240115100000]]\n"))
+    before = _snapshot(vault)
+    assert _cli(capsys, "--vault", vault, "--apply")[0] == 0
+    [map_file] = _maps(_mod.default_map_dir())
+    edited = vault / "notes" / "20240715080000.md"
+    edited.write_bytes(edited.read_bytes() + b"Edited after apply.\n")
+    edited_bytes = edited.read_bytes()
+
+    code, out, err = _cli(capsys, "--vault", vault, "--undo", map_file)
+
+    # a partial undo is not an error: it lists the skipped path and restores the rest
+    assert code == 0, err
+    assert "20240715080000.md" in out
+    assert edited.read_bytes() == edited_bytes
+    for rel in ("notes/20240115100000.md", "notes/daily/b.md"):
+        assert (vault / rel).read_bytes() == before[vault / rel]
+    assert not (vault / "notes" / "20240115090000.md").exists()
+
+
 def test_script_help_lists_apply_and_undo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -459,6 +567,7 @@ def test_script_help_lists_apply_and_undo(
     assert _mod.main(["--vault", str(vault), "--naive-timezone", "America/New_York"]) == 0
     out = capsys.readouterr().out
     assert "20240715140000" in out and "20240715080000" not in out
+    _assert_dry_run_table(out)
     assert "Back up the vault and close Obsidian before --apply." in out
     assert _mod.main(["--vault", str(vault), "--naive-timezone", "Europe/Pragu", "--apply"]) == 1
     assert capsys.readouterr().err.strip()
@@ -485,3 +594,8 @@ def test_script_help_lists_apply_and_undo(
     assert f"--undo {stopped}" in capsys.readouterr().err
     assert _mod.main(["--vault", str(vault), "--undo", str(stopped)]) == 0
     assert _snapshot(vault) == before and not list(vault.rglob("*.migrating"))
+    foreign_map = _check_apply_follows_zone(tmp_path, monkeypatch, capsys)
+    _check_undo_rejects_bad_map(tmp_path, capsys, vault, foreign_map)
+    _check_map_dir_in_vault_fails_before_map(tmp_path, monkeypatch, capsys)
+    _check_apply_warns_outside_link(tmp_path, monkeypatch, capsys)
+    _check_partial_undo_lists_skipped(tmp_path, monkeypatch, capsys)
