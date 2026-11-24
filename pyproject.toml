@@ -188,3 +188,5 @@ combine-as-imports = true
 # TUI and serve entry points mirror the CLI flags one to one instead of bundling them.
 "src/tools/bim/commands/serve/_app.py" = ["PLR0913", "PLR0917"]
 "src/tools/bim/tui/create_note.py" = ["PLR0913", "PLR0917"]
+# LLMRegistry.invoke takes name, request, schema plus keyword-only timeout/model/unattended (PRD 00151 design).
+"src/tools/bim/shared/llm/registry.py" = ["PLR0913"]
