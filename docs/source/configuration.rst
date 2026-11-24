@@ -517,7 +517,7 @@ Use the right base class:
         db: DatabaseSettings = DatabaseSettings()  # Nested
 
     # Environment variable for nested field:
-    # BUVIS_MYAPP__DB__HOST=prod.db.local  (double underscore!)
+    # BUVIS_MYAPP_DB__HOST=prod.db.local  (double underscore!)
 
 **Why this matters**: If you used ``GlobalSettings`` for nested classes, each would try to load from env independently with potentially conflicting prefixes.
 
@@ -729,7 +729,7 @@ Use ``monkeypatch`` to set env vars for integration tests:
 
     def test_settings_from_env(monkeypatch):
         monkeypatch.setenv("BUVIS_MYAPP_DEBUG", "true")
-        monkeypatch.setenv("BUVIS_MYAPP__DB__HOST", "env-db")
+        monkeypatch.setenv("BUVIS_MYAPP_DB__HOST", "env-db")
 
         from buvis.pybase.configuration import ConfigResolver
         from myapp.settings import MyAppSettings
