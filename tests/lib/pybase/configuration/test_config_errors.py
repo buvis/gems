@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from unittest.mock import patch
 
 import pytest
 from braid.cli import cli as braid_cli
@@ -123,6 +124,14 @@ class TestConfigurationErrors:
         assert result.exit_code == exit_code
         assert "Usage:" not in result.output
         assert f"--config-dir {value!r}: not a directory" in result.output
+
+    @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
+    def test_settings_config_error_prints_on_stderr_not_stdout(self, command, args, exit_code):
+        with patch("buvis.pybase.updater.check_and_update"):
+            result = CliRunner().invoke(command, ["--config-dir", "missing-dir", *args])
+        assert result.exit_code == exit_code
+        assert "not a directory" in result.stderr
+        assert "not a directory" not in result.stdout
 
     @pytest.mark.parametrize("command,args,exit_code", [(braid_cli, ["--check"], 2), (sysup_cli, ["--list"], 1)])
     def test_dangling_discovered_config_link_is_rendered(self, tmp_path, command, args, exit_code):

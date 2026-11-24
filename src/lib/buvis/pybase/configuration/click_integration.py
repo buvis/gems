@@ -443,7 +443,7 @@ def _create_buvis_options(settings_class: type[T], config_error_exit_code: int =
                 from buvis.pybase.adapters import console
                 from rich.markup import escape
 
-                console.console.print(console.format_failure(escape(str(exc))), soft_wrap=True)
+                console.err_console.print(console.format_failure(escape(str(exc))), soft_wrap=True)
                 ctx.exit(config_error_exit_code)
 
             _apply_log_settings(

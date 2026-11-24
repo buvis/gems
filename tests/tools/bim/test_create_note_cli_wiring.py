@@ -236,3 +236,32 @@ class TestCreateJsonStdoutContract:
         assert isinstance(json.loads(proc.stdout), dict)
         assert b"unknown configuration key 'debgu'" in proc.stderr
         assert b"Retired config file" in proc.stderr
+
+    def test_config_error_leaves_json_stdout_empty(self, tmp_path: Path) -> None:
+        """A config that fails to load writes its error on stderr, never on the JSON stdout."""
+        home = tmp_path / "home"
+        config_dir = home / ".config" / "buvis"
+        config_dir.mkdir(parents=True)
+        (config_dir / "buvis-bim.yaml").write_text("path_zettelkasten: [oops\n")
+        work = tmp_path / "work"
+        work.mkdir()
+
+        argv = [sys.executable, "-m", "bim", "create", "-t", "note", "--title", "Probe", "--dry-run", "--json"]
+        proc = subprocess.run(  # fixed argv, no shell, test-only
+            argv,
+            env={
+                "PATH": str(Path(sys.executable).parent),
+                "HOME": str(home),
+                "BUVIS_AUTO_UPDATE": "false",
+                "BUVIS_DEV_MODE": "1",
+                "LC_ALL": "C.UTF-8",
+            },
+            cwd=str(work),
+            capture_output=True,
+            check=False,
+            timeout=120,
+        )
+
+        assert proc.returncode == 1, proc.stdout + proc.stderr
+        assert proc.stdout == b""
+        assert b"YAML syntax error" in proc.stderr

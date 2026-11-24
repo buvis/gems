@@ -194,7 +194,7 @@ def _load_config(ctx: click.Context) -> BackupConfig | None:
     try:
         return load_config(config_dir=config_dir, config_path=config_path)
     except FatalError as exc:
-        console.panic(str(exc), soft_wrap=True)
+        console.panic(str(exc), soft_wrap=True, stderr=True)
         return None
 
 

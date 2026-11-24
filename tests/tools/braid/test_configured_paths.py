@@ -86,8 +86,10 @@ class TestMalformedConfiguredPaths:
 
         assert result.returncode == 2, result.stdout + result.stderr
         assert "Traceback" not in result.stdout + result.stderr
-        assert key in result.stdout
-        assert repr(entry) in result.stdout
+        assert key in result.stderr
+        assert repr(entry) in result.stderr
+        assert key not in result.stdout
+        assert repr(entry) not in result.stdout
         assert snapshot(tmp_path) == before
 
 

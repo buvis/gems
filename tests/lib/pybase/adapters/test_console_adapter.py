@@ -78,6 +78,22 @@ class TestConsoleAdapterOutput:
         captured = capsys.readouterr()
         assert captured.out.strip() == f"\u2718 {message} \n\n Details:\n\n {details}"
 
+    def test_failure_with_stderr_flag_prints_on_stderr_only(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        console_adapter.failure("m", stderr=True)
+        captured = capsys.readouterr()
+        assert captured.err.strip() == "\u2718 m"
+        assert captured.out == ""
+
+    def test_panic_with_stderr_flag_prints_on_stderr_and_exits_one(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.panic("m", stderr=True)
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err.strip() == "\u2718 m"
+        assert captured.out == ""
+
     def test_status(self, console_adapter: ConsoleAdapter) -> None:
         message = "Status message"
         status = console_adapter.status(message)

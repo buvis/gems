@@ -123,6 +123,6 @@ def cli(
     for line in (result.output or "").splitlines():
         console.console.out(line, highlight=False)
     if result.error:
-        console.console.print(console.format_failure(escape(result.error)), soft_wrap=True)
+        console.err_console.print(console.format_failure(escape(result.error)), soft_wrap=True)
     if result.metadata["exit_code"]:
         ctx.exit(result.metadata["exit_code"])

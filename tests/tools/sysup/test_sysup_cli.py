@@ -186,6 +186,18 @@ class TestSysupCliErrors:
         assert "bad config" in result.output
         assert "Traceback" not in result.output
 
+    def test_plan_config_error_prints_on_stderr_not_stdout(self, runner) -> None:
+        from buvis.pybase.result import FatalError
+
+        with (
+            patch("buvis.pybase.updater.check_and_update"),
+            patch("sysup.config.load_config", side_effect=FatalError("bad config")),
+        ):
+            result = runner.invoke(cli, [])
+        assert result.exit_code == 1
+        assert "bad config" in result.stderr
+        assert "bad config" not in result.stdout
+
     def test_runner_fatal_error_panics(self, runner) -> None:
         from buvis.pybase.result import FatalError
 
