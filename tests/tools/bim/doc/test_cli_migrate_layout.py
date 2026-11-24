@@ -40,7 +40,7 @@ def _bim_settings_with_doc(tmp_path: Path) -> BimSettings:
 def _patches(settings: BimSettings, services: MigrateServices) -> list:
     return [
         patch("bim.doc_cli.get_settings", return_value=settings),
-        patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
+        patch("bim.dependencies.get_health_checker", return_value=lambda _s, _llm: None),
         patch("bim.dependencies.get_migrate_services", return_value=services),
     ]
 
@@ -121,7 +121,7 @@ class TestBimDocMigrateLayout:
         settings = _bim_settings_with_doc(tmp_path)
         with (
             patch("bim.doc_cli.get_settings", return_value=settings),
-            patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
+            patch("bim.dependencies.get_health_checker", return_value=lambda _s, _llm: None),
             patch(
                 "bim.dependencies.get_migrate_services",
                 side_effect=RuntimeError("migrate-layout could not read the legacy list: audit failed (io error)"),

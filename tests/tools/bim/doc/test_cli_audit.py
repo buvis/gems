@@ -86,7 +86,7 @@ def _patches_for_audit(settings: BimSettings, services_mock: MagicMock) -> list:
     """Patch every doc-subsystem factory the audit handler resolves."""
     return [
         patch("bim.doc_cli.get_settings", return_value=settings),
-        patch("bim.dependencies.get_health_checker", return_value=lambda _s: None),
+        patch("bim.dependencies.get_health_checker", return_value=lambda _s, _llm: None),
         patch("bim.dependencies.get_audit_services", return_value=services_mock),
     ]
 
@@ -206,7 +206,7 @@ class TestBimDocAudit:
     def test_doc_audit_missing_dependency_panics(self, runner: CliRunner, tmp_path: Path) -> None:
         settings = _bim_settings_with_doc(tmp_path)
 
-        def _raise(_s: object) -> None:
+        def _raise(_s: object, _llm: object) -> None:
             raise MissingDependency("ocrmypdf not found")
 
         with (

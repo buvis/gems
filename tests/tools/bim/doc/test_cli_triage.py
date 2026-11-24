@@ -51,7 +51,7 @@ class TestBimDocTriageList:
         )
         with contextlib.ExitStack() as stack:
             stack.enter_context(patch("bim.doc_cli.get_settings", return_value=settings))
-            stack.enter_context(patch("bim.dependencies.get_health_checker", return_value=lambda _s: None))
+            stack.enter_context(patch("bim.dependencies.get_health_checker", return_value=lambda _s, _llm: None))
             stack.enter_context(patch("bim.dependencies.get_triage_list_services", return_value=MagicMock()))
             stack.enter_context(patch("bim.commands.doc.triage.triage.CommandTriageList", return_value=cmd_mock))
             result = runner.invoke(cli, ["doc", "triage"], catch_exceptions=False)
@@ -70,7 +70,7 @@ class TestBimDocTriageApprove:
         )
         with contextlib.ExitStack() as stack:
             stack.enter_context(patch("bim.doc_cli.get_settings", return_value=settings))
-            stack.enter_context(patch("bim.dependencies.get_health_checker", return_value=lambda _s: None))
+            stack.enter_context(patch("bim.dependencies.get_health_checker", return_value=lambda _s, _llm: None))
             stack.enter_context(patch("bim.dependencies.get_triage_approve_services", return_value=MagicMock()))
             stack.enter_context(patch("bim.dependencies.get_repo", return_value=MagicMock()))
             approve_cls = stack.enter_context(
@@ -90,7 +90,7 @@ class TestBimDocTriageApprove:
         cmd_mock.execute.return_value = CommandResult(success=False, error="approved must be true")
         with contextlib.ExitStack() as stack:
             stack.enter_context(patch("bim.doc_cli.get_settings", return_value=settings))
-            stack.enter_context(patch("bim.dependencies.get_health_checker", return_value=lambda _s: None))
+            stack.enter_context(patch("bim.dependencies.get_health_checker", return_value=lambda _s, _llm: None))
             stack.enter_context(patch("bim.dependencies.get_triage_approve_services", return_value=MagicMock()))
             stack.enter_context(patch("bim.dependencies.get_repo", return_value=MagicMock()))
             stack.enter_context(patch("bim.commands.doc.triage.triage.CommandTriageApprove", return_value=cmd_mock))
