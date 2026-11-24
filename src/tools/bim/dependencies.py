@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from bim.commands.doc.triage.triage import TriageApproveServices, TriageListServices
     from bim.commands.tx.shared.paths import TiromexPaths
     from bim.settings import BimSettings
+    from bim.shared.llm import LLMBackendSettings
 
 
 def get_tiromex_paths(settings: BimSettings) -> TiromexPaths:
@@ -209,16 +210,16 @@ def get_ocr_runner(settings: DocSettings) -> OCRRunner:
     return _OCRRunner(settings=settings, state_dir=state_dir)
 
 
-def get_classifier(settings: DocSettings) -> Classifier:
+def get_classifier(settings: DocSettings, llm: Mapping[str, LLMBackendSettings] | None = None) -> Classifier:
     from bim.commands.doc.shared.classifier import Classifier as _Classifier
 
-    return _Classifier(settings.classifier)
+    return _Classifier(settings.classifier, llm=llm)
 
 
-def get_extractor(settings: DocSettings) -> Extractor:
+def get_extractor(settings: DocSettings, llm: Mapping[str, LLMBackendSettings] | None = None) -> Extractor:
     from bim.commands.doc.shared.extractor import Extractor as _Extractor
 
-    return _Extractor(settings.classifier)
+    return _Extractor(settings.classifier, llm=llm)
 
 
 def get_zettel_writer(settings: DocSettings, repo: ZettelRepository) -> ZettelWriter:
@@ -231,26 +232,39 @@ def get_zettel_writer(settings: DocSettings, repo: ZettelRepository) -> ZettelWr
     )
 
 
-def get_health_checker() -> Callable[[DocSettings], None]:
+def get_health_checker() -> Callable[..., None]:
     from bim.commands.doc.shared.health import check_health
 
     return check_health
 
 
-def get_pipeline(settings: DocSettings, repo: ZettelRepository) -> Pipeline:
-    """Wire all doc subsystem services and return a ready-to-run Pipeline."""
+def get_pipeline(
+    settings: DocSettings, repo: ZettelRepository, llm: Mapping[str, LLMBackendSettings] | None = None
+) -> Pipeline:
+    """Wire all doc subsystem services and return a ready-to-run Pipeline.
+
+    The classifier, extractor and pipeline share one resolved LLM route and
+    one backend registry, so retry keys and backend lookup cannot diverge.
+    """
+    from bim.commands.doc.shared.classifier import Classifier as _Classifier
+    from bim.commands.doc.shared.extractor import Extractor as _Extractor
+    from bim.commands.doc.shared.llm import resolve_doc_route
     from bim.commands.doc.shared.pipeline import Pipeline as _Pipeline, PipelineServices
+    from bim.shared.llm import build_registry
 
     issuers_file = settings.paths.issuers_file
     if issuers_file is None:
         raise ValueError("DocSettings.paths.issuers_file is not set")
+    route = resolve_doc_route(settings.classifier, llm or {})
+    llm_registry = build_registry(route.backends)
     services = PipelineServices(
         state_db=get_state_db(settings),
         ocr_runner=get_ocr_runner(settings),
-        classifier=get_classifier(settings),
-        extractor=get_extractor(settings),
+        classifier=_Classifier(settings.classifier, route=route, registry=llm_registry),
+        extractor=_Extractor(settings.classifier, route=route, registry=llm_registry),
         registry=_load_issuer_registry(issuers_file),
         zettel_writer=get_zettel_writer(settings, repo),
+        llm_route=route,
     )
     return _Pipeline(settings, services)
 

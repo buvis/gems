@@ -632,13 +632,16 @@ PDF is not moved, no zettel is created, and the proposal is left in place.
 Retry behaviour
 ~~~~~~~~~~~~~~~
 
-The classifier and extractor stages retry transient HTTP failures up to
-``classifier.max_retries`` (default 2) times against ``classifier.primary_model``,
-then fall back once to ``classifier.fallback_model``. Semantic failures
+The classifier and extractor stages retry transient backend failures (the
+``exit`` reason: connection errors, HTTP errors, a non-zero CLI exit) up to
+``classifier.max_retries`` (default 2) times against the primary target, then
+fall back once to the fallback target. In legacy mode the targets are
+``classifier.primary_model`` and ``classifier.fallback_model``; with named
+backends they are the ``doc.classifier.backend`` and ``doc.classifier.fallback``
+entries (the fallback defaults to the primary entry). Semantic failures
 (missing required fields, uncoercible values, unparseable model output) and
-``requests.exceptions.Timeout`` short-circuit to triage immediately without
-retry or fallback - retrying with the same input won't help on a model-output
-problem.
+backend timeouts short-circuit to triage immediately without retry or
+fallback - retrying with the same input won't help on a model-output problem.
 
 Issuer registry
 ~~~~~~~~~~~~~~~
@@ -969,6 +972,74 @@ stdout plus a structured JSON report at
 A PDF whose zettel is at the legacy flat path is reported in
 ``legacy_layout_zettels`` rather than as ``missing_zettel`` and counts
 toward ``non_clean_pdf_count``.
+
+Shared LLM backends
+~~~~~~~~~~~~~~~~~~~
+
+The top-level ``llm:`` map in the bim config names the LLM backends that bim
+can use. Each entry has a ``kind``. ``bim doc`` picks entries by name with
+``doc.classifier.backend`` (primary) and ``doc.classifier.fallback``. When
+``fallback`` is not set, the fallback is the primary entry. ``tx.backend``
+also names an entry; later ``bim tx`` work uses it.
+
+.. code-block:: yaml
+
+    llm:
+      local:                       # Ollama
+        kind: ollama
+        endpoint: http://localhost:11434
+        model: qwen3:30b-a3b
+      gpu:                         # llama.cpp server (model is optional)
+        kind: llamacpp
+        endpoint: http://gpu-box:8002
+      hosted:                      # OpenAI-compatible server
+        kind: openai
+        endpoint: http://llm.example.lan:9000
+        model: gpt-4o-mini
+      claude:                      # Claude Code CLI
+        kind: claude
+        model: sonnet              # optional
+      mytool:                      # any CLI: prompt on stdin, JSON on stdout
+        kind: command
+        argv: [my-llm, --json]
+        unattended: false
+
+    doc:
+      classifier:
+        backend: local
+        fallback: gpu
+
+    tx:
+      backend: claude
+
+Rules:
+
+- The old doc config still works unchanged: ``doc.classifier.backend:
+  ollama`` or ``llamacpp`` with ``endpoint``, ``primary_model`` and
+  ``fallback_model``. If an ``llm:`` entry has the same name as one of these
+  words, the entry wins.
+- In named mode, ``endpoint``, ``primary_model`` and ``fallback_model`` under
+  ``doc.classifier`` are ignored. A ``backend`` or ``fallback`` name that is
+  not an ``llm:`` entry (and, for ``backend``, not ``ollama`` or
+  ``llamacpp``) stops the config load with an error.
+- Endpoints must be the final URL. bim does not follow HTTP redirects.
+- A backend fails with one of four reasons: ``timeout``, ``exit``, ``parse``
+  or ``schema``. A timeout shows in a triage reason as
+  ``[timeout] <backend>: ...`` and goes to triage without retry.
+- The ``claude`` backend runs the Claude Code CLI with its tools, MCP
+  servers, plugins, hooks and skills turned off. See
+  `Claude backend probe`_ for the exact flags.
+- A ``command`` backend cannot prove that its tools are off. Scheduled
+  (unattended) runs refuse it unless the entry sets ``unattended: true``.
+  Set it only when you accept that risk.
+- In named mode, ``extraction_method`` records ``llm:<backend name>``, for
+  example ``llm:local``. In the old mode it stays ``llm:<primary_model>``.
+- Retries go to the primary entry, then to the fallback entry once (see
+  `Retry behaviour`_).
+- Each ``bim doc`` command checks every distinct configured backend before
+  it runs: Ollama ``/api/tags`` (and that the model is pulled, when a model is
+  set), llama.cpp and OpenAI-compatible ``/v1/models``, and for ``claude`` and
+  ``command`` that the executable is on ``PATH``.
 
 Claude backend probe
 ~~~~~~~~~~~~~~~~~~~~

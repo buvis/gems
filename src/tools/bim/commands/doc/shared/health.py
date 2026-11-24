@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bim.commands.doc.shared.settings_models import DocSettings
+    from bim.shared.llm import ClaudeBackendSettings, CommandBackendSettings, HttpBackendSettings
 
 __all__ = ["MissingDependency", "check_health"]
 
@@ -40,7 +44,7 @@ def _check_binary(binary: str) -> None:
     raise MissingDependency(f"{binary} version probe failed (tried {list(_VERSION_FLAGS)}): {last_stderr}")
 
 
-def _check_ollama(endpoint: str, primary_model: str) -> None:
+def _check_ollama(endpoint: str, primary_model: str | None) -> None:
     # Lazy import keeps the module loadable without the [doc] extra installed.
     import requests
 
@@ -52,13 +56,15 @@ def _check_ollama(endpoint: str, primary_model: str) -> None:
     except Exception as exc:
         raise MissingDependency(f"Ollama daemon not reachable at {endpoint}: {exc}") from exc
 
+    if primary_model is None:
+        return
     models = payload.get("models") or []
     available = {m.get("name") for m in models if isinstance(m, dict)}
     if primary_model not in available:
         raise MissingDependency(f"Ollama model {primary_model!r} not pulled (run `ollama pull {primary_model}`)")
 
 
-def _check_llamacpp(endpoint: str) -> None:
+def _check_llamacpp(endpoint: str, server: str = "llama.cpp server") -> None:
     # No model check: llama-server serves the one model it was started with
     # and ignores the request's ``model`` field.
     import requests
@@ -69,17 +75,47 @@ def _check_llamacpp(endpoint: str) -> None:
         response.raise_for_status()
         response.json()
     except Exception as exc:
-        raise MissingDependency(f"llama.cpp server not reachable at {endpoint}: {exc}") from exc
+        raise MissingDependency(f"{server} not reachable at {endpoint}: {exc}") from exc
 
 
-def check_health(settings: DocSettings) -> None:
+def _check_on_path(executable: str) -> None:
+    if shutil.which(executable) is None:
+        raise MissingDependency(f"{executable} not found on PATH")
+
+
+def _check_backend(
+    entry: ClaudeBackendSettings | HttpBackendSettings | CommandBackendSettings, model: str | None
+) -> None:
+    if entry.kind == "claude":
+        _check_on_path("claude")
+    elif entry.kind == "command":
+        _check_on_path(entry.argv[0])
+    elif entry.kind == "ollama":
+        _check_ollama(entry.endpoint, model or entry.model)
+    else:
+        _check_llamacpp(entry.endpoint, "OpenAI-compatible server" if entry.kind == "openai" else "llama.cpp server")
+
+
+def check_health(
+    settings: DocSettings,
+    llm: Mapping[str, ClaudeBackendSettings | HttpBackendSettings | CommandBackendSettings] | None = None,
+) -> None:
     """Validate that all external dependencies are present and reachable.
 
-    Raises MissingDependency on the first missing item.
+    Checks the OCR binaries, then each distinct backend of the doc LLM route
+    (primary first, then fallback).
+
+    Raises:
+        MissingDependency: On the first missing item.
+        LLMConfigError: When ``doc.classifier`` names an unknown backend.
     """
+    from bim.commands.doc.shared.llm import resolve_doc_route
+
     _check_binary("tesseract")
     _check_binary("ocrmypdf")
-    if settings.classifier.backend == "llamacpp":
-        _check_llamacpp(settings.classifier.endpoint)
-    else:
-        _check_ollama(settings.classifier.endpoint, settings.classifier.primary_model)
+    route = resolve_doc_route(settings.classifier, llm or {})
+    checked: set[str] = set()
+    for target in (route.primary, route.fallback):
+        if target.backend not in checked:
+            checked.add(target.backend)
+            _check_backend(route.backends[target.backend], target.model)

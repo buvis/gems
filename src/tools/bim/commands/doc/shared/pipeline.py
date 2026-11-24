@@ -27,6 +27,7 @@ from buvis.pybase.result import CommandResult
 
 from bim.commands.doc.shared.extractor import IncompleteExtraction
 from bim.commands.doc.shared.hashing import sha256_file
+from bim.commands.doc.shared.llm import resolve_doc_route
 from bim.commands.doc.shared.naming import build_canonical_filename, resolve_collision, slugify
 from bim.commands.doc.shared.pipeline_helpers import (
     ClassifyStage,
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
     from bim.commands.doc.shared.classifier import Classifier, ClassifyResult
     from bim.commands.doc.shared.extractor import Extractor, ExtractResult
     from bim.commands.doc.shared.issuers import IssuerRegistry
+    from bim.commands.doc.shared.llm import DocLLMRoute
     from bim.commands.doc.shared.ocr import OCRResult, OCRRunner
     from bim.commands.doc.shared.progress import ProgressReporter
     from bim.commands.doc.shared.settings_models import DocSettings
@@ -104,6 +106,7 @@ class PipelineServices:
     extractor: Extractor
     registry: IssuerRegistry
     zettel_writer: ZettelWriter
+    llm_route: DocLLMRoute | None = None
 
 
 class Pipeline:
@@ -117,6 +120,7 @@ class Pipeline:
     def __init__(self, settings: DocSettings, services: PipelineServices) -> None:
         self._settings = settings
         self._services = services
+        self._route = services.llm_route or resolve_doc_route(settings.classifier, {})
 
     # Forwarding properties so internal call sites read like the bundled
     # services were direct attributes - keeps the rest of the module clean
@@ -267,7 +271,7 @@ class Pipeline:
                 )
             )
 
-        extraction_method = f"llm:{self._settings.classifier.primary_model}"
+        extraction_method = f"llm:{self._route.primary.key}"
         use_pinned = rule_result.kind in {"full", "partial"}
         if use_pinned:
             if rule_result.rule_id is not None:
@@ -328,8 +332,8 @@ class Pipeline:
         try:
             extract_result = _retry_llm_call(
                 func=_extract_call,
-                primary_model=self._settings.classifier.primary_model,
-                fallback_model=self._settings.classifier.fallback_model,
+                primary_model=self._route.primary.key,
+                fallback_model=self._route.fallback.key,
                 max_retries=self._settings.classifier.max_retries,
                 is_transient=lambda exc: isinstance(exc, IncompleteExtraction) and exc.transient,
             )
@@ -483,8 +487,8 @@ class Pipeline:
         try:
             result = _retry_llm_call(
                 func=_call,
-                primary_model=self._settings.classifier.primary_model,
-                fallback_model=self._settings.classifier.fallback_model,
+                primary_model=self._route.primary.key,
+                fallback_model=self._route.fallback.key,
                 max_retries=self._settings.classifier.max_retries,
                 is_transient=lambda exc: isinstance(exc, ClassifierError) and exc.transient,
             )
@@ -512,8 +516,8 @@ class Pipeline:
         try:
             result = _retry_llm_call(
                 func=_call,
-                primary_model=self._settings.classifier.primary_model,
-                fallback_model=self._settings.classifier.fallback_model,
+                primary_model=self._route.primary.key,
+                fallback_model=self._route.fallback.key,
                 max_retries=self._settings.classifier.max_retries,
                 is_transient=lambda exc: isinstance(exc, ClassifierError) and exc.transient,
             )

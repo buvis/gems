@@ -73,7 +73,7 @@ def doc_ingest(
         return
 
     try:
-        get_health_checker()(settings.doc)
+        get_health_checker()(settings.doc, settings.llm)
     except MissingDependency as exc:
         console.panic(str(exc))
         return
@@ -83,7 +83,7 @@ def doc_ingest(
         staging_path=pdf_path,
         issuer_slug_hint=issuer,
     )
-    pipeline = get_pipeline(settings.doc, get_repo())
+    pipeline = get_pipeline(settings.doc, get_repo(), settings.llm)
     cmd = CommandIngest(params=params, pipeline=pipeline)
     # Show a Rich spinner with per-stage labels in interactive runs; stay
     # silent when stdout is piped/redirected so batch consumers see only the
@@ -134,7 +134,7 @@ def doc_promote(ctx: click.Context, yml_path: Path, strict: bool) -> None:
         return
 
     try:
-        get_health_checker()(settings.doc)
+        get_health_checker()(settings.doc, settings.llm)
     except MissingDependency as exc:
         console.panic(str(exc))
         return
@@ -175,7 +175,7 @@ def doc_audit(ctx: click.Context) -> None:
         return
 
     try:
-        get_health_checker()(settings.doc)
+        get_health_checker()(settings.doc, settings.llm)
     except MissingDependency as exc:
         console.panic(str(exc))
         return
@@ -219,7 +219,7 @@ def doc_migrate_layout(ctx: click.Context, *, apply_changes: bool) -> None:
         return
 
     try:
-        get_health_checker()(settings.doc)
+        get_health_checker()(settings.doc, settings.llm)
     except MissingDependency as exc:
         console.panic(str(exc))
         return
@@ -272,7 +272,7 @@ def doc_triage(ctx: click.Context, approve_target: str | None) -> None:
         return
 
     try:
-        get_health_checker()(settings.doc)
+        get_health_checker()(settings.doc, settings.llm)
     except MissingDependency as exc:
         console.panic(str(exc))
         return

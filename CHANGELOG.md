@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **bim**: tiromex concept notes in `<path_zettelkasten>/<tiromex_folder>/` (default `notes/tiromex/`), with `bim tx new`, `bim tx validate` (`--json`), `bim tx export-claims` (`--out`) and `bim tx status`; agents may read and write that folder without asking
+- **bim**: shared `llm:` backend map (Ollama, llama.cpp, OpenAI-compatible, Claude, command) that `bim doc` uses through `doc.classifier.backend`/`fallback`
+
+### Changed
+
+- **bim**: `bim doc` LLM endpoints no longer follow HTTP redirects; configure the final URL
+- **bim**: `bim doc` LLM timeouts read `[timeout] <backend>: ...` in triage reasons
 
 ## [0.20.0] - 2026-11-10
 
