@@ -64,7 +64,7 @@ def _check_ollama(endpoint: str, primary_model: str | None) -> None:
         raise MissingDependency(f"Ollama model {primary_model!r} not pulled (run `ollama pull {primary_model}`)")
 
 
-def _check_llamacpp(endpoint: str, server: str = "llama.cpp server") -> None:
+def _check_llamacpp(endpoint: str, server: str) -> None:
     # No model check: llama-server serves the one model it was started with
     # and ignores the request's ``model`` field.
     import requests
