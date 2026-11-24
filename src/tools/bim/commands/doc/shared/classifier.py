@@ -278,6 +278,22 @@ def _resolve_classified_payload(
     return str(doc_type), str(language), confidence
 
 
+def _issuer_from_reply(candidate: object, registry: IssuerRegistry) -> tuple[str | None, str | None, str | None]:
+    """Return ``(issuer_slug, issuer_display, issuer_guess)`` for the model's issuer suggestion."""
+    if not isinstance(candidate, str) or not candidate:
+        return None, None, None
+    canonical = resolve_alias(registry, candidate)
+    if canonical is not None:
+        return canonical, registry.issuers[canonical].display_name, None
+    # Preserve the model's raw suggestion so the pipeline can pre-fill the
+    # triage proposal. Slugify enforces the same kebab-case shape as registry
+    # slugs; if normalisation collapses to empty, fall through with no guess.
+    try:
+        return None, None, slugify(candidate)
+    except ValueError:
+        return None, None, None
+
+
 class Classifier:
     """Classify OCR text via the doc LLM route."""
 
@@ -341,25 +357,9 @@ class Classifier:
             model, system_prompt, _user_prompt(ocr_text, source_metadata, doc_type_only=doc_type_only)
         )
 
-        issuer_slug: str | None = None
-        issuer_display: str | None = None
-        issuer_guess: str | None = None
-        if not doc_type_only:
-            candidate = parsed.get("issuer_slug")
-            if isinstance(candidate, str) and candidate:
-                canonical = resolve_alias(registry, candidate)
-                if canonical is not None:
-                    issuer_slug = canonical
-                    issuer_display = registry.issuers[canonical].display_name
-                else:
-                    # Preserve the model's raw suggestion so the pipeline can
-                    # pre-fill the triage proposal. Slugify enforces the same
-                    # kebab-case shape as registry slugs; if normalisation
-                    # collapses to empty, fall through with issuer_guess=None.
-                    try:
-                        issuer_guess = slugify(candidate)
-                    except ValueError:
-                        issuer_guess = None
+        issuer_slug, issuer_display, issuer_guess = (
+            (None, None, None) if doc_type_only else _issuer_from_reply(parsed.get("issuer_slug"), registry)
+        )
 
         try:
             doc_type = parsed["doc_type"]
