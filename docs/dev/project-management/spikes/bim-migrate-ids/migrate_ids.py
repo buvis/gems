@@ -16,7 +16,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path, PurePosixPath
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from buvis.pybase.filesystem import atomic_write_bytes
 
@@ -124,20 +124,14 @@ class _Note:
     @property
     def rest(self) -> str | None:
         """Stem tail after the old id when the stem starts with the id as a token, else None."""
-        stem = self.path.stem
-        if stem.startswith(self.old_id) and not stem[len(self.old_id) : len(self.old_id) + 1].isdigit():
-            return stem[len(self.old_id) :]
-        return None
+        rest = self.path.stem.removeprefix(self.old_id)
+        return rest if self.path.stem.startswith(self.old_id) and not rest[:1].isdigit() else None
 
 
 # --- protected spans and references -------------------------------------------
-
-
 def protected_spans(data: bytes) -> list[tuple[int, int]]:
-    """Fence spans first (a closer may be longer than the opener; a fence may
-    sit in a blockquote; an unclosed fence runs to end of file), then
-    INLINE_CODE spans searched only in the gaps between fences, so an inline
-    backtick never pairs across a fence."""
+    """Fence spans first (a closer may outrun the opener; a fence may sit in a blockquote; an unclosed
+    fence runs to EOF), then INLINE_CODE spans only between fences, so a backtick never pairs across one."""
     spans: list[tuple[int, int]] = []
     start = 0
     for fence in [*FENCE.finditer(data), None]:
@@ -188,8 +182,6 @@ def _link_targets(blobs: Iterable[bytes]) -> set[str]:
 
 
 # --- time zone resolution ------------------------------------------------------
-
-
 def localize(naive: datetime, zone: ZoneInfo) -> datetime | str:
     a = naive.replace(tzinfo=zone, fold=0)
     b = naive.replace(tzinfo=zone, fold=1)
@@ -244,9 +236,7 @@ def _from_old_id(old_id: str, zone: ZoneInfo) -> tuple[datetime, bool, str | Non
     except ValueError:
         return REASON_BAD_ID_TIME
     aware = localize(naive, zone)
-    if isinstance(aware, str):
-        return aware
-    return aware, True, None, "date: " + aware.isoformat()
+    return aware if isinstance(aware, str) else (aware, True, None, "date: " + aware.isoformat())
 
 
 def _resolve_note(path: Path, data: bytes, fm: re.Match[bytes], old_id: str, zone: ZoneInfo) -> _Note | Skip | None:
@@ -262,14 +252,10 @@ def _resolve_note(path: Path, data: bytes, fm: re.Match[bytes], old_id: str, zon
         return Skip(path, REASON_NOT_UTF8)
     date_m = DATE_LINE.search(data, *span)
     resolved = _from_date_line(date_m, zone) if date_m else _from_old_id(old_id, zone)
-    if isinstance(resolved, str):
-        return Skip(path, resolved)
-    return _Note(path, old_id, *resolved)
+    return Skip(path, resolved) if isinstance(resolved, str) else _Note(path, old_id, *resolved)
 
 
 # --- planning --------------------------------------------------------------------
-
-
 def _read_notes(notes_dir: Path) -> tuple[dict[Path, bytes], list[Skip]]:
     files: dict[Path, bytes] = {}
     skips: list[Skip] = []
@@ -402,8 +388,6 @@ def plan_migration(vault: Path, naive_timezone: str = DEFAULT_ZONE) -> Plan:
 
 
 # --- shared by apply and undo ----------------------------------------------------
-
-
 def leftover_pattern(stems: Iterable[str]) -> re.Pattern[bytes]:
     """Looser than stem_pattern: an old stem as a token in a link target, not an attachment."""
     alts = b"|".join(re.escape(stem.encode()) for stem in sorted(stems, key=len, reverse=True))
@@ -490,8 +474,6 @@ def _execute(ops: list[_Op], map_file: Path | None, remove: Iterable[Path] = ())
 
 
 # --- apply -------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class _Kept:
     """A file the apply rewrites or renames."""
@@ -557,10 +539,9 @@ def _write_map(plan: Plan, map_file: Path, kept: list[_Kept]) -> Path:
     for k in kept:
         c = k.change
         note = (c.old_id, c.new_id, c.old_date_line, c.new_date_line) if c else (None,) * 4
+        temp = rel(_apply_temp(k.path, map_file.stem)) if k.path != k.new_path else None
         entry = {"old_path": rel(k.path), "new_path": rel(k.new_path), "sha256_before": _sha(k.before)}
-        entry |= {"sha256_after": _sha(k.after), "temp_path": None}
-        if k.path != k.new_path:
-            entry["temp_path"] = rel(_apply_temp(k.path, map_file.stem))
+        entry |= {"sha256_after": _sha(k.after), "temp_path": temp}
         files.append(entry | dict(zip(("old_id", "new_id", "old_date_line", "new_date_line"), note, strict=True)))
     data = {"version": MAP_VERSION, "vault": str(plan.vault), "run_id": map_file.stem}
     data |= {"naive_timezone": plan.naive_timezone, "files": files}
@@ -599,7 +580,6 @@ def apply_migration(plan: Plan, map_dir: Path, *, now: datetime | None = None) -
 
 
 # --- undo --------------------------------------------------------------------------
-
 _HEX = re.compile(r"[0-9a-f]{64}")
 _RUN_ID = re.compile(r"\d{8}T\d{6}Z")
 _MAP_SCHEMA = {"version": (int,), "vault": (str,), "run_id": (str,), "naive_timezone": (str,), "files": (list,)}
@@ -658,16 +638,10 @@ class _Entry:
 
 
 def _entry(vault: Path, run_id: str, rec: Mapping) -> _Entry:
-    new = vault / rec["new_path"]
-    return _Entry(
-        old=vault / rec["old_path"],
-        new=new,
-        temp=vault / rec["temp_path"] if rec["temp_path"] else None,
-        undo_temp=new.with_name(f"{new.name}.undo-{run_id}{TEMP_SUFFIX}"),
-        before=rec["sha256_before"],
-        after=rec["sha256_after"],
-        note=(rec["old_id"], rec["old_date_line"], rec["new_date_line"]) if rec["old_id"] is not None else None,
-    )
+    new, temp = vault / rec["new_path"], vault / rec["temp_path"] if rec["temp_path"] else None
+    note = (rec["old_id"], rec["old_date_line"], rec["new_date_line"]) if rec["old_id"] is not None else None
+    undo_temp = new.with_name(f"{new.name}.undo-{run_id}{TEMP_SUFFIX}")
+    return _Entry(vault / rec["old_path"], new, temp, undo_temp, rec["sha256_before"], rec["sha256_after"], note)
 
 
 @dataclass(frozen=True)
@@ -754,11 +728,8 @@ def undo_migration(vault: Path, map_file: Path) -> UndoReport:
         raise MigrationError(f"{exc.filename}: {exc}") from exc
     restoring, out = _settle(entries, states)
     unchanged = [i for i, s in enumerate(states) if s.kind == "unchanged"]
-    _execute(
-        [_undo_op(entries[i], states[i], out[i]) for i in restoring],
-        map_file,
-        [p for i in unchanged for p in states[i].cleanup],
-    )
+    ops = [_undo_op(entries[i], states[i], out[i]) for i in restoring]
+    _execute(ops, map_file, [p for i in unchanged for p in states[i].cleanup])
     return UndoReport(
         restored=tuple(entries[i].old for i in restoring),
         unchanged=tuple(entries[i].old for i in unchanged),
@@ -767,28 +738,61 @@ def undo_migration(vault: Path, map_file: Path) -> UndoReport:
 
 
 # --- command line ------------------------------------------------------------------
-
-
 def default_map_dir() -> Path:
     """$XDG_STATE_HOME/bim/migrate-ids, or ~/.local/state/bim/migrate-ids when it is unset or empty."""
     state = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
     return Path(state) / "bim" / "migrate-ids"
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Dry run: print the plan of the vault given with --vault."""
-    parser = argparse.ArgumentParser(description="Migrate bim zettel ids from local time to UTC.")
-    parser.add_argument("--vault", required=True, type=Path)
-    parser.add_argument("--naive-timezone", default=DEFAULT_ZONE)
-    args = parser.parse_args(argv)
+BACKUP_LINE = "Back up the vault and close Obsidian before --apply."
+CACHE_LINE = "Reminder: delete ~/.cache/buvis/zettel_cache.bin"
+
+
+def _run_mode(args: argparse.Namespace) -> None:
+    """Undo, apply, or print the dry-run table and counts; raises MigrationError."""
+    if args.undo:
+        report = undo_migration(args.vault, args.undo)
+        print(f"restored: {len(report.restored)}, unchanged: {len(report.unchanged)}, skipped: {len(report.skipped)}")
+        print(*(f"skipped, changed since apply: {path}" for path in report.skipped), CACHE_LINE, sep="\n")
+        return
+    try:
+        ZoneInfo(args.naive_timezone)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise MigrationError(f"unknown time zone: {args.naive_timezone}") from exc
     plan = plan_migration(args.vault, args.naive_timezone)
+    if args.apply:
+        print(BACKUP_LINE)  # apply_migration prints the outside_references warnings itself
+        print(f"map file: {apply_migration(plan, default_map_dir()).map_file}\n{CACHE_LINE}")
+        return
     for c in plan.changes:
         old, new = c.path.relative_to(plan.vault), c.new_path.relative_to(plan.vault)
-        print(f"{old} -> {new}  {c.old_id} -> {c.new_id}")
-    print(
-        f"{len(plan.changes)} changes, {len(plan.skips)} skips, {len(plan.already_utc)} already on UTC, "
-        f"{plan.reference_count} references"
-    )
+        print(f"{old} -> {new}  {c.old_id} -> {c.new_id}  date changed: {'yes' if c.date_changed else 'no'}")
+    print(f"notes to migrate: {sum(c.new_id != c.old_id for c in plan.changes)}")
+    print(f"notes already on UTC: {len(plan.already_utc)}")
+    for reason, n in sorted(Counter(s.reason for s in plan.skips).items()):
+        print(f"skipped, {reason}: {n}")
+    print(f"old id differs from the local digits of date: {len(plan.local_digit_mismatch)}")
+    print(f"references to rewrite: {plan.reference_count}")
+    print(f"id-named attachments that keep their names: {len(plan.kept_attachments)}")
+    print(BACKUP_LINE)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Dry run by default; --apply migrates, --undo MAPFILE rolls an apply back."""
+    parser = argparse.ArgumentParser(description="Migrate bim zettel ids from local time to UTC.")
+    parser.add_argument("--vault", required=True, type=Path)
+    parser.add_argument("--naive-timezone", default=DEFAULT_ZONE, help="zone of naive dates and ids")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--apply", action="store_true", help="rename and rewrite the notes, write a map file")
+    mode.add_argument("--undo", type=Path, metavar="MAPFILE", help="roll back the apply that wrote MAPFILE")
+    args = parser.parse_args(argv)
+    try:
+        _run_mode(args)
+    except MigrationError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        if exc.map_file is not None:
+            print(f"map file: {exc.map_file}; roll back with --undo {exc.map_file}", file=sys.stderr)
+        return 1
     return 0
 
 
