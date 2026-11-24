@@ -1,6 +1,6 @@
 # Project Capsule: buvis-gems
 
-Generated: 2026-11-23 (catchup: feature/bim-utc-ids)
+Generated: 2026-11-24 (catchup: feature/bim-utc-ids, batch 202611242230)
 
 ## Key Invariants
 - Commands return `CommandResult`; only `cli.py`/adapters render via `console`. No print/click.echo/logging.
@@ -27,9 +27,9 @@ Generated: 2026-11-23 (catchup: feature/bim-utc-ids)
 
 ## Active Work
 
-### feature/bim-utc-ids (batch 202611231043)
+### feature/bim-utc-ids (batch 202611231043, then batch 202611242230)
 - [x] 00161-bim-utc-ids-v1.md (1 cycle): ids are UTC digits of `date`; same-second collisions take seconds `60`-`99`, no sleep. Python and Rust changed together; parity tests pin them.
-- [ ] 00162 (migration of old local ids to UTC) in backlog; depends on 00161.
+- [ ] 00162-bim-migrate-ids-to-utc-v1.md in wip (batch 202611242230): standalone script in `docs/dev/project-management/spikes/bim-migrate-ids/`, no bim import, no CHANGELOG; gate is `uv run pytest docs/dev/project-management/spikes/bim-migrate-ids`. It restates the 00161 UTC rule instead of importing it.
 - [ ] 00165 intake (Prague rule: naive dates read in a configured zone) carries verified findings R6/R7/R8 from the 00161 review ledger.
 - [ ] 00122, 00123, 00156-00160 in backlog (other features).
 
@@ -62,6 +62,8 @@ Observations: the dot two-host pull tests error in the agent sandbox (fixture gi
 Observations: Batch drained; all four tasks completed, including the cycle-2 Tail sweep. Both provider rosters and the original and companion implementation audits passed the host evidence gate. Final isolated suite: 6654 passed, 16 skipped, 1 xfailed; backup ruff and mypy passed. Earlier host-dependent test isolation failures remain in the deferred ledger. Evidence: `autopilot/reports/202611040755-report.md` and `autopilot/reports/00117-tail-sweep-work.md`.
 
 ## Related context
+
+2026-11-24: topic `bim migrate ids to utc one-off script`. Portfolio hits are the PRD itself (`prds/backlog/00162-bim-migrate-ids-to-utc-v1.md:6-21`, ~0.016) and the 00161 PRD (`:121-129`); no prior migration code exists. Repo index not run (worktree unregistered). GitHub: 2 open issues (#272, #273), PR #275 (config layer) open; master CI green 2026-11-24.
 
 2026-11-23: topic `bim utc ids note id collision suffix`. Portfolio hits are the PRD itself (`prds/backlog/00161-bim-utc-ids-v1.md:6`, `:38`, ~0.016) and transcripts of the feature/improve-bim-from-skill-experience sessions (PRD 00118, the local-time rule this PRD reverses). Repo-scope index and status were not run (worktree unregistered, as before).
 
