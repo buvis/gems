@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+import types
 from pathlib import Path
 
 import pytest
 from bim.commands.doc.shared.issuers import IssuerRegistry
+from bim.commands.doc.shared.llm import DOC_REQUEST_TIMEOUT_SECONDS
 from bim.commands.doc.shared.naming import DOC_TYPES
 from bim.commands.doc.shared.rules.models import SourceMetadata
 from bim.commands.doc.shared.settings_models import ClassifierSettings
+from bim.shared.llm import BackendError, BackendReason
 from pytest_mock import MockerFixture
 
 FIXTURES = Path(__file__).parent / "fixtures" / "ocr_text"
@@ -16,6 +19,29 @@ FIXTURES = Path(__file__).parent / "fixtures" / "ocr_text"
 def _metadata(source_kind: str = "email", filename: str | None = None) -> SourceMetadata:
     """SourceMetadata stub for classifier tests that don't exercise the prompt's metadata payload."""
     return SourceMetadata(source_kind=source_kind, original_filename=filename)
+
+
+class _RequestException(OSError):
+    pass
+
+
+class _ConnectionError(_RequestException):
+    pass
+
+
+class _HTTPError(_RequestException):
+    pass
+
+
+class _Timeout(_RequestException):
+    pass
+
+
+class _FakeExceptions(types.ModuleType):
+    Timeout = _Timeout
+    ConnectionError = _ConnectionError
+    HTTPError = _HTTPError
+    RequestException = _RequestException
 
 
 class _MockResponse:
@@ -28,7 +54,13 @@ class _MockResponse:
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
-            raise RuntimeError(f"HTTP {self.status_code}")
+            raise _HTTPError(f"HTTP {self.status_code}")
+
+    def iter_content(self, chunk_size: int = 1) -> list[bytes]:
+        return [json.dumps(self._payload).encode()]
+
+    def close(self) -> None:
+        pass
 
 
 def _content_response(content_obj: dict[str, object]) -> _MockResponse:
@@ -41,8 +73,8 @@ def _raw_content_response(raw: str) -> _MockResponse:
 
 def _build_fake_requests(mocker: MockerFixture, response: _MockResponse | None = None):
     fake_requests = mocker.MagicMock()
-    fake_requests.exceptions = mocker.MagicMock()
-    fake_requests.exceptions.Timeout = type("Timeout", (Exception,), {})
+    fake_requests.exceptions = _FakeExceptions("requests.exceptions")
+    mocker.patch.dict("sys.modules", {"requests.exceptions": fake_requests.exceptions}, clear=False)
     if response is not None:
         fake_requests.post.return_value = response
     return fake_requests
@@ -245,6 +277,7 @@ class TestClassifier:
         args, kwargs = fake_requests.post.call_args
         url = args[0] if args else kwargs.get("url")
         assert url == f"{settings.endpoint.rstrip('/')}/api/chat"
+        assert kwargs["timeout"] == DOC_REQUEST_TIMEOUT_SECONDS
 
         body = kwargs["json"]
         assert body["model"] == settings.primary_model
@@ -271,8 +304,26 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        with pytest.raises(ClassifierError):
+        with pytest.raises(ClassifierError) as exc_info:
             Classifier(settings).classify("text", _metadata(), registry)
+        assert str(exc_info.value).startswith("Could not parse classifier JSON response: ")
+        assert exc_info.value.transient is False
+
+    def test_non_object_json_reply_raises_non_transient_classifier_error(
+        self,
+        settings: ClassifierSettings,
+        registry: IssuerRegistry,
+        mocker: MockerFixture,
+    ) -> None:
+        from bim.commands.doc.shared.classifier import Classifier, ClassifierError
+
+        fake_requests = _build_fake_requests(mocker, _raw_content_response('["cez", "invoice"]'))
+        mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
+
+        with pytest.raises(ClassifierError) as exc_info:
+            Classifier(settings).classify("text", _metadata(), registry)
+        assert str(exc_info.value) == "classifier response is not a JSON object"
+        assert exc_info.value.transient is False
 
     def test_http_error_raises_classifier_error(
         self,
@@ -288,8 +339,10 @@ class TestClassifier:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        with pytest.raises(ClassifierError):
+        with pytest.raises(ClassifierError) as exc_info:
             Classifier(settings).classify("text", _metadata(), registry)
+        assert str(exc_info.value).startswith(f"HTTP error calling {settings.backend}: ")
+        assert exc_info.value.transient is True
 
     def test_timeout_propagates_unwrapped(
         self,
@@ -300,11 +353,12 @@ class TestClassifier:
         from bim.commands.doc.shared.classifier import Classifier
 
         fake_requests = _build_fake_requests(mocker)
-        fake_requests.post.side_effect = fake_requests.exceptions.Timeout("read timeout")
+        fake_requests.post.side_effect = _Timeout("read timeout")
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        with pytest.raises(fake_requests.exceptions.Timeout):
+        with pytest.raises(BackendError) as exc_info:
             Classifier(settings).classify("text", _metadata(), registry)
+        assert exc_info.value.reason == BackendReason.TIMEOUT
 
     def test_classifier_missing_doc_type_raises_classifier_error(
         self,

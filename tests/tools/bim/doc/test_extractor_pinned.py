@@ -26,10 +26,23 @@ from __future__ import annotations
 
 import datetime
 import json
+import types
 
 import pytest
+from bim.commands.doc.shared.llm import DOC_REQUEST_TIMEOUT_SECONDS
 from bim.commands.doc.shared.settings_models import ClassifierSettings
 from pytest_mock import MockerFixture
+
+
+class _RequestException(OSError):
+    pass
+
+
+class _FakeExceptions(types.ModuleType):
+    RequestException = _RequestException
+    Timeout = type("Timeout", (_RequestException,), {})
+    ConnectionError = type("ConnectionError", (_RequestException,), {})
+    HTTPError = type("HTTPError", (_RequestException,), {})
 
 
 class _MockResponse:
@@ -42,7 +55,13 @@ class _MockResponse:
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
-            raise RuntimeError(f"HTTP {self.status_code}")
+            raise _FakeExceptions.HTTPError(f"HTTP {self.status_code}")
+
+    def iter_content(self, chunk_size: int = 1) -> list[bytes]:
+        return [json.dumps(self._payload).encode()]
+
+    def close(self) -> None:
+        pass
 
 
 def _content_response(content_obj: dict[str, object]) -> _MockResponse:
@@ -51,8 +70,8 @@ def _content_response(content_obj: dict[str, object]) -> _MockResponse:
 
 def _build_fake_requests(mocker: MockerFixture, response: _MockResponse | None = None):
     fake_requests = mocker.MagicMock()
-    fake_requests.exceptions = mocker.MagicMock()
-    fake_requests.exceptions.Timeout = type("Timeout", (Exception,), {})
+    fake_requests.exceptions = _FakeExceptions("requests.exceptions")
+    mocker.patch.dict("sys.modules", {"requests.exceptions": fake_requests.exceptions}, clear=False)
     if response is not None:
         fake_requests.post.return_value = response
     return fake_requests
@@ -391,6 +410,7 @@ class TestExtractorPinnedModel:
         body = kwargs["json"]
         assert isinstance(body, dict)
         assert body["model"] == "some-other-model:latest"
+        assert kwargs["timeout"] == DOC_REQUEST_TIMEOUT_SECONDS
         assert result.doc_type == "invoice"
         assert result.number == "INV-1"
         assert result.currency == "CZK"

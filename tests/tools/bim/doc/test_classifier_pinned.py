@@ -16,9 +16,11 @@ implementation is expected to treat ``doc_language`` as a synonym for
 from __future__ import annotations
 
 import json
+import types
 
 import pytest
 from bim.commands.doc.shared.issuers import IssuerRegistry
+from bim.commands.doc.shared.llm import DOC_REQUEST_TIMEOUT_SECONDS
 from bim.commands.doc.shared.naming import DOC_TYPES
 from bim.commands.doc.shared.rules.models import SourceMetadata
 from bim.commands.doc.shared.settings_models import ClassifierSettings
@@ -28,6 +30,21 @@ from pytest_mock import MockerFixture
 def _metadata(source_kind: str = "email") -> SourceMetadata:
     """SourceMetadata stub for tests that don't exercise the prompt's metadata payload."""
     return SourceMetadata(source_kind=source_kind, original_filename=None)
+
+
+class _RequestException(OSError):
+    pass
+
+
+class _HTTPError(_RequestException):
+    pass
+
+
+class _FakeExceptions(types.ModuleType):
+    Timeout = type("Timeout", (_RequestException,), {})
+    ConnectionError = type("ConnectionError", (_RequestException,), {})
+    HTTPError = _HTTPError
+    RequestException = _RequestException
 
 
 class _MockResponse:
@@ -40,7 +57,13 @@ class _MockResponse:
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
-            raise RuntimeError(f"HTTP {self.status_code}")
+            raise _HTTPError(f"HTTP {self.status_code}")
+
+    def iter_content(self, chunk_size: int = 1) -> list[bytes]:
+        return [json.dumps(self._payload).encode()]
+
+    def close(self) -> None:
+        pass
 
 
 def _content_response(content_obj: dict[str, object]) -> _MockResponse:
@@ -49,8 +72,8 @@ def _content_response(content_obj: dict[str, object]) -> _MockResponse:
 
 def _build_fake_requests(mocker: MockerFixture, response: _MockResponse | None = None):
     fake_requests = mocker.MagicMock()
-    fake_requests.exceptions = mocker.MagicMock()
-    fake_requests.exceptions.Timeout = type("Timeout", (Exception,), {})
+    fake_requests.exceptions = _FakeExceptions("requests.exceptions")
+    mocker.patch.dict("sys.modules", {"requests.exceptions": fake_requests.exceptions}, clear=False)
     if response is not None:
         fake_requests.post.return_value = response
     return fake_requests
@@ -335,3 +358,4 @@ class TestClassifyWithPinnedModelOverride:
         _, kwargs = fake_requests.post.call_args
         body = kwargs["json"]
         assert body["model"] == "custom-fallback-model"
+        assert kwargs["timeout"] == DOC_REQUEST_TIMEOUT_SECONDS

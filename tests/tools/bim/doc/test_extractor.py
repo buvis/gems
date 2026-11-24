@@ -2,13 +2,27 @@ from __future__ import annotations
 
 import datetime
 import json
+import types
 from pathlib import Path
 
 import pytest
+from bim.commands.doc.shared.llm import DOC_REQUEST_TIMEOUT_SECONDS
 from bim.commands.doc.shared.settings_models import ClassifierSettings
+from bim.shared.llm import BackendError, BackendReason
 from pytest_mock import MockerFixture
 
 FIXTURES = Path(__file__).parent / "fixtures" / "ocr_text"
+
+
+class _RequestException(OSError):
+    pass
+
+
+class _FakeExceptions(types.ModuleType):
+    RequestException = _RequestException
+    Timeout = type("Timeout", (_RequestException,), {})
+    ConnectionError = type("ConnectionError", (_RequestException,), {})
+    HTTPError = type("HTTPError", (_RequestException,), {})
 
 
 class _MockResponse:
@@ -21,7 +35,13 @@ class _MockResponse:
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
-            raise RuntimeError(f"HTTP {self.status_code}")
+            raise _FakeExceptions.HTTPError(f"HTTP {self.status_code}")
+
+    def iter_content(self, chunk_size: int = 1) -> list[bytes]:
+        return [json.dumps(self._payload).encode()]
+
+    def close(self) -> None:
+        pass
 
 
 def _content_response(content_obj: dict[str, object]) -> _MockResponse:
@@ -34,8 +54,8 @@ def _raw_content_response(raw: str) -> _MockResponse:
 
 def _build_fake_requests(mocker: MockerFixture, response: _MockResponse | None = None):
     fake_requests = mocker.MagicMock()
-    fake_requests.exceptions = mocker.MagicMock()
-    fake_requests.exceptions.Timeout = type("Timeout", (Exception,), {})
+    fake_requests.exceptions = _FakeExceptions("requests.exceptions")
+    mocker.patch.dict("sys.modules", {"requests.exceptions": fake_requests.exceptions}, clear=False)
     if response is not None:
         fake_requests.post.return_value = response
     return fake_requests
@@ -327,8 +347,10 @@ class TestExtractorErrors:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        with pytest.raises(IncompleteExtraction):
+        with pytest.raises(IncompleteExtraction) as exc_info:
             Extractor(settings).extract("text", "invoice")
+        assert exc_info.value.reasons[0].startswith("could not parse model response as JSON: ")
+        assert exc_info.value.transient is False
 
     def test_invoice_amount_coercion_from_int(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
         from bim.commands.doc.shared.extractor import Extractor
@@ -406,8 +428,9 @@ class TestExtractorErrors:
         )
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        with pytest.raises(IncompleteExtraction):
+        with pytest.raises(IncompleteExtraction) as exc_info:
             Extractor(settings).extract("text", "invoice")
+        assert exc_info.value.reasons == ["could not parse model response as JSON: not an object"]
 
     def test_lazy_import_no_requests_at_module_load(self, mocker: MockerFixture) -> None:
         import builtins
@@ -450,8 +473,9 @@ class TestExtractorErrors:
         fake_requests.post.side_effect = fake_requests.exceptions.Timeout("read timeout")
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        with pytest.raises(fake_requests.exceptions.Timeout):
+        with pytest.raises(BackendError) as exc_info:
             Extractor(settings).extract("text", "invoice")
+        assert exc_info.value.reason == BackendReason.TIMEOUT
 
 
 class TestExtractorPromptShape:
@@ -683,54 +707,27 @@ class TestIncompleteExtractionTransient:
         exc = IncompleteExtraction(["HTTP error: refused"], transient=True)
         assert exc.transient is True
 
-    def test_http_failure_marks_transient(self, mocker: MockerFixture) -> None:
+    def test_http_failure_marks_transient(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
         from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
-        from bim.commands.doc.shared.settings_models import ClassifierSettings
 
-        # Build a fake requests module with a real Timeout exception class so
-        # ``except requests.exceptions.Timeout`` doesn't raise TypeError.
-        class _FakeTimeout(Exception):
-            pass
-
-        fake_exceptions = mocker.MagicMock()
-        fake_exceptions.Timeout = _FakeTimeout
-        fake_requests = mocker.MagicMock()
-        fake_requests.exceptions = fake_exceptions
-        fake_requests.post.side_effect = ConnectionError("refused")
+        fake_requests = _build_fake_requests(mocker)
+        fake_requests.post.side_effect = fake_requests.exceptions.ConnectionError("refused")
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        ext = Extractor(ClassifierSettings())
         with pytest.raises(IncompleteExtraction) as exc_info:
-            ext.extract("ocr text", "invoice")
+            Extractor(settings).extract("ocr text", "invoice")
         assert exc_info.value.transient is True
+        assert exc_info.value.reasons[0].startswith("HTTP error: ")
 
-    def test_missing_field_failure_is_not_transient(self, mocker: MockerFixture) -> None:
+    def test_missing_field_failure_is_not_transient(self, settings: ClassifierSettings, mocker: MockerFixture) -> None:
         from bim.commands.doc.shared.extractor import Extractor, IncompleteExtraction
-        from bim.commands.doc.shared.settings_models import ClassifierSettings
 
-        class _Resp:
-            status_code = 200
-
-            def raise_for_status(self) -> None:
-                return None
-
-            def json(self) -> dict[str, object]:
-                # All required invoice fields missing.
-                return {"message": {"content": json.dumps({})}}
-
-        class _FakeTimeout(Exception):
-            pass
-
-        fake_exceptions = mocker.MagicMock()
-        fake_exceptions.Timeout = _FakeTimeout
-        fake_requests = mocker.MagicMock()
-        fake_requests.exceptions = fake_exceptions
-        fake_requests.post.return_value = _Resp()
+        # All required invoice fields missing.
+        fake_requests = _build_fake_requests(mocker, _content_response({}))
         mocker.patch.dict("sys.modules", {"requests": fake_requests}, clear=False)
 
-        ext = Extractor(ClassifierSettings())
         with pytest.raises(IncompleteExtraction) as exc_info:
-            ext.extract("ocr text", "invoice")
+            Extractor(settings).extract("ocr text", "invoice")
         assert exc_info.value.transient is False
 
 
@@ -868,6 +865,7 @@ class TestExtractorSummary:
 
         Extractor(settings).extract("ocr text", "invoice")
         call_kwargs = fake_requests.post.call_args.kwargs
+        assert call_kwargs["timeout"] == DOC_REQUEST_TIMEOUT_SECONDS
         prompts = _system_messages(call_kwargs)
         assert prompts, "expected a system message in the request body"
         joined = "\n".join(prompts).lower()
