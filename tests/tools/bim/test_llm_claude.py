@@ -35,6 +35,15 @@ class _Tx(BaseModel):
     currency: str
 
 
+class _Other(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    issuer: str
+
+
+_NAMES = ["claude", "claude-x"]
+
+
 def _expected_argv(schema: type[BaseModel], model: str | None) -> list[str]:
     argv = ["claude", "-p", "--output-format", "json", "--json-schema", json.dumps(wire_schema(schema))]
     argv += _ISOLATION_FLAGS
@@ -170,7 +179,8 @@ class TestClaudeComplete:
         assert result == _Tx(**_TX_USD)
         assert fake.calls[0]["argv"] == _expected_argv(_Tx, "haiku")
 
-    def test_claude_missing_executable_is_an_exit_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("name", _NAMES)
+    def test_claude_missing_executable_is_an_exit_error(self, monkeypatch: pytest.MonkeyPatch, name: str) -> None:
         looked_up: list[str] = []
 
         def fake_which(cmd: str, *args: object, **kwargs: object) -> str | None:
@@ -184,10 +194,10 @@ class TestClaudeComplete:
         monkeypatch.setattr("bim.shared.llm.base.subprocess.Popen", no_spawn)
 
         with pytest.raises(BackendError) as exc:
-            _backend("claude-work").complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
+            _backend(name).complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
 
         assert exc.value.reason is BackendReason.EXIT
-        assert exc.value.backend == "claude-work"
+        assert exc.value.backend == name
         assert "the 'claude' CLI is not on PATH" in exc.value.detail
         assert "claude" in looked_up
 
@@ -235,67 +245,149 @@ class TestClaudeEnvelope:
         assert type(result) is _Tx
         assert result == _Tx(**expected)
 
+    @pytest.mark.parametrize(
+        ("stdout", "expected"),
+        [
+            (
+                _envelope(structured_output={"issuer_slug": "philips", "pages": [1, 2]}),
+                {"issuer_slug": "philips", "pages": [1, 2]},
+            ),
+            (_envelope(structured_output={}, result=json.dumps({"a": 1})), {}),
+        ],
+        ids=["structured", "empty-structured-wins"],
+    )
     def test_claude_json_object_schema_returns_the_structured_output(
-        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str]
+        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], stdout: str, expected: dict[str, Any]
     ) -> None:
-        _install(monkeypatch, _envelope(structured_output={"issuer_slug": "philips", "pages": [1, 2]}))
+        _install(monkeypatch, stdout)
 
         result = _backend().complete(LLMRequest(prompt="x"), JsonObject, timeout=5.0)
 
         assert type(result) is JsonObject
-        assert result.root == {"issuer_slug": "philips", "pages": [1, 2]}
+        assert result.root == expected
 
+    @pytest.mark.parametrize("name", _NAMES)
+    @pytest.mark.parametrize(
+        "stdout",
+        [_envelope(structured_output=[1, 2]), _envelope(result="[1]")],
+        ids=["structured-list", "result-list-text"],
+    )
+    def test_claude_json_object_schema_rejects_a_reply_that_is_not_an_object(
+        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], stdout: str, name: str
+    ) -> None:
+        _install(monkeypatch, stdout)
+
+        with pytest.raises(BackendError) as exc:
+            _backend(name).complete(LLMRequest(prompt="x"), JsonObject, timeout=5.0)
+
+        assert exc.value.reason is BackendReason.SCHEMA
+        assert exc.value.backend == name
+
+    @pytest.mark.parametrize("name", _NAMES)
     @pytest.mark.parametrize("text", ["Credit balance is too low", "Invalid API key"])
     def test_claude_is_error_envelope_is_an_exit_error_with_its_result(
-        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], text: str
+        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], text: str, name: str
     ) -> None:
         stdout = json.dumps({"type": "result", "is_error": True, "result": text, "structured_output": _TX_CZK})
         _install(monkeypatch, stdout)
 
         with pytest.raises(BackendError) as exc:
-            _backend("claude-work").complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
+            _backend(name).complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
 
         assert exc.value.reason is BackendReason.EXIT
-        assert exc.value.backend == "claude-work"
+        assert exc.value.backend == name
         assert text in exc.value.detail
 
-    @pytest.mark.parametrize(
-        "stdout",
-        ["", "not json", '{"type": "result"', _envelope(result="not json"), _envelope(result="```json\n{}\n```")],
-        ids=["empty", "text", "truncated", "result-not-json", "result-fenced"],
-    )
-    def test_claude_invalid_json_is_a_parse_error(
-        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], stdout: str
-    ) -> None:
-        _install(monkeypatch, stdout)
-
-        with pytest.raises(BackendError) as exc:
-            _backend("claude-work").complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
-
-        assert exc.value.reason is BackendReason.PARSE
-        assert exc.value.backend == "claude-work"
-
+    @pytest.mark.parametrize("name", _NAMES)
     @pytest.mark.parametrize(
         "stdout",
         [
-            _envelope(structured_output={"amount": "1.00"}),
-            _envelope(result=json.dumps({**_TX_CZK, "note": "surprise"})),
-            _envelope(result=[_TX_CZK]),
-            json.dumps({**_TX_USD, "note": "surprise"}),
+            json.dumps({"type": "result", "is_error": True, "structured_output": _TX_CZK}),
+            json.dumps({"type": "result", "is_error": True, "result": None, "structured_output": _TX_CZK}),
         ],
-        ids=["missing-field", "extra-key", "list", "bare-extra-key"],
+        ids=["no-result", "null-result"],
     )
-    def test_claude_reply_that_does_not_match_the_schema_is_a_schema_error(
-        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], stdout: str
+    def test_claude_is_error_envelope_without_result_text_is_still_an_exit_error(
+        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], stdout: str, name: str
     ) -> None:
         _install(monkeypatch, stdout)
 
         with pytest.raises(BackendError) as exc:
-            _backend("claude-work").complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
+            _backend(name).complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
+
+        assert exc.value.reason is BackendReason.EXIT
+        assert exc.value.backend == name
+
+    @pytest.mark.parametrize("name", _NAMES)
+    @pytest.mark.parametrize(
+        "stdout",
+        [
+            "",
+            "not json",
+            '{"type": "result"',
+            _envelope(result="not json"),
+            _envelope(result="```json\n{}\n```"),
+            _envelope(structured_output="not json"),
+        ],
+        ids=["empty", "text", "truncated", "result-not-json", "result-fenced", "structured-not-json"],
+    )
+    def test_claude_invalid_json_is_a_parse_error(
+        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], stdout: str, name: str
+    ) -> None:
+        _install(monkeypatch, stdout)
+
+        with pytest.raises(BackendError) as exc:
+            _backend(name).complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
+
+        assert exc.value.reason is BackendReason.PARSE
+        assert exc.value.backend == name
+
+    @pytest.mark.parametrize("name", _NAMES)
+    @pytest.mark.parametrize(
+        "stdout",
+        [json.dumps([_TX_CZK]), "42", "null", '"text"'],
+        ids=["list", "number", "null", "string"],
+    )
+    def test_claude_valid_json_that_is_not_an_envelope_object_is_a_backend_error(
+        self, monkeypatch: pytest.MonkeyPatch, claude_on_path: list[str], stdout: str, name: str
+    ) -> None:
+        _install(monkeypatch, stdout)
+
+        with pytest.raises(BackendError) as exc:
+            _backend(name).complete(LLMRequest(prompt="x"), _Tx, timeout=5.0)
+
+        assert exc.value.reason in {BackendReason.PARSE, BackendReason.SCHEMA}
+        assert exc.value.backend == name
+
+    @pytest.mark.parametrize("name", _NAMES)
+    @pytest.mark.parametrize(
+        ("schema", "stdout"),
+        [
+            (_Tx, _envelope(structured_output={"amount": "1.00"})),
+            (_Tx, _envelope(result=json.dumps({**_TX_CZK, "note": "surprise"}))),
+            (_Tx, _envelope(result=[_TX_CZK])),
+            (_Tx, json.dumps({**_TX_USD, "note": "surprise"})),
+            (_Other, _envelope(structured_output=_TX_CZK)),
+            (_Other, _envelope(result=json.dumps({"issuer": "philips", "note": "surprise"}))),
+        ],
+        ids=["missing-field", "extra-key", "list", "bare-extra-key", "other-wrong-fields", "other-extra-key"],
+    )
+    def test_claude_reply_that_does_not_match_the_schema_is_a_schema_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        claude_on_path: list[str],
+        schema: type[BaseModel],
+        stdout: str,
+        name: str,
+    ) -> None:
+        _install(monkeypatch, stdout)
+
+        with pytest.raises(BackendError) as exc:
+            _backend(name).complete(LLMRequest(prompt="x"), schema, timeout=5.0)
 
         assert exc.value.reason is BackendReason.SCHEMA
-        assert exc.value.backend == "claude-work"
-        assert exc.value.detail.startswith("reply does not match _Tx: ")
+        assert exc.value.backend == name
+        assert exc.value.detail.startswith(f"reply does not match {schema.__name__}: ")
 
 
 class TestClaudeRegistry:
