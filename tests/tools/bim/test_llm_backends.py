@@ -228,6 +228,10 @@ class TestHttpReadChatContent:
         [
             ("openai", {"choices": [{"message": {"content": None}}]}),
             ("ollama", {"message": {"content": {"label": "x"}}}),
+            ("openai", {"choices": [{"message": {"content": [1]}}]}),
+            ("llamacpp", {"choices": [{"message": {"content": 3}}]}),
+            ("ollama", {"message": {"content": True}}),
+            ("ollama", {"message": {"content": [1]}}),
         ],
     )
     def test_http_non_text_content_raises_type_error(self, kind: Kind, payload: dict[str, Any]) -> None:
@@ -254,6 +258,7 @@ class TestHttpBackendRequest:
         assert len(calls) == 1
         url, kwargs = calls[0]
         assert url == _url(kind)
+        assert set(kwargs) == {"json", "timeout", "stream", "allow_redirects"}
         assert kwargs["timeout"] == timeout
         assert kwargs["stream"] is True
         assert kwargs["allow_redirects"] is False
@@ -309,6 +314,18 @@ class TestHttpBackendRequest:
 
         assert calls[0][1]["json"]["model"] == expected
 
+    @pytest.mark.parametrize("kind", ["ollama", "llamacpp", "openai"])
+    @pytest.mark.parametrize("call_model", ["x", "qwen3:8b"])
+    def test_http_backend_call_model_is_used_when_settings_have_no_model(
+        self, monkeypatch: pytest.MonkeyPatch, kind: Kind, call_model: str
+    ) -> None:
+        calls = _install_requests(monkeypatch, _ok(kind, '{"label": "a", "score": 1}'))
+
+        result = _backend(kind, model=None).complete(LLMRequest(prompt="p"), _Verdict, timeout=5.0, model=call_model)
+
+        assert result == _Verdict(label="a", score=1)
+        assert calls[0][1]["json"]["model"] == call_model
+
     @pytest.mark.parametrize(("kind", "name"), [("ollama", "local"), ("openai", "cloud-box")])
     def test_http_backend_without_any_model_raises_config_error_before_posting(
         self, monkeypatch: pytest.MonkeyPatch, kind: Kind, name: str
@@ -329,7 +346,7 @@ class TestHttpBackendRequest:
         assert result == _Verdict(label="a", score=1)
         assert "model" not in calls[0][1]["json"]
 
-    @pytest.mark.parametrize("kind", ["ollama", "llamacpp"])
+    @pytest.mark.parametrize("kind", ["ollama", "llamacpp", "openai"])
     def test_http_backend_strips_trailing_slash_from_endpoint(
         self, monkeypatch: pytest.MonkeyPatch, kind: Kind
     ) -> None:
@@ -391,23 +408,27 @@ class TestHttpBackendReply:
     def test_http_backend_reply_not_matching_strict_schema_is_schema_error(
         self, monkeypatch: pytest.MonkeyPatch, reply: dict[str, Any]
     ) -> None:
-        _install_requests(monkeypatch, _ok("openai", json.dumps(reply)))
+        response = _ok("openai", json.dumps(reply))
+        _install_requests(monkeypatch, response)
 
         error = _fail(_backend("openai"))
 
         assert error.reason is BackendReason.SCHEMA
         assert error.detail.startswith("reply does not match")
+        assert response.closed.wait(1)
 
     @pytest.mark.parametrize("content", ["sorry, no JSON", '{"label": "a", "score": '])
     def test_http_backend_non_json_reply_text_is_parse_error(
         self, monkeypatch: pytest.MonkeyPatch, content: str
     ) -> None:
-        _install_requests(monkeypatch, _ok("llamacpp", content))
+        response = _ok("llamacpp", content)
+        _install_requests(monkeypatch, response)
 
         error = _fail(_backend("llamacpp"))
 
         assert error.reason is BackendReason.PARSE
         assert error.detail.startswith("reply is not valid JSON")
+        assert response.closed.wait(1)
 
     @pytest.mark.parametrize(
         ("kind", "envelope"),
@@ -423,12 +444,14 @@ class TestHttpBackendReply:
     def test_http_backend_malformed_envelope_is_parse_error(
         self, monkeypatch: pytest.MonkeyPatch, kind: Kind, envelope: dict[str, Any]
     ) -> None:
-        _install_requests(monkeypatch, _FakeResponse(200, [json.dumps(envelope).encode()]))
+        response = _FakeResponse(200, [json.dumps(envelope).encode()])
+        _install_requests(monkeypatch, response)
 
         error = _fail(_backend(kind))
 
         assert error.reason is BackendReason.PARSE
         assert error.detail.startswith("malformed reply envelope: ")
+        assert response.closed.wait(1)
 
 
 class TestHttpBackendTransportErrors:
@@ -462,13 +485,39 @@ class TestHttpBackendTransportErrors:
 
     @pytest.mark.parametrize("status", [400, 500, 503])
     def test_http_backend_error_status_is_exit(self, monkeypatch: pytest.MonkeyPatch, status: int) -> None:
-        _install_requests(monkeypatch, _FakeResponse(status, [_envelope("ollama", "{}")]))
+        response = _FakeResponse(status, [_envelope("ollama", "{}")])
+        _install_requests(monkeypatch, response)
 
         error = _fail(_backend("ollama"))
 
         assert error.reason is BackendReason.EXIT
         assert error.detail.startswith(f"HTTP error calling {_url('ollama')}: ")
         assert str(status) in error.detail
+        assert response.closed.wait(1)
+
+    def test_http_backend_bare_request_exception_from_post_is_exit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _install_requests(monkeypatch, _RequestException("invalid header value"))
+
+        error = _fail(_backend("openai"))
+
+        assert error.reason is BackendReason.EXIT
+        assert error.detail.startswith(f"HTTP error calling {_url('openai')}: ")
+        assert "invalid header value" in error.detail
+
+    def test_http_backend_connection_error_while_reading_body_is_exit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def broken_body() -> Iterator[bytes]:
+            yield b'{"message": '
+            raise _ConnectionError("connection reset mid-body")
+
+        response = _FakeResponse(200, broken_body())
+        _install_requests(monkeypatch, response)
+
+        error = _fail(_backend("ollama"))
+
+        assert error.reason is BackendReason.EXIT
+        assert error.detail.startswith(f"HTTP error calling {_url('ollama')}: ")
+        assert "connection reset mid-body" in error.detail
+        assert response.closed.wait(1)
 
     @pytest.mark.parametrize("status", [300, 302, 399])
     def test_http_backend_redirect_is_exit_without_reading_body(
@@ -487,12 +536,14 @@ class TestHttpBackendTransportErrors:
 
     @pytest.mark.parametrize("body", [b"<html>bad gateway</html>", b'{"message": {"content": "\xff"}}'])
     def test_http_backend_undecodable_envelope_is_exit(self, monkeypatch: pytest.MonkeyPatch, body: bytes) -> None:
-        _install_requests(monkeypatch, _FakeResponse(200, [body]))
+        response = _FakeResponse(200, [body])
+        _install_requests(monkeypatch, response)
 
         error = _fail(_backend("ollama"))
 
         assert error.reason is BackendReason.EXIT
         assert error.detail.startswith(f"HTTP error calling {_url('ollama')}: ")
+        assert response.closed.wait(1)
 
     def test_http_backend_reply_of_exactly_max_bytes_is_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
         envelope = _envelope("ollama", '{"label": "big", "score": 2}')
@@ -534,10 +585,18 @@ class TestHttpBackendTransportErrors:
 class TestHttpBackendDeadline:
     def test_http_deadline_releases_caller_while_post_blocks(self, monkeypatch: pytest.MonkeyPatch) -> None:
         release = threading.Event()
+        yielded: list[int] = []
+
+        def late_body() -> Iterator[bytes]:
+            for _ in range(50):
+                yielded.append(1)
+                yield b" "
+
+        late = _FakeResponse(200, late_body())
 
         def blocked_post() -> _FakeResponse:
             release.wait(5)
-            return _ok("ollama", '{"label": "late", "score": 1}')
+            return late
 
         _install_requests(monkeypatch, blocked_post)
         backend = _backend("ollama", endpoint="http://slow.test:11434")
@@ -549,9 +608,26 @@ class TestHttpBackendDeadline:
         finally:
             release.set()
 
-        assert elapsed < 1.0
+        assert elapsed < 0.1 + 0.3
         assert info.value.reason is BackendReason.TIMEOUT
         assert info.value.detail.startswith("no complete reply from http://slow.test:11434/api/chat within 0.1s")
+        assert late.closed.wait(2)
+        assert len(yielded) <= 1
+
+    def test_http_deadline_waits_for_a_slow_reply_within_timeout(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        release = threading.Event()
+
+        def slow_post() -> _FakeResponse:
+            release.wait(0.3)
+            return _ok("openai", '{"label": "slow", "score": 4}')
+
+        _install_requests(monkeypatch, slow_post)
+        try:
+            result = _backend("openai").complete(LLMRequest(prompt="p"), _Verdict, timeout=2.0)
+        finally:
+            release.set()
+
+        assert result == _Verdict(label="slow", score=4)
 
     def test_http_deadline_releases_caller_on_trickling_body_and_worker_stops(
         self, monkeypatch: pytest.MonkeyPatch
@@ -576,7 +652,7 @@ class TestHttpBackendDeadline:
         finally:
             release.set()
 
-        assert elapsed < 1.0
+        assert elapsed < 0.15 + 0.3
         assert error.reason is BackendReason.TIMEOUT
         assert error.detail.startswith(f"no complete reply from {_url('llamacpp')} within 0.15s")
         assert response.closed.wait(2)
