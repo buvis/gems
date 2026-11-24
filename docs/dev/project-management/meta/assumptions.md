@@ -1,48 +1,59 @@
-# PRD 00161 assumptions
+# Assumptions ledger: PRD 00162 (bim id migration script)
 
-## 1: Python set_default_id derives the id from the UTC digits of date
+## 1: Write plan_migration in the bim id migration script
 
-- Tess: the year-rollover and same-wall-clock-other-instant cases are in scope as Devon-proof constraints on the UTC rule.
-- Tess: "restoring afterwards" for the TZ switch means `monkeypatch.undo()` then `time.tzset()` inside the test.
-- Tess (strengthen): `test_raises_on_invalid_date` stays unchanged; weak points 3 and 4 went into a new sibling test `test_invalid_date_keeps_metadata_and_sets_no_id`.
-- Tess (strengthen): "other metadata keys are kept" on the invalid-date path means the metadata dict is left exactly as it was.
-- Tess (strengthen): `zoneinfo` resolves `Europe/Prague` from system tzdata; CI runs on Linux and macOS only.
-- Ivan: a datetime is aware when `tzinfo is not None`; a tzinfo whose `utcoffset()` returns None goes through `astimezone` and is read as local time. No test covers it.
+Tess:
+- Skip.path, already_utc, local_digit_mismatch and kept_attachments hold absolute paths under the resolved vault.
+- Skips and hash values are compared as sets because their order is not specified.
+- A MigrationError for a bad notes/ root has "notes" in its message.
+- reference_count does not count a reference inside inline code.
+- local_digit_mismatch has no fixed order, so the tests compare it sorted.
+- A difference only in the seconds between the old id and the date counts as a mismatch.
+- "Migrating old id" in the kept_attachments rule leaves out the old ids of skipped notes.
+- A note whose frontmatter is not UTF-8 gets REASON_NOT_UTF8 even when its id and date lines are valid ASCII.
 
-## 2: Python _get_date_from_file parses file-name digits as UTC, seconds 60-99 as 59
+Orchestrator: the `Plan.hashes` keys are the absolute paths of the regular `.md` files under the resolved vault/notes. Symlink leaves have no key.
 
-- Tess: `FileMetadataReader` methods are called on the class with the file path as the only argument.
-- Tess: "an eastern zone" is `Asia/Kolkata` (+05:30); an invalid 12-digit stem falls back like a 14-digit one.
-- Tess: added `test_invalid_file_name_date_falls_back_to_earliest_file_date` to pin the unchanged fallback.
-- Tess (strengthen): `20240115146022` is an invalid minute, so it must fall back, not clamp.
-- Ivan: the seconds rule applies only to 14-digit names; the requested comment is wrapped over 2 lines for the 120-char lint limit.
+Ivan:
+- local_digit_mismatch covers every note whose date resolved, before the shared-stem and suffix steps.
+- The shared-stem check applies only to renaming notes. A note already on UTC is never skipped as shared.
+- A note already on UTC whose date line changes goes in both changes (with new_id == old_id) and already_utc.
+- Plan.skips is sorted by path.
+- The skip checks run in this order: type block, type document, non-UTF-8, then date or old id, then shared stem.
+- The link-target scan for occupied_stems uses `\[\[([^\[\]|#\n]*)` without a closing `]]`. It can block a few extra ids, which is safe.
+- In `_from_old_id`, an OverflowError from a year 1 or 9999 old id is not handled.
+- The header imports `argparse`, `json`, `os`, `sys` and `atomic_write_bytes` stay unused until tasks 2 and 3 use them.
 
-## 3: Rust core mirrors UTC ids and UTC file-name dates; bump CACHE_VERSION
+## 2: Write apply_migration and undo_migration in the bim id migration script
 
-- Tess: a 12-digit stem gives seconds `00`; for a 60-99 suffix the default id comes from the clamped date (`...59`), not the raw digits.
-- Tess: a stem of 12 ASCII digits followed by a fullwidth digit is left untested.
-- Tess: chrono `Local` reads the `TZ` variable the Python parity test sets.
-- Tess (strengthen): an impossible calendar value (Feb 30, month 13, hour 25) gives `None`; an explicit `id: null` counts as missing.
-- Ivan: none.
+Tess:
+- `outside_references` and the `UndoReport` tuples may hold absolute or vault-relative paths. The tests accept both, and accept the old or the new path of a renamed note.
+- An undo that stops on a write error raises MigrationError.
+- The map text equals `json.dumps(data, indent=2, sort_keys=True)`. The tests sort `files` by `old_path`.
+- A quoted id line keeps its quotes and comment when the id changes.
+- A fresh module loaded under a new name stands in for a fresh process in the undo tests.
 
-## 4: CreateZettelUseCase allocates suffixed ids 60-99 without sleeping
+Orchestrator:
+- Task 2 tests are in a sibling file, `test_migrate_ids_apply.py`, so that neither test file passes 800 lines.
+- The undo skip fixpoint now checks only skipped files for links to new stems, not unchanged files. This is a design fix, and test commit 32e9db10 covers it.
+- Pat's MEDIUM on `_check_record` was rejected: `rec[key] if ok else None` stops checking at the first bad path. Test commit b9319d01 pins this.
+- sonnet-run.sh could not authenticate (OAuth expired), so the per-task reviews ran on the native autopilot:pat agent (sonnet).
 
-- Tess: the hook runner runs even when `template.hooks()` is empty; `prepare` creates no file at the chosen path.
-- Tess: a short id `12345` passes through the zettel factory unchanged, so it serves as the non-14-digit case.
-- Tess (strengthen): `test_create_never_sleeps` asserts the 40-suffix exhaustion call takes under 0.3 s; this assumes CI filesystems are fast enough (Pat flagged it as a possible flake).
-- Tess (strengthen): vault confinement is checked through a slug template's `folder`.
-- Ivan: `zettel.id` is not reassigned when the base path is chosen; after exhaustion it is left at the last suffix (the call raises).
-- Ivan: `_build` is a module-level helper returning a `Zettel`, and candidate paths come from a lazy generator `_candidate_paths`, not the design's `_build(...) -> tuple[Zettel, list[Path]]`. Behavior matches the contract.
+Ivan:
+- The undo reverse map also holds moved entries classified as "unchanged", that is, entries an earlier stopped undo already restored.
+- The blocked-chain check applies only to moved entries.
+- UndoReport lists restored and unchanged entries by old path, and skipped entries by new path.
+- Warnings about links in files outside notes/ go to stderr.
+- A MigrationError from undo carries the map file.
 
-## 5: Docs state the UTC id rule and the 60-99 collision suffix
+## 3: Add the argparse entry point to the bim id migration script
 
-- Ivan: the SKILL.md bullet is three short sentences with the 2-space hanging indent of its neighbours; README writes "seconds 60 to 99" without code ticks.
+Tess:
+- The repo root is `Path(__file__).resolve().parents[5]`. The dispatch said `parents[4]`, which was wrong.
+- The dry-run count labels may use any wording. The tests pin each count next to "migrat", "reference" or "UTC".
+- The outside-reference check cannot catch a `main` that drops `outside_references`, because `apply_migration` already warns on stderr.
 
-## 6: CHANGELOG entry for UTC ids
-
-- Orchestrator: the `### Changed` line landed in task 1's `fix` commit (953e13a0) and was extended in task 2 (f0e11fd8), because the CHANGELOG rule requires the entry in the first user-visible commit. Task 6 only verified it; no new commit.
-
-## Step 7: final verification
-
-- Orchestrator: `tests/lib/zettel/infrastructure/test_markdown_parser.py::test_from_file_sets_date_and_title` pinned the old local-time file-name date; the PRD did not name it. Its expectation now reads UTC (task 2, attempt 2). It is a spec change, not a relaxed test.
-- Orchestrator: the 10 `tests/tools/dot/test_pull_divergence_two_hosts.py` setup errors come from global `commit.gpgsign=true` and the locked signing agent in the sandbox (`git commit` exits 128 in the fixture). No `dot` file changed in this PRD.
+Ivan:
+- `--apply` prints only the backup line before it applies, not the dry-run table.
+- The zone check sits in the CLI layer, so `plan_migration` with a bad zone still raises ZoneInfoNotFoundError.
+- The file was compacted to exactly 800 lines: the blank lines after section headers were removed and a few helpers reflowed (20 hunks). Pat's LOW on this churn is accepted.
