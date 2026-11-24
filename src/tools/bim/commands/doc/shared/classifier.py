@@ -289,7 +289,6 @@ class Classifier:
         route: DocLLMRoute | None = None,
         registry: LLMRegistry | None = None,
     ) -> None:
-        self._settings = settings
         self._route = route or resolve_doc_route(settings, llm or {})
         self._registry = registry or build_registry(self._route.backends)
 
