@@ -96,6 +96,8 @@ New symbols: `src/tools/bim/shared/llm/__init__.py`, `src/tools/bim/shared/llm/b
 - [ ] Implement the Claude adapter (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/test_llm_backends.py -k claude` verifies envelope parsing, no-tools argv, stdin/cwd, the 30-second timeout cushion, missing executable and invalid JSON/schema.
 - [ ] Implement the generic command adapter (depends on: Phase 0). Acceptance: `uv run pytest tests/tools/bim/test_llm_backends.py -k command` verifies literal argv without a shell, stdin prompt, stdout JSON, timeouts, missing executable and unattended refusal unless unattended:true.
 
+Build note (2026-11-24, autonomous decision): the command and Claude adapter tests live in `tests/tools/bim/test_llm_command.py` and `tests/tools/bim/test_llm_claude.py` because `test_llm_backends.py` holds the HTTP tests and would pass the 800-line file limit. Run their acceptance as `uv run pytest tests/tools/bim/test_llm_command.py -k command` and `uv run pytest tests/tools/bim/test_llm_claude.py -k claude`.
+
 **Exit Criteria**: All adapter failures use the closed categories; test stub is unavailable from user configuration.
 
 ### Phase 2: Integration
