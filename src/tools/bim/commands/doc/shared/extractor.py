@@ -313,7 +313,7 @@ class Extractor:
         *,
         hints: dict[str, str] | None = None,
     ) -> ExtractResult:
-        """Extract structured fields for ``doc_type`` from OCR text via Ollama.
+        """Extract structured fields for ``doc_type`` from OCR text via the route's primary LLM backend.
 
         Thin shim that forwards to :meth:`extract_with_model` using the
         route's primary key. Kept for callers that don't need to

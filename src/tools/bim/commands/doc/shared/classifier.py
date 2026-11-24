@@ -300,7 +300,7 @@ class Classifier:
         *,
         doc_type_only: bool = False,
     ) -> ClassifyResult:
-        """Classify a document from OCR text via the configured Ollama endpoint.
+        """Classify a document from OCR text via the route's primary LLM backend.
 
         Thin shim that forwards to :meth:`classify_with_model` using the
         route's primary key. Kept for callers that don't need to
