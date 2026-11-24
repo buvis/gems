@@ -1,6 +1,6 @@
 # Port Plan: buvis/gems `src/tools/engram`
 
-_Freshness: generated 2026-11-16 from buvis/engram `a0892e6` (master, PRD 00014 building; 00015 and 00016 in backlog) - regenerate if the source has moved on since. The port starts only after engram PRDs 00014, 00015 and 00016 are in engram's `prds/done/`; re-check this matrix against that commit before Phase 1._
+_Freshness: generated 2026-11-16 from buvis/engram `a0892e6`; refreshed 2026-11-24 against the selected port commit `e413696` (master; PRDs 00014-00016 done; last code change `d366537`). See "Inventory refresh (2026-11-24)". Refresh again if source code moves past `e413696` before Phase 1 lands._
 
 Source: `~/git/src/github.com/buvis/engram` (`src/engram/`, `eval/`, `tests/`, `README.md`).
 Target: `~/git/src/github.com/buvis/gems`, tool `src/tools/engram`, extra `engram`, script `engram`.
@@ -48,6 +48,63 @@ The Phase 3 and Phase 4 exit criteria include completing and reporting their
 checkpoint, not promoting every PRD regardless of readiness. Until a port job
 actually runs, there is no background watcher or automatic notification.
 
+## Inventory refresh (2026-11-24)
+
+Selected source commit: buvis/engram `e413696`. Between `d366537` and it, only
+`uv.lock` (lock maintenance) and docs changed. The installed standalone tool
+(`~/.local/share/uv/tools/engram`, installed 2026-11-17 from the checkout) has
+source files identical to `src/engram/` at that commit (`diff -rq`, no output).
+
+Suites at `e413696`, run 2026-11-24 from the checkout paths:
+
+| suite | checkout `.venv` (Python 3.13.18, 7 packages behind `uv.lock`) | scratch venv from `uv.lock` (Python 3.15.2) |
+|---|---|---|
+| main: `pytest -q --ignore=eval` (`tests/`) | 1402 passed, 0 failed, 0 skipped | 1402 passed, 0 failed, 0 skipped |
+| eval: `PYTHONPATH=src:. pytest -q eval` | 53 passed | 53 passed |
+
+The first main-suite attempt ran with the Gems worktree as cwd. It gave one
+failure (`test_real_goldset_loads_clean_and_covers_transcripts_and_code`:
+`No module named 'eval'`), because the checkout root was not on `sys.path`. The
+rerun with that root on the path is the result above.
+
+Changes since `a0892e6` (in `cli.py`, `diffmap.py`, `findings.py`, `harvest.py`,
+`indexer.py`, `pack.py`, `store.py`) are the PRD 00014-00016 work. They fall
+under existing rows: the write lock, `index --backfill-code`, `pack`, `harvest`,
+and corpora/worktree resolution. No new row is needed. These facts change rows
+or Phase 1:
+
+- **Test suite size**: 1402 main tests. 46 are in `tests/test_harness.py`,
+  including the only `private` test, and leave with the harness. 1356 tests in
+  42 files port.
+- **Tests drive `engram.cli`**: most test files call `cli.main(...)` or
+  `cli._run_*`, about 300 references. Phase 1 therefore ports the argparse
+  `cli.py` as an internal module with no console script, and the tests port
+  with only helper-import edits. Phase 3 replaces `cli.py` with Click under the
+  same tests and the contract tests.
+- **Console script deferred to Phase 4**: `tools/lib/check_tool_wiring.py`
+  requires a `[project.scripts]` entry for every tool. Any Gems release that
+  carries an `engram` script before the install swap would put a second
+  `engram` executable beside the standalone one in `~/.local/bin`. Phase 1 adds
+  an explicit deferred-script entry. The Phase 4 PRD adds the script and removes
+  the entry in the same release.
+- **Dependency pins**: source `uv.lock` resolves sqlite-vec 0.1.9, tree-sitter
+  0.26.1 and tree-sitter-language-pack 1.25.2. An unpinned `tree-sitter`
+  resolves to 0.27.0, which the source never tested. Chunk output decides the
+  production cache keys, so the extra pins all three exactly.
+- **Wheels**: the pinned set resolves to binary wheels on Windows for Python
+  3.11 and 3.14. tree-sitter 0.26.1 has no cp315 wheels (sdist build; it built
+  on macOS in the scratch venv). tree-sitter-language-pack 1.25.2 publishes
+  only macOS 15+, manylinux_2_34 and Windows abi3 wheels.
+- **ripgrep**: only `harness.py` runs `rg`, so the port has no ripgrep runtime
+  dependency.
+- **Python 3.11**: every source and test file parses under a real 3.11
+  interpreter. CI must still prove runtime APIs.
+- **CI gate**: Gems `test.yml` runs only on pushes and pull requests to
+  `master`. The Phase 1 PRD exit is the local gate, including a Python 3.11
+  run. The CI matrix result on `master` is the gate for starting Phase 2.
+
+Phase 1 PRD: [00174](../prds/backlog/00174-engram-port-core-library-v1.md).
+
 ## Contract that must not change
 
 No consumer imports engram or reads its DB or config. Every consumer uses the
@@ -92,10 +149,10 @@ Those are additive and allowed.
 | Config file `~/.local/share/engram/config.toml` | redesign | Becomes gems `EngramSettings(GlobalSettings)` read from `~/.config/buvis/buvis-engram.yaml` (env prefix `BUVIS_ENGRAM_`): `embedding` list, `pinned_id`, `code.exclude_globs`, `transcripts.in_flight_seconds`, `data_dir` (default `~/.local/share/engram`). Endpoints and model ids go in the machine-local layer once gems PRD 00122 lands. | no |
 | `[pack]` budget config (hard and per-section token caps) | redesign | Undocumented TOML section; moves into `EngramSettings.pack` with the same validation. | yes |
 | Existing `config.toml` values | redesign | One-time: `engram` reads the old TOML only to print the equivalent YAML and exit 1 when `buvis-engram.yaml` is absent and `config.toml` exists. No silent dual config. | no |
-| CLI layer (argparse in `cli.py`) | redesign | Rewritten in Click with `buvis_options`, lazy imports, `CommandResult`. Machine-read output must bypass rich formatting so item 3 of the contract stays byte-identical. | no |
+| CLI layer (argparse in `cli.py`) | redesign | Phase 1 ports it as an internal module with no console script, so the source tests port unchanged. Phase 3 rewrites it in Click with `buvis_options`, lazy imports, `CommandResult`. Machine-read output must bypass rich formatting so item 3 of the contract stays byte-identical. The `engram` console script lands with the Phase 4 release. | no |
 | Harvest/rebuild write lock (`fcntl.flock`, engram PRD 00014) | redesign | gems builds Windows wheels; the lock needs a Windows path (`msvcrt.locking`) or a platform guard. | no |
 | Python floor 3.12 and engram's lint profile | redesign | gems supports 3.11-3.15, mypy strict at 3.11, ruff with `ANN`/`S`/`PLR`; code is adjusted, behavior unchanged. | no |
-| Main test suite (`tests/`, ~550 tests) | redesign | Moves to `tests/tools/engram/` with gems isolation fixtures; must pass on ubuntu/macOS x 3.11-3.15 and the 50% coverage gate. | no |
+| Main test suite (`tests/`, 1402 tests at `e413696`; 1356 port, 46 harness tests stay) | redesign | Moves to `tests/tools/engram/` with gems isolation fixtures; must pass on ubuntu/macOS x 3.11-3.15 and the 50% coverage gate. | no |
 | Engram CI workflow (`.github/workflows/test.yml`) | redesign | Replaced by gems' per-tool CI matrix. | no |
 | Installation (`uv tool install .`) | redesign | Becomes `uv tool install 'buvis-gems[engram]'`; sysup's `uv tool upgrade --all` keeps it current. | no |
 | README documentation | redesign | Becomes gems tool docs; private-eval and harness sections dropped. | no |
@@ -178,7 +235,7 @@ The contract section keeps every reference valid, so most consumers need no edit
 
 ## Phases (dependency order)
 
-1. **Core library port** - no dependencies. Precondition: engram PRDs 00014-00016 done; record the source commit. Scaffold `src/tools/engram` with `tools/lib/scaffold.py` (extra `engram`: `sqlite-vec`, `tree-sitter-language-pack`; mypy `ignore_missing_imports` for both). Port every non-CLI module except `harness.py`, adapted to Python 3.11, mypy strict and the ruff profile, with the Windows-safe write lock. Port the main tests (minus the `private` test) to `tests/tools/engram/`. Exit: gems CI green on all matrix cells; wheels for the extra resolve on Windows.
+1. **Core library port** - no dependencies. Precondition met: engram PRDs 00014-00016 done; source commit `e413696`. PRD [00174](../prds/backlog/00174-engram-port-core-library-v1.md). Wire `src/tools/engram` by hand, not with `tools/lib/scaffold.py`: the scaffold adds a console script and a placeholder command (extra `engram`: `sqlite-vec`, `tree-sitter`, `tree-sitter-language-pack`, pinned to the source lock; mypy `ignore_missing_imports` for the two without types). Port every module except `harness.py`, including the argparse `cli.py` as an internal module, adapted to Python 3.11, mypy strict and the ruff profile, with the Windows-safe write lock. Port the main tests (minus `test_harness.py`) to `tests/tools/engram/`. Exit: the local gate passes, including Python 3.11; wheels for the extra resolve on Windows for 3.11-3.14; then gems CI green on all matrix cells once the branch reaches `master`.
 2. **Settings** - depends on Phase 1 landing and its exit criteria holding. `EngramSettings(GlobalSettings)` with `embedding`, `pinned_id`, `code`, `transcripts`, `pack`, `data_dir`; the library reads settings instead of `config.toml`; the old-TOML detection prints the YAML equivalent and exits 1. Exit: settings tests pass; a YAML equal to today's `config.toml` gives identical `EngramConfig` values.
 3. **Click CLI with contract tests** - depends on Phase 2 landing and its exit criteria holding. All 13 commands in Click; contract tests replay every consumer call in the Consumer Cutover table against a temp store and compare stdout, stderr and exit codes to golden output captured from the standalone engram at the Phase 1 source commit. Exit: contract tests pass; `engram --help` lists every subcommand.
 4. **Release and cutover** - depends on Phase 3 landing and its exit criteria holding. Release gems with the extra; user hand-off to swap the install; write `buvis-engram.yaml` from the current `config.toml`; verify `engram status --scope portfolio`, one `engram pack --cycle` in a registered repo, and `engram mcp` initialize; update the agent-skills fallback sentence and the agent-plugins engram README. Exit: installed `engram` comes from buvis-gems; the production DB is unchanged (same SHA-256 before and after a read-only status run); no rebuild ran.

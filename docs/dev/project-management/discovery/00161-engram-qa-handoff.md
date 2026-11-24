@@ -17,23 +17,23 @@ requirements for the future port job; no watcher has been started.
 Source: `docs/dev/tmp/00161-handoff-20261116-1427.md` in Gems. This tracked
 summary preserves the remaining work so it does not depend on keeping that
 temporary file. Observed source HEAD: engram e413696; target HEAD: Gems 61707c50.
+Steps 2-5 updated 2026-11-24 against Gems cbf87c4b.
 
 | Original step | Status and next action |
 |---|---|
 | 1. Verify standalone 00014-00016 and completion reviews | Completed check: all three are in the completed PRD directory and have cycle-2 completion-review records. This is not a claim that every historical check passed. |
-| 2. Run main and evaluation suites | Not rerun for this handoff in this session. From the Engram checkout, run `.venv/bin/python -m pytest -q --ignore=eval` and `PYTHONPATH=src:. .venv/bin/python -m pytest -q eval` at the chosen source commit; record pass/fail/skip counts. Historical QA counts do not replace that checkpoint. |
-| 3. Pin source and refresh inventory | Not completed. The plan freshness line still describes a0892e6 while 00014 was building. Refresh all rows against the selected post-batch commit after verification. |
-| 4. Reinstall standalone; optional backfill | Current installation not verified. Preserve the documented external-install handoff if needed; no production backfill, rebuild or model repin was performed. Backfill is optional and still requires the stated backup and explicit authorization. |
-| 5. Create port Phase 1 PRD | Not completed. Gems has QA follow-up PRDs 00163-00173, but no Phase 1 core-port PRD or src/tools/engram tree. Create only Phase 1 after the source checks; it is distinct from the QA fixes. |
+| 2. Run main and evaluation suites | Done 2026-11-24 at engram `e413696`: main 1402 passed, 0 failed, 0 skipped; eval 53 passed. Same counts in the checkout `.venv` (Python 3.13, 7 packages behind `uv.lock`) and in a scratch venv built from `uv.lock` (Python 3.15). Details in the [port plan inventory refresh](00161-engram-port-plan.md#inventory-refresh-2026-11-24). |
+| 3. Pin source and refresh inventory | Done 2026-11-24: source pinned to `e413696`; the plan freshness line, inventory rows and Phase 1 text are refreshed. |
+| 4. Reinstall standalone; optional backfill | Checked read-only 2026-11-24, no reinstall needed: the installed tool's source files are identical to `src/engram/` at `e413696`. `uv tool list` could not run in the sandbox (read-only tools directory). No reinstall, backfill, rebuild or model repin was performed. Backfill stays optional and still requires the stated backup and explicit authorization. |
+| 5. Create port Phase 1 PRD | Done 2026-11-24: [00174](../prds/backlog/00174-engram-port-core-library-v1.md) in the executable backlog. Not implemented. QA PRDs 00163-00173 stay in hold; Phase 1 releases none of them. |
 | Later phases | Not started by this session. Create each phase after the preceding phase lands, as the original handoff requires. Phase 5 also waits for 00122, still in the executable backlog at this check. |
 
 The older instruction to ask approval for every phase PRD is superseded by the
 user's current standing authorization for routine work. Explicit production
 data, install-tool permissions, release and retirement restrictions still apply.
 
-No port job was launched by this status check. The next port session starts at
-the fresh-suite and inventory checkpoints, then creates the Phase 1 PRD; it does
-not drain the QA follow-ups before the port exists.
+No port job was launched by this status check. The next port session implements
+PRD 00174; it does not drain the QA follow-ups before the port exists.
 
 Authority: user decision of 2026-11-16 in
 [the port plan](00161-engram-port-plan.md), reaffirmed on 2026-11-23.
