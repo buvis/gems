@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -413,3 +414,74 @@ def test_same_new_id_gets_suffix_60(tmp_path: Path) -> None:
     assert [c.new_id for c in crowded.changes] == ["20240715080000"] + [f"202407150800{s}" for s in range(60, 100)]
     assert crowded.skips == (Skip(crowd / "notes" / f"{olds[-1]}.md", "no free collision suffix 60-99"),)
     assert _mod.REASON_NO_SUFFIX == "no free collision suffix 60-99"
+
+
+def _cli_vault(tmp_path: Path) -> Path:
+    vault = _vault(tmp_path)
+    _put(vault, "notes/20240715100000.md", _fm("id: 20240715100000", "date: 2024-07-15 10:00:00"))
+    _put(vault, "notes/20240115100000.md", _fm("id: 20240115100000", "date: 2024-01-15 10:00:00"))
+    _put(vault, "notes/daily/2024-07-15.md", _fm("title: Daily", body="[[20240715100000]] [[20240115100000]]\n"))
+    _put(vault, "notes/daily/2024-07-16.md", _fm("title: Daily 2", body="[[notes/20240715100000|x]]\n"))
+    return vault
+
+
+def _maps(map_dir: Path) -> list[Path]:
+    return sorted(p for p in map_dir.rglob("*") if p.is_file()) if map_dir.exists() else []
+
+
+def _main_stops_on_third_write(vault: Path, monkeypatch: pytest.MonkeyPatch) -> int:
+    real, calls = _mod.atomic_write_bytes, []
+
+    def stop_third(*args: object, **kwargs: object) -> object:
+        calls.append(args)
+        if len(calls) == 3:
+            raise OSError("disk full")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(_mod, "atomic_write_bytes", stop_third)
+    return _mod.main(["--vault", str(vault), "--apply"])
+
+
+def test_script_help_lists_apply_and_undo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = Path(__file__).resolve().parents[5]
+    script = "docs/dev/project-management/spikes/bim-migrate-ids/migrate_ids.py"
+    assert (root / script).is_file()
+    done = subprocess.run([sys.executable, script, "--help"], cwd=root, capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr
+    assert "--apply" in done.stdout and "--undo" in done.stdout and "--naive-timezone" in done.stdout
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    vault, map_dir = _cli_vault(tmp_path), _mod.default_map_dir()
+    assert map_dir.resolve().is_relative_to((tmp_path / "state").resolve())
+    before = _snapshot(vault)
+    assert _mod.main(["--vault", str(vault), "--naive-timezone", "America/New_York"]) == 0
+    out = capsys.readouterr().out
+    assert "20240715140000" in out and "20240715080000" not in out
+    assert "Back up the vault and close Obsidian before --apply." in out
+    assert _mod.main(["--vault", str(vault), "--naive-timezone", "Europe/Pragu", "--apply"]) == 1
+    assert capsys.readouterr().err.strip()
+    with pytest.raises(SystemExit) as usage:
+        _mod.main(["--vault", str(vault), "--apply", "--undo", str(tmp_path / "map.json")])
+    assert usage.value.code == 2
+    assert (_snapshot(vault), _maps(map_dir)) == (before, [])
+
+    assert _mod.main(["--vault", str(vault), "--apply"]) == 0
+    out = capsys.readouterr().out
+    [map_file] = _maps(map_dir)
+    assert out.index("Back up the vault and close Obsidian before --apply.") < out.index(str(map_file))
+    assert "delete ~/.cache/buvis/zettel_cache.bin" in out
+    assert sorted(p.name for p in (vault / "notes").glob("*.md")) == ["20240115090000.md", "20240715080000.md"]
+    assert b"[[20240715080000]] [[20240115090000]]" in (vault / "notes/daily/2024-07-15.md").read_bytes()
+    assert _mod.main(["--vault", str(vault), "--undo", str(map_file)]) == 0
+    assert "delete ~/.cache/buvis/zettel_cache.bin" in capsys.readouterr().out
+    assert _snapshot(vault) == before
+
+    # a MigrationError after the map exists names the map and the undo hint on stderr
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state2"))
+    assert _main_stops_on_third_write(vault, monkeypatch) == 1
+    [stopped] = _maps(_mod.default_map_dir())
+    assert f"--undo {stopped}" in capsys.readouterr().err
+    assert _mod.main(["--vault", str(vault), "--undo", str(stopped)]) == 0
+    assert _snapshot(vault) == before and not list(vault.rglob("*.migrating"))
