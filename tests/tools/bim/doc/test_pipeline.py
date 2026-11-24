@@ -1466,9 +1466,9 @@ class TestExtractorRetry:
 
 
 class TestPipelineTimeoutShortCircuit:
-    """``requests.exceptions.Timeout`` must short-circuit to triage without retry.
+    """A ``BackendError`` with reason ``TIMEOUT`` must short-circuit to triage without retry.
 
-    Spec §11 explicitly excludes Timeout from the transient class - the
+    Spec §11 explicitly excludes timeouts from the transient class - the
     classifier/extractor wrappers re-raise it unwrapped, ``_retry_llm_call``
     sees a non-transient exception (``is_transient`` returns False) and
     propagates it on the first attempt. The orchestrator catches it and
@@ -1483,10 +1483,10 @@ class TestPipelineTimeoutShortCircuit:
         staging_pdf: Path,
         mocker: MockerFixture,
     ) -> None:
-        from requests.exceptions import Timeout
+        from bim.shared.llm import BackendError, BackendReason
 
         ocr_result = _make_ocr_result(pdf_path=staging_pdf)
-        # Inject Timeout on the very first classify call. If the helper
+        # Inject a timeout on the very first classify call. If the helper
         # mistakenly treated it as transient, the side_effect list would
         # need additional entries; a single entry proves the call is one-shot.
         pipeline, mocks = _build_pipeline(
@@ -1495,7 +1495,7 @@ class TestPipelineTimeoutShortCircuit:
             state_db,
             mocker,
             ocr_result=ocr_result,
-            classify_side_effect=[Timeout("upstream timed out")],
+            classify_side_effect=[BackendError(BackendReason.TIMEOUT, "no reply within 60 s", backend="ollama")],
         )
         params = IngestParams(source="download", staging_path=staging_pdf)
         result = pipeline.run(params)
@@ -1513,7 +1513,7 @@ class TestPipelineTimeoutShortCircuit:
         staging_pdf: Path,
         mocker: MockerFixture,
     ) -> None:
-        from requests.exceptions import Timeout
+        from bim.shared.llm import BackendError, BackendReason
 
         ocr_result = _make_ocr_result(pdf_path=staging_pdf)
         pipeline, mocks = _build_pipeline(
@@ -1523,7 +1523,7 @@ class TestPipelineTimeoutShortCircuit:
             mocker,
             ocr_result=ocr_result,
             classify_result=_make_classify_result(),
-            extract_side_effect=[Timeout("upstream timed out")],
+            extract_side_effect=[BackendError(BackendReason.TIMEOUT, "no reply within 60 s", backend="ollama")],
         )
         params = IngestParams(source="download", staging_path=staging_pdf)
         result = pipeline.run(params)
