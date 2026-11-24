@@ -99,9 +99,16 @@ _CLI = CommandBackendSettings(kind="command", argv=["codex", "exec"])
 _NAMED = {"fast": _FAST, "smart": _SMART, "cli": _CLI}
 
 
+def _assert_target(target: DocLLMTarget, backend: str, model: str | None, key: str) -> None:
+    # Field by field: DocLLMTarget.__eq__ belongs to the type under test.
+    assert type(target) is DocLLMTarget
+    assert (target.backend, target.model, target.key) == (backend, model, key)
+
+
 class TestDocRouteConstants:
     def test_legacy_backends_are_ollama_and_llamacpp(self) -> None:
         assert LEGACY_DOC_BACKENDS == frozenset({"ollama", "llamacpp"})
+        assert isinstance(LEGACY_DOC_BACKENDS, frozenset)
 
     def test_request_timeout_is_sixty_seconds(self) -> None:
         assert DOC_REQUEST_TIMEOUT_SECONDS == 60
@@ -114,6 +121,8 @@ class TestResolveDocRouteLegacy:
         assert route.legacy is True
         assert route.primary == DocLLMTarget(backend="ollama", model="qwen3:30b-a3b", key="qwen3:30b-a3b")
         assert route.fallback == DocLLMTarget(backend="ollama", model="qwen3:14b", key="qwen3:14b")
+        _assert_target(route.primary, "ollama", "qwen3:30b-a3b", "qwen3:30b-a3b")
+        _assert_target(route.fallback, "ollama", "qwen3:14b", "qwen3:14b")
         assert dict(route.backends) == {"ollama": HttpBackendSettings(kind="ollama", endpoint="http://localhost:11434")}
 
     def test_llamacpp_section_keeps_its_endpoint_and_models(self) -> None:
@@ -129,6 +138,8 @@ class TestResolveDocRouteLegacy:
         assert route.legacy is True
         assert route.primary == DocLLMTarget(backend="llamacpp", model="gemma-27b", key="gemma-27b")
         assert route.fallback == DocLLMTarget(backend="llamacpp", model="gemma-4b", key="gemma-4b")
+        _assert_target(route.primary, "llamacpp", "gemma-27b", "gemma-27b")
+        _assert_target(route.fallback, "llamacpp", "gemma-4b", "gemma-4b")
         assert dict(route.backends) == {
             "llamacpp": HttpBackendSettings(kind="llamacpp", endpoint="http://localhost:8002/")
         }
@@ -142,6 +153,10 @@ class TestResolveDocRouteLegacy:
     def test_rejects_fallback_in_legacy_mode(self) -> None:
         with pytest.raises(LLMConfigError, match="doc.classifier.fallback needs doc.classifier.backend"):
             resolve_doc_route(ClassifierSettings(backend="ollama", fallback="fast"), {})
+
+    def test_rejects_fallback_in_legacy_mode_even_when_the_llm_map_holds_it(self) -> None:
+        with pytest.raises(LLMConfigError, match="doc.classifier.fallback needs doc.classifier.backend"):
+            resolve_doc_route(ClassifierSettings(backend="ollama", fallback="fast"), {"fast": _FAST})
 
     @pytest.mark.parametrize("backend", ["vllm", "ollama-big", "Ollama"])
     def test_rejects_a_name_that_is_neither_an_entry_nor_legacy(self, backend: str) -> None:
@@ -172,6 +187,8 @@ class TestResolveDocRouteNamed:
         assert route.legacy is False
         assert route.primary == DocLLMTarget(backend="smart", model=None, key="smart")
         assert route.fallback == DocLLMTarget(backend="fast", model=None, key="fast")
+        _assert_target(route.primary, "smart", None, "smart")
+        _assert_target(route.fallback, "fast", None, "fast")
         assert dict(route.backends) == _NAMED
 
     def test_named_without_fallback_reuses_the_primary(self) -> None:
@@ -179,6 +196,8 @@ class TestResolveDocRouteNamed:
 
         assert route.primary == DocLLMTarget(backend="cli", model=None, key="cli")
         assert route.fallback == DocLLMTarget(backend="cli", model=None, key="cli")
+        _assert_target(route.primary, "cli", None, "cli")
+        _assert_target(route.fallback, "cli", None, "cli")
 
     def test_named_entry_wins_over_the_legacy_word(self) -> None:
         remote = HttpBackendSettings(kind="openai", endpoint="http://remote:9000/v1")
@@ -187,6 +206,8 @@ class TestResolveDocRouteNamed:
 
         assert route.legacy is False
         assert route.primary == DocLLMTarget(backend="ollama", model=None, key="ollama")
+        _assert_target(route.primary, "ollama", None, "ollama")
+        _assert_target(route.fallback, "ollama", None, "ollama")
         assert dict(route.backends) == {"ollama": remote}
 
     @pytest.mark.parametrize("fallback", ["fas", "fast2", "ollama"])
@@ -196,6 +217,12 @@ class TestResolveDocRouteNamed:
 
         assert str(excinfo.value) == f"doc.classifier.fallback {fallback!r} is not an llm entry"
 
+    def test_fallback_name_matches_llm_entries_case_sensitively(self) -> None:
+        with pytest.raises(LLMConfigError) as excinfo:
+            resolve_doc_route(ClassifierSettings(backend="fast", fallback="Fast"), {"fast": _FAST})
+
+        assert str(excinfo.value) == "doc.classifier.fallback 'Fast' is not an llm entry"
+
 
 class TestDocRouteTarget:
     def test_legacy_keys_map_to_primary_and_fallback(self) -> None:
@@ -203,18 +230,23 @@ class TestDocRouteTarget:
 
         assert route.target("qwen3:30b-a3b") == route.primary
         assert route.target("qwen3:14b") == route.fallback
+        _assert_target(route.target("qwen3:30b-a3b"), "ollama", "qwen3:30b-a3b", "qwen3:30b-a3b")
+        _assert_target(route.target("qwen3:14b"), "ollama", "qwen3:14b", "qwen3:14b")
 
     @pytest.mark.parametrize(("backend", "key"), [("ollama", "llama3:70b"), ("llamacpp", "qwen3:30b")])
     def test_legacy_unknown_key_reaches_the_same_backend_as_a_model(self, backend: str, key: str) -> None:
         route = resolve_doc_route(ClassifierSettings(backend=backend), {})
 
         assert route.target(key) == DocLLMTarget(backend=backend, model=key, key=key)
+        _assert_target(route.target(key), backend, key, key)
 
     def test_named_keys_map_to_primary_and_fallback(self) -> None:
         route = resolve_doc_route(ClassifierSettings(backend="smart", fallback="fast"), _NAMED)
 
         assert route.target("smart") == DocLLMTarget(backend="smart", model=None, key="smart")
         assert route.target("fast") == DocLLMTarget(backend="fast", model=None, key="fast")
+        _assert_target(route.target("smart"), "smart", None, "smart")
+        _assert_target(route.target("fast"), "fast", None, "fast")
 
     @pytest.mark.parametrize("key", ["smar", "cli", "", "qwen3:30b-a3b"])
     def test_named_unknown_key_raises(self, key: str) -> None:

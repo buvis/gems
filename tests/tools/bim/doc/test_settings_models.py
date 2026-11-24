@@ -166,7 +166,7 @@ class TestClassifierSettings:
     def test_backend_accepts_any_name(self, backend: str) -> None:
         assert ClassifierSettings(backend=backend).backend == backend
 
-    @pytest.mark.parametrize("fallback", ["fast", "local-ollama"])
+    @pytest.mark.parametrize("fallback", ["fast", "local-ollama", "Fast"])
     def test_fallback_keeps_the_given_name(self, fallback: str) -> None:
         s = ClassifierSettings.model_validate({"backend": "smart", "fallback": fallback})
         assert s.fallback == fallback
