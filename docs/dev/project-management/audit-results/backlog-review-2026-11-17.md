@@ -201,6 +201,10 @@ task lines; the added lines are contracts, not prose. If plan-tasks expands
   `bim import` bumps a colliding id as an integer. 00161 leaves both alone.
   When klyreon merges into bim (branch `feature/merge-klyreon-to-bim`), check
   them against UTC ids and the 60 to 99 suffix.
+  Recorded 2026-11-23 on that branch as intake item
+  `intake/new/00164-bim-tx-utc-ids/idea.md` (commits cea75f91, ad865f3c). It
+  also covers the `bim tx` validator rule `id-created-mismatch` and three
+  tests there.
 - Only `sysup herdr update` gets a dry-run rule. `sysup --dry-run herdr bridge
   install`, `snapshot`, `adopt` and `port apply` still ignore the group flag,
   like `refresh` does today.
@@ -285,6 +289,14 @@ owner may want to change these:
 
 - 00161: naive dates stay UTC digits and the `id_naive_timezone` setting is
   gone. The alternative is `chrono-tz` in Rust plus a zone passed from Python.
+  **Reversed by the owner on 2026-11-23.** The Prague rule comes back: a
+  naive `date` is the wall clock of `id_naive_timezone` (default
+  `Europe/Prague`). It does not go back into 00161, which finalizes on its
+  UTC-digits scope. It is intake item
+  `intake/new/00165-bim-naive-timezone/idea.md` (commit e3093bad) and becomes
+  PRD 00165 after 00161 finalizes. The reasons for the removal stay true and
+  are that PRD's work: no reader for the setting, no `chrono-tz` in the Rust
+  core, and the cache must depend on the zone.
 - 00161: the doc-ingest feature is gone.
 - 00162: `<id>.svg` files and the project resources folder keep their old
   names, and the links to them are not rewritten. The alternative is to
