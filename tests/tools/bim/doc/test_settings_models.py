@@ -156,10 +156,25 @@ class TestClassifierSettings:
         assert s.fallback_model == "qwen3:14b"
         assert s.triage_threshold == pytest.approx(0.85)
         assert s.max_retries == 2
+        assert s.fallback is None
 
     def test_extra_field_rejected(self) -> None:
         with pytest.raises(ValidationError):
             ClassifierSettings.model_validate({"unknown_key": 1})
+
+    @pytest.mark.parametrize("backend", ["vllm", "my-claude", "llamacpp"])
+    def test_backend_accepts_any_name(self, backend: str) -> None:
+        assert ClassifierSettings(backend=backend).backend == backend
+
+    @pytest.mark.parametrize("fallback", ["fast", "local-ollama"])
+    def test_fallback_keeps_the_given_name(self, fallback: str) -> None:
+        s = ClassifierSettings.model_validate({"backend": "smart", "fallback": fallback})
+        assert s.fallback == fallback
+        assert s.backend == "smart"
+
+    def test_backend_rejects_a_non_string(self) -> None:
+        with pytest.raises(ValidationError):
+            ClassifierSettings.model_validate({"backend": 7})
 
 
 class TestZettelSettings:
