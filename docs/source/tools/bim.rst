@@ -970,6 +970,25 @@ A PDF whose zettel is at the legacy flat path is reported in
 ``legacy_layout_zettels`` rather than as ``missing_zettel`` and counts
 toward ``non_clean_pdf_count``.
 
+Claude backend probe
+~~~~~~~~~~~~~~~~~~~~
+
+The ``claude`` LLM backend runs ``claude -p --output-format json
+--json-schema <schema> --tools "" --strict-mcp-config --safe-mode
+--disable-slash-commands --no-session-persistence`` with the prompt on stdin.
+Last checked on 2026-11-24 against Claude Code 2.1.331:
+
+* ``claude --help`` lists every one of these flags.
+* A probe with the schema ``{"type":"object"}`` and the prompt
+  ``Reply with {"ok": true}`` could not authenticate in the agent sandbox
+  (no setup token in the environment). The CLI exited with code 1, wrote
+  nothing to stderr, and printed an envelope with ``is_error: true``, the
+  error text in ``result``, and ``structured_output`` absent.
+* The envelope key of a successful reply (``structured_output`` or
+  ``result``) was not observed. The backend accepts both and prefers
+  ``structured_output``. Re-run the probe with working auth after a CLI
+  update.
+
 bim tx
 ------
 
