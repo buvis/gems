@@ -1,7 +1,5 @@
 """The shared LLM backend contract: request in, schema-validated payload out.
 
-Holds the failure types, the request value, the :class:`Backend` protocol and
-the helpers every adapter uses to turn reply text into a validated model.
 Nothing here prints, logs or exits; failures are raised as
 :class:`BackendError` (operational) or :class:`LLMConfigError` (configuration).
 """

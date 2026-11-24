@@ -23,7 +23,6 @@ class LLMRegistry:
         self._backends = dict(backends)
 
     def names(self) -> frozenset[str]:
-        """Return the configured backend names."""
         return frozenset(self._backends)
 
     def get(self, name: str, *, unattended: bool = False) -> Backend:
@@ -78,5 +77,4 @@ def build_backend(name: str, settings: ClaudeBackendSettings | HttpBackendSettin
 def build_registry(
     llm: Mapping[str, ClaudeBackendSettings | HttpBackendSettings | CommandBackendSettings],
 ) -> LLMRegistry:
-    """Build one backend per configured name."""
     return LLMRegistry({name: build_backend(name, settings) for name, settings in llm.items()})
