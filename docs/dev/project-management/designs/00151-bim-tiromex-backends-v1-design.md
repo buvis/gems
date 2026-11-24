@@ -174,7 +174,7 @@ Wire formats (byte-compatible with today's `bim doc` for `ollama` and `llamacpp`
 - `schema` is `wire_schema(caller_schema)`, so doc (which passes `JsonObject`) still sends `{"type": "object"}`.
 - Messages: `[{"role": "system", "content": request.system}]` when `system` is set, then `[{"role": "user", "content": request.prompt}]`.
 
-Transport: `import requests` inside `complete` (lazy; the `[doc]` extra and `jira` via `[bim]` both install it; no new dependency). The call runs in a worker: `concurrent.futures.ThreadPoolExecutor(max_workers=1)` per call, `future.result(timeout=timeout)` in the caller; on `concurrent.futures.TimeoutError` the caller sets a `threading.Event` `cancelled`, calls `executor.shutdown(wait=False)` and raises `timeout`. So the caller is released at the total deadline whatever the server does (headers, body, trickle). The worker: `requests.post(url, json=body, timeout=timeout, stream=True, allow_redirects=False)`; a 3xx status -> `exit` (`redirect not followed`), so no redirect body is ever read; `response.raise_for_status()`; the body is read with `response.iter_content(chunk_size=8192)` into a buffer, stopping when `cancelled` is set and failing with `exit` (`reply larger than {MAX_REPLY_BYTES} bytes`) as soon as the buffer passes `MAX_REPLY_BYTES`; `response.close()` in `finally`. Residual, accepted: after a deadline the worker thread can stay blocked in one socket read until `requests`' per-read `timeout` fires; it holds at most `MAX_REPLY_BYTES` and one connection, and the endpoint is one the user configured. The envelope is `json.loads(buffer)`. Doc test fakes gain an `iter_content` method returning the encoded JSON body; assertions stay.
+Transport: `import requests` inside `complete` (lazy; the `[doc]` extra and `jira` via `[bim]` both install it; no new dependency). The call runs in a worker: a `threading.Thread(daemon=True)` per call that puts its result or exception on a `queue.Queue(maxsize=1)`; the caller does `q.get(timeout=timeout)` and on `queue.Empty` raises `timeout`. A `finally` in the caller sets a `threading.Event` `cancelled` on every exit path, including `KeyboardInterrupt`. Do not use `ThreadPoolExecutor`: its workers are joined at interpreter exit, and a `with` block would wait for the worker. So the caller is released at the total deadline whatever the server does (headers, body, trickle). The worker: `requests.post(url, json=body, timeout=timeout, stream=True, allow_redirects=False)`; a 3xx status -> `exit` (`redirect not followed`), so no redirect body is ever read; `response.raise_for_status()`; the body is read with `response.iter_content(chunk_size=8192)` into a buffer, stopping when `cancelled` is set and failing with `exit` (`reply larger than {MAX_REPLY_BYTES} bytes`) as soon as the buffer passes `MAX_REPLY_BYTES`; `response.close()` in `finally`. Residual, accepted: after a deadline the worker thread can stay blocked in one socket read until `requests`' per-read `timeout` fires; it holds at most `MAX_REPLY_BYTES` and one connection, and the endpoint is one the user configured; the thread is a daemon, so process exit is not delayed. The envelope is `json.loads(buffer)`. Doc test fakes gain `iter_content` (returning the encoded JSON body) and a no-op `close`; assertions stay.
 
 Error mapping (`HttpBackend.complete`):
 
@@ -183,7 +183,8 @@ Error mapping (`HttpBackend.complete`):
 | `ImportError` on `import requests` | `exit` | `the 'requests' package is not installed` |
 | `requests.exceptions.Timeout` | `timeout` | `no reply from {url} within {timeout}s` |
 | any other exception from `post`, `raise_for_status()`, reading the body, or decoding the envelope (`UnicodeDecodeError`, `JSONDecodeError`) | `exit` | `HTTP error calling {url}: {exc}` |
-| total deadline passed while reading the body | `timeout` | `no complete reply from {url} within {timeout}s` |
+| 3xx status | `exit` | `redirect not followed` |
+| total deadline passed (any phase: connect, headers, body) | `timeout` | `no complete reply from {url} within {timeout}s` |
 | body larger than `MAX_REPLY_BYTES` | `exit` | `reply larger than` |
 | `read_chat_content` raises `KeyError`/`TypeError`/`IndexError` | `parse` | `malformed reply envelope: {exc}` |
 | reply text is not JSON (`parse_json_text`) | `parse` | `reply is not valid JSON` |
@@ -200,14 +201,15 @@ def run_cli(argv: list[str], stdin_text: str, *, timeout: float, backend: str) -
 
 - `shutil.which(argv[0]) is None` -> `exit` (`{argv[0]!r} is not on PATH`), before spawning. (Claude's message names the claude CLI.)
 - In a `tempfile.TemporaryDirectory(prefix="bim-llm-")` used as `cwd`: `proc = subprocess.Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=cwd, start_new_session=True)`; no shell, no files on disk.
-- One writer thread writes `stdin_text.encode("utf-8")` and closes stdin (a `BrokenPipeError` is ignored; the exit code decides). Two reader threads drain stdout and stderr in 8192-byte reads into in-memory buffers: stdout keeps at most `MAX_REPLY_BYTES` and on overflow sets an `overflow` event and kills the process group; stderr keeps the first `MAX_STDERR_BYTES` and discards the rest while still draining. Memory is bounded by the two caps; nothing is written to disk.
+- `stdin_text` is encoded to UTF-8 in the caller before `Popen`; `UnicodeEncodeError` (e.g. a lone surrogate from PDF text) -> `exit` (`prompt is not valid UTF-8`). Thread bodies catch `OSError` and store it; the caller maps a stored error to `exit`.
+- One writer thread writes the encoded bytes and closes stdin (a `BrokenPipeError` is ignored; the exit code decides). Two reader threads drain stdout and stderr in 8192-byte reads into in-memory buffers: stdout keeps at most `MAX_REPLY_BYTES` and on overflow sets an `overflow` event and kills the process group; stderr keeps the first `MAX_STDERR_BYTES` and discards the rest while still draining. Memory is bounded by the two caps; nothing is written to disk.
 - The caller waits with `proc.wait(timeout=timeout)`. `subprocess.TimeoutExpired` -> `os.killpg(proc.pid, signal.SIGKILL)` (the CLI and every descendant in its session), `proc.wait()`, then `timeout`. `OSError` from `Popen` -> `exit`.
-- After any exit, `os.killpg(proc.pid, signal.SIGKILL)` once more, ignoring `ProcessLookupError`, so no descendant outlives the call and every pipe closes; the reader threads are then joined with a 5-second bound. (`start_new_session` drops the controlling tty; correct here, these CLIs are non-interactive. A descendant that calls `setsid` itself escapes the group; accepted, documented.)
+- After any exit, `os.killpg(proc.pid, signal.SIGKILL)` once more, ignoring `ProcessLookupError`, so no descendant outlives the call and every pipe closes; the reader threads are then joined with a 5-second bound; a reader still alive after that -> `exit` (`output pipe still open after exit`). (`start_new_session` drops the controlling tty; correct here, these CLIs are non-interactive. A descendant that calls `setsid` itself escapes the group; accepted, documented.)
 - `overflow` set -> `exit` (`output larger than {MAX_REPLY_BYTES} bytes`).
 - stderr decoded with `errors="replace"`; used only in messages (`stderr.strip()[:300]`).
 - Non-zero return code -> `exit` with that stderr excerpt.
 - stdout decoded as UTF-8 strictly; `UnicodeDecodeError` -> `parse` (`output is not UTF-8`).
-- `KeyboardInterrupt` during `communicate` kills the process group in a `finally` and re-raises.
+- `KeyboardInterrupt` (or any `BaseException`) while waiting kills the process group in a `finally` and re-raises.
 
 ### `src/tools/bim/shared/llm/claude.py`
 
@@ -428,6 +430,7 @@ Also weighed: stdlib `urllib` instead of `requests` for the HTTP adapter. It avo
 - **Config validator scope.** `BimSettings` now fails to load when `doc.classifier.backend` names nothing. A config with a typo used to fail at pydantic too (it was a `Literal`), so this is not a new failure class.
 - **Claude envelope drift.** Newer Claude CLIs put `--json-schema` output in `structured_output`; older ones in `result`. Both are read. The adapter is the one place to re-verify when the CLI changes. Live Claude qualification is in 00153.
 - **Generic command trust.** A command backend is refused for unattended runs unless `unattended: true`. Nothing can verify that the command has no tools; docs say so.
+- **Redirects no longer followed.** Today's doc `requests.post` follows redirects. With `allow_redirects=False`, an endpoint that redirects (http -> https, trailing slash) now fails with `exit` (after doc's retries). The CHANGELOG entry and `bim.rst` say so: configure the final URL.
 - **Env-var config.** `BUVIS_BIM_LLM__<NAME>__KIND=...` works through the nested delimiter, but a discriminated union from env vars is fiddly; docs show YAML only.
 - **Next changes and what this boxes in:**
   1. 00153 ingest calls `registry.invoke(tx.backend, ..., IngestPayload, unattended=...)` and adds the `tx.backend` existence check; nothing here blocks that. The default `tx.backend = "claude"` needs an `llm.claude` entry (or 00153 adds a built-in default); this PRD adds no implicit entries.
@@ -490,3 +493,7 @@ Dispatch 3 (codex verification, design and sources inlined) confirmed B1-B4 fixe
 These were edited into the doc after dispatch 3 (pipe readers with in-memory caps and process-group kill on overflow; `allow_redirects=False` with 3xx -> `exit`; HTTP call in a worker with `future.result(timeout=...)` so the caller is released at the deadline, residual blocked worker thread accepted and documented). No dispatch remains to verify them, so they count as open for this run.
 
 dispatch 3 (codex): cardinal-sin 2, blocker 1, non-blocker 0, question 0
+
+Dispatch 4 (resumed run 2026-11-24, isolated Claude verifier of the post-dispatch-3 edits) confirmed CS2, CS3 and B5 fixed. Its seven non-blockers were all applied: N1 stale `communicate` wording; N2 `ThreadPoolExecutor` workers are joined at exit -> daemon thread + queue, `cancelled` set in `finally`; N3 3xx row and any-phase deadline row in the error table; N4 reader alive after join -> `exit`; N5 prompt encoded before `Popen`, thread errors mapped to `exit`; N6 doc test fakes need a no-op `close`; N7 redirect behavior change recorded in Risks.
+
+dispatch 4 (claude): cardinal-sin 0, blocker 0, non-blocker 7, question 0
