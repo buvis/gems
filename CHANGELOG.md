@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Upgrade notes.** This release makes config loading strict. Before you upgrade, do these steps:
+
+1. Move each `*.local.yaml` file to `~/.local/.config/buvis/` and remove `.local` from its name.
+2. Move each `config.yaml`, `buvis.yaml` or `buvis-<tool>.yaml` out of project directories into `~/.config/buvis/`.
+3. Run `chmod o-w` on each world-writable config file and config directory.
+4. Move braid sources from `~/.config/braid` to `sources` and `policies` in `~/.config/buvis/buvis-braid.yaml`.
+5. Run each tool once. An unknown key in a `buvis-<tool>.yaml` file now stops the tool and names the key. Remove or move that key.
+6. If you bind `bim serve` to a non-loopback address, connect through an SSH tunnel and sign in with the token file.
+
+Scripts that ran a failed command now see a non-zero exit code.
+
 ### Added
 
 - **config**: a new machine-local config directory, `~/.local/.config/buvis`, layers between the shared `~/.config/buvis` directory and `$BUVIS_CONFIG_DIR`, so a machine-only override lives in its own untracked directory instead of a sibling file.
