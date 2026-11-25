@@ -70,6 +70,7 @@ class ClaudeBackend:
             request.as_text(),
             timeout=timeout + CLAUDE_TIMEOUT_CUSHION_SECONDS,
             backend=self.name,
+            stdout_diagnostics=True,  # claude exits non-zero with its error only in the stdout envelope
         )
         return validate_payload(schema, self._payload(stdout), backend=self.name)
 

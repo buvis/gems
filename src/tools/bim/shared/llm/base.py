@@ -164,7 +164,8 @@ def parse_json_text(text: object, *, backend: str) -> Any:
         raise BackendError(BackendReason.PARSE, detail, backend=backend)
     try:
         return json.loads(text)
-    except json.JSONDecodeError as exc:
+    # ValueError covers JSONDecodeError and the int digit limit; deep nesting raises RecursionError.
+    except (ValueError, RecursionError) as exc:
         raise BackendError(BackendReason.PARSE, f"reply is not valid JSON: {exc}", backend=backend) from exc
 
 
@@ -241,7 +242,8 @@ def _wait(proc: subprocess.Popen[bytes], timeout: float) -> bool:
     return False
 
 
-def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str) -> str:
+def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str) -> tuple[int, bytes, bytes]:
+    """Run the CLI to its end and return ``(returncode, stdout, stderr)``."""
     proc = _spawn(argv, cwd, backend)
     out, err, overflow = bytearray(), bytearray(), threading.Event()
     errors: list[OSError] = []
@@ -261,7 +263,7 @@ def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str
                 reader.daemon = True
                 reader.start()
         except RuntimeError as exc:
-            raise BackendError(BackendReason.EXIT, f"cannot start a reader thread: {exc}", backend=backend) from exc
+            raise BackendError(BackendReason.EXIT, f"cannot start an I/O thread: {exc}", backend=backend) from exc
         timed_out = _wait(proc, timeout)
     finally:
         _kill_group(proc.pid)
@@ -277,20 +279,10 @@ def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str
         raise BackendError(BackendReason.EXIT, f"output larger than {MAX_REPLY_BYTES} bytes", backend=backend)
     if errors:
         raise BackendError(BackendReason.EXIT, f"pipe error: {errors[0]}", backend=backend)
-    if proc.returncode != 0:
-        # Some CLIs (claude) exit non-zero with an empty stderr and their error only on stdout.
-        diagnostics = bytes(err).decode("utf-8", errors="replace").strip()
-        if not diagnostics:
-            diagnostics = bytes(out).decode("utf-8", errors="replace").strip()
-        excerpt = diagnostics[:300]
-        raise BackendError(BackendReason.EXIT, f"exited with code {proc.returncode}: {excerpt}", backend=backend)
-    try:
-        return bytes(out).decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise BackendError(BackendReason.PARSE, f"output is not UTF-8: {exc}", backend=backend) from exc
+    return proc.returncode, bytes(out), bytes(err)
 
 
-def run_cli(argv: list[str], stdin_text: str, *, timeout: float, backend: str) -> str:
+def run_cli(argv: list[str], stdin_text: str, *, timeout: float, backend: str, stdout_diagnostics: bool = False) -> str:
     """Run a CLI with ``stdin_text`` on stdin and return its stdout.
 
     The CLI runs without a shell, in its own session and in a fresh temp dir that is removed on
@@ -302,6 +294,9 @@ def run_cli(argv: list[str], stdin_text: str, *, timeout: float, backend: str) -
         stdin_text: Text sent to the CLI as UTF-8 on stdin.
         timeout: Seconds to wait for the CLI to exit.
         backend: Registry name used in errors.
+        stdout_diagnostics: Quote stdout in a non-zero-exit error when stderr is empty. Only for
+            a CLI known to report its errors on stdout (claude); an arbitrary command may echo
+            its prompt there.
 
     Returns:
         The decoded stdout of a zero-exit run.
@@ -319,4 +314,14 @@ def run_cli(argv: list[str], stdin_text: str, *, timeout: float, backend: str) -
     except UnicodeEncodeError as exc:
         raise BackendError(BackendReason.EXIT, "prompt is not valid UTF-8", backend=backend) from exc
     with tempfile.TemporaryDirectory(prefix="bim-llm-") as cwd:
-        return _run(argv, data, cwd, timeout=timeout, backend=backend)
+        returncode, out, err = _run(argv, data, cwd, timeout=timeout, backend=backend)
+    if returncode != 0:
+        diagnostics = err.decode("utf-8", errors="replace").strip()
+        if not diagnostics and stdout_diagnostics:
+            diagnostics = out.decode("utf-8", errors="replace").strip()
+        detail = f"exited with code {returncode}: {diagnostics[:300]}"
+        raise BackendError(BackendReason.EXIT, detail, backend=backend)
+    try:
+        return out.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise BackendError(BackendReason.PARSE, f"output is not UTF-8: {exc}", backend=backend) from exc

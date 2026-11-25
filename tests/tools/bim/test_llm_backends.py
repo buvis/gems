@@ -258,7 +258,9 @@ class TestHttpBackendRequest:
         assert len(calls) == 1
         url, kwargs = calls[0]
         assert url == _url(kind)
-        assert set(kwargs) == {"json", "timeout", "stream", "allow_redirects"}
+        # "hooks" carries the response hook that keeps requests from reading a redirect body
+        assert set(kwargs) == {"json", "timeout", "stream", "allow_redirects", "hooks"}
+        assert set(kwargs["hooks"]) == {"response"}
         assert kwargs["timeout"] == timeout
         assert kwargs["stream"] is True
         assert kwargs["allow_redirects"] is False

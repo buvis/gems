@@ -506,6 +506,14 @@ class TestParseJsonText:
         assert exc.value.backend == "remote"
         assert exc.value.detail.startswith("reply is not valid JSON: ")
 
+    @pytest.mark.parametrize("text", ["9" * 5000, "[" * 100_000 + "]" * 100_000], ids=["huge-int", "deep-nesting"])
+    def test_json_the_decoder_refuses_is_a_parse_error_not_a_raw_exception(self, text: str) -> None:
+        with pytest.raises(BackendError) as exc:
+            parse_json_text(text, backend="local")
+
+        assert exc.value.reason is BackendReason.PARSE
+        assert exc.value.backend == "local"
+
     @pytest.mark.parametrize("text", ["", "not json", '{"a": 1', "```json\n{}\n```", '{"a": 1} trailing', "[1] [2]"])
     def test_invalid_json_is_a_parse_error(self, text: str) -> None:
         with pytest.raises(BackendError) as exc:

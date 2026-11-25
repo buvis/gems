@@ -59,8 +59,18 @@ class _FakeRunCli:
         self.outcome = outcome
         self.calls: list[dict[str, Any]] = []
 
-    def __call__(self, argv: list[str], stdin_text: str, *, timeout: float, backend: str) -> str:
-        self.calls.append({"argv": list(argv), "stdin": stdin_text, "timeout": timeout, "backend": backend})
+    def __call__(
+        self, argv: list[str], stdin_text: str, *, timeout: float, backend: str, stdout_diagnostics: bool = False
+    ) -> str:
+        self.calls.append(
+            {
+                "argv": list(argv),
+                "stdin": stdin_text,
+                "timeout": timeout,
+                "backend": backend,
+                "stdout_diagnostics": stdout_diagnostics,
+            }
+        )
         if isinstance(self.outcome, BackendError):
             raise self.outcome
         return self.outcome
@@ -166,6 +176,8 @@ class TestClaudeComplete:
                 "stdin": request_.as_text(),
                 "timeout": timeout + 30,
                 "backend": name,
+                # claude reports its errors on stdout, so the adapter opts in to stdout in error text
+                "stdout_diagnostics": True,
             }
         ]
 

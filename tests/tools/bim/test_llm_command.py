@@ -257,17 +257,28 @@ class TestCommandRunCli:
         assert "boom: unknown flag --x" in exc.value.detail
         assert "{}" not in exc.value.detail
 
-    def test_command_run_cli_non_zero_exit_with_silent_stderr_reports_the_stdout_excerpt(self) -> None:
+    def test_command_run_cli_stdout_diagnostics_reports_the_stdout_excerpt_when_stderr_is_silent(self) -> None:
         # The claude CLI exits 1 with an empty stderr and its error only in the stdout envelope.
         envelope = '{"is_error": true, "result": "Failed to authenticate: OAuth session expired"}'
         script = f"import sys; sys.stdout.write({envelope!r}); sys.exit(1)"
 
         with pytest.raises(BackendError) as exc:
-            run_cli(_py(script), "", timeout=2.0, backend="claude")
+            run_cli(_py(script), "", timeout=2.0, backend="claude", stdout_diagnostics=True)
 
         assert exc.value.reason is BackendReason.EXIT
         assert exc.value.detail.startswith("exited with code 1: ")
         assert "Failed to authenticate: OAuth session expired" in exc.value.detail
+
+    def test_command_run_cli_non_zero_exit_never_quotes_stdout_by_default(self) -> None:
+        # An arbitrary command may echo its prompt (OCR text) on stdout; that must not reach an error.
+        script = "import sys; sys.stdout.write(sys.stdin.read()); sys.exit(1)"
+
+        with pytest.raises(BackendError) as exc:
+            run_cli(_py(script), "IBAN CZ65 0800 secret", timeout=2.0, backend="shell")
+
+        assert exc.value.reason is BackendReason.EXIT
+        assert exc.value.detail.startswith("exited with code 1")
+        assert "secret" not in exc.value.detail
 
     def test_command_run_cli_zero_exit_with_stderr_returns_stdout(self) -> None:
         script = "import sys; sys.stderr.write('warning: slow model'); sys.stdout.write('{\"ok\": true}')"

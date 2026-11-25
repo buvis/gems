@@ -26,8 +26,8 @@
 - Tess: `run_cli` starts exactly three threads (one stdin writer, two readers); the thread-start test fails call 1, 2 and 3.
 - Tess: "the redirect body was not downloaded" is asserted as server bytes sent < 16 MiB, not as < `MAX_REPLY_BYTES` (the kernel buffers some unread bytes).
 - Tess: a child cwd different from `tmp_path` counts as "runs in a fresh temp dir"; emptiness and removal are not checked.
-- Ivan: a real `requests` is detected by `isinstance(getattr(requests, "Session", None), type)`; the existing test fakes expose only `post`, so `_post` falls back to `requests.post` for them. Pat (LOW): the fallback is dead code with real Requests; removing it needs the fakes in six test files to expose a `Session` class.
-- Ivan: `session.get_redirect_target` is replaced on the instance, not by a `Session` subclass (mypy rejects the dynamic base class).
+- Orchestrator (follow-up, replaces Ivan's `Session` fallback): the redirect guard is a `requests` response hook that removes `Location`; the hook runs before `Session.send` prepares `Response.next`, so plain `requests.post` stays the one call shape and the test fakes need no `Session`.
+- Orchestrator (follow-up): `run_cli` quotes stdout in a non-zero-exit error only with `stdout_diagnostics=True`; the Claude adapter sets it, a `command` backend does not (it may echo its prompt).
 - Ivan: after a thread-start failure the child's pipes are not closed by hand; the process-group kill closes them.
 - Orchestrator: the fix commit is typed `fix` with no CHANGELOG entry, because the feature is unreleased and its entry already exists.
 
