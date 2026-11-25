@@ -19,6 +19,15 @@ def _snapshot_env_is_canonical() -> bool:
     return sys.platform.startswith(SNAPSHOT_CANONICAL_PLATFORM) and sys.version_info[:2] == SNAPSHOT_CANONICAL_PYTHON
 
 
+@pytest.fixture(autouse=True)
+def _no_real_auto_update(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep CLI tests from running the real auto-update against the dev venv.
+
+    Updater tests that need the guard off clear the environment themselves.
+    """
+    monkeypatch.setenv("BUVIS_DEV_MODE", "1")
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Auto-apply tool/lib markers by path and gate snapshot tests to canonical env."""
     canonical = _snapshot_env_is_canonical()
