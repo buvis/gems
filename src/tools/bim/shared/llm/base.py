@@ -250,15 +250,18 @@ def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str
         overflow.set()
         _kill_group(proc.pid)
 
-    threading.Thread(target=_feed, args=(proc.stdin, data, errors), daemon=True).start()
     readers = [
         threading.Thread(target=_drain, args=(proc.stdout, out, MAX_REPLY_BYTES, errors, stop_on_overflow)),
         threading.Thread(target=_drain, args=(proc.stderr, err, MAX_STDERR_BYTES, errors, None)),
     ]
-    for reader in readers:
-        reader.daemon = True
-        reader.start()
     try:
+        try:
+            threading.Thread(target=_feed, args=(proc.stdin, data, errors), daemon=True).start()
+            for reader in readers:
+                reader.daemon = True
+                reader.start()
+        except RuntimeError as exc:
+            raise BackendError(BackendReason.EXIT, f"cannot start a reader thread: {exc}", backend=backend) from exc
         timed_out = _wait(proc, timeout)
     finally:
         _kill_group(proc.pid)
@@ -266,11 +269,6 @@ def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str
     deadline = time.monotonic() + 5.0
     for reader in readers:
         reader.join(timeout=max(0.0, deadline - time.monotonic()))
-    # Some CLIs (claude) exit non-zero with an empty stderr and their error only on stdout.
-    diagnostics = bytes(err).decode("utf-8", errors="replace").strip()
-    if not diagnostics:
-        diagnostics = bytes(out).decode("utf-8", errors="replace").strip()
-    excerpt = diagnostics[:300]
     if timed_out:
         raise BackendError(BackendReason.TIMEOUT, f"no reply within {timeout} seconds", backend=backend)
     if any(reader.is_alive() for reader in readers):
@@ -280,6 +278,11 @@ def _run(argv: list[str], data: bytes, cwd: str, *, timeout: float, backend: str
     if errors:
         raise BackendError(BackendReason.EXIT, f"pipe error: {errors[0]}", backend=backend)
     if proc.returncode != 0:
+        # Some CLIs (claude) exit non-zero with an empty stderr and their error only on stdout.
+        diagnostics = bytes(err).decode("utf-8", errors="replace").strip()
+        if not diagnostics:
+            diagnostics = bytes(out).decode("utf-8", errors="replace").strip()
+        excerpt = diagnostics[:300]
         raise BackendError(BackendReason.EXIT, f"exited with code {proc.returncode}: {excerpt}", backend=backend)
     try:
         return bytes(out).decode("utf-8")
@@ -307,8 +310,10 @@ def run_cli(argv: list[str], stdin_text: str, *, timeout: float, backend: str) -
         BackendError: ``exit`` for a missing executable, a bad prompt, a spawn or pipe error,
             oversized output or a non-zero exit; ``timeout``; ``parse`` for non-UTF-8 output.
     """
-    if shutil.which(argv[0]) is None:
+    found = shutil.which(argv[0])
+    if found is None:
         raise BackendError(BackendReason.EXIT, f"{argv[0]!r} is not on PATH", backend=backend)
+    argv = [os.path.abspath(found), *argv[1:]]
     try:
         data = stdin_text.encode("utf-8")
     except UnicodeEncodeError as exc:

@@ -7,6 +7,7 @@ thread so the caller is released at the total deadline whatever the server does.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import queue
 import threading
@@ -83,6 +84,28 @@ def read_chat_content(kind: HttpKind, payload: Any) -> str:
     return content
 
 
+def _post(requests: ModuleType, url: str, body: dict[str, object], timeout: float, stack: contextlib.ExitStack) -> Any:
+    """Post ``body`` without ever reading a redirect body.
+
+    ``Session.send`` reads the body of a redirect that carries a ``Location`` header, even with
+    ``allow_redirects=False``, to prepare ``Response.next``. A session that sees no redirect target
+    returns the first response untouched. ``stack`` closes the session.
+    """
+    kwargs: dict[str, Any] = {"json": body, "timeout": timeout, "stream": True, "allow_redirects": False}
+    session_cls = getattr(requests, "Session", None)
+    if not isinstance(session_cls, type):
+        return requests.post(url, **kwargs)
+
+    session = stack.enter_context(session_cls())
+    session.get_redirect_target = _no_redirect_target
+    return session.post(url, **kwargs)
+
+
+def _no_redirect_target(_resp: Any) -> None:
+    """Stand in for ``Session.get_redirect_target``: report that no response redirects."""
+    return None
+
+
 class HttpBackend:
     """An HTTP chat endpoint; it has no tool access, so it is safe unattended."""
 
@@ -153,7 +176,12 @@ class HttpBackend:
         self, requests: ModuleType, url: str, body: dict[str, object], timeout: float, cancelled: threading.Event
     ) -> Any:
         """Post ``body`` and return the decoded envelope; ``None`` once the caller has gone."""
-        response = requests.post(url, json=body, timeout=timeout, stream=True, allow_redirects=False)
+        with contextlib.ExitStack() as stack:
+            response = _post(requests, url, body, timeout, stack)
+            return self._read(response, url, cancelled)
+
+    def _read(self, response: Any, url: str, cancelled: threading.Event) -> Any:
+        """Check the status, read at most ``MAX_REPLY_BYTES`` and close ``response``."""
         try:
             if 300 <= response.status_code < 400:
                 detail = f"redirect not followed: {url} answered {response.status_code}"

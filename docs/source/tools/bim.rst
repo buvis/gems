@@ -1075,7 +1075,10 @@ Rules:
   `Claude backend probe`_ for the exact flags.
 - A ``command`` backend cannot prove that its tools are off. Scheduled
   (unattended) runs refuse it unless the entry sets ``unattended: true``.
-  Set it only when you accept that risk.
+  Set it only when you accept that risk. The command runs in an empty
+  temporary directory, a relative ``argv[0]`` is resolved against the
+  directory bim was started in, and every other path in ``argv`` must be
+  absolute.
 - In named mode, ``extraction_method`` records ``llm:<backend name>``, for
   example ``llm:local``. In the old mode it stays ``llm:<primary_model>``.
 - Retries go to the primary entry, then to the fallback entry once (see
