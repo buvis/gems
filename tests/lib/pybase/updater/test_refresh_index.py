@@ -10,7 +10,7 @@ import pytest
 from buvis.pybase.updater.detector import InstallerInfo
 from buvis.pybase.updater.executor import _refresh_package_index, run_update, run_update_interactive
 
-_CLEAN_ARGS = ("uv", "cache", "clean", "buvis-gems")
+_CLEAN_ARGS = ("uv", "cache", "clean", "--force", "buvis-gems")
 _WARNING_PREFIX = "Could not refresh uv cache for buvis-gems:"
 
 

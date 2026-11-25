@@ -74,7 +74,7 @@ def _refresh_package_index(installer: InstallerInfo, state_dir: Path) -> None:
         return
     try:
         result = subprocess.run(
-            ("uv", "cache", "clean", "buvis-gems"),
+            ("uv", "cache", "clean", "--force", "buvis-gems"),
             capture_output=True,
             timeout=_CACHE_CLEAN_TIMEOUT,
             cwd=state_dir,
