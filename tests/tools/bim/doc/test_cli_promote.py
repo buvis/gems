@@ -122,6 +122,32 @@ class TestBimDocPromote:
         assert calls[0][0] is settings.doc
         assert calls[0][1] == settings.llm
 
+    def test_named_llm_config_reaches_the_health_checker(self, runner: CliRunner, tmp_path: Path) -> None:
+        yml = _staged_yml(tmp_path)
+        doc = DocSettings.model_validate({**_doc_settings(tmp_path).model_dump(), "classifier": {"backend": "local"}})
+        settings = BimSettings(
+            path_zettelkasten=str(tmp_path / "zk"),
+            path_archive=str(tmp_path / "archive"),
+            llm={"local": {"kind": "ollama", "endpoint": "http://localhost:11434", "model": "m1"}},
+            doc=doc,
+        )
+        calls: list[tuple[object, object]] = []
+
+        def _raise(s: object, llm: object) -> None:
+            calls.append((s, llm))
+            raise MissingDependency("stop here")
+
+        with (
+            patch("bim.doc_cli.get_settings", return_value=settings),
+            patch("bim.dependencies.get_health_checker", return_value=_raise),
+        ):
+            runner.invoke(cli, ["doc", "promote", str(yml)], catch_exceptions=True)
+
+        assert settings.llm
+        assert len(calls) == 1
+        assert calls[0][0] is settings.doc
+        assert calls[0][1] is settings.llm
+
 
 class TestBimDocPromoteStrictFlag:
     """`--strict` maps success=False to exit 1 instead of exit 0."""

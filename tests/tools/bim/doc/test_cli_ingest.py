@@ -67,6 +67,46 @@ class TestBimDocIngest:
         assert result.exit_code == 0
         assert "filed" in result.output
 
+    def test_named_llm_config_reaches_the_health_checker_and_the_pipeline_factory(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        pdf = _staged_pdf(tmp_path)
+        doc = DocSettings.model_validate({**_doc_settings(tmp_path).model_dump(), "classifier": {"backend": "local"}})
+        settings = BimSettings(
+            path_zettelkasten=str(tmp_path / "zk"),
+            path_archive=str(tmp_path / "archive"),
+            llm={"local": {"kind": "ollama", "endpoint": "http://localhost:11434", "model": "m1"}},
+            doc=doc,
+        )
+        health_calls: list[tuple[object, object]] = []
+        repo = object()
+        pipeline_mock = MagicMock()
+        pipeline_mock.run.return_value = CommandResult(success=True, metadata={"outcome": "filed"})
+        get_pipeline = MagicMock(return_value=pipeline_mock)
+
+        with (
+            patch("bim.doc_cli.get_settings", return_value=settings),
+            patch(
+                "bim.dependencies.get_health_checker",
+                return_value=lambda s, llm: health_calls.append((s, llm)),
+            ),
+            patch("bim.dependencies.get_pipeline", get_pipeline),
+            patch("bim.dependencies.get_repo", return_value=repo),
+        ):
+            result = runner.invoke(cli, ["doc", "ingest", str(pdf)], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert settings.llm
+        assert len(health_calls) == 1
+        assert health_calls[0][0] is settings.doc
+        assert health_calls[0][1] is settings.llm
+        get_pipeline.assert_called_once()
+        args = get_pipeline.call_args.args
+        assert len(args) == 3
+        assert args[0] is settings.doc
+        assert args[1] is repo
+        assert args[2] is settings.llm
+
     def test_triaged_outcome_prints_warning(self, runner: CliRunner, tmp_path: Path) -> None:
         pdf = _staged_pdf(tmp_path)
         settings = _bim_settings_with_doc(tmp_path)
