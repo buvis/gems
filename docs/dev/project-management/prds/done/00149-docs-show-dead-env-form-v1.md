@@ -60,8 +60,8 @@ documented test at line 728 would fail.
 ## Tasks
 
 ### Phase 0: Fix
-- [ ] Replace both `BUVIS_MYAPP__DB__HOST` occurrences in `docs/source/configuration.rst` with `BUVIS_MYAPP_DB__HOST` - Acceptance: `rg -F "BUVIS_MYAPP__DB__HOST" docs/source README.md` prints nothing and exits 1.
-- [ ] Confirm the new form is in both places (depends on: previous task) - Acceptance: `rg -c -F "BUVIS_MYAPP_DB__HOST" docs/source/configuration.rst` prints `2`.
+- [x] Replace both `BUVIS_MYAPP__DB__HOST` occurrences in `docs/source/configuration.rst` with `BUVIS_MYAPP_DB__HOST` - Acceptance: `rg -F "BUVIS_MYAPP__DB__HOST" docs/source README.md` prints nothing and exits 1.
+- [x] Confirm the new form is in both places (depends on: previous task) - Acceptance: `rg -c -F "BUVIS_MYAPP_DB__HOST" docs/source/configuration.rst` prints `2`.
 
 ## Success Criteria
 
