@@ -23,13 +23,13 @@ class TestNetscanCommands:
     def test_hosts_failure(self, mock_cmd_cls: MagicMock, runner) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="no interface")
         result = runner.invoke(cli, ["hosts", "-i", "en0"])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("netscan.commands.hosts.hosts.CommandHosts")
     def test_hosts_failure_no_error(self, mock_cmd_cls: MagicMock, runner) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["hosts", "-i", "en0"])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("netscan.commands.hosts.hosts.CommandHosts")
     def test_hosts_success_no_output(self, mock_cmd_cls: MagicMock, runner) -> None:
@@ -55,13 +55,13 @@ class TestNetscanCommands:
     def test_ssh_failure(self, mock_cmd_cls: MagicMock, runner) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="port closed")
         result = runner.invoke(cli, ["ssh", "-i", "en0", "-p", "22"])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("netscan.commands.ssh.ssh.CommandSsh")
     def test_ssh_failure_no_error(self, mock_cmd_cls: MagicMock, runner) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["ssh", "-i", "en0", "-p", "22"])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("netscan.commands.ssh.ssh.CommandSsh")
     def test_ssh_success_no_output(self, mock_cmd_cls: MagicMock, runner) -> None:

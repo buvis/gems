@@ -17,4 +17,4 @@ def isolate_attention(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     monkeypatch.setenv("BUVIS_SYSUP_AUTO_UPDATE", "false")
-    monkeypatch.setattr("buvis.pybase.configuration.click_integration._run_update_check_once", lambda _ctx: None)
+    monkeypatch.setattr("buvis.pybase.configuration.click_integration._run_update_check_once", lambda _ctx, _args: None)

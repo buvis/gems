@@ -309,13 +309,14 @@ class TestInstallSecurity:
         app = FastAPI()
         install_security(app, "127.0.0.1")
         kwargs = self._trusted_host_kwargs(app)
-        assert set(kwargs["allowed_hosts"]) == LOOPBACK_HOSTS
+        assert set(kwargs["allowed_hosts"]) == {"localhost", "127.0.0.1", "[::1]"}
 
-    def test_non_loopback_host_widens_allowed_hosts_to_wildcard(self) -> None:
+    @pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.0.2.1", "server.example"])
+    def test_non_loopback_bind_keeps_tunnel_hosts(self, host: str) -> None:
         app = FastAPI()
-        install_security(app, "0.0.0.0")
+        install_security(app, host)
         kwargs = self._trusted_host_kwargs(app)
-        assert list(kwargs["allowed_hosts"]) == ["*"]
+        assert set(kwargs["allowed_hosts"]) == {"localhost", "127.0.0.1", "[::1]"}
 
     @pytest.mark.parametrize("host", sorted(LOOPBACK_HOSTS))
     def test_loopback_host_marks_token_in_page_true(self, host: str) -> None:
@@ -328,18 +329,18 @@ class TestInstallSecurity:
         install_security(app, "0.0.0.0")
         assert app.state.token_in_page is False
 
-    def test_non_loopback_host_surfaces_minted_token_to_operator_via_console(self) -> None:
+    def test_non_loopback_host_does_not_disclose_token(self) -> None:
         app = FastAPI()
         with console.capture() as capture:
             install_security(app, "0.0.0.0")
 
-        assert app.state.buvis_token in capture.get()
+        assert app.state.buvis_token not in capture.get()
 
-    def test_non_loopback_warning_describes_unauthenticated_reads_not_protected_writes(self) -> None:
+    def test_non_loopback_warning_requires_authenticated_tunnel(self) -> None:
         app = FastAPI()
         with console.capture() as capture:
             install_security(app, "0.0.0.0")
 
         output = capture.get().lower()
-        assert "read notes without" in output
-        assert "writes still require it" not in output
+        assert "authentication" in output
+        assert "ssh" in output

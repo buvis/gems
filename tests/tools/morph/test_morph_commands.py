@@ -24,13 +24,13 @@ class TestMorphHtml2MdCommand:
     def test_html2md_failure(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="bad input")
         result = runner.invoke(cli, ["html2md", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("morph.commands.html2md.html2md.CommandHtml2Md")
     def test_html2md_failure_no_error_message(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["html2md", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("morph.commands.html2md.html2md.CommandHtml2Md")
     def test_html2md_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -65,7 +65,7 @@ class TestMorphDeblanCommand:
         pdf.write_bytes(b"%PDF-1.4")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="pdftk failed")
         result = runner.invoke(cli, ["deblank", str(pdf)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("morph.commands.deblank.deblank.CommandDeblank")
     def test_deblank_failure_no_error_message(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -73,7 +73,7 @@ class TestMorphDeblanCommand:
         pdf.write_bytes(b"%PDF-1.4")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["deblank", str(pdf)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("morph.commands.deblank.deblank.CommandDeblank")
     def test_deblank_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
@@ -117,7 +117,7 @@ class TestMorphPdf2PngCommand:
         pdf.write_bytes(b"%PDF-1.4")
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="render failed")
         result = runner.invoke(cli, ["pdf2png", str(pdf)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("morph.commands.pdf2png.pdf2png.CommandPdf2Png")
     def test_pdf2png_with_warnings(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:

@@ -1,0 +1,106 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "No test covers either gap. There is no test that resolves `GlobalSettings` against a shared file with `debug`, and none that resolves one tool against a shared file carrying another tool's top-level field. The new tests only resolve `BraidSettings` against its own fields and the `sysup`/`adapters` namespace sections.",
+    "file": "tests/lib/pybase/configuration/test_tool_config_keys.py:68",
+    "reason": "single-voice; the GlobalSettings half is covered by the R1 fix task's mandated regression tests, and the cross-tool half belongs to the deferred R11 ambiguity"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "`known_tool_names()` is cached for the process lifetime and reads installed distribution metadata. A stale editable install, or a tool whose entry point is not registered, turns a valid `<tool>:` section into a warning. The code docstring and the docs both admit this. Nothing guards the entry-point list in `pyproject.toml` against the set of tool settings classes, so a new tool can silently go unregistered.",
+    "file": "src/lib/buvis/pybase/configuration/registry.py:23",
+    "reason": "single-voice; the cache lifetime is a documented design choice, and the unregistered-tool half is what R4's entry-point drift test pins"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "TestKnownToolNames monkeypatches entry_points in all tests; add an integration test asserting known_tool_names discovers real tools registered in pyproject.toml",
+    "file": "tests/lib/pybase/configuration/test_registry.py:12",
+    "reason": "duplicate of R4, which carries the same fix with two finders"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`tools/lib/scaffold.py` and `tools/lib/check_tool_wiring.py` do not enforce or generate the new `buvis.config_settings` entry. The design records this as an accepted follow-on, so any newly scaffolded tool will emit noisy warnings for its own `<tool>:` section until someone adds the line by hand. Consider a follow-up PRD or triage stub.",
+    "file": "tools/lib/scaffold.py",
+    "reason": "single-voice; the design doc records scaffold/wiring enforcement as an accepted follow-on, out of this PRD's scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`test_shared_config_own_valid_fields_produce_no_warning` and the added `caplog` assertion in `test_shared_config_keeps_other_tool_namespaces` also pass against the pre-change code, so they only guard against false positives and do not pin the fix. `test_shared_config_warns_on_resolving_tools_own_typo` does pin it. This is acceptable as design-mandated guard tests.",
+    "file": "tests/lib/pybase/configuration/test_tool_config_keys.py:77",
+    "reason": "single-voice; the design mandates these as false-positive guards and the raiser's own row calls them acceptable, with one test that does pin the fix"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The spec's evidence case is met. `srouces:` in a file named `config.yaml` or `buvis.yaml` warns, naming the file and key, and does not fail. The same content in `custom.yaml` still raises `ConfigurationError`. The library imports no tool code, because the registry reads only `EntryPoint.name`. A CHANGELOG entry is present, under the Unreleased `Fixed` section, and `docs/source/configuration.rst` is updated.",
+    "file": "CHANGELOG.md:31",
+    "reason": "not a defect; the row is a positive all-clear the blind lens filed as a finding"
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "high",
+    "issue": "The check only knows the resolving tool's own fields and the registered tool names. It does not know \"any tool's settings field\", which is what the spec's success metric says. A top-level `sources:` in `config.yaml` is a valid braid key. Running sysup against that file warns \"unknown configuration key 'sources'\". The registry stores only entry-point names, with no per-tool key sets.",
+    "file": "src/lib/buvis/pybase/configuration/resolver.py:207",
+    "reason": "requirements ambiguity, deferred to batch end. The approved design doc settles it the other way: a shared file does not carry other tools' fields flat at the top level, it carries a `<tool>:` namespace section per tool (design lines 18-19 and 528). Closing the gap as Blake reads it needs per-tool field sets in the registry, which would make the library import tool code, against the AGENTS.md invariant the PRD itself restates."
+  },
+  {
+    "cycle": 2,
+    "disposition": "settled-deferral",
+    "severity": "medium",
+    "issue": "Registry stores no key sets, so a typo in another tool's field or deferred key is only caught when that tool resolves. Other tools' fields are never consulted, which is a narrower check than the spec's \"matches no tool's settings field\". This is the same design deviation as the finding above. Phase 1 design choice is documented but is not the \"tools register their key sets\" option and does not satisfy the success metric.",
+    "file": "src/lib/buvis/pybase/configuration/registry.py:23",
+    "reason": "same settled deferral as cycle 1's R11 (requirements ambiguity, deferred to batch end): the approved design settles the shared file as carrying a `<tool>:` namespace section per tool, not other tools' fields flat at the top level. Per-tool field sets in the registry would make the library import tool code, against the AGENTS.md invariant the PRD itself restates."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Task 5's required `GlobalSettings` regression tests are absent; the earlier dismissal relied on their delivery. Add shared-file tests proving `debug`/`log_level` stay quiet and `srouces` still warns with file and key.",
+    "file": "src/lib/buvis/pybase/configuration/resolver.py:302",
+    "reason": "duplicate of R1, which carries the same fix with three finders; retired as a duplicate, not as a dismissal of the defect"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Registry discovery now runs even without shared files, adding an unnecessary distribution-metadata scan to explicit-file and empty-config resolutions. Move `known_tool_names()` into `_warn_unknown_shared_keys`, before its loop, and remove the `tool_names` argument.",
+    "file": "src/lib/buvis/pybase/configuration/resolver.py:223",
+    "reason": "single-voice; `known_tool_names()` is `lru_cache`d, so the scan happens at most once per process and the hoist that caused it was the cycle-1 R2 fix the panel asked for"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The autouse fixture in `test_registry.py` already clears the cache before and after each test. The `known_tool_names.cache_clear()` calls at the start of `test_returns_exactly_the_registered_names` and the other pre-existing tests are now redundant. Only the mid-test clear in `test_result_is_cached_until_cleared` is load-bearing.",
+    "file": "tests/lib/pybase/configuration/test_registry.py:30",
+    "reason": "single-voice; a redundant belt-and-braces cache_clear in a test is harmless and the raiser calls it redundant, not wrong"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The test gate reports 10 failures out of 7702 tests. I did not verify whether they relate to this change. The two targeted test files, `tests/lib/pybase/configuration/test_tool_config_keys.py` and `tests/lib/pybase/configuration/test_registry.py`, pass (33 tests).",
+    "file": "N/A",
+    "reason": "not a defect of this PRD; all 10 are collection ERRORs in tests/tools/dot/test_pull_divergence_two_hosts.py from this host's commit.gpgsign=true needing interactive approval, pre-existing and already recorded as a deferred decision in cycle 1"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The CHANGELOG `Fixed` entry exists (CHANGELOG.md:31). It claims \"a key that is a valid field of the resolving tool, a global field, or another registered tool's namespace section\" produces no warning. That is narrower than the PRD's \"valid shared keys for any tool\", but the entry is honest about it. The custom-named file rejection path is unchanged and the file name appears in the warning, as required.",
+    "file": "CHANGELOG.md:31",
+    "reason": "not a defect; the row is a positive all-clear, and the narrowness it notes is the settled R11/R3 deferral"
+  }
+]

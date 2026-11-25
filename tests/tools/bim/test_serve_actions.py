@@ -105,6 +105,57 @@ class TestServeActions:
         assert response.status_code == 200
         assert response.json()["success"] is True
 
+    def test_sync_note_uses_configured_jira_never_the_request_one(self, client: TestClient, tmp_path: Path) -> None:
+        client.app.state.buvis_token = "test-token"
+        client.app.state.jira_config = {"server": "https://jira.configured.example", "token": "configured"}
+        note = tmp_path / "zettels" / "note.md"
+        note.write_text("placeholder", encoding="utf-8")
+
+        with patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_command:
+            mock_command.return_value.execute.return_value = CommandResult(success=True, output="synced")
+            response = client.post(
+                "/api/actions/sync_note",
+                json={
+                    "file_path": str(note),
+                    "args": {"jira_config": {"server": "http://attacker.example", "token": "caller"}},
+                    "row": {},
+                },
+                headers={"X-Buvis-Token": "test-token"},
+            )
+
+        assert response.status_code == 200
+        built_with = mock_command.call_args.kwargs["jira_adapter_config"]
+        assert built_with == {"server": "https://jira.configured.example", "token": "configured"}
+
+    def test_sync_note_runs_off_the_event_loop_thread(self, tmp_path: Path) -> None:
+        import asyncio
+        import threading
+        from types import SimpleNamespace
+
+        from bim.commands.serve._actions import handle_sync_note
+
+        note = tmp_path / "note.md"
+        note.write_text("placeholder", encoding="utf-8")
+        state = SimpleNamespace(
+            default_directory=str(tmp_path), archive_directory=None, business_triage_root=None, jira_config={}
+        )
+        ran_on: list[int] = []
+
+        def slow_sync() -> CommandResult:
+            ran_on.append(threading.get_ident())
+            return CommandResult(success=True)
+
+        async def call() -> int:
+            await handle_sync_note(str(note), {}, state)
+            return threading.get_ident()
+
+        with patch("bim.commands.sync_note.sync_note.CommandSyncNote") as mock_command:
+            mock_command.return_value.execute.side_effect = slow_sync
+            loop_thread = asyncio.run(call())
+
+        assert ran_on
+        assert ran_on[0] != loop_thread
+
     def test_create_note_action_forwards_scripting_params_but_not_source(self, client: TestClient) -> None:
         client.app.state.buvis_token = "test-token"
 

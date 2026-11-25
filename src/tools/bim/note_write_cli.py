@@ -78,9 +78,7 @@ def import_note(
         formatter=get_formatter(),
     )
     result = cmd.execute()
-    console.report_result(result, failure_msg="Import failed")
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, failure_msg="Import failed", exit_on_failure=True)
 
 
 @click.command("create", help="Create a new zettel from template")
@@ -300,9 +298,7 @@ def _render_create_result(ctx: click.Context, result: Any, *, as_json: bool) -> 
         else:
             console.success(r.output or "Created")
 
-    console.report_result(result, on_success=report_success, failure_msg="Create failed")
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=report_success, failure_msg="Create failed", exit_on_failure=True)
 
 
 @click.command("edit", help="Edit zettel metadata")
@@ -351,9 +347,7 @@ def edit_note(
     params = EditNoteParams(paths=resolved, changes=changes, **kwargs)
     cmd = CommandEditNote(params=params, repo=get_repo())
     result = cmd.execute()
-    console.report_result(result, failure_msg="Edit failed")
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, failure_msg="Edit failed", exit_on_failure=True)
 
 
 @click.command("archive", help="Archive zettel(s): set processed + move to archive dir")
@@ -386,9 +380,7 @@ def archive_note(
         repo=get_repo(),
     )
     result = cmd.execute()
-    console.report_result(result, failure_msg="Archive failed")
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, failure_msg="Archive failed", exit_on_failure=True)
 
 
 @click.command("delete", help="Permanently delete zettel(s)")
@@ -434,6 +426,5 @@ def delete_note(
             else None
         ),
         failure_msg="Delete failed",
+        exit_on_failure=True,
     )
-    if not result.success:
-        ctx.exit(1)

@@ -18,9 +18,11 @@ class TestLogLevelValidation:
 
         assert "log_level" in str(exc_info.value)
 
-    def test_lowercase_log_level_fails(self) -> None:
-        with pytest.raises(ValidationError):
-            GlobalSettings(log_level="info")
+    def test_log_level_accepts_any_case(self) -> None:
+        # Was test_lowercase_log_level_fails. Changed on the operator's decision
+        # (agoge 2026-11-15, finding 19): --log-level already accepted any case.
+        assert GlobalSettings(log_level="info").log_level == "INFO"
+        assert GlobalSettings(log_level="Warning").log_level == "WARNING"
 
 
 class TestOutputFormatValidation:

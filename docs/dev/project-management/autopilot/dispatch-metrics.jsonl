@@ -936,3 +936,225 @@
 {"id":"ee96ccf0","ended_at":1794229941,"elapsed_s":345,"outcome":"ok","detail":null}
 {"id":"653411a0","ended_at":1794229942,"elapsed_s":342,"outcome":"ok","detail":null}
 {"id":"6b831412","ended_at":1794230169,"elapsed_s":577,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"resume","at":1794310061,"phase":"build","prd":"00122-config-machine-local-layer-v1.md"}
+{"id":"9287c317","kind":"fast-track:tess","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794310217,"prompt_bytes":328839}
+{"id":"9287c317","ended_at":1794310652,"elapsed_s":435,"outcome":"ok","detail":null}
+{"id":"3af896dd","kind":"fast-track:ivan","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794310667,"prompt_bytes":105652}
+{"id":"3af896dd","ended_at":1794310990,"elapsed_s":323,"outcome":"ok","detail":null}
+{"id":"68182a16","kind":"fast-track:fanout","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311392,"prompt_bytes":6259}
+{"id":"92885d1e","kind":"fast-track:blake","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311396,"prompt_bytes":13203}
+{"id":"a1c7e06f","kind":"fast-track:eve","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311400,"prompt_bytes":4581}
+{"id":"73470194","kind":"fast-track:bob","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311404,"prompt_bytes":9448}
+{"id":"53394025","kind":"fast-track:carl","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311408,"prompt_bytes":6615}
+{"id":"68182a16","ended_at":1794311433,"elapsed_s":41,"outcome":"error","detail":"skipped: using autopilot:alice subagent directly to conserve orchestration budget for this card"}
+{"id":"254add65","kind":"fast-track:alice","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311438,"prompt_bytes":6259}
+{"id":"73470194","ended_at":1794311587,"elapsed_s":183,"outcome":"ok","detail":null}
+{"id":"92885d1e","ended_at":1794311590,"elapsed_s":194,"outcome":"ok","detail":null}
+{"id":"254add65","ended_at":1794311700,"elapsed_s":262,"outcome":"ok","detail":null}
+{"id":"53394025","ended_at":1794311799,"elapsed_s":391,"outcome":"ok","detail":null}
+{"id":"9a627d98","kind":"fast-track:bob","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311813,"prompt_bytes":9448}
+{"id":"9a627d98","ended_at":1794311873,"elapsed_s":60,"outcome":"error","detail":"codex sandbox_apply failed twice (environment bug), retry budget exhausted"}
+{"id":"24598bb8","kind":"fast-track:victor","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794311906,"prompt_bytes":3272}
+{"id":"24598bb8","ended_at":1794311929,"elapsed_s":23,"outcome":"ok","detail":null}
+{"id":"a1c7e06f","ended_at":1794312135,"elapsed_s":735,"outcome":"ok","detail":null}
+{"id":"76594303","kind":"fast-track:ivan","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794312240,"prompt_bytes":23216}
+{"id":"76594303","ended_at":1794312364,"elapsed_s":124,"outcome":"ok","detail":null}
+{"id":"747371f2","kind":"fast-track:delta","task":"00122-config-machine-local-layer-v1-c1","queued_at":1794312422,"prompt_bytes":6144}
+{"id":"747371f2","ended_at":1794312825,"elapsed_s":403,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"build","edge":"leave","at":1794313049,"phase":"done","prd":"00122-config-machine-local-layer-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1794313073,"phase":"done","prd":"00122-config-machine-local-layer-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794313152,"phase":"build","prd":"00122-config-machine-local-layer-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794313161,"phase":"build","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"id":"385ad62d","kind":"tess","task":"1","queued_at":1794313468,"prompt_bytes":56129}
+{"id":"93937e34","kind":"tess","task":"1","queued_at":1794313475,"prompt_bytes":54226}
+{"id":"f360c319","kind":"tess","task":"1","queued_at":1794313491,"prompt_bytes":41590}
+{"id":"793828bc","kind":"tess","task":"3","queued_at":1794313997,"prompt_bytes":48626}
+{"id":"385ad62d","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"93937e34","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"f360c319","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"793828bc","ended_at":1794314747,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794314747,"phase":"review","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794314772,"phase":"review","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"id":"e8aeba85","kind":"bob","task":"review-20261110a","queued_at":1794314965,"prompt_bytes":9592}
+{"id":"e58a753d","kind":"carl","task":"review-20261110a","queued_at":1794314965,"prompt_bytes":6577}
+{"id":"e8aeba85","ended_at":1794315219,"elapsed_s":254,"outcome":"ok","detail":null}
+{"id":"e58a753d","ended_at":1794315222,"elapsed_s":257,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794315517,"phase":"done","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1794315546,"phase":"done","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794315648,"phase":"done","prd":"00123-braid-config-in-buvis-yaml-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794593010,"phase":"build","prd":"00136-sysup-plan-config-errors-raw-v1.md"}
+{"id":"7db84537","kind":"tess","task":"1","queued_at":1794593198,"prompt_bytes":27805}
+{"id":"7db84537","ended_at":1794593256,"elapsed_s":58,"outcome":"ok","detail":null}
+{"id":"d3c86d3a","kind":"ivan","task":"1","queued_at":1794593318,"prompt_bytes":11494}
+{"id":"d3c86d3a","ended_at":1794594617,"elapsed_s":1299,"outcome":"ok","detail":null}
+{"id":"d947872b","kind":"deslop","task":"1","queued_at":1794594669,"prompt_bytes":3882}
+{"id":"d947872b","ended_at":1794594705,"elapsed_s":36,"outcome":"ok","detail":null}
+{"id":"6d5843c4","kind":"ivan","task":"1","queued_at":1794594730,"prompt_bytes":7005}
+{"id":"6d5843c4","ended_at":1794594775,"elapsed_s":45,"outcome":"ok","detail":null}
+{"id":"748aa347","kind":"pat","task":"1","queued_at":1794594801,"prompt_bytes":23582}
+{"id":"748aa347","ended_at":1794594856,"elapsed_s":55,"outcome":"ok","detail":"native Agent fallback; sonnet-run.sh auth failed"}
+{"id":"ad67f2de","kind":"ivan","task":"1","queued_at":1794594874,"prompt_bytes":7718}
+{"id":"ad67f2de","ended_at":1794594913,"elapsed_s":39,"outcome":"ok","detail":null}
+{"id":"5be729e8","kind":"pat","task":"1","queued_at":1794594934,"prompt_bytes":6263}
+{"id":"5be729e8","ended_at":1794594951,"elapsed_s":17,"outcome":"ok","detail":null}
+{"id":"0a6a3f57","kind":"tess","task":"2","queued_at":1794594982,"prompt_bytes":19637}
+{"id":"0a6a3f57","ended_at":1794595034,"elapsed_s":52,"outcome":"ok","detail":null}
+{"id":"fc52e83a","kind":"ivan","task":"2","queued_at":1794595060,"prompt_bytes":9463}
+{"id":"fc52e83a","ended_at":1794596588,"elapsed_s":1528,"outcome":"timeout","detail":"qwen hung: no edits or output in 25 min"}
+{"id":"fc52e83a","ended_at":1794596685,"elapsed_s":1625,"outcome":"ok","detail":"claude sonnet re-dispatch after qwen hang"}
+{"id":"2cde99ce","kind":"deslop","task":"2","queued_at":1794596721,"prompt_bytes":2760}
+{"id":"2cde99ce","ended_at":1794596758,"elapsed_s":37,"outcome":"ok","detail":null}
+{"id":"0bd5984a","kind":"ivan","task":"2","queued_at":1794596784,"prompt_bytes":6568}
+{"id":"0bd5984a","ended_at":1794596808,"elapsed_s":24,"outcome":"ok","detail":null}
+{"id":"869be0b0","kind":"pat","task":"2","queued_at":1794596821,"prompt_bytes":19931}
+{"id":"869be0b0","ended_at":1794596848,"elapsed_s":27,"outcome":"ok","detail":"native Agent fallback; sonnet-run.sh auth unavailable"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794597079,"phase":"review","prd":"00136-sysup-plan-config-errors-raw-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794599374,"phase":"review","prd":"00136-sysup-plan-config-errors-raw-v1.md"}
+{"id":"ab95f70a","kind":"bob","task":"review-20261113-c1","queued_at":1794599760,"prompt_bytes":9600}
+{"id":"783ee357","kind":"carl","task":"review-20261113-c1","queued_at":1794599760,"prompt_bytes":6581}
+{"id":"ab95f70a","ended_at":1794600169,"elapsed_s":409,"outcome":"ok","detail":null}
+{"id":"783ee357","ended_at":1794600169,"elapsed_s":409,"outcome":"ok","detail":null}
+{"id":"ab95f70a","ended_at":1794600934,"elapsed_s":1174,"outcome":"ok","detail":null}
+{"id":"783ee357","ended_at":1794600934,"elapsed_s":1174,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794600993,"phase":"review","prd":"00136-sysup-plan-config-errors-raw-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794601598,"phase":"build","prd":"00136-sysup-plan-config-errors-raw-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794601613,"phase":"build","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"id":"65c189da","kind":"tess","task":"1","queued_at":1794601881,"prompt_bytes":44416}
+{"id":"65c189da","ended_at":1794601976,"elapsed_s":95,"outcome":"ok","detail":null}
+{"id":"4ac5055c","kind":"ivan","task":"1","queued_at":1794602004,"prompt_bytes":59438}
+{"id":"0e1db16a","kind":"ivan","task":"1","queued_at":1794602046,"prompt_bytes":11828}
+{"id":"316dbe0c","kind":"ivan","task":"1","queued_at":1794602060,"prompt_bytes":8695}
+{"id":"6f3e5af0","kind":"deslop","task":"1","queued_at":1794602684,"prompt_bytes":6315}
+{"id":"6f3e5af0","ended_at":1794602794,"elapsed_s":110,"outcome":"ok","detail":null}
+{"id":"5477ff5e","kind":"pat","task":"1","queued_at":1794602858,"prompt_bytes":14820}
+{"id":"5477ff5e","ended_at":1794603230,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"id":"4ac5055c","ended_at":1794603230,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"0e1db16a","ended_at":1794603230,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"316dbe0c","ended_at":1794603230,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794603230,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794603623,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"id":"4cf5bfc2","kind":"bob","task":"review-00137-c1","queued_at":1794603677,"prompt_bytes":9588}
+{"id":"143a229d","kind":"carl","task":"review-00137-c1","queued_at":1794603677,"prompt_bytes":6575}
+{"id":"4cf5bfc2","ended_at":1794604090,"elapsed_s":413,"outcome":"ok","detail":null}
+{"id":"143a229d","ended_at":1794604090,"elapsed_s":413,"outcome":"ok","detail":null}
+{"id":"4cf5bfc2","ended_at":1794605317,"elapsed_s":1640,"outcome":"ok","detail":null}
+{"id":"143a229d","ended_at":1794605317,"elapsed_s":1640,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794605411,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794605446,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"id":"402d5f1c","kind":"ivan","task":"2","queued_at":1794605556,"prompt_bytes":20549}
+{"id":"402d5f1c","ended_at":1794605645,"elapsed_s":89,"outcome":"ok","detail":null}
+{"id":"89da1807","kind":"pat","task":"2","queued_at":1794605723,"prompt_bytes":7948}
+{"id":"89da1807","ended_at":1794605755,"elapsed_s":32,"outcome":"error","detail":"sonnet-run.sh: OAuth token revoked; rerouted to native pat subagent"}
+{"id":"be173c66","kind":"ivan","task":"3","queued_at":1794606014,"prompt_bytes":24821}
+{"id":"be173c66","ended_at":1794606059,"elapsed_s":45,"outcome":"ok","detail":null}
+{"id":"17488a6b","kind":"deslop","task":"3","queued_at":1794606146,"prompt_bytes":7119}
+{"id":"17488a6b","ended_at":1794606165,"elapsed_s":19,"outcome":"ok","detail":"no slop found"}
+{"id":"c2863b4b","kind":"pat","task":"3","queued_at":1794606215,"prompt_bytes":18547}
+{"id":"c2863b4b","ended_at":1794606241,"elapsed_s":26,"outcome":"ok","detail":"2 CLOSURE resolved, NO FINDINGS"}
+{"id":"4165d339","kind":"ivan","task":"5","queued_at":1794606395,"prompt_bytes":22780}
+{"id":"4165d339","ended_at":1794606537,"elapsed_s":142,"outcome":"ok","detail":"18/20 pass; 2 cases report production gaps"}
+{"id":"a5b252cf","kind":"pat","task":"5","queued_at":1794606676,"prompt_bytes":23223}
+{"id":"a5b252cf","ended_at":1794606703,"elapsed_s":27,"outcome":"ok","detail":"1 CLOSURE resolved, 3 LOW"}
+{"kind":"handoff","site":"review","edge":"leave","at":1794607156,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794607198,"phase":"review","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"id":"0a79ab3b","kind":"bob","task":"review-00137c2","queued_at":1794607241,"prompt_bytes":23686}
+{"id":"078d5c59","kind":"carl","task":"review-00137c2","queued_at":1794607241,"prompt_bytes":20675}
+{"id":"0a79ab3b","ended_at":1794607539,"elapsed_s":298,"outcome":"ok","detail":null}
+{"id":"078d5c59","ended_at":1794607539,"elapsed_s":298,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794607744,"phase":"build","prd":"00137-yaml-auto-update-ignored-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794607758,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"id":"fb19ad0d","kind":"tess","task":"1","queued_at":1794608278,"prompt_bytes":39139}
+{"id":"fb19ad0d","ended_at":1794608382,"elapsed_s":104,"outcome":"ok","detail":null}
+{"id":"8d1bb2a9","kind":"devon","task":"1","queued_at":1794608409,"prompt_bytes":1475}
+{"id":"8b9f8f17","kind":"devon","task":"1","queued_at":1794608427,"prompt_bytes":2533}
+{"id":"8b9f8f17","ended_at":1794608530,"elapsed_s":103,"outcome":"ok","detail":null}
+{"id":"90df7773","kind":"tess","task":"1","queued_at":1794608549,"prompt_bytes":2680}
+{"id":"90df7773","ended_at":1794608586,"elapsed_s":37,"outcome":"ok","detail":null}
+{"id":"3acd480f","kind":"ivan","task":"1","queued_at":1794608607,"prompt_bytes":39323}
+{"id":"3acd480f","ended_at":1794608651,"elapsed_s":44,"outcome":"ok","detail":null}
+{"id":"2bf35fa0","kind":"tess","task":"2","queued_at":1794608949,"prompt_bytes":24277}
+{"id":"2bf35fa0","ended_at":1794609325,"elapsed_s":376,"outcome":"ok","detail":null}
+{"id":"554ea38b","kind":"ivan","task":"2","queued_at":1794609347,"prompt_bytes":23627}
+{"id":"554ea38b","ended_at":1794609429,"elapsed_s":82,"outcome":"ok","detail":null}
+{"id":"56a50a04","kind":"tess","task":"3","queued_at":1794609582,"prompt_bytes":11353}
+{"id":"56a50a04","ended_at":1794610423,"elapsed_s":841,"outcome":"ok","detail":null}
+{"id":"10197e85","kind":"ivan","task":"3","queued_at":1794610489,"prompt_bytes":31386}
+{"id":"10197e85","ended_at":1794610851,"elapsed_s":362,"outcome":"ok","detail":null}
+{"id":"8d1bb2a9","ended_at":1794611080,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794611080,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794611092,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794612997,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794613036,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"id":"926253e2","kind":"bob","task":"review-20261114-00138-c1","queued_at":1794613222,"prompt_bytes":9624}
+{"id":"766e8317","kind":"carl","task":"review-20261114-00138-c1","queued_at":1794613223,"prompt_bytes":6593}
+{"id":"926253e2","ended_at":1794613892,"elapsed_s":670,"outcome":"ok","detail":null}
+{"id":"766e8317","ended_at":1794613895,"elapsed_s":672,"outcome":"ok","detail":null}
+{"id":"926253e2","ended_at":1794615314,"elapsed_s":2092,"outcome":"ok","detail":null}
+{"id":"766e8317","ended_at":1794615314,"elapsed_s":2091,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794615381,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"review","edge":"leave","at":1794616921,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794616978,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"id":"adcba360","kind":"bob","task":"review-20261114-00138-c2","queued_at":1794617197,"prompt_bytes":21312}
+{"id":"16c63822","kind":"carl","task":"review-20261114-00138-c2","queued_at":1794617197,"prompt_bytes":18281}
+{"id":"adcba360","ended_at":1794617553,"elapsed_s":356,"outcome":"ok","detail":null}
+{"id":"16c63822","ended_at":1794617556,"elapsed_s":359,"outcome":"ok","detail":null}
+{"id":"adcba360","ended_at":1794617718,"elapsed_s":521,"outcome":"ok","detail":null}
+{"id":"16c63822","ended_at":1794617718,"elapsed_s":521,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794617816,"phase":"review","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794617829,"phase":"build","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"id":"81d355d8","kind":"pat","task":"11","queued_at":1794617944,"prompt_bytes":6536}
+{"id":"81d355d8","ended_at":1794618199,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"kind":"handoff","site":"review","edge":"leave","at":1794618199,"phase":"done","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1794618277,"phase":"done","prd":"00138-failed-commands-exit-zero-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794618379,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794618389,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794620452,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794620480,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"id":"b2936113","kind":"bob","task":"review-r00139-c1","queued_at":1794620669,"prompt_bytes":9592}
+{"id":"479f4ca5","kind":"carl","task":"review-r00139-c1","queued_at":1794620669,"prompt_bytes":6577}
+{"id":"b2936113","ended_at":1794621103,"elapsed_s":434,"outcome":"ok","detail":null}
+{"id":"479f4ca5","ended_at":1794621106,"elapsed_s":437,"outcome":"ok","detail":null}
+{"id":"b2936113","ended_at":1794621426,"elapsed_s":757,"outcome":"ok","detail":null}
+{"id":"479f4ca5","ended_at":1794621426,"elapsed_s":757,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794621458,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"id":"78cd5d59","kind":"pat","task":"5","queued_at":1794621744,"prompt_bytes":11282}
+{"id":"78cd5d59","ended_at":1794622443,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"kind":"handoff","site":"review","edge":"leave","at":1794622443,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794622484,"phase":"review","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"id":"2ac2340e","kind":"bob","task":"review-r00139-c2","queued_at":1794622693,"prompt_bytes":26118}
+{"id":"1f3ed8ec","kind":"carl","task":"review-r00139-c2","queued_at":1794622693,"prompt_bytes":23103}
+{"id":"2ac2340e","ended_at":1794623021,"elapsed_s":328,"outcome":"ok","detail":null}
+{"id":"1f3ed8ec","ended_at":1794623024,"elapsed_s":331,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794623221,"phase":"done","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1794623255,"phase":"done","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794623370,"phase":"build","prd":"00139-shared-config-typos-invisible-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794623376,"phase":"build","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"id":"82911780","kind":"tess","task":"1","queued_at":1794624622,"prompt_bytes":111641}
+{"id":"1f357945","kind":"tess","task":"1","queued_at":1794624751,"prompt_bytes":16986}
+{"id":"4dd1d9e1","kind":"ivan","task":"1","queued_at":1794625009,"prompt_bytes":69808}
+{"id":"648b9f40","kind":"ivan","task":"1","queued_at":1794625043,"prompt_bytes":13859}
+{"id":"ca2a34d6","kind":"deslop","task":"1","queued_at":1794626632,"prompt_bytes":15709}
+{"id":"ca2a34d6","ended_at":1794626759,"elapsed_s":127,"outcome":"ok","detail":null}
+{"id":"8c2a04b5","kind":"pat","task":"1","queued_at":1794626831,"prompt_bytes":21262}
+{"id":"4dd1d9e1","ended_at":1794626954,"elapsed_s":1563,"outcome":"ok","detail":"closed-by: commit 808fd592cb324c42d2a5942f614e27599954036e"}
+{"id":"648b9f40","ended_at":1794626954,"elapsed_s":1529,"outcome":"ok","detail":"closed-by: commit 808fd592cb324c42d2a5942f614e27599954036e"}
+{"id":"82911780","ended_at":1794626954,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"1f357945","ended_at":1794626954,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"id":"8c2a04b5","ended_at":1794626954,"elapsed_s":null,"outcome":"lost","detail":"open at build/leave handoff"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794626954,"phase":"build","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1794626965,"phase":"build","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1794627401,"phase":"review","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1794627429,"phase":"review","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"id":"b3b346c4","kind":"bob","task":"review-00140c1","queued_at":1794627620,"prompt_bytes":9584}
+{"id":"6527c9a4","kind":"carl","task":"review-00140c1","queued_at":1794627620,"prompt_bytes":6573}
+{"id":"b3b346c4","ended_at":1794628007,"elapsed_s":387,"outcome":"ok","detail":null}
+{"id":"6527c9a4","ended_at":1794628010,"elapsed_s":390,"outcome":"ok","detail":null}
+{"id":"b3b346c4","ended_at":1794628351,"elapsed_s":731,"outcome":"ok","detail":null}
+{"id":"6527c9a4","ended_at":1794628351,"elapsed_s":731,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1794628408,"phase":"review","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"id":"5f014882","kind":"pat","task":"3","queued_at":1794628613,"prompt_bytes":7993}
+{"id":"5f014882","ended_at":1794628873,"elapsed_s":null,"outcome":"ok","detail":"closed-by: artifact"}
+{"kind":"handoff","site":"review","edge":"leave","at":1794628873,"phase":"done","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"kind":"handoff","site":"done","edge":"leave","at":1794628993,"phase":"done","prd":"00140-library-warnings-lack-marker-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1795558322,"phase":"build","prd":"00149-docs-show-dead-env-form-v1.md"}
+{"kind":"handoff","site":"build","edge":"leave","at":1795559082,"phase":"done","prd":"00149-docs-show-dead-env-form-v1.md"}

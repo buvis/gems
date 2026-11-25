@@ -80,9 +80,7 @@ def format_note(
             console.success(f"Formatted {result.metadata['formatted_count']} files")
 
     result = cmd.execute()
-    console.report_result(result, on_success=_report_format_success, failure_msg="Format failed")
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, on_success=_report_format_success, failure_msg="Format failed", exit_on_failure=True)
 
 
 @click.command("sync", help="Synchronize note(s) with external system")
@@ -130,9 +128,7 @@ def sync_note(
     except NotImplementedError:
         console.panic(f"Sync target '{target_system}' not supported")
         return
-    console.report_result(result, failure_msg="Sync failed")
-    if not result.success:
-        ctx.exit(1)
+    console.report_result(result, failure_msg="Sync failed", exit_on_failure=True)
 
 
 @click.command("query", help="Query zettels with YAML filter/sort/output spec")
@@ -169,10 +165,22 @@ def query(
 
     settings = get_settings(ctx, BimSettings)
     if query_file:
-        resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)
+        try:
+            resolved = resolve_query_file(query_file, bundled_dir=BUNDLED_QUERY_DIR)
+        except FileNotFoundError as exc:
+            console.panic(str(exc))
+            return
         spec = parse_query_file(str(resolved))
     elif query_string:
-        spec = parse_query_string(query_string)
+        import yaml
+        from rich.markup import escape
+
+        try:
+            spec = parse_query_string(query_string)
+        except (yaml.YAMLError, ValueError, TypeError, AttributeError) as exc:
+            # TypeError/AttributeError: valid YAML of the wrong shape, e.g. `output: json`.
+            console.panic(escape(f"invalid query: {getattr(exc, 'problem', None) or exc}"))
+            return
     else:
         console.failure("Provide -Q/--query-file or -q/--query")
         ctx.exit(1)
@@ -191,6 +199,9 @@ def query(
     t0 = time.perf_counter()
     result = cmd.execute()
     elapsed = time.perf_counter() - t0
+    if not result.success:
+        console.panic(result.error or "Query failed")
+        return
 
     rows = result.metadata["rows"]
     columns = result.metadata["columns"]
@@ -241,6 +252,5 @@ def show_note(
         result,
         on_success=lambda r: console.print(r.output, mode="raw") if r.output else None,
         failure_msg="Show failed",
+        exit_on_failure=True,
     )
-    if not result.success:
-        ctx.exit(1)

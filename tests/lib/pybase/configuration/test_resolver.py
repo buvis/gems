@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 from buvis.pybase.configuration import ConfigurationError
 from buvis.pybase.configuration.resolver import (
     ConfigResolver,
     _extract_tool_name,
-    _load_yaml_config,
 )
 from buvis.pybase.configuration.settings import GlobalSettings
 
@@ -69,6 +69,34 @@ class TestConfigResolverResolve:
         resolver.resolve(GlobalSettings)
 
         assert os.environ["BUVIS_CONFIG_DIR"] == "/existing"
+
+
+class _CwdOptInSettings(GlobalSettings):
+    config_include_cwd: ClassVar[bool] = True
+
+
+class TestWorkingDirectoryLayer:
+    """The working directory is a config layer only for a settings class that opts in."""
+
+    @pytest.fixture
+    def cwd_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        home = tmp_path / "home"
+        work = tmp_path / "work"
+        home.mkdir()
+        work.mkdir()
+        for name in [name for name in os.environ if name.upper().startswith("BUVIS_")]:
+            monkeypatch.delenv(name)
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.chdir(work)
+        (work / "config.yaml").write_text("debug: true\n", encoding="utf-8")
+
+    @pytest.mark.usefixtures("cwd_config")
+    def test_resolver_ignores_a_config_file_in_the_working_directory(self) -> None:
+        assert ConfigResolver().resolve(GlobalSettings).debug is False
+
+    @pytest.mark.usefixtures("cwd_config")
+    def test_settings_class_opts_in_to_the_working_directory_layer(self) -> None:
+        assert ConfigResolver().resolve(_CwdOptInSettings).debug is True
 
 
 class TestConfigResolverPrecedence:
@@ -139,94 +167,6 @@ class TestConfigResolverPrecedence:
 
         # None in CLI means "not provided", so ENV wins
         assert settings.debug is True
-
-
-class TestLoadYamlConfig:
-    """Tests for _load_yaml_config function."""
-
-    def test_valid_yaml_returns_dict(self, tmp_path: Path) -> None:
-        """Valid YAML file returns parsed dict."""
-        config = tmp_path / "config.yaml"
-        config.write_text("debug: true\nlog_level: DEBUG\n")
-
-        result = _load_yaml_config(config)
-
-        assert result == {"debug": True, "log_level": "DEBUG"}
-
-    def test_missing_file_returns_empty_dict(self, tmp_path: Path) -> None:
-        """Missing file returns empty dict."""
-        missing = tmp_path / "nonexistent.yaml"
-
-        result = _load_yaml_config(missing)
-
-        assert result == {}
-
-    def test_empty_file_returns_empty_dict(self, tmp_path: Path) -> None:
-        """Empty file returns empty dict."""
-        empty = tmp_path / "empty.yaml"
-        empty.write_text("")
-
-        result = _load_yaml_config(empty)
-
-        assert result == {}
-
-    def test_invalid_yaml_raises(self, tmp_path: Path) -> None:
-        """Invalid YAML raises ConfigurationError with file path."""
-        invalid = tmp_path / "invalid.yaml"
-        invalid.write_text("key: [broken")
-
-        with pytest.raises(ConfigurationError) as exc_info:
-            _load_yaml_config(invalid)
-
-        assert str(invalid) in str(exc_info.value)
-
-    def test_invalid_yaml_includes_line_number(self, tmp_path: Path) -> None:
-        """ConfigurationError includes line number from problem_mark."""
-        invalid = tmp_path / "bad.yaml"
-        # Error on line 2 (0-indexed line 1, so +1 = 2)
-        invalid.write_text("valid: true\nbroken: [unclosed")
-
-        with pytest.raises(ConfigurationError) as exc_info:
-            _load_yaml_config(invalid)
-
-        assert ":2:" in str(exc_info.value) or ":3:" in str(exc_info.value)
-
-    def test_permission_denied_returns_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """PermissionError returns empty dict."""
-        config = tmp_path / "locked.yaml"
-        config.write_text("key: value")
-
-        original_open = Path.open
-
-        def raise_permission(self, *args, **kwargs):
-            if self == config:
-                raise PermissionError("Access denied")
-            return original_open(self, *args, **kwargs)
-
-        monkeypatch.setattr(Path, "open", raise_permission)
-
-        result = _load_yaml_config(config)
-
-        assert result == {}
-
-    def test_env_var_override(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """BUVIS_CONFIG_FILE env var takes precedence."""
-        config = tmp_path / "custom.yaml"
-        config.write_text("custom: true\n")
-        monkeypatch.setenv("BUVIS_CONFIG_FILE", str(config))
-
-        result = _load_yaml_config()
-
-        assert result == {"custom": True}
-
-    def test_explicit_path_param(self, tmp_path: Path) -> None:
-        """Explicit file_path param is used."""
-        config = tmp_path / "explicit.yaml"
-        config.write_text("explicit: yes\n")
-
-        result = _load_yaml_config(config)
-
-        assert result == {"explicit": True}
 
 
 class TestValidationErrorHandling:

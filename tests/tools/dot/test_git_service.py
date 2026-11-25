@@ -23,6 +23,63 @@ def git_service(shell: MagicMock) -> DotGitService:
     return svc
 
 
+@pytest.fixture(autouse=True)
+def gitsecret_is_set_up(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fake dotfiles root has git-secret set up: its ``.gitsecret`` directory exists.
+
+    Secret steps then depend on ``shell.is_command_available`` alone, as these
+    tests assume. ``TestRepoWithoutGitSecret`` covers a root without it.
+    """
+    real_is_dir = Path.is_dir
+    monkeypatch.setattr(Path, "is_dir", lambda self: str(self) == "/home/user/dotfiles/.gitsecret" or real_is_dir(self))
+
+
+class TestRepoWithoutGitSecret:
+    """git-secret installed, but this repo never set it up: its steps are skipped."""
+
+    @pytest.fixture
+    def service(self, shell: MagicMock, tmp_path: Path) -> DotGitService:
+        shell.is_command_available.return_value = True
+        svc = DotGitService(shell=shell, dotfiles_root=str(tmp_path))
+        shell.exe.reset_mock()
+        return svc
+
+    @staticmethod
+    def _commands(shell: MagicMock) -> list[str]:
+        return [c.args[0] for c in shell.exe.call_args_list]
+
+    def test_status_does_not_run_secret_hide(self, service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("git-secret: abort: directory '.gitsecret' does not exist", " M .bashrc")
+
+        entries, hide_error = service.status()
+
+        assert hide_error is None
+        assert not any("secret hide" in cmd for cmd in self._commands(shell))
+        assert self._commands(shell)[0] == "cfg status --porcelain"
+        assert entries == []  # the scripted shell answers every command with an error
+
+    def test_pull_runs_neither_hide_nor_reveal(self, service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "")
+
+        result = service.pull()
+
+        assert result.success is True
+        assert not any("secret" in cmd for cmd in self._commands(shell))
+
+    def test_secret_steps_run_once_gitsecret_exists(
+        self, service: DotGitService, shell: MagicMock, tmp_path: Path
+    ) -> None:
+        shell.exe.return_value = ("", "")
+        service.status()
+        assert not any("secret" in cmd for cmd in self._commands(shell))
+        shell.exe.reset_mock()
+        (tmp_path / ".gitsecret").mkdir()
+
+        service.status()
+
+        assert self._commands(shell)[0] == "cfg secret hide -m"
+
+
 class TestDotGitServiceConstruction:
     def test_alias_embeds_literal_dotfiles_root(self, shell: MagicMock) -> None:
         DotGitService(shell=shell, dotfiles_root="/home/user/dotfiles")
@@ -1409,8 +1466,10 @@ class TestDotGitServiceStageInteractive:
 
 
 class TestDotGitServiceUnstage:
+    # The fake root holds no files, so git must report a staged change for the path.
+
     def test_single_path_is_reset_and_reported(self, git_service: DotGitService, shell: MagicMock) -> None:
-        shell.exe.return_value = ("", "")
+        shell.exe.return_value = ("", "D  my file.txt")
 
         result = git_service.unstage("my file.txt")
 
@@ -1419,8 +1478,31 @@ class TestDotGitServiceUnstage:
         assert shell.exe.call_args[0][0] == "cfg reset HEAD -- 'my file.txt'"
         assert str(shell.exe.call_args[0][1]) == "/home/user/dotfiles"
 
-    def test_path_with_embedded_quote_is_shell_escaped(self, git_service: DotGitService, shell: MagicMock) -> None:
+    def test_path_unknown_to_git_and_absent_from_disk_is_refused(
+        self, git_service: DotGitService, shell: MagicMock
+    ) -> None:
         shell.exe.return_value = ("", "")
+
+        result = git_service.unstage("nosuchfile")
+
+        assert result.success is False
+        assert result.error == "Path nosuchfile is not staged or tracked"
+        assert [c.args[0] for c in shell.exe.call_args_list] == ["cfg status --porcelain -- nosuchfile"]
+
+    def test_file_on_disk_is_reset_without_asking_git_first(self, shell: MagicMock, tmp_path: Path) -> None:
+        (tmp_path / ".bashrc").write_text("x")
+        service = DotGitService(shell=shell, dotfiles_root=str(tmp_path))
+        shell.exe.reset_mock()
+
+        result = service.unstage(".bashrc")
+
+        assert result.success is True
+        assert [c.args[0] for c in shell.exe.call_args_list] == ["cfg reset HEAD -- .bashrc"]
+        (tmp_path / ".bashrc").unlink()
+        assert not service.unstage(".bashrc").success
+
+    def test_path_with_embedded_quote_is_shell_escaped(self, git_service: DotGitService, shell: MagicMock) -> None:
+        shell.exe.return_value = ("", "D  it's.txt")
 
         result = git_service.unstage("it's.txt")
 
@@ -1446,7 +1528,7 @@ class TestDotGitServiceUnstage:
         ],
     )
     def test_failure_reports_reset_error(self, git_service: DotGitService, shell: MagicMock, error: str) -> None:
-        shell.exe.return_value = (error, "")
+        shell.exe.return_value = (error, "D  .bashrc")
 
         result = git_service.unstage(".bashrc")
 

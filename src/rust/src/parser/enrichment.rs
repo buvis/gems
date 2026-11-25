@@ -44,6 +44,10 @@ pub fn title_from_filename(stem: &str) -> Option<String> {
 
 /// Fallback: get date from filesystem creation time.
 /// Used only for single-file parse (not bulk load).
+///
+/// Local time, like the Python parser (`FileMetadataReader.get_creation_datetime`):
+/// the default id is cut from this date's wall clock, so a UTC date here gave an
+/// imported note a UTC id beside a local-time date.
 pub fn date_from_filesystem(path: &Path) -> Option<DateTime<FixedOffset>> {
     let metadata = std::fs::metadata(path).ok()?;
     let systime = metadata.created().or_else(|_| metadata.modified()).ok()?;
@@ -51,7 +55,7 @@ pub fn date_from_filesystem(path: &Path) -> Option<DateTime<FixedOffset>> {
     let secs = duration.as_secs() as i64;
 
     let dt = DateTime::from_timestamp(secs, 0)?;
-    Some(dt.fixed_offset())
+    Some(dt.with_timezone(&Local).fixed_offset())
 }
 
 #[cfg(test)]
@@ -72,6 +76,19 @@ mod tests {
             &Local.offset_from_utc_datetime(&dt.naive_utc())
         );
         assert_eq!(dt.naive_local().format("%H%M%S").to_string(), "143022");
+    }
+
+    #[test]
+    fn test_filesystem_date_is_local_time() {
+        let file =
+            std::env::temp_dir().join(format!("buvis-enrichment-{}.md", std::process::id()));
+        std::fs::write(&file, "x").unwrap();
+        let dt = date_from_filesystem(&file).unwrap();
+        std::fs::remove_file(&file).unwrap();
+        assert_eq!(
+            dt.offset(),
+            &Local.offset_from_utc_datetime(&dt.naive_utc())
+        );
     }
 
     #[test]

@@ -32,7 +32,7 @@ class TestVucCommands:
         mock_shutil.which.return_value = "/usr/bin/mediainfo"
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="bad format")
         result = runner.invoke(cli, ["multilang", str(tmp_path), str(tmp_path / "out.csv")])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("vuc.commands.multilang.CommandMultilang")
     @patch("vuc.cli.shutil")
@@ -42,7 +42,7 @@ class TestVucCommands:
         mock_shutil.which.return_value = "/usr/bin/mediainfo"
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["multilang", str(tmp_path), str(tmp_path / "out.csv")])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("vuc.commands.multilang.CommandMultilang")
     @patch("vuc.cli.shutil")
