@@ -1,0 +1,10 @@
+[
+  {
+    "cycle": 1,
+    "finding": "Closeout type-check evidence is open. Run `uv run mypy src/lib/ src/tools/` on revision `2e525a319a5f735f2d646c7b8052900bf7fdd3c5` and record the exit status. The supplied pytest gate recorded 8,950 passed, zero failed, and 17 skipped.",
+    "file": null,
+    "command": "uv run mypy src/lib/ src/tools/",
+    "source": "bob",
+    "result": {"exit": 0}
+  }
+]

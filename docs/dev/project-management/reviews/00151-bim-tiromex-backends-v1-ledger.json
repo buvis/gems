@@ -1,0 +1,266 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The Claude probe never saw a successful reply: auth failed in the sandbox, so the envelope key (`structured_output` vs `result`) and the effect of `--safe-mode` on OAuth/setup-token auth are unobserved. `unattended_safe = True` rests on `claude --help` listing the flags. I checked `claude --help` (CLI 2.1.332) and it lists all six isolation flags. The docs are honest about the gap. Live qualification stays with 00153",
+    "file": "docs/source/tools/bim.rst:1138",
+    "reason": "known and documented: the probe could not authenticate in the sandbox; the PRD assigns live Claude qualification to 00153"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟠",
+    "issue": "The HTTP deadline releases the caller while a worker can remain blocked inside a read. A peer that keeps sending data within the socket inactivity timeout can hold the connection and worker past the deadline. The fake iterator resumes only when the test releases it. Make the deadline interrupt the transport and verify that a real slow response releases both the worker and connection.",
+    "file": "src/tools/bim/shared/llm/http.py:163",
+    "reason": "design-accepted residual (design doc, Transport: a worker can stay blocked after the deadline; daemon thread, one connection, user-configured endpoint); the caller is released at the deadline and a test pins that"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Doc classifier/extractor call the registry with `JsonObject` (wire schema `{\"type\":\"object\"}`) and skip `require_strict_schema`. The spec says to reject unexpected schema keys and check the caller's schema, but for doc this check is bypassed by design and doc coerces fields itself.",
+    "file": "src/tools/bim/shared/llm/base.py:149",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Unrequested transport behaviour change in the doc LLM path. HTTP redirects are no longer followed (`allow_redirects=False`, redirect becomes an `exit` error). The old `requests.post` followed them. There is also a new 4 MiB reply cap, and a process-group kill with a 5 s reader join for CLIs. The CHANGELOG discloses the redirect change, but the spec asks for behaviour-preserving doc cutover and lists none of these.",
+    "file": "src/tools/bim/shared/llm/http.py:156",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "`extraction_method` and retry keys change meaning in named mode (`llm:<backend name>` instead of `llm:<model>`). Timeouts now appear as `[timeout] <backend>: ...` in triage reasons instead of the `requests` message. Both are documented and defensible, but neither is in the spec.",
+    "file": "src/tools/bim/commands/doc/shared/pipeline.py:274",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "A configured `llm:` entry named `ollama` or `llamacpp` silently takes over legacy mode, so `endpoint`/`primary_model`/`fallback_model` are ignored. Docs mention it (docs/source/tools/bim.rst:1063) but nothing warns at load time.",
+    "file": "src/tools/bim/commands/doc/shared/llm.py:86",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Configuration accepts embedded NULs in command arguments, and `Popen` raises an uncaught `ValueError`. Temporary-directory creation and cleanup can also raise raw `OSError`. Reject NULs at config load and map filesystem failures to `exit`. Add tests for both paths.",
+    "file": "src/tools/bim/shared/llm/base.py:219",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Inner JSON decoding can leak `ValueError` for integers above Python's conversion limit and `RecursionError` for deeply nested replies. Both inputs fit the reply cap. Map these decoder failures to `parse` in the shared helper and add regression cases.",
+    "file": "src/tools/bim/shared/llm/base.py:157",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The CLI runner ignores the stdin writer's lifetime and checks its errors without joining it. Include the writer in the existing bounded join so pipe failures reach the caller reliably. Decode diagnostic output only on the nonzero-exit path.",
+    "file": "src/tools/bim/shared/llm/base.py:253",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The nonzero-exit fallback copies arbitrary command stdout into the error. A command that echoes its input can put OCR text in doc triage reasons. Keep generic command diagnostics on stderr and handle Claude's stdout error envelope in its adapter.",
+    "file": "src/tools/bim/shared/llm/base.py:271",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The doc transport tests repeat the fake Requests exception hierarchy and streamed response across six files. Share a test helper and remove fake `.json()` methods where only `iter_content()` is used.",
+    "file": "tests/tools/bim/doc/test_classifier.py:24",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The mechanical check flags the classifier lazy-import test for having no assertion. Its body predates the cutover and is outside this diff.",
+    "file": "tests/tools/bim/doc/test_classifier.py:502",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The mechanical check flags the audit missing-config assertion for accepting either outcome. The assertion is unchanged and independent of backend routing.",
+    "file": "tests/tools/bim/doc/test_cli_audit.py:204",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The mechanical check flags the migration missing-config assertion for accepting either outcome. The assertion is unchanged and independent of backend routing.",
+    "file": "tests/tools/bim/doc/test_cli_migrate_layout.py:116",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The mechanical check flags the triage missing-config assertion for accepting either outcome. The assertion is unchanged and independent of backend routing.",
+    "file": "tests/tools/bim/doc/test_cli_triage.py:108",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The mechanical check flags the extractor lazy-import test for having no assertion. Its body predates the cutover and is outside this diff.",
+    "file": "tests/tools/bim/doc/test_extractor.py:435",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The mechanical check flags the health happy-path test for having no assertion. This legacy smoke test is unchanged. The new named health tests assert the probe calls.",
+    "file": "tests/tools/bim/doc/test_health.py:43",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The mechanical check flags the business-root acceptance test for having no assertion. This unchanged test covers path validation outside the LLM work.",
+    "file": "tests/tools/bim/doc/test_settings_models.py:267",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Replay passes three new legacy extractor tests against base. They intentionally preserve fallback-model selection, summary truncation, and partial summaries. These behaviors are part of the compatibility contract.",
+    "file": "tests/tools/bim/doc/test_doc_llm_preserved.py:67",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Replay flags console, note-format, tx CLI, and doc rules tests that pass against base. Those cases exercise existing behavior outside the backend cutover.",
+    "file": "N/A",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The function-size check records `Pipeline.run` at 58 lines and `_triage` at 111. Both bodies are unchanged. Splitting them would be a separate refactor.",
+    "file": "src/tools/bim/commands/doc/shared/pipeline.py:154",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "The extractor test file still exceeds 800 lines. It already exceeded the limit before the cutover, and the new preservation tests live in a sibling file. Splitting the existing suite is separate work.",
+    "file": "tests/tools/bim/doc/test_extractor.py:860",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Redundant bytes(bytearray) conversion in _run; call .decode() directly on out and err",
+    "file": "src/tools/bim/shared/llm/base.py:285",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Redundant bytes(buffer) conversion in _download; json.loads accepts bytearray directly",
+    "file": "src/tools/bim/shared/llm/http.py:160",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`test_backend_rejects_a_non_string` passes against the old `Literal` field, so it pins nothing new. The other new cases in that class do fail at base",
+    "file": "tests/tools/bim/doc/test_settings_models.py:175",
+    "reason": "compatibility check: a non-string backend was rejected before and must still be; the sibling cases pin the new behavior"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`get_classifier` and `get_extractor` have no production caller now that `get_pipeline` builds both itself. Their new `llm` parameter is exercised only by tests. Keep them if the design contract requires them, or drop them and the tests that exist only for them",
+    "file": "src/tools/bim/dependencies.py:224",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The doc error text is awkward for non-HTTP backends. The classifier builds \"HTTP error calling claude: exited with code 1: ...\" (and for HTTP backends \"HTTP error calling ollama: HTTP error calling http://...: ...\"). The extractor builds \"HTTP error: ...\" the same way. This matches the design table but misleads in triage reasons. Choose a per-kind prefix or use `str(exc)` (dispatch-1 note NB3, left open)",
+    "file": "src/tools/bim/commands/doc/shared/classifier.py:454",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`HttpBackend` uses `model if model is not None` while `ClaudeBackend` uses `model or settings.model`. An empty-string model is sent as `\"model\": \"\"` by HTTP and ignored by Claude. Validate the field non-empty in settings, or use one rule in both adapters",
+    "file": "src/tools/bim/shared/llm/http.py:104",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "settled-deferral",
+    "severity": "🟡",
+    "issue": "A named `ollama` or `openai` entry without `model` loads and passes health, then fails every doc call with a raw `LLMConfigError` (dispatch-1 notes NB2/NB10, left open). Rejecting it in `resolve_doc_route` at config load would be cheaper for the user. This is not a PRD requirement. (Bob: the approved design explicitly permits missing models during health and checks the effective model at invocation. Blake: in doc the error is caught as a generic exception and becomes a triage \"classifier error\".)",
+    "file": "src/tools/bim/commands/doc/shared/llm.py:94",
+    "reason": "three reviewers raise it, but the approved design checks the model at invocation; changing that is a contract decision"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The literal Phase 1 acceptance commands `pytest tests/tools/bim/test_llm_backends.py -k claude` and `-k command` select zero tests (exit 5, verified). The adapter tests sit in `tests/tools/bim/test_llm_claude.py` and `tests/tools/bim/test_llm_command.py`. The PRD's own build note authorises this move, and the redirected commands pass. The Success Metrics command, which names only `test_llm_backends.py`, does not cover them.",
+    "file": "tests/tools/bim/test_llm_backends.py",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "`unattended` enforcement exists only in `LLMRegistry.get/invoke`. No production caller (doc) passes `unattended=True`, so the \"schedule use requires unattended:true\" guard is unit-tested only and not wired to any scheduled path. This is probably deferred to 00153/00155.",
+    "file": "src/tools/bim/shared/llm/registry.py:28",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The branch also contains unrelated changes: `_DocGroup` IssuersFileError handling, `exit_on_failure=True` on audit, and rewording of `[doc]` to `` `doc` `` in panic messages. These are likely from other PRDs.",
+    "file": "src/tools/bim/doc_cli.py:22",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "The endpoint rule says bim never follows redirects, but health probes retain Requests' redirect behavior. Scope the rule to completion POSTs.",
+    "file": "docs/source/tools/bim.rst:1069",
+    "reason": "single-voice"
+  }
+]

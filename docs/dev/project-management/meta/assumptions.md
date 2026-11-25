@@ -20,3 +20,17 @@
 
 - Orchestrator (task 1 review): `parse_json_text` rejects bytes/bytearray as PARSE (Pat LOW, fixed in fe9fa1be).
 - Orchestrator: `build_backend` uses an importlib table (see also task 3) instead of per-branch imports so mypy passes before the adapter modules exist; PLR0913 per-file-ignore added for registry.py because the design pins `invoke`'s signature.
+
+## 8: [D1] llm transport hardening (review cycle 1 rework)
+
+- Tess: `run_cli` starts exactly three threads (one stdin writer, two readers); the thread-start test fails call 1, 2 and 3.
+- Tess: "the redirect body was not downloaded" is asserted as server bytes sent < 16 MiB, not as < `MAX_REPLY_BYTES` (the kernel buffers some unread bytes).
+- Tess: a child cwd different from `tmp_path` counts as "runs in a fresh temp dir"; emptiness and removal are not checked.
+- Ivan: a real `requests` is detected by `isinstance(getattr(requests, "Session", None), type)`; the existing test fakes expose only `post`, so `_post` falls back to `requests.post` for them. Pat (LOW): the fallback is dead code with real Requests; removing it needs the fakes in six test files to expose a `Session` class.
+- Ivan: `session.get_redirect_target` is replaced on the instance, not by a `Session` subclass (mypy rejects the dynamic base class).
+- Ivan: after a thread-start failure the child's pipes are not closed by hand; the process-group kill closes them.
+- Orchestrator: the fix commit is typed `fix` with no CHANGELOG entry, because the feature is unreleased and its entry already exists.
+
+## 10: [D1] doc CLI passes the llm map (review cycle 1 rework)
+
+- Ivan: a non-empty named `llm` map needs `doc.classifier.backend` set to the entry name, or `BimSettings` validation rejects it.
