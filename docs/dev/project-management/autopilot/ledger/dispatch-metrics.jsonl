@@ -1184,3 +1184,4 @@
 {"id":"8a3be74f","kind":"fast-track:delta","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795596796,"prompt_bytes":4935}
 {"id":"8a3be74f","ended_at":1795597612,"elapsed_s":816,"outcome":"ok","detail":"prior HIGH resolved"}
 {"kind":"handoff","site":"build","edge":"leave","at":1795597693,"phase":"done","prd":"00177-update-fails-on-stale-uv-index-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1795638384,"phase":"done","prd":"00177-update-fails-on-stale-uv-index-v1.md"}

@@ -6,28 +6,36 @@
       "severity": "HIGH",
       "title": "Test suite runs the real updater: ~50 tests in tests/lib/pybase/configuration/test_click_integration.py run the real update check; with no suite-wide guard a test run on a checkout behind the released version can upgrade the dev venv and (since 00177) force-clean the real uv cache",
       "detail": "Pre-existing, outside the 00177 diff. Proposed fix: autouse BUVIS_DEV_MODE=1 in tests/conftest.py, with the updater guard tests opting out. Found by eve delta review.",
-      "prd": "00177-update-fails-on-stale-uv-index-v1.md"
+      "prd": "00177-update-fails-on-stale-uv-index-v1.md",
+      "issue": "Test suite runs the real updater: ~50 tests in tests/lib/pybase/configuration/test_click_integration.py run the real update check; with no suite-wide guard a test run on a checkout behind the released version can upgrade the dev venv and (since 00177) force-clean the real uv cache",
+      "reason": "Pre-existing, outside the 00177 diff. Proposed fix: autouse BUVIS_DEV_MODE=1 in tests/conftest.py, with the updater guard tests opting out. Found by eve delta review."
     },
     {
       "type": "verify",
       "severity": "MEDIUM",
       "title": "Forced uv cache clean during a concurrent upgrade",
       "detail": "The updater has no mutual exclusion; a second tool start during an upgrade runs uv cache clean --force mid-install. Check: scratch UV_CACHE_DIR/UV_TOOL_DIR, start uv tool upgrade of a small tool, loop uv cache clean --force on it, 20 rounds; if any round breaks the tool, serialize clean+upgrade with a lock file in state_dir.",
-      "prd": "00177-update-fails-on-stale-uv-index-v1.md"
+      "prd": "00177-update-fails-on-stale-uv-index-v1.md",
+      "issue": "Forced uv cache clean during a concurrent upgrade",
+      "reason": "The updater has no mutual exclusion; a second tool start during an upgrade runs uv cache clean --force mid-install. Check: scratch UV_CACHE_DIR/UV_TOOL_DIR, start uv tool upgrade of a small tool, loop uv cache clean --force on it, 20 rounds; if any round breaks the tool, serialize clean+upgrade with a lock file in state_dir."
     },
     {
       "type": "verify",
       "severity": "MEDIUM",
       "title": "Cache clean may be redundant for uv-tool and uv-venv",
       "detail": "uv pip install --upgrade implies --refresh and uv tool upgrade refreshes; if verbose logs show revalidation of pypi.org/simple/<pkg>/ for both, cut _UV_BACKED_METHODS to {mise-pipx} and adjust tests and CHANGELOG wording.",
-      "prd": "00177-update-fails-on-stale-uv-index-v1.md"
+      "prd": "00177-update-fails-on-stale-uv-index-v1.md",
+      "issue": "Cache clean may be redundant for uv-tool and uv-venv",
+      "reason": "uv pip install --upgrade implies --refresh and uv tool upgrade refreshes; if verbose logs show revalidation of pypi.org/simple/<pkg>/ for both, cut _UV_BACKED_METHODS to {mise-pipx} and adjust tests and CHANGELOG wording."
     },
     {
       "type": "follow-up",
       "severity": "LOW",
       "title": "uv older than 0.8.20 rejects --force; add a why-comment for --force",
       "detail": "On uv < 0.8.20 the clean exits non-zero and only a warning is logged. Options: retry without --force when stderr names the flag, or state a uv 0.8.20 floor. Also add one comment line in _refresh_package_index explaining --force (uv run/uvx hold the cache lock). Other LOW items: PRD comment above _UV_BACKED_METHODS, untested non-FileNotFoundError OSError, dead TimeoutExpired/argv lines in test_refresh_index.py, pre-existing >50-line run_update functions.",
-      "prd": "00177-update-fails-on-stale-uv-index-v1.md"
+      "prd": "00177-update-fails-on-stale-uv-index-v1.md",
+      "issue": "uv older than 0.8.20 rejects --force; add a why-comment for --force",
+      "reason": "On uv < 0.8.20 the clean exits non-zero and only a warning is logged. Options: retry without --force when stderr names the flag, or state a uv 0.8.20 floor. Also add one comment line in _refresh_package_index explaining --force (uv run/uvx hold the cache lock). Other LOW items: PRD comment above _UV_BACKED_METHODS, untested non-FileNotFoundError OSError, dead TimeoutExpired/argv lines in test_refresh_index.py, pre-existing >50-line run_update functions."
     }
   ]
 }
