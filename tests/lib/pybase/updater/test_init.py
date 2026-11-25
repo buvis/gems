@@ -146,6 +146,7 @@ class TestInstallerExitsZeroWithoutInstalling:
             patch("buvis.pybase.updater.detect_installer", return_value=installer_info),
             patch("buvis.pybase.updater.pkg_version", return_value="0.13.0"),
             patch("buvis.pybase.updater.executor.DEFAULT_STATE_DIR", tmp_path),
+            patch("buvis.pybase.updater.executor._refresh_package_index"),
             patch("buvis.pybase.updater.executor.subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
             patch("buvis.pybase.updater.executor._resolve_reexec_argv", return_value=["dot", "status"]),
             # The --version check cannot run here, so the 0.14.1 path applies: restart once under the guard.
