@@ -66,9 +66,12 @@ class TestDotfilesRootPropagation:
         assert mock_cmd_cls.call_args.kwargs["dotfiles_root"] == self.DOTFILES_ROOT
 
     def test_pull_passes_dotfiles_root(self, monkeypatch, mocker, runner) -> None:
+        from dot.hostlinks.rescue import RescuePlan
+
         monkeypatch.setenv("DOTFILES_ROOT", self.DOTFILES_ROOT)
         mocker.patch("dot.cli.ShellAdapter")
         mock_cmd_cls = mocker.patch("dot.commands.pull.pull.CommandPull")
+        mock_cmd_cls.return_value.plan.return_value = RescuePlan()
         mock_cmd_cls.return_value.execute.return_value = CommandResult(
             success=True, output="Dotfiles pulled successfully"
         )

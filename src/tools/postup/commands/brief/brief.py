@@ -56,10 +56,13 @@ class CommandBrief:
         out_dir = self.settings.resolved_out_dir
         vm = load_view_model(out_dir)
         if vm.needs_collect:
-            return CommandResult(
-                success=False,
-                error=f"no data.json in {out_dir} — run 'postup collect' first",
-            )
+            data_file = out_dir / "data.json"
+            if data_file.is_file():
+                # Present but unreadable or invalid: do not claim it is missing.
+                error = f"{data_file} is not valid; run 'postup collect' to rebuild it"
+            else:
+                error = f"no data.json in {out_dir} — run 'postup collect' first"
+            return CommandResult(success=False, error=error)
 
         # The meta-budget share is a LIVE read of the cost ledger, not a
         # collected snapshot, so the text brief computes it fresh at render time.

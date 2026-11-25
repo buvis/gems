@@ -30,7 +30,7 @@ def doc_rules(ctx: click.Context) -> None:
 def doc_rules_list(ctx: click.Context) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
     try:
         from bim.commands.doc.rules.list import CommandRulesList
@@ -44,6 +44,7 @@ def doc_rules_list(ctx: click.Context) -> None:
         result,
         on_success=lambda r: console.info(r.output or ""),
         failure_msg="list failed",
+        exit_on_failure=True,
     )
 
 
@@ -52,7 +53,7 @@ def doc_rules_list(ctx: click.Context) -> None:
 def doc_rules_validate(ctx: click.Context) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
     try:
         from bim.commands.doc.rules.validate import CommandRulesValidate
@@ -66,7 +67,7 @@ def doc_rules_validate(ctx: click.Context) -> None:
     # directly; the command class catches loader errors itself.
     issuers_file = settings.doc.paths.issuers_file
     if issuers_file is None:
-        console.panic("[doc] paths.issuers_file is not set")
+        console.panic("paths.issuers_file is not set in the `doc` section")
         return
     result = CommandRulesValidate().run(issuers_file)
     if not result.success:
@@ -91,7 +92,7 @@ def doc_rules_test(ctx: click.Context, rule_id: str, pdf_path: Path) -> None:
         return
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
     try:
         from bim.commands.doc.rules.test import CommandRulesTest
@@ -125,7 +126,7 @@ def doc_rules_test(ctx: click.Context, rule_id: str, pdf_path: Path) -> None:
 def doc_rules_backtest(ctx: click.Context, rule_id: str | None, issuer_slug: str | None) -> None:
     settings = get_settings(ctx, BimSettings)
     if settings.doc is None:
-        console.panic("[doc] section missing in bim config; configure paths.business_root etc. first")
+        console.panic("`doc` section missing in bim config; configure paths.business_root etc. first")
         return
     try:
         from bim.commands.doc.rules.backtest import CommandRulesBacktest
@@ -152,4 +153,5 @@ def doc_rules_backtest(ctx: click.Context, rule_id: str | None, issuer_slug: str
         result,
         on_success=lambda r: console.info(r.output or ""),
         failure_msg="backtest failed",
+        exit_on_failure=True,
     )

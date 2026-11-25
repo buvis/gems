@@ -49,7 +49,7 @@ def cli(
         console.panic(str(exc))
         return
 
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 if __name__ == "__main__":

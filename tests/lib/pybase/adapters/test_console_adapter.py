@@ -78,6 +78,22 @@ class TestConsoleAdapterOutput:
         captured = capsys.readouterr()
         assert captured.out.strip() == f"\u2718 {message} \n\n Details:\n\n {details}"
 
+    def test_failure_with_stderr_flag_prints_on_stderr_only(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        console_adapter.failure("m", stderr=True)
+        captured = capsys.readouterr()
+        assert captured.err.strip() == "\u2718 m"
+        assert captured.out == ""
+
+    def test_panic_with_stderr_flag_prints_on_stderr_and_exits_one(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.panic("m", stderr=True)
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err.strip() == "\u2718 m"
+        assert captured.out == ""
+
     def test_status(self, console_adapter: ConsoleAdapter) -> None:
         message = "Status message"
         status = console_adapter.status(message)
@@ -117,9 +133,12 @@ class TestConsoleAdapterMisc:
                 self.buffer = io.BytesIO()
 
         class DummyConsole:
-            def __init__(self, file: io.TextIOWrapper | None = None, log_path: bool = True) -> None:
+            def __init__(
+                self, file: io.TextIOWrapper | None = None, log_path: bool = True, stderr: bool = False
+            ) -> None:
                 self.file = file
                 self.log_path = log_path
+                self.stderr = stderr
 
         mocker.patch.object(sys, "platform", "win32")
         mocker.patch.object(sys, "stdout", DummyStdout())
@@ -130,6 +149,8 @@ class TestConsoleAdapterMisc:
         assert isinstance(adapter.console, DummyConsole)
         assert isinstance(adapter.console.file, io.TextIOWrapper)
         assert adapter.console.log_path is False
+        assert adapter.err_console.stderr is True
+        assert adapter.err_console.file is None
 
     def test_capture_returns_context_manager(self, console_adapter: ConsoleAdapter) -> None:
         with console_adapter.capture() as capture:
@@ -215,7 +236,9 @@ class TestReportResult:
     @pytest.mark.parametrize("success", [True, False])
     @pytest.mark.parametrize("message", [r"C:\music\[bold]\:heart:.mp3", "path\\", "path\\\\"])
     def test_literal_messages_preserve_markup_and_emoji_codes(self, capsys, console_adapter, success, message):
-        result = CommandResult(success=success, info=[message], warnings=[message], output=message, error=message)
+        # The error differs from the warning: an error that only repeats the
+        # warnings is printed once (see the dedupe test below).
+        result = CommandResult(success=success, info=[message], warnings=[message], output=message, error=f"{message}!")
 
         console_adapter.report_result(result, literal=True)
 
@@ -263,6 +286,34 @@ class TestReportResult:
         assert "w1" in captured.out
         assert "w2" in captured.out
 
+    def test_failure_that_only_repeats_its_warnings_prints_each_line_once(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        lines = ["a.md doesn't exist", "b.md doesn't exist"]
+        result = CommandResult(success=False, error="\n".join(lines), warnings=lines)
+
+        console_adapter.report_result(result)
+
+        out = capsys.readouterr().out
+        assert out.count("a.md doesn't exist") == 1
+        assert out.count("b.md doesn't exist") == 1
+        assert out.count("✘") == 2
+        assert "⚠" not in out
+
+    def test_failure_with_its_own_error_keeps_the_warnings(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=False, error="No file could be renamed", warnings=["Path not found: a"])
+
+        console_adapter.report_result(result)
+
+        out = capsys.readouterr().out
+        assert "⚠" in out
+        assert "Path not found: a" in out
+        assert "No file could be renamed" in out
+        console_adapter.report_result(
+            CommandResult(success=False, error="Path not found: a", warnings=["Path not found: a"])
+        )
+        assert capsys.readouterr().out.count("Path not found: a") == 1
+
     def test_on_success_callback(self, console_adapter: ConsoleAdapter) -> None:
         result = CommandResult(success=True, metadata={"count": 3})
         callback = Mock()
@@ -274,6 +325,123 @@ class TestReportResult:
         callback = Mock()
         console_adapter.report_result(result, on_failure=callback)
         callback.assert_called_once_with(result)
+
+
+class TestReportResultExitOnFailure:
+    @pytest.mark.parametrize("error", ["Disk full", "Permission denied"])
+    def test_failed_result_exits_with_code_one_after_printing_error(
+        self, capsys: Any, console_adapter: ConsoleAdapter, error: str
+    ) -> None:
+        result = CommandResult(success=False, error=error)
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.report_result(result, exit_on_failure=True)
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.out.strip() == f"\u2718 {error}"
+
+    @pytest.mark.parametrize("failure_msg", ["Custom fail", "Sync aborted"])
+    def test_failed_result_without_error_prints_failure_msg_then_exits(
+        self, capsys: Any, console_adapter: ConsoleAdapter, failure_msg: str
+    ) -> None:
+        result = CommandResult(success=False)
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.report_result(result, failure_msg=failure_msg, exit_on_failure=True)
+        assert exc_info.value.code == 1
+        assert capsys.readouterr().out.strip() == f"\u2718 {failure_msg}"
+
+    def test_failed_result_without_error_or_failure_msg_prints_default_then_exits(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        result = CommandResult(success=False)
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.report_result(result, exit_on_failure=True)
+        assert exc_info.value.code == 1
+        assert capsys.readouterr().out.strip() == "\u2718 Failed"
+
+    def test_failed_result_runs_on_failure_callback_instead_of_default_output_then_exits(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        result = CommandResult(success=False, error="callback-only error")
+        callback = Mock()
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.report_result(result, on_failure=callback, exit_on_failure=True)
+        assert exc_info.value.code == 1
+        callback.assert_called_once_with(result)
+        out = capsys.readouterr().out
+        assert "callback-only error" not in out
+        assert out.strip() == ""
+
+    def test_failed_result_propagates_on_failure_callback_exception_instead_of_exiting(
+        self, console_adapter: ConsoleAdapter
+    ) -> None:
+        result = CommandResult(success=False, error="err")
+        callback = Mock(side_effect=ValueError("callback broke"))
+        with pytest.raises(ValueError, match="callback broke"):
+            console_adapter.report_result(result, on_failure=callback, exit_on_failure=True)
+        callback.assert_called_once_with(result)
+
+    def test_failed_result_prints_every_info_and_warning_before_exiting(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        result = CommandResult(success=False, error="boom", info=["i1", "i2"], warnings=["w1", "w2"])
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.report_result(result, exit_on_failure=True)
+        assert exc_info.value.code == 1
+        lines = [line.strip() for line in capsys.readouterr().out.splitlines() if line.strip()]
+        assert lines == ["\u2714 i1", "\u2714 i2", "\u26a0 w1", "\u26a0 w2", "\u2718 boom"]
+
+    def test_literal_failure_preserves_markup_then_exits(self, capsys: Any, console_adapter: ConsoleAdapter) -> None:
+        message = r"C:\music\[bold]\:heart:.mp3"
+        result = CommandResult(success=False, error=message)
+        with pytest.raises(SystemExit) as exc_info:
+            console_adapter.report_result(result, literal=True, exit_on_failure=True)
+        assert exc_info.value.code == 1
+        assert capsys.readouterr().out.count(message) == 1
+
+    @pytest.mark.parametrize("kwargs", [{}, {"exit_on_failure": False}, {"exit_on_failure": 0}])
+    def test_failed_result_does_not_exit_unless_opted_in(
+        self, capsys: Any, console_adapter: ConsoleAdapter, kwargs: dict[str, Any]
+    ) -> None:
+        result = CommandResult(success=False, error="Disk full")
+        console_adapter.report_result(result, **kwargs)
+        assert capsys.readouterr().out.strip() == "\u2718 Disk full"
+
+    def test_failed_result_with_callback_does_not_exit_by_default(self, console_adapter: ConsoleAdapter) -> None:
+        result = CommandResult(success=False, error="err")
+        callback = Mock()
+        console_adapter.report_result(result, on_failure=callback)
+        callback.assert_called_once_with(result)
+
+    @pytest.mark.parametrize("output", ["Created note", "Synced 3 files"])
+    def test_successful_result_does_not_exit_when_opted_in(
+        self, capsys: Any, console_adapter: ConsoleAdapter, output: str
+    ) -> None:
+        result = CommandResult(success=True, output=output, warnings=["w1"])
+        console_adapter.report_result(result, exit_on_failure=True)
+        lines = [line.strip() for line in capsys.readouterr().out.splitlines() if line.strip()]
+        assert lines == ["\u26a0 w1", f"\u2714 {output}"]
+
+    def test_successful_result_with_no_output_does_not_exit_when_opted_in(
+        self, capsys: Any, console_adapter: ConsoleAdapter
+    ) -> None:
+        result = CommandResult(success=True)
+        console_adapter.report_result(result, exit_on_failure=True)
+        assert capsys.readouterr().out.strip() == ""
+
+    def test_successful_result_runs_on_success_callback_and_does_not_exit_when_opted_in(
+        self, console_adapter: ConsoleAdapter
+    ) -> None:
+        result = CommandResult(success=True, output="done")
+        on_success = Mock()
+        on_failure = Mock()
+        console_adapter.report_result(result, on_success=on_success, on_failure=on_failure, exit_on_failure=True)
+        on_success.assert_called_once_with(result)
+        on_failure.assert_not_called()
+
+    def test_exit_on_failure_rejects_positional_argument(self, console_adapter: ConsoleAdapter) -> None:
+        positional: list[Any] = [CommandResult(success=False, error="err"), True]
+        with pytest.raises(TypeError):
+            console_adapter.report_result(*positional)
 
 
 class TestRequireImport:

@@ -113,7 +113,7 @@ class TestBimDocMigrateLayout:
         )
         with patch("bim.doc_cli.get_settings", return_value=settings):
             result = runner.invoke(cli, ["doc", "migrate-layout"], catch_exceptions=True)
-        assert result.exit_code != 0 or "[doc] section missing" in result.output
+        assert result.exit_code != 0 or "`doc` section missing" in result.output
 
     def test_surfaces_audit_failure(self, runner: CliRunner, tmp_path: Path) -> None:
         """When get_migrate_services raises (audit failed), the CLI reports the

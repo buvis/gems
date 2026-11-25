@@ -1,0 +1,308 @@
+{
+  "phase": "done",
+  "next_phase": "",
+  "schema_version": 1,
+  "batch": {
+    "id": "202611131903",
+    "mode": "autopilot",
+    "completed_prds": [
+      {
+        "filename": "00136-sysup-plan-config-errors-raw-v1.md",
+        "cycles": 1,
+        "autonomous_decisions": 10,
+        "escalated_decisions": 0,
+        "tasks_completed": 5,
+        "tasks_total": 5,
+        "lane": "full",
+        "lane_reason": "unparsed",
+        "lane_effective": "full",
+        "lane_escalated": null
+      },
+      {
+        "filename": "00138-failed-commands-exit-zero-v1.md",
+        "cycles": 2,
+        "autonomous_decisions": 14,
+        "escalated_decisions": 0,
+        "tasks_completed": 11,
+        "tasks_total": 11,
+        "lane": "full",
+        "lane_reason": "unparsed",
+        "lane_effective": "full",
+        "lane_escalated": null
+      },
+      {
+        "filename": "00139-shared-config-typos-invisible-v1.md",
+        "cycles": 2,
+        "autonomous_decisions": 16,
+        "escalated_decisions": 0,
+        "tasks_completed": 6,
+        "tasks_total": 6,
+        "lane": "full",
+        "lane_reason": "unparsed",
+        "lane_effective": "full",
+        "lane_escalated": null
+      },
+      {
+        "filename": "00140-library-warnings-lack-marker-v1.md",
+        "cycles": 1,
+        "autonomous_decisions": 19,
+        "escalated_decisions": 0,
+        "tasks_completed": 3,
+        "tasks_total": 3,
+        "lane": "full",
+        "lane_reason": "unparsed",
+        "lane_effective": "full",
+        "lane_escalated": null
+      }
+    ],
+    "plugin_versions": {
+      "aegis@buvis-plugins": "0.4.1",
+      "warden@buvis-plugins": "0.14.1"
+    },
+    "catchup_completed_at": "2026-11-13T22:30:00Z",
+    "catchup_head_sha": "4afffe6db744fc2df8fc39102cc82844ce2d0028",
+    "parks_consecutive": 0,
+    "minted_stubs": [
+      "00141-triage-r4-critical-the-new-run-update-check-onc-v1.md",
+      "00142-triage-r1-a55906ab-v1.md",
+      "00143-triage-r1-the-global-buvis-auto-update-fallback-v1.md",
+      "00144-triage-postup-brief-the-prd-evidence-command-st-v1.md",
+      "00145-triage-prd-metric-no-tool-cli-exits-0-after-pri-v1.md",
+      "00146-triage-r11-the-shared-file-unknown-key-check-do-v1.md",
+      "00147-triage-r11-shared-file-unknown-key-check-does-n-v1.md",
+      "00148-triage-r1-cycle-2-the-globalsettings-false-posi-v1.md"
+    ]
+  },
+  "prd": "00140-library-warnings-lack-marker-v1.md",
+  "catchup_mode": "run",
+  "doubt_reviewer": "codex",
+  "consensus_engine": "legacy",
+  "session_model": "sonnet",
+  "rework_cap": 2,
+  "lane": "full",
+  "lane_reason": "unparsed",
+  "lane_effective": "full",
+  "catchup_probe": {
+    "batch_id": "202611131903",
+    "gh": "ok",
+    "engram": "unregistered",
+    "checked_at": "2026-11-13T18:03:35Z"
+  },
+  "tasks_total": 0,
+  "qwen_breaker": {
+    "tripped": false,
+    "after_task": null,
+    "failed_tasks": [],
+    "batch_id": "202611131903"
+  },
+  "qwen_gate_failures_consecutive": 0,
+  "tasks_completed": 0,
+  "cycle": 1,
+  "applied_review_batches": [
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00136-sysup-plan-config-errors-raw-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00136-sysup-plan-config-errors-raw-v1-review-1.md::tail-sweep",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00137-yaml-auto-update-ignored-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00138-failed-commands-exit-zero-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00138-failed-commands-exit-zero-v1-review-2.md::decision-gate",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00138-failed-commands-exit-zero-v1-review-2.md::tail-sweep",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00139-shared-config-typos-invisible-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00140-library-warnings-lack-marker-v1-review-1.md::decision-gate",
+    "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid/docs/dev/project-management/reviews/00140-library-warnings-lack-marker-v1-review-1.md::tail-sweep"
+  ],
+  "phases_completed": [
+    "review"
+  ],
+  "replan_count": 0,
+  "work_verification_note": "7701 passed, 16 skipped, 1 xfailed, 10 errors; 10 errors pre-existing env-only gpgsign issue (dot pull divergence tests), unrelated to this PRD, matches prior batches work_verification_note",
+  "contract_card": "step: PRD 00140 \u2014 review converged, tail sweep complete (task 3 done via micro lane). phase/next_phase now \"done\".\ninvariants: cycle stays 1 (never increment post-convergence). phases_completed now includes \"review\" \u2014 the finalize-session skip marker. work_start_sha=bd42942073d3b77a8967ae740836eda5519f027d (captured before task 3; original PRD work_start_sha unchanged elsewhere). Tail sweep's Pat review (step 5.7) failed twice (oauth_token_revoked, then session-id collision) \u2014 recorded `review: \"failed:oauth_token_revoked\"` on task 3's attempt per the runner-failure fail-loud rule; PRD-level review lenses already ran and converged this cycle, so nothing is blocked. Full suite green: 7708 passed, 16 skipped, 1 xfailed, 10 pre-existing unrelated env errors (tests/tools/dot/test_pull_divergence_two_hosts.py).\nnext: Phase 9 finalize (references/phase-done.md) \u2014 move PRD wip->done, render audit/report, batch-end handling.",
+  "prd_budget_since": "2026-11-14T02:29:36Z",
+  "design_mode": "run",
+  "loop_entry": {
+    "entered_by": "loop",
+    "prd": "00140-library-warnings-lack-marker-v1.md",
+    "result": {
+      "stop": null,
+      "detail": "",
+      "prd": "00140-library-warnings-lack-marker-v1.md",
+      "source": "wip",
+      "parked": null,
+      "custody_pending": 0,
+      "lane_effective": "full",
+      "catchup": "full",
+      "design": "reuse",
+      "resume_target": "/work continues at first non-completed task 2",
+      "batch": "open"
+    }
+  },
+  "design_doc": "docs/dev/project-management/designs/00140-library-warnings-lack-marker-v1-design.md",
+  "autonomous_decisions": [
+    {
+      "cycle": 1,
+      "severity": "medium",
+      "issue": "design: where/how to bridge configuration-package logging.warning calls to console.warning with the \u26a0 marker",
+      "action": "auto-fix",
+      "reason": "chose a logging.Handler installed at buvis_options() decoration time (not inside wrapper(), which would miss the earlier update-check resolve() call); handler attached to buvis.pybase.configuration logger, propagate left at default True (not False) since no code calls logging.basicConfig() anywhere in repo and False would break 9 existing caplog tests that capture at root. 3 review dispatches (1 claude + 2 codex-outage-fallback-to-claude), 2 blockers found and fixed, 3 non-blockers deferred (undersold docstring scope; unlocked _seen set), 1 question deferred (test strategy needs re-derivation after install-site fix, already incorporated)."
+    },
+    {
+      "issue": "cycle 1: R1 test does not pin the handler's dedupe and does not assert the marker (test_click_integration.py:1291)",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "swept to a tail-sweep fix task",
+      "reason": "two-voice actionable medium; mechanical test fix"
+    },
+    {
+      "issue": "cycle 1: R3 idempotence test never restores pre-existing bridge handlers (test_click_integration.py:1357)",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "swept to a tail-sweep fix task",
+      "reason": "two-voice actionable medium; mechanical test fix"
+    },
+    {
+      "issue": "cycle 1: R2 emit reimplements ConsoleAdapter.warning instead of calling console.warning",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "deliberate documented design deviation (soft_wrap keeps long config paths on one marked line); adding soft_wrap to the shared adapter method would change wrapping for every caller - out of PRD scope"
+    },
+    {
+      "issue": "cycle 1: R4 bridge bypasses the console adapter method using raw Rich output",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; duplicate of R2, whose design rationale applies"
+    },
+    {
+      "issue": "cycle 1: R5 installer test removes pre-existing bridge handlers permanently",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; same defect swept as the two-voice row R3"
+    },
+    {
+      "issue": "cycle 1: R6 either-or assertion in test_update_with_malformed_settings_exits_cleanly",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; pre-existing test untouched by this diff, outside PRD scope"
+    },
+    {
+      "issue": "cycle 1: R7 test_update_with_malformed_settings_exits_cleanly hedges with or",
+      "severity": "medium",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; pre-existing test untouched by this diff, outside PRD scope"
+    },
+    {
+      "issue": "cycle 1: R8 emit has no try/except with self.handleError(record)",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "cycle 1: R9 new handler and installer have no docstrings",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice"
+    },
+    {
+      "issue": "cycle 1: R10 test_click_integration.py grows past the 800-line limit",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; pre-existing breach the planned task extended, splitting is out of PRD scope"
+    },
+    {
+      "issue": "cycle 1: R11 bridge logger keeps propagate=True so a root handler would double-print",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; propagate left untouched by design decision; latent - nothing under src/tools installs a root handler"
+    },
+    {
+      "issue": "cycle 1: R12 dedupe state _seen is an unbounded unlocked set",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; negligible for a short-lived single-threaded CLI"
+    },
+    {
+      "issue": "cycle 1: R13 bridge installed at decoration time rather than command run time",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; not a defect - every loader-using tool goes through buvis_options and the install is idempotent"
+    },
+    {
+      "issue": "cycle 1: R14 test file exceeds the 800-line limit",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; pre-existing breach, out of PRD scope"
+    },
+    {
+      "issue": "cycle 1: R15 test_click_integration.py exceeds 800-line limit (1361 lines)",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice; pre-existing breach, out of PRD scope"
+    },
+    {
+      "issue": "cycle 1: R16 _ConsoleWarningHandler and _install_console_warning_bridge lack docstrings",
+      "severity": "low",
+      "cycle": 1,
+      "action": "discarded",
+      "reason": "single-voice"
+    },
+    {
+      "cycle": 1,
+      "issue": "test_retired_twin_warning_deduped_across_two_invocations does not pin the handler's dedupe and does not assert the marker. It only counts \"Retired config file\" occurrences. `_warn_retired_twin` is already `@cache`-memoized (loader.py:32), so the count stays 1 with `_seen` removed. If the bare lastResort line is captured, it also stays 1 on pre-change code. Fix: assert the count of marked lines (the `\u26a0.*?Retired config file` regex used in the first test) across both invocations. Bind the handler's own dedupe with a non-cached message (for example the unsafe-path or unknown-key warning) through the real logger.",
+      "severity": "medium",
+      "action": "auto-fixed",
+      "reason": "fixed by review-close"
+    },
+    {
+      "cycle": 1,
+      "issue": "test_install_console_warning_bridge_is_idempotent removes pre-existing `_ConsoleWarningHandler`s (with their `_seen` state) and its `finally` removes the one it installed. It never restores the originals, so the bridge stays uninstalled for later tests in the session until another `@buvis_options` decoration runs. Restore the saved handlers in `finally`.",
+      "severity": "medium",
+      "action": "auto-fixed",
+      "reason": "fixed by review-close"
+    }
+  ],
+  "tasks": [],
+  "work_start_sha": "cb2f1959dbfc2280ea2773039eee924db33ed8ae",
+  "repo_root": "/Users/bob/git/src/worktrees/gems/feat-config-local-layer-braid",
+  "review_lenses": {
+    "consensus": "done",
+    "blind": "done",
+    "doubt": "done",
+    "ui": "done",
+    "fable": "lost"
+  },
+  "doubts_rubric_verdicts": [
+    {
+      "rule_id": "D1",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D2",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D3",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D4",
+      "verdict": "pass"
+    },
+    {
+      "rule_id": "D5",
+      "verdict": "pass"
+    }
+  ],
+  "rework_task_ids": [
+    "3"
+  ]
+}

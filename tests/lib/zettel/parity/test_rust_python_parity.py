@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import os
+import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -120,6 +123,35 @@ class TestParseFileParity:
 
         assert py_zettel.get_data().metadata["id"] == 20240913120000
         assert rust_data.metadata["id"] == 20240913120000
+
+    def test_id_cut_from_the_file_creation_time_is_local_wall_clock(self, tmp_path: Path):
+        """A note with no date anywhere takes the file's creation time, in local time.
+
+        `bim import` of such a note used to get a UTC id beside a local-time date.
+        Runs in a fresh process started in a zone that is never UTC: the Rust
+        side caches the zone, so switching TZ inside this process is not seen.
+        """
+        note = tmp_path / "third.md"
+        note.write_text("# Third\n\nbody\n", encoding="utf-8")
+        script = (
+            "import sys\n"
+            "from buvis.pybase.zettel._core import parse_file\n"
+            "meta = parse_file(sys.argv[1])['metadata']\n"
+            "print(meta['id'], meta['date'].isoformat())\n"
+        )
+
+        proc = subprocess.run(  # fixed argv, no shell, test-only
+            [sys.executable, "-c", script, str(note)],
+            env={**os.environ, "TZ": "Asia/Kolkata"},
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+
+        note_id, date_iso = proc.stdout.split()
+        kolkata = timezone(timedelta(hours=5, minutes=30))
+        assert int(note_id) == int(datetime.fromisoformat(date_iso).astimezone(kolkata).strftime("%Y%m%d%H%M%S"))
 
     def test_migration(self):
         py_data, rust_data = self._parse_both("needs_migration.md")

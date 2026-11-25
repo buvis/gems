@@ -29,7 +29,8 @@ Configuration
 -------------
 
 Updaters live in ``buvis-sysup.yaml`` in the buvis config stack
-(``$BUVIS_CONFIG_DIR`` → ``~/.config/buvis`` → cwd), deep-merged over a bundled
+(``$BUVIS_CONFIG_DIR`` → ``~/.local/.config/buvis`` → ``~/.config/buvis``),
+deep-merged over a bundled
 default. The updater collection is a **flat map keyed by name**, so a machine
 layer adds an entry with a new key and overrides a field of an existing entry
 by that key — no list-append syntax, and every base key survives unless
@@ -175,15 +176,15 @@ Sharing across machines
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The buvis config stack is itself managed by ``dot``. Track ``buvis-sysup.yaml``
-(``dot add``) to share your updater set across machines. For a value that must
-live on **one** machine only, put it in
-``~/.local/.config/buvis/buvis-sysup.yaml``. It overrides
-``~/.config/buvis/buvis-sysup.yaml`` per key. ``~/.local`` sits outside the
-dotfiles repo, so the value stays untracked.
+under ``~/.config/buvis`` (``dot add``) to share your updater set across
+machines. For a value that must live on **one** machine only, put it in
+``~/.local/.config/buvis/buvis-sysup.yaml`` and **do not** ``dot add`` it: the
+loader ranks ``~/.local/.config/buvis`` above the shared ``~/.config/buvis``
+directory, so it overrides per-key while staying untracked.
 
 .. code-block:: yaml
 
-    # ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local)
+    # ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local, never `dot add`ed)
     commands:
       helm:
         enabled: false        # this box has no helm repos — skip it here only
@@ -191,7 +192,8 @@ dotfiles repo, so the value stays untracked.
         order: 5
         steps: [sudo work-vpn-refresh]
 
-``~/.local`` is not part of the dotfiles repo; it is backed up with the machine.
+Because ``~/.local/.config/buvis`` is deliberately untracked, it is outside
+the dotfiles repo and is backed up with the machine.
 
 Priming sudo
 -------------
@@ -294,8 +296,8 @@ notifications. Group options go before the subcommand:
 ``sysup --only brew status`` runs status only and ignores the updater filters;
 ``sysup status --only brew`` is a usage error.
 
-Configure optional ntfy pushes in the same config stack, including
-``~/.local/.config/buvis/buvis-sysup.yaml``:
+Configure optional ntfy pushes in the same config stack, including the
+machine-local directory (``~/.local/.config/buvis/buvis-sysup.yaml``):
 
 .. code-block:: yaml
 
@@ -354,13 +356,14 @@ A command may declare ``needs: [item]``. While a needed item is ``expired`` or
 (disabled, or a ``when`` mismatch) never blocks either.
 
 The bundled ``gh-agent`` item ships **disabled** with no probe, so tracking stays
-off until you opt in. Enable it on one host from
-``~/.local/.config/buvis/buvis-sysup.yaml`` by supplying a private-repository ``probe`` and
-``enabled: true``; the bundled ``config_dir`` and refresh procedure merge in:
+off until you opt in. Enable it on one host from the untracked
+``~/.local/.config/buvis/buvis-sysup.yaml`` by supplying a private-repository
+``probe`` and ``enabled: true``; the bundled ``config_dir`` and refresh
+procedure merge in:
 
 .. code-block:: yaml
 
-    # ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local)
+    # ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local, never `dot add`ed)
     expiry:
       gh-agent:
         enabled: true

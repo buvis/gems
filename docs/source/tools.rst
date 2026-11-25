@@ -34,7 +34,7 @@ Overview
      - BUVIS InfoMesh — Zettelkasten management with Jira integration
    * - :doc:`braid <tools/braid>`
      -
-     - Agent skill composer (sources.d to ``~/.agents``, Claude Code and Kiro)
+     - Agent skill composer (sources in buvis-braid.yaml to ``~/.agents``, Claude Code and Kiro)
    * - :doc:`dot <tools/dot>`
      -
      - Dotfiles manager

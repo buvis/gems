@@ -10,6 +10,7 @@ import json
 import re
 import sys
 
+import pytest
 from click.testing import CliRunner
 from postup.commands.brief.brief import CommandBrief, render_brief
 from postup.domain.contracts import CIRun, Commit, PortfolioData, PullRequest, RepoData, write_outputs
@@ -64,6 +65,20 @@ class TestMissingData:
     def test_missing_data_json_returns_failure(self, tmp_path):
         result = CommandBrief(PostupSettings(out_dir=str(tmp_path / "out"))).execute()
         assert not result.success
+        assert "postup collect" in (result.error or "")
+        assert "no data.json" in (result.error or "")
+
+    @pytest.mark.parametrize("content", ["{not json", "{}"], ids=["broken", "empty-object"])
+    def test_invalid_data_json_is_not_reported_as_missing(self, tmp_path, content):
+        out = tmp_path / "out"
+        out.mkdir()
+        (out / "data.json").write_text(content, encoding="utf-8")
+
+        result = CommandBrief(PostupSettings(out_dir=str(out))).execute()
+
+        assert not result.success
+        assert "no data.json" not in (result.error or "")
+        assert f"{out / 'data.json'} is not valid" in (result.error or "")
         assert "postup collect" in (result.error or "")
 
 

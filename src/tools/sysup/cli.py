@@ -11,6 +11,7 @@ import click
 from buvis.pybase.adapters import console
 from buvis.pybase.configuration import buvis_options
 from buvis.pybase.result import FatalError
+from rich.markup import escape
 
 from sysup.settings import SysupSettings
 
@@ -49,7 +50,7 @@ def _describe(name: str, command: SysupCommand) -> str:
     if command.when.check is not None:
         guards.append(f"check={command.when.check}")
     suffix = f" ({', '.join(guards)})" if guards else ""
-    return f"{command.order:>4}  {name}  [{kind}]{suffix}"
+    return f"{command.order:>4}  {name}  {escape(f'[{kind}]')}{suffix}"
 
 
 def _filter_plan(
@@ -172,7 +173,7 @@ def cli(
     try:
         cfg = load_config(config_dir=obj.get("config_dir"), config_path=obj.get("config_path"))
     except FatalError as exc:
-        console.panic(str(exc))
+        console.panic(str(exc), soft_wrap=True, stderr=True)
         return
 
     plan = _filter_plan(cfg, applicable_commands(cfg), only, tags)
@@ -240,7 +241,7 @@ def refresh(ctx: click.Context, item: str) -> None:
     try:
         cfg = load_config(config_dir=obj.get("config_dir"), config_path=obj.get("config_path"))
     except FatalError as exc:
-        console.panic(str(exc))
+        console.panic(str(exc), soft_wrap=True, stderr=True)
         return
 
     expiry_item = cfg.expiry.get(item)

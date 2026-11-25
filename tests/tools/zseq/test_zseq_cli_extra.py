@@ -11,7 +11,7 @@ class TestZseqCliExtra:
     def test_get_last_failure_no_error(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False)
         result = runner.invoke(cli, ["--path", str(tmp_path)])
-        assert result.exit_code == 0
+        assert result.exit_code == 1
 
     @patch("zseq.commands.get_last.get_last.CommandGetLast")
     def test_get_last_success_no_output(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:

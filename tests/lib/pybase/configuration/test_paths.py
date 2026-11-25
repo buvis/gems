@@ -12,7 +12,10 @@ class TestGetConfigDirs:
 
         dirs = get_config_dirs()
 
-        assert dirs == [Path.home() / ".local" / ".config" / "buvis", Path.home() / ".config" / "buvis"]
+        assert dirs == [
+            Path.home() / ".local" / ".config" / "buvis",
+            Path.home() / ".config" / "buvis",
+        ]
 
     def test_with_buvis_config_dir(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", "/custom/config")
@@ -31,6 +34,7 @@ class TestGetConfigDirs:
 
         assert len(dirs) == 2
         assert dirs[0] == Path.home() / ".local" / ".config" / "buvis"
+        assert dirs[1] == Path.home() / ".config" / "buvis"
 
     def test_tilde_expanded(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("BUVIS_CONFIG_DIR", "~/my-config")
@@ -38,3 +42,13 @@ class TestGetConfigDirs:
         dirs = get_config_dirs()
 
         assert dirs[0] == Path.home() / "my-config"
+
+    def test_machine_local_dir_follows_home(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        """The new .local/.config/buvis entry must track $HOME, not a hardcoded path."""
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+
+        dirs = get_config_dirs()
+
+        assert dirs[0] == tmp_path / ".local" / ".config" / "buvis"
+        assert dirs[1] == tmp_path / ".config" / "buvis"

@@ -1,9 +1,10 @@
-# PRD 00118 assumptions
+# Assumptions Ledger — 00140-library-warnings-lack-marker-v1
 
-## 1: Local-time identity
+## 1: Add console-warning bridge for configuration package logging
 
-Tess and Ivan: none.
-
-## Task 3
-
-Initial case-insensitive source suffix assumption was rejected and corrected to exact .md. Source paths expand ~ consistently with existing path conventions. Literal tag regex and unchanged formatter/parser behavior were verified directly. Feedback and mechanical style workers reported no further assumptions.
+- Tess: used a content-based/DOTALL regex match (`⚠.*?Retired config file.*?is ignored; move its values to`) rather than a strict single-line match, because the brief doesn't pin the console's terminal/wrap width and Rich may wrap a long temp-path message across lines; the regex still enforces "marker appears before message, exactly once" and the companion `count("Retired config file") == 1` check rules out any unmarked duplicate line.
+- Tess: assumed `_ConsoleWarningHandler.emit` calls `console.warning(escape(message))` positionally (first positional arg), since the brief states it renders the message "through ... console.warning" but doesn't pin keyword-vs-positional calling convention. (Superseded by the real implementation: `console.console.print(console.format_warning(escape(message)), soft_wrap=True)`, to avoid Rich wrapping a long message across lines — see Ivan's note below. The orchestrator fixed the one test this broke, `test_handler_emit_dedupes_identical_message_but_not_distinct_ones`, to assert against the real call surface.)
+- Tess: appending to `test_click_integration.py` per the explicit task instruction pushes the file past the general 800-line test-file size-limit guideline (now ~1345 lines); followed the task's explicit "append to the existing file; do not create a new test file" instruction as the more specific directive, flagging the conflict here rather than splitting silently.
+- Tess: treated the file as having no internal importers (confirmed via `rg` — only docs/report/log files reference the module name in prose, not Python imports).
+- Ivan: assumed the correct call target is the `ConsoleAdapter` singleton (`console.console` → `.console` attribute → raw rich `Console`, `.format_warning` → `ConsoleAdapter` method), mirroring the existing `ConfigurationError` handling two call sites below in the same file, since the design's literal `console.warning(...)` call produces Rich word-wrapping that breaks 2 of the 3 CliRunner tests on this environment's tmp_path length (the wrap landed exactly between "values" and "to").
+- Ivan: did not touch `console.py` to add a module-level `warning` alias even though that would let `unittest.mock.patch("buvis.pybase.adapters.console.console.warning")` resolve cleanly, because `console.py` is outside this task's file allowlist; flagged the blocker instead of guessing. The orchestrator resolved it by fixing the test's patch target (`patch.object` on the live instance) rather than widening the implementation allowlist — the ambiguity was in the test's `unittest.mock` dotted-string resolution (it collides with the `buvis.pybase.adapters.console.console` *submodule*), not in the implementation.

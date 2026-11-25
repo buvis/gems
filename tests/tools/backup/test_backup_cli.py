@@ -156,6 +156,18 @@ class TestBackupCliErrors:
         assert "bad config" in result.output
         assert "Traceback" not in result.output
 
+    def test_plan_config_error_prints_on_stderr_not_stdout(self, runner) -> None:
+        from buvis.pybase.result import FatalError
+
+        with (
+            patch("buvis.pybase.updater.check_and_update"),
+            patch("backup.config.load_config", side_effect=FatalError("bad config")),
+        ):
+            result = runner.invoke(cli, [])
+        assert result.exit_code == 1
+        assert "bad config" in result.stderr
+        assert "bad config" not in result.stdout
+
 
 class TestBackupCliExitCode:
     """FIX B: a failed step must make the process exit nonzero (cron must not
