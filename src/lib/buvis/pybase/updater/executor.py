@@ -28,6 +28,8 @@ _UPGRADE_TIMEOUT = 120
 _INTERACTIVE_UPGRADE_TIMEOUT = 1800
 _MISE_WHERE_TIMEOUT = 10
 _VERSION_TIMEOUT = 10
+_CACHE_CLEAN_TIMEOUT = 30
+_UV_BACKED_METHODS = frozenset({"mise-pipx", "uv-tool", "uv-venv"})
 _VERSION_PATTERN = re.compile(r"version (\S+)")
 
 
@@ -60,6 +62,29 @@ def read_installed_version(installer: InstallerInfo) -> str | None:
     except Exception:
         # Runs on every CLI start after an upgrade: any failure means "unverifiable", never a crash.
         return None
+
+
+def _refresh_package_index(installer: InstallerInfo, state_dir: Path) -> None:
+    """Clear uv's cached index for buvis-gems so the upgrade sees fresh releases.
+
+    Only uv-backed installers are touched. Any failure is logged as a warning and
+    the upgrade proceeds.
+    """
+    if installer.method not in _UV_BACKED_METHODS:
+        return
+    try:
+        result = subprocess.run(
+            ("uv", "cache", "clean", "buvis-gems"),
+            capture_output=True,
+            timeout=_CACHE_CLEAN_TIMEOUT,
+            cwd=state_dir,
+        )
+    except (TimeoutExpired, OSError) as exc:
+        append_log(state_dir, "warning", f"Could not refresh uv cache for buvis-gems: {exc}")
+        return
+    if result.returncode != 0:
+        stderr_snippet = result.stderr.decode(errors="replace").strip()[:200]
+        append_log(state_dir, "warning", f"Could not refresh uv cache for buvis-gems: {stderr_snippet}")
 
 
 def _is_noop_upgrade(installed: str | None, current: str) -> bool:
@@ -102,6 +127,7 @@ def run_update(
 
     append_log(state_dir, "info", f"Updating buvis-gems {current} -> {latest} via {installer.method}")
 
+    _refresh_package_index(installer, state_dir)
     try:
         result = subprocess.run(
             installer.upgrade_command,
@@ -173,6 +199,7 @@ def run_update_interactive(
         f"Updating buvis-gems {current} → {latest} via {installer.method}",
     )
 
+    _refresh_package_index(installer, state_dir)
     try:
         result = subprocess.run(
             installer.upgrade_command,

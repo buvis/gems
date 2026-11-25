@@ -145,6 +145,7 @@ class TestUpgradeRunsAfterRefresh:
             patch("buvis.pybase.updater.executor.os"),
             patch("buvis.pybase.updater.executor.sys") as mock_sys,
             patch("buvis.pybase.updater.executor.read_installed_version", return_value="0.8.0"),
+            patch("buvis.pybase.updater.executor._resolve_reexec_argv", return_value=["bim", "list"]),
         ):
             mock_sub.run.side_effect = [FileNotFoundError("uv"), MagicMock(returncode=0, stderr=b"")]
             mock_sub.TimeoutExpired = subprocess.TimeoutExpired

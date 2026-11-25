@@ -244,6 +244,7 @@ class TestUpgradeBackoff:
             patch("subprocess.run", side_effect=fake_run),
             patch("buvis.pybase.updater.executor._resolve_reexec_argv", return_value=["dot", "status"]),
             patch("buvis.pybase.updater.executor.os.execvp") as mock_execvp,
+            patch("buvis.pybase.updater.executor._refresh_package_index"),
         ):
             check_and_update(_make_settings())  # attempts, verification shows a no-op
             check_and_update(_make_settings())  # a fresh process within 24h
