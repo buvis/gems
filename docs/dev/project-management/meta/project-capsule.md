@@ -28,7 +28,7 @@ Generated: 2026-11-13 (catchup: feature/config-local-layer-braid, batch 20261113
 ## Active Work
 
 ### Batch 202611250933 (feature/00177-update-fails-on-stale-uv-index worktree)
-- [x] 00177-update-fails-on-stale-uv-index-v1.md (1 cycle, fast-track lane): the updater runs `uv cache clean --force buvis-gems` before a uv-backed upgrade so a stale cached index no longer blocks the update. 4 findings deferred (1 HIGH pre-existing: tool tests reach the real updater, overlaps backlog 00169; hold stub 00178 minted for it).
+- [x] 00177-update-fails-on-stale-uv-index-v1.md (1 cycle, fast-track lane): the updater runs `uv cache clean --force buvis-gems` before a uv-backed upgrade so a stale cached index no longer blocks the update. 4 findings deferred (1 HIGH pre-existing: 49 tests in `tests/lib/pybase/configuration/test_click_integration.py` reach the real updater, measured 2026-11-25; backlog 00169 guards only `tests/tools/` and wrongly calls `tests/lib/` safe; hold stub 00178 tracks it). PR #296.
 
 Observations: batch scoped to this worktree's one PRD; the deferred JSON records lacked `issue`/`reason` fields, so `render report` exited 12 until they were added.
 
