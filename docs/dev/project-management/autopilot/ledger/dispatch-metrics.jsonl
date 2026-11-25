@@ -1403,3 +1403,11 @@
 {"id":"21061869","kind":"pat","task":"12","queued_at":1795591786,"prompt_bytes":7824}
 {"id":"21061869","ended_at":1795591806,"elapsed_s":20,"outcome":"ok","detail":null}
 {"kind":"handoff","site":"review","edge":"leave","at":1795592030,"phase":"review","prd":"00151-bim-tiromex-backends-v1.md"}
+{"kind":"handoff","site":"review","edge":"resume","at":1795593576,"phase":"review","prd":"00151-bim-tiromex-backends-v1.md"}
+{"id":"d5d197fe","kind":"bob","task":"review-00151c3-20261125","queued_at":1795593846,"prompt_bytes":33039}
+{"id":"b6931b17","kind":"carl","task":"review-00151c3-20261125","queued_at":1795593846,"prompt_bytes":26299}
+{"id":"d5d197fe","ended_at":1795594016,"elapsed_s":170,"outcome":"ok","detail":null}
+{"id":"b6931b17","ended_at":1795594016,"elapsed_s":170,"outcome":"ok","detail":null}
+{"id":"d5d197fe","ended_at":1795594069,"elapsed_s":223,"outcome":"ok","detail":null}
+{"id":"b6931b17","ended_at":1795594069,"elapsed_s":223,"outcome":"ok","detail":null}
+{"kind":"handoff","site":"review","edge":"leave","at":1795594104,"phase":"done","prd":"00151-bim-tiromex-backends-v1.md"}

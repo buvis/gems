@@ -366,5 +366,45 @@
     "issue": "test_doc_audit_panics_when_doc_section_missing hedges with `or`: either outcome satisfies it",
     "file": "tests/tools/bim/doc/test_cli_audit.py:204",
     "reason": "settled re-raise of cycle-1 R22; also single-voice"
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "🟡",
+    "issue": "Behavior change beyond the spec. HTTP redirects are now refused and answered with an exit error, where the old `requests.post` followed them. The spec says doc behavior must be preserved. The change is documented in `docs/source/tools/bim.rst:1069` and `CHANGELOG.md:82`, but nothing in the PRD asks for it.",
+    "file": "src/tools/bim/shared/llm/http.py:86",
+    "reason": "settled re-raise of cycle-2 R2 and cycle-1 R9 (redirect refusal is in the approved design and CHANGELOG); also single-voice"
+  },
+  {
+    "cycle": 3,
+    "disposition": "settled-deferral",
+    "severity": "🟡",
+    "issue": "Task 12 fixes executable selection across `symlink/..`, but still replaces `argv[0]` with the lookup result. A native executable can use `argv[0]` to select its behavior. Pass the selected path as `Popen(executable=...)` and preserve the original argv. Extend the regression test to check both values.",
+    "file": "src/tools/bim/shared/llm/base.py:313",
+    "reason": "verified by the coordinator but single-voice at the last cycle before the cap; deferred to batch end for a decision"
+  },
+  {
+    "cycle": 3,
+    "disposition": "settled-deferral",
+    "severity": "🟡",
+    "issue": "The replacement calls `os.getcwd()` even when `shutil.which` returns an absolute path. If the launch directory was removed, a valid absolute executable now fails with a raw `FileNotFoundError`. Call `getcwd()` only for relative lookup results and test that an absolute executable still runs when `getcwd()` fails.",
+    "file": "src/tools/bim/shared/llm/base.py:313",
+    "reason": "verified by the coordinator but single-voice at the last cycle before the cap; deferred to batch end for a decision"
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "Live Claude verification is incomplete. The docs say the probe could not authenticate, so the success-envelope key (`structured_output` vs `result`) was never observed. The adapter accepts both. This is disclosed in `docs/source/tools/bim.rst:1105`, so I count it as a documented residual risk.",
+    "file": "src/tools/bim/shared/llm/claude.py:86",
+    "reason": "settled re-raise of cycle-1 R1 (documented residual; live qualification belongs to PRD 00153); also single-voice"
+  },
+  {
+    "cycle": 3,
+    "disposition": "discarded",
+    "severity": "⚪",
+    "issue": "A malformed HTTP envelope, meaning an HTTP 200 whose body is not JSON, maps to `exit` (a transient error) rather than `parse`. This preserves the old behavior, where `response.json()` failures were treated as HTTP errors. A spec reader might expect `parse`.",
+    "file": "src/tools/bim/shared/llm/http.py:186",
+    "reason": "the design doc keeps an envelope decode failure as exit on purpose (doc retries on exit); also single-voice"
   }
 ]
