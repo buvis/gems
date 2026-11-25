@@ -313,14 +313,18 @@ YAML Configuration
 File Locations
 ~~~~~~~~~~~~~~
 
-Config files are discovered in order (first found wins):
+Config files are discovered in these directories, highest priority first
+(a higher directory overrides a lower one per key):
 
-1. ``$BUVIS_CONFIG_DIR/buvis.yaml`` (if env var set)
-2. ``$XDG_CONFIG_HOME/buvis/buvis.yaml`` (or ``~/.config/buvis/buvis.yaml``)
-3. ``~/.buvis/buvis.yaml`` (legacy)
-4. ``./buvis.yaml`` (current directory)
+1. ``$BUVIS_CONFIG_DIR`` (if env var set)
+2. ``~/.local/.config/buvis`` (machine-local, outside the dotfiles repo)
+3. ``~/.config/buvis`` (shared)
+4. ``./`` (current directory)
 
-For tool-specific config, files named ``buvis-{tool}.yaml`` are also checked.
+In each directory the loader reads ``config.yaml``, ``buvis.yaml`` and, for
+tool-specific config, ``buvis-{tool}.yaml``. Sibling ``*.local`` twins are not
+read; put machine-local values in ``~/.local/.config/buvis`` under the plain
+file name.
 
 File Format
 ~~~~~~~~~~~
@@ -389,7 +393,7 @@ entry to a shared list has to re-list the whole thing. Directive keys let a laye
     # layer 2 — user-wide (~/.config/buvis), higher priority: ADD, don't replace
     excludes+: [.terraform, .gradle]
 
-    # layer 3 — machine-local (*.local.yaml), higher still: ADD one, CANCEL a default
+    # layer 3 — machine-local (~/.local/.config/buvis), higher still: ADD one, CANCEL a default
     excludes+: [.cache]
     excludes-: [.venv]
 
@@ -710,11 +714,11 @@ If YAML uses ``${VAR}`` without a default, you'll get ``MissingEnvVarError``:
 YAML Not Loading
 ~~~~~~~~~~~~~~~~
 
-Check file locations (in order):
+Check file locations (highest priority first):
 
 1. ``$BUVIS_CONFIG_DIR/buvis.yaml``
-2. ``~/.config/buvis/buvis.yaml``
-3. ``~/.buvis/buvis.yaml``
+2. ``~/.local/.config/buvis/buvis.yaml``
+3. ``~/.config/buvis/buvis.yaml``
 4. ``./buvis.yaml``
 
 Debug with:

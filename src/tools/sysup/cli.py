@@ -248,7 +248,7 @@ def refresh(ctx: click.Context, item: str) -> None:
         console.panic(f"unknown expiry item '{item}'")
         return
     if not expiry_item.enabled:
-        console.panic(f"item '{item}' is disabled; enable it in buvis-sysup.local.yaml first")
+        console.panic(f"item '{item}' is disabled; enable it in ~/.local/.config/buvis/buvis-sysup.yaml first")
         return
     if expiry_item.refresh is None:
         console.panic(f"item '{item}' has no refresh procedure")

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **configuration**: machine-local config layer in `~/.local/.config/buvis/`, above `~/.config/buvis/` and below `$BUVIS_CONFIG_DIR`
+
+### Removed
+
+- **configuration**: the loader no longer reads machine-local twins (`config.local.yaml`, `buvis.local.yaml`, `buvis-<tool>.local.yaml`) beside shared files; move each to `~/.local/.config/buvis/` under its plain name (`buvis-<tool>.local.yaml` becomes `~/.local/.config/buvis/buvis-<tool>.yaml`)
+
 ### Fixed
 
 - **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
