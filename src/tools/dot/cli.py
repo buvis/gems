@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 from buvis.pybase.adapters import ShellAdapter, console
 from buvis.pybase.configuration import buvis_options, get_settings
+from buvis.pybase.result import CommandResult
 
 from dot.settings import DotSettings
 
@@ -51,6 +52,7 @@ def status() -> None:
     console.report_result(
         result,
         on_failure=lambda r: console.failure(r.error or "Failed", details=r.metadata.get("details")),
+        exit_on_failure=True,
     )
 
 
@@ -61,7 +63,8 @@ def materialize(hook: bool) -> None:
 
     shell = ShellAdapter(suppress_logging=True)
     console.report_result(
-        CommandMaterialize(shell=shell, dotfiles_root=_dotfiles_root(), install_hooks=not hook).execute()
+        CommandMaterialize(shell=shell, dotfiles_root=_dotfiles_root(), install_hooks=not hook).execute(),
+        exit_on_failure=True,
     )
 
 
@@ -78,7 +81,10 @@ def setup(ctx: click.Context, url: str | None = None) -> None:
     from dot.commands.setup.setup import CommandSetup
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandSetup(shell=shell, dotfiles_root=_dotfiles_root(), remote_url=remote_url).execute())
+    console.report_result(
+        CommandSetup(shell=shell, dotfiles_root=_dotfiles_root(), remote_url=remote_url).execute(),
+        exit_on_failure=True,
+    )
 
 
 @cli.command("add", help="Add changes")
@@ -94,7 +100,7 @@ def add(ctx: click.Context, file_path: str | None = None) -> None:
 
     shell = ShellAdapter(suppress_logging=True)
     cmd = CommandAdd(shell=shell, dotfiles_root=_dotfiles_root(), file_path=resolved_path)
-    console.report_result(cmd.execute())
+    console.report_result(cmd.execute(), exit_on_failure=True)
 
 
 @cli.command("encrypt", help="Register a file for git-secret encryption")
@@ -103,7 +109,10 @@ def encrypt(file_path: str) -> None:
     from dot.commands.encrypt.encrypt import CommandEncrypt
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandEncrypt(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
+    console.report_result(
+        CommandEncrypt(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute(),
+        exit_on_failure=True,
+    )
 
 
 @cli.command("rm", help="Remove file from tracking (keeps file on disk)")
@@ -112,7 +121,10 @@ def rm(file_path: str) -> None:
     from dot.commands.rm.rm import CommandRm
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandRm(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
+    console.report_result(
+        CommandRm(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute(),
+        exit_on_failure=True,
+    )
 
 
 @cli.command("delete", help="Delete file from tracking and disk")
@@ -121,7 +133,10 @@ def delete(file_path: str) -> None:
     from dot.commands.delete.delete import CommandDelete
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandDelete(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
+    console.report_result(
+        CommandDelete(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute(),
+        exit_on_failure=True,
+    )
 
 
 @cli.command("pull", help="Pull dotfiles and update submodules")
@@ -138,7 +153,7 @@ def pull() -> None:
     plan = cmd.plan()
 
     if plan.error:
-        console.failure(plan.error)
+        console.report_result(CommandResult(success=False, error=plan.error), exit_on_failure=True)
         return
 
     # Handle collisions
@@ -157,11 +172,11 @@ def pull() -> None:
 
     # Passphrase prompt
     passphrase = None
-    if shell.is_command_available("git-secret"):
+    if cmd.dot_git_service.uses_git_secret():
         console.info("GPG passphrase required to decrypt secret files")
 
     result = cmd.execute(plan=plan, resolutions=resolutions, passphrase=passphrase)
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("commit", help="Commit dotfiles changes")
@@ -170,7 +185,10 @@ def commit(message: str) -> None:
     from dot.commands.commit.commit import CommandCommit
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandCommit(shell=shell, dotfiles_root=_dotfiles_root(), message=message).execute())
+    console.report_result(
+        CommandCommit(shell=shell, dotfiles_root=_dotfiles_root(), message=message).execute(),
+        exit_on_failure=True,
+    )
 
 
 @cli.command(
@@ -183,7 +201,7 @@ def run(args: tuple[str, ...]) -> None:
     from dot.commands.run.run import CommandRun
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandRun(shell=shell, args=args).execute())
+    console.report_result(CommandRun(shell=shell, args=args).execute(), exit_on_failure=True)
 
 
 @cli.command("unstage", help="Unstage files, keep local changes")
@@ -192,7 +210,10 @@ def unstage(file_path: str | None = None) -> None:
     from dot.commands.unstage.unstage import CommandUnstage
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandUnstage(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute())
+    console.report_result(
+        CommandUnstage(shell=shell, dotfiles_root=_dotfiles_root(), file_path=file_path).execute(),
+        exit_on_failure=True,
+    )
 
 
 @cli.command("push", help="Push dotfiles to remote")
@@ -200,7 +221,7 @@ def push() -> None:
     from dot.commands.push.push import CommandPush
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandPush(shell=shell, dotfiles_root=_dotfiles_root()).execute())
+    console.report_result(CommandPush(shell=shell, dotfiles_root=_dotfiles_root()).execute(), exit_on_failure=True)
 
 
 @cli.command("localize", help="Make a file or directory host-specific")
@@ -222,7 +243,8 @@ def localize(path: str, source: str | None = None, *, shared: bool = False) -> N
                 shell=shell,
                 dotfiles_root=_dotfiles_root(),
                 path=path,
-            ).execute()
+            ).execute(),
+            exit_on_failure=True,
         )
         return
 
@@ -234,7 +256,8 @@ def localize(path: str, source: str | None = None, *, shared: bool = False) -> N
             dotfiles_root=_dotfiles_root(),
             path=path,
             source=source,
-        ).execute()
+        ).execute(),
+        exit_on_failure=True,
     )
 
 

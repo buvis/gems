@@ -1,0 +1,54 @@
+"""Cross-tool name discovery for the shared config-file typo check.
+
+Discovers every installed tool's *name* through the
+``buvis.config_settings`` entry-point group, never by importing a tool
+package - see AGENTS.md "the library stays interface-agnostic". A tool's
+name lets the shared-file check tell an ignored ``<tool>:`` section from a
+typo (``docs/source/configuration.rst`` "Tool-Specific Configuration
+Files"); this module answers only "is this a registered tool name", nothing
+about any tool's own fields.
+"""
+
+from __future__ import annotations
+
+import logging
+from functools import lru_cache
+from importlib.metadata import entry_points
+
+__all__ = ["CONFIG_SETTINGS_ENTRY_POINT_GROUP", "known_tool_names"]
+
+logger = logging.getLogger(__name__)
+
+CONFIG_SETTINGS_ENTRY_POINT_GROUP = "buvis.config_settings"
+
+
+@lru_cache(maxsize=1)
+def known_tool_names() -> frozenset[str]:
+    """Every registered tool's entry-point name.
+
+    Reads only ``EntryPoint.name`` - never calls ``.load()`` - so this
+    function imports no tool code at all, not even optionally; it is pure
+    distribution metadata lookup. A shared config file's ``<tool>:``
+    section for a tool missing from this set (uninstalled extra, not yet
+    registered) is indistinguishable from a genuine typo and is reported
+    as an unknown key instead of an ignored section - accepted, not
+    solved, by this design.
+
+    Cached for the lifetime of the process: ``entry_points(group=...)``
+    re-parses every installed distribution's metadata on each call, and
+    ``_load_yaml`` calls this once per ``resolve()`` call, which runs on
+    every CLI invocation of every tool. Uncached, this adds a
+    cross-distribution metadata scan to the hot path of every tool command
+    that touches ``config.yaml``/``buvis.yaml``. Tests that need a fresh
+    set after monkeypatching ``entry_points`` call
+    ``known_tool_names.cache_clear()`` first.
+
+    Never raises: the scan parses every installed distribution's metadata,
+    and another package's malformed ``entry_points.txt`` must not stop a
+    tool. On failure the set is empty, so the typo check gets noisier.
+    """
+    try:
+        return frozenset(ep.name for ep in entry_points(group=CONFIG_SETTINGS_ENTRY_POINT_GROUP))
+    except Exception:
+        logger.debug("entry-point scan failed; no tool names known", exc_info=True)
+        return frozenset()

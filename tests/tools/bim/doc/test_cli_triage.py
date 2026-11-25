@@ -105,4 +105,4 @@ class TestBimDocTriageApprove:
         )
         with patch("bim.doc_cli.get_settings", return_value=settings):
             result = runner.invoke(cli, ["doc", "triage"], catch_exceptions=True)
-        assert result.exit_code != 0 or "[doc] section missing" in result.output
+        assert result.exit_code != 0 or "`doc` section missing" in result.output

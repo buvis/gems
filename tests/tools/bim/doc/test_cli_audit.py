@@ -201,7 +201,7 @@ class TestBimDocAudit:
         with patch("bim.doc_cli.get_settings", return_value=settings):
             result = runner.invoke(cli, ["doc", "audit"], catch_exceptions=True)
 
-        assert result.exit_code != 0 or "[doc] section missing" in result.output
+        assert result.exit_code != 0 or "`doc` section missing" in result.output
 
     def test_doc_audit_missing_dependency_panics(self, runner: CliRunner, tmp_path: Path) -> None:
         settings = _bim_settings_with_doc(tmp_path)

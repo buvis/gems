@@ -72,3 +72,41 @@ class TestCommandArchiveNote:
         assert "Unarchived" in (result.output or "")
         assert data.metadata["processed"] is False
         assert data.metadata["completed"] is False
+
+    def test_missing_note_is_a_failed_result_not_an_exception(
+        self,
+        tmp_path: Path,
+        repo_mocks: tuple[MagicMock, MagicMock, MagicMock],
+    ) -> None:
+        repo, _zettel, _data = repo_mocks
+        missing = tmp_path / "202401151030 Gone.md"
+        cmd = CommandArchiveNote(
+            params=ArchiveNoteParams(paths=[missing]),
+            path_archive=tmp_path / "archive",
+            path_zettelkasten=tmp_path,
+            repo=repo,
+        )
+        result = cmd.execute()
+        assert not result.success
+        assert result.error == f"{missing} doesn't exist"
+        repo.find_by_location.assert_not_called()
+
+    def test_missing_note_beside_a_real_one_is_a_warning(
+        self,
+        zettel_file: Path,
+        tmp_path: Path,
+        repo_mocks: tuple[MagicMock, MagicMock, MagicMock],
+    ) -> None:
+        repo, _zettel, data = repo_mocks
+        data.file_path = str(zettel_file)
+        missing = tmp_path / "202401151031 Gone.md"
+        cmd = CommandArchiveNote(
+            params=ArchiveNoteParams(paths=[zettel_file, missing]),
+            path_archive=tmp_path / "archive",
+            path_zettelkasten=tmp_path,
+            repo=repo,
+        )
+        result = cmd.execute()
+        assert result.success
+        assert result.metadata["count"] == 1
+        assert result.warnings == [f"{missing} doesn't exist"]

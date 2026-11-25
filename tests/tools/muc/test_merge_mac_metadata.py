@@ -72,6 +72,24 @@ class TestMergeMacMetadata:
         assert result.info == [f"Merged metadata from {apple_double} to {data_file}"]
         assert result.warnings == []
 
+    def test_never_writes_metadata_through_a_symlinked_data_file(self, tmp_path: Path) -> None:
+        victim = tmp_path / "outside" / "victim.flac"
+        victim.parent.mkdir()
+        victim.write_bytes(b"song")
+        tree = tmp_path / "tree"
+        tree.mkdir()
+        link = tree / "track.flac"
+        link.symlink_to(victim)
+        apple_double = tree / "._track.flac"
+        apple_double.write_bytes(FIXTURE)
+
+        with patch(SETXATTR) as mock_setxattr:
+            result = merge_mac_metadata(tree)
+
+        mock_setxattr.assert_not_called()
+        assert apple_double.exists()
+        assert result.warnings == [f"Kept {apple_double}: {link} is a symlink"]
+
     def test_non_apple_double_file_is_kept(self, tmp_path: Path, caplog) -> None:
         """A ._ file that is not AppleDouble is not written into the data file."""
         data_file = tmp_path / "photo.jpg"

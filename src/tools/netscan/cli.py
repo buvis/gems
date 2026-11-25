@@ -32,7 +32,7 @@ def hosts(ctx: click.Context, interface: str | None = None) -> None:
         console.panic(str(e))
         return
 
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 @cli.command("ssh", help="Find hosts with SSH available")
@@ -54,7 +54,7 @@ def ssh(ctx: click.Context, interface: str | None = None, port: int | None = Non
         console.panic(str(e))
         return
 
-    console.report_result(result)
+    console.report_result(result, exit_on_failure=True)
 
 
 if __name__ == "__main__":

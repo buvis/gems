@@ -27,4 +27,4 @@ class TestZseqCommands:
     def test_get_last_failure(self, mock_cmd_cls: MagicMock, runner, tmp_path) -> None:
         mock_cmd_cls.return_value.execute.return_value = CommandResult(success=False, error="no files found")
         result = runner.invoke(cli, ["--path", str(tmp_path)])
-        assert result.exit_code == 0  # CLI prints failure but doesn't sys.exit
+        assert result.exit_code == 1

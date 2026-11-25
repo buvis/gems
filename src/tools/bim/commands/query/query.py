@@ -32,7 +32,13 @@ class CommandQuery:
 
         directory = str(Path(spec.source.directory).expanduser().resolve())
         use_case = QueryZettelsUseCase(self.repo, self.evaluator)
-        rows = use_case.execute(spec)
+        try:
+            rows = use_case.execute(spec)
+        except RuntimeError as exc:  # the Rust scanner reports a missing notes directory this way
+            return CommandResult(
+                success=False,
+                error=f"{exc} (set path_zettelkasten or the query's source.directory)",
+            )
         columns = list(rows[0].keys()) if rows else []
 
         return CommandResult(

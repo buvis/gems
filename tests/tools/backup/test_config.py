@@ -37,6 +37,23 @@ class TestBackupConfigModel:
 
 
 class TestLoadConfigDefault:
+    def test_ignores_an_instance_file_in_the_working_directory(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A cloned repository must not add a backup instance (agoge 2026-11-23, finding 2)."""
+        home = tmp_path / "home"
+        work = tmp_path / "work"
+        home.mkdir()
+        work.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.delenv("BUVIS_CONFIG_DIR", raising=False)
+        monkeypatch.chdir(work)
+        _write(work / "buvis-backup.yaml", "instances:\n  cwd-leak:\n    use: tar-archive\n")
+
+        cfg = load_config()
+
+        assert "cwd-leak" not in cfg.instances
+
     def test_no_user_config_returns_bundled_default(self, mocker) -> None:
         mocker.patch("backup.config.ConfigurationLoader.find_config_files_ranked", return_value=[])
         cfg = load_config()
@@ -159,6 +176,16 @@ class TestLoadConfigValidation:
         assert not isinstance(exc_info.value, yaml.YAMLError)
         assert str(cfg_dir / "buvis-backup.yaml") in str(exc_info.value)
 
+    def test_non_mapping_yaml_root_raises_fatal_not_configuration_error(self, mocker, tmp_path: Path) -> None:
+        """`load_yaml` raises `ConfigurationError` for a non-mapping YAML root;
+        `_merge_layer`'s load handler must catch it and re-raise as a
+        file-qualified `FatalError`, never let it escape as a raw traceback."""
+        user = tmp_path / "buvis-backup.yaml"
+        _write(user, "- just\n- a\n- list\n")
+        mocker.patch("backup.config.ConfigurationLoader.find_config_files_ranked", return_value=[user])
+        with pytest.raises(FatalError, match=rf"{user}.*mapping"):
+            load_config()
+
     def test_non_utf8_config_raises_fatal_not_unicode_error(self, tmp_path: Path) -> None:
         """A non-UTF-8 user config surfaces as FatalError, not a raw UnicodeError."""
         cfg_dir = tmp_path / "cfg"
@@ -242,3 +269,13 @@ class TestBackupSpecificTypoGuard:
         _write(cfg_dir / "buvis-backup.yaml", "excludes+: [scratch]\n")
         cfg = load_config(config_dir=str(cfg_dir))
         assert "scratch" in cfg.excludes
+
+    def test_list_directive_on_instances_is_not_called_a_typo(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        cfg_dir = tmp_path / "cfg"
+        cfg_dir.mkdir()
+        _write(cfg_dir / "buvis-backup.yaml", "instances-: [git-src]\n")
+        with pytest.raises(FatalError, match="requires a list value"):
+            load_config(config_dir=str(cfg_dir))
+        assert "possible typo" not in caplog.text

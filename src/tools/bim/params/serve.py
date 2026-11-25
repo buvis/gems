@@ -22,3 +22,4 @@ class ServeParams(BaseModel):
     path_projects: str | None = Field(None, description="Root for project resources folders")
     path_daily: str | None = Field(None, description="Daily notes folder for the create log entry")
     path_articles: str | None = Field(None, description="Archive root for article originals")
+    jira_config: dict[str, Any] | None = Field(None, description="Configured Jira adapter for sync_note")

@@ -1,0 +1,114 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "`_ConsoleWarningHandler.emit` reimplements `ConsoleAdapter.warning` (`console.console.print(console.format_warning(...), soft_wrap=True)`). The contract and PRD say to call `console.warning`. The deviation is justified in the assumptions ledger (Rich wraps long paths mid-message), but it reaches into the adapter's private Rich console and duplicates the marker/print logic. Simpler: give `ConsoleAdapter.warning` (or a small sibling) the `soft_wrap` behaviour and call that, so the marker stays defined in one place.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:96",
+    "reason": "deliberate, documented design deviation: the design doc's assumptions ledger records that ConsoleAdapter.warning lets Rich wrap long config paths mid-message, which breaks the single-marked-line contract this PRD exists to create. Adding soft_wrap to the shared ConsoleAdapter.warning would change wrapping for every existing caller across all tools - out of this PRD's scope. Rendered output is identical (same ' warning ' marker line), confirmed by Blake independently."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Bridge bypasses the required console adapter method using raw Rich output. Replace it with `console.warning(escape(message))`, tolerate wrapping in integration assertions, and spy on `console.warning` in the unit test.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:96",
+    "reason": "single-voice; also the same call as the discarded row above, whose documented design rationale applies"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Installer test permanently removes pre-existing bridge handlers. Previously decorated commands invoked afterward can lose marked warnings. Preserve and restore the original handlers in `finally`.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1346",
+    "reason": "single-voice; the same defect is swept as the two-voice row R3"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Mechanical check identifies an either-or assertion in `test_update_with_malformed_settings_exits_cleanly`. This test is unchanged and outside this PRD's warning-bridge scope.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1073",
+    "reason": "single-voice; and a pre-existing test this diff does not touch, outside the PRD's scope, as the reporting reviewer itself states"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "test_update_with_malformed_settings_exits_cleanly hedges with or: either outcome satisfies it",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1073",
+    "reason": "single-voice; pre-existing test unchanged by this diff, outside the PRD's scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`emit` has no try/except with `self.handleError(record)`, unlike stdlib handlers. A failure while printing (closed stdout, Rich error) propagates out of `logger.warning(...)` and aborts config resolution, which previously could not fail on a warning.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:90",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The new handler and installer have no docstrings. The contract's docstrings were dropped, including the load-bearing rationale for leaving `propagate` and `setLevel` untouched (`caplog` at root, `lastResort`). That rationale now lives only in the design doc, so a later editor of this code has no warning not to add `propagate = False`.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:83",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "test_click_integration.py grows from about 1255 to about 1360 lines, well past the 800-line limit. The task said to append, so this extends an existing breach rather than starting one. Split `TestConsoleWarningBridge` into its own module when convenient.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1262",
+    "reason": "single-voice; and a pre-existing 800-line breach the planned task explicitly extended - splitting the existing file is out of this PRD's scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The bridge logger keeps `propagate=True`, so a root handler would print the same record a second time. The dedupe lives only in the bridge handler, so the root copy is not deduped. `logging_to_console` in console.py:387 adds a root handler, but nothing under src/tools calls it, so this is latent today. The test with `--debug` passes because `--debug` does not install a root handler.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:99",
+    "reason": "single-voice; and leaving propagate untouched is the design doc's recorded decision (caplog at root, lastResort). Latent by the reviewer's own finding: nothing under src/tools calls logging_to_console."
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Dedupe state `_seen` is an unbounded, unlocked set on a process-wide handler. Concurrent emits could print one message twice, and the set never shrinks. This is negligible for a CLI.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:86",
+    "reason": "single-voice; and negligible for a short-lived single-threaded CLI process, as the reviewer itself states"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The bridge is installed in `buvis_options()` at decoration time (import time of each tool), not when a command runs. It is still idempotent, and the tests cover this. The three tools that use the loader (braid, sysup, backup) all go through `buvis_options`, so they are covered.",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:463",
+    "reason": "single-voice; and not a defect - the reviewer's own text confirms every loader-using tool is covered and the behaviour is idempotent"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Test file exceeds the 800-line limit. The file already exceeded this limit, and the supplied task explicitly places additional tests here; splitting existing tests exceeds this review's scope.",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1262",
+    "reason": "single-voice; pre-existing breach, out of this PRD's scope by the reviewer's own statement"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "test_click_integration.py exceeds 800-line limit (1361 lines)",
+    "file": "tests/lib/pybase/configuration/test_click_integration.py:1262",
+    "reason": "single-voice; pre-existing breach, out of this PRD's scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "_ConsoleWarningHandler and _install_console_warning_bridge lack docstrings explaining propagate and setLevel design rationale",
+    "file": "src/lib/buvis/pybase/configuration/click_integration.py:83",
+    "reason": "single-voice"
+  }
+]

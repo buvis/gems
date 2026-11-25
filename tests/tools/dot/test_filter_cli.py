@@ -367,6 +367,27 @@ class TestFilterIsolation:
         assert _tree_snapshot(tmp_path) == before
 
 
+class TestFilterConfigWarnings:
+    @pytest.mark.parametrize("action", ["clean", "smudge"])
+    def test_config_warnings_go_to_stderr_never_into_the_payload(self, tmp_path: Path, action: str) -> None:
+        """git stores filter stdout as the blob: a warning there corrupts the file."""
+        home = _make_home(tmp_path, "home-alpha")
+        config_dir = home / ".config" / "buvis"
+        config_dir.mkdir(parents=True)
+        (config_dir / "config.yaml").write_text("debgu: true\n")
+        (config_dir / "config.local.yaml").write_text("debug: false\n")
+        home_bytes = _encoded(home)
+        payload = home_bytes + b"\n" if action == "clean" else TOKEN + b"\n"
+        expected = TOKEN + b"\n" if action == "clean" else home_bytes + b"\n"
+
+        proc = _run_filter(action, ".gitconfig", payload, _filter_env(home), tmp_path)
+
+        assert proc.returncode == 0, proc.stderr
+        assert proc.stdout == expected
+        assert b"unknown configuration key 'debgu'" in proc.stderr
+        assert b"Retired config file" in proc.stderr
+
+
 class TestFilterHelpVisibility:
     def test_filter_group_is_hidden_from_the_top_level_help(self, runner) -> None:
         result = runner.invoke(cli, ["--help"])

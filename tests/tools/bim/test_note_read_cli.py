@@ -164,6 +164,27 @@ class TestSyncCommand:
 
 
 class TestQueryCommand:
+    def test_missing_notes_directory_is_a_console_failure_not_a_traceback(self, runner, tmp_path):
+        missing = tmp_path / "no-notes"
+        with patch("bim.note_read_cli.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(path_zettelkasten=str(missing), path_archive=str(tmp_path))
+            result = runner.invoke(cli, ["query", "-q", "{}"])
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit)
+        assert "Not a directory" in result.output
+        assert "path_zettelkasten" in result.output
+
+    def test_unknown_query_name_is_a_console_failure_not_a_traceback(self, runner, tmp_path):
+        with patch("bim.note_read_cli.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(path_zettelkasten=str(tmp_path), path_archive=str(tmp_path))
+            result = runner.invoke(cli, ["query", "-Q", "no-such-query-xyz"])
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, SystemExit)
+        assert "no-such-query-xyz" in result.output
+        assert "not found" in result.output
+
     def test_query_with_file(self, runner, tmp_path):
         query_file = tmp_path / "query.yml"
         query_file.write_text("sort: title\n")

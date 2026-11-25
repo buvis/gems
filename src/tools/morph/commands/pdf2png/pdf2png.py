@@ -22,6 +22,7 @@ class CommandPdf2Png:
     def execute(self) -> CommandResult:
         warnings: list[str] = []
         processed = 0
+        failed = 0
 
         for file_name in self.files:
             path = Path(file_name)
@@ -41,16 +42,22 @@ class CommandPdf2Png:
                 )
                 if render_result.returncode != 0:
                     warnings.append(f"Failed to render {path}")
+                    failed += 1
                     continue
 
                 pages = sorted(tmp.glob("page-*.png"))
                 if not pages:
                     warnings.append(f"No pages rendered from {path}")
+                    failed += 1
                     continue
 
                 self._stack(pages, out_path)
 
             processed += 1
+
+        # A skipped existing output is not a failure, so a pure rerun still succeeds.
+        if failed and processed == 0:
+            return CommandResult(success=False, error="No file could be converted", warnings=warnings)
 
         return CommandResult(
             success=True,

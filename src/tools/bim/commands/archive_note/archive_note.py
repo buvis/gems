@@ -28,12 +28,16 @@ class CommandArchiveNote:
 
     def execute(self) -> CommandResult:
         messages: list[str] = []
+        warnings: list[str] = []
         update_use_case = UpdateZettelUseCase(self.repo)
         delete_use_case = DeleteZettelUseCase(self.repo)
         archive = not self.params.undo
         destination = self.path_archive if archive else self.path_zettelkasten
 
         for path in self.params.paths:
+            if not path.is_file():
+                warnings.append(f"{path} doesn't exist")
+                continue
             zettel = self.repo.find_by_location(str(path))
             data = zettel.get_data()
 
@@ -54,8 +58,12 @@ class CommandArchiveNote:
             action = "Archived" if archive else "Unarchived"
             messages.append(f"{action} {path.name}")
 
+        if not messages and warnings:
+            return CommandResult(success=False, error="\n".join(warnings), warnings=warnings)
+
         return CommandResult(
             success=True,
             output="\n".join(messages),
+            warnings=warnings,
             metadata={"count": len(messages)},
         )

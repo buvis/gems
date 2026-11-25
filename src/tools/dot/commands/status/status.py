@@ -30,6 +30,12 @@ class CommandStatus:
         warnings: list[str] = []
         info: list[str] = []
 
+        # git errors are swallowed below, so a wrong root would look like a clean repo.
+        if not self.dot_git_service.is_repository():
+            return CommandResult(
+                success=False, error=f"{self.dotfiles_root} is not a dotfiles repository (no .buvis directory)"
+            )
+
         entries, hide_error = self.dot_git_service.status()
         if hide_error:
             return CommandResult(success=False, error=f"Error hiding secrets: {hide_error}")

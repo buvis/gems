@@ -859,3 +859,29 @@ class TestMainScreenRevert:
                 await pilot.pause()
 
                 ops.apply_reverse_to_worktree.assert_called_once()
+
+
+class TestDebugLogging:
+    @pytest.mark.anyio
+    async def test_debug_records_are_captured_by_textual(self, capsys) -> None:
+        import logging
+
+        import click
+        from buvis.pybase.configuration.click_integration import _apply_log_settings
+        from buvis.pybase.configuration.settings import GlobalSettings
+        from dot.tui.app import DotApp
+
+        with (
+            click.Context(click.Command("dot")) as ctx,
+            patch("dot.tui.app.ShellAdapter"),
+            patch("dot.tui.app.DotGitService", return_value=_mock_git_ops()),
+        ):
+            _apply_log_settings(ctx, GlobalSettings(debug=True), level_is_explicit=False)
+            app = DotApp(dotfiles_root="/tmp/test")
+            with patch.object(app, "_print", wraps=app._print) as capture:
+                async with app.run_test(headless=False, size=(120, 30)) as pilot:
+                    logging.getLogger("probe.tool").debug("tui-debug-probe")
+                    await pilot.pause()
+                    assert any("tui-debug-probe" in str(call) for call in capture.call_args_list)
+                    assert app.screen.is_mounted
+        assert "tui-debug-probe" not in capsys.readouterr().err
