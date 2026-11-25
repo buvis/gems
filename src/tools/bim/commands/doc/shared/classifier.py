@@ -278,22 +278,6 @@ def _resolve_classified_payload(
     return str(doc_type), str(language), confidence
 
 
-def _issuer_from_reply(candidate: object, registry: IssuerRegistry) -> tuple[str | None, str | None, str | None]:
-    """Return ``(issuer_slug, issuer_display, issuer_guess)`` for the model's issuer suggestion."""
-    if not isinstance(candidate, str) or not candidate:
-        return None, None, None
-    canonical = resolve_alias(registry, candidate)
-    if canonical is not None:
-        return canonical, registry.issuers[canonical].display_name, None
-    # Preserve the model's raw suggestion so the pipeline can pre-fill the
-    # triage proposal. Slugify enforces the same kebab-case shape as registry
-    # slugs; if normalisation collapses to empty, fall through with no guess.
-    try:
-        return None, None, slugify(candidate)
-    except ValueError:
-        return None, None, None
-
-
 class Classifier:
     """Classify OCR text via the doc LLM route."""
 
@@ -358,7 +342,7 @@ class Classifier:
         )
 
         issuer_slug, issuer_display, issuer_guess = (
-            (None, None, None) if doc_type_only else _issuer_from_reply(parsed.get("issuer_slug"), registry)
+            (None, None, None) if doc_type_only else _resolve_model_issuer(parsed, registry)
         )
 
         try:
