@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
@@ -9,9 +11,14 @@ from urllib.parse import parse_qs, urlparse
 import click
 import pytest
 from buvis.pybase.configuration import buvis_options, get_settings
+from buvis.pybase.configuration.click_integration import (
+    _ConsoleWarningHandler,
+    _install_console_warning_bridge,
+)
 from buvis.pybase.configuration.settings import GlobalSettings
-from click.testing import CliRunner
+from click.testing import CliRunner, Result
 from pydantic import BaseModel
+from rich.markup import escape
 
 
 @pytest.fixture
@@ -176,6 +183,65 @@ class TestBuvisOptionsCLIOverrides:
 
         assert result.exit_code == 0
         assert captured_settings[0].log_level == "CRITICAL"
+
+
+class TestLogSettingsTakeEffect:
+    """--debug and log_level change what the logging module prints, for one command."""
+
+    @staticmethod
+    def _invoke(runner: CliRunner, args: list[str]) -> Result:
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            probe = logging.getLogger("probe.tool")
+            probe.debug("debug-probe-7c1e")
+            probe.info("info-probe-7c1e")
+
+        return runner.invoke(cmd, args)
+
+    def test_no_log_output_unless_asked(self, runner: CliRunner) -> None:
+        assert "debug-probe-7c1e" in self._invoke(runner, ["--debug"]).stderr
+        result = self._invoke(runner, [])
+
+        assert result.exit_code == 0
+        assert "probe-7c1e" not in result.output
+
+    @pytest.mark.parametrize("args", [["--debug"], ["--log-level", "debug"]])
+    def test_debug_records_print_on_stderr_not_stdout(self, runner: CliRunner, args: list[str]) -> None:
+        result = self._invoke(runner, args)
+
+        assert result.exit_code == 0
+        assert "probe.tool: debug-probe-7c1e" in result.stderr
+        assert "probe-7c1e" not in result.stdout
+
+    def test_log_level_from_a_config_file_sets_the_threshold(self, runner: CliRunner, tmp_path: Path) -> None:
+        (tmp_path / "config.yaml").write_text("log_level: info\n")
+
+        result = self._invoke(runner, ["--config-dir", str(tmp_path)])
+
+        assert "info-probe-7c1e" in result.stderr
+        assert "debug-probe-7c1e" not in result.stderr
+
+    def test_root_logger_is_restored_after_the_command(self, runner: CliRunner) -> None:
+        root = logging.getLogger()
+        before = (root.level, list(root.handlers))
+
+        result = self._invoke(runner, ["--debug"])
+        assert "debug-probe-7c1e" in result.stderr
+
+        assert (root.level, list(root.handlers)) == before
+
+    def test_config_warning_is_not_printed_twice_under_debug(self, runner: CliRunner) -> None:
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            logging.getLogger("probe.tool").debug("debug-probe-7c1e")
+            logging.getLogger("buvis.pybase.configuration.loader").warning("twice-probe-4d2a")
+
+        result = runner.invoke(cmd, ["--debug"])
+
+        assert "debug-probe-7c1e" in result.stderr
+        assert result.stderr.count("twice-probe-4d2a") == 1
 
 
 class TestBuvisOptionsParameterized:
@@ -676,6 +742,14 @@ class TestFeedbackOption:
 class TestAutoUpdateHook:
     """Tests for the parse_args-level auto-update hook installed by buvis_options."""
 
+    @pytest.fixture(autouse=True)
+    def no_ambient_auto_update(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A shell that exports BUVIS_AUTO_UPDATE=false must not decide these tests.
+
+        Every test in this class patches the updater, so nothing real runs.
+        """
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+
     @patch("buvis.pybase.updater.check_and_update", side_effect=RuntimeError("update failed"))
     def test_update_error_does_not_crash_cli(self, mock_update: MagicMock, runner: CliRunner) -> None:
         """CLI command executes normally even when check_and_update raises."""
@@ -1069,9 +1143,10 @@ class TestUpdateFlag:
     @patch("buvis.pybase.updater.force_update")
     @patch("buvis.pybase.updater.check_and_update")
     def test_no_update_flag_still_runs_passive_check(
-        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner
+        self, mock_passive: MagicMock, mock_force: MagicMock, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Baseline: without --update, the passive check still fires and force_update does not."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
 
         @click.command()
         @buvis_options
@@ -1152,3 +1227,225 @@ class TestBuvisOptionsConfigSelectionPublished:
 
         assert result.exit_code == 0
         assert isinstance(captured[0]["settings"], GlobalSettings)
+
+
+class TestAutoUpdateHonoursResolvedSettings:
+    """The auto-update check must honour the resolved settings' auto_update field,
+    including a value that only comes from a YAML config file (not the environment)."""
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_yaml_auto_update_false_skips_check(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """auto_update: false in a YAML config file suppresses the check, with no env var set."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+        config = tmp_path / "config.yaml"
+        config.write_text("auto_update: false\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 0
+        mock_update.assert_not_called()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_yaml_auto_update_true_runs_check(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """auto_update: true in a YAML config file still lets the check run."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+        config = tmp_path / "config.yaml"
+        config.write_text("auto_update: true\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 0
+        mock_update.assert_called_once()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_env_auto_update_false_skips_check_without_yaml(
+        self, mock_update: MagicMock, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Baseline regression: BUVIS_AUTO_UPDATE=false alone (no YAML file) still suppresses the check."""
+        monkeypatch.setenv("BUVIS_AUTO_UPDATE", "false")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, [])
+
+        assert result.exit_code == 0
+        mock_update.assert_not_called()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_env_false_overrides_yaml_true(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """BUVIS_AUTO_UPDATE=false still wins over a YAML file setting auto_update: true."""
+        monkeypatch.setenv("BUVIS_AUTO_UPDATE", "false")
+        config = tmp_path / "config.yaml"
+        config.write_text("auto_update: true\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 0
+        mock_update.assert_not_called()
+
+    @patch("buvis.pybase.updater.check_and_update")
+    def test_config_resolution_failure_skips_check(
+        self, mock_update: MagicMock, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When ConfigResolver.resolve raises ConfigurationError, the config error is reported
+        (non-zero exit) and the update check never runs."""
+        monkeypatch.delenv("BUVIS_AUTO_UPDATE", raising=False)
+        config = tmp_path / "config.yaml"
+        config.write_text("log_level: BOGUS\n")
+
+        @click.command()
+        @buvis_options
+        def cmd() -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config", str(config)])
+
+        assert result.exit_code == 1
+        mock_update.assert_not_called()
+
+
+class TestConsoleWarningBridge:
+    """Tests for the console-warning bridge on the configuration logger."""
+
+    def test_retired_twin_warning_renders_with_console_marker(self, runner: CliRunner, tmp_path: Path) -> None:
+        """A retired *.local.yaml twin produces exactly one console-styled ⚠ warning line,
+        not a bare logging-style line."""
+        (tmp_path / "config.yaml").write_text("debug: true\n")
+        (tmp_path / "config.local.yaml").write_text("debug: false\n")
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
+
+        marked = re.findall(r"⚠.*?Retired config file.*?is ignored; move its values to", result.output, re.DOTALL)
+        assert len(marked) == 1
+        assert result.output.count("Retired config file") == 1
+
+    def test_retired_twin_warning_deduped_across_two_invocations(self, runner: CliRunner, tmp_path: Path) -> None:
+        """Invoking the same command twice with the same twin fixture still only warns once
+        in total across both invocations (per-process dedupe)."""
+        (tmp_path / "config.yaml").write_text("debug: true\n")
+        (tmp_path / "config.local.yaml").write_text("debug: false\n")
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        first = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
+        second = runner.invoke(cmd, ["--config-dir", str(tmp_path)])
+
+        combined_output = first.output + second.output
+        marked = re.findall(r"⚠.*?Retired config file.*?is ignored; move its values to", combined_output, re.DOTALL)
+        assert len(marked) == 1
+
+    def test_console_warning_handler_dedupes_repeated_real_logger_warning(self) -> None:
+        """A message logged twice through the real configuration logger (not through
+        a @cache-memoized warn function) is still deduped to one console line by the
+        handler's own `_seen` tracking."""
+        from buvis.pybase.adapters import console as console_module
+
+        logger = logging.getLogger("buvis.pybase.configuration")
+        for preexisting in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
+            logger.removeHandler(preexisting)
+
+        try:
+            _install_console_warning_bridge()
+            with patch.object(console_module.err_console, "print") as mock_print:
+                logger.warning("Skipping unsafe config path: %s", "/tmp/sentinel-path")
+                logger.warning("Skipping unsafe config path: %s", "/tmp/sentinel-path")
+
+            assert mock_print.call_count == 1
+        finally:
+            for installed in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
+                logger.removeHandler(installed)
+
+    def test_retired_twin_warning_marked_with_debug_flag(self, runner: CliRunner, tmp_path: Path) -> None:
+        """--debug does not bypass the console marker: still exactly one ⚠ line, no duplicate."""
+        (tmp_path / "config.yaml").write_text("debug: true\n")
+        (tmp_path / "config.local.yaml").write_text("debug: false\n")
+
+        @click.command()
+        @buvis_options
+        @click.pass_context
+        def cmd(ctx: click.Context) -> None:
+            pass
+
+        result = runner.invoke(cmd, ["--config-dir", str(tmp_path), "--debug"])
+
+        marked = re.findall(r"⚠.*?Retired config file.*?is ignored; move its values to", result.output, re.DOTALL)
+        assert len(marked) == 1
+        assert result.output.count("Retired config file") == 1
+
+    def test_handler_emit_dedupes_identical_message_but_not_distinct_ones(self) -> None:
+        """_ConsoleWarningHandler.emit renders a new message once through the console
+        adapter's stderr Rich console, escaped via rich.markup.escape and printed with
+        soft_wrap=True (so a long single-line message is never wrapped), and does not
+        suppress a distinct message text."""
+        from buvis.pybase.adapters import console as console_module
+
+        handler = _ConsoleWarningHandler()
+        duplicate_a = logging.LogRecord("test.logger", logging.WARNING, __file__, 1, "dup [msg]", None, None)
+        duplicate_b = logging.LogRecord("test.logger", logging.WARNING, __file__, 2, "dup [msg]", None, None)
+        distinct = logging.LogRecord("test.logger", logging.WARNING, __file__, 3, "other [msg]", None, None)
+
+        # patch.object on the live Console instance avoids unittest.mock.patch()'s dotted-string
+        # resolution: "buvis.pybase.adapters.console.console" is importable both as the
+        # ConsoleAdapter singleton attribute and as the console.py submodule itself, and
+        # mock.patch()'s resolve_name prefers the (attribute-less) submodule.
+        with patch.object(console_module.err_console, "print") as mock_print:
+            handler.emit(duplicate_a)
+            handler.emit(duplicate_b)
+            handler.emit(distinct)
+
+        assert mock_print.call_count == 2
+        rendered = [call.args[0] for call in mock_print.call_args_list]
+        assert rendered[0] == console_module.format_warning(escape("dup [msg]"))
+        assert rendered[1] == console_module.format_warning(escape("other [msg]"))
+        assert all(call.kwargs.get("soft_wrap") is True for call in mock_print.call_args_list)
+
+    def test_install_console_warning_bridge_is_idempotent(self) -> None:
+        """Calling the installer twice attaches exactly one handler and leaves propagate True."""
+        logger = logging.getLogger("buvis.pybase.configuration")
+        original_handlers = list(logger.handlers)
+        for preexisting in [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]:
+            logger.removeHandler(preexisting)
+
+        try:
+            _install_console_warning_bridge()
+            _install_console_warning_bridge()
+
+            handlers = [h for h in logger.handlers if isinstance(h, _ConsoleWarningHandler)]
+            assert len(handlers) == 1
+            assert logger.propagate is True
+        finally:
+            logger.handlers = original_handlers

@@ -838,7 +838,7 @@ output:
 Run it:
 
 ```bash
-bim query -f my_query.yaml
+bim query -Q my_query.yaml
 ```
 
 ## Filter Operators Reference

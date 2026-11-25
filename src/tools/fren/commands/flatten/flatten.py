@@ -30,6 +30,12 @@ class CommandFlatten:
             except (OSError, ValueError) as exc:
                 warnings.append(f"Failed to copy {item}: {exc}")
 
+        # Every warning here is one failed file.
+        if warnings and copied == 0:
+            return CommandResult(
+                success=False, error=f"No file could be copied to {self.destination}", warnings=warnings
+            )
+
         return CommandResult(
             success=True,
             output=f"Copied {copied} file(s) to {self.destination}",

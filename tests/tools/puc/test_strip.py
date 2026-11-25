@@ -20,8 +20,8 @@ class TestCommandStrip:
         mocker.patch("puc.commands.strip.strip.sys.platform", "darwin")
         missing = str(tmp_path / "nonexistent.jpg")
         result = CommandStrip(files=(missing,), keep_tags=KEEP_TAGS).execute()
-        assert result.success is True
-        assert result.output == "Processed 0 file(s)"
+        assert result.success is False
+        assert result.error == "No file could be processed"
         assert any("not a file" in w for w in result.warnings)
 
     def test_successful_strip_macos(self, mocker, tmp_path) -> None:
@@ -112,8 +112,8 @@ class TestCommandStrip:
 
         result = CommandStrip(files=(str(photo),), keep_tags=KEEP_TAGS).execute()
 
-        assert result.success is True
-        assert result.output == "Processed 0 file(s)"
+        assert result.success is False
+        assert result.error == "No file could be processed"
         assert any("failed to strip" in w for w in result.warnings)
 
     def test_multiple_files_mixed_results(self, mocker, tmp_path) -> None:

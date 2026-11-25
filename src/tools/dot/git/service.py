@@ -52,8 +52,20 @@ class DotGitService(FilterDriverMixin):
             hooks_dir = shlex.quote(f"{self.dotfiles_root}/.config/buvis/hooks")
             self.shell.exe(f"cfg config core.hooksPath {hooks_dir}", self.wd)
 
+    def is_repository(self) -> bool:
+        """Whether the dotfiles root holds the bare ``.buvis`` repository."""
+        return (self.wd / ".buvis").is_dir()
+
+    def uses_git_secret(self) -> bool:
+        """Whether git-secret is installed and set up here (a ``.gitsecret`` directory).
+
+        A repo without ``.gitsecret`` has no secrets in git-secret's care, so
+        hide and reveal have nothing to do and would only abort.
+        """
+        return self.shell.is_command_available("git-secret") and (self.wd / ".gitsecret").is_dir()
+
     def _hide_secrets(self) -> str | None:
-        if not self.shell.is_command_available("git-secret"):
+        if not self.uses_git_secret():
             return None
         err, _out = self.shell.exe("cfg secret hide -m", self.wd)
         return err or None
@@ -182,7 +194,7 @@ class DotGitService(FilterDriverMixin):
             err, _out = self.shell.exe(cmd, self.wd)
             if err:
                 return CommandResult(success=False, error=f"{prefix}{err}", warnings=warnings)
-        if self.shell.is_command_available("git-secret"):
+        if self.uses_git_secret():
             cmd = "cfg secret reveal -f"
             if passphrase:
                 cmd += f" -p {shlex.quote(passphrase)}"
@@ -198,7 +210,7 @@ class DotGitService(FilterDriverMixin):
             Success with the patch and reset lines as ``warnings`` (empty when
             nothing diverged), or a failure keeping the lines of resets done so far.
         """
-        if self.shell.is_command_available("git-secret"):
+        if self.uses_git_secret():
             # -m: re-encrypt only changed plaintext; -F: skip a registered file whose plaintext
             # is missing instead of aborting. Not _hide_secrets: status/commit keep their flags.
             err, _out = self.shell.exe("cfg secret hide -m -F", self.wd)
@@ -501,6 +513,14 @@ class DotGitService(FilterDriverMixin):
             The outcome of the reset command.
         """
         if path:
+            if not os.path.lexists(self.wd / path):
+                # Not on disk: only a path git holds a change for (a staged
+                # deletion, or a staged file since deleted) can be unstaged.
+                err, out = self.shell.exe(f"cfg status --porcelain -- {shlex.quote(path)}", self.wd)
+                if err:
+                    return CommandResult(success=False, error=f"Unstage failed: {err}")
+                if not out.strip():
+                    return CommandResult(success=False, error=f"Path {path} is not staged or tracked")
             cmd = f"cfg reset HEAD -- {shlex.quote(path)}"
             msg = f"{path} unstaged"
         else:

@@ -7,10 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **config**: a new machine-local config directory, `~/.local/.config/buvis`, layers between the shared `~/.config/buvis` directory and `$BUVIS_CONFIG_DIR`, so a machine-only override lives in its own untracked directory instead of a sibling file.
+
+### Changed
+
+- **BREAKING - bim serve**: non-loopback binds now authenticate every HTTP request, including note/query reads, health, events, and the browser bootstrap. Connect through an SSH tunnel with a loopback Host; arbitrary Hosts and direct LAN Host names are rejected. Sign in as `bim` using the per-process token from a private temporary file, or send `X-Buvis-Token` from API clients. Tokens are no longer printed at startup; access logging is disabled for every bind, loopback included. Browser requests and event streams reuse HTTP Basic credentials, with cross-origin mutation protection. Loopback authentication behavior is unchanged.
+- **BREAKING - config**: reject YAML before reading it when a directory that holds it, or holds any file or directory link on its path, is world-writable; discovered files, `--config FILE` and `--config-dir` are checked through their unresolved paths. On POSIX, a sticky directory is allowed only when both the directory and the entry in it are owned by root or the effective user. Remove other-user write permission from the named directory (`chmod o-w`) or move the config to a private directory. This applies to discovered and explicit files. A world-writable config file is now rejected too (it used to warn and load); fix it with `chmod o-w <file>`. Platforms without Unix permission semantics skip these checks.
+- **BREAKING - config**: a tool-specific config file (`buvis-<tool>.yaml` or an explicit `--config FILE`) with a key the tool does not know now stops the tool with `unknown configuration key(s): <key>` instead of silently ignoring it; misspelled directives and braid's removed `config_root` are caught too. A file named `config.yaml` or `buvis.yaml` counts as shared even when passed with `--config`. Delete the key, or move it: a setting every tool reads goes to `config.yaml` / `buvis.yaml`, another tool's value to that tool's own `buvis-<tool>.yaml`. Shared files and separately validated sysup/backup plan keys are unaffected.
+- **BREAKING - config**: tools no longer read `config.yaml`, `buvis.yaml` or `buvis-<tool>.yaml` from the working directory. A file there could add `sysup` commands or point a tool at another host. Move a per-directory file to `~/.config/buvis/` or `~/.local/.config/buvis/`, or pass `--config FILE` or `--config-dir DIR`. A config file linked to a target under the working directory, outside the config directories, is now skipped with the unsafe-path warning.
+
+### Removed
+
+- **BREAKING - config**: the `config.local.yaml` / `buvis.local.yaml` / `buvis-<tool>.local.yaml` sibling-twin convention is removed; these files are not loaded.
+  Migration: move each file's values into the same name without `.local` under `~/.local/.config/buvis/` (for example `buvis-sysup.local.yaml` -> `~/.local/.config/buvis/buvis-sysup.yaml`, `config.local.yaml` -> `~/.local/.config/buvis/config.yaml`).
+- **braid**: `--config-root`, `BUVIS_BRAID_CONFIG_ROOT` and the `~/.config/braid` directory (`sources.d`, `.braidignore`); list sources under `sources` and extra policy files under `policies` in `~/.config/buvis/buvis-braid.yaml`, machine-only ones as `sources+:` in `~/.local/.config/buvis/buvis-braid.yaml`.
+
 ### Fixed
 
+- **docs**: correct nested photo environment examples to join the prefix directly to the field (`BUVIS_PHOTO_DB__HOST`).
+
+- **config**: the automatic update check now honours `auto_update: false`/`true` from a YAML config file, not only the `BUVIS_AUTO_UPDATE` environment variable. It also honours `--config-dir` (for the check, an empty `--config-dir=` counts as absent instead of reading a config file from the working directory; the command itself then rejects it), and the global `BUVIS_AUTO_UPDATE` keeps working for tools with their own env prefix (the tool's own `<PREFIX>_AUTO_UPDATE` still wins).
+- **config**: an environment variable now beats a YAML value even when it sets the field's default, so `BUVIS_<TOOL>_AUTO_UPDATE=true` switches the update check back on over `auto_update: false`, and `BUVIS_<TOOL>_DEBUG=false` beats `debug: true`. Before, the YAML value won in exactly that case. A YAML value for a setting with a computed default (fctracker's `foreign_currencies`) now applies too; it used to be ignored without a word.
+- **config**: `--debug` and `log_level` now take effect: log records print on stderr from `DEBUG` up with `--debug`, or from an explicitly set `log_level`. Before, both were accepted and ignored. `log_level` accepts any letter case in a config file or environment variable, as `--log-level` already did; a lowercase value used to stop the tool.
+- **config**: library configuration warnings (a retired `*.local.yaml` twin, an unsafe config path, an unknown shared config key) now print with the console's ` ⚠ ` marker instead of as a bare, unmarked log line, and repeated identical warnings print once per process. They stay on stderr, so they never enter machine-read stdout such as a `dot filter` payload or `bim create --json`.
+- **config**: the global `BUVIS_AUTO_UPDATE` is read in any letter case, like every other setting; `buvis_auto_update=false` used to be ignored by tools with their own env prefix.
+- **config**: configuration errors print on stderr for every tool (sysup and backup plan errors and braid's error line too), so stdout stays clean for machine-read output such as `bim create --json`. Exit codes do not change.
+- **sysup**: shared config keys (`debug`, `log_level`, other tools' sections in `config.yaml` / `buvis.yaml`) no longer stop the plan; a list directive on a plan mapping (`commands-:`) or a type error (`prime: 5`) prints one line naming the file that supplied the bad entry and the field instead of a traceback or a pydantic dump, and typos in `buvis-sysup.yaml` are still rejected.
+- **backup**: global settings keys (`debug`, `log_level`) in `buvis-backup.yaml` are accepted, and a plan type error prints one line naming the file that supplied the bad entry and the field instead of a pydantic dump.
+- **backup**: a list directive on `instances` (`instances-:`) no longer prints a misleading "possible typo" warning before the real error.
+- **pybase**: a typo'd key in a shared config file (`config.yaml` / `buvis.yaml`) now produces a warning naming the file and key, instead of being silently ignored; a key that is a valid field of the resolving tool or a global field produces no warning. A `<tool>:` section in a shared file warns that it is ignored and names `buvis-<tool>.yaml`, and another tool's key written flat warns too: a tool's values belong in its own file.
+- **sysup**: preserve literal `[run]` and `[use:...]` kind labels in `--list` output by escaping them before console markup rendering (audit finding 13).
+- **bim docs**: document saved-query lookup and listing precedence, including `~/.local/.config/buvis/queries/` and direct file paths (audit finding 12).
+- **config docs**: describe the actual directory and filename merge order, per-key precedence, and list directives instead of claiming the first discovered file wins (audit finding 11).
+- **bim serve**: remove the private token file when the server stops on SIGTERM or SIGHUP, not only on Ctrl-C; SIGHUP shuts down gracefully like SIGTERM, without a traceback, on loopback binds too.
+- **config**: a config path that exists but cannot be read (an entry in an unreadable directory, a dangling symlink, a directory) stops the tool with `<path>: cannot read config` instead of being skipped silently.
+- **config**: a missing, directory or unreadable `--config FILE`, and an empty, missing or non-directory `--config-dir`, are reported through the console with the tool's config-error exit code instead of Click's `Usage:` error.
+- **config docs**: say that a discovered config file linked to a target outside the search directories is skipped with a warning, and that linking the whole directory works.
+- **config docs**: stop documenting `<tool>:` sections in shared files; tools read only top-level keys, so tool settings belong in `buvis-<tool>.yaml`.
+- **bim serve**: the `sync_note` action uses the configured Jira adapter (`adapters.jira`) and ignores any `jira_config` in the request, so a caller cannot send the sync to another server; the sync runs off the event loop, so a slow Jira no longer blocks other requests.
+- **bim**: `bim query` reports a missing notes directory or an unknown query name as a console error instead of a traceback.
+- **bim**: an invalid inline query (`-q` on `bim query` and on the note commands) is a console error instead of a traceback.
+- **bim**: `bim archive` reports a missing or already archived note as a console error instead of a traceback.
+- **bim**: the `bim doc` commands report a missing, malformed or empty `issuers.yml` as a console error instead of a traceback, and the missing-section error names the `doc` section (console markup used to swallow the bracketed name).
+- **bim**: `bim import` of a note with no date gives it an id in local time, matching its date and `bim create`; before, the id was in UTC.
+- **console**: when every input of a batch command failed, each failure prints once, as an error; before, the same sentence printed as a warning and again as the error (`bim show`, `edit`, `delete`, `import`, `archive`).
+- **fren**, **morph**, **puc**: `fren slug`, `fren flatten`, `morph pdf2png` and `puc strip` fail (a ` ✘ ` line, non-zero exit) when every input failed, instead of printing a success line and exiting 0. A run where some inputs succeed still exits 0 with warnings, and a `pdf2png` output that already exists is skipped, not failed.
+- **dot**: `dot status`, `dot pull` and `dot commit` skip the git-secret steps in a dotfiles repository that has no `.gitsecret` directory, instead of failing there.
+- **dot**: `dot status` fails when the dotfiles root holds no repository, instead of reporting "No modifications found"; `dot unstage` fails for a path that is neither on disk nor known to git, instead of reporting success.
+- **postup**: `postup brief` says that `data.json` is not valid when the file exists but cannot be used, instead of claiming it is missing.
+- **klyreon**: the never-ran maintenance warning names `klyreon maintain` instead of a command "once it ships".
+- **muc**: `muc tidy` never writes macOS metadata through a symlinked data file; the `._` file is kept with a warning.
+- **muc**: `muc tidy` reports an unreadable directory as such instead of calling it an empty directory, and prints each step's warnings before later steps' actions.
+- **muc docs**: say that tidy asks for confirmation only for trees over 100 files or 3 levels deep.
+- **braid**: warn with the path when an explicit policy is missing or not a regular file, while continuing sync, skipping special files without reading them, and keeping absent implicit policies silent.
+- **braid**: report unknown users in source, policy and root paths (configured, `--source`, `--policy`, `--claude-root`) and embedded NUL characters in configured paths as clean exit-2 errors before changing files or links.
+- **config**: explicit `--config FILE` uses the discovered-file environment substitution and list-directive pipeline (`sources+`, `policies+`, `policies-`) while remaining the exclusive file layer, and reports YAML errors in the same one-line form.
+- **config**: reject non-mapping YAML roots and report YAML, missing-variable, settings-validation, unreadable-file, and non-UTF-8 failures with their source filename at the CLI boundary; braid exits 2 for configuration errors and retains exit 1 for drift.
+- **braid**: warn when the retired `~/.config/braid` directory or `BUVIS_BRAID_CONFIG_ROOT` is present, directing migration to `sources` and `policies` in `buvis-braid.yaml` while continuing sync.
+- **config**: warn once per run for each retired `*.local.yaml` sibling in config search directories, naming its replacement (the same file name without `.local` under `~/.local/.config/buvis/`).
+- **braid**: exclude the current directory from config discovery so cloned repositories cannot inject skill sources or redirect the Claude root.
 - **muc**: `muc tidy` reports cleanup actions and recoverable failures through the standard console instead of losing log messages or aborting on individual filesystem errors. Warnings keep exit status 0.
 - **bim**: `bim --skill` no longer lets agents read the inbox or vault docs freely; agents read notes, tags and search results only when the user asked for that read or approved it
+- **console**: a CLI command whose failure is reported through `report_result` now exits non-zero, instead of always exiting 0 after printing a ` ✘ ` failure line. `muc tidy` is unchanged: it reports its cleanup results in step order, and recoverable filesystem problems stay warnings that keep exit status 0. The `bim doc` subcommands keep their own behaviour for pipeline failures too: `ingest` and `promote` exit non-zero only with `--strict`, and `triage --approve` exits 0. A failure before the pipeline starts (a missing file, a missing `doc` config section, an unreachable model server) exits non-zero. Scripts, hooks, or cron jobs that relied on the old exit-0-after-failure behavior will now see non-zero exits.
 
 ## [0.20.0] - 2026-11-10
 

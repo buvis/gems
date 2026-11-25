@@ -16,14 +16,16 @@ class CommandCompose:
 
     def execute(self) -> CommandResult:
         lines: list[str] = []
+        warnings: list[str] = []
         try:
-            settings = resolve_settings(self.request)
+            settings = resolve_settings(self.request, warn=warnings.append)
             result = run(settings, lines.append)
         except (BraidError, OSError) as error:
             return CommandResult(
                 success=False,
                 output="\n".join(lines),
                 error=f"braid: {error}",
+                warnings=warnings,
                 metadata={"drift": 0, "unmanaged": 0, "exit_code": 2},
             )
         change_label = "drift" if settings.mode is Mode.CHECK else "change(s)"
@@ -39,5 +41,6 @@ class CommandCompose:
             success=exit_code == 0,
             output="\n".join(lines),
             error=None,
+            warnings=warnings,
             metadata={"drift": result.drift, "unmanaged": result.unmanaged, "exit_code": exit_code},
         )
