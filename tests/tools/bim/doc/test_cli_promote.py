@@ -104,7 +104,10 @@ class TestBimDocPromote:
         yml = _staged_yml(tmp_path)
         settings = _bim_settings_with_doc(tmp_path)
 
-        def _raise(_s: object, _llm: object) -> None:
+        calls: list[tuple[object, object]] = []
+
+        def _raise(s: object, llm: object) -> None:
+            calls.append((s, llm))
             raise MissingDependency("ollama not reachable")
 
         with (
@@ -113,7 +116,11 @@ class TestBimDocPromote:
         ):
             result = runner.invoke(cli, ["doc", "promote", str(yml)], catch_exceptions=True)
 
-        assert result.exit_code != 0 or "ollama" in result.output
+        assert result.exit_code != 0
+        assert "ollama not reachable" in result.output
+        assert len(calls) == 1
+        assert calls[0][0] is settings.doc
+        assert calls[0][1] == settings.llm
 
 
 class TestBimDocPromoteStrictFlag:

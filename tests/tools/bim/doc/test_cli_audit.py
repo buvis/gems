@@ -206,7 +206,10 @@ class TestBimDocAudit:
     def test_doc_audit_missing_dependency_panics(self, runner: CliRunner, tmp_path: Path) -> None:
         settings = _bim_settings_with_doc(tmp_path)
 
-        def _raise(_s: object, _llm: object) -> None:
+        calls: list[tuple[object, object]] = []
+
+        def _raise(s: object, llm: object) -> None:
+            calls.append((s, llm))
             raise MissingDependency("ocrmypdf not found")
 
         with (
@@ -215,7 +218,11 @@ class TestBimDocAudit:
         ):
             result = runner.invoke(cli, ["doc", "audit"], catch_exceptions=True)
 
-        assert result.exit_code != 0 or "ocrmypdf" in result.output
+        assert result.exit_code != 0
+        assert "ocrmypdf not found" in result.output
+        assert len(calls) == 1
+        assert calls[0][0] is settings.doc
+        assert calls[0][1] == settings.llm
 
     def test_doc_audit_failure_prints_error(self, runner: CliRunner, tmp_path: Path) -> None:
         settings = _bim_settings_with_doc(tmp_path)

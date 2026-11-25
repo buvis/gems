@@ -117,7 +117,10 @@ class TestBimDocIngest:
         pdf = _staged_pdf(tmp_path)
         settings = _bim_settings_with_doc(tmp_path)
 
-        def _raise(_s: object, _llm: object) -> None:
+        calls: list[tuple[object, object]] = []
+
+        def _raise(s: object, llm: object) -> None:
+            calls.append((s, llm))
             raise MissingDependency("ocrmypdf not found")
 
         with (
@@ -126,8 +129,11 @@ class TestBimDocIngest:
         ):
             result = runner.invoke(cli, ["doc", "ingest", str(pdf)], catch_exceptions=True)
 
-        # console.panic exits non-zero
-        assert result.exit_code != 0 or "ocrmypdf" in result.output
+        assert result.exit_code != 0
+        assert "ocrmypdf not found" in result.output
+        assert len(calls) == 1
+        assert calls[0][0] is settings.doc
+        assert calls[0][1] == settings.llm
 
     def test_issuer_flag_is_threaded_into_params(self, runner: CliRunner, tmp_path: Path) -> None:
         pdf = _staged_pdf(tmp_path)
