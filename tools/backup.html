@@ -186,7 +186,8 @@ writing, so later filesystem changes can alter the outcome.</p>
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
 <p>Instances live in <code class="docutils literal notranslate"><span class="pre">buvis-backup.yaml</span></code> in the buvis config stack
-(<code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR</span></code> → <code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span></code> → cwd), deep-merged over a bundled
+(<code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR</span></code> → <code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis</span></code> → <code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span></code>),
+deep-merged over a bundled
 default. Instances are a <strong>name-keyed map</strong>, so a machine layer adds an instance
 under a new key and overrides a field of an existing instance by that key.</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-backup.yaml</span>
@@ -285,7 +286,7 @@ directory.</p>
 <p>The global <code class="docutils literal notranslate"><span class="pre">excludes</span></code> list layers via the 00080 <code class="docutils literal notranslate"><span class="pre">excludes+</span></code> / <code class="docutils literal notranslate"><span class="pre">excludes-</span></code>
 directives, so a lower layer extends or trims the shared list without re-listing
 it:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-backup.local.yaml  (machine-local, never `dot add`ed)</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.local/.config/buvis/buvis-backup.yaml  (machine-local, never `dot add`ed)</span>
 <span class="nt">excludes+</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">scratch-notes</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># add to the inherited list</span>
 <span class="nt">excludes-</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">target</span><span class="p p-Indicator">]</span><span class="w">          </span><span class="c1"># drop a default on this box only</span>
 </pre></div>

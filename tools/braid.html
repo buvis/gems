@@ -124,8 +124,8 @@
              
   <section id="braid">
 <span id="tool-braid"></span><h1>braid<a class="headerlink" href="#braid" title="Link to this heading"></a></h1>
-<p>Agent skill composer. <code class="docutils literal notranslate"><span class="pre">braid</span></code> reads the skill repos listed in
-<code class="docutils literal notranslate"><span class="pre">~/.config/braid/sources.d</span></code>, links every skill into the <code class="docutils literal notranslate"><span class="pre">~/.agents/skills</span></code>
+<p>Agent skill composer. <code class="docutils literal notranslate"><span class="pre">braid</span></code> reads the skill repos listed under
+<code class="docutils literal notranslate"><span class="pre">sources</span></code> in <code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis-braid.yaml</span></code>, links every skill into the <code class="docutils literal notranslate"><span class="pre">~/.agents/skills</span></code>
 union, and projects that union into Claude Code (<code class="docutils literal notranslate"><span class="pre">~/.claude/skills</span></code>) and,
 once enrolled, Kiro (<code class="docutils literal notranslate"><span class="pre">~/.kiro/skills</span></code>). It also composes always-on rules
 into Claude Code, Kiro and generated Codex, Copilot, Pi and Gemini instruction
@@ -139,7 +139,7 @@ braid<span class="w"> </span>--check<span class="w">                       </spa
 braid<span class="w"> </span>--source<span class="w"> </span>~/git/src/my-skills<span class="w">  </span><span class="c1"># add a source for this run (repeatable)</span>
 braid<span class="w"> </span>--policy<span class="w"> </span>./extra.braidignore<span class="w">  </span><span class="c1"># load one more .braidignore (repeatable)</span>
 braid<span class="w"> </span>--no-claude<span class="w">                   </span><span class="c1"># skip the Claude projection</span>
-braid<span class="w"> </span>--agents-root<span class="w"> </span>DIR<span class="w"> </span>--claude-root<span class="w"> </span>DIR<span class="w"> </span>--config-root<span class="w"> </span>DIR<span class="w">   </span><span class="c1"># override roots</span>
+braid<span class="w"> </span>--agents-root<span class="w"> </span>DIR<span class="w"> </span>--claude-root<span class="w"> </span>DIR<span class="w">   </span><span class="c1"># override roots</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> and <code class="docutils literal notranslate"><span class="pre">--check</span></code> cannot be combined. A sync prints one line per
@@ -157,21 +157,23 @@ as drift.</p>
 </section>
 <section id="sources">
 <h2>Sources<a class="headerlink" href="#sources" title="Link to this heading"></a></h2>
-<p>Each file in <code class="docutils literal notranslate"><span class="pre">~/.config/braid/sources.d</span></code> (dot files are skipped) lists one
-path per line. Text after <code class="docutils literal notranslate"><span class="pre">#</span></code> is a comment and blank lines are ignored. A
-leading <code class="docutils literal notranslate"><span class="pre">~</span></code> expands to the home directory, and a relative path resolves
-against the <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> directory.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># ~/.config/braid/sources.d/repos
-~/git/src/github.com/buvis/agent-skills
-../../../git/src/github.com/me/private-skills   # relative to sources.d
+<p><code class="docutils literal notranslate"><span class="pre">sources</span></code> in <code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis-braid.yaml</span></code> lists one path per entry.
+Each entry must be absolute or start with <code class="docutils literal notranslate"><span class="pre">~</span></code> (which expands to the home
+directory); a relative entry stops the run with an error.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.config/buvis/buvis-braid.yaml</span>
+<span class="nt">sources</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/git/src/github.com/buvis/agent-skills</span>
 </pre></div>
 </div>
+<p>A machine-only source goes in <code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/buvis-braid.yaml</span></code> as
+<code class="docutils literal notranslate"><span class="pre">sources+:</span> <span class="pre">[~/work/skills]</span></code> and is appended to the shared list by the
+config loader’s list directives - no braid code handles the merge.</p>
 <p>A source is a repo root that holds any of <code class="docutils literal notranslate"><span class="pre">skills/</span></code>, <code class="docutils literal notranslate"><span class="pre">rules/</span></code> and
 <code class="docutils literal notranslate"><span class="pre">hosts/</span></code>, or a <code class="docutils literal notranslate"><span class="pre">skills/</span></code> directory itself (which adds skills only). Each
 subdirectory of <code class="docutils literal notranslate"><span class="pre">skills/</span></code> with a <code class="docutils literal notranslate"><span class="pre">SKILL.md</span></code> is a skill; its name
 must match the directory. Two sources that ship the same skill name stop the
-run with an error. With no source in <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> and no <code class="docutils literal notranslate"><span class="pre">--source</span></code>, braid
-stops and names the <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> path to fill.</p>
+run with an error. With no source configured and no <code class="docutils literal notranslate"><span class="pre">--source</span></code>, braid
+stops and names <code class="docutils literal notranslate"><span class="pre">sources</span></code> in <code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis-braid.yaml</span></code> to fill.</p>
 </section>
 <section id="braidignore">
 <h2><code class="docutils literal notranslate"><span class="pre">.braidignore</span></code><a class="headerlink" href="#braidignore" title="Link to this heading"></a></h2>
@@ -181,8 +183,8 @@ projection, one per line, with <code class="docutils literal notranslate"><span 
 that exists from these places:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;agents_root&gt;/.braidignore</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;config_root&gt;/.braidignore</span></code></p></li>
 <li><p>each source’s repo root (the directory that holds <code class="docutils literal notranslate"><span class="pre">skills/</span></code>)</p></li>
+<li><p>each path in <code class="docutils literal notranslate"><span class="pre">policies</span></code> in <code class="docutils literal notranslate"><span class="pre">buvis-braid.yaml</span></code></p></li>
 <li><p>each <code class="docutils literal notranslate"><span class="pre">--policy</span></code> file</p></li>
 </ul>
 <p>The same names also drop rules. Unlike skills, an ignored rule leaves every
@@ -335,22 +337,32 @@ name.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_CLAUDE_ROOT</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">~/.claude</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--config-root</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_CONFIG_ROOT</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">~/.config/braid</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--kiro-root</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--kiro-root</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_KIRO_ROOT</span></code></p></td>
 <td><p>unset (<code class="docutils literal notranslate"><span class="pre">~/.kiro</span></code>)</p></td>
 </tr>
 </tbody>
 </table>
+<section id="moving-from-config-braid">
+<h3>Moving from ~/.config/braid<a class="headerlink" href="#moving-from-config-braid" title="Link to this heading"></a></h3>
+<p>braid warns about but no longer reads <code class="docutils literal notranslate"><span class="pre">~/.config/braid</span></code> or
+<code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_CONFIG_ROOT</span></code>; sync still runs. Move the paths from <code class="docutils literal notranslate"><span class="pre">sources.d</span></code>
+into <code class="docutils literal notranslate"><span class="pre">sources</span></code> in <code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis-braid.yaml</span></code> and list your old
+<code class="docutils literal notranslate"><span class="pre">.braidignore</span></code> file under <code class="docutils literal notranslate"><span class="pre">policies</span></code> to keep its exclusions active.
+Relative <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> entries are no longer accepted: convert them to absolute
+paths or paths beginning with <code class="docutils literal notranslate"><span class="pre">~</span></code>. Put machine-only sources and policies in
+<code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/buvis-braid.yaml</span></code> using <code class="docutils literal notranslate"><span class="pre">sources+:</span></code> and <code class="docutils literal notranslate"><span class="pre">policies+:</span></code>.
+If the old directory contains your policy file, move that file and update
+<code class="docutils literal notranslate"><span class="pre">policies</span></code> first. After migrating, remove the old directory and unset
+<code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_CONFIG_ROOT</span></code>.</p>
+</section>
 <section id="moving-from-agent-skills">
 <h3>Moving from agent-skills<a class="headerlink" href="#moving-from-agent-skills" title="Link to this heading"></a></h3>
 <p>braid no longer reads the old <code class="docutils literal notranslate"><span class="pre">AGENTS_ROOT</span></code>, <code class="docutils literal notranslate"><span class="pre">CLAUDE_ROOT</span></code>, <code class="docutils literal notranslate"><span class="pre">KIRO_ROOT</span></code>
-and <code class="docutils literal notranslate"><span class="pre">AGENT_SKILLS_CONFIG</span></code> env names or <code class="docutils literal notranslate"><span class="pre">~/.config/agent-skills</span></code>. Move
-<code class="docutils literal notranslate"><span class="pre">sources.d</span></code> to <code class="docutils literal notranslate"><span class="pre">~/.config/braid/sources.d</span></code> and rename any env names you
-set to the <code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_</span></code> names above.</p>
+and <code class="docutils literal notranslate"><span class="pre">AGENT_SKILLS_CONFIG</span></code> env names or <code class="docutils literal notranslate"><span class="pre">~/.config/agent-skills</span></code>. Put the
+paths from <code class="docutils literal notranslate"><span class="pre">sources.d</span></code> under <code class="docutils literal notranslate"><span class="pre">sources</span></code> in
+<code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis-braid.yaml</span></code> and rename any env names you set to the
+<code class="docutils literal notranslate"><span class="pre">BUVIS_BRAID_</span></code> names above.</p>
 </section>
 </section>
 <section id="exit-codes">
@@ -371,7 +383,10 @@ set to the <code class="docutils literal notranslate"><span class="pre">BUVIS_BR
 <tr class="row-even"><td><p>2</p></td>
 <td><p>a rejected option combination, or an error, printed as
 <code class="docutils literal notranslate"><span class="pre">braid:</span> <span class="pre">&lt;error&gt;</span></code> (bad source, duplicate skill, unreadable state,
-a path braid refuses to replace, a filesystem error)</p></td>
+a path braid refuses to replace, a filesystem error); configuration
+errors (YAML syntax, unknown keys, missing variables, invalid values,
+unreadable or unsafe files) print with the offending file’s path
+instead</p></td>
 </tr>
 </tbody>
 </table>

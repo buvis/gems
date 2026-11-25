@@ -396,7 +396,7 @@ bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </spa
 <span class="s1">}'</span>
 
 <span class="c1"># load saved query from file</span>
-bim<span class="w"> </span>query<span class="w"> </span>-f<span class="w"> </span>my-query
+bim<span class="w"> </span>query<span class="w"> </span>-Q<span class="w"> </span>my-query
 
 <span class="c1"># list saved queries</span>
 bim<span class="w"> </span>query<span class="w"> </span>-l
@@ -410,12 +410,25 @@ bim<span class="w"> </span>query<span class="w"> </span>-q<span class="w"> </spa
 </div>
 <p>Options:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">-f,</span> <span class="pre">--file</span> <span class="pre">TEXT</span></code> — query name or path to YAML spec</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-Q,</span> <span class="pre">--query-file</span> <span class="pre">TEXT</span></code> — query name or path to YAML spec</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-q,</span> <span class="pre">--query</span> <span class="pre">TEXT</span></code> — inline YAML query string</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-e,</span> <span class="pre">--edit</span></code> — pick result with fzf and open in nvim</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--tui</span></code> — render output in interactive TUI</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-l,</span> <span class="pre">--list</span></code> — list available queries</p></li>
 </ul>
+<p>Saved query names (for example, <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">query</span> <span class="pre">-Q</span> <span class="pre">my-query</span></code>) resolve to
+<code class="docutils literal notranslate"><span class="pre">&lt;name&gt;.yaml</span></code> in this search order; the first matching file wins:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR/queries/</span></code> (if set)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/queries/</span></code> (machine-local queries)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">~/.config/buvis/queries/</span></code> (shared queries)</p></li>
+<li><p>The bundled queries shipped with bim</p></li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">query</span> <span class="pre">-l</span></code> lists queries from all these locations, using the same
+precedence for duplicate names. Query files are not merged. A value containing
+<code class="docutils literal notranslate"><span class="pre">/</span></code> or ending in <code class="docutils literal notranslate"><span class="pre">.yaml</span></code> or <code class="docutils literal notranslate"><span class="pre">.yml</span></code> is treated as a file path directly,
+without searching these locations. Named queries do not search the current
+directory; <code class="docutils literal notranslate"><span class="pre">--config</span></code> and <code class="docutils literal notranslate"><span class="pre">--config-dir</span></code> do not change their search path.</p>
 <p>Output formats: <code class="docutils literal notranslate"><span class="pre">table</span></code>, <code class="docutils literal notranslate"><span class="pre">csv</span></code>, <code class="docutils literal notranslate"><span class="pre">markdown</span></code>, <code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">jsonl</span></code>, <code class="docutils literal notranslate"><span class="pre">html</span></code>, <code class="docutils literal notranslate"><span class="pre">pdf</span></code>, <code class="docutils literal notranslate"><span class="pre">kanban</span></code>.</p>
 <p>See <a class="reference external" href="https://github.com/buvis/gems/blob/master/docs/source/bim-query-examples.md">bim-query-examples.md</a>
 for a comprehensive reference with filter operators, calculated columns, lookups, and more.</p>
@@ -525,7 +538,7 @@ bim<span class="w"> </span>serve<span class="w"> </span>--no-browser
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--port</span> <span class="pre">INTEGER</span></code> — port (default: 8000)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-H,</span> <span class="pre">--host</span> <span class="pre">TEXT</span></code> — host (default: 127.0.0.1)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--no-browser</span></code> — don’t auto-open browser</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-browser</span></code> — don’t auto-open browser on a loopback bind</p></li>
 </ul>
 <section id="security">
 <h4>Security<a class="headerlink" href="#security" title="Link to this heading"></a></h4>
@@ -534,33 +547,59 @@ bim<span class="w"> </span>serve<span class="w"> </span>--no-browser
 must land under the configured zettelkasten directory or the archive
 directory. Anything else is rejected with <code class="docutils literal notranslate"><span class="pre">403</span></code>, including traversal and
 symlinks that point out of the vault.</p>
-<p><strong>Auth token.</strong> Each run mints a random token and requires it as the
-<code class="docutils literal notranslate"><span class="pre">X-Buvis-Token</span></code> header on the mutating and query-executing routes (patch,
-open, the action endpoints, and the query <code class="docutils literal notranslate"><span class="pre">exec</span></code> routes). Read-only <code class="docutils literal notranslate"><span class="pre">GET</span></code>
-routes are not token-gated. When the server is bound to a loopback host the
-token is injected into the served page, so the web UI authenticates itself
-with no setup.</p>
-<p><strong>Host allowlist.</strong> On a loopback bind the <code class="docutils literal notranslate"><span class="pre">Host</span></code> header must be
-<code class="docutils literal notranslate"><span class="pre">localhost</span></code>, <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>, or <code class="docutils literal notranslate"><span class="pre">::1</span></code>. A request with any other <code class="docutils literal notranslate"><span class="pre">Host</span></code>
-gets <code class="docutils literal notranslate"><span class="pre">400</span></code>, which is what stops a web page you visit from reaching the
-server by DNS rebinding.</p>
+<p><strong>Auth token.</strong> Each run mints a random token. On a loopback bind, read-only
+routes remain available without authentication; mutations and query execution
+require <code class="docutils literal notranslate"><span class="pre">X-Buvis-Token</span></code>. The local page receives the token automatically.</p>
+<p><strong>BREAKING — remote authentication.</strong> On any non-loopback bind, every HTTP
+request requires authentication, including the page, assets, all API reads,
+health, events, mutations, and unknown routes. Missing or invalid credentials
+return <code class="docutils literal notranslate"><span class="pre">401</span></code>. API clients use <code class="docutils literal notranslate"><span class="pre">X-Buvis-Token</span></code>. Browsers use HTTP Basic
+authentication with username <code class="docutils literal notranslate"><span class="pre">bim</span></code> and the same token as the password.
+The browser reuses these credentials for dashboard requests and native event
+streams; no token is added to URLs or embedded in the remote page.
+Cross-origin browser mutations are rejected with <code class="docutils literal notranslate"><span class="pre">403</span></code>.</p>
+<p><strong>BREAKING — Host validation.</strong> Every bind accepts only <code class="docutils literal notranslate"><span class="pre">localhost</span></code>,
+<code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>, or <code class="docutils literal notranslate"><span class="pre">[::1]</span></code> as the HTTP Host, with an optional port. Other Hosts
+return <code class="docutils literal notranslate"><span class="pre">400</span></code>, even with valid credentials. Binding to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> or <code class="docutils literal notranslate"><span class="pre">::</span></code>
+never disables this check. Remote clients must use the tunnel procedure below;
+direct LAN IP addresses and custom DNS names are no longer accepted as Hosts.</p>
 </section>
-<section id="exposing-it-on-the-lan">
-<h4>Exposing it on the LAN<a class="headerlink" href="#exposing-it-on-the-lan" title="Link to this heading"></a></h4>
-<p><code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">serve</span> <span class="pre">-H</span> <span class="pre">0.0.0.0</span></code> publishes the dashboard to every host that can reach
-the port, and weakens two of the protections above:</p>
-<ul class="simple">
-<li><p><strong>Reads are unauthenticated.</strong> The <code class="docutils literal notranslate"><span class="pre">GET</span></code> routes carry no token, so anyone
-who can reach the port can read your notes.</p></li>
-<li><p><strong>The Host allowlist is disabled</strong> (it cannot be derived from a wildcard
-bind), so rebinding protection does not apply.</p></li>
-<li><p><strong>Writes still require the token, and the token is not in the page.</strong> It is
-printed to the console you started the server from; pass it as
-<code class="docutils literal notranslate"><span class="pre">X-Buvis-Token</span></code> to make authenticated requests. The web UI served over the
-LAN can therefore read but not write.</p></li>
-</ul>
-<p>The command prints a warning saying as much on every non-loopback bind. Use it
-only on a network you trust.</p>
+<section id="remote-connection-through-ssh">
+<h4>Remote connection through SSH<a class="headerlink" href="#remote-connection-through-ssh" title="Link to this heading"></a></h4>
+<p>HTTP Basic authentication does not encrypt the token. Use an SSH tunnel for
+remote access; do not send credentials over a direct plaintext LAN connection.
+The SSH account must be the account running <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">serve</span></code>. The generated token
+grants access to all dashboard operations for that process; it is not a
+separate user account or a read-only credential.</p>
+<p>If port 8000 is occupied on the client, change the first port in <code class="docutils literal notranslate"><span class="pre">-L</span></code> and
+use that port in the browser. Keep the tunnel bound to <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>.
+For an IPv6-only server bind, forward to <code class="docutils literal notranslate"><span class="pre">[::1]</span></code> instead of <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>
+on the server side of the tunnel.
+For a specific server bind address, use that address as the tunnel destination;
+keep the browser URL on <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>. Non-loopback binds do not auto-open a
+browser on the server.</p>
+<p>The server prints only the token file’s path, never the token. On POSIX the
+temporary directory has mode <code class="docutils literal notranslate"><span class="pre">0700</span></code> and its atomically written token file
+has mode <code class="docutils literal notranslate"><span class="pre">0600</span></code>. The file is removed on normal shutdown and interruption;
+a forced kill can leave an obsolete file, but restarting generates a new token.
+Read the token only in a private terminal without session recording. Do not
+place it in a URL, command-line argument, log, or shared configuration.
+HTTP access logging is disabled; startup and error logging remain enabled.</p>
+<p>The app does not store the token in local storage or cookies. Browsers can
+cache HTTP authentication credentials until the browser session ends; restarting
+the server invalidates them. Do not save this temporary password in the browser. Python callers of <code class="docutils literal notranslate"><span class="pre">create_app</span></code> receive
+the token in <code class="docutils literal notranslate"><span class="pre">app.state.buvis_token</span></code> and must provide their own private handoff;
+the temporary-file lifecycle belongs to <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">serve</span></code>.</p>
+<ol class="arabic simple">
+<li><p>On the server, run <code class="docutils literal notranslate"><span class="pre">bim</span> <span class="pre">serve</span> <span class="pre">-H</span> <span class="pre">0.0.0.0</span> <span class="pre">-p</span> <span class="pre">8000</span> <span class="pre">--no-browser</span></code>.</p></li>
+<li><p>Record the <code class="docutils literal notranslate"><span class="pre">Private</span> <span class="pre">token</span> <span class="pre">file:</span></code> path from startup output.</p></li>
+<li><p>In a second private SSH terminal, read the recorded token file with <code class="docutils literal notranslate"><span class="pre">cat</span></code>.</p></li>
+<li><p>On your client, run <code class="docutils literal notranslate"><span class="pre">ssh</span> <span class="pre">-N</span> <span class="pre">-L</span> <span class="pre">127.0.0.1:8000:127.0.0.1:8000</span> <span class="pre">user&#64;server</span></code>.</p></li>
+<li><p>Open <code class="docutils literal notranslate"><span class="pre">http://127.0.0.1:8000/</span></code> in your browser.</p></li>
+<li><p>Enter <code class="docutils literal notranslate"><span class="pre">bim</span></code> as the username and the token as the password.</p></li>
+<li><p>Close the browser session when you finish.</p></li>
+<li><p>Stop the server to revoke the token.</p></li>
+</ol>
 </section>
 </section>
 </section>

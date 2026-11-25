@@ -276,7 +276,7 @@ Query zettels with a YAML filter/sort/output spec.
     }'
 
     # load saved query from file
-    bim query -f my-query
+    bim query -Q my-query
 
     # list saved queries
     bim query -l
@@ -289,11 +289,25 @@ Query zettels with a YAML filter/sort/output spec.
 
 Options:
 
-- ``-f, --file TEXT`` — query name or path to YAML spec
+- ``-Q, --query-file TEXT`` — query name or path to YAML spec
 - ``-q, --query TEXT`` — inline YAML query string
 - ``-e, --edit`` — pick result with fzf and open in nvim
 - ``--tui`` — render output in interactive TUI
 - ``-l, --list`` — list available queries
+
+Saved query names (for example, ``bim query -Q my-query``) resolve to
+``<name>.yaml`` in this search order; the first matching file wins:
+
+1. ``$BUVIS_CONFIG_DIR/queries/`` (if set)
+2. ``~/.local/.config/buvis/queries/`` (machine-local queries)
+3. ``~/.config/buvis/queries/`` (shared queries)
+4. The bundled queries shipped with bim
+
+``bim query -l`` lists queries from all these locations, using the same
+precedence for duplicate names. Query files are not merged. A value containing
+``/`` or ending in ``.yaml`` or ``.yml`` is treated as a file path directly,
+without searching these locations. Named queries do not search the current
+directory; ``--config`` and ``--config-dir`` do not change their search path.
 
 Output formats: ``table``, ``csv``, ``markdown``, ``json``, ``jsonl``, ``html``, ``pdf``, ``kanban``.
 
@@ -424,7 +438,7 @@ Options:
 
 - ``-p, --port INTEGER`` — port (default: 8000)
 - ``-H, --host TEXT`` — host (default: 127.0.0.1)
-- ``--no-browser`` — don't auto-open browser
+- ``--no-browser`` — don't auto-open browser on a loopback bind
 
 Security
 ^^^^^^^^
@@ -436,35 +450,65 @@ must land under the configured zettelkasten directory or the archive
 directory. Anything else is rejected with ``403``, including traversal and
 symlinks that point out of the vault.
 
-**Auth token.** Each run mints a random token and requires it as the
-``X-Buvis-Token`` header on the mutating and query-executing routes (patch,
-open, the action endpoints, and the query ``exec`` routes). Read-only ``GET``
-routes are not token-gated. When the server is bound to a loopback host the
-token is injected into the served page, so the web UI authenticates itself
-with no setup.
+**Auth token.** Each run mints a random token. On a loopback bind, read-only
+routes remain available without authentication; mutations and query execution
+require ``X-Buvis-Token``. The local page receives the token automatically.
 
-**Host allowlist.** On a loopback bind the ``Host`` header must be
-``localhost``, ``127.0.0.1``, or ``::1``. A request with any other ``Host``
-gets ``400``, which is what stops a web page you visit from reaching the
-server by DNS rebinding.
+**BREAKING — remote authentication.** On any non-loopback bind, every HTTP
+request requires authentication, including the page, assets, all API reads,
+health, events, mutations, and unknown routes. Missing or invalid credentials
+return ``401``. API clients use ``X-Buvis-Token``. Browsers use HTTP Basic
+authentication with username ``bim`` and the same token as the password.
+The browser reuses these credentials for dashboard requests and native event
+streams; no token is added to URLs or embedded in the remote page.
+Cross-origin browser mutations are rejected with ``403``.
 
-Exposing it on the LAN
-^^^^^^^^^^^^^^^^^^^^^^
+**BREAKING — Host validation.** Every bind accepts only ``localhost``,
+``127.0.0.1``, or ``[::1]`` as the HTTP Host, with an optional port. Other Hosts
+return ``400``, even with valid credentials. Binding to ``0.0.0.0`` or ``::``
+never disables this check. Remote clients must use the tunnel procedure below;
+direct LAN IP addresses and custom DNS names are no longer accepted as Hosts.
 
-``bim serve -H 0.0.0.0`` publishes the dashboard to every host that can reach
-the port, and weakens two of the protections above:
+Remote connection through SSH
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- **Reads are unauthenticated.** The ``GET`` routes carry no token, so anyone
-  who can reach the port can read your notes.
-- **The Host allowlist is disabled** (it cannot be derived from a wildcard
-  bind), so rebinding protection does not apply.
-- **Writes still require the token, and the token is not in the page.** It is
-  printed to the console you started the server from; pass it as
-  ``X-Buvis-Token`` to make authenticated requests. The web UI served over the
-  LAN can therefore read but not write.
+HTTP Basic authentication does not encrypt the token. Use an SSH tunnel for
+remote access; do not send credentials over a direct plaintext LAN connection.
+The SSH account must be the account running ``bim serve``. The generated token
+grants access to all dashboard operations for that process; it is not a
+separate user account or a read-only credential.
 
-The command prints a warning saying as much on every non-loopback bind. Use it
-only on a network you trust.
+If port 8000 is occupied on the client, change the first port in ``-L`` and
+use that port in the browser. Keep the tunnel bound to ``127.0.0.1``.
+For an IPv6-only server bind, forward to ``[::1]`` instead of ``127.0.0.1``
+on the server side of the tunnel.
+For a specific server bind address, use that address as the tunnel destination;
+keep the browser URL on ``127.0.0.1``. Non-loopback binds do not auto-open a
+browser on the server.
+
+The server prints only the token file's path, never the token. On POSIX the
+temporary directory has mode ``0700`` and its atomically written token file
+has mode ``0600``. The file is removed on normal shutdown and interruption;
+a forced kill can leave an obsolete file, but restarting generates a new token.
+Read the token only in a private terminal without session recording. Do not
+place it in a URL, command-line argument, log, or shared configuration.
+HTTP access logging is disabled; startup and error logging remain enabled.
+
+The app does not store the token in local storage or cookies. Browsers can
+cache HTTP authentication credentials until the browser session ends; restarting
+the server invalidates them. Do not save this temporary password in the browser. Python callers of ``create_app`` receive
+the token in ``app.state.buvis_token`` and must provide their own private handoff;
+the temporary-file lifecycle belongs to ``bim serve``.
+
+1. On the server, run ``bim serve -H 0.0.0.0 -p 8000 --no-browser``.
+2. Record the ``Private token file:`` path from startup output.
+3. In a second private SSH terminal, read the recorded token file with ``cat``.
+4. On your client, run ``ssh -N -L 127.0.0.1:8000:127.0.0.1:8000 user@server``.
+5. Open ``http://127.0.0.1:8000/`` in your browser.
+6. Enter ``bim`` as the username and the token as the password.
+7. Close the browser session when you finish.
+8. Stop the server to revoke the token.
+
 
 bim doc
 -------

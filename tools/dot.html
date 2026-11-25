@@ -240,6 +240,14 @@ as <code class="docutils literal notranslate"><span class="pre">staged</span></c
 See <a class="reference internal" href="#host-specific-config">Host-specific config</a>. Status also warns <code class="docutils literal notranslate"><span class="pre">hooks</span> <span class="pre">dir</span> <span class="pre">missing</span></code> or
 <code class="docutils literal notranslate"><span class="pre">pre-commit</span> <span class="pre">hook</span> <span class="pre">missing</span></code> when the configured <code class="docutils literal notranslate"><span class="pre">core.hooksPath</span></code> points at a
 missing directory or at one without a <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> hook.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> keeps hiding (re-encrypting) secrets on every run, with no flag
+to disable it. That protection stays on by design. <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> now exits
+non-zero if hiding secrets, or any other part of the status report, fails,
+instead of always exiting 0 after printing a failure.</p>
+<p>A dotfiles repository without a <code class="docutils literal notranslate"><span class="pre">.gitsecret</span></code> directory has no secrets under
+git-secret, so <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">pull</span></code> and <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">commit</span></code> skip the
+git-secret steps there. <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">status</span></code> fails when the dotfiles root holds no
+repository at all (no <code class="docutils literal notranslate"><span class="pre">.buvis</span></code> directory).</p>
 </section>
 <section id="dot-materialize">
 <h3>dot materialize<a class="headerlink" href="#dot-materialize" title="Link to this heading"></a></h3>

@@ -175,16 +175,22 @@ remove junk files, delete empty directories.</p>
 <p>Reports every completed rename, metadata merge, file deletion and empty-directory
 removal through the standard console. Filesystem failures and metadata files that
 could not be merged produce warnings; tidy continues with the remaining items.
-Warnings alone do not change the exit status (0). Actions and warnings are also
-available to programmatic callers in <code class="docutils literal notranslate"><span class="pre">CommandResult.info</span></code> and
-<code class="docutils literal notranslate"><span class="pre">CommandResult.warnings</span></code>.</p>
+Warnings alone do not change the exit status (0). Each step’s actions and
+warnings print in the order the step ran. Programmatic callers get them in
+<code class="docutils literal notranslate"><span class="pre">CommandResult.info</span></code> and <code class="docutils literal notranslate"><span class="pre">CommandResult.warnings</span></code>, and per step in
+<code class="docutils literal notranslate"><span class="pre">CommandResult.metadata[&quot;steps&quot;]</span></code>.</p>
+<p>Tidy deletes files with the junk extensions (<code class="docutils literal notranslate"><span class="pre">tidy_junk_extensions</span></code>, which
+include <code class="docutils literal notranslate"><span class="pre">.txt</span></code>, <code class="docutils literal notranslate"><span class="pre">.md</span></code>, <code class="docutils literal notranslate"><span class="pre">.jpg</span></code> and <code class="docutils literal notranslate"><span class="pre">.png</span></code> by default) without asking. It
+asks for confirmation only when the tree holds more than 100 files or is deeper
+than 3 levels. A metadata file (<code class="docutils literal notranslate"><span class="pre">._name</span></code>) whose data file is a symlink is
+kept with a warning; tidy never writes metadata through a link.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>muc<span class="w"> </span>tidy<span class="w"> </span>~/music/album/
-muc<span class="w"> </span>tidy<span class="w"> </span>~/music/album/<span class="w"> </span>-y<span class="w">     </span><span class="c1"># skip confirmation</span>
+muc<span class="w"> </span>tidy<span class="w"> </span>~/music/album/<span class="w"> </span>-y<span class="w">     </span><span class="c1"># skip the large-tree confirmation</span>
 </pre></div>
 </div>
 <p>Options:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">-y,</span> <span class="pre">--yes</span></code> — skip confirmation prompt</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-y,</span> <span class="pre">--yes</span></code> — skip the confirmation prompt for trees over 100 files or 3 levels deep</p></li>
 </ul>
 </section>
 </section>

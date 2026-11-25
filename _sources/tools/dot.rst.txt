@@ -126,6 +126,16 @@ See `Host-specific config`_. Status also warns ``hooks dir missing`` or
 ``pre-commit hook missing`` when the configured ``core.hooksPath`` points at a
 missing directory or at one without a ``pre-commit`` hook.
 
+``dot status`` keeps hiding (re-encrypting) secrets on every run, with no flag
+to disable it. That protection stays on by design. ``dot status`` now exits
+non-zero if hiding secrets, or any other part of the status report, fails,
+instead of always exiting 0 after printing a failure.
+
+A dotfiles repository without a ``.gitsecret`` directory has no secrets under
+git-secret, so ``dot status``, ``dot pull`` and ``dot commit`` skip the
+git-secret steps there. ``dot status`` fails when the dotfiles root holds no
+repository at all (no ``.buvis`` directory).
+
 dot materialize
 ~~~~~~~~~~~~~~~
 

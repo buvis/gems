@@ -145,7 +145,8 @@ carries <code class="docutils literal notranslate"><span class="pre">when.os:</s
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
 <p>Updaters live in <code class="docutils literal notranslate"><span class="pre">buvis-sysup.yaml</span></code> in the buvis config stack
-(<code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR</span></code> → <code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span></code> → cwd), deep-merged over a bundled
+(<code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR</span></code> → <code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis</span></code> → <code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span></code>),
+deep-merged over a bundled
 default. The updater collection is a <strong>flat map keyed by name</strong>, so a machine
 layer adds an entry with a new key and overrides a field of an existing entry
 by that key — no list-append syntax, and every base key survives unless
@@ -317,11 +318,12 @@ during the later <code class="docutils literal notranslate"><span class="pre">uv
 <section id="sharing-across-machines">
 <h3>Sharing across machines<a class="headerlink" href="#sharing-across-machines" title="Link to this heading"></a></h3>
 <p>The buvis config stack is itself managed by <code class="docutils literal notranslate"><span class="pre">dot</span></code>. Track <code class="docutils literal notranslate"><span class="pre">buvis-sysup.yaml</span></code>
-(<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code>) to share your updater set across machines. For a value that must
-live on <strong>one</strong> machine only, put it in a sibling <code class="docutils literal notranslate"><span class="pre">buvis-sysup.local.yaml</span></code> and
-<strong>do not</strong> <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code> it: the loader gives <code class="docutils literal notranslate"><span class="pre">*.local.yaml</span></code> a higher priority
-than its shared twin, so it overrides per-key while staying untracked.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-sysup.local.yaml  (machine-local, never `dot add`ed)</span>
+under <code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span></code> (<code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code>) to share your updater set across
+machines. For a value that must live on <strong>one</strong> machine only, put it in
+<code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/buvis-sysup.yaml</span></code> and <strong>do not</strong> <code class="docutils literal notranslate"><span class="pre">dot</span> <span class="pre">add</span></code> it: the
+loader ranks <code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis</span></code> above the shared <code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span></code>
+directory, so it overrides per-key while staying untracked.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local, never `dot add`ed)</span>
 <span class="nt">commands</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">helm</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">        </span><span class="c1"># this box has no helm repos — skip it here only</span>
@@ -330,8 +332,8 @@ than its shared twin, so it overrides per-key while staying untracked.</p>
 <span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">sudo work-vpn-refresh</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
-<p>Because <code class="docutils literal notranslate"><span class="pre">*.local.yaml</span></code> is deliberately untracked, it is not backed up by the
-dotfiles repo; keep a separate backup of anything only it holds.</p>
+<p>Because <code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis</span></code> is deliberately untracked, it is outside
+the dotfiles repo and is backed up with the machine.</p>
 </section>
 </section>
 <section id="priming-sudo">
@@ -424,7 +426,7 @@ notifications. Group options go before the subcommand:
 <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">--only</span> <span class="pre">brew</span> <span class="pre">status</span></code> runs status only and ignores the updater filters;
 <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">status</span> <span class="pre">--only</span> <span class="pre">brew</span></code> is a usage error.</p>
 <p>Configure optional ntfy pushes in the same config stack, including the
-machine-local twin:</p>
+machine-local directory (<code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/buvis-sysup.yaml</span></code>):</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">ntfy</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://ntfy.example</span>
 <span class="w">  </span><span class="nt">topic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sysup</span>
@@ -454,7 +456,7 @@ prompt. <code class="docutils literal notranslate"><span class="pre">--only</spa
 every applicable item and folds it into the attention record. Items are not
 probed under <code class="docutils literal notranslate"><span class="pre">--list</span></code> or <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>, and <code class="docutils literal notranslate"><span class="pre">sysup</span> <span class="pre">status</span></code> only reads the
 record.</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-sysup.yaml / buvis-sysup.local.yaml</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.config/buvis/buvis-sysup.yaml or ~/.local/.config/buvis/buvis-sysup.yaml</span>
 <span class="nt">expiry</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">gh-agent</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
@@ -476,9 +478,10 @@ clears the item’s entry; any other outcome records or updates it.</p>
 (disabled, or a <code class="docutils literal notranslate"><span class="pre">when</span></code> mismatch) never blocks either.</p>
 <p>The bundled <code class="docutils literal notranslate"><span class="pre">gh-agent</span></code> item ships <strong>disabled</strong> with no probe, so tracking stays
 off until you opt in. Enable it on one host from the untracked
-<code class="docutils literal notranslate"><span class="pre">buvis-sysup.local.yaml</span></code> by supplying a private-repository <code class="docutils literal notranslate"><span class="pre">probe</span></code> and
-<code class="docutils literal notranslate"><span class="pre">enabled:</span> <span class="pre">true</span></code>; the bundled <code class="docutils literal notranslate"><span class="pre">config_dir</span></code> and refresh procedure merge in:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis-sysup.local.yaml  (machine-local, never `dot add`ed)</span>
+<code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/buvis-sysup.yaml</span></code> by supplying a private-repository
+<code class="docutils literal notranslate"><span class="pre">probe</span></code> and <code class="docutils literal notranslate"><span class="pre">enabled:</span> <span class="pre">true</span></code>; the bundled <code class="docutils literal notranslate"><span class="pre">config_dir</span></code> and refresh
+procedure merge in:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.local/.config/buvis/buvis-sysup.yaml  (machine-local, never `dot add`ed)</span>
 <span class="nt">expiry</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">gh-agent</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>

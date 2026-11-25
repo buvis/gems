@@ -74,6 +74,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#using-configresolver-directly">Using ConfigResolver Directly</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#security-considerations">Security Considerations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#configuration-directory-permissions">Configuration Directory Permissions</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#sensitive-fields">Sensitive Fields</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#json-size-limits">JSON Size Limits</a></li>
 </ul>
@@ -232,23 +233,24 @@ automatic precedence handling across multiple sources.</p>
 <li><p><a class="reference internal" href="#using-configresolver-directly" id="id22">Using ConfigResolver Directly</a></p></li>
 <li><p><a class="reference internal" href="#security-considerations" id="id23">Security Considerations</a></p>
 <ul>
-<li><p><a class="reference internal" href="#sensitive-fields" id="id24">Sensitive Fields</a></p></li>
-<li><p><a class="reference internal" href="#json-size-limits" id="id25">JSON Size Limits</a></p></li>
+<li><p><a class="reference internal" href="#configuration-directory-permissions" id="id24">Configuration Directory Permissions</a></p></li>
+<li><p><a class="reference internal" href="#sensitive-fields" id="id25">Sensitive Fields</a></p></li>
+<li><p><a class="reference internal" href="#json-size-limits" id="id26">JSON Size Limits</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#error-handling" id="id26">Error Handling</a></p></li>
-<li><p><a class="reference internal" href="#testing" id="id27">Testing</a></p>
+<li><p><a class="reference internal" href="#error-handling" id="id27">Error Handling</a></p></li>
+<li><p><a class="reference internal" href="#testing" id="id28">Testing</a></p>
 <ul>
-<li><p><a class="reference internal" href="#testing-code-that-uses-settings" id="id28">Testing Code That Uses Settings</a></p></li>
-<li><p><a class="reference internal" href="#mocking-get-settings-in-click-commands" id="id29">Mocking get_settings in Click Commands</a></p></li>
-<li><p><a class="reference internal" href="#testing-with-environment-variables" id="id30">Testing with Environment Variables</a></p></li>
+<li><p><a class="reference internal" href="#testing-code-that-uses-settings" id="id29">Testing Code That Uses Settings</a></p></li>
+<li><p><a class="reference internal" href="#mocking-get-settings-in-click-commands" id="id30">Mocking get_settings in Click Commands</a></p></li>
+<li><p><a class="reference internal" href="#testing-with-environment-variables" id="id31">Testing with Environment Variables</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#troubleshooting" id="id31">Troubleshooting</a></p>
+<li><p><a class="reference internal" href="#troubleshooting" id="id32">Troubleshooting</a></p>
 <ul>
-<li><p><a class="reference internal" href="#missing-environment-variables" id="id32">Missing Environment Variables</a></p></li>
-<li><p><a class="reference internal" href="#yaml-not-loading" id="id33">YAML Not Loading</a></p></li>
-<li><p><a class="reference internal" href="#precedence-confusion" id="id34">Precedence Confusion</a></p></li>
+<li><p><a class="reference internal" href="#missing-environment-variables" id="id33">Missing Environment Variables</a></p></li>
+<li><p><a class="reference internal" href="#yaml-not-loading" id="id34">YAML Not Loading</a></p></li>
+<li><p><a class="reference internal" href="#precedence-confusion" id="id35">Precedence Confusion</a></p></li>
 </ul>
 </li>
 </ul>
@@ -280,29 +282,29 @@ environment, which wins over <code class="docutils literal notranslate"><span cl
 <tr class="row-odd"><th class="head"><p>Python Field</p></th>
 <th class="head"><p>CLI Argument</p></th>
 <th class="head"><p>Environment Variable</p></th>
-<th class="head"><p>YAML Path</p></th>
+<th class="head"><p>YAML Path (in <code class="docutils literal notranslate"><span class="pre">buvis-photo.yaml</span></code>)</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">debug</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_DEBUG</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">photo.debug</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">debug</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">log_level</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--log-level</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_LOG_LEVEL</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">photo.log_level</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">log_level</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">library_path</span></code></p></td>
 <td><p>(custom option)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_LIBRARY_PATH</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">photo.library_path</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">library_path</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">db.host</span></code> (nested)</p></td>
 <td><p>(custom option)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO__DB__HOST</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">photo.db.host</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_DB__HOST</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">db.host</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -310,7 +312,7 @@ environment, which wins over <code class="docutils literal notranslate"><span cl
 <ul class="simple">
 <li><p><strong>CLI</strong>: Built-in options (<code class="docutils literal notranslate"><span class="pre">--debug</span></code>, <code class="docutils literal notranslate"><span class="pre">--log-level</span></code>) are added automatically. Custom fields require explicit Click options - see <a class="reference internal" href="#adding-custom-cli-options">Adding Custom CLI Options</a> below.</p></li>
 <li><p><strong>ENV</strong>: Prefix from <code class="docutils literal notranslate"><span class="pre">env_prefix</span></code> + field name in SCREAMING_SNAKE_CASE. Nested fields use <code class="docutils literal notranslate"><span class="pre">__</span></code> delimiter.</p></li>
-<li><p><strong>YAML</strong>: Tool name (derived from prefix) as root key, then field names with <code class="docutils literal notranslate"><span class="pre">.</span></code> for nesting.</p></li>
+<li><p><strong>YAML</strong>: Field names as top-level keys of the tool’s own <code class="docutils literal notranslate"><span class="pre">buvis-&lt;tool&gt;.yaml</span></code> (tool name derived from the prefix), with <code class="docutils literal notranslate"><span class="pre">.</span></code> for nesting. A <code class="docutils literal notranslate"><span class="pre">&lt;tool&gt;:</span></code> root key is not read.</p></li>
 </ul>
 </section>
 <section id="adding-custom-cli-options">
@@ -354,30 +356,41 @@ options and pass them to <code class="docutils literal notranslate"><span class=
 </section>
 <section id="tool-specific-configuration-files">
 <h3><a class="toc-backref" href="#id6" role="doc-backlink">Tool-Specific Configuration Files</a><a class="headerlink" href="#tool-specific-configuration-files" title="Link to this heading"></a></h3>
-<p>You can separate tool configuration from global settings using dedicated files.
-The loader searches for both <code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code> AND <code class="docutils literal notranslate"><span class="pre">buvis-{tool}.yaml</span></code>:</p>
-<p><strong>Option 1: Section in global file</strong></p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.config/buvis/buvis.yaml</span>
-<span class="nt">debug</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="nt">log_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INFO</span>
-
-<span class="nt">photo</span><span class="p">:</span><span class="w">                    </span><span class="c1"># Tool section (from BUVIS_PHOTO_ prefix)</span>
-<span class="w">  </span><span class="nt">library_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/photos</span>
-<span class="w">  </span><span class="nt">quality</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">90</span>
-</pre></div>
-</div>
-<p><strong>Option 2: Separate tool file</strong></p>
+<p>Put tool settings in a dedicated file, as top-level keys. The loader reads
+<code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>, <code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code> and <code class="docutils literal notranslate"><span class="pre">buvis-{tool}.yaml</span></code>:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ~/.config/buvis/buvis-photo.yaml</span>
 <span class="nt">library_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/photos</span>
 <span class="nt">quality</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">90</span>
 </pre></div>
 </div>
-<p>Both are merged. Tool-specific file values override global file values for that tool.</p>
+<p>All files are merged flat, by top-level key. Tool-specific file values override
+shared file values for that tool. A <code class="docutils literal notranslate"><span class="pre">&lt;tool&gt;:</span></code> section in a shared file is
+<strong>not</strong> projected onto that tool: <code class="docutils literal notranslate"><span class="pre">photo:</span> <span class="pre">{library_path:</span> <span class="pre">...}</span></code> in
+<code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code> is ignored by the photo tool. Use <code class="docutils literal notranslate"><span class="pre">buvis-photo.yaml</span></code>, or a
+top-level key in a shared file when every tool should see it.</p>
 <p>The tool name is derived from <code class="docutils literal notranslate"><span class="pre">env_prefix</span></code>:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_</span></code> → searches for <code class="docutils literal notranslate"><span class="pre">buvis-photo.yaml</span></code> and <code class="docutils literal notranslate"><span class="pre">photo:</span></code> section</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">BUVIS_</span></code> (default) → only <code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code>, no tool section</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_</span></code> → searches for <code class="docutils literal notranslate"><span class="pre">buvis-photo.yaml</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BUVIS_</span></code> (default) → only the shared files</p></li>
 </ul>
+<p>A top-level key in <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>/<code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code> <strong>warns</strong> (never fails) when
+the resolving tool does not read it, that is, when it is not one of that tool’s
+own settings fields or declared deferred keys. Two warnings exist:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'&lt;tool&gt;:'</span> <span class="pre">section</span> <span class="pre">is</span> <span class="pre">ignored</span></code> for a key that is a registered tool’s name.
+Move the section’s keys to <code class="docutils literal notranslate"><span class="pre">buvis-&lt;tool&gt;.yaml</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">unknown</span> <span class="pre">configuration</span> <span class="pre">key</span> <span class="pre">'&lt;key&gt;'</span></code> for anything else. This catches a typo
+(<code class="docutils literal notranslate"><span class="pre">srouces:</span></code> instead of <code class="docutils literal notranslate"><span class="pre">sources:</span></code>). It also fires for another tool’s key
+written flat in a shared file: the owning tool reads it, every other tool
+warns. Keep a tool’s values in its own <code class="docutils literal notranslate"><span class="pre">buvis-&lt;tool&gt;.yaml</span></code> and shared
+files for settings every tool reads (<code class="docutils literal notranslate"><span class="pre">debug</span></code>, <code class="docutils literal notranslate"><span class="pre">log_level</span></code>,
+<code class="docutils literal notranslate"><span class="pre">auto_update</span></code>, <code class="docutils literal notranslate"><span class="pre">adapters</span></code>).</p></li>
+</ul>
+<p>The rule goes by file name, so <code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">path/to/config.yaml</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code>) is warn-only too. Any other explicit or custom-named file
+(e.g. <code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">custom.yaml</span></code>) still fails hard on an unknown key, unchanged.
+A tool’s name is known once it is registered under the
+<code class="docutils literal notranslate"><span class="pre">buvis.config_settings</span></code> entry-point group in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>.</p>
 <p><strong>Complete example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">GlobalSettings</span><span class="p">,</span> <span class="n">ToolSettings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">SettingsConfigDict</span>
@@ -398,13 +411,12 @@ The loader searches for both <code class="docutils literal notranslate"><span cl
 </div>
 <p>All equivalent ways to set <code class="docutils literal notranslate"><span class="pre">db.host</span></code> to <code class="docutils literal notranslate"><span class="pre">&quot;prod.db.local&quot;</span></code>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Environment variable (note double underscore for nesting)</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_PHOTO__DB__HOST</span><span class="o">=</span>prod.db.local
+<span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_PHOTO_DB__HOST</span><span class="o">=</span>prod.db.local
 </pre></div>
 </div>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># YAML (~/.config/buvis/buvis.yaml)</span>
-<span class="nt">photo</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">db</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod.db.local</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># YAML (~/.config/buvis/buvis-photo.yaml)</span>
+<span class="nt">db</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod.db.local</span>
 </pre></div>
 </div>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Python default</span>
@@ -488,10 +500,10 @@ the same source.</p>
 <span class="nb">export</span><span class="w"> </span><span class="nv">MYPROJECT_VERBOSE</span><span class="o">=</span><span class="nb">true</span>
 </pre></div>
 </div>
-<p>YAML (<code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis.yaml</span></code>):</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">myproject</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">data_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/data</span>
-<span class="w">  </span><span class="nt">verbose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<p>YAML (<code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis.yaml</span></code>; top-level keys, a <code class="docutils literal notranslate"><span class="pre">myproject:</span></code> section
+would be ignored):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">data_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/data</span>
+<span class="nt">verbose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </pre></div>
 </div>
 </section>
@@ -518,12 +530,11 @@ the same source.</p>
 <span class="p">)</span>  <span class="c1"># -&gt; "Use the Application Programming Interface"</span>
 </pre></div>
 </div>
-<p>YAML:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">doc</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">formatting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">abbreviations</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">API</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Application Programming Interface</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">CLI</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Command Line Interface</span>
+<p>YAML (top-level keys):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">formatting</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">abbreviations</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">API</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Application Programming Interface</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">CLI</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Command Line Interface</span>
 </pre></div>
 </div>
 </section>
@@ -532,14 +543,21 @@ the same source.</p>
 <h2><a class="toc-backref" href="#id13" role="doc-backlink">YAML Configuration</a><a class="headerlink" href="#yaml-configuration" title="Link to this heading"></a></h2>
 <section id="file-locations">
 <h3><a class="toc-backref" href="#id14" role="doc-backlink">File Locations</a><a class="headerlink" href="#file-locations" title="Link to this heading"></a></h3>
-<p>Config files are discovered in order (first found wins):</p>
+<p>Discovered config files are merged in this order, from lowest to highest priority:</p>
 <ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR/buvis.yaml</span></code> (if env var set)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/buvis/buvis.yaml</span></code> (or <code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis.yaml</span></code>)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">~/.buvis/buvis.yaml</span></code> (legacy)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">./buvis.yaml</span></code> (current directory)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">~/.config/buvis/</span></code> (shared config)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/</span></code> (machine-local overrides)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR/</span></code> (if set; <code class="docutils literal notranslate"><span class="pre">--config-dir</span></code> overrides this directory)</p></li>
 </ol>
-<p>For tool-specific config, files named <code class="docutils literal notranslate"><span class="pre">buvis-{tool}.yaml</span></code> are also checked.</p>
+<p>The working directory is not searched, so a file in a cloned repository cannot
+configure a tool. A settings class opts in with
+<code class="docutils literal notranslate"><span class="pre">config_include_cwd:</span> <span class="pre">ClassVar[bool]</span> <span class="pre">=</span> <span class="pre">True</span></code>; no bundled tool does. For a
+per-directory file, pass <code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">FILE</span></code> or <code class="docutils literal notranslate"><span class="pre">--config-dir</span> <span class="pre">DIR</span></code>.</p>
+<p>Within each directory, files merge in the order <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>, <code class="docutils literal notranslate"><span class="pre">buvis.yaml</span></code>,
+then <code class="docutils literal notranslate"><span class="pre">buvis-{tool}.yaml</span></code>. Later values win per key; nested mappings merge
+recursively, and plain list values replace earlier lists. See
+<a class="reference internal" href="#config-list-merge-directives"><span class="std std-ref">List Merge Directives (key+ / key-)</span></a> to append or remove list entries.
+An explicit <code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">FILE</span></code> uses only that file instead of discovered files.</p>
 </section>
 <section id="file-format">
 <h3><a class="toc-backref" href="#id15" role="doc-backlink">File Format</a><a class="headerlink" href="#file-format" title="Link to this heading"></a></h3>
@@ -550,13 +568,8 @@ the same source.</p>
 <span class="nt">ollama_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">llama3.2:3b</span><span class="w">        </span><span class="c1"># optional, enables LLM features</span>
 <span class="nt">ollama_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:11434</span><span class="w">  </span><span class="c1"># default</span>
 
-<span class="c1"># Tool-specific sections</span>
-<span class="nt">photo</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">watermark</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">default_album</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shared</span>
-<span class="nt">music</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">normalize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">bitrate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">320</span>
+<span class="c1"># Tool settings go in buvis-&lt;tool&gt;.yaml as top-level keys,</span>
+<span class="c1"># not in &lt;tool&gt;: sections here (those are ignored).</span>
 </pre></div>
 </div>
 </section>
@@ -580,7 +593,7 @@ the same source.</p>
 </div>
 </section>
 <section id="list-merge-directives-key-key">
-<h3><a class="toc-backref" href="#id17" role="doc-backlink">List Merge Directives (<code class="docutils literal notranslate"><span class="pre">key+</span></code> / <code class="docutils literal notranslate"><span class="pre">key-</span></code>)</a><a class="headerlink" href="#list-merge-directives-key-key" title="Link to this heading"></a></h3>
+<span id="config-list-merge-directives"></span><h3><a class="toc-backref" href="#id17" role="doc-backlink">List Merge Directives (<code class="docutils literal notranslate"><span class="pre">key+</span></code> / <code class="docutils literal notranslate"><span class="pre">key-</span></code>)</a><a class="headerlink" href="#list-merge-directives-key-key" title="Link to this heading"></a></h3>
 <p>By default, when config layers merge, a <strong>list value in a higher-priority layer
 replaces the lower one wholesale</strong> — a machine-local file that wants to add one
 entry to a shared list has to re-list the whole thing. Directive keys let a layer
@@ -600,7 +613,7 @@ no-op.</p></li>
 <span class="c1"># layer 2 — user-wide (~/.config/buvis), higher priority: ADD, don't replace</span>
 <span class="nt">excludes+</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.terraform</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">.gradle</span><span class="p p-Indicator">]</span>
 
-<span class="c1"># layer 3 — machine-local (*.local.yaml), higher still: ADD one, CANCEL a default</span>
+<span class="c1"># layer 3 — machine-local (~/.local/.config/buvis), higher still: ADD one, CANCEL a default</span>
 <span class="nt">excludes+</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.cache</span><span class="p p-Indicator">]</span>
 <span class="nt">excludes-</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.venv</span><span class="p p-Indicator">]</span>
 </pre></div>
@@ -641,8 +654,8 @@ in <code class="docutils literal notranslate"><span class="pre">PhotoSettings</s
 </pre></div>
 </div>
 <p>For nested fields, use double underscores:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_PHOTO__MUSIC__NORMALIZE</span><span class="o">=</span><span class="nb">true</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_PHOTO__MUSIC__BITRATE</span><span class="o">=</span><span class="m">256</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_PHOTO_MUSIC__NORMALIZE</span><span class="o">=</span><span class="nb">true</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_PHOTO_MUSIC__BITRATE</span><span class="o">=</span><span class="m">256</span>
 </pre></div>
 </div>
 </section>
@@ -709,7 +722,7 @@ warning.</p>
     <span class="n">db</span><span class="p">:</span> <span class="n">DatabaseSettings</span> <span class="o">=</span> <span class="n">DatabaseSettings</span><span class="p">()</span>  <span class="c1"># Nested</span>
 
 <span class="c1"># Environment variable for nested field:</span>
-<span class="c1"># BUVIS_MYAPP__DB__HOST=prod.db.local  (double underscore!)</span>
+<span class="c1"># BUVIS_MYAPP_DB__HOST=prod.db.local  (double underscore!)</span>
 </pre></div>
 </div>
 <p><strong>Why this matters</strong>: If you used <code class="docutils literal notranslate"><span class="pre">GlobalSettings</span></code> for nested classes, each would try to load from env independently with potentially conflicting prefixes.</p>
@@ -742,7 +755,7 @@ warning.</p>
 </pre></div>
 </div>
 <p>Nested environment variables map to these namespaces (for example,
-<code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO__RESOLUTION=medium</span></code> or <code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO__MUSIC__BITRATE=256</span></code>).</p>
+<code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_RESOLUTION=medium</span></code> or <code class="docutils literal notranslate"><span class="pre">BUVIS_PHOTO_MUSIC__BITRATE=256</span></code>).</p>
 </section>
 </section>
 <section id="using-configresolver-directly">
@@ -764,8 +777,42 @@ warning.</p>
 </section>
 <section id="security-considerations">
 <h2><a class="toc-backref" href="#id23" role="doc-backlink">Security Considerations</a><a class="headerlink" href="#security-considerations" title="Link to this heading"></a></h2>
+<section id="configuration-directory-permissions">
+<h3><a class="toc-backref" href="#id24" role="doc-backlink">Configuration Directory Permissions</a><a class="headerlink" href="#configuration-directory-permissions" title="Link to this heading"></a></h3>
+<p>On POSIX systems, the YAML loader resolves the configuration path one component
+at a time and checks, before reading any content, the directory holding the
+real file and the directory holding every symlink met on the way, file or
+directory link alike. Discovered files, <code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">FILE</span></code> and <code class="docutils literal notranslate"><span class="pre">--config-dir</span></code>
+are all checked through their unresolved paths. A world-writable holding directory is rejected unless it
+has the sticky bit and <strong>both</strong> the directory and the entry in it are owned by
+root (UID 0) or the process’s effective user. The sticky bit alone is
+insufficient: another directory owner or entry owner can still replace the
+configuration, and anyone can replace a symlink in a world-writable directory.</p>
+<p>This is a compatibility change for all discovered layers and explicit
+<code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">FILE</span></code> selections. Rejection raises <code class="docutils literal notranslate"><span class="pre">ConfigurationError</span></code>; the CLI
+reports the unsafe path and exits without applying the file (braid exits 2).
+Remove other-user write permission from the named directory with <code class="docutils literal notranslate"><span class="pre">chmod</span> <span class="pre">o-w</span></code>
+or move the configuration into a private directory. The loader never changes
+permissions itself.</p>
+<p>Ordinary private directories keep their existing behavior. A world-writable
+<strong>file</strong> is rejected the same way, even in an accepted directory: any local user
+could rewrite it. Fix it with <code class="docutils literal notranslate"><span class="pre">chmod</span> <span class="pre">o-w</span> <span class="pre">&lt;file&gt;</span></code>. Non-POSIX platforms,
+including Windows, skip these checks because
+Unix permission bits and ownership do not describe their access controls.
+This check does not assess other ancestors, group permissions, ACLs, or
+protect against concurrent filesystem changes between inspection and reading.</p>
+<p>A configuration path that exists but cannot be read stops the tool with
+<code class="docutils literal notranslate"><span class="pre">&lt;path&gt;:</span> <span class="pre">cannot</span> <span class="pre">read</span> <span class="pre">config:</span> <span class="pre">...</span></code> instead of being skipped: an unreadable
+file, an entry in a directory the user cannot search, a dangling symlink, a
+directory in place of a file, or a missing <code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">FILE</span></code>.</p>
+<p>A discovered config file that is a symlink to a target outside every search
+directory is <strong>skipped</strong>, with the warning <code class="docutils literal notranslate"><span class="pre">Skipping</span> <span class="pre">unsafe</span> <span class="pre">config</span> <span class="pre">path:</span>
+<span class="pre">&lt;path&gt;</span></code>, and the tool runs without it. This affects per-file links into a
+dotfiles repository. Link the whole directory instead
+(<code class="docutils literal notranslate"><span class="pre">~/.config/buvis</span> <span class="pre">-&gt;</span> <span class="pre">~/dotfiles/buvis</span></code>); that layout loads.</p>
+</section>
 <section id="sensitive-fields">
-<h3><a class="toc-backref" href="#id24" role="doc-backlink">Sensitive Fields</a><a class="headerlink" href="#sensitive-fields" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id25" role="doc-backlink">Sensitive Fields</a><a class="headerlink" href="#sensitive-fields" title="Link to this heading"></a></h3>
 <p>Fields matching patterns like <code class="docutils literal notranslate"><span class="pre">password</span></code>, <code class="docutils literal notranslate"><span class="pre">token</span></code>, <code class="docutils literal notranslate"><span class="pre">api_key</span></code>, <code class="docutils literal notranslate"><span class="pre">secret</span></code>
 are automatically:</p>
 <ul class="simple">
@@ -786,7 +833,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="json-size-limits">
-<h3><a class="toc-backref" href="#id25" role="doc-backlink">JSON Size Limits</a><a class="headerlink" href="#json-size-limits" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id26" role="doc-backlink">JSON Size Limits</a><a class="headerlink" href="#json-size-limits" title="Link to this heading"></a></h3>
 <p>Environment variables containing JSON are limited to 64KB to prevent DoS:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecureSettingsMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span>
@@ -801,7 +848,7 @@ are automatically:</p>
 </section>
 </section>
 <section id="error-handling">
-<h2><a class="toc-backref" href="#id26" role="doc-backlink">Error Handling</a><a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id27" role="doc-backlink">Error Handling</a><a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ConfigResolver</span><span class="p">,</span>
     <span class="n">ConfigurationError</span><span class="p">,</span>
@@ -820,9 +867,9 @@ are automatically:</p>
 </div>
 </section>
 <section id="testing">
-<h2><a class="toc-backref" href="#id27" role="doc-backlink">Testing</a><a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id28" role="doc-backlink">Testing</a><a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
 <section id="testing-code-that-uses-settings">
-<h3><a class="toc-backref" href="#id28" role="doc-backlink">Testing Code That Uses Settings</a><a class="headerlink" href="#testing-code-that-uses-settings" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id29" role="doc-backlink">Testing Code That Uses Settings</a><a class="headerlink" href="#testing-code-that-uses-settings" title="Link to this heading"></a></h3>
 <p>For unit tests, create settings directly without the resolver:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">myapp.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyAppSettings</span>
@@ -839,7 +886,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="mocking-get-settings-in-click-commands">
-<h3><a class="toc-backref" href="#id29" role="doc-backlink">Mocking get_settings in Click Commands</a><a class="headerlink" href="#mocking-get-settings-in-click-commands" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id30" role="doc-backlink">Mocking get_settings in Click Commands</a><a class="headerlink" href="#mocking-get-settings-in-click-commands" title="Link to this heading"></a></h3>
 <p>Use <code class="docutils literal notranslate"><span class="pre">pytest-mock</span></code> to mock <code class="docutils literal notranslate"><span class="pre">get_settings</span></code> in CLI tests:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">click.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">CliRunner</span>
@@ -860,11 +907,11 @@ are automatically:</p>
 </div>
 </section>
 <section id="testing-with-environment-variables">
-<h3><a class="toc-backref" href="#id30" role="doc-backlink">Testing with Environment Variables</a><a class="headerlink" href="#testing-with-environment-variables" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id31" role="doc-backlink">Testing with Environment Variables</a><a class="headerlink" href="#testing-with-environment-variables" title="Link to this heading"></a></h3>
 <p>Use <code class="docutils literal notranslate"><span class="pre">monkeypatch</span></code> to set env vars for integration tests:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_settings_from_env</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">):</span>
     <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setenv</span><span class="p">(</span><span class="s2">"BUVIS_MYAPP_DEBUG"</span><span class="p">,</span> <span class="s2">"true"</span><span class="p">)</span>
-    <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setenv</span><span class="p">(</span><span class="s2">"BUVIS_MYAPP__DB__HOST"</span><span class="p">,</span> <span class="s2">"env-db"</span><span class="p">)</span>
+    <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setenv</span><span class="p">(</span><span class="s2">"BUVIS_MYAPP_DB__HOST"</span><span class="p">,</span> <span class="s2">"env-db"</span><span class="p">)</span>
 
     <span class="kn">from</span><span class="w"> </span><span class="nn">buvis.pybase.configuration</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigResolver</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">myapp.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyAppSettings</span>
@@ -879,9 +926,9 @@ are automatically:</p>
 </section>
 </section>
 <section id="troubleshooting">
-<h2><a class="toc-backref" href="#id31" role="doc-backlink">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id32" role="doc-backlink">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
 <section id="missing-environment-variables">
-<h3><a class="toc-backref" href="#id32" role="doc-backlink">Missing Environment Variables</a><a class="headerlink" href="#missing-environment-variables" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id33" role="doc-backlink">Missing Environment Variables</a><a class="headerlink" href="#missing-environment-variables" title="Link to this heading"></a></h3>
 <p>If YAML uses <code class="docutils literal notranslate"><span class="pre">${VAR}</span></code> without a default, you’ll get <code class="docutils literal notranslate"><span class="pre">MissingEnvVarError</span></code>:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># buvis.yaml</span>
 <span class="nt">database</span><span class="p">:</span>
@@ -894,12 +941,12 @@ are automatically:</p>
 </div>
 </section>
 <section id="yaml-not-loading">
-<h3><a class="toc-backref" href="#id33" role="doc-backlink">YAML Not Loading</a><a class="headerlink" href="#yaml-not-loading" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id34" role="doc-backlink">YAML Not Loading</a><a class="headerlink" href="#yaml-not-loading" title="Link to this heading"></a></h3>
 <p>Check file locations (in order):</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">$BUVIS_CONFIG_DIR/buvis.yaml</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">~/.local/.config/buvis/buvis.yaml</span></code> (machine-local overrides)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">~/.config/buvis/buvis.yaml</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">~/.buvis/buvis.yaml</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">./buvis.yaml</span></code></p></li>
 </ol>
 <p>Debug with:</p>
@@ -912,7 +959,7 @@ are automatically:</p>
 </div>
 </section>
 <section id="precedence-confusion">
-<h3><a class="toc-backref" href="#id34" role="doc-backlink">Precedence Confusion</a><a class="headerlink" href="#precedence-confusion" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id35" role="doc-backlink">Precedence Confusion</a><a class="headerlink" href="#precedence-confusion" title="Link to this heading"></a></h3>
 <p>CLI always wins, then ENV, then YAML, then defaults.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># This won't work as expected:</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">BUVIS_DEBUG</span><span class="o">=</span><span class="nb">true</span>
@@ -1146,12 +1193,14 @@ pass <code class="docutils literal notranslate"><span class="pre">tool_name</spa
 <dt class="sig sig-object py" id="buvis.pybase.configuration.buvis_options">
 <span class="sig-prename descclassname"><span class="pre">buvis.pybase.configuration.</span></span><span class="sig-name descname"><span class="pre">buvis_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">F</span></span></span><a class="headerlink" href="#buvis.pybase.configuration.buvis_options" title="Link to this definition"></a></dt>
 <dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">buvis.pybase.configuration.</span></span><span class="sig-name descname"><span class="pre">buvis_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings_class_or_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">F</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">F</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<span class="sig-prename descclassname"><span class="pre">buvis.pybase.configuration.</span></span><span class="sig-name descname"><span class="pre">buvis_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">settings_class_or_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_error_exit_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">F</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">F</span><span class="p"><span class="pre">]</span></span></span></span></dt>
 <dd><p>Add standard BUVIS options to a Click command.</p>
 <p>Adds <code class="docutils literal notranslate"><span class="pre">--version</span></code>, <code class="docutils literal notranslate"><span class="pre">--feedback</span></code>, <code class="docutils literal notranslate"><span class="pre">--update</span></code>, <code class="docutils literal notranslate"><span class="pre">--debug/--no-debug</span></code>,
 <code class="docutils literal notranslate"><span class="pre">--log-level</span></code>, <code class="docutils literal notranslate"><span class="pre">--config-dir</span></code>, <code class="docutils literal notranslate"><span class="pre">--config</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">--config-create</span></code> options. Resolves settings using ConfigResolver
 and injects into Click context.
+<code class="docutils literal notranslate"><span class="pre">config_error_exit_code</span></code> selects the CLI status for configuration errors
+(default 1; tools reserving 1 for another outcome can select 2).
 Can be applied as <code class="docutils literal notranslate"><span class="pre">&#64;buvis_options</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;buvis_options()</span></code>, or
 <code class="docutils literal notranslate"><span class="pre">&#64;buvis_options(settings_class=CustomSettings)</span></code>.</p>
 <p>Example:</p>
@@ -1189,6 +1238,16 @@ Defaults to GlobalSettings for backward compatibility.</p></li>
 </dl>
 </dd></dl>
 
+<p>The update check honours <code class="docutils literal notranslate"><span class="pre">auto_update</span></code> from the configuration file selected by
+<code class="docutils literal notranslate"><span class="pre">--config</span></code> or <code class="docutils literal notranslate"><span class="pre">--config-dir</span></code>, or found by default discovery. A tool-prefixed
+<code class="docutils literal notranslate"><span class="pre">BUVIS_&lt;TOOL&gt;_AUTO_UPDATE</span></code> overrides it; the global <code class="docutils literal notranslate"><span class="pre">BUVIS_AUTO_UPDATE</span></code>
+applies only when no tool-prefixed variable is set. Command-line overrides are
+not applied to this check.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--debug</span></code> and <code class="docutils literal notranslate"><span class="pre">log_level</span></code> (flag, environment or config file, any letter
+case) set what the <code class="docutils literal notranslate"><span class="pre">logging</span></code> module prints for the command. <code class="docutils literal notranslate"><span class="pre">--debug</span></code> shows
+everything from <code class="docutils literal notranslate"><span class="pre">DEBUG</span></code> up; an explicit <code class="docutils literal notranslate"><span class="pre">log_level</span></code> sets that threshold.
+Log records print on stderr. With neither set, nothing changes. Records logged
+while the configuration itself loads are not shown.</p>
 </section>
 <section id="exceptions">
 <h2>Exceptions<a class="headerlink" href="#exceptions" title="Link to this heading"></a></h2>
