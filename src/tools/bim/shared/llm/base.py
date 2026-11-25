@@ -308,7 +308,8 @@ def run_cli(argv: list[str], stdin_text: str, *, timeout: float, backend: str, s
     found = shutil.which(argv[0])
     if found is None:
         raise BackendError(BackendReason.EXIT, f"{argv[0]!r} is not on PATH", backend=backend)
-    argv = [os.path.abspath(found), *argv[1:]]
+    # Absolute but not normalized: collapsing ".." before the OS follows a symlink can name another file.
+    argv = [os.path.join(os.getcwd(), found), *argv[1:]]
     try:
         data = stdin_text.encode("utf-8")
     except UnicodeEncodeError as exc:

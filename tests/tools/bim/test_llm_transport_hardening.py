@@ -241,6 +241,24 @@ class TestRelativeExecutable:
         assert reply["stdin"] == prompt
         assert Path(reply["cwd"]).resolve() != tmp_path.resolve()
 
+    def test_runs_the_file_which_found_when_the_path_climbs_out_of_a_symlink(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # work/link -> real/sub, so the OS reads work/link/../bin/tool as real/bin/tool;
+        # normalizing the string first would pick the decoy at work/bin/tool.
+        for where, marker in (("real", "checked"), ("work", "decoy")):
+            tool = tmp_path / where / "bin" / "tool"
+            tool.parent.mkdir(parents=True)
+            tool.write_text(f"#!{sys.executable}\nprint({marker!r})\n")
+            tool.chmod(0o755)
+        (tmp_path / "real" / "sub").mkdir()
+        (tmp_path / "work" / "link").symlink_to(tmp_path / "real" / "sub")
+        monkeypatch.chdir(tmp_path / "work")
+
+        out = run_cli(["link/../bin/tool"], "", timeout=30, backend="x")
+
+        assert out.strip() == "checked"
+
     @pytest.mark.parametrize("name", ["./does-not-exist", "no-such-tool-for-bim-tests"])
     def test_missing_executable_is_an_exit_error_naming_the_path_problem(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, name: str
