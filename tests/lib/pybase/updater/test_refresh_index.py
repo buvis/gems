@@ -8,9 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from buvis.pybase.updater.detector import InstallerInfo
-from buvis.pybase.updater.executor import _refresh_package_index, run_update, run_update_interactive
+from buvis.pybase.updater.executor import _refresh_package_index, _update_lock, run_update, run_update_interactive
 
 _CLEAN_ARGS = ("uv", "cache", "clean", "--force", "buvis-gems")
+_PLAIN_CLEAN_ARGS = ("uv", "cache", "clean", "buvis-gems")
 _WARNING_PREFIX = "Could not refresh uv cache for buvis-gems:"
 
 
@@ -27,7 +28,7 @@ def _warnings(mock_log: MagicMock) -> list[tuple[Path, str, str]]:
 
 
 class TestRefreshPackageIndex:
-    @pytest.mark.parametrize("method", ["mise-pipx", "uv-tool", "uv-venv"])
+    @pytest.mark.parametrize("method", ["mise-pipx", "uv-tool"])
     def test_cleans_uv_cache_for_uv_backed_installers(self, method: str, tmp_path: Path) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess.run") as mock_run,
@@ -42,7 +43,8 @@ class TestRefreshPackageIndex:
         assert mock_run.call_args.kwargs == {"capture_output": True, "timeout": 30, "cwd": tmp_path}
         mock_log.assert_not_called()
 
-    @pytest.mark.parametrize("method", ["pipx", "pip-venv", "unknown"])
+    # uv-venv upgrades with `uv pip install --upgrade`, which implies --refresh.
+    @pytest.mark.parametrize("method", ["pipx", "pip-venv", "uv-venv", "unknown"])
     def test_skips_installers_that_do_not_use_uv(self, method: str, tmp_path: Path) -> None:
         with (
             patch("buvis.pybase.updater.executor.subprocess.run") as mock_run,
@@ -93,8 +95,9 @@ class TestRefreshPackageIndex:
         ):
             mock_run.return_value = MagicMock(returncode=2, stderr=b"lock busy")
 
-            _refresh_package_index(_installer("uv-venv"), tmp_path)
+            _refresh_package_index(_installer("uv-tool"), tmp_path)
 
+        mock_run.assert_called_once()
         warnings = _warnings(mock_log)
         assert len(warnings) == 1
         assert warnings[0][0] == tmp_path
@@ -103,6 +106,52 @@ class TestRefreshPackageIndex:
         captured = capsys.readouterr()
         assert captured.out == ""
         assert captured.err == ""
+
+    def test_old_uv_without_force_flag_retries_plain_clean(self, tmp_path: Path) -> None:
+        rejected = MagicMock(returncode=2, stderr=b"error: unexpected argument '--force' found")
+        with (
+            patch("buvis.pybase.updater.executor.subprocess.run") as mock_run,
+            patch("buvis.pybase.updater.executor.append_log") as mock_log,
+        ):
+            mock_run.side_effect = [rejected, MagicMock(returncode=0, stderr=b"")]
+
+            _refresh_package_index(_installer("mise-pipx"), tmp_path)
+
+        assert [call.args[0] for call in mock_run.call_args_list] == [_CLEAN_ARGS, _PLAIN_CLEAN_ARGS]
+        mock_log.assert_not_called()
+
+
+class TestUpdateLock:
+    def test_auto_update_skips_upgrade_while_another_process_updates(self, tmp_path: Path) -> None:
+        with (
+            _update_lock(tmp_path) as held,
+            patch("buvis.pybase.updater.executor.subprocess.run") as mock_run,
+            patch("buvis.pybase.updater.executor.append_log") as mock_log,
+        ):
+            assert held
+            run_update("0.7.0", "0.8.0", _mise_pipx_installer(), state_dir=tmp_path)
+
+        mock_run.assert_not_called()
+        assert "Another process is updating" in mock_log.call_args.args[2]
+
+    def test_interactive_update_fails_while_another_process_updates(self, tmp_path: Path) -> None:
+        with (
+            _update_lock(tmp_path),
+            patch("buvis.pybase.updater.executor.subprocess.run") as mock_run,
+            patch("buvis.pybase.updater.executor.append_log"),
+            patch("buvis.pybase.updater.executor.console") as mock_console,
+        ):
+            result = run_update_interactive("0.7.0", "0.8.0", _mise_pipx_installer(), state_dir=tmp_path)
+
+        assert result == 1
+        mock_run.assert_not_called()
+        mock_console.failure.assert_called_once()
+
+    def test_lock_is_free_again_after_the_holder_exits(self, tmp_path: Path) -> None:
+        with _update_lock(tmp_path) as first:
+            assert first
+        with _update_lock(tmp_path) as second:
+            assert second
 
 
 class TestUpgradeRunsAfterRefresh:
