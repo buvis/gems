@@ -1158,3 +1158,30 @@
 {"kind":"handoff","site":"done","edge":"leave","at":1794628993,"phase":"done","prd":"00140-library-warnings-lack-marker-v1.md"}
 {"kind":"handoff","site":"build","edge":"resume","at":1795558322,"phase":"build","prd":"00149-docs-show-dead-env-form-v1.md"}
 {"kind":"handoff","site":"build","edge":"leave","at":1795559082,"phase":"done","prd":"00149-docs-show-dead-env-form-v1.md"}
+{"kind":"handoff","site":"build","edge":"resume","at":1795595603,"phase":"build","prd":"00177-update-fails-on-stale-uv-index-v1.md"}
+{"id":"92ea3eb5","kind":"fast-track:tess","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795595664,"prompt_bytes":81370}
+{"id":"92ea3eb5","ended_at":1795595772,"elapsed_s":108,"outcome":"ok","detail":null}
+{"id":"dfc6aaf7","kind":"fast-track:ivan","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795595792,"prompt_bytes":62566}
+{"id":"dfc6aaf7","ended_at":1795595846,"elapsed_s":54,"outcome":"ok","detail":"2 test defects reported"}
+{"id":"39d4fb18","kind":"fast-track:fanout","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795595950,"prompt_bytes":6297}
+{"id":"3903dd13","kind":"fast-track:blake","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795595951,"prompt_bytes":11368}
+{"id":"9c62d9b8","kind":"fast-track:eve","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795595953,"prompt_bytes":4690}
+{"id":"3508e256","kind":"fast-track:bob","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795595954,"prompt_bytes":8887}
+{"id":"17d0a890","kind":"fast-track:carl","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795595955,"prompt_bytes":6653}
+{"id":"39d4fb18","ended_at":1795596011,"elapsed_s":61,"outcome":"error","detail":"Workflow tool refused scriptPath outside readable dirs"}
+{"id":"9f317af9","kind":"fast-track:alice","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795596013,"prompt_bytes":6297}
+{"id":"3903dd13","ended_at":1795596033,"elapsed_s":82,"outcome":"ok","detail":null}
+{"id":"9f317af9","ended_at":1795596047,"elapsed_s":34,"outcome":"ok","detail":null}
+{"id":"3508e256","ended_at":1795596053,"elapsed_s":99,"outcome":"ok","detail":null}
+{"id":"a4cfbb50","kind":"fast-track:bob","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795596058,"prompt_bytes":8887}
+{"id":"a4cfbb50","ended_at":1795596117,"elapsed_s":59,"outcome":"ok","detail":"general-purpose substitute after codex sandbox could not read files"}
+{"id":"17d0a890","ended_at":1795596133,"elapsed_s":178,"outcome":"ok","detail":null}
+{"id":"9c62d9b8","ended_at":1795596649,"elapsed_s":696,"outcome":"ok","detail":null}
+{"id":"d706c7d1","kind":"fast-track:victor","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795596684,"prompt_bytes":2540}
+{"id":"d706c7d1","ended_at":1795596734,"elapsed_s":50,"outcome":"ok","detail":"confirmed"}
+{"id":"5a56ad25","kind":"fast-track:ivan","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795596748,"prompt_bytes":19570}
+{"id":"5a56ad25","ended_at":1795596770,"elapsed_s":22,"outcome":"ok","detail":null}
+{"id":"8a3be74f","kind":"fast-track:delta","task":"00177-update-fails-on-stale-uv-index-v1-c1","queued_at":1795596796,"prompt_bytes":4935}
+{"id":"8a3be74f","ended_at":1795597612,"elapsed_s":816,"outcome":"ok","detail":"prior HIGH resolved"}
+{"kind":"handoff","site":"build","edge":"leave","at":1795597693,"phase":"done","prd":"00177-update-fails-on-stale-uv-index-v1.md"}
+{"kind":"handoff","site":"done","edge":"resume","at":1795638384,"phase":"done","prd":"00177-update-fails-on-stale-uv-index-v1.md"}

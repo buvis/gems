@@ -27,6 +27,11 @@ Generated: 2026-11-13 (catchup: feature/config-local-layer-braid, batch 20261113
 
 ## Active Work
 
+### Batch 202611250933 (feature/00177-update-fails-on-stale-uv-index worktree)
+- [x] 00177-update-fails-on-stale-uv-index-v1.md (1 cycle, fast-track lane): the updater runs `uv cache clean --force buvis-gems` before a uv-backed upgrade so a stale cached index no longer blocks the update. 4 findings deferred (1 HIGH pre-existing: 49 tests in `tests/lib/pybase/configuration/test_click_integration.py` reach the real updater, measured 2026-11-25; backlog 00169 guards only `tests/tools/` and wrongly calls `tests/lib/` safe; hold stub 00178 tracks it). PR #296.
+
+Observations: batch scoped to this worktree's one PRD; the deferred JSON records lacked `issue`/`reason` fields, so `render report` exited 12 until they were added.
+
 ### Batch 202611131903 (feature/config-local-layer-braid worktree, PR #275 open)
 - [x] 00136-sysup-plan-config-errors-raw-v1.md (1 cycle, lane full): sysup `load_config` now projects the merged layers onto its own plan keys before validation (shared keys like `debug` no longer trip `extra="forbid"`), rejects unknown keys only in `buvis-sysup*.yaml`, and renders validation/merge errors as one `FatalError` line naming the file and field, never a raw traceback or pydantic URL. backup confirmed on the same shared-key cases. Review cycle 1 converged (no CRITICAL/HIGH); tail sweep (tasks 4-5) caught `ConfigurationError` escaping `_merge_layer`'s load handler in both sysup and backup, and fixed sysup's error attribution to track by nested field path instead of last-writer-wins per entry.
 - 00137-yaml-auto-update-ignored-v1.md stalled at the rework cap (`site: cap_regression`, cycle 2 of 2): the cycle-1 rework introduced a regression (R1, `click_integration.py:210` - the global `BUVIS_AUTO_UPDATE` fallback flips the `enabled` decision but the settings object handed to `check_and_update` still carries `auto_update=False`, dead branch in production). Moved to `prds/hold/`; four unresolved findings recorded in the batch deferred JSON; three triage stubs minted (00141, 00142, 00143, also in `hold/`, never auto-selected). Per-PRD reset ran; a human must resolve it.

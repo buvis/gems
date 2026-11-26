@@ -103,6 +103,10 @@ In `run_update`, insert `_refresh_package_index(installer, state_dir)` directly 
 ### Phase 1: Record
 - [ ] Add under `### Fixed` in `[Unreleased]` of `CHANGELOG.md` (depends on: Phase 0): `- **updater**: right after a release, \`--update\` and the automatic update no longer fail with "no version of buvis-gems[all]==X" when installed with mise, \`uv tool\` or \`uv pip\`; the updater clears uv's cached index for buvis-gems before it upgrades.` - Acceptance: `rg -c "clears uv's cached index for buvis-gems" CHANGELOG.md` prints `1`.
 
+## Amendment (2026-11-25, review cycle 1)
+
+The shipped argv is `("uv", "cache", "clean", "--force", "buvis-gems")`, not the unforced tuple above. Since uv 0.8.19 `uv cache clean` waits until no other uv process reads the cache, and `uv run`/`uvx` hold that lock for the child's whole life, so the unforced clean timed out and the upgrade still read the stale index (confirmed on uv 0.13.9, commit d78bdd87). Follow-ups are in `docs/dev/project-management/autopilot/deferred/202611250933-deferred.json`.
+
 ## Success Criteria
 
 - `uv run pytest tests/lib/pybase/updater -q` passes, including `TestRefreshPackageIndex` and `TestUpgradeRunsAfterRefresh`.

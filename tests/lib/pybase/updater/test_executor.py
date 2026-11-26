@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -13,6 +13,13 @@ import pytest
 from buvis.pybase.updater.detector import InstallerInfo
 from buvis.pybase.updater.executor import REEXEC_ENV, run_update, run_update_interactive
 from buvis.pybase.updater.state import write_upgrade_failure
+
+
+@pytest.fixture(autouse=True)
+def _no_cache_refresh() -> Iterator[None]:
+    """Keep these tests on the upgrade call: the uv cache clean has its own tests."""
+    with patch("buvis.pybase.updater.executor._refresh_package_index"):
+        yield
 
 
 @pytest.fixture()

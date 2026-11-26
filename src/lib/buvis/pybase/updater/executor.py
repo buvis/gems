@@ -6,6 +6,8 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 from subprocess import TimeoutExpired
 
@@ -28,6 +30,17 @@ _UPGRADE_TIMEOUT = 120
 _INTERACTIVE_UPGRADE_TIMEOUT = 1800
 _MISE_WHERE_TIMEOUT = 10
 _VERSION_TIMEOUT = 10
+_CACHE_CLEAN_TIMEOUT = 30
+# Installers whose upgrade reads uv's cached index. uv-venv is left out: `uv pip install
+# --upgrade` implies `--refresh`, so it already sees a fresh index.
+_UV_BACKED_METHODS = frozenset({"mise-pipx", "uv-tool"})
+# --force skips uv's cache lock, which any running `uv run`/`uvx` holds (uv >= 0.8.19 waits on it).
+# uv < 0.8.20 rejects --force; the plain clean is the fallback (uv < 0.8.19 does not wait).
+_CLEAN_COMMANDS = (
+    ("uv", "cache", "clean", "--force", "buvis-gems"),
+    ("uv", "cache", "clean", "buvis-gems"),
+)
+_LOCK_FILE = "update.lock"
 _VERSION_PATTERN = re.compile(r"version (\S+)")
 
 
@@ -62,9 +75,58 @@ def read_installed_version(installer: InstallerInfo) -> str | None:
         return None
 
 
+def _refresh_package_index(installer: InstallerInfo, state_dir: Path) -> None:
+    """Clear uv's cached index for buvis-gems so the upgrade sees fresh releases.
+
+    Only uv-backed installers are touched. Any failure is logged as a warning and
+    the upgrade proceeds.
+    """
+    if installer.method not in _UV_BACKED_METHODS:
+        return
+    try:
+        forced, plain = _CLEAN_COMMANDS
+        result = subprocess.run(forced, capture_output=True, timeout=_CACHE_CLEAN_TIMEOUT, cwd=state_dir)
+        if result.returncode != 0 and b"--force" in result.stderr:
+            result = subprocess.run(plain, capture_output=True, timeout=_CACHE_CLEAN_TIMEOUT, cwd=state_dir)
+    except (TimeoutExpired, OSError) as exc:
+        append_log(state_dir, "warning", f"Could not refresh uv cache for buvis-gems: {exc}")
+        return
+    if result.returncode != 0:
+        stderr_snippet = result.stderr.decode(errors="replace").strip()[:200]
+        append_log(state_dir, "warning", f"Could not refresh uv cache for buvis-gems: {stderr_snippet}")
+
+
 def _is_noop_upgrade(installed: str | None, current: str) -> bool:
     """True when verification ran and the installed version did not move past ``current``."""
     return installed is not None and Version(installed) <= Version(current)
+
+
+@contextmanager
+def _update_lock(state_dir: Path) -> Generator[bool, None, None]:
+    """Hold a non-blocking lock so two tool starts never clean and upgrade at the same time.
+
+    Yields False when another process holds it. The fd is close-on-exec, so a re-exec releases it.
+    """
+    try:
+        import fcntl
+    except ImportError:
+        # ponytail: no fcntl on Windows, so no lock there; use msvcrt.locking if concurrent updates show up.
+        yield True
+        return
+    try:
+        state_dir.mkdir(parents=True, exist_ok=True)
+        handle = (state_dir / _LOCK_FILE).open("a")
+    except OSError:
+        # An unwritable state dir must not block the update; run it unlocked.
+        yield True
+        return
+    with handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            yield False
+            return
+        yield True
 
 
 def run_update(
@@ -100,11 +162,23 @@ def run_update(
         )
         return
 
+    with _update_lock(state_dir) as acquired:
+        if not acquired:
+            append_log(state_dir, "info", f"Another process is updating buvis-gems; skipping the upgrade to {latest}")
+            return
+        _run_update_locked(current, latest, installer, installer.upgrade_command, state_dir)
+
+
+def _run_update_locked(
+    current: str, latest: str, installer: InstallerInfo, command: tuple[str, ...], state_dir: Path
+) -> None:
+    """Body of ``run_update``, run while holding the update lock."""
     append_log(state_dir, "info", f"Updating buvis-gems {current} -> {latest} via {installer.method}")
 
+    _refresh_package_index(installer, state_dir)
     try:
         result = subprocess.run(
-            installer.upgrade_command,
+            command,
             capture_output=True,
             timeout=_UPGRADE_TIMEOUT,
         )
@@ -166,6 +240,19 @@ def run_update_interactive(
         )
         return 1
 
+    with _update_lock(state_dir) as acquired:
+        if not acquired:
+            message = "Another buvis process is updating buvis-gems. Run --update again when it ends."
+            console.failure(message)
+            append_log(state_dir, "error", message)
+            return 1
+        return _run_update_interactive_locked(current, latest, installer, installer.upgrade_command, state_dir)
+
+
+def _run_update_interactive_locked(
+    current: str, latest: str, installer: InstallerInfo, command: tuple[str, ...], state_dir: Path
+) -> int:
+    """Body of ``run_update_interactive``, run while holding the update lock."""
     console.info(f"Upgrading buvis-gems {current} → {latest} via {installer.method}...")
     append_log(
         state_dir,
@@ -173,9 +260,10 @@ def run_update_interactive(
         f"Updating buvis-gems {current} → {latest} via {installer.method}",
     )
 
+    _refresh_package_index(installer, state_dir)
     try:
         result = subprocess.run(
-            installer.upgrade_command,
+            command,
             capture_output=False,
             timeout=_INTERACTIVE_UPGRADE_TIMEOUT,
         )

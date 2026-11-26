@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **updater**: right after a release, `--update` and the automatic update no longer fail with "no version of buvis-gems[all]==X" when installed with mise or `uv tool`; the updater clears uv's cached index for buvis-gems before it upgrades, also on uv older than 0.8.20.
+- **updater**: two tools started at the same time no longer upgrade buvis-gems in parallel; the second one skips the update, and `--update` reports that another update is running.
+
 ## [0.21.0] - 2026-11-25
 
 **Upgrade notes.** This release makes config loading strict. Before you upgrade, do these steps:
