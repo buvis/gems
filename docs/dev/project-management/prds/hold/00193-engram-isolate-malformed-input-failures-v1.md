@@ -1,15 +1,15 @@
 ---
 default_model: opus
-model_tier_rationale: symbol correspondence across different source versions
+model_tier_rationale: several parser error boundaries and continuation semantics
 ---
 
-# Exclude changed code from worktree packs after line shifts
+# Isolate malformed input failures and clarify diagnostics
 
-Source: 2026-11-16 #8, 2026-11-16 #13, 2026-11-16 #29. Original packets in buvis/engram: docs/dev/project-management/audit-results/agoge-2026-11-16.md and docs/dev/project-management/audit-results/agoge-2026-11-15-2.md.
+Source: 2026-11-16 #29, 2026-11-15 run 2 #12. Original packets in buvis/engram: docs/dev/project-management/audit-results/agoge-2026-11-16.md and docs/dev/project-management/audit-results/agoge-2026-11-15-2.md.
 Decision in buvis/engram: docs/dev/project-management/audit-results/agoge-triage-2026-11-23.md. This is a bounded QA correction, not a replacement of the completed feature PRDs.
 
 Status: HOLD in buvis/gems, blocked by the Engram port prerequisites.
-Origin: buvis/engram at 226db53feac942eaeef1479355a98e7dfadfe4c3, PRD 00022; transferred on 2026-11-24 without changing its QA evidence.
+Origin: buvis/engram at 226db53feac942eaeef1479355a98e7dfadfe4c3, PRD 00025; transferred on 2026-11-24 without changing its QA evidence.
 Prerequisites: Port phases 1-3 must land with their exit criteria met; verify the target file map and contracts before promotion to the executable backlog.
 Plan: [Engram port](../../discovery/00161-engram-port-plan.md). Transfer map: [QA ownership](../../discovery/00161-engram-qa-handoff.md).
 
@@ -20,7 +20,7 @@ Compatibility: only the defects explicitly named in this PRD may change behavior
 ## Overview
 
 ### Problem Statement
-Worktree line spans are compared directly to main-checkout spans. Shifted functions match themselves while unrelated symbols are excluded; path resolution also repeats within the hit/span product.
+Deeply nested inputs can escape per-file error handling and abort a harvest batch. Known config failures print tracebacks, and optional missing directories appear as unlabeled output.
 
 ### Target Users
 The solo developer and local agents using Engram to index repositories and recall prior work.
@@ -30,26 +30,26 @@ Every Critical Scenario passes with synthetic data in isolated temporary roots. 
 
 ## Functional Decomposition
 
-### Capability: Exclude changed code from worktree packs after line shifts
+### Capability: Isolate malformed input failures and clarify diagnostics
 Apply the recorded disposition without changing unrelated behavior.
 
-#### Feature: Match across source versions
-- **Description**: Match across source versions.
-- **Inputs**: Changed symbols and indexed-checkout candidates.
-- **Outputs**: No changed symbol offered as its own precedent after line drift.
-- **Behavior**: For distinct worktree/index roots compare canonical relative file plus symbol kind/name against the indexed symbol identity rather than reusing worktree line numbers. Keep line overlap for the same source version. For ambiguous duplicate names, renamed symbols, or unnamed module context in a divergent file, conservatively omit candidates from that file and report the omission; do not invent a precise match.
+#### Feature: Contain parser failures
+- **Description**: Contain parser failures.
+- **Inputs**: Reviews, memory frontmatter and transcript records.
+- **Outputs**: Per-file or per-record errors without loss of neighboring work.
+- **Behavior**: Convert expected RecursionError at YAML/JSON parser boundaries into the existing parse-failed result. Continue harvest after a bad review and preserve its existing rows. Skip a malformed/deep transcript record while retaining valid neighboring turns. Ordinary malformed JSON already skips one record; preserve that behavior and add only the missing deep-nesting case. Do not add a blanket catch around all application exceptions.
 
-#### Feature: Bound path resolution
-- **Description**: Bound path resolution.
-- **Inputs**: All hits and changed spans in one pack.
-- **Outputs**: At most one realpath resolution per distinct path.
-- **Behavior**: Canonicalize distinct paths once before comparisons; preserve ranking, deduplication, scope and all-symbol exclusion even beyond the query symbol cap.
+#### Feature: Report known configuration failures
+- **Description**: Report known configuration failures.
+- **Inputs**: Malformed YAML, missing embedding settings fields, unreadable config and SQLite open errors.
+- **Outputs**: A concise diagnostic and documented nonzero status.
+- **Behavior**: Catch expected configuration and store errors at CLI boundaries and name the relevant path without raw secret values. Preserve nudge's always-zero contract and MCP's structured error result.
 
-#### Feature: Keep physical source lines
-- **Description**: Keep physical source lines.
-- **Inputs**: Diff content and code excerpts containing form feeds or Unicode separators.
-- **Outputs**: Correct changed-symbol spans and excerpt bodies.
-- **Behavior**: Use newline-only splitting for physical diff/source lines in changed_symbols and _symbol_query_text. Do not change Markdown prose splitting. Preserve existing quoted-path decoding and traversal guards.
+#### Feature: Label optional missing directories
+- **Description**: Label optional missing directories.
+- **Inputs**: Existing optional-directory diagnostics.
+- **Outputs**: missing followed by a tab and the existing corpus:repo payload.
+- **Behavior**: At the machine-output adapter, print missing<TAB>{existing value}. Preserve existing scope filtering and status exit rules; optional absence alone stays nonfatal. Document the output change.
 
 ## Structural Decomposition
 
@@ -58,35 +58,41 @@ Apply the recorded disposition without changing unrelated behavior.
 Expected prerequisite file map, not a claim that the port is present. Before release from hold, compare this map with the landed port, enumerate any command-layer files needed by the tasks, and rerun grounding. Do not create substitute modules to satisfy these paths.
 
 ```text
-src/tools/engram/pack.py
-src/tools/engram/diffmap.py
-tests/tools/engram/test_pack_worktree.py
-tests/tools/engram/test_pack_correctness.py
-tests/tools/engram/test_pack_regressions.py
-tests/tools/engram/test_diffmap.py
-tests/tools/engram/test_diffmap_decoding.py
+src/tools/engram/settings.py
+src/tools/engram/findings.py
+src/tools/engram/harvest.py
+src/tools/engram/transcripts.py
+src/tools/engram/memory.py
+src/tools/engram/client.py
+src/tools/engram/cli.py
+tests/tools/engram/test_findings.py
+tests/tools/engram/test_harvest.py
+tests/tools/engram/test_transcripts.py
+tests/tools/engram/test_repo_memory.py
+tests/tools/engram/test_cli_embedding_errors.py
+tests/tools/engram/test_cli_index_status.py
 docs/source/tools/engram.rst
 CHANGELOG.md
 ```
 
 ### Module: Product correction
-- **Maps to capability**: Exclude changed code from worktree packs after line shifts
+- **Maps to capability**: Isolate malformed input failures and clarify diagnostics
 - **Responsibility**: Implement the Features in the existing modules; no new public API is required.
-- **Location**: `src/tools/engram/pack.py`, `src/tools/engram/diffmap.py`
+- **Location**: `src/tools/engram/settings.py`, `src/tools/engram/findings.py`, `src/tools/engram/harvest.py`, `src/tools/engram/transcripts.py`, `src/tools/engram/memory.py`, `src/tools/engram/client.py`, `src/tools/engram/cli.py`
 - **Exports**: Ported Engram interfaces supplied by the prerequisite port.
-- Source API lineage (buvis/engram): changed_symbols, build.
+- Source API lineage (buvis/engram): parse, harvest, chunk, parse_memory, load_config, main (source only; target uses settings and Click).
 
 ### Module: Verification and guidance
-- **Maps to capability**: Exclude changed code from worktree packs after line shifts
+- **Maps to capability**: Isolate malformed input failures and clarify diagnostics
 - **Responsibility**: Prove the regression, preserve compatibility, and explain changed behavior.
-- **Location**: `tests/tools/engram/test_pack_worktree.py`, `tests/tools/engram/test_pack_correctness.py`, `tests/tools/engram/test_pack_regressions.py`, `tests/tools/engram/test_diffmap.py`, `tests/tools/engram/test_diffmap_decoding.py`, `docs/source/tools/engram.rst`, `CHANGELOG.md`
+- **Location**: `tests/tools/engram/test_findings.py`, `tests/tools/engram/test_harvest.py`, `tests/tools/engram/test_transcripts.py`, `tests/tools/engram/test_repo_memory.py`, `tests/tools/engram/test_cli_embedding_errors.py`, `tests/tools/engram/test_cli_index_status.py`, `docs/source/tools/engram.rst`, `CHANGELOG.md`
 - **Exports**: Existing test entry points and user documentation; no runtime exports.
 
 ## Dependency Graph
 
 ### Foundation Layer (Phase 0)
 - **Verification and guidance**: No internal dependencies; establish reproductions and current premises first.
-- External prerequisites: the port prerequisites stated above, plus [00165](00165-engram-validate-repository-registry-v1.md). Execute these PRDs first; do not work on overlapping source modules concurrently.
+- External prerequisites: the port prerequisites stated above, plus [00187](00187-engram-validate-repository-registry-v1.md), [00185](00185-engram-verify-embedding-model-identity-v1.md). Execute these PRDs first; do not work on overlapping source modules concurrently.
 
 ### Core Layer (Phase 1)
 - **Product correction**: Depends on Phase 0 evidence and the external prerequisites above.
@@ -108,7 +114,7 @@ CHANGELOG.md
 **Goal**: Deliver the Functional Decomposition.
 
 **Tasks**:
-- [ ] Implement the specified behavior in the listed production modules, preserving the stated safety and compatibility rules. (depends on: Phase 0) - Acceptance: uv run --no-sync python -m pytest -q tests/tools/engram/test_pack_worktree.py tests/tools/engram/test_pack_correctness.py tests/tools/engram/test_pack_regressions.py tests/tools/engram/test_diffmap.py tests/tools/engram/test_diffmap_decoding.py
+- [ ] Implement the specified behavior in the listed production modules, preserving the stated safety and compatibility rules. (depends on: Phase 0) - Acceptance: uv run --no-sync python -m pytest -q tests/tools/engram/test_findings.py tests/tools/engram/test_harvest.py tests/tools/engram/test_transcripts.py tests/tools/engram/test_repo_memory.py tests/tools/engram/test_cli_embedding_errors.py tests/tools/engram/test_cli_index_status.py
 
 **Exit Criteria**: All Critical Scenarios pass; required negative checks fail clearly and preserve data as specified.
 
@@ -123,29 +129,31 @@ CHANGELOG.md
 ## Test Strategy
 
 ### Critical Scenarios
-- Shift six lines above a changed function in a real linked worktree; exclude it while retaining uniquely named unrelated neighbors.
-- Duplicate names, rename and module-context ambiguity produce conservative omission plus a diagnostic; unchanged-source overlap still works.
-- Instrument path resolution for repeated hits/spans and assert calls are bounded by distinct path count.
-- Diffs and excerpt source with form feed, NEL and Unicode line separator retain physical line positions.
+- Harvest valid, deeply nested YAML, valid files and assert all three results, retained bad-file rows, and both valid updates.
+- Transcript with a deep JSON record retains valid turns before and after; normal malformed JSON still behaves as before.
+- Malformed and incomplete config produce no traceback across CLI commands; unexpected programmer errors remain visible in tests.
+- Missing optional directory output is labeled and scoped, with exit 0 when it is the only issue.
 
 ### Source grounding
 These are source-checkout citations; target files remain prerequisites.
-- ../engram/src/engram/pack.py:1
-- ../engram/src/engram/diffmap.py:1
+- ../engram/src/engram/findings.py:1
+- ../engram/src/engram/harvest.py:1
+- ../engram/src/engram/transcripts.py:1
+- ../engram/src/engram/memory.py:1
+- ../engram/src/engram/client.py:1
+- ../engram/src/engram/cli.py:1
 
 ### Original QA evidence
 Verbatim evidence follows. Mocked observations retain that status; local fixture tests do not turn them into real-server measurements. Isolate fixture setup from the user's actual HOME and store.
 
 ````text
-2026-11-16 #8
-In the worktree, one commit added six lines above `retry_embed` (now lines 14-16), the next changed its return. `engram pack --diff HEAD~1..HEAD` rc 0; the pack's Similar code starts with `scratchrepo:S/f1/repo/src/app.py:8-10 def retry_embed(n)`, and `Class Store` (13-15) and `Function open` (14-15) are gone. Before the drift, the same pack correctly left `retry_embed` out and listed both. The cause is inferred from the output, not traced. Confidence: confirmed for the symptom.
-2026-11-16 #13
-On an 11,280-chunk store: a 5-symbol diff made 531 `realpath` calls; a 50-symbol diff made 38,365 (538,643 `lstat` calls, 2.26-2.28 s); the same 50-symbol diff from a linked worktree made 77,186 (3.12-3.24 s). Ten times the symbols gave 72 times the calls. Confidence: confirmed.
 2026-11-16 #29
 One example each: `reviewers: [[[[...` nested 5000 deep makes `engram harvest good.md deep.md good.md` print a `RecursionError` traceback of about 200 KB and no result lines at all. `engram.db.lock` as a dangling symlink is followed and the target is created with mode 0755. The lock as a directory ends in an uncaught `IsADirectoryError`. A transcript with one bad line is skipped whole, valid turns included. A `config.toml` with bad TOML or no `endpoint` gives a traceback from `query` (`mcp` and `nudge` report it cleanly). A diff line with form feeds is split into a fake section and aborts the pack; the path guard still held. Confidence: confirmed.
+2026-11-15 run 2 #12
+Every `index` and `status` run printed `discovery:scratchrepo`, rc 0. Confidence: confirmed.
 ````
 
 ## Risks
 
-- Conservative fallback reduces recall for ambiguous divergent files. Report that limitation instead of presenting incorrect source correspondence.
+- Catch only known input exceptions so programming errors remain diagnosable. The report's blanket claim about any bad transcript line was broader than the current code supports.
 - Do not release from hold until the prerequisite port file map and parity checks are verified. Do not touch a real store or weaken assertions to obtain a pass.

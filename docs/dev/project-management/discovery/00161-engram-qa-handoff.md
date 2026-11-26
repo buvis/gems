@@ -1,6 +1,10 @@
 # Engram QA handoff to the Gems port
 
-Status: Gems owns PRDs 00163-00173 in hold. No port or product fix has been implemented by this handoff.
+Status: Gems owns PRDs 00185-00195 in hold. No port or product fix has been implemented by this handoff.
+
+Renumbered 2026-11-26: these PRDs were 00163-00173 until gems PRDs
+00163-00169 from #275 reached master on the same numbers. Add 22 to an old
+number to find the new one (00164 is now 00186).
 
 ## How readiness becomes visible
 
@@ -24,7 +28,7 @@ temporary file. Observed source HEAD: engram e413696; target HEAD: Gems 61707c50
 | 2. Run main and evaluation suites | Not rerun for this handoff in this session. From the Engram checkout, run `.venv/bin/python -m pytest -q --ignore=eval` and `PYTHONPATH=src:. .venv/bin/python -m pytest -q eval` at the chosen source commit; record pass/fail/skip counts. Historical QA counts do not replace that checkpoint. |
 | 3. Pin source and refresh inventory | Not completed. The plan freshness line still describes a0892e6 while 00014 was building. Refresh all rows against the selected post-batch commit after verification. |
 | 4. Reinstall standalone; optional backfill | Current installation not verified. Preserve the documented external-install handoff if needed; no production backfill, rebuild or model repin was performed. Backfill is optional and still requires the stated backup and explicit authorization. |
-| 5. Create port Phase 1 PRD | Not completed. Gems has QA follow-up PRDs 00163-00173, but no Phase 1 core-port PRD or src/tools/engram tree. Create only Phase 1 after the source checks; it is distinct from the QA fixes. |
+| 5. Create port Phase 1 PRD | Not completed. Gems has QA follow-up PRDs 00185-00195, but no Phase 1 core-port PRD or src/tools/engram tree. Create only Phase 1 after the source checks; it is distinct from the QA fixes. |
 | Later phases | Not started by this session. Create each phase after the preceding phase lands, as the original handoff requires. Phase 5 also waits for 00122, still in the executable backlog at this check. |
 
 The older instruction to ask approval for every phase PRD is superseded by the
@@ -64,17 +68,17 @@ work. Both HIGH findings are listed first.
 
 | Former source / Gems owner | Accepted correction | Port phase and adaptation |
 |---|---|---|
-| 00017 / [00163](../prds/hold/00163-engram-verify-embedding-model-identity-v1.md) | Verify served model identity; reject malformed endpoints; check store identity before work | Core client in Phase 1; YAML settings in Phase 2; CLI/status diagnostics in Phase 3. Keep mocked observations labeled. |
-| 00018 / [00164](../prds/hold/00164-engram-index-chunks-by-source-v1.md) | Index source lookups by corpus/path | Store in Phase 1. An additive index changes database bytes; reconcile with the no-change cutover checks before applying it. |
-| 00019 / [00165](../prds/hold/00165-engram-validate-repository-registry-v1.md) | Validate/canonicalize registration; prevent empty-registry pruning; snapshot harvest registry | Corpora and harvest in Phase 1, command errors in Phase 3. Preserve legacy memory attribution. |
-| 00020 / [00166](../prds/hold/00166-engram-bound-indexing-to-repositories-v1.md) | Read NUL-delimited tracked paths; contain source reads; filter scope before enumeration | Enumeration in Phase 1; direct pack inputs in Phase 3. Keep existing independent memory/transcript roots. |
-| 00021 / [00167](../prds/hold/00167-engram-unify-worktree-source-identity-v1.md) | Verify worktree membership; canonicalize lookup and harvested source identity | Core in Phase 1 and command mapping in Phase 3. Retain differing historical findings. |
-| 00022 / [00168](../prds/hold/00168-engram-exclude-worktree-self-matches-v1.md) | Exclude shifted worktree symbols; bound path resolution; use physical diff lines | Pack/diff core in Phase 1. Capture deliberate result changes in Phase 3 contract tests. |
-| 00023 / [00169](../prds/hold/00169-engram-protect-store-write-lifecycle-v1.md) | Hold writer locks; clean interrupted rebuilds; explicit recoverable corruption handling | Windows-safe locking in Phase 1; explicit recovery CLI in Phase 3. Adapt the source's POSIX-specific details. |
-| 00024 / [00170](../prds/hold/00170-engram-sanitize-retrieved-context-v1.md) | Redact published context; fence excerpts; filter controls; create private artifacts | Core formatting/storage in Phase 1; machine-output adapters and consumer checks in Phase 3. Preserve existing data by default. |
-| 00025 / [00171](../prds/hold/00171-engram-isolate-malformed-input-failures-v1.md) | Isolate parser failures; clarify config and missing-directory diagnostics | Parsers in Phase 1, YAML/config errors in Phase 2, Click/CommandResult output in Phase 3. Do not port obsolete TOML handling literally. |
-| 00026 / [00172](../prds/hold/00172-engram-reject-imports-in-migrated-memory-v1.md) | Reject path imports/control bytes in migrated memory metadata | Memory migration in Phase 1, CLI outcomes in Phase 3. Downstream import effects remain unverified. |
-| 00027 / [00173](../prds/hold/00173-engram-correct-operating-documentation-v1.md) | Correct lifecycle, downloads, corpus coverage and upgrade guidance | Target tool documentation and cutover in Phase 4. Do not spend work reorganizing the retired standalone changelog. |
+| 00017 / [00185](../prds/hold/00185-engram-verify-embedding-model-identity-v1.md) | Verify served model identity; reject malformed endpoints; check store identity before work | Core client in Phase 1; YAML settings in Phase 2; CLI/status diagnostics in Phase 3. Keep mocked observations labeled. |
+| 00018 / [00186](../prds/hold/00186-engram-index-chunks-by-source-v1.md) | Index source lookups by corpus/path | Store in Phase 1. An additive index changes database bytes; reconcile with the no-change cutover checks before applying it. |
+| 00019 / [00187](../prds/hold/00187-engram-validate-repository-registry-v1.md) | Validate/canonicalize registration; prevent empty-registry pruning; snapshot harvest registry | Corpora and harvest in Phase 1, command errors in Phase 3. Preserve legacy memory attribution. |
+| 00020 / [00188](../prds/hold/00188-engram-bound-indexing-to-repositories-v1.md) | Read NUL-delimited tracked paths; contain source reads; filter scope before enumeration | Enumeration in Phase 1; direct pack inputs in Phase 3. Keep existing independent memory/transcript roots. |
+| 00021 / [00189](../prds/hold/00189-engram-unify-worktree-source-identity-v1.md) | Verify worktree membership; canonicalize lookup and harvested source identity | Core in Phase 1 and command mapping in Phase 3. Retain differing historical findings. |
+| 00022 / [00190](../prds/hold/00190-engram-exclude-worktree-self-matches-v1.md) | Exclude shifted worktree symbols; bound path resolution; use physical diff lines | Pack/diff core in Phase 1. Capture deliberate result changes in Phase 3 contract tests. |
+| 00023 / [00191](../prds/hold/00191-engram-protect-store-write-lifecycle-v1.md) | Hold writer locks; clean interrupted rebuilds; explicit recoverable corruption handling | Windows-safe locking in Phase 1; explicit recovery CLI in Phase 3. Adapt the source's POSIX-specific details. |
+| 00024 / [00192](../prds/hold/00192-engram-sanitize-retrieved-context-v1.md) | Redact published context; fence excerpts; filter controls; create private artifacts | Core formatting/storage in Phase 1; machine-output adapters and consumer checks in Phase 3. Preserve existing data by default. |
+| 00025 / [00193](../prds/hold/00193-engram-isolate-malformed-input-failures-v1.md) | Isolate parser failures; clarify config and missing-directory diagnostics | Parsers in Phase 1, YAML/config errors in Phase 2, Click/CommandResult output in Phase 3. Do not port obsolete TOML handling literally. |
+| 00026 / [00194](../prds/hold/00194-engram-reject-imports-in-migrated-memory-v1.md) | Reject path imports/control bytes in migrated memory metadata | Memory migration in Phase 1, CLI outcomes in Phase 3. Downstream import effects remain unverified. |
+| 00027 / [00195](../prds/hold/00195-engram-correct-operating-documentation-v1.md) | Correct lifecycle, downloads, corpus coverage and upgrade guidance | Target tool documentation and cutover in Phase 4. Do not spend work reorganizing the retired standalone changelog. |
 
 ## Compatibility decisions required in target specifications
 
@@ -107,15 +111,15 @@ release, retirement or production-data change.
 
 ## Transfer validation: 2026-11-24
 
-The user requested target ownership now. PRDs 00163-00173 replace source PRDs
+The user requested target ownership now. PRDs 00185-00195 replace source PRDs
 00017-00027. Evidence blocks are unchanged; dependency links use Gems IDs.
 Expected implementation paths and tests use the target layout. YAML settings,
 Click/CommandResult boundaries, platform locks and the Gems CI gates replace
 standalone assumptions. The target module map still requires grounding after
 the prerequisite port lands; these PRDs are deliberately outside the executable
-backlog. PRD 00164 also waits until the initial cutover DB checks finish.
+backlog. PRD 00186 also waits until the initial cutover DB checks finish.
 
-The obsolete standalone changelog cleanup is not a Gems task. PRD 00173 covers
+The obsolete standalone changelog cleanup is not a Gems task. PRD 00195 covers
 Gems installation/configuration docs instead, while retaining the original
 finding as historical evidence. The existing pre-port discovery filename 00161
 is not an Engram executable PRD number; Gems PRD 00161 belongs to BIM.

@@ -12,12 +12,12 @@ Standalone PRDs 00014-00016 are now in their source repository's
 `docs/dev/project-management/prds/done/`. The source prerequisite is met;
 the inventory still needs its required refresh against the selected port commit.
 The subsequent Agoge findings belong to this Gems port, not another standalone
-Engram batch. See [the QA handoff](00161-engram-qa-handoff.md) for Gems PRDs 00163-00173, their phase ownership, and compatibility conflicts.
+Engram batch. See [the QA handoff](00161-engram-qa-handoff.md) for Gems PRDs 00185-00195, their phase ownership, and compatibility conflicts.
 
 The former standalone PRDs 00017-00027 now live in Gems as held PRDs
-00163-00173. Do not add a standalone build as a prerequisite. Their target
+00185-00195. Do not add a standalone build as a prerequisite. Their target
 paths, settings and test gates are adapted; verify the landed module map before
-releasing them from hold. PRD 00164 waits for the initial cutover DB checks.
+releasing them from hold. PRD 00186 waits for the initial cutover DB checks.
 The parity contract below remains the baseline; record each deliberate bug-fix
 exception and its consumer regression test before changing that contract.
 
@@ -27,12 +27,12 @@ The agent executing the port owns these checkpoints. The user does not need to
 remember which held PRDs became ready. Carry these requirements into the Phase 3
 and Phase 4 PRDs when creating them; a discovery note alone is not a running job.
 
-- At Phase 3 closeout, check every held QA PRD except 00164 against its actual
+- At Phase 3 closeout, check every held QA PRD except 00186 against its actual
   prerequisites. Verify landed files, test evidence, compatibility exceptions,
   and completed QA dependencies. Move each ready PRD from
   `docs/dev/project-management/prds/hold/` to
   `docs/dev/project-management/prds/backlog/`, update its status, and repair links.
-- At Phase 4 closeout, repeat the check and include 00164 only after the original
+- At Phase 4 closeout, repeat the check and include 00186 only after the original
   cutover database checks pass. Do not start its schema change beforehand.
 - When a QA prerequisite PRD completes, recheck the QA PRDs that depend on it.
   Add this release check to each relevant implementation handoff. Merely creating

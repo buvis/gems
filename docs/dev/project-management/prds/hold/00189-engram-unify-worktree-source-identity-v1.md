@@ -87,7 +87,7 @@ CHANGELOG.md
 
 ### Foundation Layer (Phase 0)
 - **Verification and guidance**: No internal dependencies; establish reproductions and current premises first.
-- External prerequisites: the port prerequisites stated above, plus [00165](00165-engram-validate-repository-registry-v1.md). Execute these PRDs first; do not work on overlapping source modules concurrently.
+- External prerequisites: the port prerequisites stated above, plus [00187](00187-engram-validate-repository-registry-v1.md). Execute these PRDs first; do not work on overlapping source modules concurrently.
 
 ### Core Layer (Phase 1)
 - **Product correction**: Depends on Phase 0 evidence and the external prerequisites above.
