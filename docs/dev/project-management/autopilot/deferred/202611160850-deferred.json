@@ -11,6 +11,36 @@
       "reason": "deferred by review-close",
       "status": "pending",
       "prd": "00150-bim-tiromex-format-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 1,
+      "severity": "\ud83d\udfe1",
+      "status": "deferred",
+      "file": "src/tools/bim/commands/doc/shared/llm.py:94",
+      "issue": "A named ollama or openai entry without model loads and passes health, then fails every doc call with a raw LLMConfigError. Rejecting it in resolve_doc_route at config load would be cheaper for the user. Not a PRD requirement; the approved design checks the effective model at invocation.",
+      "reason": "deferred by review-close",
+      "prd": "00151-bim-tiromex-backends-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 3,
+      "severity": "\ud83d\udfe1",
+      "status": "deferred",
+      "file": "src/tools/bim/shared/llm/base.py:313",
+      "issue": "Task 12 fixes executable selection across symlink/.., but still replaces argv[0] with the lookup result. A native executable can use argv[0] to select its behavior. Pass the selected path as Popen(executable=...) and preserve the original argv; extend the regression test to check both values.",
+      "reason": "deferred by review-close",
+      "prd": "00151-bim-tiromex-backends-v1.md"
+    },
+    {
+      "type": "deferred_decision",
+      "cycle": 3,
+      "severity": "\ud83d\udfe1",
+      "status": "deferred",
+      "file": "src/tools/bim/shared/llm/base.py:313",
+      "issue": "The replacement calls os.getcwd() even when shutil.which returns an absolute path. If the launch directory was removed, a valid absolute executable now fails with a raw FileNotFoundError. Call getcwd() only for relative lookup results and test that an absolute executable still runs when getcwd() fails.",
+      "reason": "deferred by review-close",
+      "prd": "00151-bim-tiromex-backends-v1.md"
     }
   ]
 }
