@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **dot**: print `dot run` output with bracketed paths and emoji codes intact, without a Rich markup crash.
+
 ## [0.21.0] - 2026-11-25
 
 **Upgrade notes.** This release makes config loading strict. Before you upgrade, do these steps:

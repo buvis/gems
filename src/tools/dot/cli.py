@@ -201,7 +201,7 @@ def run(args: tuple[str, ...]) -> None:
     from dot.commands.run.run import CommandRun
 
     shell = ShellAdapter(suppress_logging=True)
-    console.report_result(CommandRun(shell=shell, args=args).execute(), exit_on_failure=True)
+    console.report_result(CommandRun(shell=shell, args=args).execute(), literal=True, exit_on_failure=True)
 
 
 @cli.command("unstage", help="Unstage files, keep local changes")

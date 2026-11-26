@@ -224,6 +224,18 @@ class TestDotCommands:
         result = runner.invoke(cli, ["run", "status"])
         assert result.exit_code != 0
 
+    @pytest.mark.parametrize("exit_code", [0, 1], ids=["success", "failure"])
+    def test_run_prints_subprocess_text_literally(self, mocker, runner, monkeypatch, tmp_path, exit_code: int) -> None:
+        message = "git-secret: [/some/path] :heart:"
+        monkeypatch.setenv("DOTFILES_ROOT", str(tmp_path))
+        shell = mocker.patch("dot.cli.ShellAdapter", autospec=True).return_value
+        shell.exe.return_value = ("", message) if exit_code == 0 else (message, "")
+
+        result = runner.invoke(cli, ["run", "secret", "list"])
+
+        assert result.exit_code == exit_code
+        assert message in result.output
+
     def test_localize_failure(self, mocker, runner) -> None:
         mocker.patch("dot.cli.ShellAdapter")
         mock_cmd_cls = mocker.patch("dot.commands.localize.localize.CommandLocalize")
